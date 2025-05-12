@@ -14,6 +14,40 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     
+    // Initialize FPS counter
+    const stats = new Stats();
+    stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+    container.appendChild(stats.dom);
+    
+    // Debug visibility states
+    let debugVisible = true;
+    let guiVisible = true;
+    
+    // Function to toggle debug visibility
+    function toggleDebug() {
+        debugVisible = !debugVisible;
+        stats.dom.style.display = debugVisible ? 'block' : 'none';
+    }
+    
+    // Function to toggle GUI visibility
+    function toggleGUI() {
+        guiVisible = !guiVisible;
+        gui.domElement.style.display = guiVisible ? 'block' : 'none';
+    }
+    
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', (event) => {
+        if (event.ctrlKey) {
+            if (event.key === 'd') {
+                event.preventDefault(); // Prevent default browser behavior
+                toggleDebug();
+            } else if (event.key === 'e') {
+                event.preventDefault(); // Prevent default browser behavior
+                toggleGUI();
+            }
+        }
+    });
+    
     console.log('Container dimensions:', {
         width: container.clientWidth,
         height: container.clientHeight
@@ -308,21 +342,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Animation loop
-    let lastUpdate = 0;
-    const updateInterval = 1000; // Update chunks every second
-    
     function animate() {
-        requestAnimationFrame(animate);
-        
-        const now = Date.now();
-        if (now - lastUpdate > updateInterval) {
-            // Update chunks based on camera position
-            updatePlanetGeometry();
-            lastUpdate = now;
+        if (debugVisible) {
+            stats.begin();
         }
         
-        // Render the scene
+        requestAnimationFrame(animate);
+        
+        // Update chunks
+        planetGenerator.chunkManager.updateChunksInRadius(
+            camera.position.x,
+            camera.position.y,
+            camera.position.z,
+            100
+        );
+        
         renderer.render(scene, camera);
+        
+        if (debugVisible) {
+            stats.end();
+        }
     }
     
     // Start animation loop

@@ -234,39 +234,35 @@ class ChunkManager {
     constructor(planetGenerator, chunkSize = 16) {
         this.planetGenerator = planetGenerator;
         this.chunkSize = chunkSize;
-        this.chunks = new Map(); // Map of "x,y,z" -> Chunk
-        this.activeChunks = new Set();
-        this.visibleChunks = new Set();
+        this.chunks = new Map(); // Map of chunk coordinates to Chunk objects
+        this.activeChunks = new Set(); // Set of active chunk keys
+        this.scene = null;
+        this.material = null;
         this.maxChunks = 1000; // Maximum number of chunks to keep in memory
-        this.maxMemory = 256 * 1024 * 1024; // 256MB memory limit
-        this.currentMemory = 0;
-        this.loadingChunks = new Set(); // Chunks currently being loaded
-        this.maxConcurrentLoads = 4; // Maximum number of concurrent chunk loads
-        this.loadQueue = []; // Queue of chunks waiting to be loaded
-        this.scene = null; // THREE.js scene
-        this.material = null; // Shared material for all chunks
+        this.maxMemoryMB = 512; // Maximum memory usage in MB
+        this.updateQueue = []; // Queue of chunks to update
+        this.isUpdating = false; // Flag to prevent concurrent updates
+        this.updateInterval = 100; // Minimum time between updates in ms
+        this.lastUpdate = 0; // Timestamp of last update
     }
 
-    // Set the THREE.js scene
     setScene(scene) {
         this.scene = scene;
     }
 
-    // Set the shared material
     setMaterial(material) {
         this.material = material;
     }
 
-    // Get or create chunk at chunk coordinates
     getChunk(chunkX, chunkY, chunkZ) {
         const key = `${chunkX},${chunkY},${chunkZ}`;
         if (!this.chunks.has(key)) {
-            this.chunks.set(key, new Chunk(chunkX, chunkY, chunkZ, this.chunkSize));
+            const chunk = new Chunk(chunkX, chunkY, chunkZ, this.chunkSize);
+            this.chunks.set(key, chunk);
         }
         return this.chunks.get(key);
     }
 
-    // Convert world coordinates to chunk coordinates
     worldToChunkCoordinates(worldX, worldY, worldZ) {
         return {
             x: Math.floor(worldX / this.chunkSize),
@@ -275,107 +271,141 @@ class ChunkManager {
         };
     }
 
-    // Get chunk containing world coordinates
     getChunkAtWorldPosition(worldX, worldY, worldZ) {
-        const { x, y, z } = this.worldToChunkCoordinates(worldX, worldY, worldZ);
-        return this.getChunk(x, y, z);
+        const coords = this.worldToChunkCoordinates(worldX, worldY, worldZ);
+        return this.getChunk(coords.x, coords.y, coords.z);
     }
 
-    // Update chunks within radius of center point
     async updateChunksInRadius(centerX, centerY, centerZ, radius) {
-        // Convert to chunk coordinates
-        const centerChunk = this.worldToChunkCoordinates(centerX, centerY, centerZ);
-        const chunkRadius = Math.ceil(radius / this.chunkSize);
-        
-        // Track new active chunks
-        const newActiveChunks = new Set();
-        const newVisibleChunks = new Set();
-        
-        // Update chunks within radius
-        for (let x = -chunkRadius; x <= chunkRadius; x++) {
-            for (let y = -chunkRadius; y <= chunkRadius; y++) {
-                for (let z = -chunkRadius; z <= chunkRadius; z++) {
-                    const chunkX = centerChunk.x + x;
-                    const chunkY = centerChunk.y + y;
-                    const chunkZ = centerChunk.z + z;
-                    
-                    // Check if chunk is within sphere radius
-                    const distSq = x * x + y * y + z * z;
-                    if (distSq <= chunkRadius * chunkRadius) {
-                        const chunk = this.getChunk(chunkX, chunkY, chunkZ);
-                        const key = `${chunkX},${chunkY},${chunkZ}`;
+        if (this.isUpdating) return;
+        this.isUpdating = true;
+
+        try {
+            const now = Date.now();
+            if (now - this.lastUpdate < this.updateInterval) {
+                return;
+            }
+            this.lastUpdate = now;
+
+            // Calculate chunk radius
+            const chunkRadius = Math.ceil(radius / this.chunkSize);
+            const centerChunk = this.worldToChunkCoordinates(centerX, centerY, centerZ);
+
+            // Update active chunks set
+            this.activeChunks.clear();
+            for (let x = -chunkRadius; x <= chunkRadius; x++) {
+                for (let y = -chunkRadius; y <= chunkRadius; y++) {
+                    for (let z = -chunkRadius; z <= chunkRadius; z++) {
+                        const chunkX = centerChunk.x + x;
+                        const chunkY = centerChunk.y + y;
+                        const chunkZ = centerChunk.z + z;
+
+                        // Check if chunk is within sphere radius
+                        const dx = chunkX - centerChunk.x;
+                        const dy = chunkY - centerChunk.y;
+                        const dz = chunkZ - centerChunk.z;
+                        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
                         
-                        // Update chunk state
-                        chunk.isActive = true;
-                        newActiveChunks.add(key);
-                        
-                        // Generate mesh if needed
-                        if (chunk.isDirty && this.material) {
-                            const mesh = chunk.generateMesh(this.material);
-                            if (mesh && this.scene) {
-                                if (!this.scene.children.includes(mesh)) {
-                                    this.scene.add(mesh);
-                                }
+                        if (distance <= chunkRadius) {
+                            const chunk = this.getChunk(chunkX, chunkY, chunkZ);
+                            const key = `${chunkX},${chunkY},${chunkZ}`;
+                            this.activeChunks.add(key);
+                            
+                            // Update chunk priority
+                            chunk.calculatePriority({ x: centerX, y: centerY, z: centerZ });
+                            
+                            // Add to update queue if needed
+                            if (chunk.isDirty) {
+                                this.updateQueue.push(chunk);
                             }
                         }
                     }
                 }
             }
-        }
-        
-        // Update active chunks set
-        this.activeChunks = newActiveChunks;
-        
-        // Manage memory
-        this.manageMemory();
-    }
 
-    // Get chunks that need updating
-    getChunksToUpdate() {
-        const chunks = [];
-        for (const key of this.activeChunks) {
-            const chunk = this.chunks.get(key);
-            if (chunk && chunk.isDirty) {
-                chunks.push(chunk);
-            }
-        }
-        return chunks;
-    }
+            // Sort update queue by priority
+            this.updateQueue.sort((a, b) => b.priority - a.priority);
 
-    // Manage memory usage
-    manageMemory() {
-        // Calculate current memory usage
-        this.currentMemory = 0;
-        for (const chunk of this.chunks.values()) {
-            chunk.optimizeMemory();
-            this.currentMemory += chunk.memoryUsage;
-        }
-
-        // If we're over the memory limit, unload chunks
-        if (this.currentMemory > this.maxMemory) {
-            const chunks = Array.from(this.chunks.values());
-            chunks.sort((a, b) => b.priority - a.priority);
-
-            while (this.currentMemory > this.maxMemory && chunks.length > 0) {
-                const chunk = chunks.pop();
-                if (!this.activeChunks.has(`${chunk.x},${chunk.y},${chunk.z}`)) {
-                    chunk.dispose();
-                    this.chunks.delete(`${chunk.x},${chunk.y},${chunk.z}`);
-                    this.currentMemory -= chunk.memoryUsage;
+            // Process updates
+            const maxUpdatesPerFrame = 5;
+            for (let i = 0; i < maxUpdatesPerFrame && this.updateQueue.length > 0; i++) {
+                const chunk = this.updateQueue.shift();
+                if (chunk.isDirty) {
+                    await this.updateChunk(chunk);
                 }
             }
+
+            // Manage memory
+            this.manageMemory();
+
+        } finally {
+            this.isUpdating = false;
         }
     }
 
-    // Clean up resources
+    async updateChunk(chunk) {
+        if (!chunk.isDirty) return;
+
+        try {
+            // Generate mesh
+            const mesh = chunk.generateMesh(this.material);
+            
+            // Add to scene if not already added
+            if (mesh && this.scene && !this.scene.children.includes(mesh)) {
+                this.scene.add(mesh);
+            }
+
+            chunk.isDirty = false;
+            chunk.lastUpdate = Date.now();
+        } catch (error) {
+            console.error('Error updating chunk:', error);
+        }
+    }
+
+    manageMemory() {
+        // Calculate total memory usage
+        let totalMemory = 0;
+        for (const chunk of this.chunks.values()) {
+            chunk.optimizeMemory();
+            totalMemory += chunk.memoryUsage;
+        }
+
+        // If memory usage is too high, unload least important chunks
+        if (totalMemory > this.maxMemoryMB * 1024 * 1024 || this.chunks.size > this.maxChunks) {
+            // Sort chunks by priority (lowest first)
+            const sortedChunks = Array.from(this.chunks.entries())
+                .sort(([, a], [, b]) => a.priority - b.priority);
+
+            // Unload chunks until we're under the limit
+            while ((totalMemory > this.maxMemoryMB * 1024 * 1024 || this.chunks.size > this.maxChunks) 
+                   && sortedChunks.length > 0) {
+                const [key, chunk] = sortedChunks.shift();
+                
+                // Don't unload active chunks
+                if (this.activeChunks.has(key)) continue;
+
+                // Remove from scene
+                if (chunk.mesh && this.scene) {
+                    this.scene.remove(chunk.mesh);
+                }
+
+                // Dispose of resources
+                chunk.dispose();
+                
+                // Remove from maps
+                this.chunks.delete(key);
+                totalMemory -= chunk.memoryUsage;
+            }
+        }
+    }
+
     dispose() {
+        // Dispose of all chunks
         for (const chunk of this.chunks.values()) {
             chunk.dispose();
         }
         this.chunks.clear();
         this.activeChunks.clear();
-        this.visibleChunks.clear();
-        this.loadingChunks.clear();
-        this.loadQueue = [];
+        this.updateQueue = [];
     }
 } 
