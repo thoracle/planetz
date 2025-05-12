@@ -42,7 +42,7 @@
   - [ ] Implement 16x16x16 chunk division
   - [ ] Add chunk update system
 - [X] Add terrain features
-  - [ ] Implement different biome/planet types
+  - [X] Implement different biome/planet types
   - [X] Add height-based terrain variation
   - [ ] Create terrain texture mapping
   - [ ] Add visual feedback (like color changes) for different planet types
@@ -53,10 +53,7 @@
   - [X] Octaves slider
   - [X] Persistence slider
   - [X] Terrain height controls
-- [ ] Select Planet Type from drop down list
-- [ ] Implement color controls
-  - [ ] Color gradient picker
-  - [ ] Height-based color mapping
+- [X] Select Planet Type from drop down list
 - [X] Add real-time updates
   - [X] Implement debouncing
   - [X] Add visual feedback

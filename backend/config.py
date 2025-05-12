@@ -7,6 +7,7 @@ class Config:
     # Flask settings
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-key-please-change-in-production')
     STATIC_FOLDER = str(Path(__file__).parent.parent / 'frontend' / 'static')
+    PORT = 5001  # Set default port to 5001
     
     # Logging settings
     LOG_LEVEL = 'INFO'
@@ -18,9 +19,15 @@ class Config:
     @staticmethod
     def init_app(app):
         """Initialize the application with this configuration."""
-        # Create frontend dist directory if it doesn't exist
+        # Create static directory if it doesn't exist
         static_dir = Path(app.static_folder)
         static_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Log static folder path for debugging
+        app.logger.info(f"Static folder path: {app.static_folder}")
+        app.logger.info(f"Static folder exists: {static_dir.exists()}")
+        if static_dir.exists():
+            app.logger.info(f"Static folder contents: {list(static_dir.iterdir())}")
 
 
 class DevelopmentConfig(Config):

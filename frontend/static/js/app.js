@@ -1,9 +1,23 @@
 // Main application code
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('Initializing application...');
+    
     // Scene setup
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+    
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     const container = document.getElementById('scene-container');
+    
+    if (!container) {
+        console.error('Could not find scene-container element!');
+        return;
+    }
+    
+    console.log('Container dimensions:', {
+        width: container.clientWidth,
+        height: container.clientHeight
+    });
     
     // Renderer setup
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -11,8 +25,27 @@ document.addEventListener('DOMContentLoaded', () => {
     renderer.setPixelRatio(window.devicePixelRatio);
     container.appendChild(renderer.domElement);
     
+    console.log('Renderer initialized:', {
+        width: renderer.domElement.width,
+        height: renderer.domElement.height,
+        pixelRatio: renderer.getPixelRatio()
+    });
+    
     // Create planet generator
+    console.log('Creating planet generator...');
     const planetGenerator = new PlanetGenerator(64);
+    console.log('Planet generator created with params:', planetGenerator.params);
+
+    // Create material first
+    const material = new THREE.MeshPhongMaterial({
+        vertexColors: true,
+        shininess: 15,
+        flatShading: true
+    });
+
+    // Set up chunk manager with scene and material
+    planetGenerator.chunkManager.setScene(scene);
+    planetGenerator.chunkManager.setMaterial(material);
 
     // Planet type selection
     const planetTypes = {
@@ -33,95 +66,142 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     // Create initial geometry and material
+    console.log('Creating initial geometry...');
     let geometry = new THREE.IcosahedronGeometry(1, 4);
-    const material = new THREE.MeshPhongMaterial({
-        vertexColors: true,
-        shininess: 15,
-        flatShading: true
-    });
 
     // Create initial planet mesh
     const planet = new THREE.Mesh(geometry, material);
     scene.add(planet);
     
+    console.log('Initial planet mesh created:', {
+        vertices: geometry.attributes.position.count,
+        faces: geometry.index ? geometry.index.count / 3 : 0
+    });
+    
     // Function to create fresh geometry
     function createPlanetGeometry() {
+        console.log('Creating fresh geometry...');
         const newGeometry = new THREE.IcosahedronGeometry(1, 4);
         return newGeometry;
     }
     
     // Function to update planet geometry and colors
     function updatePlanetGeometry() {
-        // Create fresh geometry
+        console.log('Starting planet geometry update...');
+        
+        // Update chunks within view radius
+        const radius = 100; // Reduced from 1000 to 100 for better performance
+        planetGenerator.chunkManager.updateChunksInRadius(
+            camera.position.x,
+            camera.position.y,
+            camera.position.z,
+            radius
+        );
+
+        // Update planet mesh with new geometry
         const newGeometry = createPlanetGeometry();
-        const positions = newGeometry.attributes.position.array;
-        let colors = new Float32Array(positions.length);
-        let maxDisplacement = -Infinity;
-        let minDisplacement = Infinity;
-        let displacements = [];
-
-        // First pass: calculate displacement range
-        for (let i = 0; i < positions.length; i += 3) {
-            const x = positions[i];
-            const y = positions[i + 1];
-            const z = positions[i + 2];
+        planet.geometry.dispose();
+        planet.geometry = newGeometry;
+        
+        // Get current parameters
+        const { terrainHeight, noiseScale, octaves, persistence, lacunarity } = planetGenerator.params;
+        
+        // Apply terrain deformation
+        const positions = newGeometry.attributes.position;
+        const newPositions = new Float32Array(positions.count * 3);
+        
+        for (let i = 0; i < positions.count; i++) {
+            const x = positions.getX(i);
+            const y = positions.getY(i);
+            const z = positions.getZ(i);
             
-            const gx = Math.floor((x + 1) * 31.5);
-            const gy = Math.floor((y + 1) * 31.5);
-            const gz = Math.floor((z + 1) * 31.5);
+            // Calculate distance from center (normalized to 0-1 range)
+            const distanceFromCenter = Math.sqrt(x * x + y * y + z * z);
             
-            const density = planetGenerator.getDensityAt(gx, gy, gz);
-            const displacement = density * planetGenerator.params.terrainHeight;
-            displacements.push(displacement);
+            // Base density (negative inside planet, positive outside)
+            let density = 1.0 - distanceFromCenter;
             
-            maxDisplacement = Math.max(maxDisplacement, displacement);
-            minDisplacement = Math.min(minDisplacement, displacement);
-            
-            // Apply displacement
-            positions[i] *= 1 + displacement;
-            positions[i + 1] *= 1 + displacement;
-            positions[i + 2] *= 1 + displacement;
-        }
-
-        // Second pass: apply colors based on height
-        const currentColors = planetColors[planetTypes.currentType];
-        const baseColor = new THREE.Color(currentColors.base);
-        const highColor = new THREE.Color(currentColors.high);
-        const lowColor = new THREE.Color(currentColors.low);
-
-        for (let i = 0; i < positions.length; i += 3) {
-            const displacement = displacements[i / 3];
-            const t = (displacement - minDisplacement) / (maxDisplacement - minDisplacement);
-            
-            let color = new THREE.Color();
-            if (t > 0.5) {
-                // Blend between base and high color
-                color.lerpColors(baseColor, highColor, (t - 0.5) * 2);
+            // Add noise only if we're near the surface
+            if (Math.abs(density) < 0.1) {
+                // Scale coordinates for noise
+                const nx = x * noiseScale;
+                const ny = y * noiseScale;
+                const nz = z * noiseScale;
+                
+                // Generate noise value
+                let noiseValue = 0;
+                let amplitude = 1;
+                let frequency = 1;
+                
+                for (let j = 0; j < octaves; j++) {
+                    const sampleX = nx * frequency;
+                    const sampleY = ny * frequency;
+                    const sampleZ = nz * frequency;
+                    
+                    noiseValue += amplitude * planetGenerator.generateNoise(sampleX, sampleY, sampleZ);
+                    
+                    amplitude *= persistence;
+                    frequency *= lacunarity;
+                }
+                
+                // Normalize noise value to 0-1 range
+                noiseValue = (noiseValue + 1) / 2;
+                
+                // Apply terrain height
+                const height = 1 + noiseValue * terrainHeight;
+                
+                // Update vertex position
+                newPositions[i * 3] = x * height;
+                newPositions[i * 3 + 1] = y * height;
+                newPositions[i * 3 + 2] = z * height;
             } else {
-                // Blend between low and base color
-                color.lerpColors(lowColor, baseColor, t * 2);
+                // Keep original position for points far from surface
+                newPositions[i * 3] = x;
+                newPositions[i * 3 + 1] = y;
+                newPositions[i * 3 + 2] = z;
             }
-            
-            colors[i] = color.r;
-            colors[i + 1] = color.g;
-            colors[i + 2] = color.b;
         }
-
-        // Update geometry
-        newGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        
+        // Update geometry with new positions
+        newGeometry.setAttribute('position', new THREE.BufferAttribute(newPositions, 3));
         newGeometry.computeVertexNormals();
         
-        // Clean up old geometry and update mesh
-        if (planet.geometry) {
-            planet.geometry.dispose();
+        // Update colors based on planet type
+        const colors = planetColors[planetTypes.currentType];
+        const colorArray = new Float32Array(newGeometry.attributes.position.count * 3);
+        
+        for (let i = 0; i < newGeometry.attributes.position.count; i++) {
+            const x = newGeometry.attributes.position.getX(i);
+            const y = newGeometry.attributes.position.getY(i);
+            const z = newGeometry.attributes.position.getZ(i);
+            
+            // Calculate height factor based on position
+            const height = Math.sqrt(x * x + y * y + z * z);
+            const heightFactor = (height - 1) / terrainHeight; // Normalize height factor
+            
+            // Interpolate color based on height
+            const color = new THREE.Color();
+            if (heightFactor < 0.3) {
+                color.setHex(colors.low);
+            } else if (heightFactor > 0.7) {
+                color.setHex(colors.high);
+            } else {
+                color.setHex(colors.base);
+            }
+            
+            colorArray[i * 3] = color.r;
+            colorArray[i * 3 + 1] = color.g;
+            colorArray[i * 3 + 2] = color.b;
         }
-        planet.geometry = newGeometry;
+        
+        newGeometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
     }
     
     // Initial geometry update
     updatePlanetGeometry();
     
     // Add lights
+    console.log('Setting up lights...');
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.set(5, 5, 5);
     scene.add(light);
@@ -132,7 +212,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Position camera
     camera.position.z = 3;
     
+    console.log('Camera position:', {
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z
+    });
+    
     // Set up GUI controls
+    console.log('Setting up GUI...');
     const gui = new dat.GUI();
     const controls = gui.addFolder('Planet Generation');
 
@@ -140,6 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const typeController = controls.add(planetTypes, 'currentType', planetTypes.types)
         .name('Planet Type')
         .onChange((value) => {
+            console.log('Planet type changed to:', value);
             if (planetGenerator.applyPlanetClass(value)) {
                 // Update all GUI controllers to reflect new parameters
                 for (const controller of controls.__controllers) {
@@ -154,66 +242,90 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update tooltip with description
                 const planetClass = planetGenerator.planetClasses[value];
                 const description = planetClass.description;
-                typeController.domElement.parentElement.setAttribute('title', description);
-                
-                // Update planet geometry and colors
                 updatePlanetGeometry();
             }
         });
 
-    // Set initial tooltip
-    const initialDescription = planetGenerator.planetClasses[planetTypes.currentType].description;
-    typeController.domElement.parentElement.setAttribute('title', initialDescription);
-    
-    // Add parameter controllers
-    const noiseScaleController = controls.add(planetGenerator.params, 'noiseScale', 0.1, 5.0).name('Noise Scale')
-        .onChange(() => {
-            planetGenerator.generateDensityField();
+    // Add controls for planet parameters
+    controls.add(planetGenerator.params, 'terrainHeight', 0, 0.5)
+        .name('Terrain Height')
+        .onChange((value) => {
+            console.log('Terrain height changed to:', value);
+            planetGenerator.params.terrainHeight = value;
             updatePlanetGeometry();
         });
     
-    const octavesController = controls.add(planetGenerator.params, 'octaves', 1, 8, 1).name('Octaves')
-        .onChange(() => {
-            planetGenerator.generateDensityField();
+    controls.add(planetGenerator.params, 'noiseScale', 0.1, 2.0)
+        .name('Noise Scale')
+        .onChange((value) => {
+            console.log('Noise scale changed to:', value);
+            planetGenerator.params.noiseScale = value;
             updatePlanetGeometry();
         });
     
-    const persistenceController = controls.add(planetGenerator.params, 'persistence', 0.1, 1.0).name('Persistence')
-        .onChange(() => {
-            planetGenerator.generateDensityField();
+    controls.add(planetGenerator.params, 'octaves', 1, 8, 1)
+        .name('Noise Octaves')
+        .onChange((value) => {
+            console.log('Octaves changed to:', value);
+            planetGenerator.params.octaves = value;
             updatePlanetGeometry();
         });
     
-    const terrainHeightController = controls.add(planetGenerator.params, 'terrainHeight', 0.0, 1.0).name('Terrain Height')
-        .onChange(() => {
-            planetGenerator.generateDensityField();
+    controls.add(planetGenerator.params, 'persistence', 0.1, 1.0)
+        .name('Noise Persistence')
+        .onChange((value) => {
+            console.log('Persistence changed to:', value);
+            planetGenerator.params.persistence = value;
             updatePlanetGeometry();
         });
     
-    controls.add({
-        regenerate: () => {
-            planetGenerator.params.seed = Math.random() * 10000;
-            planetGenerator.generateDensityField();
+    controls.add(planetGenerator.params, 'lacunarity', 0.1, 4.0)
+        .name('Noise Lacunarity')
+        .onChange((value) => {
+            console.log('Lacunarity changed to:', value);
+            planetGenerator.params.lacunarity = value;
+            updatePlanetGeometry();
+        });
+    
+    // Add a button to generate a new planet
+    const newPlanetButton = {
+        generateNewPlanet: function() {
+            console.log('Generating new planet...');
+            planetGenerator.generateNewSeed();
             updatePlanetGeometry();
         }
-    }, 'regenerate').name('New Seed');
+    };
+    controls.add(newPlanetButton, 'generateNewPlanet').name('New Seed');
     
     controls.open();
     
-    // Animation loop
-    function animate() {
-        requestAnimationFrame(animate);
-        planet.rotation.y += 0.005;
-        renderer.render(scene, camera);
-    }
-    animate();
-    
     // Handle window resize
     window.addEventListener('resize', () => {
-        const width = container.clientWidth;
-        const height = container.clientHeight;
-        camera.aspect = width / height;
+        console.log('Window resized');
+        camera.aspect = container.clientWidth / container.clientHeight;
         camera.updateProjectionMatrix();
-        renderer.setSize(width, height);
+        renderer.setSize(container.clientWidth, container.clientHeight);
     });
+    
+    // Animation loop
+    let lastUpdate = 0;
+    const updateInterval = 1000; // Update chunks every second
+    
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        const now = Date.now();
+        if (now - lastUpdate > updateInterval) {
+            // Update chunks based on camera position
+            updatePlanetGeometry();
+            lastUpdate = now;
+        }
+        
+        // Render the scene
+        renderer.render(scene, camera);
+    }
+    
+    // Start animation loop
+    console.log('Starting animation loop...');
+    animate();
 }); 

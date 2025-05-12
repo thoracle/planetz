@@ -45,7 +45,7 @@ FLASK_DEBUG=1
 
 4. Start the development server:
 ```bash
-flask run
+./run-server.sh
 ```
 
 The server will start at http://localhost:5000

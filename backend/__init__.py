@@ -1,27 +1,23 @@
-"""Initialize the Flask application."""
+"""Initialize the backend package."""
 from flask import Flask
-from flask.logging import create_logger
-import logging
-from .config import config
+from backend.config import config
+import os
 
-def create_app(config_name='default'):
+def create_app(config_name):
     """Create and configure the Flask application."""
-    app = Flask(__name__, static_folder=config[config_name].STATIC_FOLDER)
+    # Get the absolute path to the frontend static directory
+    static_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'static'))
+    
+    app = Flask(__name__, 
+                static_folder=static_dir,
+                static_url_path='')
     
     # Load configuration
     app.config.from_object(config[config_name])
     config[config_name].init_app(app)
     
-    # Set up logging
-    logging.basicConfig(
-        level=app.config['LOG_LEVEL'],
-        format=app.config['LOG_FORMAT']
-    )
-    logger = create_logger(app)
-    
     # Register blueprints
-    from .routes import main_bp, api_bp
-    app.register_blueprint(main_bp)
-    app.register_blueprint(api_bp, url_prefix=app.config['API_PREFIX'])
+    from backend.routes.main import bp as main_blueprint
+    app.register_blueprint(main_blueprint)
     
     return app 

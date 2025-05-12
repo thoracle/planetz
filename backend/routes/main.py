@@ -1,5 +1,5 @@
 """Main routes for serving the frontend application."""
-from flask import Blueprint, send_from_directory, current_app, send_file, Response
+from flask import Blueprint, send_from_directory, current_app
 import logging
 import mimetypes
 import os
@@ -22,18 +22,21 @@ def get_mime_type(path):
     return mimetypes.guess_type(path)[0] or 'application/octet-stream'
 
 @bp.route('/')
-def serve_frontend():
-    """Serve the frontend application."""
+def index():
+    """Serve the main page."""
     try:
+        logger.info("Serving index.html")
         return send_from_directory(current_app.static_folder, 'index.html', mimetype='text/html')
     except Exception as e:
-        logger.error(f"Error serving frontend: {str(e)}")
+        logger.error(f"Error serving index.html: {str(e)}")
         return "Error serving frontend application", 500
 
 @bp.route('/<path:path>')
 def serve_static(path):
-    """Serve static files with proper MIME types and caching."""
+    """Serve static files with proper MIME types."""
     try:
+        logger.info(f"Serving static file: {path}")
+        
         # Handle CSS, JS, and other static files
         if path.startswith(('css/', 'js/', 'assets/', 'lib/')):
             mime_type = get_mime_type(path)
@@ -45,6 +48,13 @@ def serve_static(path):
             # Add headers for JavaScript files
             if path.endswith('.js'):
                 response.headers['Content-Type'] = 'text/javascript'
+            
+            # Add cache control headers
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            
+            logger.info(f"Successfully served file: {path}")
             return response
         
         # For all other paths, serve index.html (for client-side routing)
