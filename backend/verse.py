@@ -45,7 +45,7 @@ def generate_planet(random_seed=None):
 
     # Generate planet type, size, moons, and other properties
     #planet['planet_type'] = random.choice(['rocky', 'gas giant', 'ice giant'])
-    planet['planet_type'] = random.choice(list(_PlanetTypes.Class))
+    planet['planet_type'] = random.choice(list(_PlanetTypes.PLANET_CLASSES))
     
     planet['planet_size'] = Lehmer32() % 10 + 1
     planet['moons'] = []

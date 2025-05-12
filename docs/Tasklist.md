@@ -41,23 +41,25 @@
   - [ ] Create chunk management system
   - [ ] Implement 16x16x16 chunk division
   - [ ] Add chunk update system
-- [ ] Add terrain features
-  - [ ] Implement different biome types
-  - [ ] Add height-based terrain variation
+- [X] Add terrain features
+  - [ ] Implement different biome/planet types
+  - [X] Add height-based terrain variation
   - [ ] Create terrain texture mapping
+  - [ ] Add visual feedback (like color changes) for different planet types
 
 #### User Interface
-- [ ] Create parameter control widgets
-  - [ ] Noise scale slider
-  - [ ] Octaves slider
-  - [ ] Persistence slider
-  - [ ] Terrain height controls
+- [X] Create parameter control widgets
+  - [X] Noise scale slider
+  - [X] Octaves slider
+  - [X] Persistence slider
+  - [X] Terrain height controls
+- [ ] Select Planet Type from drop down list
 - [ ] Implement color controls
   - [ ] Color gradient picker
   - [ ] Height-based color mapping
-- [ ] Add real-time updates
-  - [ ] Implement debouncing
-  - [ ] Add visual feedback
+- [X] Add real-time updates
+  - [X] Implement debouncing
+  - [X] Add visual feedback
 
 ### Performance Optimization
 - [ ] Implement Web Workers
@@ -96,7 +98,7 @@
 
 ## Future Features (Backlog)
 - [ ] Atmosphere rendering
-- [ ] Multiple planet support
+- [ ] Generate universe using backend/verse.py 
 - [ ] Save/load planet configurations
 - [ ] Custom texture mapping
 - [ ] Advanced biome generation
