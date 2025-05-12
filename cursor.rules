@@ -1,0 +1,101 @@
+# Planetz - Procedural Planet Generator
+
+## Project Description
+A web application for generating and customizing 3D spherical planets using procedural generation with real-time visual feedback.
+
+## Tech Stack
+- Backend: Python3/Flask
+- Frontend: Three.js, JavaScript
+- Performance: WebAssembly (WASM)
+- Core Algorithms: Marching Cubes, Procedural Noise
+
+## Project Structure
+```
+/
+├── backend/           # Python Flask server
+│   ├── app.py        # Main server file
+│   └── requirements.txt
+├── frontend/         # Client-side code
+│   ├── src/
+│   │   ├── js/      # JavaScript modules
+│   │   ├── wasm/    # WebAssembly modules
+│   │   └── shaders/ # GLSL shaders
+│   ├── public/      # Static assets
+│   └── index.html   # Main HTML file
+└── README.md
+```
+
+## Implementation Rules
+
+### Backend Rules
+1. Keep server-side logic minimal
+2. Focus on static file serving
+3. Implement basic API endpoints for future features
+4. Use Flask for simplicity and easy setup
+
+### Frontend Rules
+1. Three.js Scene Requirements:
+   - Perspective camera with orbit controls
+   - Directional light (sun simulation)
+   - Ambient light for base illumination
+   - Planet mesh using Marching Cubes
+
+2. UI Components:
+   - Noise parameter sliders (scale, octaves, persistence)
+   - Terrain height controls
+   - Color pickers for terrain gradients
+   - Real-time update handling with debouncing
+
+### Core Features
+1. Planet Generation:
+   - Use 3D density field (64x64x64 or 128x128x128 grid)
+   - Implement formula: density = distance_to_center - planet_radius + noise
+   - WebAssembly-optimized noise functions
+   - Chunk-based rendering (16x16x16 chunks)
+
+2. Performance Requirements:
+   - Use Web Workers for mesh generation
+   - Implement efficient chunk-based updates
+   - Optimize triangle count
+   - Debounce UI inputs
+   - WebAssembly for critical computations
+
+### Code Style
+1. JavaScript:
+   - Use ES6+ features
+   - Modular code organization
+   - Clear component separation
+   - Proper error handling
+
+2. Python:
+   - Follow PEP 8 guidelines
+   - Use type hints
+   - Implement proper error handling
+   - Keep routes clean and organized
+
+### Testing Requirements
+1. Frontend:
+   - Unit tests for core functions
+   - Performance benchmarks
+   - Browser compatibility tests
+
+2. Backend:
+   - API endpoint tests
+   - Server load testing
+   - Error handling verification
+
+## Development Workflow
+1. Use docs/Tasklist.md to determine next task to work on and mark it [X] when completed.
+1. Use Git for version control
+2. Implement features in isolated branches
+3. Review code before merging
+4. Keep documentation updated
+5. Regular performance testing
+
+## Future Extensions
+1. Atmosphere rendering
+2. Multiple planet support
+3. Save/load planet configurations
+4. Custom texture mapping
+5. Advanced biome generation
+
