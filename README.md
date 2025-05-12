@@ -20,6 +20,40 @@ A web application for generating and customizing 3D spherical planets using proc
 - WebAssembly (WASM) for performance-critical computations
 - JavaScript/ES6+ for UI and scene management
 
+## Getting Started
+
+### Backend Setup
+
+1. Create and activate a virtual environment:
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Create a `.env` file in the backend directory:
+```
+FLASK_APP=app.py
+FLASK_ENV=development
+FLASK_DEBUG=1
+```
+
+4. Start the development server:
+```bash
+flask run
+```
+
+The server will start at http://localhost:5000
+
+### Frontend Setup
+
+(Coming soon)
+
 ## Architecture
 
 The project combines design elements from Sebastian Lague's Terraforming and technical optimizations from DanielEsteban's softxels:
@@ -47,19 +81,11 @@ The project combines design elements from Sebastian Lague's Terraforming and tec
    - Color gradient pickers
    - Real-time updates with performance optimization
 
-## Getting Started
-
-(Coming soon: Installation and setup instructions)
-
 ## Development
 
 ### Prerequisites
-- Flask
-- Python 3.10
+- Python 3.x
 - Modern web browser with WebAssembly support
-
-### Setup Instructions
-(Coming soon)
 
 ## Contributing
 

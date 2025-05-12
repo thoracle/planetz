@@ -39,6 +39,9 @@ A web application for generating and customizing 3D spherical planets using proc
    - Directional light (sun simulation)
    - Ambient light for base illumination
    - Planet mesh using Marching Cubes
+   - Write all our frontend code in plain JavaScript and include it directly in static files
+   - Include Three.js directly via CDN
+   - Put all frontend files directly in the static directory
 
 2. UI Components:
    - Noise parameter sliders (scale, octaves, persistence)
