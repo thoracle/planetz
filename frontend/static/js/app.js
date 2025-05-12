@@ -16,12 +16,52 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize FPS counter
     const stats = new Stats();
-    stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
-    container.appendChild(stats.dom);
+    stats.dom.style.position = 'absolute';
+    stats.dom.style.top = '10px';
+    stats.dom.style.left = '10px';
+    stats.dom.style.display = 'none'; // Hide by default
+    document.body.appendChild(stats.dom);
     
     // Debug visibility states
     let debugVisible = true;
-    let guiVisible = true;
+    let editMode = false;
+    
+    // Create helper objects
+    const axesHelper = new THREE.AxesHelper(5);
+    const gridHelper = new THREE.GridHelper(10, 10);
+    
+    // Initially hide helpers
+    axesHelper.visible = false;
+    gridHelper.visible = false;
+    
+    // Add helpers to scene
+    scene.add(axesHelper);
+    scene.add(gridHelper);
+    
+    // Renderer setup
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
+    
+    // Initialize OrbitControls
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; // Smooth camera movement
+    controls.dampingFactor = 0.05;
+    controls.screenSpacePanning = true; // Pan parallel to screen
+    controls.enableZoom = true;
+    controls.enableRotate = true;
+    controls.enablePan = true;
+    
+    // Configure for MacBook trackpad
+    controls.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.PAN
+    };
+    
+    // Disable controls when not in edit mode
+    controls.enabled = false;
     
     // Function to toggle debug visibility
     function toggleDebug() {
@@ -29,10 +69,13 @@ document.addEventListener('DOMContentLoaded', () => {
         stats.dom.style.display = debugVisible ? 'block' : 'none';
     }
     
-    // Function to toggle GUI visibility
-    function toggleGUI() {
-        guiVisible = !guiVisible;
-        gui.domElement.style.display = guiVisible ? 'block' : 'none';
+    // Function to toggle edit mode
+    function toggleEditMode() {
+        editMode = !editMode;
+        axesHelper.visible = editMode;
+        gridHelper.visible = editMode;
+        gui.domElement.style.display = editMode ? 'block' : 'none';
+        controls.enabled = editMode; // Enable/disable controls with edit mode
     }
     
     // Add keyboard shortcuts
@@ -43,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleDebug();
             } else if (event.key === 'e') {
                 event.preventDefault(); // Prevent default browser behavior
-                toggleGUI();
+                toggleEditMode();
             }
         }
     });
@@ -51,18 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Container dimensions:', {
         width: container.clientWidth,
         height: container.clientHeight
-    });
-    
-    // Renderer setup
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    container.appendChild(renderer.domElement);
-    
-    console.log('Renderer initialized:', {
-        width: renderer.domElement.width,
-        height: renderer.domElement.height,
-        pixelRatio: renderer.getPixelRatio()
     });
     
     // Create planet generator
@@ -255,16 +286,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up GUI controls
     console.log('Setting up GUI...');
     const gui = new dat.GUI();
-    const controls = gui.addFolder('Planet Generation');
+    gui.domElement.style.display = 'none'; // Hide by default
+    const controlsFolder = gui.addFolder('Planet Generation');
 
     // Add planet type dropdown with tooltip
-    const typeController = controls.add(planetTypes, 'currentType', planetTypes.types)
+    const typeController = controlsFolder.add(planetTypes, 'currentType', planetTypes.types)
         .name('Planet Type')
         .onChange((value) => {
             console.log('Planet type changed to:', value);
             if (planetGenerator.applyPlanetClass(value)) {
                 // Update all GUI controllers to reflect new parameters
-                for (const controller of controls.__controllers) {
+                for (const controller of controlsFolder.__controllers) {
                     if (controller !== typeController) {
                         const property = controller.property;
                         if (property in planetGenerator.params) {
@@ -281,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
     // Add controls for planet parameters
-    controls.add(planetGenerator.params, 'terrainHeight', 0, 0.5)
+    controlsFolder.add(planetGenerator.params, 'terrainHeight', 0, 0.5)
         .name('Terrain Height')
         .onChange((value) => {
             console.log('Terrain height changed to:', value);
@@ -289,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updatePlanetGeometry();
         });
     
-    controls.add(planetGenerator.params, 'noiseScale', 0.1, 2.0)
+    controlsFolder.add(planetGenerator.params, 'noiseScale', 0.1, 2.0)
         .name('Noise Scale')
         .onChange((value) => {
             console.log('Noise scale changed to:', value);
@@ -297,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updatePlanetGeometry();
         });
     
-    controls.add(planetGenerator.params, 'octaves', 1, 8, 1)
+    controlsFolder.add(planetGenerator.params, 'octaves', 1, 8, 1)
         .name('Noise Octaves')
         .onChange((value) => {
             console.log('Octaves changed to:', value);
@@ -305,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updatePlanetGeometry();
         });
     
-    controls.add(planetGenerator.params, 'persistence', 0.1, 1.0)
+    controlsFolder.add(planetGenerator.params, 'persistence', 0.1, 1.0)
         .name('Noise Persistence')
         .onChange((value) => {
             console.log('Persistence changed to:', value);
@@ -313,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updatePlanetGeometry();
         });
     
-    controls.add(planetGenerator.params, 'lacunarity', 0.1, 4.0)
+    controlsFolder.add(planetGenerator.params, 'lacunarity', 0.1, 4.0)
         .name('Noise Lacunarity')
         .onChange((value) => {
             console.log('Lacunarity changed to:', value);
@@ -329,9 +361,9 @@ document.addEventListener('DOMContentLoaded', () => {
             updatePlanetGeometry();
         }
     };
-    controls.add(newPlanetButton, 'generateNewPlanet').name('New Seed');
+    controlsFolder.add(newPlanetButton, 'generateNewPlanet').name('New Seed');
     
-    controls.open();
+    controlsFolder.open();
     
     // Handle window resize
     window.addEventListener('resize', () => {
@@ -348,6 +380,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         requestAnimationFrame(animate);
+        
+        // Update controls
+        if (editMode) {
+            controls.update();
+        }
         
         // Update chunks
         planetGenerator.chunkManager.updateChunksInRadius(
