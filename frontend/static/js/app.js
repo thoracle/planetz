@@ -421,15 +421,76 @@ document.addEventListener('DOMContentLoaded', () => {
         transparent: true,
         opacity: 0.8,
         shininess: 100,
-        specular: 0x111111
+        specular: 0x111111,
+        envMap: scene.background,
+        reflectivity: 0.5,
+        side: THREE.DoubleSide,
+        onBeforeCompile: (shader) => {
+            shader.uniforms.foamColor = { value: new THREE.Color(0xffffff) };
+            shader.uniforms.foamThreshold = { value: 0.7 };
+            shader.uniforms.foamIntensity = { value: 0.5 };
+            shader.uniforms.waveHeight = { value: 0.02 };
+            shader.uniforms.waveTime = { value: 0 };
+            
+            shader.vertexShader = `
+                varying vec3 vPosition;
+                varying float vFoam;
+                uniform float waveTime;
+                uniform float waveHeight;
+                uniform float foamThreshold;
+      
+                ${shader.vertexShader}
+            `.replace(
+                '#include <begin_vertex>',
+                `
+                #include <begin_vertex>
+                vPosition = position;
+                
+                // Calculate foam based on wave height and slope
+                float wave = sin(waveTime + length(position) * 2.0) * waveHeight;
+                float slope = 1.0 - abs(dot(normal, vec3(0.0, 1.0, 0.0)));
+                vFoam = smoothstep(foamThreshold, 1.0, wave * slope);
+                `
+            );
+            
+            shader.fragmentShader = `
+                varying vec3 vPosition;
+                varying float vFoam;
+                uniform vec3 foamColor;
+                uniform float foamIntensity;
+                
+                ${shader.fragmentShader}
+            `.replace(
+                '#include <color_fragment>',
+                `
+                #include <color_fragment>
+                
+                // Add foam
+                vec3 foam = foamColor * vFoam * foamIntensity;
+                diffuseColor.rgb = mix(diffuseColor.rgb, foam, vFoam);
+                `
+            );
+            
+            waterMaterial.userData.shader = shader;
+        }
     });
 
     // Ocean parameters
     const oceanParams = {
         enabled: true,
-        depth: 0.1,  // Default ocean depth (0-1 range)
-        color: 0x0077be
+        wavesEnabled: true,
+        depth: 0.1,
+        color: 0x0077be,
+        waveHeight: 0.02,
+        waveSpeed: 1.0,
+        waveFrequency: 2.0,
+        foamThreshold: 0.7,
+        foamIntensity: 0.5
     };
+
+    // Wave animation parameters
+    let waveTime = 0;
+    const waveVertices = [];
 
     // Set up chunk manager with scene and material
     planetGenerator.chunkManager.setScene(scene);
@@ -673,29 +734,65 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Add ocean controls
     const oceanFolder = gui.addFolder('Ocean Settings');
-    const oceanEnabledController = oceanFolder.add(oceanParams, 'enabled')
+    oceanFolder.add(oceanParams, 'enabled')
         .name('Enable Ocean')
         .onChange((value) => {
             console.log('Ocean enabled:', value);
-            updatePlanetGeometry();
+            if (planet.oceanMesh) {
+                planet.oceanMesh.visible = value;
+            }
         });
-    oceanEnabledController.__li.setAttribute('title', 'Toggle ocean visibility');
-    
-    const oceanDepthController = oceanFolder.add(oceanParams, 'depth', 0, 0.5)
+    oceanFolder.add(oceanParams, 'wavesEnabled')
+        .name('Enable Waves')
+        .onChange((value) => {
+            console.log('Waves enabled:', value);
+        });
+    oceanFolder.add(oceanParams, 'depth', 0, 0.5)
         .name('Ocean Depth')
         .onChange((value) => {
             console.log('Ocean depth changed to:', value);
             updatePlanetGeometry();
         });
-    oceanDepthController.__li.setAttribute('title', 'Controls the depth of the ocean. Higher values create deeper oceans.');
-    
-    const oceanColorController = oceanFolder.addColor(oceanParams, 'color')
+    oceanFolder.addColor(oceanParams, 'color')
         .name('Ocean Color')
         .onChange((value) => {
             console.log('Ocean color changed to:', value);
             waterMaterial.color.setHex(value);
         });
-    oceanColorController.__li.setAttribute('title', 'Controls the color of the ocean water.');
+    oceanFolder.add(oceanParams, 'waveHeight', 0, 0.1)
+        .name('Wave Height')
+        .onChange((value) => {
+            console.log('Wave height changed to:', value);
+            if (waterMaterial.userData.shader) {
+                waterMaterial.userData.shader.uniforms.waveHeight.value = value;
+            }
+        });
+    oceanFolder.add(oceanParams, 'waveSpeed', 0.1, 5.0)
+        .name('Wave Speed')
+        .onChange((value) => {
+            console.log('Wave speed changed to:', value);
+        });
+    oceanFolder.add(oceanParams, 'waveFrequency', 0.5, 5.0)
+        .name('Wave Frequency')
+        .onChange((value) => {
+            console.log('Wave frequency changed to:', value);
+        });
+    oceanFolder.add(oceanParams, 'foamThreshold', 0.1, 1.0)
+        .name('Foam Threshold')
+        .onChange((value) => {
+            console.log('Foam threshold changed to:', value);
+            if (waterMaterial.userData.shader) {
+                waterMaterial.userData.shader.uniforms.foamThreshold.value = value;
+            }
+        });
+    oceanFolder.add(oceanParams, 'foamIntensity', 0.0, 1.0)
+        .name('Foam Intensity')
+        .onChange((value) => {
+            console.log('Foam intensity changed to:', value);
+            if (waterMaterial.userData.shader) {
+                waterMaterial.userData.shader.uniforms.foamIntensity.value = value;
+            }
+        });
     oceanFolder.open();
     
     // Add a button to generate a new planet
@@ -909,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Starting planet geometry update...');
         
         // Update chunks within view radius
-        const radius = 100; // Reduced from 1000 to 100 for better performance
+        const radius = 100;
         planetGenerator.chunkManager.updateChunksInRadius(
             camera.position.x,
             camera.position.y,
@@ -917,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', () => {
             radius
         );
 
-        // Update planet mesh with new geometry
+        // Create and validate new geometry
         const newGeometry = createPlanetGeometry();
         planet.geometry.dispose();
         planet.geometry = newGeometry;
@@ -1039,6 +1136,18 @@ document.addEventListener('DOMContentLoaded', () => {
             // Create a sphere geometry for the ocean
             const oceanGeometry = new THREE.IcosahedronGeometry(1 + oceanParams.depth, geometryParams.subdivisionLevel);
             
+            // Store original vertices for wave animation
+            if (!waveVertices.length) {
+                const positions = oceanGeometry.attributes.position;
+                for (let i = 0; i < positions.count; i++) {
+                    waveVertices.push(
+                        positions.getX(i),
+                        positions.getY(i),
+                        positions.getZ(i)
+                    );
+                }
+            }
+            
             // If ocean mesh doesn't exist, create it
             if (!planet.oceanMesh) {
                 planet.oceanMesh = new THREE.Mesh(oceanGeometry, waterMaterial);
@@ -1115,31 +1224,50 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Animation loop
     function animate() {
-        if (debugVisible) {
-            stats.begin();
-        }
-        
         requestAnimationFrame(animate);
         
-        // Update controls
-        if (editMode) {
-            controls.update();
+        // Update wave animation if enabled
+        if (oceanParams.enabled && oceanParams.wavesEnabled && planet.oceanMesh) {
+            waveTime += 0.01 * oceanParams.waveSpeed;
+            const positions = planet.oceanMesh.geometry.attributes.position;
+            const normals = planet.oceanMesh.geometry.attributes.normal;
+            
+            // Update shader uniforms
+            if (waterMaterial.userData.shader) {
+                waterMaterial.userData.shader.uniforms.waveTime.value = waveTime;
+                waterMaterial.userData.shader.uniforms.waveHeight.value = oceanParams.waveHeight;
+            }
+            
+            for (let i = 0; i < positions.count; i++) {
+                const x = waveVertices[i * 3];
+                const y = waveVertices[i * 3 + 1];
+                const z = waveVertices[i * 3 + 2];
+                
+                // Calculate wave displacement
+                const distance = Math.sqrt(x * x + y * y + z * z);
+                const wave = Math.sin(waveTime + distance * oceanParams.waveFrequency) * oceanParams.waveHeight;
+                
+                // Apply wave displacement along normal
+                positions.setXYZ(
+                    i,
+                    x + normals.getX(i) * wave,
+                    y + normals.getY(i) * wave,
+                    z + normals.getZ(i) * wave
+                );
+            }
+            
+            positions.needsUpdate = true;
+            planet.oceanMesh.geometry.computeVertexNormals();
         }
         
-        // Update chunks
-        planetGenerator.chunkManager.updateChunksInRadius(
-            camera.position.x,
-            camera.position.y,
-            camera.position.z,
-            100
-        );
+        // Update controls
+        controls.update();
         
+        // Render scene
         renderer.render(scene, camera);
         
-        if (debugVisible) {
-            stats.end();
-            updateDebugInfo(); // Update debug info every frame
-        }
+        // Update stats
+        stats.update();
     }
     
     // Start animation loop
