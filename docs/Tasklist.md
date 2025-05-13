@@ -44,8 +44,8 @@
 - [X] Add terrain features
   - [X] Implement different biome/planet types
   - [X] Add height-based terrain variation
-  - [ ] Create terrain texture mapping
-  - [ ] Add visual feedback (like color changes) for different planet types
+  - [X] Create terrain texture mapping
+  - [X] Add visual feedback (like color changes) for different planet types
 
 #### User Interface
 - [X] Create parameter control widgets

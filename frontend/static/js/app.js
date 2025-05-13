@@ -415,6 +415,22 @@ document.addEventListener('DOMContentLoaded', () => {
         flatShading: true
     });
 
+    // Create water material
+    const waterMaterial = new THREE.MeshPhongMaterial({
+        color: 0x0077be,
+        transparent: true,
+        opacity: 0.8,
+        shininess: 100,
+        specular: 0x111111
+    });
+
+    // Ocean parameters
+    const oceanParams = {
+        enabled: true,
+        depth: 0.1,  // Default ocean depth (0-1 range)
+        color: 0x0077be
+    };
+
     // Set up chunk manager with scene and material
     planetGenerator.chunkManager.setScene(scene);
     planetGenerator.chunkManager.setMaterial(material);
@@ -439,14 +455,78 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Planet type colors (base colors)
     const planetColors = {
-        'Class-M': { base: 0x4a9eff, high: 0xffffff, low: 0x1a4a7f },
-        'Class-L': { base: 0x8b4513, high: 0xd2691e, low: 0x3d1f0d },
-        'Class-H': { base: 0xd2691e, high: 0xffd700, low: 0x8b4513 },
-        'Class-D': { base: 0x800000, high: 0xff4500, low: 0x400000 },
-        'Class-J': { base: 0xffd700, high: 0xffffff, low: 0xdaa520 },
-        'Class-K': { base: 0xa0522d, high: 0xd2691e, low: 0x6b3419 },
-        'Class-N': { base: 0xdaa520, high: 0xffd700, low: 0x8b6914 },
-        'Class-Y': { base: 0x8b0000, high: 0xff0000, low: 0x4d0000 }
+        'Class-M': { 
+            base: 0x4a9eff, 
+            high: 0xffffff, 
+            low: 0x1a4a7f,
+            detail: 0x2d5a8e,
+            slope: 0x3a6ea5,
+            roughness: 0.7,
+            detailScale: 2.0
+        },
+        'Class-L': { 
+            base: 0x8b4513, 
+            high: 0xd2691e, 
+            low: 0x3d1f0d,
+            detail: 0x6b3419,
+            slope: 0x7d4a2d,
+            roughness: 0.8,
+            detailScale: 2.5
+        },
+        'Class-H': { 
+            base: 0xd2691e, 
+            high: 0xffd700, 
+            low: 0x8b4513,
+            detail: 0xb3591a,
+            slope: 0xc46b2d,
+            roughness: 0.9,
+            detailScale: 3.0
+        },
+        'Class-D': { 
+            base: 0x800000, 
+            high: 0xff4500, 
+            low: 0x400000,
+            detail: 0x600000,
+            slope: 0x700000,
+            roughness: 1.0,
+            detailScale: 3.5
+        },
+        'Class-J': { 
+            base: 0xffd700, 
+            high: 0xffffff, 
+            low: 0xdaa520,
+            detail: 0xe6c200,
+            slope: 0xf0d000,
+            roughness: 0.6,
+            detailScale: 1.5
+        },
+        'Class-K': { 
+            base: 0xa0522d, 
+            high: 0xd2691e, 
+            low: 0x6b3419,
+            detail: 0x8b4513,
+            slope: 0x9c5a2d,
+            roughness: 0.85,
+            detailScale: 2.2
+        },
+        'Class-N': { 
+            base: 0xdaa520, 
+            high: 0xffd700, 
+            low: 0x8b6914,
+            detail: 0xc49b1a,
+            slope: 0xd4ab2d,
+            roughness: 0.75,
+            detailScale: 1.8
+        },
+        'Class-Y': { 
+            base: 0x8b0000, 
+            high: 0xff0000, 
+            low: 0x4d0000,
+            detail: 0x6b0000,
+            slope: 0x7d0000,
+            roughness: 1.0,
+            detailScale: 4.0
+        }
     };
 
     // Create initial geometry
@@ -525,45 +605,98 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Add controls for planet parameters
-    controlsFolder.add(planetGenerator.params, 'terrainHeight', 0, 0.5)
+    const terrainHeightController = controlsFolder.add(planetGenerator.params, 'terrainHeight', 0, 0.5)
         .name('Terrain Height')
         .onChange((value) => {
             console.log('Terrain height changed to:', value);
             planetGenerator.params.terrainHeight = value;
             updatePlanetGeometry();
         });
+    terrainHeightController.__li.setAttribute('title', 'Controls the maximum height of terrain features. Higher values create more dramatic elevation changes.');
     
-    controlsFolder.add(planetGenerator.params, 'noiseScale', 0.1, 2.0)
+    const noiseScaleController = controlsFolder.add(planetGenerator.params, 'noiseScale', 0.1, 2.0)
         .name('Noise Scale')
         .onChange((value) => {
             console.log('Noise scale changed to:', value);
             planetGenerator.params.noiseScale = value;
             updatePlanetGeometry();
         });
+    noiseScaleController.__li.setAttribute('title', 'Controls the size of terrain features. Lower values create larger features, higher values create smaller details.');
     
-    controlsFolder.add(planetGenerator.params, 'octaves', 1, 8, 1)
+    const octavesController = controlsFolder.add(planetGenerator.params, 'octaves', 1, 8, 1)
         .name('Noise Octaves')
         .onChange((value) => {
             console.log('Octaves changed to:', value);
             planetGenerator.params.octaves = value;
             updatePlanetGeometry();
         });
+    octavesController.__li.setAttribute('title', 'Number of noise layers. Higher values add more detail and complexity to the terrain.');
     
-    controlsFolder.add(planetGenerator.params, 'persistence', 0.1, 1.0)
+    const persistenceController = controlsFolder.add(planetGenerator.params, 'persistence', 0.1, 1.0)
         .name('Noise Persistence')
         .onChange((value) => {
             console.log('Persistence changed to:', value);
             planetGenerator.params.persistence = value;
             updatePlanetGeometry();
         });
+    persistenceController.__li.setAttribute('title', 'Controls how much each octave contributes to the overall shape. Higher values make smaller details more prominent.');
     
-    controlsFolder.add(planetGenerator.params, 'lacunarity', 0.1, 4.0)
+    const lacunarityController = controlsFolder.add(planetGenerator.params, 'lacunarity', 0.1, 4.0)
         .name('Noise Lacunarity')
         .onChange((value) => {
             console.log('Lacunarity changed to:', value);
             planetGenerator.params.lacunarity = value;
             updatePlanetGeometry();
         });
+    lacunarityController.__li.setAttribute('title', 'Controls how much detail is added in each octave. Higher values create more varied terrain features.');
+
+    // Add texture controls
+    const textureFolder = gui.addFolder('Texture Settings');
+    const roughnessController = textureFolder.add(planetColors[planetTypes.currentType], 'roughness', 0.1, 1.0)
+        .name('Surface Roughness')
+        .onChange((value) => {
+            console.log('Roughness changed to:', value);
+            planetColors[planetTypes.currentType].roughness = value;
+            updatePlanetGeometry();
+        });
+    roughnessController.__li.setAttribute('title', 'Controls how pronounced the surface details are. Higher values create more dramatic surface variations.');
+    
+    const detailScaleController = textureFolder.add(planetColors[planetTypes.currentType], 'detailScale', 0.5, 5.0)
+        .name('Detail Scale')
+        .onChange((value) => {
+            console.log('Detail scale changed to:', value);
+            planetColors[planetTypes.currentType].detailScale = value;
+            updatePlanetGeometry();
+        });
+    detailScaleController.__li.setAttribute('title', 'Controls the size of surface details. Higher values create smaller, more frequent surface features.');
+    textureFolder.open();
+    
+    // Add ocean controls
+    const oceanFolder = gui.addFolder('Ocean Settings');
+    const oceanEnabledController = oceanFolder.add(oceanParams, 'enabled')
+        .name('Enable Ocean')
+        .onChange((value) => {
+            console.log('Ocean enabled:', value);
+            updatePlanetGeometry();
+        });
+    oceanEnabledController.__li.setAttribute('title', 'Toggle ocean visibility');
+    
+    const oceanDepthController = oceanFolder.add(oceanParams, 'depth', 0, 0.5)
+        .name('Ocean Depth')
+        .onChange((value) => {
+            console.log('Ocean depth changed to:', value);
+            updatePlanetGeometry();
+        });
+    oceanDepthController.__li.setAttribute('title', 'Controls the depth of the ocean. Higher values create deeper oceans.');
+    
+    const oceanColorController = oceanFolder.addColor(oceanParams, 'color')
+        .name('Ocean Color')
+        .onChange((value) => {
+            console.log('Ocean color changed to:', value);
+            waterMaterial.color.setHex(value);
+        });
+    oceanColorController.__li.setAttribute('title', 'Controls the color of the ocean water.');
+    oceanFolder.open();
     
     // Add a button to generate a new planet
     const newPlanetButton = {
@@ -667,10 +800,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Update position
                     positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
                     
-                    // Update color based on new height
+                    // Update color based on new height and slope
                     const height = vertex.length();
                     const heightFactor = (height - 1) / planetGenerator.params.terrainHeight;
                     const planetColor = planetColors[planetTypes.currentType];
+                    
+                    // Calculate slope factor
+                    const slopeFactor = Math.max(0, 1 - Math.abs(vertexNormal.dot(new THREE.Vector3(0, 1, 0))));
+                    
+                    // Calculate detail noise
+                    const detailNoise = planetGenerator.generateNoise(
+                        vertex.x * planetColor.detailScale,
+                        vertex.y * planetColor.detailScale,
+                        vertex.z * planetColor.detailScale
+                    ) * planetColor.roughness;
                     
                     const color = new THREE.Color();
                     if (heightFactor < 0.3) {
@@ -681,6 +824,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         color.setHex(planetColor.base);
                     }
                     
+                    // Blend with slope color
+                    const slopeColor = new THREE.Color(planetColor.slope);
+                    color.lerp(slopeColor, slopeFactor * 0.5);
+                    
+                    // Add detail texture
+                    const detailColor = new THREE.Color(planetColor.detail);
+                    color.lerp(detailColor, detailNoise * 0.3);
+                    
                     colors.setXYZ(i, color.r, color.g, color.b);
                 }
             }
@@ -690,6 +841,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 positions.needsUpdate = true;
                 colors.needsUpdate = true;
                 geometry.computeVertexNormals();
+                
+                // Update ocean mesh if enabled
+                if (oceanParams.enabled && planet.oceanMesh) {
+                    const oceanGeometry = new THREE.IcosahedronGeometry(1 + oceanParams.depth, geometryParams.subdivisionLevel);
+                    planet.oceanMesh.geometry.dispose();
+                    planet.oceanMesh.geometry = oceanGeometry;
+                }
                 
                 console.log('Geometry updated after terraforming');
                 updateDebugInfo(); // Update debug info after geometry changes
@@ -838,7 +996,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Calculate height factor based on position
             const height = Math.sqrt(x * x + y * y + z * z);
-            const heightFactor = (height - 1) / terrainHeight; // Normalize height factor
+            const heightFactor = (height - 1) / terrainHeight;
+            
+            // Calculate slope factor
+            const normal = new THREE.Vector3(x, y, z).normalize();
+            const slopeFactor = Math.max(0, 1 - Math.abs(normal.dot(new THREE.Vector3(0, 1, 0))));
+            
+            // Calculate detail noise
+            const detailNoise = planetGenerator.generateNoise(
+                x * colors.detailScale,
+                y * colors.detailScale,
+                z * colors.detailScale
+            ) * colors.roughness;
             
             // Interpolate color based on height
             const color = new THREE.Color();
@@ -850,12 +1019,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 color.setHex(colors.base);
             }
             
+            // Blend with slope color
+            const slopeColor = new THREE.Color(colors.slope);
+            color.lerp(slopeColor, slopeFactor * 0.5);
+            
+            // Add detail texture
+            const detailColor = new THREE.Color(colors.detail);
+            color.lerp(detailColor, detailNoise * 0.3);
+            
             colorArray[i * 3] = color.r;
             colorArray[i * 3 + 1] = color.g;
             colorArray[i * 3 + 2] = color.b;
         }
         
         newGeometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+
+        // Create or update ocean mesh if enabled
+        if (oceanParams.enabled) {
+            // Create a sphere geometry for the ocean
+            const oceanGeometry = new THREE.IcosahedronGeometry(1 + oceanParams.depth, geometryParams.subdivisionLevel);
+            
+            // If ocean mesh doesn't exist, create it
+            if (!planet.oceanMesh) {
+                planet.oceanMesh = new THREE.Mesh(oceanGeometry, waterMaterial);
+                scene.add(planet.oceanMesh);
+            } else {
+                // Update existing ocean mesh
+                planet.oceanMesh.geometry.dispose();
+                planet.oceanMesh.geometry = oceanGeometry;
+            }
+            
+            // Make ocean mesh visible
+            planet.oceanMesh.visible = true;
+        } else if (planet.oceanMesh) {
+            // Hide ocean mesh if disabled
+            planet.oceanMesh.visible = false;
+        }
 
         // Update debug info after geometry changes
         updateDebugInfo();
