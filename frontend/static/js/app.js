@@ -93,6 +93,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // Disable controls by default (will be enabled only with modifier keys)
     controls.enabled = false;
 
+    // Define control schemes
+    const controlSchemes = {
+        none: {
+            LEFT: undefined,
+            MIDDLE: undefined,
+            RIGHT: undefined
+        },
+        pan: {
+            LEFT: THREE.MOUSE.PAN,
+            MIDDLE: undefined,
+            RIGHT: undefined
+        },
+        rotate: {
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: undefined,
+            RIGHT: undefined
+        }
+    };
+
     // Prevent context menu in edit mode
     container.addEventListener('contextmenu', (event) => {
         if (editMode) {
@@ -157,62 +176,43 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Configure controls for different key combinations
-    controls.mouseButtons = {
-        LEFT: undefined,      // Default to no action
-        MIDDLE: undefined,    // Default to no action
-        RIGHT: undefined      // Default to no action
-    };
-    
     // Handle key combinations for camera controls
     document.addEventListener('keydown', (event) => {
         if (editMode) {
-            // Enable controls when Option or Command is held
+            // Enable controls when Option, Command, or Control is held
             const hasModifier = event.altKey || event.metaKey || event.ctrlKey;
             controls.enabled = hasModifier;
             
             if (!hasModifier) {
-                controls.mouseButtons = {
-                    LEFT: undefined,
-                    MIDDLE: undefined,
-                    RIGHT: undefined
-                };
+                Object.assign(controls.mouseButtons, controlSchemes.none);
                 return;
             }
 
-            // Configure mouse buttons based on modifier keys
-            const newMouseButtons = {
-                LEFT: undefined,
-                MIDDLE: undefined,
-                RIGHT: undefined
-            };
+            let scheme = controlSchemes.none;
 
-            if (event.metaKey && !event.ctrlKey && !event.altKey) {
-                newMouseButtons.LEFT = THREE.MOUSE.PAN;     // Command alone: Pan
-            } else if (event.altKey && !event.ctrlKey && !event.metaKey) {
-                newMouseButtons.LEFT = THREE.MOUSE.ROTATE;  // Option alone: Orbit
-            } else if (event.ctrlKey && (event.altKey || event.metaKey)) {
-                newMouseButtons.LEFT = THREE.MOUSE.ROTATE;  // Control + (Option or Command): Rotate
+            // Determine the control scheme based on modifier keys
+            if (event.ctrlKey) {
+                scheme = controlSchemes.rotate;   // Control: Rotate
+            } else if (event.metaKey && !event.altKey) {
+                scheme = controlSchemes.pan;      // Command alone: Pan
+            } else if (event.altKey && !event.metaKey) {
+                scheme = controlSchemes.rotate;   // Option alone: Orbit
             }
 
-            // Only update if the configuration has changed
-            if (JSON.stringify(controls.mouseButtons) !== JSON.stringify(newMouseButtons)) {
-                console.log('Control mode changed:', {
-                    from: { ...controls.mouseButtons },
-                    to: newMouseButtons,
-                    trigger: {
-                        key: event.key,
-                        ctrlKey: event.ctrlKey,
-                        altKey: event.altKey,
-                        metaKey: event.metaKey,
-                        shiftKey: event.shiftKey
-                    },
-                    editMode: editMode
-                });
-                
-                controls.mouseButtons = newMouseButtons;
-                controls.update();
-            }
+            // Update the control scheme
+            Object.assign(controls.mouseButtons, scheme);
+            
+            console.log('Control mode changed:', {
+                scheme: scheme === controlSchemes.pan ? 'PAN' : 
+                        scheme === controlSchemes.rotate ? 'ROTATE' : 'NONE',
+                trigger: {
+                    key: event.key,
+                    ctrlKey: event.ctrlKey,
+                    altKey: event.altKey,
+                    metaKey: event.metaKey
+                },
+                editMode: editMode
+            });
         }
     });
     
@@ -223,57 +223,40 @@ document.addEventListener('DOMContentLoaded', () => {
             controls.enabled = hasModifier;
             
             if (!hasModifier) {
-                controls.mouseButtons = {
-                    LEFT: undefined,
-                    MIDDLE: undefined,
-                    RIGHT: undefined
-                };
-                controls.update();
+                Object.assign(controls.mouseButtons, controlSchemes.none);
                 return;
             }
 
-            // Configure mouse buttons based on remaining modifier keys
-            const newMouseButtons = {
-                LEFT: undefined,
-                MIDDLE: undefined,
-                RIGHT: undefined
-            };
+            let scheme = controlSchemes.none;
 
-            if (event.metaKey && !event.ctrlKey && !event.altKey) {
-                newMouseButtons.LEFT = THREE.MOUSE.PAN;     // Command alone: Pan
-            } else if (event.altKey && !event.ctrlKey && !event.metaKey) {
-                newMouseButtons.LEFT = THREE.MOUSE.ROTATE;  // Option alone: Orbit
-            } else if (event.ctrlKey && (event.altKey || event.metaKey)) {
-                newMouseButtons.LEFT = THREE.MOUSE.ROTATE;  // Control + (Option or Command): Rotate
+            // Determine the control scheme based on remaining modifier keys
+            if (event.ctrlKey) {
+                scheme = controlSchemes.rotate;   // Control: Rotate
+            } else if (event.metaKey && !event.altKey) {
+                scheme = controlSchemes.pan;      // Command alone: Pan
+            } else if (event.altKey && !event.metaKey) {
+                scheme = controlSchemes.rotate;   // Option alone: Orbit
             }
 
-            // Only update if the configuration has changed
-            if (JSON.stringify(controls.mouseButtons) !== JSON.stringify(newMouseButtons)) {
-                console.log('Control mode reset:', {
-                    from: { ...controls.mouseButtons },
-                    to: newMouseButtons,
-                    trigger: {
-                        key: event.key,
-                        ctrlKey: event.ctrlKey,
-                        altKey: event.altKey,
-                        metaKey: event.metaKey,
-                        shiftKey: event.shiftKey
-                    },
-                    editMode: editMode
-                });
-                
-                controls.mouseButtons = newMouseButtons;
-                controls.update();
-            }
+            // Update the control scheme
+            Object.assign(controls.mouseButtons, scheme);
+            
+            console.log('Control mode reset:', {
+                scheme: scheme === controlSchemes.pan ? 'PAN' : 
+                        scheme === controlSchemes.rotate ? 'ROTATE' : 'NONE',
+                trigger: {
+                    key: event.key,
+                    ctrlKey: event.ctrlKey,
+                    altKey: event.altKey,
+                    metaKey: event.metaKey
+                },
+                editMode: editMode
+            });
         }
     });
 
     // Set initial control mode
-    controls.mouseButtons = {
-        LEFT: undefined,      // Start with no action
-        MIDDLE: undefined,    // Default to no action
-        RIGHT: undefined      // Default to no action
-    };
+    Object.assign(controls.mouseButtons, controlSchemes.none);
     console.log('Initial control mode set:', {
         mode: 'NONE',
         mouseButtons: { ...controls.mouseButtons },
@@ -419,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
     uiContainer.appendChild(guiContainer);
     
     const controlsFolder = gui.addFolder('Planet Generation');
-
+    
     // Create planet generator
     console.log('Creating planet generator...');
     const planetGenerator = new PlanetGenerator(64);
@@ -564,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Add geometry controls to GUI
     const geometryFolder = gui.addFolder('Geometry');
-    geometryFolder.add(geometryParams, 'subdivisionLevel', 1, 7, 1)
+    geometryFolder.add(geometryParams, 'subdivisionLevel', 1, 100, 1)
         .name('Smoothness')
         .onChange((value) => {
             console.log('Subdivision level changed to:', value);
@@ -851,12 +834,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (debugVisible) {
             const geometry = planet.geometry;
             const vertexCount = geometry.attributes.position.count;
-            const triangleCount = geometry.index ? geometry.index.count / 3 : 0;
+            const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
             
             debugInfo.innerHTML = `
                 Vertices: ${vertexCount.toLocaleString()}<br>
                 Triangles: ${Math.floor(triangleCount).toLocaleString()}<br>
+                Subdivision Level: ${geometryParams.subdivisionLevel}<br>
             `;
+
+            // Log geometry details for debugging
+            console.log('Geometry stats:', {
+                vertices: vertexCount,
+                triangles: triangleCount,
+                hasIndex: !!geometry.index,
+                indexCount: geometry.index ? geometry.index.count : 0,
+                subdivisionLevel: geometryParams.subdivisionLevel
+            });
         }
     }
     
