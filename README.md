@@ -101,4 +101,36 @@ This project draws inspiration from:
 
 ## License
 
-(Coming soon) 
+(Coming soon)
+
+## Controls
+
+### Edit Mode
+- **Ctrl+E** (or **Cmd+E** on Mac): Toggle Edit Mode
+- **Ctrl+D** (or **Cmd+D** on Mac): Toggle FPS Display
+
+### Terraforming (in Edit Mode)
+- **Click + Drag**: Raise terrain
+- **Shift + Click + Drag**: Lower terrain
+
+### Camera Controls (in Edit Mode)
+- Hold **Option** (⌥) or **Command** (⌘) key, then:
+  - **Hold Control + Drag**: Rotate camera
+  - **Hold Option + Drag**: Orbit camera
+  - **Hold Command + Drag**: Pan camera
+  - Two-finger drag: Zoom camera
+
+
+### GUI Controls
+- Planet Type: Select different planet presets
+- Terrain Height: Adjust overall terrain elevation
+- Noise Scale: Change the scale of terrain features
+- Noise Octaves: Control terrain detail levels
+- Noise Persistence: Adjust feature prominence
+- Noise Lacunarity: Control feature frequency
+- New Seed: Generate new random terrain
+
+### Terraforming Brush Settings
+- Brush Size: Adjust the area of effect
+- Brush Strength: Control the intensity of changes
+- Brush Falloff: Adjust how the effect fades at edges 

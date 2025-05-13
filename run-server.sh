@@ -49,4 +49,4 @@ pip install -e . --quiet
 
 # Run the server from the root directory
 echo -e "${GREEN}Starting server...${NC}"
-PYTHONPATH=$PYTHONPATH:$(pwd) python3 backend/app.py 
+PYTHONPATH=$PYTHONPATH:$(pwd) python3 backend/app.py
