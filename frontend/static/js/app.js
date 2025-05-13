@@ -425,6 +425,18 @@ document.addEventListener('DOMContentLoaded', () => {
         types: ['Class-M', 'Class-L', 'Class-H', 'Class-D', 'Class-J', 'Class-K', 'Class-N', 'Class-Y']
     };
 
+    // Planet type descriptions
+    const planetDescriptions = {
+        'Class-M': 'Earth-like planet with nitrogen-oxygen atmosphere and liquid water',
+        'Class-L': 'Marginally habitable planet with carbon dioxide atmosphere',
+        'Class-H': 'Desert planet with hot, thin atmosphere',
+        'Class-D': 'Moon-like planetoid with no atmosphere',
+        'Class-J': 'Gas giant with thick hydrogen-helium atmosphere',
+        'Class-K': 'Adaptable for habitation with terraforming',
+        'Class-N': 'Sulfuric planet with thick atmosphere and high pressure',
+        'Class-Y': 'Demon-class planet with toxic atmosphere and extreme temperatures'
+    };
+
     // Planet type colors (base colors)
     const planetColors = {
         'Class-M': { base: 0x4a9eff, high: 0xffffff, low: 0x1a4a7f },
@@ -478,6 +490,9 @@ document.addEventListener('DOMContentLoaded', () => {
         .name('Planet Type')
         .onChange((value) => {
             console.log('Planet type changed to:', value);
+            // Update the tooltip when value changes
+            typeController.__li.setAttribute('title', planetDescriptions[value]);
+            
             if (planetGenerator.applyPlanetClass(value)) {
                 // Update all GUI controllers to reflect new parameters
                 for (const controller of controlsFolder.__controllers) {
@@ -491,6 +506,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 updatePlanetGeometry();
             }
         });
+
+    // Set initial tooltip
+    typeController.__li.setAttribute('title', planetDescriptions[planetTypes.currentType]);
+
+    // Add cursor style to the dropdown
+    const selectElement = typeController.domElement.querySelector('select');
+    if (selectElement) {
+        selectElement.style.cursor = 'pointer';
+    }
+
+    // Add cursor style to all controllers
+    controlsFolder.__controllers.forEach(controller => {
+        const elements = controller.domElement.querySelectorAll('input, select');
+        elements.forEach(element => {
+            element.style.cursor = 'pointer';
+        });
+    });
 
     // Add controls for planet parameters
     controlsFolder.add(planetGenerator.params, 'terrainHeight', 0, 0.5)

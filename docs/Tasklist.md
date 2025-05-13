@@ -16,9 +16,9 @@
 - [X] Create Flask application
   - [X] Set up routes for static files
   - [X] Add error handling
-- [ ] Implement API endpoints
-  - [ ] Add planet configuration endpoints
-  - [ ] Add generation parameters API
+- [X] Implement API endpoints
+  - [X] Add planet configuration endpoints
+  - [X] Add generation parameters API
 
 ### Frontend Development
 
@@ -37,10 +37,10 @@
   - [X] Create grid system (64x64x64)
   - [X] Implement density formula
   - [X] Add noise integration
-- [ ] Implement chunk-based rendering
-  - [ ] Create chunk management system
-  - [ ] Implement 16x16x16 chunk division
-  - [ ] Add chunk update system
+- [X] Implement chunk-based rendering
+  - [X] Create chunk management system
+  - [X] Implement 16x16x16 chunk division
+  - [X] Add chunk update system
 - [X] Add terrain features
   - [X] Implement different biome/planet types
   - [X] Add height-based terrain variation
@@ -94,14 +94,14 @@
   - [ ] Parameter explanations
 
 ## Future Features (Backlog)
-- [ ] Atmosphere rendering
-- [ ] Generate universe using backend/verse.py 
-- [ ] Save/load planet configurations
+- [ ] Ocean generation with depth slider
+- [ ] Atmospheric effects
+- [ ] Cloud generation with slider
 - [ ] Custom texture mapping
 - [ ] Advanced biome generation
-- [ ] Planet rotation physics
-- [ ] Atmospheric effects
-- [ ] Cloud generation
+- [ ] Sun, Planet and moon orbit with gravity
+- [ ] Generate universe using backend/verse.py 
+- [ ] Save/load planet configurations
 
 ## Project Management
 - [ ] Set up continuous integration
