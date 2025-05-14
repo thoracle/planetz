@@ -81,7 +81,6 @@ The project combines design elements from Sebastian Lague's Terraforming and tec
    - Color gradient pickers
    - Real-time updates with performance optimization
 
-## Development
 
 ### Prerequisites
 - Python 3.x

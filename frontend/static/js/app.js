@@ -542,7 +542,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const oceanParams = {
         enabled: true,
         wavesEnabled: true,
-        depth: 0.1,
+        depth: 0.03,
         color: 0x0077be,
         waveHeight: 0.02,
         waveSpeed: 1.0,
@@ -1323,6 +1323,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // If ocean mesh doesn't exist, create it
             if (!planet.oceanMesh) {
                 planet.oceanMesh = new THREE.Mesh(oceanGeometry, waterMaterial);
+                planet.oceanMesh.renderOrder = 0;  // Ocean should render first
                 scene.add(planet.oceanMesh);
             } else {
                 // Update existing ocean mesh

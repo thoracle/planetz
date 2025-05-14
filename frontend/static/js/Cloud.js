@@ -5,7 +5,7 @@ export class Cloud {
     // Permutation table
     p = new Array(512);
 
-    constructor(planetRadius = 1.0, cloudScale = 1.05) {
+    constructor(planetRadius = 1.0, cloudScale = 1.06) {
         console.log('Initializing Cloud system...');
         
         // Initialize permutation table first
@@ -54,7 +54,7 @@ export class Cloud {
         this.mesh = new THREE.Mesh(this.geometry, this.material);
         
         // Set render order to ensure proper transparency
-        this.mesh.renderOrder = 1;
+        this.mesh.renderOrder = 2;  // Clouds should render second
         
         // Set default parameters with slightly adjusted values for better visuals
         this.setPlanetRadius(planetRadius);

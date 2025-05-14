@@ -27,6 +27,9 @@ export class Atmosphere {
         // Create mesh
         this.mesh = new THREE.Mesh(this.geometry, this.material);
         
+        // Set render order to ensure proper transparency
+        this.mesh.renderOrder = 3;  // Atmosphere should render last
+        
         // Set default parameters
         this.setPlanetRadius(planetRadius);
         this.setAtmosphereRadius(planetRadius * atmosphereScale);
