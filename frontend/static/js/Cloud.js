@@ -5,7 +5,7 @@ export class Cloud {
     // Permutation table
     p = new Array(512);
 
-    constructor(planetRadius = 1.0, cloudScale = 1.02) {
+    constructor(planetRadius = 1.0, cloudScale = 1.05) {
         console.log('Initializing Cloud system...');
         
         // Initialize permutation table first
@@ -16,8 +16,6 @@ export class Cloud {
         this.cloudScale = cloudScale;
 
         // Create geometry for cloud layer (slightly larger than planet)
-        // Increase the scale to lift clouds higher above terrain
-        this.cloudScale = 1.05;  // Increased from 1.02
         this.geometry = new THREE.IcosahedronGeometry(planetRadius * this.cloudScale, 4);
         
         // Create noise textures
@@ -34,7 +32,7 @@ export class Cloud {
                 density: { value: 0.5 },
                 time: { value: 0.0 },
                 planetRadius: { value: planetRadius },
-                sunDirection: { value: new THREE.Vector3(5, 5, 5) },
+                sunDirection: { value: new THREE.Vector3(5, 5, 5).normalize() },
                 cloudColor: { value: new THREE.Vector3(1.0, 1.0, 1.0) },
                 cloudSpeed: { value: 1.0 },
                 turbulence: { value: 1.0 }
@@ -56,13 +54,13 @@ export class Cloud {
         this.mesh = new THREE.Mesh(this.geometry, this.material);
         
         // Set render order to ensure proper transparency
-        // Ensure clouds render after terrain but before atmosphere
-        this.mesh.renderOrder = 1;  // Changed from 2
+        this.mesh.renderOrder = 1;
         
-        // Set default parameters
+        // Set default parameters with slightly adjusted values for better visuals
         this.setPlanetRadius(planetRadius);
-        this.setCoverage(0.5);
-        this.setDensity(0.5);
+        this.setCoverage(0.6);  // Slightly higher default coverage
+        this.setDensity(0.4);   // Slightly lower default density for more variation
+        this.setCloudColor(new THREE.Vector3(0.98, 0.98, 1.0));  // Slightly blue-tinted white
         
         // Initialize time
         this.time = 0;
@@ -83,42 +81,81 @@ export class Cloud {
     }
 
     generateCloudTexture() {
-        const size = 256;
+        const size = 512;  // Increased from 256 for better detail
         const data = new Uint8Array(size * size * 4);
+        const frequencies = [2, 4, 8, 16];  // Define frequencies at the start
         
-        for (let i = 0; i < size * size * 4; i += 4) {
-            const x = (i / 4) % size;
-            const y = Math.floor((i / 4) / size);
+        // Create Gaussian blur function
+        const gaussianBlur = (x, y, sigma) => {
+            return Math.exp(-(x * x + y * y) / (2.0 * sigma * sigma)) / (2.0 * Math.PI * sigma * sigma);
+        };
+        
+        // Generate base noise
+        const baseNoise = new Array(size * size);
+        for (let i = 0; i < size * size; i++) {
+            const x = i % size;
+            const y = Math.floor(i / size);
             
             // Use multiple frequencies for more natural cloud shapes
-            const frequencies = [4, 8, 16];
             let value = 0;
             
-            // Layer multiple noise frequencies
+            // Layer multiple noise frequencies with smoother blending
             for (let f = 0; f < frequencies.length; f++) {
                 const frequency = frequencies[f];
                 const nx = x / size * frequency;
                 const ny = y / size * frequency;
                 
                 let layerValue = 0;
-                let amplitude = 1.0 / (f + 1);  // Decrease amplitude for higher frequencies
+                let amplitude = 1.0 / Math.pow(2, f);  // Smoother amplitude falloff
                 
                 // Add multiple octaves for each frequency
-                for (let o = 0; o < 3; o++) {
+                for (let o = 0; o < 4; o++) {  // Increased octaves
                     const freq = Math.pow(2, o);
                     layerValue += this.noise2D(nx * freq, ny * freq) * amplitude;
-                    amplitude *= 0.5;
+                    amplitude *= 0.6;  // Gentler amplitude reduction
                 }
                 
                 value += layerValue;
             }
             
+            baseNoise[i] = value;
+        }
+        
+        // Apply Gaussian blur for softer edges
+        const blurRadius = 3;
+        const blurSigma = 1.5;
+        
+        for (let i = 0; i < size * size * 4; i += 4) {
+            const x = (i / 4) % size;
+            const y = Math.floor((i / 4) / size);
+            
+            let blurredValue = 0;
+            let weightSum = 0;
+            
+            // Apply blur kernel
+            for (let bx = -blurRadius; bx <= blurRadius; bx++) {
+                for (let by = -blurRadius; by <= blurRadius; by++) {
+                    const sampleX = (x + bx + size) % size;
+                    const sampleY = (y + by + size) % size;
+                    const weight = gaussianBlur(bx, by, blurSigma);
+                    
+                    blurredValue += baseNoise[sampleY * size + sampleX] * weight;
+                    weightSum += weight;
+                }
+            }
+            
+            let value = blurredValue / weightSum;
+            
             // Normalize to 0-1 range
             value = (value + frequencies.length) / (frequencies.length * 2);
             
-            // Add contrast and shape
-            value = Math.pow(value, 1.7);  // Sharpen cloud edges
-            value = Math.max(0, Math.min(1, value * 1.3 - 0.15));  // Increase contrast
+            // Add contrast and shape for puffiness
+            value = Math.pow(value, 1.5);  // Softer power for gentler contrast
+            value = Math.max(0, Math.min(1, value * 1.2));  // Subtle contrast boost
+            
+            // Add subtle variation for more natural look
+            const variation = this.noise2D(x / size * 4, y / size * 4) * 0.1;
+            value = Math.max(0, Math.min(1, value + variation));
             
             const pixel = Math.floor(value * 255);
             data[i] = pixel;     // R
@@ -129,29 +166,37 @@ export class Cloud {
         
         const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        texture.magFilter = THREE.LinearFilter;  // Enable texture filtering
+        texture.minFilter = THREE.LinearMipmapLinearFilter;  // Enable mipmapping
+        texture.generateMipmaps = true;  // Generate mipmaps for better scaling
         texture.needsUpdate = true;
         return texture;
     }
 
     generateNoiseTexture() {
-        const size = 256;
+        const size = 512;  // Increased from 256 for better detail
         const data = new Uint8Array(size * size * 4);
         
         for (let i = 0; i < size * size * 4; i += 4) {
             const x = (i / 4) % size;
             const y = Math.floor((i / 4) / size);
             
-            // Use Perlin noise instead of random for smoother variation
+            // Use multiple octaves of Perlin noise for smoother variation
             const nx = x / size * 8;
             const ny = y / size * 8;
-            let value = this.noise2D(nx, ny);
+            let value = 0;
+            let amplitude = 1.0;
             
-            // Add a second octave
-            value += this.noise2D(nx * 2, ny * 2) * 0.5;
+            // Add multiple octaves with gentler falloff
+            for (let o = 0; o < 4; o++) {
+                const freq = Math.pow(2, o);
+                value += this.noise2D(nx * freq, ny * freq) * amplitude;
+                amplitude *= 0.65;  // Gentler amplitude reduction
+            }
             
-            // Normalize and add contrast
+            // Normalize and add subtle contrast
             value = (value + 1.5) / 3;
-            value = Math.pow(value, 1.2);
+            value = Math.pow(value, 1.2);  // Gentle contrast adjustment
             
             const pixel = Math.floor(value * 255);
             data[i] = pixel;     // R
@@ -162,6 +207,9 @@ export class Cloud {
         
         const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        texture.magFilter = THREE.LinearFilter;  // Enable texture filtering
+        texture.minFilter = THREE.LinearMipmapLinearFilter;  // Enable mipmapping
+        texture.generateMipmaps = true;  // Generate mipmaps for better scaling
         texture.needsUpdate = true;
         return texture;
     }

@@ -59,8 +59,8 @@
   - [X] Add visual feedback
 
 ## Visual Features
-- [ ] Atmospheric effects
-- [ ] Cloud generation with slider
+- [X] Atmospheric effects
+- [X] Cloud generation with slider
 - [ ] Custom texture mapping
 - [ ] Advanced biome generation
 - [ ] Craters for moons

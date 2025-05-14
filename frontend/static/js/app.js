@@ -530,6 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
             slope: 0x3a6ea5,
             roughness: 0.7,
             detailScale: 2.0,
+            hasOceans: true,
             atmosphere: {
                 color: new THREE.Vector3(0.18, 0.39, 0.89),    // Earth-like blue
                 rayleigh: 0.15,
@@ -547,6 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
             slope: 0x7d4a2d,
             roughness: 0.8,
             detailScale: 2.5,
+            hasOceans: true, // Minimal oceans
             atmosphere: {
                 color: new THREE.Vector3(0.6, 0.3, 0.2),      // Reddish-brown
                 rayleigh: 0.25,
@@ -564,6 +566,7 @@ document.addEventListener('DOMContentLoaded', () => {
             slope: 0xc46b2d,
             roughness: 0.9,
             detailScale: 3.0,
+            hasOceans: false, // Desert planet
             atmosphere: {
                 color: new THREE.Vector3(0.8, 0.5, 0.2),      // Dusty orange
                 rayleigh: 0.3,
@@ -581,6 +584,7 @@ document.addEventListener('DOMContentLoaded', () => {
             slope: 0x700000,
             roughness: 1.0,
             detailScale: 3.5,
+            hasOceans: false, // Moon-like
             atmosphere: {
                 color: new THREE.Vector3(0.7, 0.2, 0.1),      // Toxic red
                 rayleigh: 0.4,
@@ -598,6 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
             slope: 0xf0d000,
             roughness: 0.6,
             detailScale: 1.5,
+            hasOceans: false, // Gas giant
             atmosphere: {
                 color: new THREE.Vector3(0.9, 0.7, 0.3),      // Gas giant yellow
                 rayleigh: 0.5,
@@ -615,6 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
             slope: 0x9c5a2d,
             roughness: 0.85,
             detailScale: 2.2,
+            hasOceans: false, // Barren
             atmosphere: {
                 color: new THREE.Vector3(0.4, 0.3, 0.2),      // Thin brownish
                 rayleigh: 0.1,
@@ -632,6 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
             slope: 0xd4ab2d,
             roughness: 0.75,
             detailScale: 1.8,
+            hasOceans: false, // Sulfuric
             atmosphere: {
                 color: new THREE.Vector3(0.6, 0.6, 0.4),      // Saturn-like yellow
                 rayleigh: 0.35,
@@ -649,6 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
             slope: 0x7d0000,
             roughness: 1.0,
             detailScale: 4.0,
+            hasOceans: false, // Demon class
             atmosphere: {
                 color: new THREE.Vector3(0.8, 0.1, 0.1),      // Extreme red
                 rayleigh: 0.6,
@@ -726,41 +734,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newScale = atmosphereSettings.scale;
                 atmosphere.mesh.scale.set(newScale, newScale, newScale);
                 atmosphere.setAtmosphereRadius(geometryParams.radius * newScale);
+
+                // Enable/disable oceans based on planet type
+                oceanParams.enabled = planetColors[value].hasOceans;
+                if (planet.oceanMesh) {
+                    planet.oceanMesh.visible = oceanParams.enabled;
+                }
                 
-                // Update atmosphere GUI controllers
-                for (const controller of atmosphereFolder.__controllers) {
-                    const property = controller.property;
-                    if (property === 'value') {
-                        const target = controller.object;
-                        if (target === atmosphere.material.uniforms.rayleigh) {
-                            controller.setValue(atmosphereSettings.rayleigh);
-                        } else if (target === atmosphere.material.uniforms.mieCoefficient) {
-                            controller.setValue(atmosphereSettings.mieCoefficient);
-                        } else if (target === atmosphere.material.uniforms.mieDirectionalG) {
-                            controller.setValue(atmosphereSettings.mieDirectionalG);
-                        } else if (target === atmosphere.material.uniforms.sunIntensity) {
-                            controller.setValue(atmosphereSettings.sunIntensity);
-                        }
+                // Update ocean GUI controllers
+                for (const controller of oceanFolder.__controllers) {
+                    if (controller.property === 'enabled') {
+                        controller.setValue(oceanParams.enabled);
                     }
                 }
                 
-                // Update atmosphere color in GUI
-                const colorController = atmosphereFolder.__controllers.find(c => c.property === 'color');
-                if (colorController) {
-                    const color = new THREE.Color(
-                        atmosphereSettings.color.x,
-                        atmosphereSettings.color.y,
-                        atmosphereSettings.color.z
-                    );
-                    colorController.setValue('#' + color.getHexString());
-                }
-                
-                // Update atmosphere scale in GUI
-                const scaleController = atmosphereFolder.__controllers.find(c => c.property === 'value' && c.__li.innerText.includes('Scale'));
-                if (scaleController) {
-                    scaleController.setValue(atmosphereSettings.scale);
-                }
-
                 // Update cloud settings
                 const cloudSettings = planetColors[value].clouds;
                 clouds.setCoverage(cloudSettings.coverage);
@@ -768,6 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 clouds.setCloudColor(cloudSettings.color);
                 clouds.setCloudSpeed(cloudSettings.speed);
                 clouds.setTurbulence(cloudSettings.turbulence);
+                clouds.mesh.visible = cloudSettings.enabled !== false;
 
                 // Update cloud GUI controllers
                 for (const controller of cloudFolder.__controllers) {
@@ -1460,46 +1448,109 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add cloud settings to planet types
     Object.keys(planetColors).forEach(type => {
         planetColors[type].clouds = {
-            coverage: type === 'Class-M' ? 0.6 :    // Earth-like
-                      type === 'Class-L' ? 0.3 :    // Marginal
-                      type === 'Class-H' ? 0.1 :    // Desert
-                      type === 'Class-D' ? 0.8 :    // Demon (toxic)
-                      type === 'Class-J' ? 0.9 :    // Gas giant
-                      type === 'Class-K' ? 0.2 :    // Barren
-                      type === 'Class-N' ? 0.7 :    // Ringed
-                      type === 'Class-Y' ? 0.85 : 0.5,  // Demon (extreme)
-            density: type === 'Class-M' ? 0.5 :     // Earth-like
-                    type === 'Class-L' ? 0.3 :      // Marginal
-                    type === 'Class-H' ? 0.2 :      // Desert
-                    type === 'Class-D' ? 0.7 :      // Demon
-                    type === 'Class-J' ? 0.8 :      // Gas giant
-                    type === 'Class-K' ? 0.2 :      // Barren
-                    type === 'Class-N' ? 0.6 :      // Ringed
-                    type === 'Class-Y' ? 0.9 : 0.5,  // Demon
-            color: type === 'Class-M' ? new THREE.Vector3(1.0, 1.0, 1.0) :      // White clouds
-                   type === 'Class-L' ? new THREE.Vector3(0.9, 0.8, 0.7) :      // Dusty white
-                   type === 'Class-H' ? new THREE.Vector3(0.9, 0.7, 0.5) :      // Sandy
-                   type === 'Class-D' ? new THREE.Vector3(0.7, 0.3, 0.2) :      // Toxic red
-                   type === 'Class-J' ? new THREE.Vector3(0.95, 0.9, 0.7) :     // Yellowish
-                   type === 'Class-K' ? new THREE.Vector3(0.8, 0.8, 0.8) :      // Light grey
-                   type === 'Class-N' ? new THREE.Vector3(0.9, 0.85, 0.7) :     // Cream
-                   type === 'Class-Y' ? new THREE.Vector3(0.8, 0.2, 0.1) : new THREE.Vector3(1, 1, 1),  // Dark red
-            speed: type === 'Class-M' ? 1.0 :       // Normal speed
-                   type === 'Class-L' ? 1.2 :       // Faster
-                   type === 'Class-H' ? 1.5 :       // Fast desert winds
-                   type === 'Class-D' ? 0.8 :       // Slow toxic clouds
-                   type === 'Class-J' ? 2.0 :       // Very fast (gas giant)
-                   type === 'Class-K' ? 0.7 :       // Slow
-                   type === 'Class-N' ? 1.3 :       // Moderate-fast
-                   type === 'Class-Y' ? 0.5 : 1.0,  // Very slow thick clouds
-            turbulence: type === 'Class-M' ? 1.0 :  // Normal turbulence
-                       type === 'Class-L' ? 1.3 :   // More turbulent
-                       type === 'Class-H' ? 1.8 :   // Very turbulent
-                       type === 'Class-D' ? 1.5 :   // Turbulent toxic
-                       type === 'Class-J' ? 2.0 :   // Extreme turbulence
-                       type === 'Class-K' ? 0.7 :   // Minimal turbulence
-                       type === 'Class-N' ? 1.4 :   // Moderate turbulence
-                       type === 'Class-Y' ? 1.7 : 1.0  // High turbulence
+            enabled: type !== 'Class-D', // Disable clouds for moon-like planets
+            coverage: type === 'Class-M' ? 0.6 :    // Earth-like, moderate cloud cover
+                      type === 'Class-L' ? 0.4 :    // Marginal, sparse clouds
+                      type === 'Class-H' ? 0.2 :    // Desert, very sparse clouds
+                      type === 'Class-D' ? 0.0 :    // Moon-like, no clouds
+                      type === 'Class-J' ? 0.95 :   // Gas giant, nearly complete coverage
+                      type === 'Class-K' ? 0.15 :   // Barren, minimal clouds
+                      type === 'Class-N' ? 0.85 :   // Ringed, significant cloud layers
+                      type === 'Class-Y' ? 0.98 : 0.5,  // Demon extreme, complete toxic coverage
+            
+            density: type === 'Class-M' ? 0.4 :     // Earth-like, moderate density
+                    type === 'Class-L' ? 0.3 :      // Marginal, thin clouds
+                    type === 'Class-H' ? 0.15 :     // Desert, very thin clouds
+                    type === 'Class-D' ? 0.8 :      // Demon, thick toxic clouds
+                    type === 'Class-J' ? 0.9 :      // Gas giant, very dense
+                    type === 'Class-K' ? 0.1 :      // Barren, extremely thin
+                    type === 'Class-N' ? 0.7 :      // Ringed, moderately dense
+                    type === 'Class-Y' ? 0.95 : 0.5,  // Demon extreme, extremely dense
+            
+            color: type === 'Class-M' ? new THREE.Vector3(0.98, 0.98, 1.0) :    // Earth-like white with slight blue tint
+                   type === 'Class-L' ? new THREE.Vector3(0.8, 0.75, 0.7) :     // Marginal, dusty brown
+                   type === 'Class-H' ? new THREE.Vector3(0.95, 0.85, 0.7) :    // Desert, sandy beige
+                   type === 'Class-D' ? new THREE.Vector3(0.6, 0.2, 0.15) :     // Demon, deep toxic red
+                   type === 'Class-J' ? new THREE.Vector3(0.9, 0.85, 0.6) :     // Gas giant, rich yellow-cream
+                   type === 'Class-K' ? new THREE.Vector3(0.7, 0.7, 0.7) :      // Barren, grey
+                   type === 'Class-N' ? new THREE.Vector3(0.85, 0.8, 0.65) :    // Ringed, pale golden
+                   type === 'Class-Y' ? new THREE.Vector3(0.7, 0.1, 0.05) : new THREE.Vector3(1, 1, 1),  // Demon extreme, deep crimson
+            
+            speed: type === 'Class-M' ? 1.0 :       // Earth-like, moderate wind speeds
+                   type === 'Class-L' ? 1.4 :       // Marginal, faster winds
+                   type === 'Class-H' ? 1.8 :       // Desert, strong winds
+                   type === 'Class-D' ? 0.6 :       // Demon, slow toxic clouds
+                   type === 'Class-J' ? 2.5 :       // Gas giant, extreme wind speeds
+                   type === 'Class-K' ? 0.4 :       // Barren, minimal winds
+                   type === 'Class-N' ? 1.6 :       // Ringed, significant winds
+                   type === 'Class-Y' ? 0.3 : 1.0,  // Demon extreme, very slow thick clouds
+            
+            turbulence: type === 'Class-M' ? 0.8 :    // Earth-like, moderate turbulence
+                       type === 'Class-L' ? 1.2 :     // Marginal, increased turbulence
+                       type === 'Class-H' ? 1.6 :     // Desert, high turbulence from heat
+                       type === 'Class-D' ? 1.4 :     // Demon, chaotic toxic atmosphere
+                       type === 'Class-J' ? 2.0 :     // Gas giant, extreme turbulence
+                       type === 'Class-K' ? 0.3 :     // Barren, minimal turbulence
+                       type === 'Class-N' ? 1.3 :     // Ringed, moderate-high turbulence
+                       type === 'Class-Y' ? 1.8 : 1.0  // Demon extreme, violent turbulence
+        };
+
+        // Update atmosphere parameters to match planet types
+        planetColors[type].atmosphere = {
+            color: type === 'Class-M' ? new THREE.Vector3(0.18, 0.39, 0.89) :    // Earth-like blue
+                   type === 'Class-L' ? new THREE.Vector3(0.5, 0.3, 0.2) :       // Marginal reddish-brown
+                   type === 'Class-H' ? new THREE.Vector3(0.7, 0.5, 0.3) :       // Desert dusty orange
+                   type === 'Class-D' ? new THREE.Vector3(0.6, 0.15, 0.1) :      // Demon toxic red
+                   type === 'Class-J' ? new THREE.Vector3(0.8, 0.7, 0.4) :       // Gas giant rich yellow
+                   type === 'Class-K' ? new THREE.Vector3(0.3, 0.3, 0.3) :       // Barren grey
+                   type === 'Class-N' ? new THREE.Vector3(0.5, 0.5, 0.3) :       // Ringed pale yellow
+                   type === 'Class-Y' ? new THREE.Vector3(0.7, 0.1, 0.05) :      // Demon extreme deep red
+                   new THREE.Vector3(0.18, 0.39, 0.89),                          // Default
+            
+            rayleigh: type === 'Class-M' ? 0.15 :     // Earth-like moderate scattering
+                     type === 'Class-L' ? 0.25 :      // Marginal increased scattering
+                     type === 'Class-H' ? 0.1 :       // Desert thin atmosphere
+                     type === 'Class-D' ? 0.4 :       // Demon thick toxic
+                     type === 'Class-J' ? 0.5 :       // Gas giant very thick
+                     type === 'Class-K' ? 0.05 :      // Barren minimal atmosphere
+                     type === 'Class-N' ? 0.35 :      // Ringed thick atmosphere
+                     type === 'Class-Y' ? 0.6 : 0.15, // Demon extreme densest
+            
+            mieCoefficient: type === 'Class-M' ? 0.005 :   // Earth-like clear
+                          type === 'Class-L' ? 0.008 :     // Marginal dusty
+                          type === 'Class-H' ? 0.012 :     // Desert very dusty
+                          type === 'Class-D' ? 0.015 :     // Demon particle-heavy
+                          type === 'Class-J' ? 0.02 :      // Gas giant extremely dense
+                          type === 'Class-K' ? 0.002 :     // Barren very clear
+                          type === 'Class-N' ? 0.01 :      // Ringed moderately dense
+                          type === 'Class-Y' ? 0.025 : 0.005,  // Demon extreme particle-rich
+            
+            mieDirectionalG: type === 'Class-M' ? 0.85 :   // Earth-like moderate forward scatter
+                           type === 'Class-L' ? 0.8 :      // Marginal more diffuse
+                           type === 'Class-H' ? 0.75 :     // Desert highly diffuse
+                           type === 'Class-D' ? 0.7 :      // Demon chaotic scatter
+                           type === 'Class-J' ? 0.9 :      // Gas giant strong forward scatter
+                           type === 'Class-K' ? 0.8 :      // Barren standard scatter
+                           type === 'Class-N' ? 0.85 :     // Ringed moderate scatter
+                           type === 'Class-Y' ? 0.65 : 0.85,  // Demon extreme chaotic
+            
+            sunIntensity: type === 'Class-M' ? 2.5 :    // Earth-like moderate
+                        type === 'Class-L' ? 3.0 :      // Marginal brighter
+                        type === 'Class-H' ? 4.0 :      // Desert intense
+                        type === 'Class-D' ? 3.5 :      // Demon filtered
+                        type === 'Class-J' ? 5.0 :      // Gas giant brightest
+                        type === 'Class-K' ? 2.0 :      // Barren dim
+                        type === 'Class-N' ? 4.0 :      // Ringed bright
+                        type === 'Class-Y' ? 6.0 : 2.5,  // Demon extreme intense
+            
+            scale: type === 'Class-M' ? 1.1 :     // Earth-like moderate
+                  type === 'Class-L' ? 1.15 :     // Marginal thicker
+                  type === 'Class-H' ? 1.08 :     // Desert thin
+                  type === 'Class-D' ? 1.2 :      // Demon thick
+                  type === 'Class-J' ? 1.3 :      // Gas giant very thick
+                  type === 'Class-K' ? 1.05 :     // Barren minimal
+                  type === 'Class-N' ? 1.25 :     // Ringed thick
+                  type === 'Class-Y' ? 1.4 : 1.1  // Demon extreme thickest
         };
     });
 
