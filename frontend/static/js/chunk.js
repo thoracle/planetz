@@ -1,6 +1,16 @@
 console.log('Loading chunk.js...');
 
-class Chunk {
+import * as THREE from 'three';
+
+// Message types
+const MESSAGE_TYPES = {
+    GENERATE_MESH: 'generateMesh',
+    ERROR: 'error',
+    SUCCESS: 'success',
+    PROGRESS: 'progress'
+};
+
+export class Chunk {
     constructor(x, y, z, size = 16) {
         this.x = x;  // Chunk position in chunk coordinates
         this.y = y;
@@ -19,26 +29,44 @@ class Chunk {
         this.geometry = null;    // THREE.js geometry
         this.material = null;    // THREE.js material
         this.lastLODLevel = -1;  // Last LOD level used
+        this.lodTransitionFactor = 0; // Factor for smooth LOD transitions
+        this.targetLODLevel = -1; // Target LOD level for transitions
+        this.worker = null;      // Web Worker for mesh generation
+        this.isGeneratingMesh = false; // Flag to prevent concurrent mesh generation
+        this.currentGenerationId = 0;
+        this.errorCount = 0;      // Error count tracking
+        this.meshGenerationProgress = 0; // Progress tracking
+        this.verticesFound = 0;
+        this.lastCameraDistance = Infinity; // Last known distance to camera
+        this.consecutiveErrors = 0;
+        this.lastSuccessfulGeneration = 0;
+        this.nextRetryTime = 0;
+    }
+
+    getBoundingBox() {
+        const worldPos = this.getWorldPosition();
+        const min = worldPos.clone();
+        const max = worldPos.clone().addScalar(this.size);
+        return new THREE.Box3(min, max);
     }
 
     // Convert chunk coordinates to world coordinates
     getWorldPosition() {
-        return {
-            x: this.x * this.size,
-            y: this.y * this.size,
-            z: this.z * this.size
-        };
+        return new THREE.Vector3(
+            this.x * this.size,
+            this.y * this.size,
+            this.z * this.size
+        );
     }
 
     // Get chunk center in world coordinates
     getCenter() {
         const pos = this.getWorldPosition();
-        const halfSize = this.size / 2;
-        return {
-            x: pos.x + halfSize,
-            y: pos.y + halfSize,
-            z: pos.z + halfSize
-        };
+        return new THREE.Vector3(
+            pos.x + this.size / 2,
+            pos.y + this.size / 2,
+            pos.z + this.size / 2
+        );
     }
 
     // Check if a world coordinate is within this chunk
@@ -55,100 +83,249 @@ class Chunk {
     // Get local coordinates within chunk
     getLocalCoordinates(worldX, worldY, worldZ) {
         return {
-            x: worldX - this.x * this.size,
-            y: worldY - this.y * this.size,
-            z: worldZ - this.z * this.size
+            x: Math.floor(worldX - this.x * this.size),
+            y: Math.floor(worldY - this.y * this.size),
+            z: Math.floor(worldZ - this.z * this.size)
         };
     }
 
     // Set density value at local coordinates
-    setDensity(localX, localY, localZ, value) {
-        const index = localX + localY * this.size + localZ * this.size * this.size;
-        this.densityField[index] = value;
+    setDensity(x, y, z, value) {
+        this.densityField[x * this.size * this.size + y * this.size + z] = value;
         this.isDirty = true;
     }
 
     // Get density value at local coordinates
-    getDensity(localX, localY, localZ) {
-        const index = localX + localY * this.size + localZ * this.size * this.size;
-        return this.densityField[index];
+    getDensity(x, y, z) {
+        return this.densityField[x * this.size * this.size + y * this.size + z];
     }
 
     // Generate mesh from density field
-    generateMesh(material) {
-        if (!this.isDirty && this.mesh) return this.mesh;
-
-        // Create geometry if needed
-        if (!this.geometry) {
-            this.geometry = new THREE.BufferGeometry();
+    async generateMesh(material, cameraPosition) {
+        // Prevent concurrent generations
+        if (this.isGeneratingMesh) {
+            return null;
         }
 
-        // Create material if needed
-        if (!this.material) {
-            this.material = material;
+        // Don't retry if in error state and cooldown hasn't expired
+        if (this.loadState === 'error' && this.nextRetryTime && Date.now() < this.nextRetryTime) {
+            return null;
         }
 
-        // Generate vertices and faces using marching cubes
-        const vertices = [];
-        const colors = [];
-        const normals = [];
+        this.isGeneratingMesh = true;
+        const generationId = Date.now();
+        this.currentGenerationId = generationId;
 
-        // Simple marching cubes implementation
-        for (let x = 0; x < this.size - 1; x++) {
-            for (let y = 0; y < this.size - 1; y++) {
-                for (let z = 0; z < this.size - 1; z++) {
-                    const d000 = this.getDensity(x, y, z);
-                    const d001 = this.getDensity(x, y, z + 1);
-                    const d010 = this.getDensity(x, y + 1, z);
-                    const d011 = this.getDensity(x, y + 1, z + 1);
-                    const d100 = this.getDensity(x + 1, y, z);
-                    const d101 = this.getDensity(x + 1, y, z + 1);
-                    const d110 = this.getDensity(x + 1, y + 1, z);
-                    const d111 = this.getDensity(x + 1, y + 1, z + 1);
+        // Clean up any existing worker
+        if (this.worker) {
+            this.worker.terminate();
+            this.worker = null;
+        }
 
-                    // Only generate mesh for cells near the surface
-                    if (Math.abs(d000) < 0.1 || Math.abs(d111) < 0.1) {
-                        // Add vertex at cell center
-                        const vx = x + 0.5;
-                        const vy = y + 0.5;
-                        const vz = z + 0.5;
-
-                        // Calculate normal
-                        const nx = (d100 - d000) + (d101 - d001) + (d110 - d010) + (d111 - d011);
-                        const ny = (d010 - d000) + (d011 - d001) + (d110 - d100) + (d111 - d101);
-                        const nz = (d001 - d000) + (d011 - d010) + (d101 - d100) + (d111 - d110);
-                        const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
-
-                        // Add vertex and normal
-                        vertices.push(vx, vy, vz);
-                        normals.push(nx / length, ny / length, nz / length);
-
-                        // Add color based on height
-                        const height = (d000 + d001 + d010 + d011 + d100 + d101 + d110 + d111) / 8;
-                        const color = new THREE.Color();
-                        color.setHSL(0.6 + height * 0.1, 0.8, 0.5);
-                        colors.push(color.r, color.g, color.b);
+        let timeoutCheckInterval;
+        let meshPromise;
+        
+        try {
+            // Create a new worker
+            this.worker = new Worker('/js/workers/meshGenerator.worker.js');
+            
+            // Promise for mesh generation
+            meshPromise = new Promise((resolve, reject) => {
+                const messageHandler = (e) => {
+                    if (generationId !== this.currentGenerationId) {
+                        this.worker.terminate();
+                        reject(new Error('Generation superseded'));
+                        return;
                     }
+
+                    if (!e.data || !e.data.type) {
+                        reject(new Error('Invalid message format from worker'));
+                        return;
+                    }
+
+                    switch (e.data.type) {
+                        case MESSAGE_TYPES.ERROR:
+                            reject(new Error(e.data.errorMessage || 'Unknown worker error'));
+                            return;
+
+                        case MESSAGE_TYPES.PROGRESS:
+                            if (e.data.data) {
+                                this.meshGenerationProgress = e.data.data.progress || 0;
+                                this.verticesFound = e.data.data.verticesFound || 0;
+                            }
+                            return;
+
+                        case MESSAGE_TYPES.SUCCESS:
+                            if (!e.data.data) {
+                                reject(new Error('Missing mesh data in success message'));
+                                return;
+                            }
+                            resolve(e.data.data);
+                            return;
+
+                        default:
+                            reject(new Error(`Unknown message type: ${e.data.type}`));
+                            return;
+                    }
+                };
+
+                const errorHandler = (error) => {
+                    reject(new Error(`Worker error: ${error.message || String(error)}`));
+                };
+
+                this.worker.onmessage = messageHandler;
+                this.worker.onerror = errorHandler;
+
+                // Send initial data to worker
+                try {
+                    const center = this.getCenter();
+                    const distance = Math.sqrt(
+                        Math.pow(center.x - cameraPosition.x, 2) +
+                        Math.pow(center.y - cameraPosition.y, 2) +
+                        Math.pow(center.z - cameraPosition.z, 2)
+                    );
+
+                    const toCamera = new THREE.Vector3().subVectors(cameraPosition, center).normalize();
+                    const viewAngle = Math.abs(toCamera.dot(new THREE.Vector3(0, 1, 0)));
+
+                    // Ensure density field exists and is valid
+                    if (!this.densityField || this.densityField.length !== this.size * this.size * this.size) {
+                        this.densityField = new Float32Array(this.size * this.size * this.size);
+                        // Initialize with default terrain
+                        for (let x = 0; x < this.size; x++) {
+                            for (let y = 0; y < this.size; y++) {
+                                for (let z = 0; z < this.size; z++) {
+                                    const worldY = y + this.y * this.size;
+                                    this.densityField[x * this.size * this.size + y * this.size + z] = worldY < 0 ? 1 : -1;
+                                }
+                            }
+                        }
+                    }
+
+                    this.worker.postMessage({
+                        type: MESSAGE_TYPES.GENERATE_MESH,
+                        data: {
+                            densityField: this.densityField,
+                            size: this.size,
+                            distance: distance,
+                            viewAngle: viewAngle
+                        }
+                    }, [this.densityField.buffer]);
+
+                    // Create a new density field since we transferred the buffer
+                    this.densityField = new Float32Array(this.size * this.size * this.size);
+                } catch (error) {
+                    reject(new Error(`Failed to send data to worker: ${error.message}`));
                 }
+            });
+
+            // Set up timeout check
+            const checkTimeout = () => {
+                const elapsedTime = Date.now() - generationId;
+                if (elapsedTime > 30000) { // 30 second timeout
+                    if (this.worker) {
+                        this.worker.terminate();
+                        this.worker = null;
+                    }
+                    throw new Error('Mesh generation timed out');
+                }
+            };
+            timeoutCheckInterval = setInterval(checkTimeout, 1000);
+
+            // Wait for mesh generation
+            const meshData = await meshPromise;
+
+            // Additional validation after successful generation
+            if (!meshData || !meshData.vertices || !meshData.normals || !meshData.colors) {
+                throw new Error('Incomplete mesh data received');
+            }
+
+            if (meshData.vertices.length === 0) {
+                // Empty mesh is valid for chunks with no visible surface
+                const geometry = new THREE.BufferGeometry();
+                if (this.mesh) {
+                    this.mesh.geometry.dispose();
+                }
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.visible = false;
+                this.loadState = 'loaded';
+                return this.mesh;
+            }
+
+            // Create geometry with error handling
+            try {
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(meshData.vertices, 3));
+                geometry.setAttribute('normal', new THREE.Float32BufferAttribute(meshData.normals, 3));
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute(meshData.colors, 3));
+
+                // Store LOD level and vertex count
+                this.lastLODLevel = meshData.lodLevel;
+                this.vertexCount = meshData.vertexCount;
+
+                // Clean up old mesh before creating new one
+                if (this.mesh) {
+                    this.mesh.geometry.dispose();
+                }
+
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.position.copy(this.getWorldPosition());
+                this.mesh.visible = false;
+                this.mesh.frustumCulled = true;
+
+                // Reset error tracking on success
+                this.errorCount = 0;
+                this.consecutiveErrors = 0;
+                this.lastSuccessfulGeneration = Date.now();
+                this.loadState = 'loaded';
+
+                return this.mesh;
+            } catch (error) {
+                throw new Error(`Failed to create mesh geometry: ${error.message}`);
+            }
+
+        } catch (error) {
+            // Enhanced error handling with progressive backoff
+            this.errorCount = (this.errorCount || 0) + 1;
+            this.consecutiveErrors = (this.consecutiveErrors || 0) + 1;
+            
+            const errorMessage = `Chunk (${this.x}, ${this.y}, ${this.z}) - ${error.message}`;
+            if (this.errorCount >= 3) {
+                console.error(`${errorMessage} - Marking chunk as failed after ${this.errorCount} attempts`);
+                this.loadState = 'error';
+                // Exponential backoff with max of 5 minutes
+                const backoffTime = Math.min(1000 * Math.pow(2, this.errorCount), 300000);
+                this.nextRetryTime = Date.now() + backoffTime;
+            } else {
+                console.warn(`${errorMessage} - Attempt ${this.errorCount}`);
+                // Shorter backoff for initial retries
+                const backoffTime = Math.min(1000 * Math.pow(2, this.errorCount - 1), 30000);
+                this.nextRetryTime = Date.now() + backoffTime;
+                this.isDirty = true;
+            }
+            
+            return null;
+        } finally {
+            // Cleanup
+            if (this.worker) {
+                this.worker.terminate();
+                this.worker = null;
+            }
+            if (timeoutCheckInterval) {
+                clearInterval(timeoutCheckInterval);
+            }
+            this.isGeneratingMesh = false;
+            this.meshGenerationProgress = 0;
+            this.verticesFound = 0;
+            
+            // Reset generation ID if it matches current
+            if (this.currentGenerationId === generationId) {
+                this.currentGenerationId = null;
             }
         }
-
-        // Update geometry
-        this.geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-        this.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-
-        // Create or update mesh
-        if (!this.mesh) {
-            this.mesh = new THREE.Mesh(this.geometry, this.material);
-        }
-
-        this.isDirty = false;
-        this.lastUpdate = Date.now();
-        return this.mesh;
     }
 
-    // Update chunk visibility based on camera position
+    // Update chunk visibility based on camera position with LOD consideration
     updateVisibility(camera) {
         const center = this.getCenter();
         const distance = Math.sqrt(
@@ -157,11 +334,20 @@ class Chunk {
             Math.pow(center.z - camera.position.z, 2)
         );
 
-        // Simple visibility check - can be enhanced with frustum culling
-        this.isVisible = distance < 1000; // Arbitrary visibility distance
+        // Update last known camera distance
+        this.lastCameraDistance = distance;
+
+        // Enhanced visibility check with LOD consideration
+        const visibilityThreshold = 1000 * (1 + this.lastLODLevel * 0.5);
+        this.isVisible = distance < visibilityThreshold;
+
+        // Mark chunk as dirty if LOD needs to change significantly
+        if (this.mesh && Math.abs(this.targetLODLevel - this.lastLODLevel) > 0.5) {
+            this.isDirty = true;
+        }
     }
 
-    // Calculate update priority based on distance and visibility
+    // Calculate update priority based on distance and visibility with LOD consideration
     calculatePriority(viewerPosition) {
         const center = this.getCenter();
         const distance = Math.sqrt(
@@ -173,16 +359,54 @@ class Chunk {
         // Higher priority for:
         // 1. Visible chunks
         // 2. Chunks closer to viewer
-        // 3. Chunks that haven't been updated recently
+        // 3. Chunks that need LOD updates
+        // 4. Chunks that haven't been updated recently
+        const lodUpdateNeeded = Math.abs(this.targetLODLevel - this.lastLODLevel) > 0.5;
         this.priority = (this.isVisible ? 1000 : 0) +
                        (1000 / (distance + 1)) +
+                       (lodUpdateNeeded ? 500 : 0) +
                        (Date.now() - this.lastUpdate) / 1000;
     }
 
     // Optimize memory usage
     optimizeMemory() {
         // Calculate current memory usage
-        this.memoryUsage = this.densityField.byteLength;
+        let totalMemoryUsage = 0;
+
+        // Account for density field
+        if (this.densityField) {
+            totalMemoryUsage += this.densityField.byteLength;
+        }
+
+        // Account for geometry buffers
+        if (this.mesh && this.mesh.geometry) {
+            const geometry = this.mesh.geometry;
+            for (const key in geometry.attributes) {
+                const attribute = geometry.attributes[key];
+                if (attribute.array) {
+                    totalMemoryUsage += attribute.array.byteLength;
+                }
+            }
+        }
+
+        // If chunk is not visible and memory usage is high, clean up heavy resources
+        if (!this.isVisible && totalMemoryUsage > 1024 * 1024) { // More than 1MB
+            if (this.mesh && !this.mesh.visible) {
+                // Keep the mesh but dispose of heavy geometry data
+                if (this.mesh.geometry) {
+                    this.mesh.geometry.dispose();
+                    this.mesh.geometry = null;
+                }
+            }
+            
+            // Clear density field if not needed
+            if (!this.isActive && this.densityField) {
+                this.densityField = null;
+            }
+        }
+
+        this.memoryUsage = totalMemoryUsage;
+        return totalMemoryUsage;
     }
 
     // Load chunk data asynchronously
@@ -215,197 +439,15 @@ class Chunk {
 
     // Clean up resources
     dispose() {
-        if (this.geometry) {
-            this.geometry.dispose();
-        }
-        if (this.material) {
-            this.material.dispose();
-        }
         if (this.mesh) {
-            this.mesh.geometry = null;
-            this.mesh.material = null;
+            this.mesh.geometry.dispose();
+            this.mesh = null;
         }
+        if (this.worker) {
+            this.worker.terminate();
+            this.worker = null;
+        }
+        this.isGeneratingMesh = false;
         this.unload();
-    }
-}
-
-// ChunkManager handles chunk creation, updates, and memory management
-class ChunkManager {
-    constructor(planetGenerator, chunkSize = 16) {
-        this.planetGenerator = planetGenerator;
-        this.chunkSize = chunkSize;
-        this.chunks = new Map(); // Map of chunk coordinates to Chunk objects
-        this.activeChunks = new Set(); // Set of active chunk keys
-        this.scene = null;
-        this.material = null;
-        this.maxChunks = 1000; // Maximum number of chunks to keep in memory
-        this.maxMemoryMB = 512; // Maximum memory usage in MB
-        this.updateQueue = []; // Queue of chunks to update
-        this.isUpdating = false; // Flag to prevent concurrent updates
-        this.updateInterval = 100; // Minimum time between updates in ms
-        this.lastUpdate = 0; // Timestamp of last update
-    }
-
-    setScene(scene) {
-        this.scene = scene;
-    }
-
-    setMaterial(material) {
-        this.material = material;
-    }
-
-    getChunk(chunkX, chunkY, chunkZ) {
-        const key = `${chunkX},${chunkY},${chunkZ}`;
-        if (!this.chunks.has(key)) {
-            const chunk = new Chunk(chunkX, chunkY, chunkZ, this.chunkSize);
-            this.chunks.set(key, chunk);
-        }
-        return this.chunks.get(key);
-    }
-
-    worldToChunkCoordinates(worldX, worldY, worldZ) {
-        return {
-            x: Math.floor(worldX / this.chunkSize),
-            y: Math.floor(worldY / this.chunkSize),
-            z: Math.floor(worldZ / this.chunkSize)
-        };
-    }
-
-    getChunkAtWorldPosition(worldX, worldY, worldZ) {
-        const coords = this.worldToChunkCoordinates(worldX, worldY, worldZ);
-        return this.getChunk(coords.x, coords.y, coords.z);
-    }
-
-    async updateChunksInRadius(centerX, centerY, centerZ, radius) {
-        if (this.isUpdating) return;
-        this.isUpdating = true;
-
-        try {
-            const now = Date.now();
-            if (now - this.lastUpdate < this.updateInterval) {
-                return;
-            }
-            this.lastUpdate = now;
-
-            // Calculate chunk radius
-            const chunkRadius = Math.ceil(radius / this.chunkSize);
-            const centerChunk = this.worldToChunkCoordinates(centerX, centerY, centerZ);
-
-            // Update active chunks set
-            this.activeChunks.clear();
-            for (let x = -chunkRadius; x <= chunkRadius; x++) {
-                for (let y = -chunkRadius; y <= chunkRadius; y++) {
-                    for (let z = -chunkRadius; z <= chunkRadius; z++) {
-                        const chunkX = centerChunk.x + x;
-                        const chunkY = centerChunk.y + y;
-                        const chunkZ = centerChunk.z + z;
-
-                        // Check if chunk is within sphere radius
-                        const dx = chunkX - centerChunk.x;
-                        const dy = chunkY - centerChunk.y;
-                        const dz = chunkZ - centerChunk.z;
-                        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                        
-                        if (distance <= chunkRadius) {
-                            const chunk = this.getChunk(chunkX, chunkY, chunkZ);
-                            const key = `${chunkX},${chunkY},${chunkZ}`;
-                            this.activeChunks.add(key);
-                            
-                            // Update chunk priority
-                            chunk.calculatePriority({ x: centerX, y: centerY, z: centerZ });
-                            
-                            // Add to update queue if needed
-                            if (chunk.isDirty) {
-                                this.updateQueue.push(chunk);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Sort update queue by priority
-            this.updateQueue.sort((a, b) => b.priority - a.priority);
-
-            // Process updates
-            const maxUpdatesPerFrame = 5;
-            for (let i = 0; i < maxUpdatesPerFrame && this.updateQueue.length > 0; i++) {
-                const chunk = this.updateQueue.shift();
-                if (chunk.isDirty) {
-                    await this.updateChunk(chunk);
-                }
-            }
-
-            // Manage memory
-            this.manageMemory();
-
-        } finally {
-            this.isUpdating = false;
-        }
-    }
-
-    async updateChunk(chunk) {
-        if (!chunk.isDirty) return;
-
-        try {
-            // Generate mesh
-            const mesh = chunk.generateMesh(this.material);
-            
-            // Add to scene if not already added
-            if (mesh && this.scene && !this.scene.children.includes(mesh)) {
-                this.scene.add(mesh);
-            }
-
-            chunk.isDirty = false;
-            chunk.lastUpdate = Date.now();
-        } catch (error) {
-            console.error('Error updating chunk:', error);
-        }
-    }
-
-    manageMemory() {
-        // Calculate total memory usage
-        let totalMemory = 0;
-        for (const chunk of this.chunks.values()) {
-            chunk.optimizeMemory();
-            totalMemory += chunk.memoryUsage;
-        }
-
-        // If memory usage is too high, unload least important chunks
-        if (totalMemory > this.maxMemoryMB * 1024 * 1024 || this.chunks.size > this.maxChunks) {
-            // Sort chunks by priority (lowest first)
-            const sortedChunks = Array.from(this.chunks.entries())
-                .sort(([, a], [, b]) => a.priority - b.priority);
-
-            // Unload chunks until we're under the limit
-            while ((totalMemory > this.maxMemoryMB * 1024 * 1024 || this.chunks.size > this.maxChunks) 
-                   && sortedChunks.length > 0) {
-                const [key, chunk] = sortedChunks.shift();
-                
-                // Don't unload active chunks
-                if (this.activeChunks.has(key)) continue;
-
-                // Remove from scene
-                if (chunk.mesh && this.scene) {
-                    this.scene.remove(chunk.mesh);
-                }
-
-                // Dispose of resources
-                chunk.dispose();
-                
-                // Remove from maps
-                this.chunks.delete(key);
-                totalMemory -= chunk.memoryUsage;
-            }
-        }
-    }
-
-    dispose() {
-        // Dispose of all chunks
-        for (const chunk of this.chunks.values()) {
-            chunk.dispose();
-        }
-        this.chunks.clear();
-        this.activeChunks.clear();
-        this.updateQueue = [];
     }
 } 
