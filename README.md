@@ -101,7 +101,6 @@ This project draws inspiration from:
 
 ## License
 
-(Coming soon)
 
 ## Controls
 

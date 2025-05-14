@@ -58,11 +58,20 @@
   - [X] Implement debouncing
   - [X] Add visual feedback
 
+## Visual Features
+- [ ] Atmospheric effects
+- [ ] Cloud generation with slider
+- [ ] Custom texture mapping
+- [ ] Advanced biome generation
+- [ ] Craters for moons
 ## Testing
 
 ### Backend Testing
-- [ ] Set up testing framework (pytest)
-- [ ] Write unit tests for core functions
+- [X] Set up testing framework (pytest)
+- [X] Write unit tests for core functions
+  - [X] Test health check endpoint
+  - [ ] Test planet generation endpoints
+  - [ ] Test parameter validation
 - [ ] Test error handling
 
 ### Frontend Testing
@@ -108,10 +117,6 @@
   - [ ] Parameter explanations
 
 ## Future Features (Backlog)
-- [ ] Atmospheric effects
-- [ ] Cloud generation with slider
-- [ ] Custom texture mapping
-- [ ] Advanced biome generation
 - [ ] Sun, Planet and moon orbit with gravity
 - [ ] Generate universe using backend/verse.py 
 - [ ] Save/load planet configurations

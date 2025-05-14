@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import PlanetGenerator from './planetGenerator.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Atmosphere } from './Atmosphere.js';
+import { Cloud } from './Cloud.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Initializing application...');
@@ -527,7 +529,15 @@ document.addEventListener('DOMContentLoaded', () => {
             detail: 0x2d5a8e,
             slope: 0x3a6ea5,
             roughness: 0.7,
-            detailScale: 2.0
+            detailScale: 2.0,
+            atmosphere: {
+                color: new THREE.Vector3(0.18, 0.39, 0.89),    // Earth-like blue
+                rayleigh: 0.15,
+                mieCoefficient: 0.005,
+                mieDirectionalG: 0.85,
+                sunIntensity: 2.5,
+                scale: 1.1
+            }
         },
         'Class-L': { 
             base: 0x8b4513, 
@@ -536,7 +546,15 @@ document.addEventListener('DOMContentLoaded', () => {
             detail: 0x6b3419,
             slope: 0x7d4a2d,
             roughness: 0.8,
-            detailScale: 2.5
+            detailScale: 2.5,
+            atmosphere: {
+                color: new THREE.Vector3(0.6, 0.3, 0.2),      // Reddish-brown
+                rayleigh: 0.25,
+                mieCoefficient: 0.008,
+                mieDirectionalG: 0.8,
+                sunIntensity: 3.0,
+                scale: 1.15
+            }
         },
         'Class-H': { 
             base: 0xd2691e, 
@@ -545,7 +563,15 @@ document.addEventListener('DOMContentLoaded', () => {
             detail: 0xb3591a,
             slope: 0xc46b2d,
             roughness: 0.9,
-            detailScale: 3.0
+            detailScale: 3.0,
+            atmosphere: {
+                color: new THREE.Vector3(0.8, 0.5, 0.2),      // Dusty orange
+                rayleigh: 0.3,
+                mieCoefficient: 0.01,
+                mieDirectionalG: 0.75,
+                sunIntensity: 4.0,
+                scale: 1.08
+            }
         },
         'Class-D': { 
             base: 0x800000, 
@@ -554,7 +580,15 @@ document.addEventListener('DOMContentLoaded', () => {
             detail: 0x600000,
             slope: 0x700000,
             roughness: 1.0,
-            detailScale: 3.5
+            detailScale: 3.5,
+            atmosphere: {
+                color: new THREE.Vector3(0.7, 0.2, 0.1),      // Toxic red
+                rayleigh: 0.4,
+                mieCoefficient: 0.015,
+                mieDirectionalG: 0.7,
+                sunIntensity: 3.5,
+                scale: 1.2
+            }
         },
         'Class-J': { 
             base: 0xffd700, 
@@ -563,7 +597,15 @@ document.addEventListener('DOMContentLoaded', () => {
             detail: 0xe6c200,
             slope: 0xf0d000,
             roughness: 0.6,
-            detailScale: 1.5
+            detailScale: 1.5,
+            atmosphere: {
+                color: new THREE.Vector3(0.9, 0.7, 0.3),      // Gas giant yellow
+                rayleigh: 0.5,
+                mieCoefficient: 0.02,
+                mieDirectionalG: 0.9,
+                sunIntensity: 5.0,
+                scale: 1.3
+            }
         },
         'Class-K': { 
             base: 0xa0522d, 
@@ -572,7 +614,15 @@ document.addEventListener('DOMContentLoaded', () => {
             detail: 0x8b4513,
             slope: 0x9c5a2d,
             roughness: 0.85,
-            detailScale: 2.2
+            detailScale: 2.2,
+            atmosphere: {
+                color: new THREE.Vector3(0.4, 0.3, 0.2),      // Thin brownish
+                rayleigh: 0.1,
+                mieCoefficient: 0.003,
+                mieDirectionalG: 0.8,
+                sunIntensity: 2.0,
+                scale: 1.05
+            }
         },
         'Class-N': { 
             base: 0xdaa520, 
@@ -581,7 +631,15 @@ document.addEventListener('DOMContentLoaded', () => {
             detail: 0xc49b1a,
             slope: 0xd4ab2d,
             roughness: 0.75,
-            detailScale: 1.8
+            detailScale: 1.8,
+            atmosphere: {
+                color: new THREE.Vector3(0.6, 0.6, 0.4),      // Saturn-like yellow
+                rayleigh: 0.35,
+                mieCoefficient: 0.012,
+                mieDirectionalG: 0.85,
+                sunIntensity: 4.0,
+                scale: 1.25
+            }
         },
         'Class-Y': { 
             base: 0x8b0000, 
@@ -590,7 +648,15 @@ document.addEventListener('DOMContentLoaded', () => {
             detail: 0x6b0000,
             slope: 0x7d0000,
             roughness: 1.0,
-            detailScale: 4.0
+            detailScale: 4.0,
+            atmosphere: {
+                color: new THREE.Vector3(0.8, 0.1, 0.1),      // Extreme red
+                rayleigh: 0.6,
+                mieCoefficient: 0.025,
+                mieDirectionalG: 0.65,
+                sunIntensity: 6.0,
+                scale: 1.4
+            }
         }
     };
 
@@ -629,13 +695,12 @@ document.addEventListener('DOMContentLoaded', () => {
     terraformFolder.add(terraformParams, 'brushStrength', 0.01, 0.2).name('Brush Strength');
     terraformFolder.add(terraformParams, 'brushFalloff', 0.1, 2.0).name('Brush Falloff');
     terraformFolder.open();
-    
+
     // Add planet type dropdown with tooltip
     const typeController = controlsFolder.add(planetTypes, 'currentType', planetTypes.types)
         .name('Planet Type')
         .onChange((value) => {
             console.log('Planet type changed to:', value);
-            // Update the tooltip when value changes
             typeController.__li.setAttribute('title', planetDescriptions[value]);
             
             if (planetGenerator.applyPlanetClass(value)) {
@@ -648,6 +713,84 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 }
+
+                // Apply atmospheric settings for the planet type
+                const atmosphereSettings = planetColors[value].atmosphere;
+                atmosphere.setRayleighColor(atmosphereSettings.color);
+                atmosphere.setRayleigh(atmosphereSettings.rayleigh);
+                atmosphere.setMieCoefficient(atmosphereSettings.mieCoefficient);
+                atmosphere.setMieDirectionalG(atmosphereSettings.mieDirectionalG);
+                atmosphere.setSunIntensity(atmosphereSettings.sunIntensity);
+                
+                // Update atmosphere scale
+                const newScale = atmosphereSettings.scale;
+                atmosphere.mesh.scale.set(newScale, newScale, newScale);
+                atmosphere.setAtmosphereRadius(geometryParams.radius * newScale);
+                
+                // Update atmosphere GUI controllers
+                for (const controller of atmosphereFolder.__controllers) {
+                    const property = controller.property;
+                    if (property === 'value') {
+                        const target = controller.object;
+                        if (target === atmosphere.material.uniforms.rayleigh) {
+                            controller.setValue(atmosphereSettings.rayleigh);
+                        } else if (target === atmosphere.material.uniforms.mieCoefficient) {
+                            controller.setValue(atmosphereSettings.mieCoefficient);
+                        } else if (target === atmosphere.material.uniforms.mieDirectionalG) {
+                            controller.setValue(atmosphereSettings.mieDirectionalG);
+                        } else if (target === atmosphere.material.uniforms.sunIntensity) {
+                            controller.setValue(atmosphereSettings.sunIntensity);
+                        }
+                    }
+                }
+                
+                // Update atmosphere color in GUI
+                const colorController = atmosphereFolder.__controllers.find(c => c.property === 'color');
+                if (colorController) {
+                    const color = new THREE.Color(
+                        atmosphereSettings.color.x,
+                        atmosphereSettings.color.y,
+                        atmosphereSettings.color.z
+                    );
+                    colorController.setValue('#' + color.getHexString());
+                }
+                
+                // Update atmosphere scale in GUI
+                const scaleController = atmosphereFolder.__controllers.find(c => c.property === 'value' && c.__li.innerText.includes('Scale'));
+                if (scaleController) {
+                    scaleController.setValue(atmosphereSettings.scale);
+                }
+
+                // Update cloud settings
+                const cloudSettings = planetColors[value].clouds;
+                clouds.setCoverage(cloudSettings.coverage);
+                clouds.setDensity(cloudSettings.density);
+                clouds.setCloudColor(cloudSettings.color);
+                clouds.setCloudSpeed(cloudSettings.speed);
+                clouds.setTurbulence(cloudSettings.turbulence);
+
+                // Update cloud GUI controllers
+                for (const controller of cloudFolder.__controllers) {
+                    if (controller.property === 'value') {
+                        if (controller.__li.innerText.includes('Coverage')) {
+                            controller.setValue(cloudSettings.coverage);
+                        } else if (controller.__li.innerText.includes('Density')) {
+                            controller.setValue(cloudSettings.density);
+                        } else if (controller.__li.innerText.includes('Speed')) {
+                            controller.setValue(cloudSettings.speed);
+                        } else if (controller.__li.innerText.includes('Turbulence')) {
+                            controller.setValue(cloudSettings.turbulence);
+                        }
+                    } else if (controller.property === 'color') {
+                        const color = new THREE.Color(
+                            cloudSettings.color.x,
+                            cloudSettings.color.y,
+                            cloudSettings.color.z
+                        );
+                        controller.setValue('#' + color.getHexString());
+                    }
+                }
+
                 updatePlanetGeometry();
             }
         });
@@ -667,7 +810,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.forEach(element => {
             element.style.cursor = 'pointer';
         });
-    });
+        });
 
     // Add controls for planet parameters
     const terrainHeightController = controlsFolder.add(planetGenerator.params, 'terrainHeight', 0, 0.5)
@@ -1002,22 +1145,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function createPlanetGeometry() {
         console.log('Creating fresh geometry with subdivision level:', geometryParams.subdivisionLevel);
         const newGeometry = new THREE.IcosahedronGeometry(geometryParams.radius, geometryParams.subdivisionLevel);
-        return newGeometry;
+            return newGeometry;
     }
     
     // Function to update planet geometry and colors
     function updatePlanetGeometry() {
         console.log('Starting planet geometry update...');
         
-        // Update chunks within view radius
-        const radius = 100;
-        planetGenerator.chunkManager.updateChunksInRadius(
-            camera.position.x,
-            camera.position.y,
-            camera.position.z,
-            radius
-        );
-
         // Create and validate new geometry
         const newGeometry = createPlanetGeometry();
         planet.geometry.dispose();
@@ -1029,6 +1163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Apply terrain deformation
         const positions = newGeometry.attributes.position;
         const newPositions = new Float32Array(positions.count * 3);
+        const colorArray = new Float32Array(positions.count * 3);
         
         for (let i = 0; i < positions.count; i++) {
             const x = positions.getX(i);
@@ -1040,6 +1175,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Base density (negative inside planet, positive outside)
             let density = 1.0 - distanceFromCenter;
+            let height = 1.0;
             
             // Add noise only if we're near the surface
             if (Math.abs(density) < 0.1) {
@@ -1068,42 +1204,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 noiseValue = (noiseValue + 1) / 2;
                 
                 // Apply terrain height
-                const height = 1 + noiseValue * terrainHeight;
-                
-                // Update vertex position
-                newPositions[i * 3] = x * height;
-                newPositions[i * 3 + 1] = y * height;
-                newPositions[i * 3 + 2] = z * height;
-            } else {
-                // Keep original position for points far from surface
-                newPositions[i * 3] = x;
-                newPositions[i * 3 + 1] = y;
-                newPositions[i * 3 + 2] = z;
+                height = 1 + noiseValue * terrainHeight;
             }
-        }
-        
-        // Update geometry with new positions
-        newGeometry.setAttribute('position', new THREE.BufferAttribute(newPositions, 3));
-        newGeometry.computeVertexNormals();
-        
-        // Update colors based on planet type
-        const colors = planetColors[planetTypes.currentType];
-        const colorArray = new Float32Array(newGeometry.attributes.position.count * 3);
-        
-        for (let i = 0; i < newGeometry.attributes.position.count; i++) {
-            const x = newGeometry.attributes.position.getX(i);
-            const y = newGeometry.attributes.position.getY(i);
-            const z = newGeometry.attributes.position.getZ(i);
             
-            // Calculate height factor based on position
-            const height = Math.sqrt(x * x + y * y + z * z);
+            // Update vertex position
+            newPositions[i * 3] = x * height;
+            newPositions[i * 3 + 1] = y * height;
+            newPositions[i * 3 + 2] = z * height;
+            
+            // Calculate height factor for coloring
             const heightFactor = (height - 1) / terrainHeight;
             
             // Calculate slope factor
             const normal = new THREE.Vector3(x, y, z).normalize();
             const slopeFactor = Math.max(0, 1 - Math.abs(normal.dot(new THREE.Vector3(0, 1, 0))));
             
-            // Calculate detail noise
+            // Get planet type colors
+            const colors = planetColors[planetTypes.currentType];
+            
+            // Calculate detail noise for texture
             const detailNoise = planetGenerator.generateNoise(
                 x * colors.detailScale,
                 y * colors.detailScale,
@@ -1128,13 +1247,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const detailColor = new THREE.Color(colors.detail);
             color.lerp(detailColor, detailNoise * 0.3);
             
+            // Store colors
             colorArray[i * 3] = color.r;
             colorArray[i * 3 + 1] = color.g;
             colorArray[i * 3 + 2] = color.b;
         }
         
+        // Update geometry with new positions and colors
+        newGeometry.setAttribute('position', new THREE.BufferAttribute(newPositions, 3));
         newGeometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
-
+        newGeometry.computeVertexNormals();
+        
         // Create or update ocean mesh if enabled
         if (oceanParams.enabled) {
             // Create a sphere geometry for the ocean
@@ -1168,8 +1291,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Hide ocean mesh if disabled
             planet.oceanMesh.visible = false;
         }
-
-        // Update debug info after geometry changes
+        
+        // Update debug info
         updateDebugInfo();
     }
     
@@ -1217,7 +1340,171 @@ document.addEventListener('DOMContentLoaded', () => {
         y: camera.position.y,
         z: camera.position.z
     });
+
+    // Create atmosphere
+    console.log('Creating atmosphere...');
+    const atmosphere = new Atmosphere(geometryParams.radius);
+    scene.add(atmosphere.mesh);
+
+    // Create cloud layer
+    console.log('Creating cloud layer...');
+    const clouds = new Cloud(geometryParams.radius);
+    scene.add(clouds.mesh);
+
+    // Sync atmosphere sun position with light
+    atmosphere.setSunPosition(light.position);
+
+    // Add atmosphere controls to GUI
+    const atmosphereFolder = gui.addFolder('Atmosphere');
     
+    // Basic controls
+    atmosphereFolder.add(atmosphere.material.uniforms.rayleigh, 'value', 0, 4)
+        .name('Rayleigh')
+        .onChange(() => {
+            console.log('Rayleigh changed');
+        });
+
+    atmosphereFolder.add(atmosphere.material.uniforms.mieCoefficient, 'value', 0, 0.1)
+        .name('Mie Coefficient')
+        .onChange(() => {
+            console.log('Mie coefficient changed');
+        });
+
+    atmosphereFolder.add(atmosphere.material.uniforms.mieDirectionalG, 'value', 0, 1)
+        .name('Mie Directional G')
+        .onChange(() => {
+            console.log('Mie directional G changed');
+        });
+
+    atmosphereFolder.add(atmosphere.material.uniforms.sunIntensity, 'value', 0, 50)
+        .name('Sun Intensity')
+        .onChange(() => {
+            console.log('Sun intensity changed');
+        });
+
+    // Add color control
+    const rayleighColorObj = {
+        color: '#' + new THREE.Color(
+            atmosphere.material.uniforms.rayleighColor.value.x,
+            atmosphere.material.uniforms.rayleighColor.value.y,
+            atmosphere.material.uniforms.rayleighColor.value.z
+        ).getHexString()
+    };
+
+    atmosphereFolder.addColor(rayleighColorObj, 'color')
+        .name('Atmosphere Color')
+        .onChange((value) => {
+            const color = new THREE.Color(value);
+            atmosphere.setRayleighColor(new THREE.Vector3(color.r, color.g, color.b));
+            console.log('Atmosphere color changed');
+        });
+
+    // Add scale control
+    const atmosphereScale = { value: 1.1 };
+    atmosphereFolder.add(atmosphereScale, 'value', 1.01, 1.5)
+        .name('Atmosphere Scale')
+        .onChange((value) => {
+            atmosphere.mesh.scale.set(value, value, value);
+            atmosphere.setAtmosphereRadius(geometryParams.radius * value);
+            console.log('Atmosphere scale changed');
+        });
+
+    atmosphereFolder.open();
+
+    // Add cloud controls to GUI
+    const cloudFolder = gui.addFolder('Clouds');
+    
+    cloudFolder.add(clouds.material.uniforms.coverage, 'value', 0, 1)
+        .name('Cloud Coverage')
+        .onChange((value) => {
+            clouds.setCoverage(value);
+            console.log('Cloud coverage changed');
+        });
+
+    cloudFolder.add(clouds.material.uniforms.density, 'value', 0, 1)
+        .name('Cloud Density')
+        .onChange((value) => {
+            clouds.setDensity(value);
+            console.log('Cloud density changed');
+        });
+
+    cloudFolder.add(clouds.material.uniforms.cloudSpeed, 'value', 0, 2)
+        .name('Cloud Speed')
+        .onChange((value) => {
+            clouds.setCloudSpeed(value);
+            console.log('Cloud speed changed');
+        });
+
+    cloudFolder.add(clouds.material.uniforms.turbulence, 'value', 0, 2)
+        .name('Turbulence')
+        .onChange((value) => {
+            clouds.setTurbulence(value);
+            console.log('Cloud turbulence changed');
+        });
+
+    // Add cloud color control
+    const cloudColorObj = {
+        color: '#ffffff'
+    };
+
+    cloudFolder.addColor(cloudColorObj, 'color')
+        .name('Cloud Color')
+        .onChange((value) => {
+            const color = new THREE.Color(value);
+            clouds.setCloudColor(new THREE.Vector3(color.r, color.g, color.b));
+            console.log('Cloud color changed');
+        });
+
+    cloudFolder.open();
+
+    // Add cloud settings to planet types
+    Object.keys(planetColors).forEach(type => {
+        planetColors[type].clouds = {
+            coverage: type === 'Class-M' ? 0.6 :    // Earth-like
+                      type === 'Class-L' ? 0.3 :    // Marginal
+                      type === 'Class-H' ? 0.1 :    // Desert
+                      type === 'Class-D' ? 0.8 :    // Demon (toxic)
+                      type === 'Class-J' ? 0.9 :    // Gas giant
+                      type === 'Class-K' ? 0.2 :    // Barren
+                      type === 'Class-N' ? 0.7 :    // Ringed
+                      type === 'Class-Y' ? 0.85 : 0.5,  // Demon (extreme)
+            density: type === 'Class-M' ? 0.5 :     // Earth-like
+                    type === 'Class-L' ? 0.3 :      // Marginal
+                    type === 'Class-H' ? 0.2 :      // Desert
+                    type === 'Class-D' ? 0.7 :      // Demon
+                    type === 'Class-J' ? 0.8 :      // Gas giant
+                    type === 'Class-K' ? 0.2 :      // Barren
+                    type === 'Class-N' ? 0.6 :      // Ringed
+                    type === 'Class-Y' ? 0.9 : 0.5,  // Demon
+            color: type === 'Class-M' ? new THREE.Vector3(1.0, 1.0, 1.0) :      // White clouds
+                   type === 'Class-L' ? new THREE.Vector3(0.9, 0.8, 0.7) :      // Dusty white
+                   type === 'Class-H' ? new THREE.Vector3(0.9, 0.7, 0.5) :      // Sandy
+                   type === 'Class-D' ? new THREE.Vector3(0.7, 0.3, 0.2) :      // Toxic red
+                   type === 'Class-J' ? new THREE.Vector3(0.95, 0.9, 0.7) :     // Yellowish
+                   type === 'Class-K' ? new THREE.Vector3(0.8, 0.8, 0.8) :      // Light grey
+                   type === 'Class-N' ? new THREE.Vector3(0.9, 0.85, 0.7) :     // Cream
+                   type === 'Class-Y' ? new THREE.Vector3(0.8, 0.2, 0.1) : new THREE.Vector3(1, 1, 1),  // Dark red
+            speed: type === 'Class-M' ? 1.0 :       // Normal speed
+                   type === 'Class-L' ? 1.2 :       // Faster
+                   type === 'Class-H' ? 1.5 :       // Fast desert winds
+                   type === 'Class-D' ? 0.8 :       // Slow toxic clouds
+                   type === 'Class-J' ? 2.0 :       // Very fast (gas giant)
+                   type === 'Class-K' ? 0.7 :       // Slow
+                   type === 'Class-N' ? 1.3 :       // Moderate-fast
+                   type === 'Class-Y' ? 0.5 : 1.0,  // Very slow thick clouds
+            turbulence: type === 'Class-M' ? 1.0 :  // Normal turbulence
+                       type === 'Class-L' ? 1.3 :   // More turbulent
+                       type === 'Class-H' ? 1.8 :   // Very turbulent
+                       type === 'Class-D' ? 1.5 :   // Turbulent toxic
+                       type === 'Class-J' ? 2.0 :   // Extreme turbulence
+                       type === 'Class-K' ? 0.7 :   // Minimal turbulence
+                       type === 'Class-N' ? 1.4 :   // Moderate turbulence
+                       type === 'Class-Y' ? 1.7 : 1.0  // High turbulence
+        };
+    });
+
+    cloudFolder.open();
+
     // Handle window resize
     window.addEventListener('resize', () => {
         console.log('Window resized');
@@ -1267,11 +1554,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update controls
         controls.update();
         
+        // Update clouds
+        clouds.update();
+        clouds.setSunDirection(light.position);
+        
+        // Update atmosphere and sync sun position
+        atmosphere.setSunPosition(light.position);
+        atmosphere.update(camera);
+        
         // Update chunk manager (scene presence and culling)
         if (planetGenerator && planetGenerator.chunkManager) {
             planetGenerator.chunkManager.updateSceneRepresentation(camera);
         }
-
+        
         // Render scene
         renderer.render(scene, camera);
         
