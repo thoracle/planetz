@@ -87,195 +87,32 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; // Smooth camera movement
-    controls.dampingFactor = 0.05;
-    controls.screenSpacePanning = true;
-    controls.enableZoom = true;
-    controls.enableRotate = true;
-    controls.enablePan = true;
-    controls.panSpeed = 1.0;        // Adjust pan sensitivity
-    controls.rotateSpeed = 1.0;     // Adjust rotation sensitivity
     
-    // Disable controls by default (will be enabled only with modifier keys)
-    controls.enabled = false;
-
-    // Define control schemes
-    const controlSchemes = {
-        none: {
-            LEFT: undefined,
-            MIDDLE: undefined,
-            RIGHT: undefined
+    // Log initial OrbitControls state
+    console.debug('OrbitControls initialized:', {
+        THREE_MOUSE: {
+            ROTATE: THREE.MOUSE.ROTATE,
+            ZOOM: THREE.MOUSE.ZOOM,
+            PAN: THREE.MOUSE.PAN
         },
-        pan: {
-            LEFT: THREE.MOUSE.PAN,
-            MIDDLE: undefined,
-            RIGHT: undefined
-        },
-        rotate: {
-            LEFT: THREE.MOUSE.ROTATE,
-            MIDDLE: undefined,
-            RIGHT: undefined
-        }
-    };
-
-    // Prevent context menu in edit mode
-    container.addEventListener('contextmenu', (event) => {
-        if (editMode) {
-            event.preventDefault();
-        }
-    });
-
-    // Add debug logging for control events
-    controls.addEventListener('start', function(event) {
-        console.log('Controls interaction started:', {
-            type: event.type,
-            target: {
-                position: camera.position.clone().toArray(),
-                rotation: camera.rotation.clone().toArray()
-            },
-            editMode: editMode,
-            currentMouseButtons: { ...controls.mouseButtons }
-        });
-    });
-
-    controls.addEventListener('end', function(event) {
-        console.log('Controls interaction ended:', {
-            type: event.type,
-            target: {
-                position: camera.position.clone().toArray(),
-                rotation: camera.rotation.clone().toArray()
-            },
-            editMode: editMode,
-            currentMouseButtons: { ...controls.mouseButtons }
-        });
-    });
-
-    // Only log significant changes to avoid spam
-    let lastLogTime = 0;
-    let lastPosition = new THREE.Vector3();
-    let lastRotation = new THREE.Euler();
-    
-    controls.addEventListener('change', function(event) {
-        const now = performance.now();
-        const positionChanged = !camera.position.equals(lastPosition);
-        const rotationChanged = !camera.rotation.equals(lastRotation);
-        
-        // Only log if significant time has passed or significant change occurred
-        if (now - lastLogTime > 100 && (positionChanged || rotationChanged)) {
-            console.log('Controls changed:', {
-                type: event.type,
-                camera: {
-                    position: camera.position.clone().toArray(),
-                    rotation: camera.rotation.clone().toArray(),
-                    distance: camera.position.length()
-                },
-                controls: {
-                    target: controls.target.clone().toArray(),
-                    zoom: camera.zoom
-                },
-                editMode: editMode
-            });
-            
-            lastLogTime = now;
-            lastPosition.copy(camera.position);
-            lastRotation.copy(camera.rotation);
+        initial: {
+            enabled: controls.enabled,
+            enablePan: controls.enablePan,
+            enableRotate: controls.enableRotate,
+            mouseButtons: { ...controls.mouseButtons }
         }
     });
     
-    // Handle key combinations for camera controls
-    document.addEventListener('keydown', (event) => {
-        if (editMode) {
-            // Enable controls when Option, Command, or Control is held
-            const hasModifier = event.altKey || event.metaKey || event.ctrlKey;
-            controls.enabled = hasModifier;
-            
-            if (!hasModifier) {
-                Object.assign(controls.mouseButtons, controlSchemes.none);
-                return;
-            }
-
-            let scheme = controlSchemes.none;
-
-            // Determine the control scheme based on modifier keys
-            if (event.ctrlKey) {
-                scheme = controlSchemes.rotate;   // Control: Rotate
-            } else if (event.metaKey && !event.altKey) {
-                scheme = controlSchemes.pan;      // Command alone: Pan
-            } else if (event.altKey && !event.metaKey) {
-                scheme = controlSchemes.rotate;   // Option alone: Orbit
-            }
-
-            // Update the control scheme
-            Object.assign(controls.mouseButtons, scheme);
-            
-            console.log('Control mode changed:', {
-                scheme: scheme === controlSchemes.pan ? 'PAN' : 
-                        scheme === controlSchemes.rotate ? 'ROTATE' : 'NONE',
-                trigger: {
-                    key: event.key,
-                    ctrlKey: event.ctrlKey,
-                    altKey: event.altKey,
-                    metaKey: event.metaKey
-                },
-                editMode: editMode
-            });
-        }
-    });
-    
-    document.addEventListener('keyup', (event) => {
-        if (editMode) {
-            // Check if any modifier is still held
-            const hasModifier = event.altKey || event.metaKey || event.ctrlKey;
-            controls.enabled = hasModifier;
-            
-            if (!hasModifier) {
-                Object.assign(controls.mouseButtons, controlSchemes.none);
-                return;
-            }
-
-            let scheme = controlSchemes.none;
-
-            // Determine the control scheme based on remaining modifier keys
-            if (event.ctrlKey) {
-                scheme = controlSchemes.rotate;   // Control: Rotate
-            } else if (event.metaKey && !event.altKey) {
-                scheme = controlSchemes.pan;      // Command alone: Pan
-            } else if (event.altKey && !event.metaKey) {
-                scheme = controlSchemes.rotate;   // Option alone: Orbit
-            }
-
-            // Update the control scheme
-            Object.assign(controls.mouseButtons, scheme);
-            
-            console.log('Control mode reset:', {
-                scheme: scheme === controlSchemes.pan ? 'PAN' : 
-                        scheme === controlSchemes.rotate ? 'ROTATE' : 'NONE',
-                trigger: {
-                    key: event.key,
-                    ctrlKey: event.ctrlKey,
-                    altKey: event.altKey,
-                    metaKey: event.metaKey
-                },
-                editMode: editMode
-            });
-        }
-    });
-
-    // Set initial control mode
-    Object.assign(controls.mouseButtons, controlSchemes.none);
-    console.log('Initial control mode set:', {
-        mode: 'NONE',
-        mouseButtons: { ...controls.mouseButtons },
-        editMode: editMode
-    });
-
-    // Add mouse event debugging with rate limiting
+    // Debug logging variables
     let lastMouseLogTime = 0;
-    
+    let lastWheelLogTime = 0;
+    let lastControlLogTime = 0;
+
+    // Debug logging function for mouse events
     function logMouseEvent(eventName, event) {
         const now = performance.now();
         if (now - lastMouseLogTime > 100) { // Log at most every 100ms
-            console.log(`Mouse ${eventName}:`, {
+            console.debug(`Mouse ${eventName}:`, {
                 button: event.button,
                 buttons: event.buttons,
                 coords: {
@@ -294,34 +131,185 @@ document.addEventListener('DOMContentLoaded', () => {
                 editMode: editMode,
                 controls: {
                     enabled: controls.enabled,
-                    mouseButtons: { ...controls.mouseButtons }
-                }
+                    enablePan: controls.enablePan,
+                    mouseButtons: { ...controls.mouseButtons },
+                    actualPanValue: THREE.MOUSE.PAN
+                },
+                activeState: { ...activeControlState }
             });
             lastMouseLogTime = now;
         }
     }
 
-    // Configure two-finger zoom and wheel behavior
-    controls.touches = {
-        ONE: undefined,           // No action for one finger
-        TWO: THREE.TOUCH.DOLLY   // Two fingers for zooming
+    // Track active control state
+    let activeControlState = {
+        isDragging: false,
+        currentScheme: 'none'
     };
+    
+    // Define control schemes with correct THREE.MOUSE values
+    const controlSchemes = {
+        none: {
+            LEFT: undefined,
+            MIDDLE: undefined,
+            RIGHT: undefined
+        },
+        pan: {
+            LEFT: THREE.MOUSE.PAN,
+            MIDDLE: THREE.MOUSE.PAN,
+            RIGHT: THREE.MOUSE.PAN
+        },
+        rotate: {
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.ROTATE,
+            RIGHT: THREE.MOUSE.ROTATE
+        },
+        default: {
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.PAN
+        }
+    };
+
+    // Initialize OrbitControls with explicit configuration
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.screenSpacePanning = true;
+    controls.enableZoom = true;
+    controls.enableRotate = false;
+    controls.enablePan = false;
+    controls.panSpeed = 1.0;
+    controls.rotateSpeed = 1.0;
+    controls.zoomSpeed = 3.0;
+    controls.touches = {
+        ONE: THREE.TOUCH.ROTATE,
+        TWO: THREE.TOUCH.DOLLY_PAN
+    };
+
+    // Add debug logging for initial mouse button configuration
+    console.debug('THREE.MOUSE values:', {
+        LEFT: THREE.MOUSE.LEFT,
+        MIDDLE: THREE.MOUSE.MIDDLE,
+        RIGHT: THREE.MOUSE.RIGHT,
+        ROTATE: THREE.MOUSE.ROTATE,
+        DOLLY: THREE.MOUSE.DOLLY,
+        PAN: THREE.MOUSE.PAN
+    });
+
+    // Always use left mouse button for all camera actions
+    controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+    controls.mouseButtons.MIDDLE = undefined;
+    controls.mouseButtons.RIGHT = undefined;
+
+    // Remove all dynamic mouse button remapping logic
+
+    // Simplified modifier-based camera controls for MacBook/trackpad
+    function updateControlScheme(event) {
+        if (!editMode) return;
+
+        // Determine which modifier is held
+        const isOption = event.altKey;
+        const isCommand = event.metaKey;
+        const isOptionCommand = event.altKey && event.metaKey;
+
+        // Only allow one mode at a time (priority: Option+Command > Command > Option)
+        if (isOptionCommand) {
+            // Option+Command+Drag: Rotate
+            controls.enablePan = false;
+            controls.enableRotate = false;
+            if (typeof controls.enableCameraRotate === 'function') {
+                controls.enableCameraRotate(true);
+            }
+        } else if (isCommand) {
+            // Command+Drag: Pan
+            controls.enablePan = true;
+            controls.enableRotate = false;
+            if (typeof controls.enableCameraRotate === 'function') {
+                controls.enableCameraRotate(false);
+            }
+        } else if (isOption) {
+            // Option+Drag: Orbit
+            controls.enablePan = false;
+            controls.enableRotate = true;
+            if (typeof controls.enableCameraRotate === 'function') {
+                controls.enableCameraRotate(false);
+            }
+        } else {
+            // No modifier: disable all
+            controls.enablePan = false;
+            controls.enableRotate = false;
+            if (typeof controls.enableCameraRotate === 'function') {
+                controls.enableCameraRotate(false);
+            }
+        }
+    }
+
+    // Handle key combinations for camera controls
+    document.addEventListener('keydown', (event) => {
+        updateControlScheme(event);
+        // Prevent default browser behaviors when using modifier keys in edit mode
+        if (editMode && (event.metaKey || event.altKey || event.ctrlKey)) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    });
+    
+    document.addEventListener('keyup', (event) => {
+        // Always update control scheme on keyup
+        updateControlScheme(event);
+    });
+
+    // Remove all dynamic remapping from mousedown/mouseup handlers
+    // Only keep terraforming logic for mousedown with no modifier
+    container.addEventListener('mousedown', (event) => {
+        logMouseEvent('down', event);
+        // Only handle terraforming if in edit mode and no modifier keys
+        const hasModifier = event.altKey || event.metaKey || event.ctrlKey;
+        if (editMode) {
+            if (hasModifier) {
+                // Let OrbitControls handle the event
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();  // Prevent event from reaching OrbitControls
+            handleTerraforming(event);
+            const handleMouseMove = (moveEvent) => {
+                const hasModifier = moveEvent.altKey || moveEvent.metaKey || moveEvent.ctrlKey;
+                if (!hasModifier) {
+                    moveEvent.preventDefault();
+                    moveEvent.stopPropagation();  // Prevent event from reaching OrbitControls
+                    handleTerraforming(moveEvent);
+                }
+            };
+            const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            };
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+    }, { capture: true });
+
+    // Remove all dynamic mouse button logic from mousemove/mouseup
+    // Let OrbitControls handle camera movement when a modifier is held
 
     // Handle wheel events only when in edit mode
     container.addEventListener('wheel', (event) => {
         if (!editMode) return;
 
         const now = performance.now();
-        if (now - lastWheelLogTime > 100) { // Log at most every 100ms
-            console.log('Wheel event:', {
+        if (now - lastWheelLogTime > 100) {
+            console.debug('Wheel event:', {
                 delta: {
+                    x: event.deltaX,
                     y: event.deltaY,
                     mode: event.deltaMode
                 },
                 modifiers: {
                     ctrl: event.ctrlKey,
                     alt: event.altKey,
-                    meta: event.metaKey
+                    meta: event.metaKey,
+                    shift: event.shiftKey
                 },
                 editMode: editMode,
                 camera: {
@@ -333,16 +321,85 @@ document.addEventListener('DOMContentLoaded', () => {
             lastWheelLogTime = now;
         }
 
-        // Allow zooming with two-finger gesture or when a modifier key is held
-        if (event.ctrlKey || event.altKey || event.metaKey || Math.abs(event.deltaX) > 0) {
-            // This is likely a two-finger gesture or modifier key is held
+        // Handle zooming
+        const hasModifier = event.ctrlKey || event.altKey || event.metaKey;
+        const isTwoFingerGesture = Math.abs(event.deltaX) > 0;
+
+        if (hasModifier || isTwoFingerGesture) {
             controls.enabled = true;
-        } else {
+            controls.enableZoom = true;
             event.preventDefault();
             event.stopPropagation();
+        } else {
             controls.enabled = false;
+            controls.enableZoom = false;
         }
     }, { passive: false });
+
+    // Handle touch events
+    let touchStartTime = 0;
+    let touchStartDistance = 0;
+    
+    container.addEventListener('touchstart', (event) => {
+        if (!editMode) return;
+        
+        touchStartTime = performance.now();
+        if (event.touches.length === 2) {
+            const dx = event.touches[0].clientX - event.touches[1].clientX;
+            const dy = event.touches[0].clientY - event.touches[1].clientY;
+            touchStartDistance = Math.sqrt(dx * dx + dy * dy);
+            controls.enabled = true;
+        }
+    }, { passive: false });
+
+    container.addEventListener('touchmove', (event) => {
+        if (!editMode) return;
+        
+        if (event.touches.length === 2) {
+            event.preventDefault();
+            const dx = event.touches[0].clientX - event.touches[1].clientX;
+            const dy = event.touches[0].clientY - event.touches[1].clientY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const deltaDistance = distance - touchStartDistance;
+            
+            // Enable zooming for two-finger pinch
+            controls.enabled = true;
+            controls.enableZoom = true;
+            
+            // Update touch start distance for next move event
+            touchStartDistance = distance;
+        }
+    }, { passive: false });
+
+    container.addEventListener('touchend', (event) => {
+        if (!editMode) return;
+        
+        const touchEndTime = performance.now();
+        const touchDuration = touchEndTime - touchStartTime;
+        
+        // Reset controls after touch
+        if (event.touches.length === 0) {
+            controls.enabled = false;
+            controls.enableZoom = false;
+            touchStartDistance = 0;
+        }
+        
+        console.debug('Touch interaction ended:', {
+            duration: touchDuration,
+            remainingTouches: event.touches.length,
+            controls: {
+                enabled: controls.enabled,
+                enableZoom: controls.enableZoom
+            }
+        });
+    });
+
+    // Prevent context menu in edit mode to avoid interfering with controls
+    container.addEventListener('contextmenu', (event) => {
+        if (editMode) {
+            event.preventDefault();
+        }
+    });
 
     // Handle terraforming clicks
     container.addEventListener('mousedown', (event) => {
@@ -1567,6 +1624,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Animation loop
     function animate() {
         requestAnimationFrame(animate);
+        controls.update();
         
         // Update wave animation if enabled
         if (oceanParams.enabled && oceanParams.wavesEnabled && planet.oceanMesh) {
@@ -1602,9 +1660,6 @@ document.addEventListener('DOMContentLoaded', () => {
             planet.oceanMesh.geometry.computeVertexNormals();
         }
         
-        // Update controls
-        controls.update();
-        
         // Update clouds
         clouds.update();
         clouds.setSunDirection(light.position);
@@ -1628,4 +1683,61 @@ document.addEventListener('DOMContentLoaded', () => {
     // Start animation loop
     console.log('Starting animation loop...');
     animate();
+
+    // --- Camera Roll (Option+Command+Drag) Implementation ---
+    let isRolling = false;
+    let lastRollX = 0;
+    const rollSensitivity = 0.01; // radians per pixel
+    let controlsEnabledBeforeRoll = true;
+
+    renderer.domElement.addEventListener('mousedown', (event) => {
+        if (!editMode) return;
+        console.debug('[Roll Debug] mousedown', {
+            altKey: event.altKey,
+            metaKey: event.metaKey,
+            button: event.button,
+            buttons: event.buttons
+        });
+        if ((event.button === 0 || event.button === 2) && event.altKey && event.metaKey) {
+            isRolling = true;
+            lastRollX = event.clientX;
+            controlsEnabledBeforeRoll = controls.enabled;
+            controls.enabled = false; // Temporarily disable OrbitControls
+            controls._screenSpacePanningBeforeRoll = controls.screenSpacePanning;
+            controls.screenSpacePanning = false; // Prevent OrbitControls from snapping up vector
+            console.debug('[Roll Debug] Roll mode STARTED');
+            event.preventDefault();
+        }
+    }, true);
+
+    renderer.domElement.addEventListener('mousemove', (event) => {
+        if (!editMode) return;
+        if (isRolling) {
+            const deltaX = event.clientX - lastRollX;
+            lastRollX = event.clientX;
+            // Rotate camera's up vector around the view axis
+            const viewDir = new THREE.Vector3();
+            camera.getWorldDirection(viewDir);
+            const q = new THREE.Quaternion();
+            q.setFromAxisAngle(viewDir, -deltaX * rollSensitivity);
+            camera.up.applyQuaternion(q);
+            camera.up.normalize();
+            controls.target = controls.target.clone(); // Force OrbitControls to recalc
+            controls.update();
+            console.debug('[Roll Debug] Rolling', { deltaX, rollAngle: -deltaX * rollSensitivity });
+            event.preventDefault();
+        }
+    }, true);
+
+    renderer.domElement.addEventListener('mouseup', (event) => {
+        if (isRolling) {
+            isRolling = false;
+            controls.enabled = controlsEnabledBeforeRoll; // Restore OrbitControls
+            controls.screenSpacePanning = controls._screenSpacePanningBeforeRoll !== undefined ? controls._screenSpacePanningBeforeRoll : true;
+            delete controls._screenSpacePanningBeforeRoll;
+            controls.update();
+            console.debug('[Roll Debug] Roll mode ENDED');
+            event.preventDefault();
+        }
+    }, true);
 }); 
