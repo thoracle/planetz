@@ -1,22 +1,18 @@
+import ChunkManager from './chunkManager.js';
+
 class PlanetGenerator {
     constructor(gridSize = 64) {
         this.gridSize = gridSize;
         this.chunkSize = 16;
-        this.chunkManager = new ChunkManager(this, this.chunkSize);
         
-        // LOD parameters
-        this.lodLevels = 4; // Number of detail levels
-        this.lodDistanceThresholds = [32, 64, 128, 256]; // Distance thresholds for each LOD level
-        this.lodResolutionDivisors = [1, 2, 4, 8]; // Resolution divisors for each LOD level
+        // Enhanced LOD parameters
+        this.lodLevels = 6; // Increased number of detail levels
+        this.lodDistanceThresholds = [10, 20, 30, 50, 80, 120]; // More granular thresholds
+        this.lodResolutionDivisors = [1, 1.5, 2, 3, 4, 6]; // Fractional divisors for smoother transitions
+        this.lodTransitionRange = 5; // Distance range for smooth transitions
         
-        // Permutation table for noise
-        this.p = new Array(512);
-        for(let i = 0; i < 256; i++) {
-            this.p[i] = Math.floor(Math.random() * 256);
-        }
-        for(let i = 0; i < 256; i++) {
-            this.p[i + 256] = this.p[i];
-        }
+        // Initialize permutation table with a default seed
+        this.initializePermutationTable(Math.random() * 10000);
         
         // Planet class definitions
         this.planetClasses = {
@@ -121,8 +117,35 @@ class PlanetGenerator {
         // Generation parameters (start with Class-M)
         this.params = { ...this.planetClasses["Class-M"].params };
         
+        // Initialize chunk manager last to ensure all parameters are set
+        this.chunkManager = new ChunkManager(this, this.chunkSize);
+        
         // Initialize chunks
         this.initializeChunks();
+    }
+
+    initializePermutationTable(seed) {
+        this.p = new Array(512);
+        
+        // Create initial array [0..255]
+        const values = Array.from({ length: 256 }, (_, i) => i);
+        
+        // Fisher-Yates shuffle with seeded random
+        for (let i = values.length - 1; i > 0; i--) {
+            const j = Math.floor(this.seededRandom(seed + i) * (i + 1));
+            [values[i], values[j]] = [values[j], values[i]];
+        }
+        
+        // Copy values to permutation table
+        for (let i = 0; i < 256; i++) {
+            this.p[i] = values[i];
+            this.p[i + 256] = values[i];
+        }
+    }
+
+    seededRandom(seed) {
+        const x = Math.sin(seed) * 10000;
+        return x - Math.floor(x);
     }
 
     // Apply a planet class preset
@@ -170,8 +193,9 @@ class PlanetGenerator {
         const samplingStep = this.getLODSamplingStep(lodLevel);
         const halfSize = this.gridSize / 2;
 
-        // Store LOD level without logging
+        // Store both integer and fractional LOD level
         chunk.lastLODLevel = lodLevel;
+        chunk.lodTransitionFactor = lodLevel - Math.floor(lodLevel);
 
         let densityStats = { min: Infinity, max: -Infinity, sum: 0, count: 0 };
         let noiseStats = { min: Infinity, max: -Infinity, sum: 0, count: 0 };
@@ -262,34 +286,32 @@ class PlanetGenerator {
         const BA = this.p[B] + Z;
         const BB = this.p[B + 1] + Z;
         
-        return this.lerp(w, this.lerp(v, this.lerp(u, this.grad(this.p[AA], x, y, z),
-                                                     this.grad(this.p[BA], x - 1, y, z)),
-                                       this.lerp(u, this.grad(this.p[AB], x, y - 1, z),
-                                                this.grad(this.p[BB], x - 1, y - 1, z))),
-                         this.lerp(v, this.lerp(u, this.grad(this.p[AA + 1], x, y, z - 1),
-                                              this.grad(this.p[BA + 1], x - 1, y, z - 1)),
-                                  this.lerp(u, this.grad(this.p[AB + 1], x, y - 1, z - 1),
-                                           this.grad(this.p[BB + 1], x - 1, y - 1, z - 1))));
+        // Calculate noise value with improved gradient handling
+        let result = this.lerp(w, 
+            this.lerp(v, 
+                this.lerp(u, this.grad(this.p[AA], x, y, z),
+                            this.grad(this.p[BA], x - 1, y, z)),
+                this.lerp(u, this.grad(this.p[AB], x, y - 1, z),
+                            this.grad(this.p[BB], x - 1, y - 1, z))),
+            this.lerp(v, 
+                this.lerp(u, this.grad(this.p[AA + 1], x, y, z - 1),
+                            this.grad(this.p[BA + 1], x - 1, y, z - 1)),
+                this.lerp(u, this.grad(this.p[AB + 1], x, y - 1, z - 1),
+                            this.grad(this.p[BB + 1], x - 1, y - 1, z - 1))));
+        
+        // Normalize to [-1, 1] range and ensure no zero values
+        result = Math.max(-1, Math.min(1, result));
+        if (Math.abs(result) < 0.000001) {
+            result = (this.p[X] & 1) === 0 ? 0.000001 : -0.000001;
+        }
+        
+        return result;
     }
 
     // Generate a new seed for the planet
     generateNewSeed() {
-        // Generate new seed
         this.params.seed = Math.random() * 10000;
-        
-        // Regenerate permutation table with new seed
-        this.p = new Array(512);
-        const seed = this.params.seed;
-        
-        // Create a deterministic but random sequence based on the seed
-        for(let i = 0; i < 256; i++) {
-            this.p[i] = Math.floor((Math.sin(i * seed) + 1) * 128);
-        }
-        for(let i = 0; i < 256; i++) {
-            this.p[i + 256] = this.p[i];
-        }
-        
-        // Regenerate the density field
+        this.initializePermutationTable(this.params.seed);
         this.generateDensityField();
     }
 
@@ -302,19 +324,32 @@ class PlanetGenerator {
         return chunk.getDensity(local.x, local.y, local.z);
     }
 
-    // Calculate LOD level based on distance
+    // Calculate LOD level based on distance with smooth transitions
     calculateLODLevel(distance) {
+        // Find the appropriate LOD level
         for (let i = 0; i < this.lodDistanceThresholds.length; i++) {
             if (distance < this.lodDistanceThresholds[i]) {
-                return i;
+                // If we're near a threshold, interpolate between levels
+                if (i > 0) {
+                    const prevThreshold = this.lodDistanceThresholds[i - 1];
+                    const currThreshold = this.lodDistanceThresholds[i];
+                    const transitionStart = currThreshold - this.lodTransitionRange;
+                    
+                    if (distance > transitionStart) {
+                        const t = (distance - transitionStart) / this.lodTransitionRange;
+                        return this.lodResolutionDivisors[i - 1] * (1 - t) + this.lodResolutionDivisors[i] * t;
+                    }
+                }
+                return this.lodResolutionDivisors[i];
             }
         }
-        return this.lodLevels - 1;
+        return this.lodResolutionDivisors[this.lodLevels - 1];
     }
 
-    // Get sampling step for LOD level
+    // Get sampling step for LOD level with support for fractional steps
     getLODSamplingStep(lodLevel) {
-        return this.lodResolutionDivisors[lodLevel] || 1;
+        // For fractional LOD levels, return the base step
+        return Math.floor(lodLevel);
     }
 
     // Clean up resources
@@ -335,6 +370,14 @@ class PlanetGenerator {
         const h = hash & 15;
         const u = h < 8 ? x : y;
         const v = h < 4 ? y : h === 12 || h === 14 ? x : z;
-        return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+        let result = ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+        
+        // Ensure we never return exactly zero
+        if (result === 0) {
+            result = (hash & 4) === 0 ? 0.000001 : -0.000001;
+        }
+        return result;
     }
-} 
+}
+
+export default PlanetGenerator; 

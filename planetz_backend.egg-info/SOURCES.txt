@@ -9,6 +9,8 @@ backend/verse.py
 backend/routes/__init__.py
 backend/routes/api.py
 backend/routes/main.py
+backend/tests/__init__.py
+backend/tests/test_app.py
 planetz_backend.egg-info/PKG-INFO
 planetz_backend.egg-info/SOURCES.txt
 planetz_backend.egg-info/dependency_links.txt

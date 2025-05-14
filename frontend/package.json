@@ -1,0 +1,16 @@
+{
+  "name": "planetz-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for the Planetz application",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "three": "^0.176.0"
+  }
+}

@@ -1,3 +1,7 @@
+import * as THREE from 'three';
+import PlanetGenerator from './planetGenerator.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Initializing application...');
     
@@ -80,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     container.appendChild(renderer.domElement);
     
     // Initialize OrbitControls
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; // Smooth camera movement
     controls.dampingFactor = 0.05;
     controls.screenSpacePanning = true;
@@ -1263,6 +1267,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update controls
         controls.update();
         
+        // Update chunk manager (scene presence and culling)
+        if (planetGenerator && planetGenerator.chunkManager) {
+            planetGenerator.chunkManager.updateSceneRepresentation(camera);
+        }
+
         // Render scene
         renderer.render(scene, camera);
         

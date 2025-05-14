@@ -58,19 +58,6 @@
   - [X] Implement debouncing
   - [X] Add visual feedback
 
-### Performance Optimization
-- [ ] Implement Web Workers
-  - [ ] Set up worker communication
-  - [ ] Offload mesh generation
-  - [ ] Handle worker lifecycle
-- [ ] Optimize chunk rendering
-  - [ ] Implement chunk culling
-  - [ ] Add level of detail system
-  - [ ] Optimize memory usage
-- [ ] Optimize triangle count
-  - [ ] Implement mesh simplification
-  - [ ] Add adaptive detail levels
-
 ## Testing
 
 ### Backend Testing
@@ -79,9 +66,36 @@
 - [ ] Test error handling
 
 ### Frontend Testing
+- [X] Set up Jest testing framework
+- [X] Write unit tests for core functions
+  - [X] Test planet generator initialization
+  - [X] Test noise generation consistency
+  - [X] Test noise value ranges
+  - [X] Test terrain height effects
+  - [X] Test density field consistency
+  - [X] Test chunk update handling
+  - [X] Test planet class changes
+  - [X] Test concurrent chunk updates
 - [ ] Test browser compatibility
 - [ ] Performance benchmarks
 - [ ] Test UI responsiveness
+
+### Performance Optimization
+- [X] Implement chunk management optimization
+  - [X] Add position-based update threshold
+  - [X] Implement chunk activation/deactivation
+  - [X] Add memory management
+- [X] Implement Web Workers
+  - [X] Set up worker communication
+  - [X] Offload mesh generation
+  - [X] Handle worker lifecycle
+- [ ] Optimize chunk rendering
+  - [X] Implement chunk culling
+  - [X] Add level of detail system
+  - [X] Optimize memory usage
+- [X] Optimize triangle count
+  - [X] Implement mesh simplification
+  - [X] Add adaptive detail levels
 
 ## Documentation
 - [ ] Create technical documentation
@@ -94,7 +108,6 @@
   - [ ] Parameter explanations
 
 ## Future Features (Backlog)
-- [ ] Ocean generation with depth slider
 - [ ] Atmospheric effects
 - [ ] Cloud generation with slider
 - [ ] Custom texture mapping
