@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { VIEW_TYPES } from './ViewManager.js';
 
 export class GalacticChart {
     constructor(viewManager) {
@@ -59,9 +60,9 @@ export class GalacticChart {
                     
                     // If A or F was pressed, switch to that view
                     if (key === 'a') {
-                        this.viewManager.setView(this.viewManager.VIEW_TYPES.AFT);
+                        this.viewManager.setView(VIEW_TYPES.AFT);
                     } else if (key === 'f') {
-                        this.viewManager.setView(this.viewManager.VIEW_TYPES.FRONT);
+                        this.viewManager.setView(VIEW_TYPES.FRONT);
                     } else {
                         // For G or Escape, restore the previous view
                         this.viewManager.restorePreviousView();

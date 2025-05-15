@@ -73,8 +73,8 @@ body.edit-mode .crosshair {
 .galactic-chart {
     position: fixed;
     top: 10%;
-    left: 10%;
-    width: 80%;
+    left: 17.5%;
+    width: 65%;
     height: 80%;
     background: rgba(0, 0, 0, 0.7);
     display: none;
@@ -92,8 +92,8 @@ body.edit-mode .crosshair {
     top: 10px;
     right: 10px;
     cursor: pointer;
-    font-size: 24px;
-    padding: 10px;
+    font-size: 17px;
+    padding: 7px;
     color: #00ff41;
     border: 1px solid #00ff41;
     background: rgba(0, 0, 0, 0.6);
