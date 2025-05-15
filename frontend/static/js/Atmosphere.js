@@ -74,7 +74,7 @@ export class Atmosphere {
     }
 
     update(camera) {
-        // Update any time-based or camera-based effects here if needed
-        this.mesh.position.copy(camera.position);
+        // Keep atmosphere at origin with planet
+        this.mesh.position.set(0, 0, 0);
     }
 } 

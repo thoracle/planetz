@@ -58,12 +58,41 @@
   - [X] Implement debouncing
   - [X] Add visual feedback
 
+#### UI Views
+- [ ] Implement Front View
+  - [ ] Create main combat view camera setup
+  - [ ] Add 3D rendering of space objects (stars, planets, moons, ships)
+  - [ ] Implement + crosshair display
+  - [ ] Add F key binding (disabled in Edit-Mode)
+  - [ ] Set up default view state
+- [ ] Implement Aft View
+  - [ ] Create backward-facing camera setup
+  - [ ] Mirror Front View rendering for backward orientation
+  - [ ] Implement -- -- crosshair display
+  - [ ] Add A key binding (disabled in Edit-Mode)
+- [ ] Implement Galactic Chart
+  - [ ] Create 2D overlay map system
+  - [ ] Implement grid layout (0-9 horizontal, A-Z vertical)
+  - [ ] Add vertical scroll functionality
+  - [ ] Create modal overlay system
+  - [ ] Add G key binding (disabled in Edit-Mode)
+  - [ ] Implement modal dismissal (A, F, G keys and X button)
+  - [ ] Add solar system cell labeling
+- [ ] View Management System
+  - [ ] Implement view state management
+  - [ ] Create smooth transitions between views
+  - [ ] Handle keyboard input routing
+  - [ ] Manage Edit-Mode view restrictions
+  - [ ] Add view-specific UI elements
+  - [ ] Implement view-specific controls
+
 ## Visual Features
 - [X] Atmospheric effects
 - [X] Cloud generation with slider
 - [ ] Custom texture mapping
 - [ ] Advanced biome generation
 - [ ] Craters for moons
+
 ## Testing
 
 ### Backend Testing

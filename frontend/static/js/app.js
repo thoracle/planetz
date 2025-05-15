@@ -3,6 +3,8 @@ import PlanetGenerator from './planetGenerator.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Atmosphere } from './Atmosphere.js';
 import { Cloud } from './Cloud.js';
+import { ViewManager } from './views/ViewManager.js';
+import { StarfieldManager } from './views/StarfieldManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Initializing application...');
@@ -10,6 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Scene setup
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
+    
+    // Initialize clock for animation timing
+    const clock = new THREE.Clock();
     
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     const container = document.getElementById('scene-container');
@@ -33,19 +38,11 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.body.appendChild(uiContainer);
 
-    // Initialize FPS counter with fixed positioning
+    // Initialize FPS counter with fixed positioning but hidden
     const stats = new Stats();
-    stats.dom.style.cssText = `
-        position: fixed !important;
-        top: 10px !important;
-        left: 10px !important;
-        transform: none !important;
-        display: none;
-        pointer-events: auto;
-    `;
-    uiContainer.appendChild(stats.dom);
+    stats.dom.style.display = 'none';
     
-    // Create debug info panel with fixed positioning
+    // Create debug info panel with fixed positioning but hidden
     const debugInfo = document.createElement('div');
     debugInfo.style.cssText = `
         position: fixed !important;
@@ -87,93 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
-    
-    // Log initial OrbitControls state
-    console.debug('OrbitControls initialized:', {
-        THREE_MOUSE: {
-            ROTATE: THREE.MOUSE.ROTATE,
-            ZOOM: THREE.MOUSE.ZOOM,
-            PAN: THREE.MOUSE.PAN
-        },
-        initial: {
-            enabled: controls.enabled,
-            enablePan: controls.enablePan,
-            enableRotate: controls.enableRotate,
-            mouseButtons: { ...controls.mouseButtons }
-        }
-    });
-    
-    // Debug logging variables
-    let lastMouseLogTime = 0;
-    let lastWheelLogTime = 0;
-    let lastControlLogTime = 0;
-
-    // Debug logging function for mouse events
-    function logMouseEvent(eventName, event) {
-        const now = performance.now();
-        if (now - lastMouseLogTime > 100) { // Log at most every 100ms
-            console.debug(`Mouse ${eventName}:`, {
-                button: event.button,
-                buttons: event.buttons,
-                coords: {
-                    client: { x: event.clientX, y: event.clientY },
-                    relative: {
-                        x: ((event.clientX - container.getBoundingClientRect().left) / container.clientWidth) * 2 - 1,
-                        y: -((event.clientY - container.getBoundingClientRect().top) / container.clientHeight) * 2 + 1
-                    }
-                },
-                modifiers: {
-                    ctrl: event.ctrlKey,
-                    alt: event.altKey,
-                    meta: event.metaKey,
-                    shift: event.shiftKey
-                },
-                editMode: editMode,
-                controls: {
-                    enabled: controls.enabled,
-                    enablePan: controls.enablePan,
-                    mouseButtons: { ...controls.mouseButtons },
-                    actualPanValue: THREE.MOUSE.PAN
-                },
-                activeState: { ...activeControlState }
-            });
-            lastMouseLogTime = now;
-        }
-    }
-
-    // Track active control state
-    let activeControlState = {
-        isDragging: false,
-        currentScheme: 'none'
-    };
-    
-    // Define control schemes with correct THREE.MOUSE values
-    const controlSchemes = {
-        none: {
-            LEFT: undefined,
-            MIDDLE: undefined,
-            RIGHT: undefined
-        },
-        pan: {
-            LEFT: THREE.MOUSE.PAN,
-            MIDDLE: THREE.MOUSE.PAN,
-            RIGHT: THREE.MOUSE.PAN
-        },
-        rotate: {
-            LEFT: THREE.MOUSE.ROTATE,
-            MIDDLE: THREE.MOUSE.ROTATE,
-            RIGHT: THREE.MOUSE.ROTATE
-        },
-        default: {
-            LEFT: THREE.MOUSE.ROTATE,
-            MIDDLE: THREE.MOUSE.DOLLY,
-            RIGHT: THREE.MOUSE.PAN
-        }
-    };
-
-    // Initialize OrbitControls with explicit configuration
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
+    controls.enabled = false; // Start with controls disabled for free movement
+    controls.enableDamping = false;
     controls.screenSpacePanning = true;
     controls.enableZoom = true;
     controls.enableRotate = false;
@@ -181,10 +93,46 @@ document.addEventListener('DOMContentLoaded', () => {
     controls.panSpeed = 1.0;
     controls.rotateSpeed = 1.0;
     controls.zoomSpeed = 3.0;
-    controls.touches = {
-        ONE: THREE.TOUCH.ROTATE,
-        TWO: THREE.TOUCH.DOLLY_PAN
+    controls.target = new THREE.Vector3(0, 0, 0); // Set initial target but don't update it during movement
+    controls.update();
+
+    // Remove all dynamic mouse button remapping
+    controls.mouseButtons = {
+        LEFT: null,
+        MIDDLE: null,
+        RIGHT: null
     };
+
+    // Initialize ViewManager
+    const viewManager = new ViewManager(scene, camera, controls);
+
+    // Initialize StarfieldManager
+    const starfieldManager = new StarfieldManager(scene, camera);
+
+    // Connect ViewManager and StarfieldManager
+    viewManager.setStarfieldManager(starfieldManager);
+
+    // Debug logging function for mouse events
+    function logMouseEvent(type, event) {
+        if (!debugVisible) return;
+        console.debug(`Mouse ${type}:`, {
+            button: event.button,
+            buttons: event.buttons,
+            modifiers: {
+                ctrl: event.ctrlKey,
+                alt: event.altKey,
+                meta: event.metaKey,
+                shift: event.shiftKey
+            },
+            editMode: editMode,
+            controls: {
+                enabled: controls.enabled,
+                enableRotate: controls.enableRotate,
+                enablePan: controls.enablePan,
+                enableZoom: controls.enableZoom
+            }
+        });
+    }
 
     // Add debug logging for initial mouse button configuration
     console.debug('THREE.MOUSE values:', {
@@ -200,8 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
     controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
     controls.mouseButtons.MIDDLE = undefined;
     controls.mouseButtons.RIGHT = undefined;
-
-    // Remove all dynamic mouse button remapping logic
 
     // Simplified modifier-based camera controls for MacBook/trackpad
     function updateControlScheme(event) {
@@ -1157,15 +1103,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to toggle edit mode
     function toggleEditMode() {
         editMode = !editMode;
-        console.log('Edit mode toggled:', {
-            editMode: editMode,
-            controlsEnabled: controls.enabled
-        });
+        viewManager.setEditMode(editMode);
+        
+        // Update debug visibility
         axesHelper.visible = editMode;
         gridHelper.visible = editMode;
-        guiContainer.style.display = editMode ? 'block' : 'none';
-        gui.domElement.style.display = editMode ? 'block' : 'none';
-        controls.enabled = editMode;
+        
+        // Update UI
+        if (editMode) {
+            document.body.classList.add('edit-mode');
+            guiContainer.style.display = 'block';
+            gui.domElement.style.display = 'block';
+        } else {
+            document.body.classList.remove('edit-mode');
+            guiContainer.style.display = 'none';
+            gui.domElement.style.display = 'none';
+        }
+        
+        // Update debug info
+        updateDebugInfo();
     }
     
     // Add keyboard shortcuts
@@ -1349,7 +1305,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const vertexCount = geometry.attributes.position.count;
             const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
             
+            // Format position coordinates with 2 decimal places
+            const pos = camera.position;
+            const position = {
+                x: pos.x.toFixed(2),
+                y: pos.y.toFixed(2),
+                z: pos.z.toFixed(2)
+            };
+            
             debugInfo.innerHTML = `
+                Position: (${position.x}, ${position.y}, ${position.z})<br>
                 Vertices: ${vertexCount.toLocaleString()}<br>
                 Triangles: ${Math.floor(triangleCount).toLocaleString()}<br>
                 Subdivision Level: ${geometryParams.subdivisionLevel}<br>
@@ -1361,7 +1326,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 triangles: triangleCount,
                 hasIndex: !!geometry.index,
                 indexCount: geometry.index ? geometry.index.count : 0,
-                subdivisionLevel: geometryParams.subdivisionLevel
+                subdivisionLevel: geometryParams.subdivisionLevel,
+                position: position
             });
         }
     }
@@ -1624,8 +1590,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Animation loop
     function animate() {
+        const deltaTime = clock.getDelta();
         requestAnimationFrame(animate);
-        controls.update();
+        
+        // Only update controls in edit mode
+        if (editMode) {
+            controls.update();
+        }
+        
+        // Update starfield
+        starfieldManager.update(deltaTime);
         
         // Update wave animation if enabled
         if (oceanParams.enabled && oceanParams.wavesEnabled && planet.oceanMesh) {
@@ -1674,10 +1648,13 @@ document.addEventListener('DOMContentLoaded', () => {
             planetGenerator.chunkManager.updateSceneRepresentation(camera);
         }
         
+        // Update debug info if visible
+        if (debugVisible) {
+            updateDebugInfo();
+        }
+        
         // Render scene
         renderer.render(scene, camera);
-        
-        // Update stats
         stats.update();
     }
     

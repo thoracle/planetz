@@ -80,6 +80,46 @@ The project combines design elements from Sebastian Lague's Terraforming and tec
    - Terrain height controls
    - Color gradient pickers
    - Real-time updates with performance optimization
+   - Galactic Chart that shows all of the solar systems on a grid
+
+## Impulse Engines
+   - Press 0-9 keys to change Velocity
+Key	Velocity (metros per second)
+0	   0
+1	   0.25
+2	   0.50
+3	   1
+4	   3
+5	   6
+6	   12
+7	   25
+8	   37
+9	   43
+
+Your current Velocity in shown on the Control Panel Display (V represents velocity or metrons per seconds). Your ship always moves forward based on your velocity. The best cruising speed is key 6 (V = 12). The Zylon warships have a maximum speed of approximately 7 (V = 25). 
+
+## UI Views
+The app features multiple perspectives, each rendered using Three.js:
+
+1. **Front View**
+   - Main combat view showing space ahead of the starship.
+   - Displays stars, planets, moons, enemy ships, meteors, and starbases in 3D.
+   - Default view during gameplay.
+   - Press F key (except in Edit-Mode) to switch to Front view
+   - Indicated by a + cross hair
+
+2. **Aft View**
+   - Shows space behind the starship.
+   - Similar rendering to Front View but oriented backward.
+   - Press A key (except in Edit-Mode) to switch to Front view
+   - Indicated by a -- -- cross hair
+
+3. **Galactic Chart**
+   - A 2D overlay map of the galaxy, divided into solar systems.
+   - Shown as a 2d grid with cells labeled 0-9 on the horizonal and A-Z on the vertical
+   - Includes a vertical scroll bar if needed
+   - Activated via G key (except in Edit-Mode) modal that takes over the screen for navigation.
+   - Dismissed with A, F, G keys or X button in upper right corner of modal.
 
 
 ### Prerequisites

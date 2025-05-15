@@ -1,0 +1,70 @@
+/* View-specific styles */
+.crosshair-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.crosshair {
+    width: 40px;
+    height: 40px;
+    position: relative;
+    display: none;
+}
+
+.front-crosshair .line-horizontal {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: white;
+}
+
+.front-crosshair .line-vertical {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 100%;
+    background: white;
+}
+
+.aft-crosshair .line-left {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 40%;
+    height: 2px;
+    background: white;
+}
+
+.aft-crosshair .line-right {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 40%;
+    height: 2px;
+    background: white;
+}
+
+/* Edit mode styles */
+body.edit-mode .crosshair {
+    display: none !important;
+}
+
+/* View transition animations */
+.crosshair {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.crosshair.fade-out {
+    opacity: 0;
+}
+
+.crosshair.fade-in {
+    opacity: 1;
+} 
