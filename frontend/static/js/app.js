@@ -40,13 +40,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize FPS counter with fixed positioning but hidden
     const stats = new Stats();
-    stats.dom.style.display = 'none';
+    stats.dom.style.cssText = `
+        position: fixed !important;
+        top: 70px !important;
+        left: 10px !important;
+        display: none;
+        z-index: 1000;
+        pointer-events: none;
+    `;
+    document.body.appendChild(stats.dom);
     
     // Create debug info panel with fixed positioning but hidden
     const debugInfo = document.createElement('div');
     debugInfo.style.cssText = `
         position: fixed !important;
-        top: 70px !important;
+        top: 120px !important;
         left: 10px !important;
         color: #00ff00;
         font-family: monospace;
@@ -1093,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Function to toggle debug visibility
-    function toggleDebug() {
+    function toggleDebugMode() {
         debugVisible = !debugVisible;
         stats.dom.style.display = debugVisible ? 'block' : 'none';
         debugInfo.style.display = debugVisible ? 'block' : 'none';
@@ -1129,7 +1137,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.ctrlKey) {
             if (event.key === 'd') {
                 event.preventDefault(); // Prevent default browser behavior
-                toggleDebug();
+                toggleDebugMode();
             } else if (event.key === 'e') {
                 event.preventDefault(); // Prevent default browser behavior
                 toggleEditMode();
