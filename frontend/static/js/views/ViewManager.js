@@ -112,28 +112,20 @@ export class ViewManager {
     setView(viewType) {
         if (this.editMode) return; // Don't change views in edit mode
         
-        // Store previous view before changing, but only if not going to the same view
-        if (this.currentView !== viewType) {
-            // Only store previous view if not switching to/from galactic
-            if (viewType !== VIEW_TYPES.GALACTIC && this.currentView !== VIEW_TYPES.GALACTIC) {
-                this.previousView = this.currentView;
-            }
-            
-            // Save camera state when switching to galactic view
-            if (viewType === VIEW_TYPES.GALACTIC) {
-                this.savedCameraState.position.copy(this.camera.position);
-                this.savedCameraState.quaternion.copy(this.camera.quaternion);
-            }
+        // Don't store previous view if we're already in that view
+        if (this.currentView === viewType) return;
+
+        // Store previous view and camera state
+        if (viewType === VIEW_TYPES.GALACTIC) {
+            // When entering galactic view, save current state
+            this.previousView = this.currentView;
+            this.savedCameraState.position.copy(this.camera.position);
+            this.savedCameraState.quaternion.copy(this.camera.quaternion);
         }
         
         // Hide all crosshairs first
         this.frontCrosshair.style.display = 'none';
         this.aftCrosshair.style.display = 'none';
-        
-        // Notify StarfieldManager of view change
-        if (this.starfieldManager) {
-            this.starfieldManager.setView(viewType.toUpperCase());
-        }
         
         switch(viewType) {
             case VIEW_TYPES.FRONT:
@@ -144,7 +136,7 @@ export class ViewManager {
                 } else {
                     this.setFrontView();
                 }
-                this.galacticChart.hide();
+                this.galacticChart.hide(false); // Don't trigger view restoration
                 this.frontCrosshair.style.display = 'block';
                 break;
             case VIEW_TYPES.AFT:
@@ -159,7 +151,7 @@ export class ViewManager {
                 } else {
                     this.setAftView();
                 }
-                this.galacticChart.hide();
+                this.galacticChart.hide(false); // Don't trigger view restoration
                 this.aftCrosshair.style.display = 'block';
                 break;
             case VIEW_TYPES.GALACTIC:
@@ -167,7 +159,13 @@ export class ViewManager {
                 break;
         }
         
+        // Update the current view BEFORE notifying StarfieldManager
         this.currentView = viewType;
+        
+        // Notify StarfieldManager of view change
+        if (this.starfieldManager) {
+            this.starfieldManager.setView(viewType.toUpperCase());
+        }
     }
 
     setFrontView() {
@@ -197,8 +195,11 @@ export class ViewManager {
         this.frontCrosshair.style.display = 'none';
         this.aftCrosshair.style.display = 'none';
         
-        // Show galactic chart
+        // Show galactic chart but keep the current camera view
         this.galacticChart.show();
+        
+        // Keep the current camera state
+        // The 3D scene will continue to be visible through the semi-transparent overlay
     }
 
     setEditMode(enabled) {
@@ -233,12 +234,35 @@ export class ViewManager {
     }
 
     restorePreviousView() {
-        // Don't restore if we're already in FRONT or AFT view
+        // Don't restore if we're not in galactic view
         if (this.currentView !== VIEW_TYPES.GALACTIC) return;
         
         // Default to FRONT view if no previous view is stored
         const viewToRestore = this.previousView || VIEW_TYPES.FRONT;
-        this.setView(viewToRestore);
+        
+        // Hide the galactic chart without triggering another view restoration
+        this.galacticChart.hide(false);
+        
+        // Restore the camera state
+        this.camera.position.copy(this.savedCameraState.position);
+        this.camera.quaternion.copy(this.savedCameraState.quaternion);
+        
+        // If restoring to AFT view, apply the 180-degree rotation
+        if (viewToRestore === VIEW_TYPES.AFT) {
+            const euler = new THREE.Euler().setFromQuaternion(this.camera.quaternion);
+            euler.y += Math.PI;
+            this.camera.quaternion.setFromEuler(euler);
+        }
+        
+        // Update crosshairs
+        this.frontCrosshair.style.display = viewToRestore === VIEW_TYPES.FRONT ? 'block' : 'none';
+        this.aftCrosshair.style.display = viewToRestore === VIEW_TYPES.AFT ? 'block' : 'none';
+        
+        // Update the current view and notify StarfieldManager
+        this.currentView = viewToRestore;
+        if (this.starfieldManager) {
+            this.starfieldManager.setView(viewToRestore.toUpperCase());
+        }
     }
 
     dispose() {

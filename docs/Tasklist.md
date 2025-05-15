@@ -71,12 +71,14 @@
   - [X] Implement -- -- crosshair display
   - [X] Add A key binding (disabled in Edit-Mode)
 - [ ] Implement Galactic Chart
-  - [ ] Create 2D overlay map system
-  - [ ] Implement grid layout (0-9 horizontal, A-Z vertical)
-  - [ ] Add vertical scroll functionality
-  - [ ] Create modal overlay system
-  - [ ] Add G key binding (disabled in Edit-Mode)
-  - [ ] Implement modal dismissal (A, F, G keys and X button)
+  - [X] Create 2D overlay map system
+  - [X] Implement grid layout (0-9 horizontal, A-Z vertical)
+  - [X] Add vertical scroll functionality
+  - [X] Create modal overlay system
+  - [X] Add G key binding (disabled in Edit-Mode)
+  - [X] Implement modal dismissal (A, F keys and X button)
+  - [ ] use verse.py to populate the universe with solar systems
+  - [ ] Visualize verse.py with galactic chart
   - [ ] Add solar system cell labeling
 - [X] View Management System
   - [X] Implement view state management
@@ -149,6 +151,7 @@
 - [ ] Sun, Planet and moon orbit with gravity
 - [ ] Generate universe using backend/verse.py 
 - [ ] Save/load planet configurations
+- [ ] CTRL-E edit mode will need a way to target a specific object for editing (currently it points at the initial planet)
 
 ## Project Management
 - [ ] Set up continuous integration

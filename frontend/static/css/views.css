@@ -72,16 +72,19 @@ body.edit-mode .crosshair {
 /* Galactic Chart Styles */
 .galactic-chart {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.9);
+    top: 10%;
+    left: 10%;
+    width: 80%;
+    height: 80%;
+    background: rgba(0, 0, 0, 0.7);
     display: none;
     z-index: 2000;
     font-family: "Courier New", monospace;
     color: #00ff41;
     overflow-y: auto;
+    backdrop-filter: blur(3px);
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    border-radius: 5px;
 }
 
 .galactic-chart .close-button {
@@ -93,12 +96,13 @@ body.edit-mode .crosshair {
     padding: 10px;
     color: #00ff41;
     border: 1px solid #00ff41;
-    background: rgba(0, 0, 0, 0.5);
-    transition: background-color 0.2s;
+    background: rgba(0, 0, 0, 0.6);
+    transition: all 0.2s;
 }
 
 .galactic-chart .close-button:hover {
     background: rgba(0, 255, 65, 0.2);
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
 }
 
 .galactic-chart .grid-container {
@@ -106,36 +110,45 @@ body.edit-mode .crosshair {
     grid-template-columns: repeat(10, 1fr);
     gap: 2px;
     padding: 20px;
-    max-width: 1200px;
-    margin: 40px auto;
+    width: 90%;
+    max-width: 960px;
+    margin: 20px auto;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    border-radius: 5px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
 .galactic-chart .grid-header,
 .galactic-chart .grid-row-label {
     text-align: center;
-    padding: 10px;
-    font-size: 20px;
+    padding: 8px;
+    font-size: 16px;
     font-weight: bold;
-    border: 1px solid #00ff41;
+    border: 1px solid rgba(0, 255, 65, 0.5);
     background: rgba(0, 255, 65, 0.1);
+    text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
 }
 
 .galactic-chart .grid-cell {
     aspect-ratio: 1;
-    border: 1px solid #00ff41;
-    padding: 10px;
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    padding: 8px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    font-size: 16px;
+    font-size: 14px;
     cursor: pointer;
-    transition: background-color 0.2s;
-    background: rgba(0, 0, 0, 0.5);
+    transition: all 0.2s;
+    background: rgba(0, 0, 0, 0.3);
 }
 
 .galactic-chart .grid-cell:hover {
-    background: rgba(0, 255, 65, 0.2);
+    background: rgba(0, 255, 65, 0.15);
+    border-color: rgba(0, 255, 65, 0.8);
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+    transform: scale(1.02);
 }
 
 /* Scrollbar Styles */
@@ -144,11 +157,11 @@ body.edit-mode .crosshair {
 }
 
 .galactic-chart::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.3);
 }
 
 .galactic-chart::-webkit-scrollbar-thumb {
-    background: #00ff41;
+    background: rgba(0, 255, 65, 0.5);
     border: 3px solid transparent;
     border-radius: 6px;
     background-clip: content-box;

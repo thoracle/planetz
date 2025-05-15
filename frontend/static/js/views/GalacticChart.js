@@ -44,12 +44,18 @@ export class GalacticChart {
         }
 
         // Add event listeners
-        this.closeButton.addEventListener('click', () => this.hide());
+        this.closeButton.addEventListener('click', () => {
+            // When closing via X button, restore the previous view through ViewManager
+            this.viewManager.restorePreviousView();
+            this.hide(false); // Hide without triggering another view restoration
+        });
+        
         document.addEventListener('keydown', (event) => {
             if (this.container.style.display === 'block') {
                 const key = event.key.toLowerCase();
                 if (key === 'g' || key === 'a' || key === 'f' || key === 'escape') {
-                    this.hide();
+                    // Hide the chart first
+                    this.hide(false);
                     
                     // If A or F was pressed, switch to that view
                     if (key === 'a') {
@@ -72,10 +78,10 @@ export class GalacticChart {
         this.container.style.display = 'block';
     }
 
-    hide() {
+    hide(shouldRestoreView = false) {
         this.container.style.display = 'none';
-        // When hiding via X button, restore the previous view
-        if (this.viewManager) {
+        // Only restore the previous view if explicitly requested
+        if (shouldRestoreView && this.viewManager) {
             this.viewManager.restorePreviousView();
         }
     }
