@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GalacticChart } from './GalacticChart.js';
 
 export const VIEW_TYPES = {
     FRONT: 'front',
@@ -12,8 +13,15 @@ export class ViewManager {
         this.camera = camera;
         this.controls = controls;
         this.currentView = VIEW_TYPES.FRONT;
+        this.previousView = VIEW_TYPES.FRONT;
         this.editMode = false;
         this.starfieldManager = null; // Will be set by setStarfieldManager
+        
+        // Store camera state
+        this.savedCameraState = {
+            position: new THREE.Vector3(),
+            quaternion: new THREE.Quaternion()
+        };
         
         // Store original camera position for front view
         this.defaultCameraPosition = new THREE.Vector3(0, 0, 10);
@@ -28,6 +36,9 @@ export class ViewManager {
         
         // Create crosshairs
         this.createCrosshairs();
+        
+        // Create galactic chart
+        this.galacticChart = new GalacticChart(this);
         
         // Bind keyboard events
         this.bindKeyEvents();
@@ -92,6 +103,8 @@ export class ViewManager {
                 this.setView(VIEW_TYPES.FRONT);
             } else if (key === 'a' && this.currentView === VIEW_TYPES.FRONT) {
                 this.setView(VIEW_TYPES.AFT);
+            } else if (key === 'g') {
+                this.setView(VIEW_TYPES.GALACTIC);
             }
         });
     }
@@ -99,25 +112,55 @@ export class ViewManager {
     setView(viewType) {
         if (this.editMode) return; // Don't change views in edit mode
         
+        // Store previous view before changing, but only if not going to the same view
+        if (this.currentView !== viewType) {
+            // Only store previous view if not switching to/from galactic
+            if (viewType !== VIEW_TYPES.GALACTIC && this.currentView !== VIEW_TYPES.GALACTIC) {
+                this.previousView = this.currentView;
+            }
+            
+            // Save camera state when switching to galactic view
+            if (viewType === VIEW_TYPES.GALACTIC) {
+                this.savedCameraState.position.copy(this.camera.position);
+                this.savedCameraState.quaternion.copy(this.camera.quaternion);
+            }
+        }
+        
         // Hide all crosshairs first
         this.frontCrosshair.style.display = 'none';
         this.aftCrosshair.style.display = 'none';
         
         // Notify StarfieldManager of view change
         if (this.starfieldManager) {
-            this.starfieldManager.setView(viewType);
+            this.starfieldManager.setView(viewType.toUpperCase());
         }
-        
-        // Store current camera position and direction
-        const currentPosition = this.camera.position.clone();
-        const currentDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
         
         switch(viewType) {
             case VIEW_TYPES.FRONT:
-                this.setFrontView();
+                if (this.currentView === VIEW_TYPES.GALACTIC) {
+                    // Restore camera state when coming from galactic view
+                    this.camera.position.copy(this.savedCameraState.position);
+                    this.camera.quaternion.copy(this.savedCameraState.quaternion);
+                } else {
+                    this.setFrontView();
+                }
+                this.galacticChart.hide();
+                this.frontCrosshair.style.display = 'block';
                 break;
             case VIEW_TYPES.AFT:
-                this.setAftView();
+                if (this.currentView === VIEW_TYPES.GALACTIC) {
+                    // Restore camera state when coming from galactic view
+                    this.camera.position.copy(this.savedCameraState.position);
+                    this.camera.quaternion.copy(this.savedCameraState.quaternion);
+                    // Then rotate 180 degrees since we're switching to aft
+                    const euler = new THREE.Euler().setFromQuaternion(this.camera.quaternion);
+                    euler.y += Math.PI;
+                    this.camera.quaternion.setFromEuler(euler);
+                } else {
+                    this.setAftView();
+                }
+                this.galacticChart.hide();
+                this.aftCrosshair.style.display = 'block';
                 break;
             case VIEW_TYPES.GALACTIC:
                 this.setGalacticView();
@@ -150,8 +193,12 @@ export class ViewManager {
     }
 
     setGalacticView() {
-        // Hide all crosshairs in galactic view
-        // Galactic chart will be implemented separately
+        // Hide crosshairs
+        this.frontCrosshair.style.display = 'none';
+        this.aftCrosshair.style.display = 'none';
+        
+        // Show galactic chart
+        this.galacticChart.show();
     }
 
     setEditMode(enabled) {
@@ -185,10 +232,22 @@ export class ViewManager {
         }
     }
 
+    restorePreviousView() {
+        // Don't restore if we're already in FRONT or AFT view
+        if (this.currentView !== VIEW_TYPES.GALACTIC) return;
+        
+        // Default to FRONT view if no previous view is stored
+        const viewToRestore = this.previousView || VIEW_TYPES.FRONT;
+        this.setView(viewToRestore);
+    }
+
     dispose() {
         // Clean up DOM elements
         if (this.crosshairContainer && this.crosshairContainer.parentNode) {
             this.crosshairContainer.parentNode.removeChild(this.crosshairContainer);
+        }
+        if (this.galacticChart) {
+            this.galacticChart.dispose();
         }
     }
 } 
