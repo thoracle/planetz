@@ -41,21 +41,6 @@ export class SolarSystemManager {
             'Moons': Array.from(this.celestialBodies.keys()).filter(key => key.startsWith('moon_')).length
         };
 
-        // Add star position
-        const star = this.celestialBodies.get('star');
-        if (star) {
-            info['Star Position'] = `(${star.position.x.toFixed(2)}, ${star.position.y.toFixed(2)}, ${star.position.z.toFixed(2)})`;
-        }
-
-        // Add planet positions
-        const planets = Array.from(this.celestialBodies.entries())
-            .filter(([key]) => key.startsWith('planet_'));
-        
-        planets.forEach(([key, planet]) => {
-            info[`${key} Position`] = `(${planet.position.x.toFixed(2)}, ${planet.position.y.toFixed(2)}, ${planet.position.z.toFixed(2)})`;
-            info[`${key} Distance`] = `${planet.position.length().toFixed(2)} units`;
-        });
-
         return info;
     }
 

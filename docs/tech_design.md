@@ -24,28 +24,24 @@
 - Zoom controls with mouse wheel
 - Touch controls for mobile devices
 
-### 4. Debug and Edit Modes (CTRL+D and CTRL+E)
+### 4. Debug and Edit Modes
 
-#### Debug Mode (CTRL+D)
-- Display debug information panel
+#### 4.1 Debug Mode (CTRL+D)
+- Toggle debug information display
 - Show FPS counter
-- Display celestial body positions
-- Show camera position
-- Display system statistics
-- Toggle debug helpers (axes, grid)
+- Display celestial body statistics
+- Show debug helpers (axes, grid)
+- Update debug panel in real-time
 
-#### Edit Mode (CTRL+E)
-- Toggle edit interface
-- Display GUI controls panel
-- Cycle through celestial bodies with TAB
-- Edit properties of selected body:
-  - Star: temperature, radius
-  - Planets: radius, rotation speed, orbit speed
-  - Moons: radius, rotation speed, orbit speed
-- Terraform planets:
-  - Raise/lower terrain
-  - Adjust brush size and strength
-  - Modify terrain features
+#### 4.2 Edit Mode (CTRL+E)
+- Toggle edit panel
+- Initialize GUI container
+- Create property controls
+- Add terraforming tools
+- Handle input validation
+- Update visual feedback
+- Manage camera controls
+- Handle touch interactions
 
 ### 5. Planet Customization
 - Select planet type (Class-M, Class-L, Class-H, etc.)
@@ -103,10 +99,9 @@
 
 ```mermaid
 graph TD
-    %% Main System
+    %% Main Actors
     User((User))
     System((Solar System Simulator))
-    User -->|Interact| System
 
     %% Core Components
     subgraph Core[Core Components]
@@ -116,12 +111,8 @@ graph TD
         UI((UI Manager))
     end
 
-    System -->|Update| Physics
-    System -->|Render| Renderer
-    System -->|Display| UI
-
     %% User Interactions
-    subgraph Interactions[User Interactions]
+    subgraph Input[User Input]
         direction TB
         I1[CTRL+E: Edit Mode]
         I2[CTRL+D: Debug Mode]
@@ -129,59 +120,277 @@ graph TD
         I4[Mouse/Touch: Camera]
     end
 
-    User -->|Input| Interactions
-    Interactions -->|Commands| System
-
-    %% Debug Features
-    subgraph Debug[Debug Features]
+    %% System Features
+    subgraph Features[System Features]
         direction TB
-        D1[FPS Counter]
-        D2[Position Display]
-        D3[Statistics]
-        D4[Debug Helpers]
+        
+        subgraph Debug[Debug Features]
+            direction TB
+            D1[FPS Counter]
+            D2[Position Display]
+            D3[Statistics]
+            D4[Debug Helpers]
+        end
+
+        subgraph Edit[Edit Features]
+            direction TB
+            E1[Property Editor]
+            E2[Terraforming]
+            E3[Customization]
+            E4[Body Selection]
+        end
+
+        subgraph Phys[Physics Features]
+            direction TB
+            P1[Orbital Mechanics]
+            P2[Gravitational Forces]
+            P3[Spatial Partitioning]
+        end
+
+        subgraph Rend[Rendering Features]
+            direction TB
+            R1[Star System]
+            R2[Planet Generation]
+            R3[Atmospheric Effects]
+            R4[Ocean & Clouds]
+        end
+
+        subgraph UIMan[UI Features]
+            direction TB
+            U1[Debug Panel]
+            U2[Edit Controls]
+            U3[Camera Controls]
+            U4[Settings]
+        end
     end
 
-    %% Edit Features
-    subgraph Edit[Edit Features]
-        direction TB
-        E1[Property Editor]
-        E2[Terraforming]
-        E3[Customization]
-        E4[Body Selection]
-    end
-
-    %% Physics Features
-    subgraph Phys[Physics Features]
-        direction TB
-        P1[Orbital Mechanics]
-        P2[Gravitational Forces]
-        P3[Spatial Partitioning]
-    end
-
-    %% Rendering Features
-    subgraph Rend[Rendering Features]
-        direction TB
-        R1[Star System]
-        R2[Planet Generation]
-        R3[Atmospheric Effects]
-        R4[Ocean & Clouds]
-    end
-
-    %% UI Features
-    subgraph UIMan[UI Features]
-        direction TB
-        U1[Debug Panel]
-        U2[Edit Controls]
-        U3[Camera Controls]
-        U4[Settings]
-    end
-
-    %% Connect Features
+    %% Connections
+    User -->|Input| Input
+    Input -->|Commands| System
+    
+    System -->|Update| Core
+    Core -->|Process| Features
+    
     System -->|Debug Info| Debug
     System -->|Edit Commands| Edit
     System -->|Physics Update| Phys
     System -->|Render Commands| Rend
     System -->|UI Updates| UIMan
+
+    %% Component Connections
+    Physics -->|Calculate| Phys
+    Renderer -->|Render| Rend
+    UI -->|Display| UIMan
+```
+
+## Class Diagrams
+
+### Core System Classes
+
+```mermaid
+classDiagram
+    class SolarSystemManager {
+        -star: Star
+        -planets: Planet[]
+        -moons: Moon[]
+        -activeBodies: Set
+        -spatialHash: SpatialHash
+        +initialize()
+        +update()
+        +generateStarSystem()
+        +getDebugInfo()
+        +toggleEditMode()
+        +toggleDebugMode()
+    }
+
+    class CelestialBody {
+        <<abstract>>
+        #position: Vector3
+        #velocity: Vector3
+        #mass: number
+        #radius: number
+        +update()
+        +applyForce()
+        +getPosition()
+        +getVelocity()
+    }
+
+    class Star {
+        -temperature: number
+        -luminosity: number
+        -color: Color
+        +update()
+        +emitLight()
+    }
+
+    class Planet {
+        -atmosphere: Atmosphere
+        -ocean: Ocean
+        -clouds: CloudLayer
+        -terrain: Terrain
+        +update()
+        +generateTerrain()
+        +updateAtmosphere()
+    }
+
+    class Moon {
+        -parent: Planet
+        -orbitRadius: number
+        -orbitPeriod: number
+        +update()
+        +calculateOrbit()
+    }
+
+    class SpatialHash {
+        -gridSize: number
+        -cells: Map
+        +insert()
+        +query()
+        +update()
+        +clear()
+    }
+
+    CelestialBody <|-- Star
+    CelestialBody <|-- Planet
+    CelestialBody <|-- Moon
+    SolarSystemManager o-- Star
+    SolarSystemManager o-- Planet
+    SolarSystemManager o-- Moon
+    SolarSystemManager o-- SpatialHash
+    Planet o-- Moon
+```
+
+### Physics and Rendering Classes
+
+```mermaid
+classDiagram
+    class PhysicsEngine {
+        -gravity: number
+        -timeStep: number
+        -bodies: CelestialBody[]
+        +update()
+        +calculateForces()
+        +applyGravity()
+        +checkCollisions()
+    }
+
+    class Renderer {
+        -scene: Scene
+        -camera: Camera
+        -renderer: WebGLRenderer
+        +initialize()
+        +update()
+        +render()
+        +updateCamera()
+    }
+
+    class ViewManager {
+        -controls: OrbitControls
+        -crosshairs: Object3D
+        -isEditMode: boolean
+        +initialize()
+        +update()
+        +setEditMode()
+        +updateControls()
+        +handleInput()
+    }
+
+    class TerrainGenerator {
+        -noise: SimplexNoise
+        -chunkSize: number
+        -resolution: number
+        +generateChunk()
+        +updateChunk()
+        +getHeight()
+    }
+
+    class AtmosphereRenderer {
+        -rayleigh: number
+        -mie: number
+        -scale: number
+        +update()
+        +render()
+        +updateParameters()
+    }
+
+    class OceanRenderer {
+        -waveHeight: number
+        -waveSpeed: number
+        -foamIntensity: number
+        +update()
+        +render()
+        +updateWaves()
+    }
+
+    PhysicsEngine o-- CelestialBody
+    Renderer o-- ViewManager
+    Renderer o-- TerrainGenerator
+    Renderer o-- AtmosphereRenderer
+    Renderer o-- OceanRenderer
+```
+
+### UI and Input Classes
+
+```mermaid
+classDiagram
+    class UIManager {
+        -gui: GUI
+        -debugPanel: Panel
+        -editPanel: Panel
+        -tooltips: Map
+        +initialize()
+        +update()
+        +showDebugPanel()
+        +showEditPanel()
+        +updateTooltips()
+    }
+
+    class InputManager {
+        -keyboard: Map
+        -mouse: MouseState
+        -touch: TouchState
+        +initialize()
+        +update()
+        +handleKeyDown()
+        +handleKeyUp()
+        +handleMouseMove()
+        +handleTouch()
+    }
+
+    class DebugPanel {
+        -fpsCounter: Element
+        -positionDisplay: Element
+        -statistics: Element
+        +update()
+        +show()
+        +hide()
+        +updateStats()
+    }
+
+    class EditPanel {
+        -propertyControls: Map
+        -terraformingTools: Map
+        -currentBody: CelestialBody
+        +initialize()
+        +update()
+        +show()
+        +hide()
+        +updateProperties()
+    }
+
+    class TooltipManager {
+        -tooltips: Map
+        -activeTooltip: Element
+        +initialize()
+        +show()
+        +hide()
+        +update()
+    }
+
+    UIManager o-- DebugPanel
+    UIManager o-- EditPanel
+    UIManager o-- TooltipManager
+    InputManager --> UIManager
 ```
 
 ## Sequence Diagrams
@@ -250,30 +459,129 @@ sequenceDiagram
 
 ### 4. Debug and Edit Modes
 
+#### 4.1 Debug Mode (CTRL+D)
+
 ```mermaid
 sequenceDiagram
     participant User
     participant System
     participant UI
     participant Physics
+    participant Renderer
 
-    alt Debug Mode (CTRL+D)
-        User->>System: Press CTRL+D
-        System->>UI: Show Debug Panel
-        loop Every Frame
-            System->>Physics: Get Body Positions
-            System->>System: Calculate Statistics
-            System->>UI: Update Debug Info
-        end
-    else Edit Mode (CTRL+E)
-        User->>System: Press CTRL+E
-        System->>UI: Show Edit Panel
-        User->>System: Select Body (TAB)
-        System->>UI: Update Body Info
-        User->>System: Edit Properties
-        System->>Physics: Update Body Properties
-        System->>UI: Update Display
+    User->>System: Press CTRL+D
+    System->>UI: Toggle Debug Mode
+    UI->>UI: Show Debug Panel
+
+    loop Every Frame
+        System->>Physics: Get Body Positions
+        Physics-->>System: Return Positions
+        System->>System: Calculate Statistics
+        System->>UI: Update Debug Info
+        UI->>UI: Update Display
     end
+```
+
+#### 4.2 Edit Mode (CTRL+E)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant System
+    participant UI
+    participant Physics
+    participant Renderer
+    participant ViewManager
+
+    User->>System: Press CTRL+E
+    System->>ViewManager: Set Edit Mode
+    ViewManager->>ViewManager: Hide Crosshairs
+    ViewManager->>ViewManager: Enable Orbit Controls
+    ViewManager->>ViewManager: Set Target to Origin
+    System->>System: Show Debug Helpers
+    System->>System: Add Edit Mode Class
+    System->>UI: Toggle Edit Mode
+    UI->>UI: Show Edit Panel
+    UI->>UI: Initialize GUI Container
+    UI->>UI: Create Title Element
+    UI->>UI: Add Property Controls
+    UI->>UI: Add Terraforming Tools
+    UI->>UI: Add Save/Cancel Buttons
+    UI->>UI: Position Panel Elements
+    UI->>UI: Add Event Listeners
+    UI->>UI: Initialize Tooltips
+    UI->>UI: Setup Input Validation
+    UI->>UI: Update Display
+
+    System->>System: Get Celestial Bodies
+    System->>System: Set Current Edit Body
+    System->>System: Cycle Bodies
+    System->>UI: Update Body Info
+    UI->>UI: Update Title
+    UI->>UI: Update Property Fields
+    UI->>UI: Update Terraforming Tools
+    UI->>UI: Validate Current Values
+    UI->>UI: Update Tooltips
+    UI->>UI: Update Display
+
+    loop Animation Loop
+        System->>ViewManager: Update Controls
+        System->>System: Update Starfield
+        System->>System: Update Solar System
+        System->>System: Update Waves
+        System->>System: Update Clouds
+        System->>System: Update Atmosphere
+        System->>System: Update Chunk Manager
+        System->>UI: Update Debug Info
+        System->>Renderer: Render Frame
+    end
+
+    User->>UI: Input Property Value
+    UI->>UI: Validate Input
+    alt Valid Input
+        UI->>UI: Update Field Display
+        UI->>UI: Show Success Indicator
+    else Invalid Input
+        UI->>UI: Show Error Message
+        UI->>UI: Highlight Invalid Field
+    end
+    UI->>System: Submit Valid Changes
+    System->>Physics: Update Body Properties
+    Physics->>Renderer: Update Visual Properties
+    Renderer->>Renderer: Update Display
+    System->>UI: Update Display
+    UI->>UI: Update Property Fields
+    UI->>UI: Update Terraforming Tools
+    UI->>UI: Update Tooltips
+    UI->>UI: Update Display
+
+    User->>UI: Use Terraforming Tool
+    UI->>UI: Update Brush Preview
+    UI->>UI: Show Tool Settings
+    UI->>UI: Update Cursor
+    UI->>UI: Update Display
+
+    Note over User, Renderer: Camera Controls
+    Note right of ViewManager: - Option+Drag: Orbit
+    Note right of ViewManager: - Command+Drag: Pan
+    Note right of ViewManager: - Option+Command+Drag: Roll
+    Note right of ViewManager: - Two-finger drag: Zoom
+
+    Note over User, Renderer: Event Prevention
+    Note right of System: - Prevent default browser behaviors
+    Note right of System: - Stop event propagation
+    Note right of System: - Handle modifier keys
+    Note right of System: - Prevent context menu
+
+    Note over User, Renderer: Debug Helpers
+    Note right of System: - Show axes helper
+    Note right of System: - Show grid helper
+    Note right of System: - Update debug info
+
+    Note over User, Renderer: Touch Controls
+    Note right of System: - Two-finger pinch: Zoom
+    Note right of System: - Touch duration tracking
+    Note right of System: - Distance calculation
 ```
 
 ### 5. Planet Customization
