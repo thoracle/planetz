@@ -3,13 +3,56 @@
 ## Core Use Cases
 
 ### 1. Star System Generation and Management
-- Generate a new star system with random seed
-- Create and manage celestial bodies (star, planets, moons)
+- Generate a new star system with deterministic random seed using Lehmer32
+- Create and manage celestial bodies with unique naming conventions:
+  - Stars: Greek letter prefix + traditional name (e.g., "Alpha Centauri")
+  - Planets: Space-themed prefix + numerical/descriptive suffix (e.g., "Terra Prime")
+  - Moons: Traditional moon name + numerical/descriptive suffix (e.g., "Phobos Alpha")
 - Apply realistic orbital mechanics using Kepler's laws
 - Handle gravitational interactions between bodies
 - Manage spatial partitioning for efficient physics calculations
 
-### 2. Celestial Body Visualization
+### 2. Celestial Body Data Structure
+Each celestial body type has specific properties:
+
+#### Star System
+```json
+{
+    "star_type": "red dwarf | yellow dwarf | blue giant | white dwarf",
+    "star_name": "String (e.g., 'Zeta Fomalhaut')",
+    "planets": [Planet]
+}
+```
+
+#### Planet
+```json
+{
+    "planet_type": "Class-M | Class-L | Class-H | Class-D | Class-J | Class-K | Class-N | Class-Y",
+    "planet_name": "String (e.g., 'Terra VIII')",
+    "moons": [Moon]
+}
+```
+
+#### Moon
+```json
+{
+    "moon_type": "rocky | ice | desert",
+    "moon_name": "String (e.g., 'Titan Alpha')"
+}
+```
+
+### 3. Planet Classes
+Each planet class has specific characteristics:
+- **Class-M**: Earth-like planets capable of supporting humanoid life
+- **Class-L**: Marginally habitable with harsh conditions
+- **Class-H**: Hot, arid worlds with little surface water
+- **Class-D**: Toxic atmosphere, uninhabitable
+- **Class-J**: Gas giants similar to Jupiter
+- **Class-K**: Barren, rocky worlds with limited water
+- **Class-N**: Planets with rings similar to Saturn
+- **Class-Y**: Extremely inhospitable with lethal conditions
+
+### 4. Celestial Body Visualization
 - Render star with appropriate color and light emission
 - Generate and render planets with procedural terrain
 - Create and render moons with appropriate properties
@@ -17,23 +60,23 @@
 - Add cloud layers to planets
 - Implement ocean rendering with wave effects
 
-### 3. Camera and View Controls
+### 5. Camera and View Controls
 - Free camera movement in normal mode
 - Orbit controls for focused viewing
 - Camera roll functionality (Option+Command+Drag)
 - Zoom controls with mouse wheel
 - Touch controls for mobile devices
 
-### 4. Debug and Edit Modes
+### 6. Debug and Edit Modes
 
-#### 4.1 Debug Mode (CTRL+D)
+#### 6.1 Debug Mode (CTRL+D)
 - Toggle debug information display
 - Show FPS counter
 - Display celestial body statistics
 - Show debug helpers (axes, grid)
 - Update debug panel in real-time
 
-#### 4.2 Edit Mode (CTRL+E)
+#### 6.2 Edit Mode (CTRL+E)
 - Toggle edit panel
 - Initialize GUI container
 - Create property controls
@@ -43,87 +86,18 @@
 - Manage camera controls
 - Handle touch interactions
 
-#### 4.3 Tab Cycling in Edit Mode
+#### 6.3 Tab Cycling in Edit Mode
+- Cycle through celestial bodies using Tab key
+- Clear existing GUI controls before switching
+- Update property controls based on body type:
+  - Star: temperature and radius controls
+  - Planet: radius, rotation speed, and orbit speed controls
+  - Moon: radius, rotation speed, and orbit speed controls
+- Update GUI title to reflect current body
+- Apply changes to body properties in real-time
+- Maintain animation loop for smooth transitions
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant System
-    participant UI
-    participant SolarSystemManager
-    participant GUI
-    participant THREE
-
-    User->>System: Press Tab Key
-    System->>System: Prevent Default Event
-    System->>SolarSystemManager: getCelestialBodies()
-    SolarSystemManager-->>System: Array of THREE.Mesh objects
-    
-    System->>SolarSystemManager: getCurrentEditBody()
-    SolarSystemManager-->>System: Current Body (THREE.Mesh)
-    
-    System->>System: Find Current Index
-    System->>System: Calculate Next Index
-    System->>SolarSystemManager: setCurrentEditBody(nextBody)
-    
-    System->>UI: Update GUI Title
-    UI->>UI: Clear Existing Title
-    UI->>UI: Set New Title Based on Body Type
-    
-    System->>GUI: updateGUIControls(nextBody)
-    GUI->>GUI: Clear Existing Folders
-    Note over GUI: Remove all folders from dat.GUI
-    
-    GUI->>SolarSystemManager: Find Body Key
-    SolarSystemManager-->>GUI: Body Key (e.g., 'star', 'planet_1', 'moon_1_2')
-    
-    alt Body is Star
-        GUI->>GUI: Create Star Properties Folder
-        GUI->>THREE: Access geometry.parameters.radius
-        THREE-->>GUI: Current Radius
-        GUI->>GUI: Add Temperature Control (Default: 5000)
-        GUI->>GUI: Add Radius Control
-        Note over GUI: Store values in local params object
-    else Body is Planet
-        GUI->>GUI: Create Planet Properties Folder
-        GUI->>THREE: Access geometry.parameters.radius
-        THREE-->>GUI: Current Radius
-        GUI->>GUI: Add Radius Control
-        GUI->>GUI: Add Rotation Speed Control
-        GUI->>GUI: Add Orbit Speed Control
-        Note over GUI: Store values in local params object
-    else Body is Moon
-        GUI->>GUI: Create Moon Properties Folder
-        GUI->>THREE: Access geometry.parameters.radius
-        THREE-->>GUI: Current Radius
-        GUI->>GUI: Add Radius Control
-        GUI->>GUI: Add Rotation Speed Control
-        GUI->>GUI: Add Orbit Speed Control
-        Note over GUI: Store values in local params object
-    end
-    
-    Note over GUI: Add onChange Handlers for Each Control
-    
-    alt Property Changed is Radius
-        GUI->>THREE: Create New SphereGeometry
-        GUI->>THREE: Dispose Old Geometry
-        GUI->>THREE: Set New Geometry
-    else Property Changed is Temperature (Star Only)
-        GUI->>THREE: Update Material Color
-        GUI->>THREE: Update Emissive Color
-    else Property Changed is Rotation/Orbit Speed
-        GUI->>SolarSystemManager: Store Speed in rotationSpeeds/orbitalSpeeds Map
-    end
-    
-    Note over System: Animation Loop Updates
-    loop Every Frame
-        SolarSystemManager->>SolarSystemManager: Update Body Positions
-        SolarSystemManager->>SolarSystemManager: Apply Rotation Speeds
-        SolarSystemManager->>SolarSystemManager: Apply Orbital Speeds
-    end
-```
-
-### 5. Planet Customization
+### 7. Planet Customization
 - Select planet type (Class-M, Class-L, Class-H, etc.)
 - Adjust terrain parameters:
   - Height
@@ -151,25 +125,10 @@ sequenceDiagram
   - Turbulence
   - Color
 
-### 6. Performance Optimization
-- Spatial partitioning for physics calculations
-- Chunk-based terrain generation
-- Level of detail management
-- Efficient rendering techniques
-- Memory management for celestial bodies
-
-### 7. User Interface
-- Responsive design
-- Modal dialogs for settings
-- Tooltips for controls
-- Keyboard shortcuts
-- Touch interface support
-- Debug information display
-- Edit mode controls
-
 ### 8. Data Management
-- Star system data structure
-- Celestial body properties
+- Star system data structure with consistent naming conventions
+- Deterministic celestial body generation using Lehmer32
+- Planet class parameters and properties
 - Orbital elements storage
 - Physics parameters
 - User preferences
@@ -675,72 +634,45 @@ sequenceDiagram
     participant GUI
     participant THREE
 
-    User->>System: Press Tab Key
-    System->>System: Prevent Default Event
+    User->>System: Press Tab key
+    System->>System: Prevent default event
     System->>SolarSystemManager: getCelestialBodies()
-    SolarSystemManager-->>System: Array of THREE.Mesh objects
-    
-    System->>SolarSystemManager: getCurrentEditBody()
-    SolarSystemManager-->>System: Current Body (THREE.Mesh)
-    
-    System->>System: Find Current Index
-    System->>System: Calculate Next Index
+    SolarSystemManager-->>System: Return array of bodies
+    System->>System: Find current edit body
+    System->>System: Calculate next index
     System->>SolarSystemManager: setCurrentEditBody(nextBody)
     
-    System->>UI: Update GUI Title
-    UI->>UI: Clear Existing Title
-    UI->>UI: Set New Title Based on Body Type
-    
-    System->>GUI: updateGUIControls(nextBody)
-    GUI->>GUI: Clear Existing Folders
-    Note over GUI: Remove all folders from dat.GUI
-    
-    GUI->>SolarSystemManager: Find Body Key
-    SolarSystemManager-->>GUI: Body Key (e.g., 'star', 'planet_1', 'moon_1_2')
-    
-    alt Body is Star
-        GUI->>GUI: Create Star Properties Folder
-        GUI->>THREE: Access geometry.parameters.radius
-        THREE-->>GUI: Current Radius
-        GUI->>GUI: Add Temperature Control (Default: 5000)
-        GUI->>GUI: Add Radius Control
-        Note over GUI: Store values in local params object
-    else Body is Planet
-        GUI->>GUI: Create Planet Properties Folder
-        GUI->>THREE: Access geometry.parameters.radius
-        THREE-->>GUI: Current Radius
-        GUI->>GUI: Add Radius Control
-        GUI->>GUI: Add Rotation Speed Control
-        GUI->>GUI: Add Orbit Speed Control
-        Note over GUI: Store values in local params object
-    else Body is Moon
-        GUI->>GUI: Create Moon Properties Folder
-        GUI->>THREE: Access geometry.parameters.radius
-        THREE-->>GUI: Current Radius
-        GUI->>GUI: Add Radius Control
-        GUI->>GUI: Add Rotation Speed Control
-        GUI->>GUI: Add Orbit Speed Control
-        Note over GUI: Store values in local params object
+    Note over System: Clear existing GUI folders
+    loop Until all folders removed
+        System->>GUI: Get first folder name
+        System->>GUI: Close folder
+        System->>GUI: Remove folder
     end
     
-    Note over GUI: Add onChange Handlers for Each Control
-    
-    alt Property Changed is Radius
-        GUI->>THREE: Create New SphereGeometry
-        GUI->>THREE: Dispose Old Geometry
-        GUI->>THREE: Set New Geometry
-    else Property Changed is Temperature (Star Only)
-        GUI->>THREE: Update Material Color
-        GUI->>THREE: Update Emissive Color
-    else Property Changed is Rotation/Orbit Speed
-        GUI->>SolarSystemManager: Store Speed in rotationSpeeds/orbitalSpeeds Map
+    System->>System: Determine body type
+    alt Star
+        System->>GUI: Add "Star Properties" folder
+        System->>GUI: Add temperature control
+        System->>GUI: Add radius control
+    else Planet
+        System->>GUI: Add "Planet Properties" folder
+        System->>GUI: Add radius control
+        System->>GUI: Add rotation speed control
+        System->>GUI: Add orbit speed control
+    else Moon
+        System->>GUI: Add "Moon Properties" folder
+        System->>GUI: Add radius control
+        System->>GUI: Add rotation speed control
+        System->>GUI: Add orbit speed control
     end
     
-    Note over System: Animation Loop Updates
-    loop Every Frame
-        SolarSystemManager->>SolarSystemManager: Update Body Positions
-        SolarSystemManager->>SolarSystemManager: Apply Rotation Speeds
-        SolarSystemManager->>SolarSystemManager: Apply Orbital Speeds
+    System->>UI: Update GUI title
+    System->>THREE: Update body properties
+    
+    Note over System: Animation loop continues
+    loop Every frame
+        System->>THREE: Update body positions
+        System->>THREE: Apply rotation/orbit speeds
     end
 ```
 
@@ -823,6 +755,27 @@ sequenceDiagram
 ```
 
 ## Technical Considerations
+
+### Naming System
+- **Stars**:
+  - Prefix list: Greek letters (Alpha through Pi)
+  - Name list: Traditional star names (Centauri, Proxima, etc.)
+  - Format: `{prefix} {name}`
+
+- **Planets**:
+  - Prefix list: Mythological/space-themed names (Nova, Terra, etc.)
+  - Suffix list: Descriptive/numerical terms (Prime, Major, I through X)
+  - Format: `{prefix} {suffix}`
+
+- **Moons**:
+  - Prefix list: Traditional moon names (Phobos, Deimos, etc.)
+  - Suffix list: Greek letters, Roman numerals, Latin ordinals
+  - Format: `{prefix} {suffix}`
+
+### Random Generation
+- Uses Lehmer32 algorithm for deterministic random generation
+- Seed-based system ensures reproducible results
+- Checksum verification for universe consistency
 
 ### Performance
 - Efficient physics calculations
