@@ -404,7 +404,10 @@ export class SolarSystemManager {
     }
 
     getCelestialBodies() {
-        return Array.from(this.celestialBodies.values());
+        // Only return actual celestial bodies (star, planets, moons)
+        return Array.from(this.celestialBodies.entries())
+            .filter(([key]) => key === 'star' || key.startsWith('planet_') || key.startsWith('moon_'))
+            .map(([_, body]) => body);
     }
 
     getCurrentEditBody() {
