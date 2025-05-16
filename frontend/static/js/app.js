@@ -1161,7 +1161,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (bodies.length > 0) {
                 const firstBody = bodies[0];
                 solarSystemManager.setCurrentEditBody(firstBody);
-                cycleCelestialBody(); // Use the same function to set up initial state
+                updateGUIControls(firstBody); // Update GUI controls for the first body
+                
+                // Update GUI title
+                let bodyName = 'Star';
+                if (firstBody !== solarSystemManager.celestialBodies.get('star')) {
+                    for (const [key, body] of solarSystemManager.celestialBodies.entries()) {
+                        if (body === firstBody) {
+                            if (key.startsWith('planet_')) {
+                                bodyName = `Planet ${key.split('_')[1]}`;
+                            } else if (key.startsWith('moon_')) {
+                                const [_, planetIndex, moonIndex] = key.split('_');
+                                bodyName = `Moon ${moonIndex} of Planet ${planetIndex}`;
+                            }
+                            break;
+                        }
+                    }
+                }
+                guiTitle.textContent = bodyName;
             }
         } else {
             document.body.classList.remove('edit-mode');
@@ -1812,31 +1829,128 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Function to update GUI controls for a specific body
     function updateGUIControls(body) {
-        // Clear existing controls
-        for (let i = gui.__folders.length - 1; i >= 0; i--) {
-            gui.removeFolder(gui.__folders[i]);
+        // Remove all existing folders
+        while (gui.__folders && Object.keys(gui.__folders).length > 0) {
+            const folderName = Object.keys(gui.__folders)[0];
+            const folder = gui.__folders[folderName];
+            if (folder) {
+                folder.close();
+                gui.removeFolder(folder);
+            }
         }
         
+        // Find the key for this body in the celestialBodies map
+        let bodyKey = null;
+        for (const [key, value] of solarSystemManager.celestialBodies.entries()) {
+            if (value === body) {
+                bodyKey = key;
+                break;
+            }
+        }
+        
+        if (!bodyKey) {
+            console.warn('No body key found for:', body);
+            return;
+        }
+        
+        console.log('Updating GUI controls for body:', { bodyKey, body });
+        
         // Add new controls based on body type
-        if (body.type === 'star') {
+        if (bodyKey === 'star') {
             // Add star-specific controls
             const starFolder = gui.addFolder('Star Properties');
-            starFolder.add(body, 'temperature', 1000, 10000).name('Temperature');
-            starFolder.add(body, 'radius', 0.1, 10).name('Radius');
+            const starParams = {
+                temperature: 5000, // Default star temperature
+                radius: body.geometry.parameters.radius
+            };
+            
+            starFolder.add(starParams, 'temperature', 1000, 10000)
+                .name('Temperature')
+                .onChange((value) => {
+                    // Update star material color based on temperature
+                    const color = new THREE.Color();
+                    color.setHSL(0.1 + (value - 1000) / 9000 * 0.1, 1, 0.5);
+                    body.material.color = color;
+                    body.material.emissive = color;
+                });
+                
+            starFolder.add(starParams, 'radius', 0.1, 10)
+                .name('Radius')
+                .onChange((value) => {
+                    // Update star geometry
+                    const newGeometry = new THREE.SphereGeometry(value, 32, 32);
+                    body.geometry.dispose();
+                    body.geometry = newGeometry;
+                });
+                
             starFolder.open();
-        } else if (body.type === 'planet') {
+        } else if (bodyKey.startsWith('planet_')) {
+            const planetIndex = bodyKey.split('_')[1];
             // Add planet-specific controls
             const planetFolder = gui.addFolder('Planet Properties');
-            planetFolder.add(body, 'radius', 0.1, 5).name('Radius');
-            planetFolder.add(body, 'rotationSpeed', 0, 10).name('Rotation Speed');
-            planetFolder.add(body, 'orbitSpeed', 0, 10).name('Orbit Speed');
+            const planetParams = {
+                radius: body.geometry.parameters.radius,
+                rotationSpeed: solarSystemManager.rotationSpeeds.get(bodyKey) || 1.0,
+                orbitSpeed: solarSystemManager.orbitalSpeeds.get(bodyKey) || 1.0
+            };
+            
+            planetFolder.add(planetParams, 'radius', 0.1, 5)
+                .name('Radius')
+                .onChange((value) => {
+                    // Update planet geometry
+                    const newGeometry = new THREE.SphereGeometry(value, 32, 32);
+                    body.geometry.dispose();
+                    body.geometry = newGeometry;
+                });
+                
+            planetFolder.add(planetParams, 'rotationSpeed', 0, 10)
+                .name('Rotation Speed')
+                .onChange((value) => {
+                    // Store rotation speed for animation loop
+                    solarSystemManager.rotationSpeeds.set(bodyKey, value);
+                });
+                
+            planetFolder.add(planetParams, 'orbitSpeed', 0, 10)
+                .name('Orbit Speed')
+                .onChange((value) => {
+                    // Store orbit speed for animation loop
+                    solarSystemManager.orbitalSpeeds.set(bodyKey, value);
+                });
+                
             planetFolder.open();
-        } else if (body.type === 'moon') {
+        } else if (bodyKey.startsWith('moon_')) {
+            const [_, planetIndex, moonIndex] = bodyKey.split('_');
             // Add moon-specific controls
             const moonFolder = gui.addFolder('Moon Properties');
-            moonFolder.add(body, 'radius', 0.1, 2).name('Radius');
-            moonFolder.add(body, 'rotationSpeed', 0, 10).name('Rotation Speed');
-            moonFolder.add(body, 'orbitSpeed', 0, 10).name('Orbit Speed');
+            const moonParams = {
+                radius: body.geometry.parameters.radius,
+                rotationSpeed: solarSystemManager.rotationSpeeds.get(bodyKey) || 1.0,
+                orbitSpeed: solarSystemManager.orbitalSpeeds.get(bodyKey) || 1.0
+            };
+            
+            moonFolder.add(moonParams, 'radius', 0.1, 2)
+                .name('Radius')
+                .onChange((value) => {
+                    // Update moon geometry
+                    const newGeometry = new THREE.SphereGeometry(value, 32, 32);
+                    body.geometry.dispose();
+                    body.geometry = newGeometry;
+                });
+                
+            moonFolder.add(moonParams, 'rotationSpeed', 0, 10)
+                .name('Rotation Speed')
+                .onChange((value) => {
+                    // Store rotation speed for animation loop
+                    solarSystemManager.rotationSpeeds.set(bodyKey, value);
+                });
+                
+            moonFolder.add(moonParams, 'orbitSpeed', 0, 10)
+                .name('Orbit Speed')
+                .onChange((value) => {
+                    // Store orbit speed for animation loop
+                    solarSystemManager.orbitalSpeeds.set(bodyKey, value);
+                });
+                
             moonFolder.open();
         }
     }

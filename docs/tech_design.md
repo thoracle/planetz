@@ -43,6 +43,86 @@
 - Manage camera controls
 - Handle touch interactions
 
+#### 4.3 Tab Cycling in Edit Mode
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant System
+    participant UI
+    participant SolarSystemManager
+    participant GUI
+    participant THREE
+
+    User->>System: Press Tab Key
+    System->>System: Prevent Default Event
+    System->>SolarSystemManager: getCelestialBodies()
+    SolarSystemManager-->>System: Array of THREE.Mesh objects
+    
+    System->>SolarSystemManager: getCurrentEditBody()
+    SolarSystemManager-->>System: Current Body (THREE.Mesh)
+    
+    System->>System: Find Current Index
+    System->>System: Calculate Next Index
+    System->>SolarSystemManager: setCurrentEditBody(nextBody)
+    
+    System->>UI: Update GUI Title
+    UI->>UI: Clear Existing Title
+    UI->>UI: Set New Title Based on Body Type
+    
+    System->>GUI: updateGUIControls(nextBody)
+    GUI->>GUI: Clear Existing Folders
+    Note over GUI: Remove all folders from dat.GUI
+    
+    GUI->>SolarSystemManager: Find Body Key
+    SolarSystemManager-->>GUI: Body Key (e.g., 'star', 'planet_1', 'moon_1_2')
+    
+    alt Body is Star
+        GUI->>GUI: Create Star Properties Folder
+        GUI->>THREE: Access geometry.parameters.radius
+        THREE-->>GUI: Current Radius
+        GUI->>GUI: Add Temperature Control (Default: 5000)
+        GUI->>GUI: Add Radius Control
+        Note over GUI: Store values in local params object
+    else Body is Planet
+        GUI->>GUI: Create Planet Properties Folder
+        GUI->>THREE: Access geometry.parameters.radius
+        THREE-->>GUI: Current Radius
+        GUI->>GUI: Add Radius Control
+        GUI->>GUI: Add Rotation Speed Control
+        GUI->>GUI: Add Orbit Speed Control
+        Note over GUI: Store values in local params object
+    else Body is Moon
+        GUI->>GUI: Create Moon Properties Folder
+        GUI->>THREE: Access geometry.parameters.radius
+        THREE-->>GUI: Current Radius
+        GUI->>GUI: Add Radius Control
+        GUI->>GUI: Add Rotation Speed Control
+        GUI->>GUI: Add Orbit Speed Control
+        Note over GUI: Store values in local params object
+    end
+    
+    Note over GUI: Add onChange Handlers for Each Control
+    
+    alt Property Changed is Radius
+        GUI->>THREE: Create New SphereGeometry
+        GUI->>THREE: Dispose Old Geometry
+        GUI->>THREE: Set New Geometry
+    else Property Changed is Temperature (Star Only)
+        GUI->>THREE: Update Material Color
+        GUI->>THREE: Update Emissive Color
+    else Property Changed is Rotation/Orbit Speed
+        GUI->>SolarSystemManager: Store Speed in rotationSpeeds/orbitalSpeeds Map
+    end
+    
+    Note over System: Animation Loop Updates
+    loop Every Frame
+        SolarSystemManager->>SolarSystemManager: Update Body Positions
+        SolarSystemManager->>SolarSystemManager: Apply Rotation Speeds
+        SolarSystemManager->>SolarSystemManager: Apply Orbital Speeds
+    end
+```
+
 ### 5. Planet Customization
 - Select planet type (Class-M, Class-L, Class-H, etc.)
 - Adjust terrain parameters:
@@ -582,6 +662,86 @@ sequenceDiagram
     Note right of System: - Two-finger pinch: Zoom
     Note right of System: - Touch duration tracking
     Note right of System: - Distance calculation
+```
+
+#### 4.3 Tab Cycling in Edit Mode
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant System
+    participant UI
+    participant SolarSystemManager
+    participant GUI
+    participant THREE
+
+    User->>System: Press Tab Key
+    System->>System: Prevent Default Event
+    System->>SolarSystemManager: getCelestialBodies()
+    SolarSystemManager-->>System: Array of THREE.Mesh objects
+    
+    System->>SolarSystemManager: getCurrentEditBody()
+    SolarSystemManager-->>System: Current Body (THREE.Mesh)
+    
+    System->>System: Find Current Index
+    System->>System: Calculate Next Index
+    System->>SolarSystemManager: setCurrentEditBody(nextBody)
+    
+    System->>UI: Update GUI Title
+    UI->>UI: Clear Existing Title
+    UI->>UI: Set New Title Based on Body Type
+    
+    System->>GUI: updateGUIControls(nextBody)
+    GUI->>GUI: Clear Existing Folders
+    Note over GUI: Remove all folders from dat.GUI
+    
+    GUI->>SolarSystemManager: Find Body Key
+    SolarSystemManager-->>GUI: Body Key (e.g., 'star', 'planet_1', 'moon_1_2')
+    
+    alt Body is Star
+        GUI->>GUI: Create Star Properties Folder
+        GUI->>THREE: Access geometry.parameters.radius
+        THREE-->>GUI: Current Radius
+        GUI->>GUI: Add Temperature Control (Default: 5000)
+        GUI->>GUI: Add Radius Control
+        Note over GUI: Store values in local params object
+    else Body is Planet
+        GUI->>GUI: Create Planet Properties Folder
+        GUI->>THREE: Access geometry.parameters.radius
+        THREE-->>GUI: Current Radius
+        GUI->>GUI: Add Radius Control
+        GUI->>GUI: Add Rotation Speed Control
+        GUI->>GUI: Add Orbit Speed Control
+        Note over GUI: Store values in local params object
+    else Body is Moon
+        GUI->>GUI: Create Moon Properties Folder
+        GUI->>THREE: Access geometry.parameters.radius
+        THREE-->>GUI: Current Radius
+        GUI->>GUI: Add Radius Control
+        GUI->>GUI: Add Rotation Speed Control
+        GUI->>GUI: Add Orbit Speed Control
+        Note over GUI: Store values in local params object
+    end
+    
+    Note over GUI: Add onChange Handlers for Each Control
+    
+    alt Property Changed is Radius
+        GUI->>THREE: Create New SphereGeometry
+        GUI->>THREE: Dispose Old Geometry
+        GUI->>THREE: Set New Geometry
+    else Property Changed is Temperature (Star Only)
+        GUI->>THREE: Update Material Color
+        GUI->>THREE: Update Emissive Color
+    else Property Changed is Rotation/Orbit Speed
+        GUI->>SolarSystemManager: Store Speed in rotationSpeeds/orbitalSpeeds Map
+    end
+    
+    Note over System: Animation Loop Updates
+    loop Every Frame
+        SolarSystemManager->>SolarSystemManager: Update Body Positions
+        SolarSystemManager->>SolarSystemManager: Apply Rotation Speeds
+        SolarSystemManager->>SolarSystemManager: Apply Orbital Speeds
+    end
 ```
 
 ### 5. Planet Customization
