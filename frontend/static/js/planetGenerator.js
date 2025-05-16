@@ -1,4 +1,5 @@
 import ChunkManager from './chunkManager.js';
+import * as THREE from 'three';
 
 class PlanetGenerator {
     constructor(gridSize = 64) {
@@ -377,6 +378,43 @@ class PlanetGenerator {
             result = (hash & 4) === 0 ? 0.000001 : -0.000001;
         }
         return result;
+    }
+
+    async generatePlanet(planetData) {
+        // Create a new geometry for the planet
+        const geometry = new THREE.SphereGeometry(1, 32, 32); // Adjust size as needed
+
+        // Create a material for the planet
+        const material = new THREE.MeshPhongMaterial({
+            color: this.getPlanetColor(planetData.planet_type), // Assuming you have a method to get color
+            shininess: 15,
+            flatShading: true,
+            emissive: 0x000000, // Set emissive color to black
+            emissiveIntensity: 0 // Set emissive intensity to 0
+        });
+
+        // Create the planet mesh
+        const planet = new THREE.Mesh(geometry, material);
+
+        // Return the planet mesh
+        return planet;
+    }
+
+    getPlanetColor(planetType) {
+        // Define colors for different planet types
+        const colors = {
+            'Class-M': 0x4CAF50, // Green
+            'Class-L': 0xFF9800, // Orange
+            'Class-H': 0xFF5722, // Deep Orange
+            'Class-D': 0x9C27B0, // Purple
+            'Class-J': 0x2196F3, // Blue
+            'Class-K': 0x795548, // Brown
+            'Class-N': 0x00BCD4, // Cyan
+            'Class-Y': 0xF44336  // Red
+        };
+
+        // Return the color for the given planet type, defaulting to a neutral color if not found
+        return colors[planetType] || 0x808080; // Default to gray
     }
 }
 

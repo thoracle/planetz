@@ -5,6 +5,7 @@ import { Atmosphere } from './Atmosphere.js';
 import { Cloud } from './Cloud.js';
 import { ViewManager } from './views/ViewManager.js';
 import { StarfieldManager } from './views/StarfieldManager.js';
+import { SolarSystemManager } from './SolarSystemManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Initializing application...');
@@ -101,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     controls.panSpeed = 1.0;
     controls.rotateSpeed = 1.0;
     controls.zoomSpeed = 3.0;
-    controls.target = new THREE.Vector3(0, 0, 0); // Set initial target but don't update it during movement
+    controls.target = new THREE.Vector3(0, 0, 0);
     controls.update();
 
     // Remove all dynamic mouse button remapping
@@ -117,8 +118,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize StarfieldManager
     const starfieldManager = new StarfieldManager(scene, camera);
 
+    // Initialize SolarSystemManager
+    const solarSystemManager = new SolarSystemManager(scene, camera);
+
     // Connect ViewManager and StarfieldManager
     viewManager.setStarfieldManager(starfieldManager);
+
+    // Generate initial star system
+    solarSystemManager.generateStarSystem().then(success => {
+        if (success) {
+            console.log('Star system generated successfully');
+        } else {
+            console.error('Failed to generate star system');
+        }
+    });
 
     // Debug logging function for mouse events
     function logMouseEvent(type, event) {
@@ -405,7 +418,27 @@ document.addEventListener('DOMContentLoaded', () => {
         transform: none !important;
         pointer-events: auto;
         display: none;
+        padding-top: 90px;
     `;
+    
+    // Add title element for current celestial body
+    const guiTitle = document.createElement('div');
+    guiTitle.id = 'gui-title';
+    guiTitle.style.cssText = `
+        color: white;
+        font-family: monospace;
+        font-size: 16px;
+        text-align: center;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 5px;
+        border-radius: 5px;
+        position: absolute;
+        top: 50px;
+        left: 0;
+        right: 0;
+        z-index: 1001;
+    `;
+    guiContainer.appendChild(guiTitle);
     
     // Style the GUI element itself
     gui.domElement.style.cssText = `
@@ -1122,6 +1155,14 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.add('edit-mode');
             guiContainer.style.display = 'block';
             gui.domElement.style.display = 'block';
+            
+            // Initialize with the first celestial body
+            const bodies = solarSystemManager.getCelestialBodies();
+            if (bodies.length > 0) {
+                const firstBody = bodies[0];
+                solarSystemManager.setCurrentEditBody(firstBody);
+                cycleCelestialBody(); // Use the same function to set up initial state
+            }
         } else {
             document.body.classList.remove('edit-mode');
             guiContainer.style.display = 'none';
@@ -1136,14 +1177,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (event) => {
         if (event.ctrlKey) {
             if (event.key === 'd') {
-                event.preventDefault(); // Prevent default browser behavior
+                event.preventDefault();
                 toggleDebugMode();
             } else if (event.key === 'e') {
-                event.preventDefault(); // Prevent default browser behavior
+                event.preventDefault();
                 toggleEditMode();
             }
+        } else if (editMode && event.key === 'Tab') {
+            event.preventDefault();
+            event.stopPropagation();
+            cycleCelestialBody();
+            return false;
         }
-    });
+    }, true);
     
     console.log('Container dimensions:', {
         width: container.clientWidth,
@@ -1309,34 +1355,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to update debug info
     function updateDebugInfo() {
         if (debugVisible) {
-            const geometry = planet.geometry;
-            const vertexCount = geometry.attributes.position.count;
-            const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
+            let html = '';
             
-            // Format position coordinates with 2 decimal places
+            // Add solar system info
+            const solarSystemInfo = solarSystemManager.getDebugInfo();
+            for (const [key, value] of Object.entries(solarSystemInfo)) {
+                html += `${key}: ${value}<br>`;
+            }
+            
+            // Add camera position
             const pos = camera.position;
-            const position = {
-                x: pos.x.toFixed(2),
-                y: pos.y.toFixed(2),
-                z: pos.z.toFixed(2)
-            };
+            html += `<br>Camera Position: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})<br>`;
             
-            debugInfo.innerHTML = `
-                Position: (${position.x}, ${position.y}, ${position.z})<br>
-                Vertices: ${vertexCount.toLocaleString()}<br>
-                Triangles: ${Math.floor(triangleCount).toLocaleString()}<br>
-                Subdivision Level: ${geometryParams.subdivisionLevel}<br>
-            `;
-
-            // Log geometry details for debugging
-            console.log('Geometry stats:', {
-                vertices: vertexCount,
-                triangles: triangleCount,
-                hasIndex: !!geometry.index,
-                indexCount: geometry.index ? geometry.index.count : 0,
-                subdivisionLevel: geometryParams.subdivisionLevel,
-                position: position
-            });
+            debugInfo.innerHTML = html;
         }
     }
     
@@ -1609,6 +1640,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update starfield
         starfieldManager.update(deltaTime);
         
+        // Update solar system
+        solarSystemManager.update(deltaTime);
+        
         // Update wave animation if enabled
         if (oceanParams.enabled && oceanParams.wavesEnabled && planet.oceanMesh) {
             waveTime += 0.01 * oceanParams.waveSpeed;
@@ -1726,4 +1760,84 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
         }
     }, true);
+
+    // Function to cycle through celestial bodies
+    function cycleCelestialBody() {
+        const bodies = solarSystemManager.getCelestialBodies();
+        if (bodies.length === 0) return;
+
+        const currentBody = solarSystemManager.getCurrentEditBody();
+        const currentIndex = currentBody ? bodies.indexOf(currentBody) : -1;
+        const nextIndex = (currentIndex + 1) % bodies.length;
+        const nextBody = bodies[nextIndex];
+        
+        console.log('Cycling to body:', {
+            currentBody,
+            nextBody,
+            currentIndex,
+            nextIndex,
+            totalBodies: bodies.length
+        });
+        
+        // Update the current edit body
+        solarSystemManager.setCurrentEditBody(nextBody);
+        
+        // Update GUI title with body type and index
+        let bodyName = 'Unnamed Body';
+        if (nextBody) {
+            if (nextBody === solarSystemManager.celestialBodies.get('star')) {
+                bodyName = 'Star';
+            } else if (nextBody.name) {
+                bodyName = nextBody.name;
+            } else {
+                // Try to determine body type from its key in the celestialBodies map
+                for (const [key, body] of solarSystemManager.celestialBodies.entries()) {
+                    if (body === nextBody) {
+                        if (key.startsWith('planet_')) {
+                            bodyName = `Planet ${key.split('_')[1]}`;
+                        } else if (key.startsWith('moon_')) {
+                            const [_, planetIndex, moonIndex] = key.split('_');
+                            bodyName = `Moon ${moonIndex} of Planet ${planetIndex}`;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        guiTitle.textContent = bodyName;
+        
+        // Update GUI controls for the new body
+        updateGUIControls(nextBody);
+    }
+
+    // Function to update GUI controls for a specific body
+    function updateGUIControls(body) {
+        // Clear existing controls
+        for (let i = gui.__folders.length - 1; i >= 0; i--) {
+            gui.removeFolder(gui.__folders[i]);
+        }
+        
+        // Add new controls based on body type
+        if (body.type === 'star') {
+            // Add star-specific controls
+            const starFolder = gui.addFolder('Star Properties');
+            starFolder.add(body, 'temperature', 1000, 10000).name('Temperature');
+            starFolder.add(body, 'radius', 0.1, 10).name('Radius');
+            starFolder.open();
+        } else if (body.type === 'planet') {
+            // Add planet-specific controls
+            const planetFolder = gui.addFolder('Planet Properties');
+            planetFolder.add(body, 'radius', 0.1, 5).name('Radius');
+            planetFolder.add(body, 'rotationSpeed', 0, 10).name('Rotation Speed');
+            planetFolder.add(body, 'orbitSpeed', 0, 10).name('Orbit Speed');
+            planetFolder.open();
+        } else if (body.type === 'moon') {
+            // Add moon-specific controls
+            const moonFolder = gui.addFolder('Moon Properties');
+            moonFolder.add(body, 'radius', 0.1, 2).name('Radius');
+            moonFolder.add(body, 'rotationSpeed', 0, 10).name('Rotation Speed');
+            moonFolder.add(body, 'orbitSpeed', 0, 10).name('Orbit Speed');
+            moonFolder.open();
+        }
+    }
 }); 

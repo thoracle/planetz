@@ -45,9 +45,7 @@ export class Cloud {
             blending: THREE.CustomBlending,
             blendEquation: THREE.AddEquation,
             blendSrc: THREE.SrcAlphaFactor,
-            blendDst: THREE.OneMinusSrcAlphaFactor,
-            blendSrcAlpha: THREE.SrcAlphaFactor,
-            blendDstAlpha: THREE.OneMinusSrcAlphaFactor
+            blendDst: THREE.OneMinusSrcAlphaFactor
         });
 
         // Create mesh

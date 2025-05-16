@@ -2,6 +2,7 @@ README.md
 setup.py
 backend/PlanetTypes.py
 backend/__init__.py
+backend/api.py
 backend/app.py
 backend/config.py
 backend/planetGenerator.py
@@ -9,6 +10,7 @@ backend/verse.py
 backend/routes/__init__.py
 backend/routes/api.py
 backend/routes/main.py
+backend/routes/universe.py
 backend/tests/__init__.py
 backend/tests/test_app.py
 planetz_backend.egg-info/PKG-INFO
