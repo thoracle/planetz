@@ -1163,16 +1163,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 solarSystemManager.setCurrentEditBody(firstBody);
                 updateGUIControls(firstBody); // Update GUI controls for the first body
                 
-                // Update GUI title
-                let bodyName = 'Star';
-                if (firstBody !== solarSystemManager.celestialBodies.get('star')) {
+                // Update GUI title with proper name format
+                let bodyName = 'Unnamed Body';
+                if (firstBody === solarSystemManager.celestialBodies.get('star')) {
+                    if (solarSystemManager.starSystem && solarSystemManager.starSystem.star_name) {
+                        bodyName = `${solarSystemManager.starSystem.star_name} (Star)`;
+                    }
+                } else {
                     for (const [key, body] of solarSystemManager.celestialBodies.entries()) {
                         if (body === firstBody) {
                             if (key.startsWith('planet_')) {
-                                bodyName = `Planet ${key.split('_')[1]}`;
+                                const planetIndex = parseInt(key.split('_')[1]);
+                                const planet = solarSystemManager.starSystem?.planets?.[planetIndex];
+                                if (planet && planet.planet_name) {
+                                    bodyName = `${planet.planet_name} (Planet)`;
+                                }
                             } else if (key.startsWith('moon_')) {
-                                const [_, planetIndex, moonIndex] = key.split('_');
-                                bodyName = `Moon ${moonIndex} of Planet ${planetIndex}`;
+                                const [_, planetIndex, moonIndex] = key.split('_').map(Number);
+                                const planet = solarSystemManager.starSystem?.planets?.[planetIndex];
+                                const moon = planet?.moons?.[moonIndex];
+                                if (moon && moon.moon_name) {
+                                    bodyName = `${moon.moon_name} (Moon)`;
+                                }
                             }
                             break;
                         }
@@ -1793,33 +1805,55 @@ document.addEventListener('DOMContentLoaded', () => {
             nextBody,
             currentIndex,
             nextIndex,
-            totalBodies: bodies.length
+            totalBodies: bodies.length,
+            starSystem: solarSystemManager.starSystem,
+            celestialBodies: Array.from(solarSystemManager.celestialBodies.entries())
         });
         
         // Update the current edit body
         solarSystemManager.setCurrentEditBody(nextBody);
         
-        // Update GUI title with body type and index
+        // Update GUI title with body name and type
         let bodyName = 'Unnamed Body';
         if (nextBody) {
-            if (nextBody === solarSystemManager.celestialBodies.get('star')) {
-                bodyName = 'Star';
-            } else if (nextBody.name) {
-                bodyName = nextBody.name;
-            } else {
-                // Try to determine body type from its key in the celestialBodies map
-                for (const [key, body] of solarSystemManager.celestialBodies.entries()) {
-                    if (body === nextBody) {
-                        if (key.startsWith('planet_')) {
-                            bodyName = `Planet ${key.split('_')[1]}`;
-                        } else if (key.startsWith('moon_')) {
-                            const [_, planetIndex, moonIndex] = key.split('_');
-                            bodyName = `Moon ${moonIndex} of Planet ${planetIndex}`;
+            // Find the key for this body in the celestialBodies map
+            let foundKey = null;
+            for (const [key, body] of solarSystemManager.celestialBodies.entries()) {
+                if (body === nextBody) {
+                    foundKey = key;
+                    console.log('Found body key:', { key, body, starSystem: solarSystemManager.starSystem });
+                    if (key === 'star') {
+                        if (solarSystemManager.starSystem && solarSystemManager.starSystem.star_name) {
+                            bodyName = `${solarSystemManager.starSystem.star_name} (Star)`;
+                        } else {
+                            console.warn('Star system or star name missing:', solarSystemManager.starSystem);
                         }
-                        break;
+                    } else if (key.startsWith('planet_')) {
+                        const planetIndex = parseInt(key.split('_')[1]);
+                        const planet = solarSystemManager.starSystem?.planets?.[planetIndex];
+                        if (planet && planet.planet_name) {
+                            bodyName = `${planet.planet_name} (Planet)`;
+                        } else {
+                            console.warn('Planet data missing:', { planetIndex, planet });
+                        }
+                    } else if (key.startsWith('moon_')) {
+                        const [_, planetIndex, moonIndex] = key.split('_').map(Number);
+                        const planet = solarSystemManager.starSystem?.planets?.[planetIndex];
+                        const moon = planet?.moons?.[moonIndex];
+                        if (moon && moon.moon_name) {
+                            bodyName = `${moon.moon_name} (Moon)`;
+                        } else {
+                            console.warn('Moon data missing:', { planetIndex, moonIndex, planet, moon });
+                        }
                     }
+                    break;
                 }
             }
+            if (!foundKey) {
+                console.warn('Body not found in celestialBodies map:', nextBody);
+            }
+        } else {
+            console.warn('nextBody is null or undefined');
         }
         guiTitle.textContent = bodyName;
         

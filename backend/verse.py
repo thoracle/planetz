@@ -1,15 +1,25 @@
 import random
 import hashlib
-import PlanetTypes as _PlanetTypes
+from backend.PlanetTypes import PLANET_CLASSES
 
-# List of predefined planet names
-PLANET_NAMES = [
-    "Alpha Centauri", "Proxima", "Betelgeuse", "Sirius", "Vega",
-    "Arcturus", "Polaris", "Antares", "Rigel", "Canopus",
-    "Aldebaran", "Fomalhaut", "Deneb", "Altair", "Spica",
-    "Regulus", "Castor", "Pollux", "Capella", "Bellatrix",
-    "Mintaka", "Alnilam", "Alnitak", "Saiph", "Meissa",
-    "Nihal", "Menkalinan", "Alhena", "Alzirr", "Wasat"
+# Syllable lists for name generation
+STAR_SYLLABLES = [
+    "cor", "usc", "ant", "yav", "in", "al", "der", "aan", "hos", "oth",
+    "mus", "taf", "ar", "jak", "koo", "dag", "bah", "bes", "pin", "kam",
+    "ino", "geo", "no", "sis", "fel", "uc", "lum", "nar", "sha", "da", "too", "ine"
+]
+
+PLANET_SYLLABLES = [
+    "tat", "oo", "ine", "nab", "mus", "taf", "end", "or", "dag", "obah",
+    "jak", "ku", "cor", "usc", "ant", "bes", "pin", "kam", "ino", "geo",
+    "no", "sis", "fel", "uc", "oth", "lum", "nar", "sha", "da", "too",
+    "al", "der", "aan", "hos", "yav", "in"
+]
+
+MOON_SYLLABLES = [
+    "io", "phos", "sel", "ene", "ara", "the", "mir", "tis", "jan", "rix",
+    "vos", "lor", "zen", "kas", "vek", "nor", "lek", "vos", "end", "or",
+    "yav", "in", "nar", "sha", "da"
 ]
 
 # Lehmer random number generator
@@ -26,68 +36,92 @@ def Lehmer32(seed=None):
     m2 = ((tmp >> 32) ^ tmp) & 0xFFFFFFFF
     return m2
 
-def get_random_name(seed=None):
-    """Get a random name from the predefined list."""
-    if seed is not None:
-        random.seed(seed)
-    return random.choice(PLANET_NAMES)
+def generate_name(syllables, length=3, seed=None):
+    """Generate a name by combining random syllables."""
+    if seed is not None and seed != '':
+        Lehmer32(int(seed))
+    
+    name = ""
+    for _ in range(length):
+        syllable = syllables[Lehmer32() % len(syllables)]
+        name += syllable
+    
+    # Capitalize first letter
+    return name[0].upper() + name[1:]
+
+def get_random_star_name(seed=None):
+    """Generate a unique star name using syllable combination."""
+    return generate_name(STAR_SYLLABLES, length=3, seed=seed)
+
+def get_random_planet_name(seed=None):
+    """Generate a unique planet name using syllable combination."""
+    return generate_name(PLANET_SYLLABLES, length=4, seed=seed)
+
+def get_random_moon_name(seed=None):
+    """Generate a unique moon name using syllable combination."""
+    return generate_name(MOON_SYLLABLES, length=2, seed=seed)
 
 # Generate a star system
 def generate_star_system(random_seed=None):
-    if random_seed is not None:
-        random.seed(random_seed)
+    if random_seed is not None and random_seed != '':
+        Lehmer32(int(random_seed))
 
     star_system = {}
 
-    # Generate star type, size, and other properties
-    star_system['star_type'] = random.choice(['red dwarf', 'yellow dwarf', 'blue giant', 'white dwarf'])
-    star_system['star_size'] = Lehmer32() % 10 + 1
+    # Generate star type and name using Lehmer32 instead of random.choice
+    star_types = ['red dwarf', 'yellow dwarf', 'blue giant', 'white dwarf']
+    star_system['star_type'] = star_types[Lehmer32() % len(star_types)]
+    star_system['star_name'] = get_random_star_name()
+    star_system['star_size'] = 2.0  # Default star size for visualization
     star_system['planets'] = []
 
     # Generate planets
     num_planets = Lehmer32() % 10
     for _ in range(num_planets):
-        planet = generate_planet(random_seed=random_seed)
+        planet = generate_planet()
         star_system['planets'].append(planet)
 
     return star_system
 
 # Generate a planet
-def generate_planet(random_seed=None, name=None):
-    if random_seed is not None:
-        random.seed(random_seed)
+def generate_planet(random_seed=None):
+    if random_seed is not None and random_seed != '':
+        Lehmer32(int(random_seed))
 
     planet = {}
 
-    # Generate planet type, size, moons, and other properties
-    planet['planet_type'] = random.choice(list(_PlanetTypes.PLANET_CLASSES))
-    planet['planet_size'] = Lehmer32() % 10 + 1
+    # Generate planet type and name using Lehmer32
+    planet_types = list(PLANET_CLASSES.keys())
+    planet['planet_type'] = planet_types[Lehmer32() % len(planet_types)]
+    planet['planet_name'] = get_random_planet_name()
     planet['moons'] = []
     
-    # Generate or use provided name
-    if name is None:
-        name = get_random_name(random_seed)
-    planet['name'] = name
+    # Add atmosphere and cloud properties based on planet type
+    planet_class = PLANET_CLASSES[planet['planet_type']]
+    planet['has_atmosphere'] = planet_class.get('has_atmosphere', True)  # Default to True for most planets
+    planet['has_clouds'] = planet_class.get('has_clouds', True)  # Default to True for most planets
+    planet['planet_size'] = 0.8 + (Lehmer32() % 5) * 0.4  # Random size between 0.8 and 2.8
 
     # Generate moons
     num_moons = Lehmer32() % 6
     for _ in range(num_moons):
-        moon = generate_moon(random_seed=random_seed)
+        moon = generate_moon()
         planet['moons'].append(moon)
 
     return planet
 
 # Generate a moon
 def generate_moon(random_seed=None):
-    if random_seed is not None:
-        random.seed(random_seed)
+    if random_seed is not None and random_seed != '':
+        Lehmer32(int(random_seed))
 
     moon = {}
 
-    # Generate moon type, size, and other properties
-    moon['moon_type'] = random.choice(['rocky', 'ice', 'desert'])
-    moon['moon_size'] = Lehmer32() % 5 + 1
-    moon['name'] = get_random_name(random_seed)  # Add name to moons too
+    # Generate moon type and name using Lehmer32
+    moon_types = ['rocky', 'ice', 'desert']
+    moon['moon_type'] = moon_types[Lehmer32() % len(moon_types)]
+    moon['moon_name'] = get_random_moon_name()
+    moon['moon_size'] = 0.2 + (Lehmer32() % 3) * 0.2  # Random size between 0.2 and 0.8
 
     return moon
 
@@ -116,23 +150,24 @@ def calculate_checksum(universe):
 
 # Example usage
 if __name__ == "__main__":
-    # Generate a random name for testing
-    test_name = get_random_name()
-    num_star_systems = len(test_name)
+    # Generate a random seed for testing
+    seed = Lehmer32()
+    num_star_systems = 3
 
-    # Generate a random seed based on the SHA-256 hash of the name
-    hashed_name = hashlib.sha256(test_name.encode()).hexdigest()
-    seed = int(hashed_name, 16) % (2**32)  # Convert hex hash to integer and limit to 32-bit range
-
-    for k,v in _PlanetTypes.Class.items():
-        print(k, v)
+    print("\nGenerating universe with seed:", seed)
+    print("\nPlanet Classes:")
+    for k,v in PLANET_CLASSES.items():
+        print(f"{k}: {v['name']}")
     print("\n")
 
     universe = generate_universe(num_star_systems, seed)
     for i, star_system in enumerate(universe):
-        print(f"Star System {i+1}:")
-        print(star_system)
+        print(f"\nStar System {i+1}:")
+        print(f"Star: {star_system['star_name']} ({star_system['star_type']})")
+        for j, planet in enumerate(star_system['planets']):
+            print(f"  Planet {j+1}: {planet['planet_name']} ({planet['planet_type']})")
+            for k, moon in enumerate(planet['moons']):
+                print(f"    Moon {k+1}: {moon['moon_name']} ({moon['moon_type']})")
 
-    checksum1 = calculate_checksum(universe)
-    print("\nRandom seed for %s: %s" %(test_name, seed))
-    print("Checksum for %s: %s" %(test_name, checksum1))
+    checksum = calculate_checksum(universe)
+    print("\nUniverse checksum:", checksum)
