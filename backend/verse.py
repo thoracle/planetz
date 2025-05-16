@@ -92,14 +92,25 @@ def generate_planet(random_seed=None):
 
     # Generate planet type and name using Lehmer32
     planet_types = list(PLANET_CLASSES.keys())
-    planet['planet_type'] = planet_types[Lehmer32() % len(planet_types)]
+    planet_type = planet_types[Lehmer32() % len(planet_types)]
+    planet['planet_type'] = planet_type
     planet['planet_name'] = get_random_planet_name()
     planet['moons'] = []
     
+    # Add the full planet class parameters
+    planet_class = PLANET_CLASSES[planet_type]
+    planet['params'] = {
+        'noise_scale': planet_class['params']['noise_scale'],
+        'octaves': planet_class['params']['octaves'],
+        'persistence': planet_class['params']['persistence'],
+        'lacunarity': planet_class['params']['lacunarity'],
+        'terrain_height': planet_class['params']['terrain_height'],
+        'seed': Lehmer32()  # Generate a new seed for this specific planet
+    }
+    
     # Add atmosphere and cloud properties based on planet type
-    planet_class = PLANET_CLASSES[planet['planet_type']]
-    planet['has_atmosphere'] = planet_class.get('has_atmosphere', True)  # Default to True for most planets
-    planet['has_clouds'] = planet_class.get('has_clouds', True)  # Default to True for most planets
+    planet['has_atmosphere'] = planet_type not in ['Class-K']  # Only barren planets lack atmosphere
+    planet['has_clouds'] = planet_type not in ['Class-K', 'Class-H']  # Desert and barren planets lack clouds
     planet['planet_size'] = 0.8 + (Lehmer32() % 5) * 0.4  # Random size between 0.8 and 2.8
 
     # Generate moons

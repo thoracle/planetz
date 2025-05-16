@@ -160,11 +160,13 @@ export class SolarSystemManager {
         // Clear existing celestial bodies
         this.clearSystem();
 
-        // Create star
-        const starGeometry = new THREE.SphereGeometry(2, 32, 32);
+        // Create star with proper size and color
+        const starSize = this.starSystem.star_size || 2.0;
+        const starGeometry = new THREE.SphereGeometry(starSize, 32, 32);
+        const starColor = this.getStarColor(this.starSystem.star_type);
         const starMaterial = new THREE.MeshBasicMaterial({
-            color: this.getStarColor(this.starSystem.star_type),
-            emissive: this.getStarColor(this.starSystem.star_type),
+            color: starColor,
+            emissive: starColor,
             emissiveIntensity: 1
         });
         const star = new THREE.Mesh(starGeometry, starMaterial);
@@ -172,8 +174,8 @@ export class SolarSystemManager {
         this.celestialBodies.set('star', star);
         console.log('Created star at position:', star.position);
 
-        // Add star light
-        const starLight = new THREE.PointLight(0xffffff, 2, 100);
+        // Add star light with matching color
+        const starLight = new THREE.PointLight(starColor, 2, 100);
         starLight.position.copy(star.position);
         this.scene.add(starLight);
         console.log('Added star light');
@@ -187,30 +189,47 @@ export class SolarSystemManager {
     }
 
     async createPlanet(planetData, index) {
-        console.log('Creating planet:', { index, planetData });
-        
-        // Create planet generator
-        const planetGenerator = new PlanetGenerator(64);
+        // Create planet generator first to get visual characteristics
+        const planetGenerator = new PlanetGenerator();
+        if (planetData.params) {
+            planetGenerator.params = {
+                noiseScale: planetData.params.noise_scale,
+                octaves: planetData.params.octaves,
+                persistence: planetData.params.persistence,
+                lacunarity: planetData.params.lacunarity,
+                terrainHeight: planetData.params.terrain_height,
+                seed: planetData.params.seed,
+                planetType: planetData.planet_type
+            };
+        }
         this.planetGenerators.set(`planet_${index}`, planetGenerator);
 
-        // Calculate orbital distance
-        const orbitalDistance = (index + 1) * this.AU * this.SCALE_FACTOR;
-        console.log('Planet orbital distance:', orbitalDistance);
+        // Get visual characteristics for this planet type
+        const characteristics = planetGenerator.getVisualCharacteristics(planetData.planet_type);
 
-        // Create planet mesh
-        const planet = await planetGenerator.generatePlanet(planetData);
-        console.log('Generated planet mesh:', planet);
-        
-        // Position the planet
-        planet.position.x = orbitalDistance;
-        console.log('Planet position:', planet.position);
-        
+        // Create planet mesh with proper material
+        const planetGeometry = new THREE.SphereGeometry(planetData.planet_size || 1, 32, 32);
+        const planetMaterial = new THREE.MeshPhongMaterial({
+            color: characteristics.baseColor,
+            shininess: 15,
+            flatShading: true
+        });
+        const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+
+        // Calculate orbit
+        const orbitDistance = 5 + index * 3;
+        const orbitPeriod = this.calculateOrbitalPeriod(orbitDistance);
+        const meanMotion = (2 * Math.PI) / orbitPeriod;
+        this.orbitalSpeeds.set(`planet_${index}`, meanMotion);
+
+        // Position planet
+        planet.position.x = orbitDistance;
         this.scene.add(planet);
         this.celestialBodies.set(`planet_${index}`, planet);
 
-        // Add orbital elements
+        // Set orbital elements
         this.setOrbitalElements(`planet_${index}`, {
-            semiMajorAxis: orbitalDistance,
+            semiMajorAxis: orbitDistance,
             eccentricity: 0.1 + Math.random() * 0.1,
             inclination: Math.random() * Math.PI / 6,
             longitudeOfAscendingNode: Math.random() * Math.PI * 2,
@@ -221,7 +240,9 @@ export class SolarSystemManager {
 
         // Add atmosphere if needed
         if (planetData.has_atmosphere) {
-            const atmosphere = new Atmosphere(1);
+            const atmosphere = new Atmosphere(planetData.planet_size || 1);
+            atmosphere.mesh.material.color = characteristics.atmosphere.color;
+            atmosphere.mesh.material.opacity = characteristics.atmosphere.density * 0.2;
             atmosphere.mesh.position.copy(planet.position);
             this.scene.add(atmosphere.mesh);
             this.celestialBodies.set(`atmosphere_${index}`, atmosphere.mesh);
@@ -229,10 +250,32 @@ export class SolarSystemManager {
 
         // Add clouds if needed
         if (planetData.has_clouds) {
-            const clouds = new Cloud(1);
+            const clouds = new Cloud(planetData.planet_size || 1);
+            clouds.mesh.material.color = characteristics.clouds.color;
+            clouds.mesh.material.opacity = characteristics.clouds.coverage * 0.5;
             clouds.mesh.position.copy(planet.position);
             this.scene.add(clouds.mesh);
             this.celestialBodies.set(`clouds_${index}`, clouds.mesh);
+        }
+
+        // Add rings for Class-N planets
+        if (planetData.planet_type === 'Class-N') {
+            const ringGeometry = new THREE.RingGeometry(
+                (planetData.planet_size || 1) * 1.5,
+                (planetData.planet_size || 1) * 2.5,
+                64
+            );
+            const ringMaterial = new THREE.MeshPhongMaterial({
+                color: 0xA89F8D,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.8
+            });
+            const rings = new THREE.Mesh(ringGeometry, ringMaterial);
+            rings.rotation.x = Math.PI / 2;
+            rings.position.copy(planet.position);
+            this.scene.add(rings);
+            this.celestialBodies.set(`rings_${index}`, rings);
         }
 
         // Create moons

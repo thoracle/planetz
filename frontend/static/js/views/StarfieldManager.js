@@ -20,8 +20,8 @@ export class StarfieldManager {
         this.isMouseLookEnabled = true;
         this.view = 'FORE'; // Add view state - can be 'FORE' or 'AFT'
         
-        // Create starfield
-        this.starCount = 2000;
+        // Create starfield with quadruple density
+        this.starCount = 8000;  // Doubled again from 4000
         this.starfield = this.createStarfield();
         this.scene.add(this.starfield);
         
@@ -129,14 +129,18 @@ export class StarfieldManager {
     }
 
     updateSpeedIndicator() {
-        // Convert speed to the correct format (0, 0.0625, 0.125, 0.25, 1.5, 6, 12, 25, 37, 43)
-        const speedValues = [0, 0.0625, 0.125, 0.25, 1.5, 6, 12, 25, 37, 43];
-        const speed = speedValues[Math.round(this.currentSpeed)] || 0;
+        // Convert speed to impulse format
+        let speedText;
+        const currentSpeedLevel = Math.round(this.currentSpeed);
         
-        // Calculate percentage of max speed (43 is speed at level 9)
-        const percentage = Math.round((speed / 43) * 100);
+        if (currentSpeedLevel === 0) {
+            speedText = "Full Stop";
+        } else {
+            // Display the exact impulse number matching the key pressed
+            speedText = `Impulse ${currentSpeedLevel}`;
+        }
         
-        this.speedBox.textContent = `Speed: ${percentage}%`;
+        this.speedBox.textContent = `Speed: ${speedText}`;
         this.energyBox.textContent = `Energy: ${this.energy}`;
         this.viewBox.textContent = `View: ${this.view}`;
     }
@@ -233,7 +237,20 @@ export class StarfieldManager {
         if (this.currentSpeed > 0) {
             // Calculate movement - direction based on view
             const moveDirection = this.view === 'AFT' ? -1 : 1;
-            this.velocity.copy(this.cameraDirection).multiplyScalar(this.currentSpeed * deltaTime * 10 * moveDirection);
+            
+            // Apply speed multipliers based on impulse level
+            let speedMultiplier = 1;
+            switch (Math.round(this.currentSpeed)) {
+                case 9: speedMultiplier = 5.0; break;   // 5x faster
+                case 8: speedMultiplier = 4.0; break;   // 4x faster
+                case 7: speedMultiplier = 3.0; break;   // 3x faster
+                case 6: speedMultiplier = 2.0; break;   // 2x faster
+                case 5: speedMultiplier = 1.5; break;   // 1.5x faster
+                case 4: speedMultiplier = 1.25; break;  // 1.25x faster
+                default: speedMultiplier = 1.0;         // normal speed
+            }
+            
+            this.velocity.copy(this.cameraDirection).multiplyScalar(this.currentSpeed * deltaTime * speedMultiplier * moveDirection);
             
             // Move camera
             this.camera.position.add(this.velocity);

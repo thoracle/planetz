@@ -192,78 +192,40 @@ class PlanetGenerator {
 
         const lodLevel = this.calculateLODLevel(distance);
         const samplingStep = this.getLODSamplingStep(lodLevel);
-        const halfSize = this.gridSize / 2;
 
-        // Store both integer and fractional LOD level
-        chunk.lastLODLevel = lodLevel;
-        chunk.lodTransitionFactor = lodLevel - Math.floor(lodLevel);
+        // Apply visual characteristics based on planet type
+        const characteristics = this.getVisualCharacteristics(this.params.planetType);
+        
+        // Generate terrain with color variation based on height and characteristics
+        for (let x = 0; x < chunk.resolution; x += samplingStep) {
+            for (let y = 0; y < chunk.resolution; y += samplingStep) {
+                for (let z = 0; z < chunk.resolution; z += samplingStep) {
+                    const worldX = worldPos.x + x;
+                    const worldY = worldPos.y + y;
+                    const worldZ = worldPos.z + z;
 
-        let densityStats = { min: Infinity, max: -Infinity, sum: 0, count: 0 };
-        let noiseStats = { min: Infinity, max: -Infinity, sum: 0, count: 0 };
+                    const density = this.getDensityAt(worldX, worldY, worldZ);
+                    const height = Math.abs(density);
 
-        // Generate density values with variable resolution
-        for (let x = 0; x < chunk.size; x += samplingStep) {
-            for (let y = 0; y < chunk.size; y += samplingStep) {
-                for (let z = 0; z < chunk.size; z += samplingStep) {
-                    const worldX = worldPos.x + x - halfSize;
-                    const worldY = worldPos.y + y - halfSize;
-                    const worldZ = worldPos.z + z - halfSize;
-
-                    // Calculate distance from center (normalized to 0-1 range)
-                    const distanceFromCenter = Math.sqrt(
-                        worldX * worldX +
-                        worldY * worldY +
-                        worldZ * worldZ
-                    ) / halfSize;
-
-                    // Base density (negative inside planet, positive outside)
-                    let density = 1.0 - distanceFromCenter;
-
-                    // Add noise only if we're near the surface
-                    if (Math.abs(density) < 0.1) {
-                        const noiseValue = this.generateNoise(
-                            worldX + halfSize,
-                            worldY + halfSize,
-                            worldZ + halfSize
-                        );
-                        
-                        // Track noise statistics
-                        noiseStats.min = Math.min(noiseStats.min, noiseValue);
-                        noiseStats.max = Math.max(noiseStats.max, noiseValue);
-                        noiseStats.sum += noiseValue;
-                        noiseStats.count++;
-                        
-                        density += noiseValue * this.params.terrainHeight;
+                    // Calculate color based on height and planet characteristics
+                    let color;
+                    if (height < 0.3) {
+                        color = new THREE.Color(characteristics.lowlandColor);
+                    } else if (height > 0.7) {
+                        color = new THREE.Color(characteristics.highlightColor);
+                    } else {
+                        color = new THREE.Color(characteristics.baseColor);
                     }
 
-                    // Track density statistics
-                    densityStats.min = Math.min(densityStats.min, density);
-                    densityStats.max = Math.max(densityStats.max, density);
-                    densityStats.sum += density;
-                    densityStats.count++;
-
-                    // Fill the block of cells for this LOD step
-                    for (let dx = 0; dx < samplingStep && x + dx < chunk.size; dx++) {
-                        for (let dy = 0; dy < samplingStep && y + dy < chunk.size; dy++) {
-                            for (let dz = 0; dz < samplingStep && z + dz < chunk.size; dz++) {
-                                chunk.setDensity(x + dx, y + dy, z + dz, density);
-                            }
-                        }
-                    }
+                    // Store density and color in chunk data
+                    const index = (x + y * chunk.resolution + z * chunk.resolution * chunk.resolution);
+                    chunk.densityField[index] = density;
+                    chunk.colorField[index] = color;
                 }
             }
         }
 
-        // Only log significant density changes
-        /*
-        if (Math.abs(densityStats.max - densityStats.min) > 0.5) {
-            console.log('Significant density variation detected:', {
-                min: densityStats.min.toFixed(3),
-                max: densityStats.max.toFixed(3),
-                avg: (densityStats.sum / densityStats.count).toFixed(3)
-            });
-        }
-        */
+        chunk.needsUpdate = true;
     }
 
     generateNoise(x, y, z) {
@@ -415,6 +377,123 @@ class PlanetGenerator {
 
         // Return the color for the given planet type, defaulting to a neutral color if not found
         return colors[planetType] || 0x808080; // Default to gray
+    }
+
+    // Get visual characteristics for a planet type
+    getVisualCharacteristics(planetType) {
+        const characteristics = {
+            "Class-M": {
+                baseColor: 0x4a9eff,
+                highlightColor: 0xffffff,
+                lowlandColor: 0x1a4a7f,
+                atmosphere: {
+                    color: new THREE.Color(0.18, 0.39, 0.89),
+                    density: 1.0
+                },
+                clouds: {
+                    enabled: true,
+                    coverage: 0.6,
+                    color: new THREE.Color(1, 1, 1)
+                }
+            },
+            "Class-L": {
+                baseColor: 0x8b4513,
+                highlightColor: 0xd2691e,
+                lowlandColor: 0x3d1f0d,
+                atmosphere: {
+                    color: new THREE.Color(0.6, 0.3, 0.2),
+                    density: 0.7
+                },
+                clouds: {
+                    enabled: true,
+                    coverage: 0.3,
+                    color: new THREE.Color(0.8, 0.75, 0.7)
+                }
+            },
+            "Class-H": {
+                baseColor: 0xd2691e,
+                highlightColor: 0xffd700,
+                lowlandColor: 0x8b4513,
+                atmosphere: {
+                    color: new THREE.Color(0.8, 0.5, 0.2),
+                    density: 0.5
+                },
+                clouds: {
+                    enabled: false
+                }
+            },
+            "Class-D": {
+                baseColor: 0x800000,
+                highlightColor: 0xff4500,
+                lowlandColor: 0x400000,
+                atmosphere: {
+                    color: new THREE.Color(0.7, 0.2, 0.1),
+                    density: 1.2
+                },
+                clouds: {
+                    enabled: true,
+                    coverage: 0.9,
+                    color: new THREE.Color(0.6, 0.2, 0.15)
+                }
+            },
+            "Class-J": {
+                baseColor: 0xffd700,
+                highlightColor: 0xffffff,
+                lowlandColor: 0xdaa520,
+                atmosphere: {
+                    color: new THREE.Color(0.9, 0.7, 0.3),
+                    density: 2.0
+                },
+                clouds: {
+                    enabled: true,
+                    coverage: 1.0,
+                    color: new THREE.Color(0.9, 0.85, 0.6)
+                }
+            },
+            "Class-K": {
+                baseColor: 0xa0522d,
+                highlightColor: 0xd2691e,
+                lowlandColor: 0x6b3419,
+                atmosphere: {
+                    color: new THREE.Color(0.4, 0.3, 0.2),
+                    density: 0.3
+                },
+                clouds: {
+                    enabled: false
+                }
+            },
+            "Class-N": {
+                baseColor: 0xdaa520,
+                highlightColor: 0xffd700,
+                lowlandColor: 0x8b6914,
+                atmosphere: {
+                    color: new THREE.Color(0.6, 0.6, 0.4),
+                    density: 1.5
+                },
+                clouds: {
+                    enabled: true,
+                    coverage: 0.8,
+                    color: new THREE.Color(0.85, 0.8, 0.65)
+                },
+                rings: true
+            },
+            "Class-Y": {
+                baseColor: 0x8b0000,
+                highlightColor: 0xff0000,
+                lowlandColor: 0x4d0000,
+                atmosphere: {
+                    color: new THREE.Color(0.8, 0.1, 0.1),
+                    density: 2.5
+                },
+                clouds: {
+                    enabled: true,
+                    coverage: 1.0,
+                    color: new THREE.Color(0.7, 0.1, 0.05)
+                }
+            }
+        };
+
+        return characteristics[planetType] || characteristics["Class-M"];
     }
 }
 
