@@ -123,6 +123,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Connect ViewManager and StarfieldManager
     viewManager.setStarfieldManager(starfieldManager);
+    
+    // Connect StarfieldManager and SolarSystemManager
+    starfieldManager.setSolarSystemManager(solarSystemManager);
 
     // Generate initial star system
     solarSystemManager.generateStarSystem().then(success => {

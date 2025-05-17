@@ -460,4 +460,41 @@ export class SolarSystemManager {
     setCurrentEditBody(body) {
         this.currentEditBody = body;
     }
+
+    getCelestialBodyInfo(object) {
+        // Find the key for this object
+        let targetKey = null;
+        for (const [key, value] of this.celestialBodies.entries()) {
+            if (value === object) {
+                targetKey = key;
+                break;
+            }
+        }
+
+        if (!targetKey) return { name: "Unknown", type: "Unknown" };
+
+        // Parse the key to determine the type
+        if (targetKey === 'star') {
+            return {
+                name: this.starSystem.star_name,
+                type: this.starSystem.star_type
+            };
+        } else if (targetKey.startsWith('planet_')) {
+            const planetIndex = parseInt(targetKey.split('_')[1]);
+            const planet = this.starSystem.planets[planetIndex];
+            return {
+                name: planet.planet_name,
+                type: planet.planet_type
+            };
+        } else if (targetKey.startsWith('moon_')) {
+            const [_, planetIndex, moonIndex] = targetKey.split('_').map(Number);
+            const moon = this.starSystem.planets[planetIndex].moons[moonIndex];
+            return {
+                name: moon.moon_name,
+                type: moon.moon_type
+            };
+        }
+
+        return { name: "Unknown", type: "Unknown" };
+    }
 } 

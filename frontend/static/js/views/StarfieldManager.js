@@ -20,6 +20,17 @@ export class StarfieldManager {
         this.isMouseLookEnabled = true;
         this.view = 'FORE'; // Add view state - can be 'FORE' or 'AFT'
         
+        // Target computer state
+        this.targetComputerEnabled = false;
+        this.currentTarget = null;
+        this.targetIndex = -1;
+        this.targetObjects = [];
+        this.targetWireframe = null;
+        
+        // Add sorting state
+        this.lastSortTime = 0;
+        this.sortInterval = 2000; // Sort every 2 seconds
+        
         // Create starfield with quadruple density
         this.starCount = 8000;  // Doubled again from 4000
         this.starfield = this.createStarfield();
@@ -27,6 +38,9 @@ export class StarfieldManager {
         
         // Create speed indicator
         this.createSpeedIndicator();
+        
+        // Create target computer HUD
+        this.createTargetComputerHUD();
         
         // Bind keyboard events
         this.bindKeyEvents();
@@ -145,6 +159,68 @@ export class StarfieldManager {
         this.viewBox.textContent = `View: ${this.view}`;
     }
 
+    createTargetComputerHUD() {
+        // Create target computer container
+        this.targetHUD = document.createElement('div');
+        this.targetHUD.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+            height: 200px;
+            border: 2px solid #00ff41;
+            background: rgba(0, 0, 0, 0.7);
+            color: #00ff41;
+            font-family: "Courier New", monospace;
+            font-size: 14px;
+            padding: 10px;
+            display: none;
+            pointer-events: none;
+            z-index: 1000;
+        `;
+        
+        // Create wireframe container with a renderer
+        this.wireframeContainer = document.createElement('div');
+        this.wireframeContainer.style.cssText = `
+            width: 100%;
+            height: 150px;
+            border: 1px solid #00ff41;
+            margin-bottom: 10px;
+            position: relative;
+        `;
+        
+        // Create renderer for wireframe
+        this.wireframeRenderer = new THREE.WebGLRenderer({ alpha: true });
+        this.wireframeRenderer.setSize(200, 150);
+        this.wireframeRenderer.setClearColor(0x000000, 0);
+        
+        // Create scene and camera for wireframe
+        this.wireframeScene = new THREE.Scene();
+        this.wireframeCamera = new THREE.PerspectiveCamera(45, 200/150, 0.1, 1000);
+        this.wireframeCamera.position.z = 5;
+        
+        // Add lights to wireframe scene
+        const wireframeLight = new THREE.DirectionalLight(0x00ff41, 1);
+        wireframeLight.position.set(1, 1, 1);
+        this.wireframeScene.add(wireframeLight);
+        
+        const wireframeAmbient = new THREE.AmbientLight(0x00ff41, 0.4);
+        this.wireframeScene.add(wireframeAmbient);
+        
+        this.wireframeContainer.appendChild(this.wireframeRenderer.domElement);
+        
+        // Create target info container
+        this.targetInfo = document.createElement('div');
+        this.targetInfo.style.cssText = `
+            width: 100%;
+            text-align: left;
+        `;
+        
+        this.targetHUD.appendChild(this.wireframeContainer);
+        this.targetHUD.appendChild(this.targetInfo);
+        document.body.appendChild(this.targetHUD);
+    }
+
     bindKeyEvents() {
         // Track which keys are currently pressed
         this.keysPressed = {
@@ -158,6 +234,19 @@ export class StarfieldManager {
             // Speed control (0-9)
             if (!event.ctrlKey && !event.metaKey && !event.altKey && /^[0-9]$/.test(event.key)) {
                 this.targetSpeed = parseInt(event.key);
+                return;
+            }
+            
+            // Target computer toggle (T key)
+            if (event.key.toLowerCase() === 't') {
+                this.toggleTargetComputer();
+                return;
+            }
+
+            // Tab key for cycling targets when target computer is enabled
+            if (event.key === 'Tab' && this.targetComputerEnabled) {
+                event.preventDefault();
+                this.cycleTarget();
                 return;
             }
             
@@ -175,6 +264,161 @@ export class StarfieldManager {
                 event.preventDefault();
             }
         });
+    }
+
+    toggleTargetComputer() {
+        this.targetComputerEnabled = !this.targetComputerEnabled;
+        this.targetHUD.style.display = this.targetComputerEnabled ? 'block' : 'none';
+        
+        if (this.targetComputerEnabled) {
+            // Initialize or update target list when enabling
+            this.updateTargetList();
+            // Only cycle if we don't have a current target
+            if (!this.currentTarget && this.targetObjects.length > 0) {
+                this.targetIndex = -1; // Reset index so cycling goes to first target
+                this.cycleTarget();
+            }
+        } else {
+            // Clean up when disabling
+            if (this.targetWireframe) {
+                this.wireframeScene.remove(this.targetWireframe);
+                this.targetWireframe.geometry.dispose();
+                this.targetWireframe.material.dispose();
+                this.targetWireframe = null;
+            }
+            this.currentTarget = null;
+            this.targetIndex = -1;
+        }
+    }
+
+    updateTargetList() {
+        // Get list of targetable objects from solar system
+        if (this.solarSystemManager) {
+            const currentTime = Date.now();
+            
+            // Only resort if enough time has passed or if we don't have any targets
+            if (currentTime - this.lastSortTime > this.sortInterval || this.targetObjects.length === 0) {
+                const bodies = this.solarSystemManager.getCelestialBodies();
+                
+                // Calculate distances and create sortable array
+                const bodiesWithDistances = bodies.map(body => {
+                    const distance = this.camera.position.distanceTo(body.position);
+                    return { body, distance };
+                });
+                
+                // Sort by distance
+                bodiesWithDistances.sort((a, b) => a.distance - b.distance);
+                
+                // Update target objects with sorted list
+                this.targetObjects = bodiesWithDistances.map(item => item.body);
+                
+                // Reset target index if we're updating the list
+                if (this.currentTarget) {
+                    // Find current target in new sorted list
+                    const newIndex = this.targetObjects.findIndex(body => body === this.currentTarget);
+                    if (newIndex !== -1) {
+                        this.targetIndex = newIndex;
+                    }
+                    // Don't reset to 0 if target not found, let cycleTarget handle it
+                }
+                
+                this.lastSortTime = currentTime;
+                
+                if (this.targetComputerEnabled) {
+                    console.log('Sorted targets by distance:', 
+                        bodiesWithDistances.map(item => ({
+                            name: this.solarSystemManager.getCelestialBodyInfo(item.body).name,
+                            distance: this.formatDistance(item.distance)
+                        }))
+                    );
+                }
+            }
+        }
+    }
+
+    cycleTarget() {
+        if (!this.targetComputerEnabled || this.targetObjects.length === 0) return;
+
+        // Update target list first to ensure we have current distances
+        this.updateTargetList();
+
+        // Remove previous wireframe if it exists
+        if (this.targetWireframe) {
+            this.wireframeScene.remove(this.targetWireframe);
+            this.targetWireframe.geometry.dispose();
+            this.targetWireframe.material.dispose();
+            this.targetWireframe = null;
+        }
+
+        // Cycle to next target
+        this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
+        this.currentTarget = this.targetObjects[this.targetIndex];
+
+        // Create new wireframe in the HUD
+        if (this.currentTarget) {
+            const wireframeGeometry = this.currentTarget.geometry.clone();
+            const wireframeMaterial = new THREE.WireframeGeometry(wireframeGeometry);
+            this.targetWireframe = new THREE.LineSegments(wireframeMaterial);
+            this.targetWireframe.material.color.setHex(0x00ff41);
+            
+            // Reset wireframe position and add to wireframe scene
+            this.targetWireframe.position.set(0, 0, 0);
+            this.wireframeScene.add(this.targetWireframe);
+            
+            // Auto-fit the wireframe to the view
+            const bbox = new THREE.Box3().setFromObject(this.targetWireframe);
+            const center = bbox.getCenter(new THREE.Vector3());
+            const size = bbox.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            
+            // Position camera to fit the object
+            this.wireframeCamera.position.z = maxDim * 2;
+            this.targetWireframe.position.sub(center);
+
+            // Ensure HUD is visible
+            this.targetHUD.style.display = 'block';
+        }
+
+        this.updateTargetDisplay();
+    }
+
+    // Helper method to format distance in a readable way
+    formatDistance(distance) {
+        // Round to nearest 0.1
+        distance = Math.round(distance * 10) / 10;
+        
+        if (distance > 1000) {
+            return 'Very Far';
+        } else if (distance > 500) {
+            return 'Far';
+        } else if (distance < 1) {
+            return `${(distance * 1000).toFixed(0)}m`;
+        } else if (distance < 10) {
+            return `${distance.toFixed(1)}km`;
+        } else {
+            return `${Math.round(distance)}km`;
+        }
+    }
+
+    updateTargetDisplay() {
+        if (!this.currentTarget) return;
+
+        // Calculate distance to target
+        const distance = this.camera.position.distanceTo(this.currentTarget.position);
+        
+        // Get target name and type from the celestial body
+        const targetInfo = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+        
+        // Update target info display
+        this.targetInfo.innerHTML = `
+            Target: ${targetInfo.name}<br>
+            Type: ${targetInfo.type}<br>
+            Distance: ${this.formatDistance(distance)}
+        `;
+    }
+
+    setSolarSystemManager(manager) {
+        this.solarSystemManager = manager;
     }
 
     bindMouseEvents() {
@@ -205,6 +449,17 @@ export class StarfieldManager {
         
         // Update speed indicator
         this.updateSpeedIndicator();
+        
+        // Update target computer display if enabled
+        if (this.targetComputerEnabled && this.currentTarget) {
+            this.updateTargetDisplay();
+            
+            // Rotate the wireframe model
+            if (this.targetWireframe) {
+                this.targetWireframe.rotation.y += deltaTime * 0.5;
+                this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
+            }
+        }
         
         // Handle rotation based on arrow keys
         if (this.keysPressed.ArrowLeft) {
@@ -308,6 +563,9 @@ export class StarfieldManager {
         }
         if (this.viewBox && this.viewBox.parentNode) {
             this.viewBox.parentNode.removeChild(this.viewBox);
+        }
+        if (this.targetHUD && this.targetHUD.parentNode) {
+            this.targetHUD.parentNode.removeChild(this.targetHUD);
         }
         if (this.starfield) {
             this.scene.remove(this.starfield);
