@@ -26,6 +26,7 @@ export class StarfieldManager {
         this.targetIndex = -1;
         this.targetObjects = [];
         this.targetWireframe = null;
+        this.targetReticle = null;
         
         // Add sorting state
         this.lastSortTime = 0;
@@ -209,7 +210,64 @@ export class StarfieldManager {
             filter: drop-shadow(0 0 2px #00ff41);
         `;
         this.wireframeContainer.appendChild(this.directionArrow);
-        
+
+        // Create target reticle corners
+        this.targetReticle = document.createElement('div');
+        this.targetReticle.style.cssText = `
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            display: none;
+            pointer-events: none;
+            z-index: 999;
+            transform: translate(-50%, -50%);
+        `;
+
+        // Create corner elements
+        const corners = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
+        corners.forEach(corner => {
+            const el = document.createElement('div');
+            el.style.cssText = `
+                position: absolute;
+                width: 10px;
+                height: 10px;
+                border: 2px solid #00ff41;
+                box-shadow: 0 0 2px #00ff41;
+            `;
+
+            // Position and style each corner
+            switch(corner) {
+                case 'topLeft':
+                    el.style.top = '0';
+                    el.style.left = '0';
+                    el.style.borderRight = 'none';
+                    el.style.borderBottom = 'none';
+                    break;
+                case 'topRight':
+                    el.style.top = '0';
+                    el.style.right = '0';
+                    el.style.borderLeft = 'none';
+                    el.style.borderBottom = 'none';
+                    break;
+                case 'bottomLeft':
+                    el.style.bottom = '0';
+                    el.style.left = '0';
+                    el.style.borderRight = 'none';
+                    el.style.borderTop = 'none';
+                    break;
+                case 'bottomRight':
+                    el.style.bottom = '0';
+                    el.style.right = '0';
+                    el.style.borderLeft = 'none';
+                    el.style.borderTop = 'none';
+                    break;
+            }
+
+            this.targetReticle.appendChild(el);
+        });
+
+        document.body.appendChild(this.targetReticle);
+
         // Create renderer for wireframe
         this.wireframeRenderer = new THREE.WebGLRenderer({ alpha: true });
         this.wireframeRenderer.setSize(200, 150);
@@ -290,6 +348,12 @@ export class StarfieldManager {
     toggleTargetComputer() {
         this.targetComputerEnabled = !this.targetComputerEnabled;
         this.targetHUD.style.display = this.targetComputerEnabled ? 'block' : 'none';
+        
+        if (!this.targetComputerEnabled) {
+            if (this.targetReticle) {
+                this.targetReticle.style.display = 'none';
+            }
+        }
         
         if (this.targetComputerEnabled) {
             // Initialize or update target list when enabling
@@ -379,6 +443,9 @@ export class StarfieldManager {
     updateTargetDisplay() {
         if (!this.currentTarget || !this.targetComputerEnabled) {
             this.targetHUD.style.display = 'none';
+            if (this.targetReticle) {
+                this.targetReticle.style.display = 'none';
+            }
             return;
         }
 
@@ -398,113 +465,155 @@ export class StarfieldManager {
             </div>
         `;
 
+        // Update reticle position
+        const screenPosition = this.currentTarget.position.clone().project(this.camera);
+        const isOnScreen = Math.abs(screenPosition.x) <= 1 && Math.abs(screenPosition.y) <= 1;
+        
+        if (isOnScreen) {
+            // Convert to screen coordinates
+            const x = (screenPosition.x + 1) * window.innerWidth / 2;
+            const y = (-screenPosition.y + 1) * window.innerHeight / 2;
+            
+            this.targetReticle.style.display = 'block';
+            this.targetReticle.style.left = `${x}px`;
+            this.targetReticle.style.top = `${y}px`;
+        } else {
+            this.targetReticle.style.display = 'none';
+        }
+
+        // Always show HUD when target computer is enabled
+        this.targetHUD.style.display = 'block';
+
         // Check if target is on screen and update direction arrow
         this.updateDirectionArrow();
-
-        this.targetHUD.style.display = 'block';
     }
 
     updateDirectionArrow() {
-        if (!this.currentTarget) {
+        // Only proceed if we have a target and the target computer is enabled
+        if (!this.currentTarget || !this.targetComputerEnabled) {
             if (this.directionArrow.style.display !== 'none') {
-                console.log('Arrow hidden - no target');
+                console.log('Arrow hidden - no target or targeting disabled');
                 this.directionArrow.style.display = 'none';
                 this.lastArrowState = null;
             }
             return;
         }
 
-        // Get target position in screen space
+        // Get target's world position relative to camera
+        const cameraPosition = this.camera.position;
         const targetPosition = this.currentTarget.position.clone();
-        targetPosition.project(this.camera);
-
+        const relativePosition = targetPosition.clone().sub(cameraPosition);
+        
+        // Get camera's view direction
+        const cameraDirection = new THREE.Vector3(0, 0, -1);
+        cameraDirection.applyQuaternion(this.camera.quaternion);
+        
+        // Project target onto screen
+        const screenPosition = targetPosition.clone().project(this.camera);
+        
         // Check if target is off screen
-        const isOffScreen = Math.abs(targetPosition.x) > 1 || Math.abs(targetPosition.y) > 1;
+        const isOffScreen = Math.abs(screenPosition.x) > 1 || Math.abs(screenPosition.y) > 1;
 
         // Only log position if it crosses the screen boundary
         const wasOffScreen = this.lastArrowState !== null;
         if (wasOffScreen !== isOffScreen) {
-            console.log(`Target crossed screen boundary: (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}), isOffScreen: ${isOffScreen}`);
+            console.log(`Target crossed screen boundary: (${screenPosition.x.toFixed(2)}, ${screenPosition.y.toFixed(2)}), isOffScreen: ${isOffScreen}`);
+            console.log(`Camera direction: (${cameraDirection.x.toFixed(2)}, ${cameraDirection.y.toFixed(2)}, ${cameraDirection.z.toFixed(2)})`);
+            console.log(`Relative position: (${relativePosition.x.toFixed(2)}, ${relativePosition.y.toFixed(2)}, ${relativePosition.z.toFixed(2)})`);
         }
 
         if (isOffScreen) {
-            // Position arrow based on target position and set it to point in the direction to move
+            // Position arrow based on target position relative to camera
             let transform = '';
             let position = {};
             let edge = '';
             let expectedDirection = '';
             let extraStyles = {};
+
+            // Get the angle between camera's view direction and relative position
+            const angle = cameraDirection.angleTo(relativePosition);
+            const isInFront = relativePosition.dot(cameraDirection) > 0;
             
-            if (targetPosition.x > 1) {
-                edge = 'right';
-                // For right edge, point right
-                extraStyles = {
-                    borderTop: '8px solid transparent',
-                    borderBottom: '8px solid transparent',
-                    borderLeft: '12px solid #00ff41',
-                    borderRight: 'none'
-                };
-                transform = 'rotate(0deg)';
-                position = { 
-                    right: '-12px', 
-                    top: '50%', 
-                    marginTop: '-8px',
-                    left: 'auto',
-                    bottom: 'auto'
-                };
-                expectedDirection = 'right';
-            } else if (targetPosition.x < -1) {
-                edge = 'left';
-                // For left edge, point left
-                extraStyles = {
-                    borderTop: '8px solid transparent',
-                    borderBottom: '8px solid transparent',
-                    borderRight: '12px solid #00ff41',
-                    borderLeft: 'none'
-                };
-                transform = 'rotate(0deg)';
-                position = { 
-                    left: '-12px', 
-                    top: '50%', 
-                    marginTop: '-8px',
-                    right: 'auto',
-                    bottom: 'auto'
-                };
-                expectedDirection = 'left';
-            } else if (targetPosition.y > 1) {
-                edge = 'top';
-                extraStyles = {
-                    borderLeft: '8px solid transparent',
-                    borderRight: '8px solid transparent',
-                    borderBottom: '12px solid #00ff41',
-                    borderTop: 'none'
-                };
-                transform = 'rotate(0deg)';
-                position = { 
-                    top: '-12px', 
-                    left: '50%', 
-                    marginLeft: '-8px',
-                    right: 'auto',
-                    bottom: 'auto'
-                };
-                expectedDirection = 'up';
-            } else if (targetPosition.y < -1) {
-                edge = 'bottom';
-                extraStyles = {
-                    borderLeft: '8px solid transparent',
-                    borderRight: '8px solid transparent',
-                    borderTop: '12px solid #00ff41',
-                    borderBottom: 'none'
-                };
-                transform = 'rotate(0deg)';
-                position = { 
-                    bottom: '-12px', 
-                    left: '50%', 
-                    marginLeft: '-8px',
-                    right: 'auto',
-                    top: 'auto'
-                };
-                expectedDirection = 'down';
+            // Project relative position onto camera's XY plane
+            const cameraRight = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
+            const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion);
+            
+            const rightComponent = relativePosition.dot(cameraRight);
+            const upComponent = relativePosition.dot(cameraUp);
+            
+            // Determine which edge to show the arrow on based on the strongest component
+            if (Math.abs(rightComponent) > Math.abs(upComponent)) {
+                if (rightComponent > 0) {
+                    edge = 'right';
+                    extraStyles = {
+                        borderTop: '8px solid transparent',
+                        borderBottom: '8px solid transparent',
+                        borderLeft: '12px solid #00ff41',
+                        borderRight: 'none'
+                    };
+                    transform = 'rotate(0deg)';
+                    position = { 
+                        right: '-12px', 
+                        top: '50%', 
+                        marginTop: '-8px',
+                        left: 'auto',
+                        bottom: 'auto'
+                    };
+                    expectedDirection = 'right';
+                } else {
+                    edge = 'left';
+                    extraStyles = {
+                        borderTop: '8px solid transparent',
+                        borderBottom: '8px solid transparent',
+                        borderRight: '12px solid #00ff41',
+                        borderLeft: 'none'
+                    };
+                    transform = 'rotate(0deg)';
+                    position = { 
+                        left: '-12px', 
+                        top: '50%', 
+                        marginTop: '-8px',
+                        right: 'auto',
+                        bottom: 'auto'
+                    };
+                    expectedDirection = 'left';
+                }
+            } else {
+                if (upComponent > 0) {
+                    edge = 'top';
+                    extraStyles = {
+                        borderLeft: '8px solid transparent',
+                        borderRight: '8px solid transparent',
+                        borderBottom: '12px solid #00ff41',
+                        borderTop: 'none'
+                    };
+                    transform = 'rotate(0deg)';
+                    position = { 
+                        top: '-12px', 
+                        left: '50%', 
+                        marginLeft: '-8px',
+                        right: 'auto',
+                        bottom: 'auto'
+                    };
+                    expectedDirection = 'up';
+                } else {
+                    edge = 'bottom';
+                    extraStyles = {
+                        borderLeft: '8px solid transparent',
+                        borderRight: '8px solid transparent',
+                        borderTop: '12px solid #00ff41',
+                        borderBottom: 'none'
+                    };
+                    transform = 'rotate(0deg)';
+                    position = { 
+                        bottom: '-12px', 
+                        left: '50%', 
+                        marginLeft: '-8px',
+                        right: 'auto',
+                        top: 'auto'
+                    };
+                    expectedDirection = 'down';
+                }
             }
 
             // Create new state object
@@ -535,6 +644,7 @@ export class StarfieldManager {
             // Log only if arrow state has changed
             if (hasChanged) {
                 console.log(`Arrow changed to: ${edge} edge, ${expectedDirection} direction`);
+                console.log(`Target relative to camera: ${isInFront ? 'in front' : 'behind'}, angle: ${(angle * 180 / Math.PI).toFixed(2)}°`);
                 console.log('Applied styles:', styles);
                 this.lastArrowState = newState;
             }
@@ -561,7 +671,12 @@ export class StarfieldManager {
             this.targetWireframe = null;
         }
 
-        // Cycle to next target, always starting from closest if no current target
+        // Hide reticle until new target is set
+        if (this.targetReticle) {
+            this.targetReticle.style.display = 'none';
+        }
+
+        // Cycle to next target
         if (this.targetIndex === -1 || !this.currentTarget) {
             this.targetIndex = 0;
         } else {
@@ -598,7 +713,7 @@ export class StarfieldManager {
                 this.targetHUD.style.display = 'block';
             } catch (error) {
                 console.warn('Failed to create wireframe for target:', error);
-                // Continue without wireframe if there's an error
+                // Continue without wireframe
             }
         }
 
@@ -754,6 +869,9 @@ export class StarfieldManager {
         }
         if (this.targetHUD && this.targetHUD.parentNode) {
             this.targetHUD.parentNode.removeChild(this.targetHUD);
+        }
+        if (this.targetReticle && this.targetReticle.parentNode) {
+            this.targetReticle.parentNode.removeChild(this.targetReticle);
         }
         if (this.starfield) {
             this.scene.remove(this.starfield);
