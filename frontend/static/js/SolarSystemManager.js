@@ -25,6 +25,12 @@ export class SolarSystemManager {
         this.AU = 149.6e9;
         this.SCALE_FACTOR = 1e-9;
         
+        // Visual scale factor for scene representation - increased for ultra-compact system
+        this.VISUAL_SCALE = 50.0;
+        
+        // Maximum distance from sun in kilometers
+        this.MAX_DISTANCE_KM = 2e6; // 2 million kilometers
+        
         // Orbital elements storage
         this.orbitalElements = new Map();
         
@@ -77,8 +83,9 @@ export class SolarSystemManager {
 
                 velocity.add(acceleration.multiplyScalar(deltaTime));
                 
-                // Update position
-                planet.position.add(velocity.multiplyScalar(deltaTime));
+                // Update position using visual scale
+                const visualVelocity = velocity.clone().multiplyScalar(this.SCALE_FACTOR * this.VISUAL_SCALE);
+                planet.position.add(visualVelocity.multiplyScalar(deltaTime));
 
                 // Update orbital elements
                 elements.meanAnomaly += this.calculateMeanMotion(elements) * deltaTime;
@@ -180,12 +187,53 @@ export class SolarSystemManager {
         this.scene.add(starLight);
         console.log('Added star light');
 
+        // Add test Mercury planet
+        await this.createTestMercury();
+
         // Create planets
         console.log('Creating planets:', this.starSystem.planets);
         for (let i = 0; i < this.starSystem.planets.length; i++) {
             const planetData = this.starSystem.planets[i];
             await this.createPlanet(planetData, i);
         }
+    }
+
+    async createTestMercury() {
+        // Create Mercury mesh
+        const mercuryGeometry = new THREE.SphereGeometry(0.4, 32, 32); // Smaller than regular planets
+        const mercuryMaterial = new THREE.MeshPhongMaterial({
+            color: 0xff0000, // Bright red color
+            shininess: 15,
+            flatShading: true,
+            emissive: 0xff0000, // Add emissive to make it glow
+            emissiveIntensity: 0.5
+        });
+        const mercury = new THREE.Mesh(mercuryGeometry, mercuryMaterial);
+
+        // Position Mercury at 500,000 km
+        const mercuryDistance = 5e5 * 1000; // Convert to meters
+        const visualDistance = mercuryDistance * this.SCALE_FACTOR * this.VISUAL_SCALE;
+        mercury.position.x = visualDistance;
+        this.scene.add(mercury);
+        this.celestialBodies.set('mercury', mercury);
+
+        // Set orbital elements for Mercury
+        this.setOrbitalElements('mercury', {
+            semiMajorAxis: mercuryDistance,
+            eccentricity: 0.01, // Very low eccentricity for stable orbit
+            inclination: 0, // No inclination for simple test
+            longitudeOfAscendingNode: 0,
+            argumentOfPeriapsis: 0,
+            meanAnomaly: 0,
+            mass: 3.285e23 // Mercury's mass in kg
+        });
+
+        // Calculate orbital period and speed
+        const orbitPeriod = this.calculateOrbitalPeriod(mercuryDistance);
+        const meanMotion = (2 * Math.PI) / orbitPeriod;
+        this.orbitalSpeeds.set('mercury', meanMotion);
+
+        console.log('Created test Mercury at', mercuryDistance / 1000, 'km from sun');
     }
 
     async createPlanet(planetData, index) {
@@ -216,22 +264,25 @@ export class SolarSystemManager {
         });
         const planet = new THREE.Mesh(planetGeometry, planetMaterial);
 
-        // Calculate orbit
-        const orbitDistance = 5 + index * 3;
-        const orbitPeriod = this.calculateOrbitalPeriod(orbitDistance);
+        // Calculate orbit - distribute planets evenly within 2 million km
+        const maxPlanets = 8; // Maximum number of planets to ensure proper spacing
+        const spacing = this.MAX_DISTANCE_KM / maxPlanets;
+        const realOrbitDistance = (0.5e6 + index * spacing) * 1000; // Start at 500,000 km, space evenly
+        const visualOrbitDistance = realOrbitDistance * this.SCALE_FACTOR * this.VISUAL_SCALE;
+        const orbitPeriod = this.calculateOrbitalPeriod(realOrbitDistance);
         const meanMotion = (2 * Math.PI) / orbitPeriod;
         this.orbitalSpeeds.set(`planet_${index}`, meanMotion);
 
-        // Position planet
-        planet.position.x = orbitDistance;
+        // Position planet using visual scale
+        planet.position.x = visualOrbitDistance;
         this.scene.add(planet);
         this.celestialBodies.set(`planet_${index}`, planet);
 
-        // Set orbital elements
+        // Set orbital elements using real distances
         this.setOrbitalElements(`planet_${index}`, {
-            semiMajorAxis: orbitDistance,
-            eccentricity: 0.1 + Math.random() * 0.1,
-            inclination: Math.random() * Math.PI / 6,
+            semiMajorAxis: realOrbitDistance,
+            eccentricity: 0.01 + Math.random() * 0.02, // Very low eccentricity for stability
+            inclination: Math.random() * Math.PI / 16, // Very low inclination for planar orbits
             longitudeOfAscendingNode: Math.random() * Math.PI * 2,
             argumentOfPeriapsis: Math.random() * Math.PI * 2,
             meanAnomaly: Math.random() * Math.PI * 2,
@@ -295,8 +346,13 @@ export class SolarSystemManager {
         });
         const moon = new THREE.Mesh(moonGeometry, moonMaterial);
 
-        // Calculate moon orbit
-        const moonOrbitDistance = 1.5 + moonIndex * 0.5;
+        // Get parent planet's orbital elements
+        const planetElements = this.orbitalElements.get(`planet_${planetIndex}`);
+        if (!planetElements) return;
+
+        // Calculate moon orbit - ensure moon stays close to its planet
+        const maxMoonDistance = 0.05e6; // Maximum moon distance in km from its planet
+        const moonOrbitDistance = (0.02e6 + moonIndex * 0.01e6) * 1000; // Very compact moon orbits
         const moonOrbitPeriod = this.calculateOrbitalPeriod(moonOrbitDistance);
         const moonMeanMotion = (2 * Math.PI) / moonOrbitPeriod;
         this.orbitalSpeeds.set(`moon_${planetIndex}_${moonIndex}`, moonMeanMotion);
@@ -305,7 +361,7 @@ export class SolarSystemManager {
         const planet = this.celestialBodies.get(`planet_${planetIndex}`);
         if (planet) {
             moon.position.copy(planet.position);
-            moon.position.x += moonOrbitDistance;
+            moon.position.x += moonOrbitDistance * this.SCALE_FACTOR * this.VISUAL_SCALE;
         }
 
         this.scene.add(moon);
@@ -314,12 +370,12 @@ export class SolarSystemManager {
         // Add orbital elements for moon
         this.setOrbitalElements(`moon_${planetIndex}_${moonIndex}`, {
             semiMajorAxis: moonOrbitDistance,
-            eccentricity: 0.05 + Math.random() * 0.05,
-            inclination: Math.random() * Math.PI / 8,
+            eccentricity: 0.005 + Math.random() * 0.005, // Extremely low eccentricity for stability
+            inclination: Math.random() * Math.PI / 20, // Extremely low inclination for planar orbits
             longitudeOfAscendingNode: Math.random() * Math.PI * 2,
             argumentOfPeriapsis: Math.random() * Math.PI * 2,
             meanAnomaly: Math.random() * Math.PI * 2,
-            mass: 7.34767309e22 * (moonData.moon_size || 1) // Moon mass * moon size
+            mass: 7.34767309e22 * (moonData.moon_size || 1)
         });
     }
 
@@ -447,9 +503,9 @@ export class SolarSystemManager {
     }
 
     getCelestialBodies() {
-        // Only return actual celestial bodies (star, planets, moons)
+        // Only return actual celestial bodies (star, planets, moons, and our test Mercury)
         return Array.from(this.celestialBodies.entries())
-            .filter(([key]) => key === 'star' || key.startsWith('planet_') || key.startsWith('moon_'))
+            .filter(([key]) => key === 'star' || key === 'mercury' || key.startsWith('planet_') || key.startsWith('moon_'))
             .map(([_, body]) => body);
     }
 
@@ -478,6 +534,11 @@ export class SolarSystemManager {
             return {
                 name: this.starSystem.star_name,
                 type: this.starSystem.star_type
+            };
+        } else if (targetKey === 'mercury') {
+            return {
+                name: "Mercury",
+                type: "Test Planet"
             };
         } else if (targetKey.startsWith('planet_')) {
             const planetIndex = parseInt(targetKey.split('_')[1]);

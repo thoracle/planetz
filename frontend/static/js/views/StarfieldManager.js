@@ -273,11 +273,9 @@ export class StarfieldManager {
         if (this.targetComputerEnabled) {
             // Initialize or update target list when enabling
             this.updateTargetList();
-            // Only cycle if we don't have a current target
-            if (!this.currentTarget && this.targetObjects.length > 0) {
-                this.targetIndex = -1; // Reset index so cycling goes to first target
-                this.cycleTarget();
-            }
+            // Always start with the closest target (index 0) when enabling
+            this.targetIndex = -1; // Will be incremented to 0 in cycleTarget
+            this.cycleTarget();
         } else {
             // Clean up when disabling
             if (this.targetWireframe) {
@@ -292,48 +290,92 @@ export class StarfieldManager {
     }
 
     updateTargetList() {
-        // Get list of targetable objects from solar system
-        if (this.solarSystemManager) {
-            const currentTime = Date.now();
+        // Get targetable objects from solar system
+        const targetableObjects = this.solarSystemManager.getCelestialBodies();
+        
+        // Calculate distances from camera
+        this.targetObjects = targetableObjects.map(obj => {
+            const sceneDistance = obj.position.distanceTo(this.camera.position);
+            // Convert scene distance back to real distance in meters
+            const realDistance = sceneDistance / (this.solarSystemManager.SCALE_FACTOR * this.solarSystemManager.VISUAL_SCALE);
+            // Convert to kilometers for display
+            const distanceInKm = realDistance / 1000;
             
-            // Only resort if enough time has passed or if we don't have any targets
-            if (currentTime - this.lastSortTime > this.sortInterval || this.targetObjects.length === 0) {
-                const bodies = this.solarSystemManager.getCelestialBodies();
-                
-                // Calculate distances and create sortable array
-                const bodiesWithDistances = bodies.map(body => {
-                    const distance = this.camera.position.distanceTo(body.position);
-                    return { body, distance };
-                });
-                
-                // Sort by distance
-                bodiesWithDistances.sort((a, b) => a.distance - b.distance);
-                
-                // Update target objects with sorted list
-                this.targetObjects = bodiesWithDistances.map(item => item.body);
-                
-                // Reset target index if we're updating the list
-                if (this.currentTarget) {
-                    // Find current target in new sorted list
-                    const newIndex = this.targetObjects.findIndex(body => body === this.currentTarget);
-                    if (newIndex !== -1) {
-                        this.targetIndex = newIndex;
-                    }
-                    // Don't reset to 0 if target not found, let cycleTarget handle it
-                }
-                
-                this.lastSortTime = currentTime;
-                
-                if (this.targetComputerEnabled) {
-                    console.log('Sorted targets by distance:', 
-                        bodiesWithDistances.map(item => ({
-                            name: this.solarSystemManager.getCelestialBodyInfo(item.body).name,
-                            distance: this.formatDistance(item.distance)
-                        }))
-                    );
-                }
-            }
+            return {
+                object: obj,
+                distance: distanceInKm
+            };
+        });
+
+        // Sort by distance
+        this.targetObjects.sort((a, b) => a.distance - b.distance);
+        
+        // Reset target index if list was updated
+        if (this.currentTargetIndex >= this.targetObjects.length) {
+            this.currentTargetIndex = 0;
         }
+
+        // Log sorted targets if target computer is enabled
+        if (this.targetComputerEnabled) {
+            console.log('Sorted targets by distance:', this.targetObjects.map(t => ({
+                name: this.solarSystemManager.getCelestialBodyInfo(t.object).name,
+                distance: this.formatDistance(t.distance)
+            })));
+        }
+    }
+
+    formatDistance(distanceInKm) {
+        // Helper function to add commas to numbers
+        const addCommas = (num) => {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        };
+
+        if (distanceInKm >= 1e15) {
+            // Convert to exameters (1 Em = 1e15 km)
+            const distanceInEm = distanceInKm / 1e15;
+            return `${addCommas(distanceInEm.toFixed(2))} Em`;
+        } else if (distanceInKm >= 1e12) {
+            // Convert to petameters (1 Pm = 1e12 km)
+            const distanceInPm = distanceInKm / 1e12;
+            return `${addCommas(distanceInPm.toFixed(2))} Pm`;
+        } else if (distanceInKm >= 1e9) {
+            // Convert to terameters (1 Tm = 1e9 km)
+            const distanceInTm = distanceInKm / 1e9;
+            return `${addCommas(distanceInTm.toFixed(2))} Tm`;
+        } else if (distanceInKm >= 1e6) {
+            // Convert to gigameters (1 Gm = 1e6 km)
+            const distanceInGm = distanceInKm / 1e6;
+            return `${addCommas(distanceInGm.toFixed(2))} Gm`;
+        } else if (distanceInKm >= 1e3) {
+            // Convert to megameters (1 Mm = 1e3 km)
+            const distanceInMm = distanceInKm / 1e3;
+            return `${addCommas(distanceInMm.toFixed(2))} Mm`;
+        } else {
+            return `${addCommas(distanceInKm.toFixed(2))} km`;
+        }
+    }
+
+    updateTargetDisplay() {
+        if (!this.currentTarget || !this.targetComputerEnabled) {
+            this.targetHUD.style.display = 'none';
+            return;
+        }
+
+        const targetInfo = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+        const sceneDistance = this.currentTarget.position.distanceTo(this.camera.position);
+        // Convert scene distance back to real distance in meters
+        const realDistance = sceneDistance / (this.solarSystemManager.SCALE_FACTOR * this.solarSystemManager.VISUAL_SCALE);
+        // Convert to kilometers for display
+        const distanceInKm = realDistance / 1000;
+
+        this.targetInfo.innerHTML = `
+            <div class="target-info">
+                ${targetInfo.name}<br>
+                Type: ${targetInfo.type}<br>
+                Distance: ${this.formatDistance(distanceInKm)}
+            </div>
+        `;
+        this.targetHUD.style.display = 'block';
     }
 
     cycleTarget() {
@@ -350,71 +392,48 @@ export class StarfieldManager {
             this.targetWireframe = null;
         }
 
-        // Cycle to next target
-        this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
-        this.currentTarget = this.targetObjects[this.targetIndex];
+        // Cycle to next target, always starting from closest if no current target
+        if (this.targetIndex === -1 || !this.currentTarget) {
+            this.targetIndex = 0;
+        } else {
+            this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
+        }
+        this.currentTarget = this.targetObjects[this.targetIndex].object;
 
         // Create new wireframe in the HUD
         if (this.currentTarget) {
-            const wireframeGeometry = this.currentTarget.geometry.clone();
-            const wireframeMaterial = new THREE.WireframeGeometry(wireframeGeometry);
-            this.targetWireframe = new THREE.LineSegments(wireframeMaterial);
-            this.targetWireframe.material.color.setHex(0x00ff41);
-            
-            // Reset wireframe position and add to wireframe scene
-            this.targetWireframe.position.set(0, 0, 0);
-            this.wireframeScene.add(this.targetWireframe);
-            
-            // Auto-fit the wireframe to the view
-            const bbox = new THREE.Box3().setFromObject(this.targetWireframe);
-            const center = bbox.getCenter(new THREE.Vector3());
-            const size = bbox.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z);
-            
-            // Position camera to fit the object
-            this.wireframeCamera.position.z = maxDim * 2;
-            this.targetWireframe.position.sub(center);
+            try {
+                // Create wireframe from the target's geometry
+                const wireframeGeometry = new THREE.WireframeGeometry(this.currentTarget.geometry);
+                const wireframeMaterial = new THREE.LineBasicMaterial({ 
+                    color: 0x00ff41,
+                    linewidth: 1
+                });
+                this.targetWireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
+                
+                // Reset wireframe position and add to wireframe scene
+                this.targetWireframe.position.set(0, 0, 0);
+                this.wireframeScene.add(this.targetWireframe);
+                
+                // Auto-fit the wireframe to the view
+                const bbox = new THREE.Box3().setFromObject(this.targetWireframe);
+                const center = bbox.getCenter(new THREE.Vector3());
+                const size = bbox.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                
+                // Position camera to fit the object
+                this.wireframeCamera.position.z = maxDim * 2;
+                this.targetWireframe.position.sub(center);
 
-            // Ensure HUD is visible
-            this.targetHUD.style.display = 'block';
+                // Ensure HUD is visible
+                this.targetHUD.style.display = 'block';
+            } catch (error) {
+                console.warn('Failed to create wireframe for target:', error);
+                // Continue without wireframe if there's an error
+            }
         }
 
         this.updateTargetDisplay();
-    }
-
-    // Helper method to format distance in a readable way
-    formatDistance(distance) {
-        // Round to nearest 0.1
-        distance = Math.round(distance * 10) / 10;
-        
-        if (distance > 1000) {
-            return 'Very Far';
-        } else if (distance > 500) {
-            return 'Far';
-        } else if (distance < 1) {
-            return `${(distance * 1000).toFixed(0)}m`;
-        } else if (distance < 10) {
-            return `${distance.toFixed(1)}km`;
-        } else {
-            return `${Math.round(distance)}km`;
-        }
-    }
-
-    updateTargetDisplay() {
-        if (!this.currentTarget) return;
-
-        // Calculate distance to target
-        const distance = this.camera.position.distanceTo(this.currentTarget.position);
-        
-        // Get target name and type from the celestial body
-        const targetInfo = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-        
-        // Update target info display
-        this.targetInfo.innerHTML = `
-            Target: ${targetInfo.name}<br>
-            Type: ${targetInfo.type}<br>
-            Distance: ${this.formatDistance(distance)}
-        `;
     }
 
     setSolarSystemManager(manager) {

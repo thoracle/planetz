@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         MIDDLE: null,
         RIGHT: null
     };
-
+    
     // Initialize ViewManager
     const viewManager = new ViewManager(scene, camera, controls);
 
@@ -140,19 +140,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function logMouseEvent(type, event) {
         if (!debugVisible) return;
         console.debug(`Mouse ${type}:`, {
-            button: event.button,
-            buttons: event.buttons,
-            modifiers: {
-                ctrl: event.ctrlKey,
-                alt: event.altKey,
-                meta: event.metaKey,
-                shift: event.shiftKey
-            },
-            editMode: editMode,
-            controls: {
-                enabled: controls.enabled,
+                button: event.button,
+                buttons: event.buttons,
+                modifiers: {
+                    ctrl: event.ctrlKey,
+                    alt: event.altKey,
+                    meta: event.metaKey,
+                    shift: event.shiftKey
+                },
+                editMode: editMode,
+                controls: {
+                    enabled: controls.enabled,
                 enableRotate: controls.enableRotate,
-                enablePan: controls.enablePan,
+                    enablePan: controls.enablePan,
                 enableZoom: controls.enableZoom
             }
         });
@@ -1666,7 +1666,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Only update controls in edit mode
         if (editMode) {
-            controls.update();
+        controls.update();
         }
         
         // Update starfield
