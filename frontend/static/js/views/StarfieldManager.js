@@ -31,6 +31,9 @@ export class StarfieldManager {
         this.lastSortTime = 0;
         this.sortInterval = 2000; // Sort every 2 seconds
         
+        // Add arrow state tracking
+        this.lastArrowState = null;
+        
         // Create starfield with quadruple density
         this.starCount = 8000;  // Doubled again from 4000
         this.starfield = this.createStarfield();
@@ -187,7 +190,25 @@ export class StarfieldManager {
             border: 1px solid #00ff41;
             margin-bottom: 10px;
             position: relative;
+            overflow: visible;
         `;
+        
+        // Create directional arrow
+        this.directionArrow = document.createElement('div');
+        this.directionArrow.style.cssText = `
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 12px solid #00ff41;
+            display: none;
+            z-index: 1001;
+            transform-origin: center center;
+            pointer-events: none;
+            filter: drop-shadow(0 0 2px #00ff41);
+        `;
+        this.wireframeContainer.appendChild(this.directionArrow);
         
         // Create renderer for wireframe
         this.wireframeRenderer = new THREE.WebGLRenderer({ alpha: true });
@@ -368,6 +389,7 @@ export class StarfieldManager {
         // Convert to kilometers for display
         const distanceInKm = realDistance / 1000;
 
+        // Update target info display
         this.targetInfo.innerHTML = `
             <div class="target-info">
                 ${targetInfo.name}<br>
@@ -375,7 +397,154 @@ export class StarfieldManager {
                 Distance: ${this.formatDistance(distanceInKm)}
             </div>
         `;
+
+        // Check if target is on screen and update direction arrow
+        this.updateDirectionArrow();
+
         this.targetHUD.style.display = 'block';
+    }
+
+    updateDirectionArrow() {
+        if (!this.currentTarget) {
+            if (this.directionArrow.style.display !== 'none') {
+                console.log('Arrow hidden - no target');
+                this.directionArrow.style.display = 'none';
+                this.lastArrowState = null;
+            }
+            return;
+        }
+
+        // Get target position in screen space
+        const targetPosition = this.currentTarget.position.clone();
+        targetPosition.project(this.camera);
+
+        // Check if target is off screen
+        const isOffScreen = Math.abs(targetPosition.x) > 1 || Math.abs(targetPosition.y) > 1;
+
+        // Only log position if it crosses the screen boundary
+        const wasOffScreen = this.lastArrowState !== null;
+        if (wasOffScreen !== isOffScreen) {
+            console.log(`Target crossed screen boundary: (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}), isOffScreen: ${isOffScreen}`);
+        }
+
+        if (isOffScreen) {
+            // Position arrow based on target position and set it to point in the direction to move
+            let transform = '';
+            let position = {};
+            let edge = '';
+            let expectedDirection = '';
+            let extraStyles = {};
+            
+            if (targetPosition.x > 1) {
+                edge = 'right';
+                // For right edge, point right
+                extraStyles = {
+                    borderTop: '8px solid transparent',
+                    borderBottom: '8px solid transparent',
+                    borderLeft: '12px solid #00ff41',
+                    borderRight: 'none'
+                };
+                transform = 'rotate(0deg)';
+                position = { 
+                    right: '-12px', 
+                    top: '50%', 
+                    marginTop: '-8px',
+                    left: 'auto',
+                    bottom: 'auto'
+                };
+                expectedDirection = 'right';
+            } else if (targetPosition.x < -1) {
+                edge = 'left';
+                // For left edge, point left
+                extraStyles = {
+                    borderTop: '8px solid transparent',
+                    borderBottom: '8px solid transparent',
+                    borderRight: '12px solid #00ff41',
+                    borderLeft: 'none'
+                };
+                transform = 'rotate(0deg)';
+                position = { 
+                    left: '-12px', 
+                    top: '50%', 
+                    marginTop: '-8px',
+                    right: 'auto',
+                    bottom: 'auto'
+                };
+                expectedDirection = 'left';
+            } else if (targetPosition.y > 1) {
+                edge = 'top';
+                extraStyles = {
+                    borderLeft: '8px solid transparent',
+                    borderRight: '8px solid transparent',
+                    borderBottom: '12px solid #00ff41',
+                    borderTop: 'none'
+                };
+                transform = 'rotate(0deg)';
+                position = { 
+                    top: '-12px', 
+                    left: '50%', 
+                    marginLeft: '-8px',
+                    right: 'auto',
+                    bottom: 'auto'
+                };
+                expectedDirection = 'up';
+            } else if (targetPosition.y < -1) {
+                edge = 'bottom';
+                extraStyles = {
+                    borderLeft: '8px solid transparent',
+                    borderRight: '8px solid transparent',
+                    borderTop: '12px solid #00ff41',
+                    borderBottom: 'none'
+                };
+                transform = 'rotate(0deg)';
+                position = { 
+                    bottom: '-12px', 
+                    left: '50%', 
+                    marginLeft: '-8px',
+                    right: 'auto',
+                    top: 'auto'
+                };
+                expectedDirection = 'down';
+            }
+
+            // Create new state object
+            const newState = {
+                edge,
+                transform,
+                expectedDirection,
+                display: 'block'
+            };
+
+            // Check if state has actually changed
+            const hasChanged = !this.lastArrowState || 
+                             this.lastArrowState.edge !== edge ||
+                             this.lastArrowState.transform !== transform ||
+                             this.lastArrowState.expectedDirection !== expectedDirection;
+
+            // Apply styles to arrow and ensure all positions are explicitly set
+            const styles = {
+                display: 'block',
+                transform: transform,
+                ...position,
+                ...extraStyles
+            };
+
+            // Apply styles and log them for debugging
+            Object.assign(this.directionArrow.style, styles);
+            
+            // Log only if arrow state has changed
+            if (hasChanged) {
+                console.log(`Arrow changed to: ${edge} edge, ${expectedDirection} direction`);
+                console.log('Applied styles:', styles);
+                this.lastArrowState = newState;
+            }
+        } else {
+            if (this.directionArrow.style.display !== 'none') {
+                console.log('Arrow hidden - target is on screen');
+                this.lastArrowState = null;
+            }
+            this.directionArrow.style.display = 'none';
+        }
     }
 
     cycleTarget() {
