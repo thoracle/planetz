@@ -465,7 +465,13 @@ export class StarfieldManager {
             </div>
         `;
 
-        // Update reticle position
+        // Hide reticle in AFT view
+        if (this.view === 'AFT') {
+            this.targetReticle.style.display = 'none';
+            return;
+        }
+
+        // Update reticle position only in FORE view
         const screenPosition = this.currentTarget.position.clone().project(this.camera);
         const isOnScreen = Math.abs(screenPosition.x) <= 1 && Math.abs(screenPosition.y) <= 1;
         
