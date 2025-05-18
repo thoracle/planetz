@@ -3,11 +3,34 @@
 ## Core Use Cases
 
 ### 1. Star System Generation and Management
-- Generate a new star system with deterministic random seed using Lehmer32
-- Create and manage celestial bodies with unique naming conventions:
-  - Stars: Greek letter prefix + traditional name (e.g., "Alpha Centauri")
-  - Planets: Space-themed prefix + numerical/descriptive suffix (e.g., "Terra Prime")
-  - Moons: Traditional moon name + numerical/descriptive suffix (e.g., "Phobos Alpha")
+- Generate a deterministic universe using Lehmer32 random number generator:
+  - Initialize Lehmer32 with a seed value
+  - Generate 90 star systems (9x10 grid)
+  - Each star system has:
+    - Star type (red dwarf, yellow dwarf, blue giant, white dwarf)
+    - Unique star name using syllable combinations (e.g., "Corusctaf")
+    - 0-9 planets (randomly determined)
+  - Each planet has:
+    - Planet class (Class-M through Class-Y)
+    - Unique name using syllable combinations
+    - Faction (Friendly, Neutral, Enemy, Unknown)
+    - Government (Dictatorship, Democracy, Theocracy, Monarchy, Anarchy)
+    - Economy (Agricultural, Industrial, Technological, Commercial, Mining, Research, Tourism)
+    - Population (ranging from 200,000 to 10 billion)
+    - Atmosphere and cloud properties
+    - Terrain parameters (noise scale, octaves, persistence, lacunarity)
+    - 0-5 moons
+  - Each moon has:
+    - Moon type (rocky, ice, desert)
+    - Unique name using syllable combinations
+    - Size parameters
+
+- Maintain deterministic generation:
+  - Use Lehmer32 for all random choices
+  - Handle both numeric and string seeds
+  - Calculate universe checksum for verification
+  - Ensure reproducible results across sessions
+
 - Apply realistic orbital mechanics using Kepler's laws
 - Handle gravitational interactions between bodies
 - Manage spatial partitioning for efficient physics calculations
@@ -19,7 +42,8 @@ Each celestial body type has specific properties:
 ```json
 {
     "star_type": "red dwarf | yellow dwarf | blue giant | white dwarf",
-    "star_name": "String (e.g., 'Zeta Fomalhaut')",
+    "star_name": "String (e.g., 'Corusctaf')",
+    "star_size": "Float (default: 2.0)",
     "planets": [Planet]
 }
 ```
@@ -28,7 +52,22 @@ Each celestial body type has specific properties:
 ```json
 {
     "planet_type": "Class-M | Class-L | Class-H | Class-D | Class-J | Class-K | Class-N | Class-Y",
-    "planet_name": "String (e.g., 'Terra VIII')",
+    "planet_name": "String (e.g., 'Tatoomus')",
+    "planet_size": "Float (0.8 to 2.8)",
+    "has_atmosphere": "Boolean",
+    "has_clouds": "Boolean",
+    "faction": "String (Friendly, Neutral, Enemy, Unknown)",
+    "government": "String (Dictatorship, Democracy, Theocracy, Monarchy, Anarchy)",
+    "economy": "String (Agricultural, Industrial, Technological, Commercial, Mining, Research, Tourism)",
+    "population": "String (200,000 to 10 billion)",
+    "params": {
+        "noise_scale": "Float",
+        "octaves": "Integer",
+        "persistence": "Float",
+        "lacunarity": "Float",
+        "terrain_height": "Float",
+        "seed": "Integer"
+    },
     "moons": [Moon]
 }
 ```
@@ -37,7 +76,8 @@ Each celestial body type has specific properties:
 ```json
 {
     "moon_type": "rocky | ice | desert",
-    "moon_name": "String (e.g., 'Titan Alpha')"
+    "moon_name": "String (e.g., 'Phobos')",
+    "moon_size": "Float (0.2 to 0.8)"
 }
 ```
 
@@ -87,7 +127,7 @@ Each planet class has specific characteristics:
 - Handle touch interactions
 
 #### 6.3 Tab Cycling in Edit Mode
-- Cycle through celestial bodies using Tab key
+- Cycle through celestial bodies in current solar system using Tab key
 - Clear existing GUI controls before switching
 - Update property controls based on body type:
   - Star: temperature and radius controls
@@ -434,325 +474,173 @@ classDiagram
 
 ## Sequence Diagrams
 
-### 1. Star System Generation and Management
+### Universe Creation and Synchronization
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant System
-    participant Physics
-    participant Renderer
-    participant UI
-
-    User->>System: Generate New System
-    System->>System: Create Random Seed
-    System->>System: Generate Star Data
-    System->>System: Generate Planet Data
-    System->>System: Generate Moon Data
-    System->>Physics: Initialize Orbital Mechanics
-    System->>Renderer: Create Star Mesh
-    System->>Renderer: Create Planet Meshes
-    System->>Renderer: Create Moon Meshes
-    System->>UI: Update Debug Info
-    System->>User: Display New System
-```
-
-### 2. Celestial Body Visualization
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant System
-    participant Renderer
-    participant Physics
-
-    loop Every Frame
-        System->>Physics: Update Positions
-        Physics->>System: Return New Positions
-        System->>Renderer: Update Star Properties
-        System->>Renderer: Update Planet Properties
-        System->>Renderer: Update Moon Properties
-        Renderer->>Renderer: Apply Atmospheric Effects
-        Renderer->>Renderer: Apply Ocean Effects
-        Renderer->>Renderer: Apply Cloud Layers
-        Renderer->>User: Render Frame
-    end
-```
-
-### 3. Camera and View Controls
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant System
-    participant Camera
-    participant UI
-
-    User->>System: Mouse/Touch Input
-    System->>Camera: Update Position
-    Camera->>Camera: Calculate New View
-    Camera->>System: Return View Matrix
-    System->>UI: Update Camera Info
-    System->>User: Update View
-```
-
-### 4. Debug and Edit Modes
-
-#### 4.1 Debug Mode (CTRL+D)
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant System
-    participant UI
-    participant Physics
-    participant Renderer
-
-    User->>System: Press CTRL+D
-    System->>UI: Toggle Debug Mode
-    UI->>UI: Show Debug Panel
-
-    loop Every Frame
-        System->>Physics: Get Body Positions
-        Physics-->>System: Return Positions
-        System->>System: Calculate Statistics
-        System->>UI: Update Debug Info
-        UI->>UI: Update Display
-    end
-```
-
-#### 4.2 Edit Mode (CTRL+E)
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant System
-    participant UI
-    participant Physics
-    participant Renderer
-    participant ViewManager
-
-    User->>System: Press CTRL+E
-    System->>ViewManager: Set Edit Mode
-    ViewManager->>ViewManager: Hide Crosshairs
-    ViewManager->>ViewManager: Enable Orbit Controls
-    ViewManager->>ViewManager: Set Target to Origin
-    System->>System: Show Debug Helpers
-    System->>System: Add Edit Mode Class
-    System->>UI: Toggle Edit Mode
-    UI->>UI: Show Edit Panel
-    UI->>UI: Initialize GUI Container
-    UI->>UI: Create Title Element
-    UI->>UI: Add Property Controls
-    UI->>UI: Add Terraforming Tools
-    UI->>UI: Add Save/Cancel Buttons
-    UI->>UI: Position Panel Elements
-    UI->>UI: Add Event Listeners
-    UI->>UI: Initialize Tooltips
-    UI->>UI: Setup Input Validation
-    UI->>UI: Update Display
-
-    System->>System: Get Celestial Bodies
-    System->>System: Set Current Edit Body
-    System->>System: Cycle Bodies
-    System->>UI: Update Body Info
-    UI->>UI: Update Title
-    UI->>UI: Update Property Fields
-    UI->>UI: Update Terraforming Tools
-    UI->>UI: Validate Current Values
-    UI->>UI: Update Tooltips
-    UI->>UI: Update Display
-
-    loop Animation Loop
-        System->>ViewManager: Update Controls
-        System->>System: Update Starfield
-        System->>System: Update Solar System
-        System->>System: Update Waves
-        System->>System: Update Clouds
-        System->>System: Update Atmosphere
-        System->>System: Update Chunk Manager
-        System->>UI: Update Debug Info
-        System->>Renderer: Render Frame
-    end
-
-    User->>UI: Input Property Value
-    UI->>UI: Validate Input
-    alt Valid Input
-        UI->>UI: Update Field Display
-        UI->>UI: Show Success Indicator
-    else Invalid Input
-        UI->>UI: Show Error Message
-        UI->>UI: Highlight Invalid Field
-    end
-    UI->>System: Submit Valid Changes
-    System->>Physics: Update Body Properties
-    Physics->>Renderer: Update Visual Properties
-    Renderer->>Renderer: Update Display
-    System->>UI: Update Display
-    UI->>UI: Update Property Fields
-    UI->>UI: Update Terraforming Tools
-    UI->>UI: Update Tooltips
-    UI->>UI: Update Display
-
-    User->>UI: Use Terraforming Tool
-    UI->>UI: Update Brush Preview
-    UI->>UI: Show Tool Settings
-    UI->>UI: Update Cursor
-    UI->>UI: Update Display
-
-    Note over User, Renderer: Camera Controls
-    Note right of ViewManager: - Option+Drag: Orbit
-    Note right of ViewManager: - Command+Drag: Pan
-    Note right of ViewManager: - Option+Command+Drag: Roll
-    Note right of ViewManager: - Two-finger drag: Zoom
-
-    Note over User, Renderer: Event Prevention
-    Note right of System: - Prevent default browser behaviors
-    Note right of System: - Stop event propagation
-    Note right of System: - Handle modifier keys
-    Note right of System: - Prevent context menu
-
-    Note over User, Renderer: Debug Helpers
-    Note right of System: - Show axes helper
-    Note right of System: - Show grid helper
-    Note right of System: - Update debug info
-
-    Note over User, Renderer: Touch Controls
-    Note right of System: - Two-finger pinch: Zoom
-    Note right of System: - Touch duration tracking
-    Note right of System: - Distance calculation
-```
-
-#### 4.3 Tab Cycling in Edit Mode
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant System
-    participant UI
+    participant App
+    participant GalacticChart
+    participant API
+    participant UniverseGenerator
     participant SolarSystemManager
-    participant GUI
-    participant THREE
+    participant StarfieldManager
 
-    User->>System: Press Tab key
-    System->>System: Prevent default event
-    System->>SolarSystemManager: getCelestialBodies()
-    SolarSystemManager-->>System: Return array of bodies
-    System->>System: Find current edit body
-    System->>System: Calculate next index
-    System->>SolarSystemManager: setCurrentEditBody(nextBody)
+    Note over App: Application Initialization
+    App->>GalacticChart: fetchUniverseData()
+    GalacticChart->>API: GET /api/generate_universe
+    API->>UniverseGenerator: generate_universe(90)
     
-    Note over System: Clear existing GUI folders
-    loop Until all folders removed
-        System->>GUI: Get first folder name
-        System->>GUI: Close folder
-        System->>GUI: Remove folder
+    Note over UniverseGenerator: Initialize Lehmer32 RNG
+    loop For each star system (0-89)
+        UniverseGenerator->>UniverseGenerator: generate_star_system()
+        Note over UniverseGenerator: Generate star (type, name, size)
+        
+        loop For each planet (0-9)
+            UniverseGenerator->>UniverseGenerator: generate_planet()
+            Note over UniverseGenerator: Set planet attributes<br/>(type, name, faction, etc.)
+            
+            loop For each moon (0-5)
+                UniverseGenerator->>UniverseGenerator: generate_moon()
+                Note over UniverseGenerator: Set moon attributes<br/>(type, name, size)
+            end
+        end
     end
     
-    System->>System: Determine body type
-    alt Star
-        System->>GUI: Add "Star Properties" folder
-        System->>GUI: Add temperature control
-        System->>GUI: Add radius control
-    else Planet
-        System->>GUI: Add "Planet Properties" folder
-        System->>GUI: Add radius control
-        System->>GUI: Add rotation speed control
-        System->>GUI: Add orbit speed control
-    else Moon
-        System->>GUI: Add "Moon Properties" folder
-        System->>GUI: Add radius control
-        System->>GUI: Add rotation speed control
-        System->>GUI: Add orbit speed control
+    UniverseGenerator->>UniverseGenerator: calculate_checksum()
+    UniverseGenerator-->>API: Return universe data
+    API-->>GalacticChart: Return universe data
+    GalacticChart->>GalacticChart: updateGrid()
+    Note over GalacticChart: Update cell counts<br/>Set ship location<br/>Highlight current system
+    GalacticChart->>SolarSystemManager: Share universe data
+    App->>SolarSystemManager: generateStarSystem('A0')
+    
+    alt Has Universe Data
+        SolarSystemManager->>SolarSystemManager: Use system from universe
+        SolarSystemManager->>SolarSystemManager: createStarSystem()
+        Note over SolarSystemManager: Create star mesh<br/>Add star light<br/>Create planets<br/>Setup physics
+    else No Universe Data
+        SolarSystemManager->>API: GET /api/generate_star_system
+        API->>UniverseGenerator: generate_star_system(seed)
+        UniverseGenerator-->>API: Return star system
+        API-->>SolarSystemManager: Return star system
+        SolarSystemManager->>SolarSystemManager: createStarSystem()
+        Note over SolarSystemManager: Create star mesh<br/>Add star light<br/>Create planets<br/>Setup physics
     end
     
-    System->>UI: Update GUI title
-    System->>THREE: Update body properties
-    
-    Note over System: Animation loop continues
-    loop Every frame
-        System->>THREE: Update body positions
-        System->>THREE: Apply rotation/orbit speeds
-    end
+    SolarSystemManager-->>StarfieldManager: System Created
+    StarfieldManager->>StarfieldManager: updateTargetList()
+    Note over StarfieldManager: Get celestial bodies<br/>Calculate distances<br/>Format for display<br/>Sort by distance
 ```
 
-### 5. Planet Customization
+### Tab Targeting Flow
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant System
-    participant UI
-    participant Renderer
-    participant Physics
+    participant StarfieldManager
+    participant SolarSystemManager
+    participant ViewManager
+    participant GalacticChart
 
-    User->>System: Select Planet
-    System->>UI: Show Customization Panel
-    User->>UI: Adjust Parameters
-    UI->>System: Update Parameters
-    System->>Renderer: Update Terrain
-    System->>Renderer: Update Atmosphere
-    System->>Renderer: Update Ocean
-    System->>Renderer: Update Clouds
-    System->>Physics: Update Physical Properties
-    System->>User: Display Changes
+    User->>StarfieldManager: Press Tab key
+    Note over StarfieldManager: Check target computer state
+    StarfieldManager->>StarfieldManager: cycleTarget()
+    StarfieldManager->>SolarSystemManager: getCelestialBodies()
+    SolarSystemManager->>SolarSystemManager: Filter active bodies
+    Note over SolarSystemManager: Exclude atmosphere<br/>clouds and rings
+    SolarSystemManager-->>StarfieldManager: Return bodies list
+    StarfieldManager->>GalacticChart: getStarSystemForSector(currentSector)
+    GalacticChart-->>StarfieldManager: Return sector data
+    StarfieldManager->>StarfieldManager: updateTargetList()
+    Note over StarfieldManager: Calculate distances<br/>Sort targets<br/>Format distances
+    StarfieldManager->>StarfieldManager: Create wireframe
+    Note over StarfieldManager: Create geometry<br/>Set material<br/>Add to HUD scene
+    StarfieldManager->>StarfieldManager: updateTargetDisplay()
+    Note over StarfieldManager: Update HUD info<br/>Position reticle<br/>Update direction arrow
+    StarfieldManager-->>User: Display target info
 ```
 
-### 6. Performance Optimization
+### Galactic Chart Population
 
 ```mermaid
 sequenceDiagram
-    participant System
-    participant Physics
-    participant Renderer
-    participant Memory
+    participant User
+    participant GalacticChart
+    participant SolarSystemManager
+    participant API
+    participant StarfieldManager
+
+    User->>GalacticChart: Click sector cell
+    GalacticChart->>GalacticChart: setCurrentSystem(index)
+    Note over GalacticChart: Update cell highlights<br/>Clear previous selection
+    
+    alt Universe Data Exists
+        GalacticChart->>GalacticChart: showSystemDetails()
+        Note over GalacticChart: Show star info<br/>List planets<br/>Show factions<br/>Show economy
+        GalacticChart->>SolarSystemManager: setCurrentSector()
+        SolarSystemManager->>SolarSystemManager: Check universe data
+        SolarSystemManager->>SolarSystemManager: createStarSystem()
+        Note over SolarSystemManager: Create meshes<br/>Setup physics<br/>Configure orbits
+    else No Universe Data
+        SolarSystemManager->>API: generateStarSystem(sector)
+        API-->>SolarSystemManager: Return star system
+        SolarSystemManager->>SolarSystemManager: createStarSystem()
+        Note over SolarSystemManager: Create meshes<br/>Setup physics<br/>Configure orbits
+    end
+    
+    SolarSystemManager->>StarfieldManager: System Updated
+    StarfieldManager->>StarfieldManager: updateTargetList()
+    Note over StarfieldManager: Get bodies<br/>Calculate distances<br/>Sort targets
+    StarfieldManager->>StarfieldManager: updateCurrentSector()
+    Note over StarfieldManager: Check position<br/>Generate new system<br/>if sector changed
+    StarfieldManager-->>User: Display updated system
 
     loop Every Frame
-        System->>Physics: Check Spatial Partitioning
-        Physics->>System: Return Active Bodies
-        System->>Renderer: Update LOD Levels
-        System->>Memory: Manage Chunk Loading
-        Memory->>Renderer: Provide Chunk Data
-        Renderer->>System: Render Frame
+        StarfieldManager->>StarfieldManager: update()
+        Note over StarfieldManager: Update speed<br/>Move camera<br/>Check sector<br/>Update displays
     end
 ```
 
-### 7. User Interface Management
+### Key Synchronization Points
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant System
-    participant UI
-    participant Renderer
+1. **Universe Creation**:
+   - App initializes by fetching universe data through GalacticChart
+   - GalacticChart handles UI updates and grid cell management
+   - SolarSystemManager creates all necessary 3D objects and physics
+   - StarfieldManager maintains real-time targeting and movement
 
-    User->>System: Interact with UI
-    System->>UI: Process Input
-    UI->>System: Update State
-    System->>Renderer: Update Display
-    System->>UI: Update UI Elements
-    UI->>User: Show Feedback
-```
+2. **Tab Targeting**:
+   - StarfieldManager handles all targeting logic and display
+   - Target computer state determines targeting behavior
+   - Wireframe and HUD elements show target information
+   - Real-time distance calculations and sorting
 
-### 8. Data Management
+3. **Galactic Chart Updates**:
+   - GalacticChart manages sector selection and details display
+   - SolarSystemManager creates and manages celestial bodies
+   - StarfieldManager handles movement and sector transitions
+   - Continuous updates during gameplay
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant System
-    participant Storage
-    participant Physics
+### Error Handling
 
-    User->>System: Request Data
-    System->>Storage: Load System Data
-    Storage->>System: Return Data
-    System->>Physics: Initialize Physics
-    System->>User: Display System
-    loop On Changes
-        System->>Storage: Save Updates
-        Storage->>System: Confirm Save
-    end
-```
+1. **Universe Creation**:
+   - Handle API failures gracefully
+   - Provide fallback for offline mode
+   - Maintain data consistency across components
+   - Validate universe data before use
+
+2. **Tab Targeting**:
+   - Handle missing or invalid targets
+   - Manage wireframe creation failures
+   - Update HUD only when appropriate
+   - Handle off-screen targets
+
+3. **Galactic Chart**:
+   - Validate sector selections
+   - Handle missing system data
+   - Manage state during transitions
+   - Ensure smooth sector changes
 
 ## Technical Considerations
 

@@ -12,10 +12,12 @@ export class ViewManager {
         this.scene = scene;
         this.camera = camera;
         this.controls = controls;
-        this.currentView = VIEW_TYPES.FRONT;
         this.previousView = VIEW_TYPES.FRONT;
         this.editMode = false;
-        this.starfieldManager = null; // Will be set by setStarfieldManager
+        this.starfieldManager = null;
+        
+        // Initialize ship energy
+        this.shipEnergy = 9999; // Start with 1000 energy units
         
         // Store camera state
         this.savedCameraState = {
@@ -37,8 +39,11 @@ export class ViewManager {
         // Create crosshairs
         this.createCrosshairs();
         
-        // Create galactic chart
+        // Create galactic chart and ensure it's hidden
         this.galacticChart = new GalacticChart(this);
+        
+        // Set initial view state - this will also set this.currentView
+        this.setView(VIEW_TYPES.FRONT);
         
         // Bind keyboard events
         this.bindKeyEvents();
@@ -46,6 +51,19 @@ export class ViewManager {
 
     setStarfieldManager(manager) {
         this.starfieldManager = manager;
+    }
+
+    // Add method to check if managers are properly initialized
+    areManagersReady() {
+        return this.starfieldManager && this.starfieldManager.solarSystemManager;
+    }
+
+    // Add method to get SolarSystemManager safely
+    getSolarSystemManager() {
+        if (!this.areManagersReady()) {
+            throw new Error('Managers not properly initialized');
+        }
+        return this.starfieldManager.solarSystemManager;
     }
 
     createCrosshairs() {
@@ -89,9 +107,6 @@ export class ViewManager {
         this.crosshairContainer.appendChild(this.frontCrosshair);
         this.crosshairContainer.appendChild(this.aftCrosshair);
         document.body.appendChild(this.crosshairContainer);
-        
-        // Show front crosshair by default
-        this.frontCrosshair.style.display = 'block';
     }
 
     bindKeyEvents() {
@@ -99,24 +114,55 @@ export class ViewManager {
             if (this.editMode) return; // Ignore view changes in edit mode
             
             const key = event.key.toLowerCase();
-            if (key === 'f' && this.currentView === VIEW_TYPES.AFT) {
+            const isGalacticChartVisible = this.galacticChart.isVisible();
+            
+            if (key === 'g') {
+                console.log('G key pressed:', {
+                    isGalacticChartVisible,
+                    currentView: this.currentView,
+                    previousView: this.previousView
+                });
+                
+                event.preventDefault();
+                event.stopPropagation();
+                
+                if (isGalacticChartVisible) {
+                    console.log('Restoring previous view');
+                    this.galacticChart.hide(true);
+                } else {
+                    console.log('Setting view to GALACTIC');
+                    this.setView(VIEW_TYPES.GALACTIC);
+                }
+            } else if (key === 'f' && this.currentView === VIEW_TYPES.AFT) {
+                event.preventDefault();
+                event.stopPropagation();
                 this.setView(VIEW_TYPES.FRONT);
             } else if (key === 'a' && this.currentView === VIEW_TYPES.FRONT) {
+                event.preventDefault();
+                event.stopPropagation();
                 this.setView(VIEW_TYPES.AFT);
-            } else if (key === 'g') {
-                this.setView(VIEW_TYPES.GALACTIC);
             }
         });
     }
 
     setView(viewType) {
+        console.log('setView called:', {
+            viewType,
+            currentView: this.currentView,
+            isGalacticVisible: this.galacticChart.isVisible()
+        });
+        
         if (this.editMode) return; // Don't change views in edit mode
         
         // Don't store previous view if we're already in that view
-        if (this.currentView === viewType) return;
+        if (this.currentView === viewType) {
+            console.log('Already in requested view, returning');
+            return;
+        }
 
         // Store previous view and camera state
         if (viewType === VIEW_TYPES.GALACTIC) {
+            console.log('Storing previous view state');
             // When entering galactic view, save current state
             this.previousView = this.currentView;
             this.savedCameraState.position.copy(this.camera.position);
@@ -130,6 +176,7 @@ export class ViewManager {
         switch(viewType) {
             case VIEW_TYPES.FRONT:
                 if (this.currentView === VIEW_TYPES.GALACTIC) {
+                    console.log('Restoring camera state from galactic view');
                     // Restore camera state when coming from galactic view
                     this.camera.position.copy(this.savedCameraState.position);
                     this.camera.quaternion.copy(this.savedCameraState.quaternion);
@@ -141,6 +188,7 @@ export class ViewManager {
                 break;
             case VIEW_TYPES.AFT:
                 if (this.currentView === VIEW_TYPES.GALACTIC) {
+                    console.log('Restoring camera state from galactic view');
                     // Restore camera state when coming from galactic view
                     this.camera.position.copy(this.savedCameraState.position);
                     this.camera.quaternion.copy(this.savedCameraState.quaternion);
@@ -155,12 +203,19 @@ export class ViewManager {
                 this.aftCrosshair.style.display = 'block';
                 break;
             case VIEW_TYPES.GALACTIC:
-                this.setGalacticView();
+                // Only show galactic chart if it's not already visible
+                if (!this.galacticChart.isVisible()) {
+                    console.log('Setting galactic view');
+                    this.setGalacticView();
+                } else {
+                    console.log('Galactic chart already visible, skipping setGalacticView');
+                }
                 break;
         }
         
         // Update the current view BEFORE notifying StarfieldManager
         this.currentView = viewType;
+        console.log('Updated current view to:', this.currentView);
         
         // Notify StarfieldManager of view change
         if (this.starfieldManager) {
@@ -234,11 +289,20 @@ export class ViewManager {
     }
 
     restorePreviousView() {
+        console.log('restorePreviousView called:', {
+            currentView: this.currentView,
+            previousView: this.previousView
+        });
+        
         // Don't restore if we're not in galactic view
-        if (this.currentView !== VIEW_TYPES.GALACTIC) return;
+        if (this.currentView !== VIEW_TYPES.GALACTIC) {
+            console.log('Not in galactic view, returning');
+            return;
+        }
         
         // Default to FRONT view if no previous view is stored
         const viewToRestore = this.previousView || VIEW_TYPES.FRONT;
+        console.log('Restoring to view:', viewToRestore);
         
         // Hide the galactic chart without triggering another view restoration
         this.galacticChart.hide(false);
@@ -260,9 +324,22 @@ export class ViewManager {
         
         // Update the current view and notify StarfieldManager
         this.currentView = viewToRestore;
+        console.log('Updated current view to:', this.currentView);
+        
         if (this.starfieldManager) {
             this.starfieldManager.setView(viewToRestore.toUpperCase());
         }
+    }
+
+    // Add method to get current ship energy
+    getShipEnergy() {
+        return this.shipEnergy;
+    }
+
+    // Add method to update ship energy
+    updateShipEnergy(amount) {
+        this.shipEnergy = Math.max(0, this.shipEnergy + amount);
+        return this.shipEnergy;
     }
 
     dispose() {
@@ -273,5 +350,9 @@ export class ViewManager {
         if (this.galacticChart) {
             this.galacticChart.dispose();
         }
+    }
+
+    getGalacticChart() {
+        return this.galacticChart;
     }
 } 

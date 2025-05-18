@@ -7,7 +7,7 @@ import { ViewManager } from './views/ViewManager.js';
 import { StarfieldManager } from './views/StarfieldManager.js';
 import { SolarSystemManager } from './SolarSystemManager.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('Initializing application...');
     
     // Scene setup
@@ -115,26 +115,46 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize ViewManager
     const viewManager = new ViewManager(scene, camera, controls);
 
-    // Initialize StarfieldManager
-    const starfieldManager = new StarfieldManager(scene, camera);
-
-    // Initialize SolarSystemManager
-    const solarSystemManager = new SolarSystemManager(scene, camera);
-
-    // Connect ViewManager and StarfieldManager
+    // Initialize StarfieldManager and connect it to ViewManager
+    const starfieldManager = new StarfieldManager(scene, camera, viewManager);
     viewManager.setStarfieldManager(starfieldManager);
-    
-    // Connect StarfieldManager and SolarSystemManager
+
+    // Initialize SolarSystemManager and connect it to StarfieldManager
+    const solarSystemManager = new SolarSystemManager(scene, camera);
     starfieldManager.setSolarSystemManager(solarSystemManager);
 
-    // Generate initial star system
-    solarSystemManager.generateStarSystem().then(success => {
-        if (success) {
-            console.log('Star system generated successfully');
+    // Verify managers are properly connected
+    if (!viewManager.areManagersReady()) {
+        console.error('Failed to initialize managers properly');
+        return;
+    }
+
+    // Initialize the universe and then generate the initial star system
+    try {
+        await viewManager.galacticChart.fetchUniverseData();
+        
+        // Ensure universe data is shared with SolarSystemManager
+        if (viewManager.galacticChart.universe) {
+            solarSystemManager.universe = viewManager.galacticChart.universe;
+            console.log('Universe data shared with SolarSystemManager:', {
+                universeSize: solarSystemManager.universe.length,
+                firstSystem: solarSystemManager.universe[0]?.star_name,
+                sectorA0: solarSystemManager.universe.find(system => system.sector === 'A0')
+            });
+            
+            // Generate initial star system for sector A0
+            const success = await solarSystemManager.generateStarSystem('A0');
+            if (success) {
+                console.log('Star system generated successfully');
+            } else {
+                console.error('Failed to generate star system');
+            }
         } else {
-            console.error('Failed to generate star system');
+            console.error('Failed to fetch universe data');
         }
-    });
+    } catch (error) {
+        console.error('Error during initialization:', error);
+    }
 
     // Debug logging function for mouse events
     function logMouseEvent(type, event) {

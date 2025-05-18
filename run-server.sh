@@ -84,4 +84,4 @@ pip install -e . --quiet
 
 # Run the server from the root directory
 echo -e "${GREEN}Starting server...${NC}"
-FLASK_APP=run.py FLASK_ENV=development FLASK_DEBUG=1 PYTHONPATH=$PYTHONPATH:$(pwd):$(pwd)/backend python3 run.py
+FLASK_APP=run.py FLASK_ENV=development FLASK_DEBUG=1 PYTHONPATH=$PYTHONPATH:$(pwd):$(pwd)/backend UNIVERSE_SEED=20299999 python3 run.py

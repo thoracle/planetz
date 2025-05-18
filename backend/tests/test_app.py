@@ -4,7 +4,7 @@ from backend import create_app
 @pytest.fixture
 def app():
     """Create and configure a new app instance for each test."""
-    app = create_app()
+    app = create_app('testing')
     app.config.update({
         "TESTING": True,
     })

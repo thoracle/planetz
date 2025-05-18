@@ -36,6 +36,16 @@ class DevelopmentConfig(Config):
     LOG_LEVEL = 'DEBUG'
 
 
+class TestingConfig(Config):
+    """Testing configuration."""
+    TESTING = True
+    DEBUG = True
+    # Use a different port for testing to avoid conflicts
+    PORT = 5002
+    # Use an in-memory database if applicable
+    # DATABASE_URI = 'sqlite:///:memory:'
+
+
 class ProductionConfig(Config):
     """Production configuration."""
     DEBUG = False
@@ -52,5 +62,6 @@ class ProductionConfig(Config):
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
+    'testing': TestingConfig,  # Add testing configuration
     'default': DevelopmentConfig
 } 

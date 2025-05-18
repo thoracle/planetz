@@ -1,3 +1,5 @@
+# Technical Design Document - Procedural Planet Generation with Marching Cubes
+
 Below is a detailed response specifying the design elements from Sebastian Lague's Terraforming project and the technical elements from DanielEsteban's softxels project that are essential for developing a new web-based application to generate 3D spherical planets. The application uses Python3/Flask for the backend, Three.js for rendering, and includes user-friendly widgets (sliders and color pickers) for customizing procedural generation parameters.
 Essential Design Elements from Terraforming
 Sebastian Lague’s Terraforming project is a Unity-based application focused on real-time terrain deformation. While the new project shifts focus to generating static spherical planets rather than interactive sculpting, several design concepts are still highly relevant:

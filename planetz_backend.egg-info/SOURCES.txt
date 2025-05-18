@@ -6,6 +6,7 @@ backend/api.py
 backend/app.py
 backend/config.py
 backend/planetGenerator.py
+backend/test_verse.py
 backend/verse.py
 backend/routes/__init__.py
 backend/routes/api.py

@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 
 export class StarfieldManager {
-    constructor(scene, camera) {
+    constructor(scene, camera, viewManager) {
         this.scene = scene;
         this.camera = camera;
+        this.viewManager = viewManager;  // Store the viewManager
         this.targetSpeed = 0;
         this.currentSpeed = 0;
         this.maxSpeed = 9;
@@ -19,6 +20,7 @@ export class StarfieldManager {
         this.mouseRotation = new THREE.Vector2();
         this.isMouseLookEnabled = true;
         this.view = 'FORE'; // Add view state - can be 'FORE' or 'AFT'
+        this.solarSystemManager = null; // Will be set by setSolarSystemManager
         
         // Target computer state
         this.targetComputerEnabled = false;
@@ -35,8 +37,8 @@ export class StarfieldManager {
         // Add arrow state tracking
         this.lastArrowState = null;
         
-        // Create starfield with quadruple density
-        this.starCount = 8000;  // Doubled again from 4000
+        // Create starfield with quintuple density
+        this.starCount = 40000;  // Increased from 8000 to 40000
         this.starfield = this.createStarfield();
         this.scene.add(this.starfield);
         
@@ -288,15 +290,16 @@ export class StarfieldManager {
         
         this.wireframeContainer.appendChild(this.wireframeRenderer.domElement);
         
-        // Create target info container
-        this.targetInfo = document.createElement('div');
-        this.targetInfo.style.cssText = `
+        // Create target info display
+        this.targetInfoDisplay = document.createElement('div');
+        this.targetInfoDisplay.style.cssText = `
             width: 100%;
             text-align: left;
+            margin-top: 10px;
         `;
         
         this.targetHUD.appendChild(this.wireframeContainer);
-        this.targetHUD.appendChild(this.targetInfo);
+        this.targetHUD.appendChild(this.targetInfoDisplay);
         document.body.appendChild(this.targetHUD);
     }
 
@@ -375,38 +378,63 @@ export class StarfieldManager {
     }
 
     updateTargetList() {
-        // Get targetable objects from solar system
-        const targetableObjects = this.solarSystemManager.getCelestialBodies();
+        console.log('Updating target list...');
         
-        // Calculate distances from camera
-        this.targetObjects = targetableObjects.map(obj => {
-            const sceneDistance = obj.position.distanceTo(this.camera.position);
-            // Convert scene distance back to real distance in meters
-            const realDistance = sceneDistance / (this.solarSystemManager.SCALE_FACTOR * this.solarSystemManager.VISUAL_SCALE);
-            // Convert to kilometers for display
-            const distanceInKm = realDistance / 1000;
-            
-            return {
-                object: obj,
-                distance: distanceInKm
-            };
+        // Get celestial bodies from SolarSystemManager
+        const bodies = this.solarSystemManager.getCelestialBodies();
+        const celestialBodies = Array.from(bodies.entries())
+            .map(([key, body]) => {
+                const info = this.solarSystemManager.getCelestialBodyInfo(body);
+                return {
+                    name: info.name,
+                    type: info.type,
+                    position: body.position.toArray(),
+                    isMoon: key.startsWith('moon_')
+                };
+            });
+        
+        console.log('Received celestial bodies from SolarSystemManager:', celestialBodies);
+        
+        // Update target list
+        this.targetObjects = celestialBodies;
+        
+        // Sort targets by distance
+        this.sortTargetsByDistance();
+        
+        // Update target display
+        this.updateTargetDisplay();
+    }
+
+    sortTargetsByDistance() {
+        const cameraPosition = this.camera.position;
+        
+        this.targetObjects.sort((a, b) => {
+            const distA = Math.sqrt(
+                Math.pow(a.position[0] - cameraPosition.x, 2) +
+                Math.pow(a.position[1] - cameraPosition.y, 2) +
+                Math.pow(a.position[2] - cameraPosition.z, 2)
+            );
+            const distB = Math.sqrt(
+                Math.pow(b.position[0] - cameraPosition.x, 2) +
+                Math.pow(b.position[1] - cameraPosition.y, 2) +
+                Math.pow(b.position[2] - cameraPosition.z, 2)
+            );
+            return distA - distB;
         });
-
-        // Sort by distance
-        this.targetObjects.sort((a, b) => a.distance - b.distance);
         
-        // Reset target index if list was updated
-        if (this.currentTargetIndex >= this.targetObjects.length) {
-            this.currentTargetIndex = 0;
-        }
-
-        // Log sorted targets if target computer is enabled
-        if (this.targetComputerEnabled) {
-            console.log('Sorted targets by distance:', this.targetObjects.map(t => ({
-                name: this.solarSystemManager.getCelestialBodyInfo(t.object).name,
-                distance: this.formatDistance(t.distance)
-            })));
-        }
+        // Add distance to each target
+        this.targetObjects = this.targetObjects.map(target => ({
+            ...target,
+            distance: this.formatDistance(
+                Math.sqrt(
+                    Math.pow(target.position[0] - cameraPosition.x, 2) +
+                    Math.pow(target.position[1] - cameraPosition.y, 2) +
+                    Math.pow(target.position[2] - cameraPosition.z, 2)
+                )
+            )
+        }));
+        
+        console.log('Sorted targets by distance:', this.targetObjects);
     }
 
     formatDistance(distanceInKm) {
@@ -436,62 +464,73 @@ export class StarfieldManager {
             const distanceInMm = distanceInKm / 1e3;
             return `${addCommas(distanceInMm.toFixed(2))} Mm`;
         } else {
-            return `${addCommas(distanceInKm.toFixed(2))} km`;
+            return `${addCommas(distanceInKm.toFixed(2))} Km`;
         }
     }
 
     updateTargetDisplay() {
-        if (!this.currentTarget || !this.targetComputerEnabled) {
-            this.targetHUD.style.display = 'none';
-            if (this.targetReticle) {
-                this.targetReticle.style.display = 'none';
-            }
-            return;
-        }
+        if (!this.currentTarget) return;
 
-        const targetInfo = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-        const sceneDistance = this.currentTarget.position.distanceTo(this.camera.position);
-        // Convert scene distance back to real distance in meters
-        const realDistance = sceneDistance / (this.solarSystemManager.SCALE_FACTOR * this.solarSystemManager.VISUAL_SCALE);
-        // Convert to kilometers for display
-        const distanceInKm = realDistance / 1000;
+        // Get the current target data
+        const currentTargetData = this.getCurrentTargetData();
+        if (!currentTargetData) return;
 
-        // Update target info display
-        this.targetInfo.innerHTML = `
-            <div class="target-info">
-                ${targetInfo.name}<br>
-                Type: ${targetInfo.type}<br>
-                Distance: ${this.formatDistance(distanceInKm)}
-            </div>
+        // Calculate distance
+        const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
+        const formattedDistance = this.formatDistance(distance);
+
+        // Update the target information display
+        this.targetInfoDisplay.innerHTML = `
+            <div class="target-name">${currentTargetData.name}</div>
+            <div class="target-type">${currentTargetData.type}${currentTargetData.isMoon ? ' (Moon)' : ''}</div>
+            <div class="target-distance">Distance: ${formattedDistance}</div>
         `;
 
-        // Hide reticle in AFT view
-        if (this.view === 'AFT') {
-            this.targetReticle.style.display = 'none';
-            return;
-        }
+        // Show/hide targeting reticle and HUD based on view
+        const showTargeting = this.viewManager.currentView === 'front';
+        this.targetReticle.style.display = showTargeting ? 'block' : 'none';
+        this.targetHUD.style.display = showTargeting ? 'block' : 'none';
+    }
 
-        // Update reticle position only in FORE view
-        const screenPosition = this.currentTarget.position.clone().project(this.camera);
-        const isOnScreen = Math.abs(screenPosition.x) <= 1 && Math.abs(screenPosition.y) <= 1;
+    getCurrentTargetData() {
+        if (!this.currentTarget || !this.targetObjects || this.targetIndex === -1) {
+            return null;
+        }
+        return this.targetObjects[this.targetIndex];
+    }
+
+    calculateDistance(point1, point2) {
+        return Math.sqrt(
+            Math.pow(point2.x - point1.x, 2) +
+            Math.pow(point2.y - point1.y, 2) +
+            Math.pow(point2.z - point1.z, 2)
+        );
+    }
+
+    getParentPlanetName(moon) {
+        // Get all celestial bodies
+        const bodies = this.solarSystemManager.getCelestialBodies();
         
-        if (isOnScreen) {
-            // Convert to screen coordinates
-            const x = (screenPosition.x + 1) * window.innerWidth / 2;
-            const y = (-screenPosition.y + 1) * window.innerHeight / 2;
-            
-            this.targetReticle.style.display = 'block';
-            this.targetReticle.style.left = `${x}px`;
-            this.targetReticle.style.top = `${y}px`;
-        } else {
-            this.targetReticle.style.display = 'none';
+        // Find the parent planet by checking which planet's position is closest to the moon
+        let closestPlanet = null;
+        let minDistance = Infinity;
+        
+        for (const [key, body] of bodies.entries()) {
+            if (!key.startsWith('moon_')) {
+                const distance = body.position.distanceTo(moon.position);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestPlanet = body;
+                }
+            }
         }
-
-        // Always show HUD when target computer is enabled
-        this.targetHUD.style.display = 'block';
-
-        // Check if target is on screen and update direction arrow
-        this.updateDirectionArrow();
+        
+        if (closestPlanet) {
+            const info = this.solarSystemManager.getCelestialBodyInfo(closestPlanet);
+            return info.name;
+        }
+        
+        return 'Unknown';
     }
 
     updateDirectionArrow() {
@@ -688,7 +727,19 @@ export class StarfieldManager {
         } else {
             this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
         }
-        this.currentTarget = this.targetObjects[this.targetIndex].object;
+
+        // Get the target object from SolarSystemManager
+        const targetData = this.targetObjects[this.targetIndex];
+        const bodies = this.solarSystemManager.getCelestialBodies();
+        
+        // Find the matching celestial body
+        for (const [key, body] of bodies.entries()) {
+            const info = this.solarSystemManager.getCelestialBodyInfo(body);
+            if (info.name === targetData.name && info.type === targetData.type) {
+                this.currentTarget = body;
+                break;
+            }
+        }
 
         // Create new wireframe in the HUD
         if (this.currentTarget) {
@@ -697,7 +748,9 @@ export class StarfieldManager {
                 const wireframeGeometry = new THREE.WireframeGeometry(this.currentTarget.geometry);
                 const wireframeMaterial = new THREE.LineBasicMaterial({ 
                     color: 0x00ff41,
-                    linewidth: 1
+                    linewidth: 1,
+                    transparent: true,
+                    opacity: 0.8
                 });
                 this.targetWireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
                 
@@ -711,9 +764,12 @@ export class StarfieldManager {
                 const size = bbox.getSize(new THREE.Vector3());
                 const maxDim = Math.max(size.x, size.y, size.z);
                 
-                // Position camera to fit the object
-                this.wireframeCamera.position.z = maxDim * 2;
+                // Position camera to fit the object with some padding
+                this.wireframeCamera.position.z = maxDim * 2.5;
                 this.targetWireframe.position.sub(center);
+                
+                // Set initial rotation
+                this.targetWireframe.rotation.set(0.3, 0, 0);
 
                 // Ensure HUD is visible
                 this.targetHUD.style.display = 'block';
@@ -748,70 +804,63 @@ export class StarfieldManager {
 
     update(deltaTime) {
         if (!deltaTime) deltaTime = 1/60;
-        
-        // Update speed with acceleration/deceleration
-        if (this.currentSpeed < this.targetSpeed) {
-            this.currentSpeed = Math.min(this.targetSpeed, this.currentSpeed + this.acceleration * deltaTime);
-        } else if (this.currentSpeed > this.targetSpeed) {
-            this.currentSpeed = Math.max(this.targetSpeed, this.currentSpeed - this.deceleration * deltaTime);
-        }
-        
-        // Update speed indicator
-        this.updateSpeedIndicator();
-        
-        // Update target computer display if enabled
-        if (this.targetComputerEnabled && this.currentTarget) {
-            this.updateTargetDisplay();
-            
-            // Rotate the wireframe model
-            if (this.targetWireframe) {
-                this.targetWireframe.rotation.y += deltaTime * 0.5;
-                this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
-            }
-        }
-        
-        // Handle rotation based on arrow keys
+
+        // Update camera vectors
+        this.camera.getWorldDirection(this.cameraDirection);
+        this.camera.up.copy(this.cameraUp);
+        this.cameraRight.crossVectors(this.cameraDirection, this.cameraUp);
+
+        // Handle lateral movement from arrow keys
+        const lateralSpeed = 10; // Units per second
+        const moveVector = new THREE.Vector3(0, 0, 0);
+
         if (this.keysPressed.ArrowLeft) {
-            const rotationMatrix = new THREE.Matrix4();
-            rotationMatrix.makeRotationAxis(this.camera.up, this.rotationSpeed * deltaTime);
-            this.camera.quaternion.premultiply(new THREE.Quaternion().setFromRotationMatrix(rotationMatrix));
+            moveVector.add(this.cameraRight.clone().multiplyScalar(-lateralSpeed * deltaTime));
         }
         if (this.keysPressed.ArrowRight) {
-            const rotationMatrix = new THREE.Matrix4();
-            rotationMatrix.makeRotationAxis(this.camera.up, -this.rotationSpeed * deltaTime);
-            this.camera.quaternion.premultiply(new THREE.Quaternion().setFromRotationMatrix(rotationMatrix));
+            moveVector.add(this.cameraRight.clone().multiplyScalar(lateralSpeed * deltaTime));
         }
         if (this.keysPressed.ArrowUp) {
-            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
-            const rotationMatrix = new THREE.Matrix4();
-            rotationMatrix.makeRotationAxis(right, -this.rotationSpeed * deltaTime);
-            this.camera.quaternion.premultiply(new THREE.Quaternion().setFromRotationMatrix(rotationMatrix));
+            moveVector.add(this.cameraUp.clone().multiplyScalar(lateralSpeed * deltaTime));
         }
         if (this.keysPressed.ArrowDown) {
-            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
-            const rotationMatrix = new THREE.Matrix4();
-            rotationMatrix.makeRotationAxis(right, this.rotationSpeed * deltaTime);
-            this.camera.quaternion.premultiply(new THREE.Quaternion().setFromRotationMatrix(rotationMatrix));
+            moveVector.add(this.cameraUp.clone().multiplyScalar(-lateralSpeed * deltaTime));
         }
 
-        // Get camera orientation vectors
-        this.camera.getWorldDirection(this.cameraDirection);
-        
+        // Apply lateral movement
+        if (moveVector.length() > 0) {
+            this.camera.position.add(moveVector);
+            this.camera.updateMatrixWorld();
+        }
+
+        // Update speed
+        if (this.targetSpeed > this.currentSpeed) {
+            this.currentSpeed = Math.min(this.currentSpeed + this.acceleration * deltaTime, this.targetSpeed);
+        } else if (this.targetSpeed < this.currentSpeed) {
+            this.currentSpeed = Math.max(this.currentSpeed - this.deceleration * deltaTime, this.targetSpeed);
+        }
+
+        // Update speed indicator
+        this.updateSpeedIndicator();
+
         // Move based on current speed and view
         if (this.currentSpeed > 0) {
             // Calculate movement - direction based on view
             const moveDirection = this.view === 'AFT' ? -1 : 1;
             
-            // Apply speed multipliers based on impulse level
+            // Apply speed multipliers based on impulse level according to README
             let speedMultiplier = 1;
             switch (Math.round(this.currentSpeed)) {
-                case 9: speedMultiplier = 5.0; break;   // 5x faster
-                case 8: speedMultiplier = 4.0; break;   // 4x faster
-                case 7: speedMultiplier = 3.0; break;   // 3x faster
-                case 6: speedMultiplier = 2.0; break;   // 2x faster
-                case 5: speedMultiplier = 1.5; break;   // 1.5x faster
-                case 4: speedMultiplier = 1.25; break;  // 1.25x faster
-                default: speedMultiplier = 1.0;         // normal speed
+                case 9: speedMultiplier = 43; break;
+                case 8: speedMultiplier = 37; break;
+                case 7: speedMultiplier = 25; break;
+                case 6: speedMultiplier = 12; break;
+                case 5: speedMultiplier = 6; break;
+                case 4: speedMultiplier = 3; break;
+                case 3: speedMultiplier = 1; break;
+                case 2: speedMultiplier = 0.50; break;
+                case 1: speedMultiplier = 0.25; break;
+                case 0: speedMultiplier = 0; break;
             }
             
             this.velocity.copy(this.cameraDirection).multiplyScalar(this.currentSpeed * deltaTime * speedMultiplier * moveDirection);
@@ -819,56 +868,99 @@ export class StarfieldManager {
             // Move camera
             this.camera.position.add(this.velocity);
             this.camera.updateMatrixWorld();
-            
-            // Update starfield
-            const positions = this.starfield.geometry.attributes.position;
-            const cameraPos = this.camera.position;
-            
-            for (let i = 0; i < this.starCount; i++) {
-                const i3 = i * 3;
-                const starPos = new THREE.Vector3(
-                    positions.array[i3],
-                    positions.array[i3 + 1],
-                    positions.array[i3 + 2]
-                );
-                
-                // If star is too far, reset it closer to the camera
-                if (starPos.distanceTo(cameraPos) > 1000) {
-                    // Reset star to a random position in a sphere around the camera
-                    const radius = 100;
-                    const theta = Math.random() * Math.PI * 2;
-                    const phi = Math.acos((Math.random() * 2) - 1);
-                    
-                    positions.array[i3] = cameraPos.x + radius * Math.sin(phi) * Math.cos(theta);
-                    positions.array[i3 + 1] = cameraPos.y + radius * Math.sin(phi) * Math.sin(theta);
-                    positions.array[i3 + 2] = cameraPos.z + radius * Math.cos(phi);
-                }
-                
-                // Move star based on velocity (creates motion effect)
-                positions.array[i3] -= this.velocity.x;
-                positions.array[i3 + 1] -= this.velocity.y;
-                positions.array[i3 + 2] -= this.velocity.z;
-            }
-            
-            positions.needsUpdate = true;
-            
-            // Update star sizes based on speed
-            const sizes = this.starfield.geometry.attributes.size;
-            const speedFactor = this.currentSpeed / this.maxSpeed;
-            for (let i = 0; i < this.starCount; i++) {
-                sizes.array[i] = (1 + speedFactor * 2) * Math.random() * 2;
-            }
-            sizes.needsUpdate = true;
+
+            // Update current sector after movement
+            this.updateCurrentSector();
         }
+
+        // Update target computer display
+        this.updateTargetDisplay();
+        
+        // Render wireframe if target computer is enabled and we have a target
+        if (this.targetComputerEnabled && this.targetWireframe) {
+            // Rotate wireframe for visual effect
+            this.targetWireframe.rotation.y += deltaTime * 0.5;
+            
+            // Render the wireframe scene
+            this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
+        }
+    }
+
+    updateCurrentSector() {
+        if (!this.solarSystemManager) return;
+
+        // Calculate current sector based on position
+        const currentSector = this.calculateCurrentSector();
+        
+        // Get the current sector from the solar system manager
+        const currentSystemSector = this.solarSystemManager.currentSector;
+        
+        // Only update if we've moved to a new sector
+        if (currentSector !== currentSystemSector) {
+            console.log(`Moving from sector ${currentSystemSector} to ${currentSector}`);
+            
+            // Reset target computer state before sector change
+            if (this.targetComputerEnabled) {
+                this.currentTarget = null;
+                this.targetIndex = -1;
+                this.targetHUD.style.display = 'none';
+                if (this.targetReticle) {
+                    this.targetReticle.style.display = 'none';
+                }
+            }
+            
+            this.solarSystemManager.setCurrentSector(currentSector);
+            // Generate new star system for the sector
+            this.solarSystemManager.generateStarSystem(currentSector);
+            
+            // Update target list after sector change if target computer is enabled
+            if (this.targetComputerEnabled) {
+                setTimeout(() => {
+                    this.updateTargetList();
+                    this.cycleTarget();
+                }, 100); // Small delay to ensure new system is fully generated
+            }
+
+            // Update galactic chart with new sector
+            const galacticChart = this.viewManager.getGalacticChart();
+            if (galacticChart) {
+                // Convert sector to index (e.g., 'A0' -> 0, 'B1' -> 10, etc.)
+                const row = currentSector.charCodeAt(0) - 65; // Convert A-J to 0-9
+                const col = parseInt(currentSector[1]);
+                const systemIndex = row * 9 + col;
+                galacticChart.setShipLocation(systemIndex);
+            }
+        }
+    }
+
+    calculateCurrentSector() {
+        if (!this.solarSystemManager) return 'A0';
+
+        // Get camera position
+        const pos = this.camera.position;
+        
+        // Define sector grid size (in game units)
+        const SECTOR_SIZE = 1000; // Adjust this value based on your game scale
+        
+        // Calculate grid coordinates
+        const x = Math.floor(pos.x / SECTOR_SIZE);
+        const z = Math.floor(pos.z / SECTOR_SIZE);
+        
+        // Convert to sector notation (A0-J8)
+        // Clamp x between 0-8 for sectors 0-8
+        const col = Math.max(0, Math.min(8, x + 4)); // +4 to center around origin
+        
+        // Clamp z between 0-9 for sectors A-J
+        const row = Math.max(0, Math.min(9, z + 5)); // +5 to center around origin
+        const rowLetter = String.fromCharCode(65 + row); // 65 is ASCII for 'A'
+        
+        return `${rowLetter}${col}`;
     }
 
     dispose() {
         // Clean up UI elements
         if (this.speedBox && this.speedBox.parentNode) {
             this.speedBox.parentNode.removeChild(this.speedBox);
-        }
-        if (this.energyBox && this.energyBox.parentNode) {
-            this.energyBox.parentNode.removeChild(this.energyBox);
         }
         if (this.viewBox && this.viewBox.parentNode) {
             this.viewBox.parentNode.removeChild(this.viewBox);

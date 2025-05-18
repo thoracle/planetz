@@ -72,103 +72,523 @@ body.edit-mode .crosshair {
 /* Galactic Chart Styles */
 .galactic-chart {
     position: fixed;
-    top: 10%;
-    left: 17.5%;
-    width: 65%;
-    height: 80%;
-    background: rgba(0, 0, 0, 0.7);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid #00ff41;
+    padding: 20px;
     display: none;
-    z-index: 2000;
-    font-family: "Courier New", monospace;
     color: #00ff41;
-    overflow-y: auto;
-    backdrop-filter: blur(3px);
-    border: 1px solid rgba(0, 255, 65, 0.3);
-    border-radius: 5px;
+    font-family: "Courier New", monospace;
+    z-index: 1000;
+    flex-direction: column;
+    max-height: 90vh;
+    min-width: 800px;
 }
 
-.galactic-chart .close-button {
+.galactic-chart.visible {
+    display: flex;
+}
+
+.content-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: auto repeat(9, 1fr);
+    gap: 5px;
+    margin-top: 20px;
+}
+
+.grid-corner {
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    border: none;
+}
+
+.grid-header, .grid-row-label {
+    padding: 10px;
+    text-align: center;
+    color: #00ff41;
+    font-weight: bold;
+}
+
+.grid-cell {
+    width: 60px;
+    height: 60px;
+    border: 1px solid #00ff41;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-size: 1.2em;
+    position: relative;
+}
+
+.grid-cell:hover {
+    background-color: rgba(0, 255, 65, 0.2);
+}
+
+.grid-cell.current-system {
+    background-color: #00ff41;
+    color: #000000;
+    border: none;
+    font-weight: bold;
+}
+
+.grid-cell.current-system:hover {
+    background-color: #00cc35;
+}
+
+.grid-cell.ship-location {
+    border: 3px solid #00ff41;
+    background-color: rgba(0, 255, 65, 0.15);
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+    position: relative;
+}
+
+.grid-cell.ship-location::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border: 1px solid #00ff41;
+    animation: rotate 4s linear infinite;
+}
+
+.grid-cell.ship-location:hover {
+    background-color: rgba(0, 255, 65, 0.25);
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.7);
+}
+
+/* Add combined state styling */
+.grid-cell.ship-location.current-system {
+    background-color: #00ff41;
+    color: #000000;
+    border: 3px solid #ffffff;
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.7);
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.6); }
+    70% { box-shadow: 0 0 0 15px rgba(0, 255, 65, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0); }
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.close-button {
     position: absolute;
     top: 10px;
     right: 10px;
     cursor: pointer;
-    font-size: 17px;
-    padding: 7px;
+    padding: 5px 10px;
+    border: 1px solid #00ff41;
+}
+
+.close-button:hover {
+    background-color: rgba(0, 255, 65, 0.2);
+}
+
+.system-details {
+    border-top: 1px solid #00ff41;
+    padding: 15px;
+    height: 300px;
+    min-height: unset;
+    overflow-y: auto;
+    margin-top: auto;
+    display: block;
+    scrollbar-width: thin;
+    scrollbar-color: #00ff41 rgba(0, 255, 65, 0.1);
+    position: relative;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.system-details * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.system-details::-webkit-scrollbar {
+    width: 8px;
+}
+
+.system-details::-webkit-scrollbar-track {
+    background: rgba(0, 255, 65, 0.1);
+    border-radius: 4px;
+}
+
+.system-details::-webkit-scrollbar-thumb {
+    background-color: #00ff41;
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.system-details h3 {
+    margin-top: 0;
+    color: #00ff41;
+    position: sticky;
+    top: 0;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 5px 0;
+    z-index: 1;
+    white-space: normal;
+}
+
+.system-details ul {
+    list-style-type: none;
+    padding-left: 20px;
+    margin: 10px 0;
+}
+
+.system-details li {
+    margin: 8px 0;
+    line-height: 1.4;
+    white-space: normal;
+}
+
+.coordinates {
+    color: #00ff41;
+    opacity: 0.7;
+    font-size: 0.8em;
+    margin-left: 10px;
+    display: inline-block;
+}
+
+.system-header {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #00ff41;
+    border-bottom: 1px solid #00ff41;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.system-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2em;
+    color: #000000;
+}
+
+.system-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.action-button {
+    background: #000000;
     color: #00ff41;
     border: 1px solid #00ff41;
-    background: rgba(0, 0, 0, 0.6);
-    transition: all 0.2s;
+    padding: 5px 15px;
+    font-family: "Courier New", monospace;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.galactic-chart .close-button:hover {
-    background: rgba(0, 255, 65, 0.2);
-    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+.action-button:hover:not(:disabled) {
+    background: #00ff41;
+    color: #000000;
 }
 
-.galactic-chart .grid-container {
-    display: grid;
-    grid-template-columns: repeat(10, 1fr);
-    gap: 2px;
-    padding: 20px;
-    width: 90%;
-    max-width: 960px;
-    margin: 20px auto;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(0, 255, 65, 0.3);
-    border-radius: 5px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+.action-button:active:not(:disabled) {
+    transform: scale(0.98);
 }
 
-.galactic-chart .grid-header,
-.galactic-chart .grid-row-label {
-    text-align: center;
-    padding: 8px;
-    font-size: 16px;
+.action-button:disabled {
+    background: #1a1a1a;
+    color: #666666;
+    border-color: #666666;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.probe-button {
+    background: #000000;
+}
+
+.warp-button {
+    background: #000000;
+}
+
+.star-name {
     font-weight: bold;
-    border: 1px solid rgba(0, 255, 65, 0.5);
-    background: rgba(0, 255, 65, 0.1);
-    text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+    color: #000000;
 }
 
-.galactic-chart .grid-cell {
-    aspect-ratio: 1;
+.star-type {
+    opacity: 0.9;
+    color: #000000;
+    font-size: 0.9em;
+}
+
+.coordinates {
+    color: #000000;
+    opacity: 0.9;
+    font-size: 0.9em;
+    margin-right: 15px;
+    font-weight: bold;
+}
+
+.system-content {
+    padding: 10px 0;
+}
+
+.planets-grid {
+    display: grid;
+    gap: 15px;
+    padding: 10px;
+}
+
+.planet-entry {
     border: 1px solid rgba(0, 255, 65, 0.3);
-    padding: 8px;
+    background: rgba(0, 255, 65, 0.05);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.planet-header {
+    background: rgba(0, 255, 65, 0.1);
+    padding: 8px 12px;
+    font-weight: bold;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.3);
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.moon-count {
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.planet-details {
+    padding: 10px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+}
+
+.detail-label {
+    color: rgba(0, 255, 65, 0.7);
+    font-size: 0.9em;
+}
+
+.detail-value {
+    text-align: right;
+}
+
+.diplomacy-friendly {
+    color: #00ff00;
+}
+
+.diplomacy-neutral {
+    color: #ffff00;
+}
+
+.diplomacy-hostile {
+    color: #ff0000;
+}
+
+.diplomacy-unknown {
+    color: #808080;
+}
+
+.planets-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.table-header {
+    display: flex;
+    background: rgba(0, 255, 65, 0.1);
+    border-bottom: 2px solid rgba(0, 255, 65, 0.3);
+    font-weight: bold;
+    padding: 8px 0;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.table-body {
+    max-height: none;
+    overflow-y: visible;
+}
+
+.table-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.table-body::-webkit-scrollbar-track {
+    background: rgba(0, 255, 65, 0.1);
+}
+
+.table-body::-webkit-scrollbar-thumb {
+    background-color: #00ff41;
+    border-radius: 4px;
+}
+
+.table-row {
+    display: flex;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.1);
+    padding: 6px 0;
+    transition: background-color 0.2s;
+}
+
+.table-row:hover {
+    background: rgba(0, 255, 65, 0.05);
+}
+
+.table-row.moon-row {
+    background: rgba(0, 255, 65, 0.02);
+    font-size: 0.9em;
+    color: rgba(0, 255, 65, 0.8);
+    padding-left: 20px;
+}
+
+.table-row.moon-row:hover {
+    background: rgba(0, 255, 65, 0.07);
+}
+
+.col {
+    padding: 0 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+}
+
+/* Adjust column widths */
+.col:nth-child(1) { flex: 1.5; }  /* Destination */
+.col:nth-child(2) { flex: 1; }    /* Type */
+.col:nth-child(3) { flex: 0.8; }  /* Diplomacy */
+.col:nth-child(4) { flex: 1; }    /* Government */
+.col:nth-child(5) { flex: 1; }    /* Economy */
+.col:nth-child(6) { flex: 1; }    /* Technology */
+
+/* Custom Tooltip Styles */
+.custom-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    padding: 5px 10px;
+    font-size: 0.9em;
+    white-space: nowrap;
+    z-index: 1000;
+    display: none;
+    pointer-events: none;
+    --arrow-top: 0;
+    --arrow-bottom: auto;
+    --arrow-border-color: transparent transparent #00ff41 transparent;
+}
+
+.custom-tooltip.insufficient {
+    color: #ff0000;
+    border-color: #ff0000;
+    --arrow-border-color: transparent transparent #ff0000 transparent;
+}
+
+.custom-tooltip::before {
+    content: '';
+    position: absolute;
+    top: var(--arrow-top);
+    bottom: var(--arrow-bottom);
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 0 5px 5px 5px;
+    border-style: solid;
+    border-color: var(--arrow-border-color);
+}
+
+/* Warning Popup Styles */
+.warning-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 14px;
+    z-index: 2000;
+}
+
+.warning-content {
+    position: relative;
+    background: #000000;
+    border: 2px solid #00ff41;
+    padding: 30px;
+    color: #00ff41;
+    font-family: "Courier New", monospace;
+    width: 400px;
+    max-width: 90%;
+    margin: 20px;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.warning-content h3 {
+    color: #00ff41;
+    margin: 0;
+    font-size: 1.4em;
+    text-align: center;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.3);
+    padding-bottom: 10px;
+}
+
+.warning-content p {
+    margin: 0;
+    line-height: 1.5;
+    text-align: center;
+    font-size: 1.1em;
+    min-height: 1.5em;
+}
+
+.warning-close {
+    display: block;
+    background: #000000;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    padding: 10px 30px;
+    margin: 10px auto 0;
+    font-family: "Courier New", monospace;
+    font-size: 1.1em;
     cursor: pointer;
-    transition: all 0.2s;
-    background: rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+    min-width: 100px;
 }
 
-.galactic-chart .grid-cell:hover {
-    background: rgba(0, 255, 65, 0.15);
-    border-color: rgba(0, 255, 65, 0.8);
-    box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
-    transform: scale(1.02);
-}
-
-/* Scrollbar Styles */
-.galactic-chart::-webkit-scrollbar {
-    width: 12px;
-}
-
-.galactic-chart::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.3);
-}
-
-.galactic-chart::-webkit-scrollbar-thumb {
-    background: rgba(0, 255, 65, 0.5);
-    border: 3px solid transparent;
-    border-radius: 6px;
-    background-clip: content-box;
-}
-
-.galactic-chart::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 255, 65, 0.8);
-    border: 3px solid transparent;
-    background-clip: content-box;
+.warning-close:hover {
+    background: #00ff41;
+    color: #000000;
 } 

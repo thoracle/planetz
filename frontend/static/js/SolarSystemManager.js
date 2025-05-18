@@ -13,11 +13,13 @@ export class SolarSystemManager {
         this.camera.lookAt(0, 0, 0);
         
         this.starSystem = null;
+        this.universe = null;  // Store the universe data
         this.celestialBodies = new Map();
         this.planetGenerators = new Map();
         this.orbitalSpeeds = new Map();
         this.rotationSpeeds = new Map();
         this.currentEditBody = null;
+        this.currentSector = 'A0'; // Track current sector
         
         // Constants for orbital calculations
         this.G = 6.67430e-11;
@@ -26,10 +28,10 @@ export class SolarSystemManager {
         this.SCALE_FACTOR = 1e-9;
         
         // Visual scale factor for scene representation - increased for ultra-compact system
-        this.VISUAL_SCALE = 50.0;
+        this.VISUAL_SCALE = 200.0;
         
         // Maximum distance from sun in kilometers
-        this.MAX_DISTANCE_KM = 2e6; // 2 million kilometers
+        this.MAX_DISTANCE_KM = 3.2e6; // 3.2 million kilometers - increased from 800,000
         
         // Orbital elements storage
         this.orbitalElements = new Map();
@@ -137,245 +139,177 @@ export class SolarSystemManager {
         }
     }
 
-    async generateStarSystem(seed = null) {
+    async generateStarSystem(sector) {
+        if (!this.universe) {
+            console.error('No universe data available');
+            return false;
+        }
+
+        // Find the star system for this sector
+        this.starSystem = this.universe.find(system => system.sector === sector);
+        
+        if (!this.starSystem) {
+            console.error('No star system data found for sector:', sector);
+            return false;
+        }
+
+        console.log('Generating star system for sector:', sector, 'with data:', this.starSystem);
+        
         try {
-            console.log('Generating star system with seed:', seed);
-            // Call backend API to generate star system
-            const response = await fetch(`/api/generate_star_system?seed=${seed || ''}`);
-            if (!response.ok) {
-                throw new Error('Failed to generate star system');
-            }
-            
-            this.starSystem = await response.json();
-            console.log('Received star system data:', this.starSystem);
             await this.createStarSystem();
             return true;
         } catch (error) {
-            console.error('Error generating star system:', error);
+            console.error('Failed to generate star system:', error);
             return false;
         }
     }
 
     async createStarSystem() {
         if (!this.starSystem) {
-            console.log('No star system data available');
-            return;
+            throw new Error('No star system data available');
         }
 
-        console.log('Creating star system:', this.starSystem);
-
-        // Clear existing celestial bodies
         this.clearSystem();
 
-        // Create star with proper size and color
-        const starSize = this.starSystem.star_size || 2.0;
-        const starGeometry = new THREE.SphereGeometry(starSize, 32, 32);
-        const starColor = this.getStarColor(this.starSystem.star_type);
-        const starMaterial = new THREE.MeshBasicMaterial({
-            color: starColor,
-            emissive: starColor,
-            emissiveIntensity: 1
-        });
-        const star = new THREE.Mesh(starGeometry, starMaterial);
-        this.scene.add(star);
-        this.celestialBodies.set('star', star);
-        console.log('Created star at position:', star.position);
+        try {
+            // Create star
+            const starSize = this.starSystem.star_size || 5;
+            const starGeometry = new THREE.SphereGeometry(starSize, 32, 32);
+            const starColor = this.getStarColor(this.starSystem.star_type);
+            const starMaterial = new THREE.MeshPhongMaterial({
+                color: starColor,
+                emissive: starColor,
+                emissiveIntensity: 1,
+                shininess: 100
+            });
+            const star = new THREE.Mesh(starGeometry, starMaterial);
+            this.scene.add(star);
+            this.celestialBodies.set('star', star);
 
-        // Add star light with matching color
-        const starLight = new THREE.PointLight(starColor, 2, 100);
-        starLight.position.copy(star.position);
-        this.scene.add(starLight);
-        console.log('Added star light');
+            // Add star light
+            const starLight = new THREE.PointLight(starColor, 1, 100);
+            starLight.position.copy(star.position);
+            this.scene.add(starLight);
 
-        // Add test Mercury planet
-        await this.createTestMercury();
+            // Create planets
+            if (!this.starSystem.planets || !Array.isArray(this.starSystem.planets)) {
+                console.warn('No planets data available or invalid planets array');
+                return;
+            }
 
-        // Create planets
-        console.log('Creating planets:', this.starSystem.planets);
-        for (let i = 0; i < this.starSystem.planets.length; i++) {
-            const planetData = this.starSystem.planets[i];
-            await this.createPlanet(planetData, i);
+            // Limit the number of planets to 10
+            const maxPlanets = Math.min(10, this.starSystem.planets.length);
+            for (let i = 0; i < maxPlanets; i++) {
+                const planetData = this.starSystem.planets[i];
+                if (!planetData) {
+                    console.warn(`Invalid planet data at index ${i}`);
+                    continue;
+                }
+                await this.createPlanet(planetData, i);
+            }
+        } catch (error) {
+            console.error('Error creating star system:', error);
+            this.clearSystem(); // Clean up on error
+            throw error;
         }
-    }
-
-    async createTestMercury() {
-        // Create Mercury mesh
-        const mercuryGeometry = new THREE.SphereGeometry(0.4, 32, 32); // Smaller than regular planets
-        const mercuryMaterial = new THREE.MeshPhongMaterial({
-            color: 0xff0000, // Bright red color
-            shininess: 15,
-            flatShading: true,
-            emissive: 0xff0000, // Add emissive to make it glow
-            emissiveIntensity: 0.5
-        });
-        const mercury = new THREE.Mesh(mercuryGeometry, mercuryMaterial);
-
-        // Position Mercury at 500,000 km
-        const mercuryDistance = 5e5 * 1000; // Convert to meters
-        const visualDistance = mercuryDistance * this.SCALE_FACTOR * this.VISUAL_SCALE;
-        mercury.position.x = visualDistance;
-        this.scene.add(mercury);
-        this.celestialBodies.set('mercury', mercury);
-
-        // Set orbital elements for Mercury
-        this.setOrbitalElements('mercury', {
-            semiMajorAxis: mercuryDistance,
-            eccentricity: 0.01, // Very low eccentricity for stable orbit
-            inclination: 0, // No inclination for simple test
-            longitudeOfAscendingNode: 0,
-            argumentOfPeriapsis: 0,
-            meanAnomaly: 0,
-            mass: 3.285e23 // Mercury's mass in kg
-        });
-
-        // Calculate orbital period and speed
-        const orbitPeriod = this.calculateOrbitalPeriod(mercuryDistance);
-        const meanMotion = (2 * Math.PI) / orbitPeriod;
-        this.orbitalSpeeds.set('mercury', meanMotion);
-
-        console.log('Created test Mercury at', mercuryDistance / 1000, 'km from sun');
     }
 
     async createPlanet(planetData, index) {
-        // Create planet generator first to get visual characteristics
-        const planetGenerator = new PlanetGenerator();
-        if (planetData.params) {
-            planetGenerator.params = {
-                noiseScale: planetData.params.noise_scale,
-                octaves: planetData.params.octaves,
-                persistence: planetData.params.persistence,
-                lacunarity: planetData.params.lacunarity,
-                terrainHeight: planetData.params.terrain_height,
-                seed: planetData.params.seed,
-                planetType: planetData.planet_type
-            };
+        if (!planetData || typeof planetData !== 'object') {
+            console.warn(`Invalid planet data for index ${index}`);
+            return;
         }
-        this.planetGenerators.set(`planet_${index}`, planetGenerator);
 
-        // Get visual characteristics for this planet type
-        const characteristics = planetGenerator.getVisualCharacteristics(planetData.planet_type);
-
-        // Create planet mesh with proper material
-        const planetGeometry = new THREE.SphereGeometry(planetData.planet_size || 1, 32, 32);
+        // Create planet mesh
+        const planetSize = planetData.planet_size || 1;
+        const planetGeometry = new THREE.SphereGeometry(planetSize, 32, 32);
         const planetMaterial = new THREE.MeshPhongMaterial({
-            color: characteristics.baseColor,
-            shininess: 15,
+            color: this.getPlanetColor(planetData.planet_type),
+            shininess: 0.5,
             flatShading: true
         });
         const planet = new THREE.Mesh(planetGeometry, planetMaterial);
-
-        // Calculate orbit - distribute planets evenly within 2 million km
-        const maxPlanets = 8; // Maximum number of planets to ensure proper spacing
-        const spacing = this.MAX_DISTANCE_KM / maxPlanets;
-        const realOrbitDistance = (0.5e6 + index * spacing) * 1000; // Start at 500,000 km, space evenly
-        const visualOrbitDistance = realOrbitDistance * this.SCALE_FACTOR * this.VISUAL_SCALE;
-        const orbitPeriod = this.calculateOrbitalPeriod(realOrbitDistance);
-        const meanMotion = (2 * Math.PI) / orbitPeriod;
-        this.orbitalSpeeds.set(`planet_${index}`, meanMotion);
-
-        // Position planet using visual scale
-        planet.position.x = visualOrbitDistance;
+        
+        // Calculate initial position based on orbit
+        const orbitRadius = (index + 1) * 10;
+        const angle = Math.random() * Math.PI * 2; // Random starting angle
+        planet.position.set(
+            orbitRadius * Math.cos(angle),
+            0,
+            orbitRadius * Math.sin(angle)
+        );
+        
         this.scene.add(planet);
         this.celestialBodies.set(`planet_${index}`, planet);
-
-        // Set orbital elements using real distances
+        
+        // Add orbital elements with mass and proper initialization
         this.setOrbitalElements(`planet_${index}`, {
-            semiMajorAxis: realOrbitDistance,
-            eccentricity: 0.01 + Math.random() * 0.02, // Very low eccentricity for stability
-            inclination: Math.random() * Math.PI / 16, // Very low inclination for planar orbits
+            semiMajorAxis: orbitRadius,
+            eccentricity: 0.1,
+            inclination: Math.random() * 0.1,
             longitudeOfAscendingNode: Math.random() * Math.PI * 2,
             argumentOfPeriapsis: Math.random() * Math.PI * 2,
-            meanAnomaly: Math.random() * Math.PI * 2,
-            mass: 5.972e24 * (planetData.planet_size || 1)
+            meanAnomaly: angle,
+            mass: planetSize * 1e24 // Mass proportional to size
         });
 
-        // Add atmosphere if needed
-        if (planetData.has_atmosphere) {
-            const atmosphere = new Atmosphere(planetData.planet_size || 1);
-            atmosphere.mesh.material.color = characteristics.atmosphere.color;
-            atmosphere.mesh.material.opacity = characteristics.atmosphere.density * 0.2;
-            atmosphere.mesh.position.copy(planet.position);
-            this.scene.add(atmosphere.mesh);
-            this.celestialBodies.set(`atmosphere_${index}`, atmosphere.mesh);
-        }
-
-        // Add clouds if needed
-        if (planetData.has_clouds) {
-            const clouds = new Cloud(planetData.planet_size || 1);
-            clouds.mesh.material.color = characteristics.clouds.color;
-            clouds.mesh.material.opacity = characteristics.clouds.coverage * 0.5;
-            clouds.mesh.position.copy(planet.position);
-            this.scene.add(clouds.mesh);
-            this.celestialBodies.set(`clouds_${index}`, clouds.mesh);
-        }
-
-        // Add rings for Class-N planets
-        if (planetData.planet_type === 'Class-N') {
-            const ringGeometry = new THREE.RingGeometry(
-                (planetData.planet_size || 1) * 1.5,
-                (planetData.planet_size || 1) * 2.5,
-                64
-            );
-            const ringMaterial = new THREE.MeshPhongMaterial({
-                color: 0xA89F8D,
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 0.8
-            });
-            const rings = new THREE.Mesh(ringGeometry, ringMaterial);
-            rings.rotation.x = Math.PI / 2;
-            rings.position.copy(planet.position);
-            this.scene.add(rings);
-            this.celestialBodies.set(`rings_${index}`, rings);
-        }
-
-        // Create moons
-        if (planetData.moons && planetData.moons.length > 0) {
-            for (let j = 0; j < planetData.moons.length; j++) {
-                const moonData = planetData.moons[j];
-                await this.createMoon(moonData, index, j);
+        // Create moons (limit to 5 moons per planet)
+        if (planetData.moons && Array.isArray(planetData.moons)) {
+            const maxMoons = Math.min(5, planetData.moons.length);
+            for (let moonIndex = 0; moonIndex < maxMoons; moonIndex++) {
+                const moonData = planetData.moons[moonIndex];
+                if (!moonData) {
+                    console.warn(`Invalid moon data for planet ${index}, moon ${moonIndex}`);
+                    continue;
+                }
+                await this.createMoon(moonData, index, moonIndex);
             }
         }
     }
 
     async createMoon(moonData, planetIndex, moonIndex) {
-        // Create moon mesh
-        const moonGeometry = new THREE.SphereGeometry(0.2, 32, 32);
-        const moonMaterial = new THREE.MeshPhongMaterial({
-            color: this.getMoonColor(moonData.moon_type)
-        });
-        const moon = new THREE.Mesh(moonGeometry, moonMaterial);
-
-        // Get parent planet's orbital elements
-        const planetElements = this.orbitalElements.get(`planet_${planetIndex}`);
-        if (!planetElements) return;
-
-        // Calculate moon orbit - ensure moon stays close to its planet
-        const maxMoonDistance = 0.05e6; // Maximum moon distance in km from its planet
-        const moonOrbitDistance = (0.02e6 + moonIndex * 0.01e6) * 1000; // Very compact moon orbits
-        const moonOrbitPeriod = this.calculateOrbitalPeriod(moonOrbitDistance);
-        const moonMeanMotion = (2 * Math.PI) / moonOrbitPeriod;
-        this.orbitalSpeeds.set(`moon_${planetIndex}_${moonIndex}`, moonMeanMotion);
-
-        // Position moon relative to its planet
-        const planet = this.celestialBodies.get(`planet_${planetIndex}`);
-        if (planet) {
-            moon.position.copy(planet.position);
-            moon.position.x += moonOrbitDistance * this.SCALE_FACTOR * this.VISUAL_SCALE;
+        if (!moonData || typeof moonData !== 'object') {
+            console.warn(`Invalid moon data for planet ${planetIndex}, moon ${moonIndex}`);
+            return;
         }
 
+        const moonSize = moonData.moon_size || 0.3;
+        const moonGeometry = new THREE.SphereGeometry(moonSize, 32, 32);
+        const moonMaterial = new THREE.MeshPhongMaterial({
+            color: this.getPlanetColor(moonData.moon_type),
+            shininess: 0.3,
+            flatShading: true
+        });
+        const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+        
+        // Get parent planet position
+        const planet = this.celestialBodies.get(`planet_${planetIndex}`);
+        if (!planet) {
+            console.warn(`Parent planet not found for moon ${moonIndex}`);
+            return;
+        }
+        
+        // Calculate initial position relative to planet
+        const moonOrbitRadius = (moonIndex + 1) * 2;
+        const angle = Math.random() * Math.PI * 2; // Random starting angle
+        moon.position.copy(planet.position).add(new THREE.Vector3(
+            moonOrbitRadius * Math.cos(angle),
+            Math.sin(angle * 0.5) * moonOrbitRadius * 0.2, // Slight vertical variation
+            moonOrbitRadius * Math.sin(angle)
+        ));
+        
         this.scene.add(moon);
         this.celestialBodies.set(`moon_${planetIndex}_${moonIndex}`, moon);
-
-        // Add orbital elements for moon
+        
+        // Add orbital elements with mass and proper initialization
         this.setOrbitalElements(`moon_${planetIndex}_${moonIndex}`, {
-            semiMajorAxis: moonOrbitDistance,
-            eccentricity: 0.005 + Math.random() * 0.005, // Extremely low eccentricity for stability
-            inclination: Math.random() * Math.PI / 20, // Extremely low inclination for planar orbits
+            semiMajorAxis: moonOrbitRadius,
+            eccentricity: 0.05,
+            inclination: Math.random() * 0.05,
             longitudeOfAscendingNode: Math.random() * Math.PI * 2,
             argumentOfPeriapsis: Math.random() * Math.PI * 2,
-            meanAnomaly: Math.random() * Math.PI * 2,
-            mass: 7.34767309e22 * (moonData.moon_size || 1)
+            meanAnomaly: angle,
+            mass: moonSize * 1e22 // Mass proportional to size, but less than planets
         });
     }
 
@@ -406,13 +340,32 @@ export class SolarSystemManager {
     }
 
     getStarColor(starType) {
-        const colors = {
-            'red dwarf': 0xff4444,
-            'yellow dwarf': 0xffff00,
-            'blue giant': 0x4444ff,
-            'white dwarf': 0xffffff
-        };
-        return colors[starType] || 0xffffff;
+        switch (starType) {
+            case 'Class-O': return 0x9BB0FF;  // Blue
+            case 'Class-B': return 0xADB6FF;  // Blue-white
+            case 'Class-A': return 0xCAD7FF;  // White
+            case 'Class-F': return 0xF8F7FF;  // Yellow-white
+            case 'Class-G': return 0xFFF4EA;  // Yellow (like our Sun)
+            case 'Class-K': return 0xFFD2A1;  // Orange
+            case 'Class-M': return 0xFFCC6F;  // Red
+            default: return 0xFFFFFF;         // Default white
+        }
+    }
+
+    getPlanetColor(planetType) {
+        switch (planetType) {
+            case 'Class-M': return 0x4CAF50;  // Earth-like, green/blue
+            case 'Class-K': return 0xFF9800;  // Orange/brown rocky
+            case 'Class-L': return 0x795548;  // Brown dwarf
+            case 'Class-T': return 0x607D8B;  // Cool methane dwarf
+            case 'Class-Y': return 0x9E9E9E;  // Ultra-cool brown dwarf
+            case 'Class-D': return 0xBDBDBD;  // Small, rocky
+            case 'Class-H': return 0xFFEB3B;  // Hot super-Earth
+            case 'Class-J': return 0xFFC107;  // Gas giant
+            case 'Class-N': return 0x00BCD4;  // Ice giant
+            case 'rocky': return 0x8B4513;    // Basic rocky
+            default: return 0xCCCCCC;         // Default grey
+        }
     }
 
     getMoonColor(moonType) {
@@ -503,10 +456,7 @@ export class SolarSystemManager {
     }
 
     getCelestialBodies() {
-        // Only return actual celestial bodies (star, planets, moons, and our test Mercury)
-        return Array.from(this.celestialBodies.entries())
-            .filter(([key]) => key === 'star' || key === 'mercury' || key.startsWith('planet_') || key.startsWith('moon_'))
-            .map(([_, body]) => body);
+        return this.celestialBodies;
     }
 
     getCurrentEditBody() {
@@ -517,45 +467,46 @@ export class SolarSystemManager {
         this.currentEditBody = body;
     }
 
-    getCelestialBodyInfo(object) {
-        // Find the key for this object
-        let targetKey = null;
-        for (const [key, value] of this.celestialBodies.entries()) {
-            if (value === object) {
-                targetKey = key;
-                break;
-            }
-        }
+    getCelestialBodyInfo(body) {
+        // Find the key for this body
+        const key = Array.from(this.celestialBodies.entries())
+            .find(([_, value]) => value === body)?.[0];
+        
+        if (!key) return null;
 
-        if (!targetKey) return { name: "Unknown", type: "Unknown" };
-
-        // Parse the key to determine the type
-        if (targetKey === 'star') {
+        if (key === 'star') {
             return {
-                name: this.starSystem.star_name,
-                type: this.starSystem.star_type
-            };
-        } else if (targetKey === 'mercury') {
-            return {
-                name: "Mercury",
-                type: "Test Planet"
-            };
-        } else if (targetKey.startsWith('planet_')) {
-            const planetIndex = parseInt(targetKey.split('_')[1]);
-            const planet = this.starSystem.planets[planetIndex];
-            return {
-                name: planet.planet_name,
-                type: planet.planet_type
-            };
-        } else if (targetKey.startsWith('moon_')) {
-            const [_, planetIndex, moonIndex] = targetKey.split('_').map(Number);
-            const moon = this.starSystem.planets[planetIndex].moons[moonIndex];
-            return {
-                name: moon.moon_name,
-                type: moon.moon_type
+                name: this.starSystem.star_name || 'Unknown Star',
+                type: this.starSystem.star_type || 'Unknown'
             };
         }
 
-        return { name: "Unknown", type: "Unknown" };
+        const [type, planetIndex, moonIndex] = key.split('_');
+        const planet = this.starSystem.planets[parseInt(planetIndex)];
+        
+        if (type === 'planet') {
+            return {
+                name: planet.planet_name || `Planet ${planetIndex}`,
+                type: planet.planet_type || 'Unknown'
+            };
+        } else if (type === 'moon') {
+            const moon = planet.moons[parseInt(moonIndex)];
+            return {
+                name: moon.moon_name || `Moon ${moonIndex}`,
+                type: moon.moon_type || 'Unknown'
+            };
+        }
+
+        return null;
+    }
+
+    // Add method to set current sector
+    setCurrentSector(sector) {
+        this.currentSector = sector;
+    }
+
+    // Add method to get current sector
+    getCurrentSector() {
+        return this.currentSector;
     }
 } 
