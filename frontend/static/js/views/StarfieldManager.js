@@ -8,8 +8,9 @@ export class StarfieldManager {
         this.targetSpeed = 0;
         this.currentSpeed = 0;
         this.maxSpeed = 9;
-        this.acceleration = 2.0; // Units per second
-        this.deceleration = 1.5; // Units per second
+        this.acceleration = 0.02; // Much slower acceleration
+        this.deceleration = 0.03; // Slightly faster deceleration than acceleration
+        this.decelerating = false; // New flag for tracking deceleration state
         this.energy = 9999;
         this.velocity = new THREE.Vector3();
         this.rotationSpeed = 2.0; // Radians per second
@@ -18,8 +19,8 @@ export class StarfieldManager {
         this.cameraUp = new THREE.Vector3();
         this.mouseSensitivity = 0.002;
         this.mouseRotation = new THREE.Vector2();
-        this.isMouseLookEnabled = true;
-        this.view = 'FORE'; // Add view state - can be 'FORE' or 'AFT'
+        this.isMouseLookEnabled = false; // Disable mouse look to match thoralexander.com
+        this.view = 'FORE'; // Initialize with FORE view
         this.solarSystemManager = null; // Will be set by setSolarSystemManager
         
         // Target computer state
@@ -304,46 +305,54 @@ export class StarfieldManager {
     }
 
     bindKeyEvents() {
-        // Track which keys are currently pressed
-        this.keysPressed = {
-            ArrowLeft: false,
-            ArrowRight: false,
+        // Track key presses for speed control
+        this.keys = {
             ArrowUp: false,
-            ArrowDown: false
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false
         };
 
         document.addEventListener('keydown', (event) => {
-            // Speed control (0-9)
-            if (!event.ctrlKey && !event.metaKey && !event.altKey && /^[0-9]$/.test(event.key)) {
-                this.targetSpeed = parseInt(event.key);
-                return;
+            if (this.keys.hasOwnProperty(event.key)) {
+                this.keys[event.key] = true;
+            }
+            
+            // Handle number keys for speed control
+            if (/^[0-9]$/.test(event.key)) {
+                const speed = parseInt(event.key);
+                if (speed === 0) {
+                    // Start deceleration and clear target speed
+                    this.decelerating = true;
+                    this.targetSpeed = 0;
+                } else {
+                    this.decelerating = false;
+                    this.targetSpeed = speed;
+                }
             }
             
             // Target computer toggle (T key)
             if (event.key.toLowerCase() === 't') {
                 this.toggleTargetComputer();
-                return;
             }
 
             // Tab key for cycling targets when target computer is enabled
             if (event.key === 'Tab' && this.targetComputerEnabled) {
                 event.preventDefault();
                 this.cycleTarget();
-                return;
             }
-            
-            // Track arrow key states
-            if (event.key in this.keysPressed) {
-                this.keysPressed[event.key] = true;
-                event.preventDefault();
+
+            // Handle view changes
+            if (event.key.toLowerCase() === 'f') {
+                this.setView('FORE');
+            } else if (event.key.toLowerCase() === 'a') {
+                this.setView('AFT');
             }
         });
 
         document.addEventListener('keyup', (event) => {
-            // Update key states
-            if (event.key in this.keysPressed) {
-                this.keysPressed[event.key] = false;
-                event.preventDefault();
+            if (this.keys.hasOwnProperty(event.key)) {
+                this.keys[event.key] = false;
             }
         });
     }
@@ -378,8 +387,6 @@ export class StarfieldManager {
     }
 
     updateTargetList() {
-        console.log('Updating target list...');
-        
         // Get celestial bodies from SolarSystemManager
         const bodies = this.solarSystemManager.getCelestialBodies();
         const celestialBodies = Array.from(bodies.entries())
@@ -392,8 +399,6 @@ export class StarfieldManager {
                     isMoon: key.startsWith('moon_')
                 };
             });
-        
-        console.log('Received celestial bodies from SolarSystemManager:', celestialBodies);
         
         // Update target list
         this.targetObjects = celestialBodies;
@@ -423,18 +428,17 @@ export class StarfieldManager {
         });
         
         // Add distance to each target
-        this.targetObjects = this.targetObjects.map(target => ({
-            ...target,
-            distance: this.formatDistance(
-                Math.sqrt(
-                    Math.pow(target.position[0] - cameraPosition.x, 2) +
-                    Math.pow(target.position[1] - cameraPosition.y, 2) +
-                    Math.pow(target.position[2] - cameraPosition.z, 2)
-                )
-            )
-        }));
-        
-        console.log('Sorted targets by distance:', this.targetObjects);
+        this.targetObjects = this.targetObjects.map(target => {
+            const distance = Math.sqrt(
+                Math.pow(target.position[0] - cameraPosition.x, 2) +
+                Math.pow(target.position[1] - cameraPosition.y, 2) +
+                Math.pow(target.position[2] - cameraPosition.z, 2)
+            );
+            return {
+                ...target,
+                distance: this.formatDistance(distance)
+            };
+        });
     }
 
     formatDistance(distanceInKm) {
@@ -500,11 +504,15 @@ export class StarfieldManager {
     }
 
     calculateDistance(point1, point2) {
-        return Math.sqrt(
+        // Calculate raw distance in world units
+        const rawDistance = Math.sqrt(
             Math.pow(point2.x - point1.x, 2) +
             Math.pow(point2.y - point1.y, 2) +
             Math.pow(point2.z - point1.z, 2)
         );
+        
+        // Convert to kilometers (1 unit = 1 kilometer)
+        return rawDistance;
     }
 
     getParentPlanetName(moon) {
@@ -787,91 +795,89 @@ export class StarfieldManager {
     }
 
     bindMouseEvents() {
-        document.addEventListener('mousemove', (event) => {
-            if (this.isMouseLookEnabled && event.buttons === 1) { // Left mouse button
-                this.mouseRotation.x -= event.movementX * this.mouseSensitivity;
-                this.mouseRotation.y -= event.movementY * this.mouseSensitivity;
-                
-                // Clamp vertical rotation
-                this.mouseRotation.y = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.mouseRotation.y));
-                
-                // Apply rotation to camera
-                const euler = new THREE.Euler(this.mouseRotation.y, this.mouseRotation.x, 0, 'YXZ');
-                this.camera.quaternion.setFromEuler(euler);
-            }
+        // Only handle clicks for weapons, no mouse look
+        document.addEventListener('click', (event) => {
+            // TODO: Implement weapons fire
         });
     }
 
     update(deltaTime) {
         if (!deltaTime) deltaTime = 1/60;
 
-        // Update camera vectors
-        this.camera.getWorldDirection(this.cameraDirection);
-        this.camera.up.copy(this.cameraUp);
-        this.cameraRight.crossVectors(this.cameraDirection, this.cameraUp);
-
-        // Handle lateral movement from arrow keys
-        const lateralSpeed = 10; // Units per second
-        const moveVector = new THREE.Vector3(0, 0, 0);
-
-        if (this.keysPressed.ArrowLeft) {
-            moveVector.add(this.cameraRight.clone().multiplyScalar(-lateralSpeed * deltaTime));
+        // Handle rotation from arrow keys (instead of movement)
+        const rotationSpeed = 0.015; // Reduced to match thoralexander.com's turning speed
+        
+        // Rotate camera based on arrow keys
+        if (this.keys.ArrowLeft) {
+            this.camera.rotateY(rotationSpeed);
         }
-        if (this.keysPressed.ArrowRight) {
-            moveVector.add(this.cameraRight.clone().multiplyScalar(lateralSpeed * deltaTime));
+        if (this.keys.ArrowRight) {
+            this.camera.rotateY(-rotationSpeed);
         }
-        if (this.keysPressed.ArrowUp) {
-            moveVector.add(this.cameraUp.clone().multiplyScalar(lateralSpeed * deltaTime));
+        if (this.keys.ArrowUp) {
+            this.camera.rotateX(rotationSpeed);
         }
-        if (this.keysPressed.ArrowDown) {
-            moveVector.add(this.cameraUp.clone().multiplyScalar(-lateralSpeed * deltaTime));
+        if (this.keys.ArrowDown) {
+            this.camera.rotateX(-rotationSpeed);
         }
 
-        // Apply lateral movement
-        if (moveVector.length() > 0) {
-            this.camera.position.add(moveVector);
-            this.camera.updateMatrixWorld();
+        // Handle speed changes with acceleration/deceleration
+        if (this.decelerating) {
+            // Continuously decelerate while in deceleration mode
+            this.currentSpeed = Math.max(0, this.currentSpeed - this.deceleration);
+            // Only clear deceleration flag if we press another speed
+        } else if (this.currentSpeed < this.targetSpeed) {
+            this.currentSpeed = Math.min(this.targetSpeed, this.currentSpeed + this.acceleration);
+        } else if (this.currentSpeed > this.targetSpeed) {
+            this.currentSpeed = Math.max(this.targetSpeed, this.currentSpeed - this.deceleration);
         }
-
-        // Update speed
-        if (this.targetSpeed > this.currentSpeed) {
-            this.currentSpeed = Math.min(this.currentSpeed + this.acceleration * deltaTime, this.targetSpeed);
-        } else if (this.targetSpeed < this.currentSpeed) {
-            this.currentSpeed = Math.max(this.currentSpeed - this.deceleration * deltaTime, this.targetSpeed);
-        }
-
-        // Update speed indicator
+        
         this.updateSpeedIndicator();
 
-        // Move based on current speed and view
+        // Forward/backward movement based on view
         if (this.currentSpeed > 0) {
-            // Calculate movement - direction based on view
             const moveDirection = this.view === 'AFT' ? -1 : 1;
             
-            // Apply speed multipliers based on impulse level according to README
-            let speedMultiplier = 1;
-            switch (Math.round(this.currentSpeed)) {
-                case 9: speedMultiplier = 43; break;
-                case 8: speedMultiplier = 37; break;
-                case 7: speedMultiplier = 25; break;
-                case 6: speedMultiplier = 12; break;
-                case 5: speedMultiplier = 6; break;
-                case 4: speedMultiplier = 3; break;
-                case 3: speedMultiplier = 1; break;
-                case 2: speedMultiplier = 0.50; break;
-                case 1: speedMultiplier = 0.25; break;
-                case 0: speedMultiplier = 0; break;
-            }
+            // Match thoralexander.com's speed scaling exactly
+            const speedMultiplier = this.currentSpeed * 0.2;
             
-            this.velocity.copy(this.cameraDirection).multiplyScalar(this.currentSpeed * deltaTime * speedMultiplier * moveDirection);
-            
-            // Move camera
-            this.camera.position.add(this.velocity);
+            // Move in the direction the camera is facing
+            const forwardVector = new THREE.Vector3(0, 0, -speedMultiplier);
+            forwardVector.applyQuaternion(this.camera.quaternion);
+            this.camera.position.add(forwardVector);
             this.camera.updateMatrixWorld();
 
             // Update current sector after movement
             this.updateCurrentSector();
         }
+
+        // Update starfield
+        const positions = this.starfield.geometry.attributes.position;
+        const maxDistance = 1000; // Maximum distance from camera before respawning
+        const minDistance = 100;  // Minimum spawn distance from camera
+
+        for (let i = 0; i < positions.count; i++) {
+            const x = positions.array[i * 3];
+            const y = positions.array[i * 3 + 1];
+            const z = positions.array[i * 3 + 2];
+
+            // Calculate distance from camera
+            const starPos = new THREE.Vector3(x, y, z);
+            const distanceToCamera = starPos.distanceTo(this.camera.position);
+
+            // If star is too far, respawn it closer to the camera
+            if (distanceToCamera > maxDistance) {
+                // Generate new position relative to camera
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+                const radius = minDistance + Math.random() * (maxDistance - minDistance);
+
+                positions.array[i * 3] = this.camera.position.x + radius * Math.sin(phi) * Math.cos(theta);
+                positions.array[i * 3 + 1] = this.camera.position.y + radius * Math.sin(phi) * Math.sin(theta);
+                positions.array[i * 3 + 2] = this.camera.position.z + radius * Math.cos(phi);
+            }
+        }
+        positions.needsUpdate = true;
 
         // Update target computer display
         this.updateTargetDisplay();
@@ -998,9 +1004,27 @@ export class StarfieldManager {
         return canvas;
     }
 
-    // Add method to update view state from ViewManager
+    // Update the setView method to handle view changes
     setView(viewType) {
         this.view = viewType.toUpperCase();
+        // Update camera rotation based on view - instant 180° rotation
+        if (this.view === 'AFT') {
+            this.camera.rotation.set(0, Math.PI, 0); // 180 degrees around Y axis
+        } else {
+            this.camera.rotation.set(0, 0, 0); // Reset to forward
+        }
+        this.camera.updateMatrixWorld();
         this.updateSpeedIndicator();
+    }
+
+    resetStar(star) {
+        // Reset star to a random position within the starfield radius
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const radius = 1000 * Math.random();
+
+        star.position.x = radius * Math.sin(phi) * Math.cos(theta);
+        star.position.y = radius * Math.sin(phi) * Math.sin(theta);
+        star.position.z = radius * Math.cos(phi);
     }
 } 

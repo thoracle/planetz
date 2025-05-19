@@ -56,87 +56,8 @@ export class SolarSystemManager {
         // Update spatial partitioning
         this.updateSpatialGrid();
 
-        // Update planet positions based on orbital mechanics and gravitational interactions
-        for (let i = 0; i < this.celestialBodies.size; i++) {
-            const planetKey = `planet_${i}`;
-            const planet = this.celestialBodies.get(planetKey);
-            if (planet) {
-                const elements = this.orbitalElements.get(planetKey);
-                if (!elements) continue;
-
-                // Calculate gravitational forces from nearby bodies
-                const nearbyBodies = this.getNearbyBodies(planet.position, 10);
-                const totalForce = new THREE.Vector3();
-                
-                nearbyBodies.forEach(nearbyKey => {
-                    if (nearbyKey !== planetKey) {
-                        const force = this.calculateGravitationalForce(planetKey, nearbyKey);
-                        totalForce.add(force);
-                    }
-                });
-
-                // Update velocity based on gravitational force
-                const acceleration = totalForce.divideScalar(elements.mass);
-                const velocity = new THREE.Vector3(
-                    Math.cos(elements.meanAnomaly),
-                    0,
-                    Math.sin(elements.meanAnomaly)
-                ).multiplyScalar(this.calculateOrbitalVelocity(elements));
-
-                velocity.add(acceleration.multiplyScalar(deltaTime));
-                
-                // Update position using visual scale
-                const visualVelocity = velocity.clone().multiplyScalar(this.SCALE_FACTOR * this.VISUAL_SCALE);
-                planet.position.add(visualVelocity.multiplyScalar(deltaTime));
-
-                // Update orbital elements
-                elements.meanAnomaly += this.calculateMeanMotion(elements) * deltaTime;
-                this.setOrbitalElements(planetKey, elements);
-            }
-        }
-
-        // Update moon positions with similar gravitational calculations
-        for (let i = 0; i < this.celestialBodies.size; i++) {
-            const planetKey = `planet_${i}`;
-            const planet = this.celestialBodies.get(planetKey);
-            if (planet) {
-                for (let j = 0; j < this.celestialBodies.size; j++) {
-                    const moonKey = `moon_${i}_${j}`;
-                    const moon = this.celestialBodies.get(moonKey);
-                    if (moon) {
-                        const elements = this.orbitalElements.get(moonKey);
-                        if (!elements) continue;
-
-                        // Calculate gravitational forces
-                        const planetForce = this.calculateGravitationalForce(moonKey, planetKey);
-                        const nearbyBodies = this.getNearbyBodies(moon.position, 5);
-                        const totalForce = planetForce.clone();
-
-                        nearbyBodies.forEach(nearbyKey => {
-                            if (nearbyKey !== moonKey && nearbyKey !== planetKey) {
-                                const force = this.calculateGravitationalForce(moonKey, nearbyKey);
-                                totalForce.add(force);
-                            }
-                        });
-
-                        // Update moon position
-                        const acceleration = totalForce.divideScalar(elements.mass);
-                        const velocity = new THREE.Vector3(
-                            Math.cos(elements.meanAnomaly),
-                            Math.sin(elements.inclination),
-                            Math.sin(elements.meanAnomaly)
-                        ).multiplyScalar(this.calculateOrbitalVelocity(elements));
-
-                        velocity.add(acceleration.multiplyScalar(deltaTime));
-                        moon.position.add(velocity.multiplyScalar(deltaTime));
-
-                        // Update orbital elements
-                        elements.meanAnomaly += this.calculateMeanMotion(elements) * deltaTime;
-                        this.setOrbitalElements(moonKey, elements);
-                    }
-                }
-            }
-        }
+        // Planets and moons are now stationary
+        // Previous orbital mechanics code removed to disable movement
     }
 
     async generateStarSystem(sector) {
@@ -205,7 +126,7 @@ export class SolarSystemManager {
                     console.warn(`Invalid planet data at index ${i}`);
                     continue;
                 }
-                await this.createPlanet(planetData, i);
+                await this.createPlanet(planetData, i, maxPlanets);
             }
         } catch (error) {
             console.error('Error creating star system:', error);
@@ -214,7 +135,7 @@ export class SolarSystemManager {
         }
     }
 
-    async createPlanet(planetData, index) {
+    async createPlanet(planetData, index, maxPlanets) {
         if (!planetData || typeof planetData !== 'object') {
             console.warn(`Invalid planet data for index ${index}`);
             return;
@@ -230,8 +151,13 @@ export class SolarSystemManager {
         });
         const planet = new THREE.Mesh(planetGeometry, planetMaterial);
         
-        // Calculate initial position based on orbit
-        const orbitRadius = (index + 1) * 10;
+        // Calculate orbit radius between 250km and 1500km
+        const minRadius = 250;
+        const maxRadius = 1500;
+        const totalPlanets = this.starSystem.planets.length;
+        const spacing = (maxRadius - minRadius) / (totalPlanets - 1);
+        const orbitRadius = minRadius + (index * spacing);
+        
         const angle = Math.random() * Math.PI * 2; // Random starting angle
         planet.position.set(
             orbitRadius * Math.cos(angle),

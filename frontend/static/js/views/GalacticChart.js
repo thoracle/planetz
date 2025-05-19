@@ -130,7 +130,15 @@ export class GalacticChart {
             this._isVisible = true;
             this.container.classList.add('visible');
             this.detailsPanel.style.display = 'none';  // Ensure details panel is hidden initially
-            await this.fetchUniverseData();
+            
+            try {
+                await this.fetchUniverseData();
+            } catch (error) {
+                console.error('Error showing galactic chart:', error);
+                // If fetch fails, hide the chart and restore previous view
+                this.hide(true);
+                return;
+            }
         } else {
             console.log('Galactic chart already visible, skipping show');
         }
@@ -192,6 +200,7 @@ export class GalacticChart {
             return this.universe;
         } catch (error) {
             console.error('Error fetching universe data:', error);
+            // Re-throw the error to be handled by the caller
             throw error;
         }
     }
