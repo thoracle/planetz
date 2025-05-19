@@ -392,13 +392,25 @@ export class StarfieldManager {
         const celestialBodies = Array.from(bodies.entries())
             .map(([key, body]) => {
                 const info = this.solarSystemManager.getCelestialBodyInfo(body);
+                
+                // Validate body position
+                if (!body.position || 
+                    isNaN(body.position.x) || 
+                    isNaN(body.position.y) || 
+                    isNaN(body.position.z)) {
+                    console.warn('Invalid position detected for celestial body:', info.name);
+                    return null;
+                }
+                
                 return {
                     name: info.name,
                     type: info.type,
                     position: body.position.toArray(),
-                    isMoon: key.startsWith('moon_')
+                    isMoon: key.startsWith('moon_'),
+                    object: body  // Store the actual THREE.js object
                 };
-            });
+            })
+            .filter(body => body !== null); // Remove any invalid bodies
         
         // Update target list
         this.targetObjects = celestialBodies;
@@ -473,14 +485,36 @@ export class StarfieldManager {
     }
 
     updateTargetDisplay() {
-        if (!this.currentTarget) return;
+        // Don't show anything if targeting is disabled
+        if (!this.targetComputerEnabled || !this.currentTarget) {
+            this.targetReticle.style.display = 'none';
+            return;
+        }
 
         // Get the current target data
         const currentTargetData = this.getCurrentTargetData();
-        if (!currentTargetData) return;
+        if (!currentTargetData) {
+            this.targetReticle.style.display = 'none';
+            return;
+        }
+
+        // Validate target position
+        if (!this.currentTarget.position || 
+            isNaN(this.currentTarget.position.x) || 
+            isNaN(this.currentTarget.position.y) || 
+            isNaN(this.currentTarget.position.z)) {
+            console.warn('Invalid target position detected:', currentTargetData.name);
+            this.targetReticle.style.display = 'none';
+            return;
+        }
 
         // Calculate distance
         const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
+        if (isNaN(distance)) {
+            console.warn('Invalid distance calculation for target:', currentTargetData.name);
+            this.targetReticle.style.display = 'none';
+            return;
+        }
         const formattedDistance = this.formatDistance(distance);
 
         // Update the target information display
@@ -490,9 +524,50 @@ export class StarfieldManager {
             <div class="target-distance">Distance: ${formattedDistance}</div>
         `;
 
-        // Show/hide targeting reticle and HUD based on view
-        const showTargeting = this.viewManager.currentView === 'front';
-        this.targetReticle.style.display = showTargeting ? 'block' : 'none';
+        // Calculate target's screen position
+        const screenPosition = this.currentTarget.position.clone().project(this.camera);
+        
+        // Validate screen position
+        if (isNaN(screenPosition.x) || isNaN(screenPosition.y)) {
+            console.warn('Invalid screen position calculated for target:', currentTargetData.name);
+            this.targetReticle.style.display = 'none';
+            return;
+        }
+
+        const isOnScreen = Math.abs(screenPosition.x) <= 1 && Math.abs(screenPosition.y) <= 1;
+
+        if (isOnScreen) {
+            // Convert to screen coordinates
+            const x = (screenPosition.x + 1) * window.innerWidth / 2;
+            const y = (-screenPosition.y + 1) * window.innerHeight / 2;
+            
+            // Validate screen coordinates
+            if (isNaN(x) || isNaN(y)) {
+                console.warn('Invalid screen coordinates calculated for target:', currentTargetData.name);
+                this.targetReticle.style.display = 'none';
+                return;
+            }
+            
+            const cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+            const relativePos = this.currentTarget.position.clone().sub(this.camera.position);
+            const dotProduct = relativePos.dot(cameraForward);
+            
+            // Validate dot product
+            if (isNaN(dotProduct)) {
+                console.warn('Invalid relative position calculation for target:', currentTargetData.name);
+                this.targetReticle.style.display = 'none';
+                return;
+            }
+            
+            // If dot product is negative, the target is behind the camera
+            const isBehindCamera = dotProduct < 0;
+            
+            this.targetReticle.style.display = isBehindCamera ? 'none' : 'block';
+            this.targetReticle.style.left = `${x}px`;
+            this.targetReticle.style.top = `${y}px`;
+        } else {
+            this.targetReticle.style.display = 'none';
+        }
         
         // Only hide the HUD in galactic view, keep it visible in both front and aft views
         const hideHUD = this.viewManager.currentView === 'galactic';
@@ -551,7 +626,6 @@ export class StarfieldManager {
         // Only proceed if we have a target and the target computer is enabled
         if (!this.currentTarget || !this.targetComputerEnabled) {
             if (this.directionArrow.style.display !== 'none') {
-                console.log('Arrow hidden - no target or targeting disabled');
                 this.directionArrow.style.display = 'none';
                 this.lastArrowState = null;
             }
@@ -573,20 +647,11 @@ export class StarfieldManager {
         // Check if target is off screen
         const isOffScreen = Math.abs(screenPosition.x) > 1 || Math.abs(screenPosition.y) > 1;
 
-        // Only log position if it crosses the screen boundary
-        const wasOffScreen = this.lastArrowState !== null;
-        if (wasOffScreen !== isOffScreen) {
-            console.log(`Target crossed screen boundary: (${screenPosition.x.toFixed(2)}, ${screenPosition.y.toFixed(2)}), isOffScreen: ${isOffScreen}`);
-            console.log(`Camera direction: (${cameraDirection.x.toFixed(2)}, ${cameraDirection.y.toFixed(2)}, ${cameraDirection.z.toFixed(2)})`);
-            console.log(`Relative position: (${relativePosition.x.toFixed(2)}, ${relativePosition.y.toFixed(2)}, ${relativePosition.z.toFixed(2)})`);
-        }
-
         if (isOffScreen) {
             // Position arrow based on target position relative to camera
             let transform = '';
             let position = {};
             let edge = '';
-            let expectedDirection = '';
             let extraStyles = {};
 
             // Get the angle between camera's view direction and relative position
@@ -618,7 +683,6 @@ export class StarfieldManager {
                         left: 'auto',
                         bottom: 'auto'
                     };
-                    expectedDirection = 'right';
                 } else {
                     edge = 'left';
                     extraStyles = {
@@ -635,7 +699,6 @@ export class StarfieldManager {
                         right: 'auto',
                         bottom: 'auto'
                     };
-                    expectedDirection = 'left';
                 }
             } else {
                 if (upComponent > 0) {
@@ -654,7 +717,6 @@ export class StarfieldManager {
                         right: 'auto',
                         bottom: 'auto'
                     };
-                    expectedDirection = 'up';
                 } else {
                     edge = 'bottom';
                     extraStyles = {
@@ -671,25 +733,10 @@ export class StarfieldManager {
                         right: 'auto',
                         top: 'auto'
                     };
-                    expectedDirection = 'down';
                 }
             }
 
-            // Create new state object
-            const newState = {
-                edge,
-                transform,
-                expectedDirection,
-                display: 'block'
-            };
-
-            // Check if state has actually changed
-            const hasChanged = !this.lastArrowState || 
-                             this.lastArrowState.edge !== edge ||
-                             this.lastArrowState.transform !== transform ||
-                             this.lastArrowState.expectedDirection !== expectedDirection;
-
-            // Apply styles to arrow and ensure all positions are explicitly set
+            // Apply styles to arrow
             const styles = {
                 display: 'block',
                 transform: transform,
@@ -697,22 +744,11 @@ export class StarfieldManager {
                 ...extraStyles
             };
 
-            // Apply styles and log them for debugging
             Object.assign(this.directionArrow.style, styles);
-            
-            // Log only if arrow state has changed
-            if (hasChanged) {
-                console.log(`Arrow changed to: ${edge} edge, ${expectedDirection} direction`);
-                console.log(`Target relative to camera: ${isInFront ? 'in front' : 'behind'}, angle: ${(angle * 180 / Math.PI).toFixed(2)}°`);
-                console.log('Applied styles:', styles);
-                this.lastArrowState = newState;
-            }
+            this.lastArrowState = { edge, transform };
         } else {
-            if (this.directionArrow.style.display !== 'none') {
-                console.log('Arrow hidden - target is on screen');
-                this.lastArrowState = null;
-            }
             this.directionArrow.style.display = 'none';
+            this.lastArrowState = null;
         }
     }
 
@@ -742,18 +778,9 @@ export class StarfieldManager {
             this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
         }
 
-        // Get the target object from SolarSystemManager
+        // Get the target object directly from our target list
         const targetData = this.targetObjects[this.targetIndex];
-        const bodies = this.solarSystemManager.getCelestialBodies();
-        
-        // Find the matching celestial body
-        for (const [key, body] of bodies.entries()) {
-            const info = this.solarSystemManager.getCelestialBodyInfo(body);
-            if (info.name === targetData.name && info.type === targetData.type) {
-                this.currentTarget = body;
-                break;
-            }
-        }
+        this.currentTarget = targetData.object;
 
         // Create new wireframe in the HUD
         if (this.currentTarget) {
@@ -844,17 +871,19 @@ export class StarfieldManager {
         if (this.currentSpeed > 0) {
             const moveDirection = this.view === 'AFT' ? -1 : 1;
             
-            // Match thoralexander.com's speed scaling exactly
-            const speedMultiplier = this.currentSpeed * 0.2;
+            // Use original speed calculation with reduced speeds for 1 and 2
+            let speedMultiplier = this.currentSpeed * 0.2;
+            
+            // Apply 75% reduction for speeds 1 and 2 (two 50% reductions = 75% total)
+            if (this.currentSpeed <= 2) {
+                speedMultiplier *= 0.25;
+            }
             
             // Move in the direction the camera is facing
-            const forwardVector = new THREE.Vector3(0, 0, -speedMultiplier);
+            const forwardVector = new THREE.Vector3(0, 0, -speedMultiplier * moveDirection);
             forwardVector.applyQuaternion(this.camera.quaternion);
             this.camera.position.add(forwardVector);
             this.camera.updateMatrixWorld();
-
-            // Update current sector after movement
-            this.updateCurrentSector();
         }
 
         // Update starfield
@@ -878,15 +907,29 @@ export class StarfieldManager {
                 const phi = Math.acos((Math.random() * 2) - 1);
                 const radius = minDistance + Math.random() * (maxDistance - minDistance);
 
-                positions.array[i * 3] = this.camera.position.x + radius * Math.sin(phi) * Math.cos(theta);
+                // Apply position based on view direction
+                const moveDirection = this.view === 'AFT' ? -1 : 1;
+                positions.array[i * 3] = this.camera.position.x + radius * Math.sin(phi) * Math.cos(theta) * moveDirection;
                 positions.array[i * 3 + 1] = this.camera.position.y + radius * Math.sin(phi) * Math.sin(theta);
-                positions.array[i * 3 + 2] = this.camera.position.z + radius * Math.cos(phi);
+                positions.array[i * 3 + 2] = this.camera.position.z + radius * Math.cos(phi) * moveDirection;
             }
         }
         positions.needsUpdate = true;
 
-        // Update target computer display
-        this.updateTargetDisplay();
+        // Only update target display if we have a valid target and targeting is enabled
+        if (this.targetComputerEnabled && this.currentTarget) {
+            // Verify the current target is still valid
+            const targetData = this.getCurrentTargetData();
+            if (targetData && targetData.object === this.currentTarget) {
+                this.updateTargetDisplay();
+            } else {
+                // Target mismatch, hide reticle
+                this.targetReticle.style.display = 'none';
+            }
+        } else {
+            // No valid target or targeting disabled
+            this.targetReticle.style.display = 'none';
+        }
         
         // Render wireframe if target computer is enabled and we have a target
         if (this.targetComputerEnabled && this.targetWireframe) {
@@ -909,15 +952,19 @@ export class StarfieldManager {
         
         // Only update if we've moved to a new sector
         if (currentSector !== currentSystemSector) {
-            console.log(`Moving from sector ${currentSystemSector} to ${currentSector}`);
-            
             // Reset target computer state before sector change
             if (this.targetComputerEnabled) {
                 this.currentTarget = null;
                 this.targetIndex = -1;
                 this.targetHUD.style.display = 'none';
-                if (this.targetReticle) {
-                    this.targetReticle.style.display = 'none';
+                this.targetReticle.style.display = 'none';
+                
+                // Clear any existing wireframe
+                if (this.targetWireframe) {
+                    this.wireframeScene.remove(this.targetWireframe);
+                    this.targetWireframe.geometry.dispose();
+                    this.targetWireframe.material.dispose();
+                    this.targetWireframe = null;
                 }
             }
             
@@ -952,9 +999,10 @@ export class StarfieldManager {
         const pos = this.camera.position;
         
         // Define sector grid size (in game units)
-        const SECTOR_SIZE = 1000; // Adjust this value based on your game scale
+        const SECTOR_SIZE = 100000; // Much larger sectors for vast space
         
         // Calculate grid coordinates
+        // Adjust offsets to ensure (0,0,0) is in sector A0
         const x = Math.floor(pos.x / SECTOR_SIZE);
         const z = Math.floor(pos.z / SECTOR_SIZE);
         
@@ -966,7 +1014,18 @@ export class StarfieldManager {
         const row = Math.max(0, Math.min(9, z + 5)); // +5 to center around origin
         const rowLetter = String.fromCharCode(65 + row); // 65 is ASCII for 'A'
         
-        return `${rowLetter}${col}`;
+        const sector = `${rowLetter}${col}`;
+        
+        console.log('Sector Calculation:', {
+            position: pos.toArray(),
+            rawGridX: x,
+            rawGridZ: z,
+            adjustedCol: col,
+            adjustedRow: row,
+            resultingSector: sector
+        });
+        
+        return sector;
     }
 
     dispose() {

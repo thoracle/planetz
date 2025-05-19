@@ -141,55 +141,68 @@ export class SolarSystemManager {
             return;
         }
 
-        // Create planet mesh
-        const planetSize = planetData.planet_size || 1;
-        const planetGeometry = new THREE.SphereGeometry(planetSize, 32, 32);
-        const planetMaterial = new THREE.MeshPhongMaterial({
-            color: this.getPlanetColor(planetData.planet_type),
-            shininess: 0.5,
-            flatShading: true
-        });
-        const planet = new THREE.Mesh(planetGeometry, planetMaterial);
-        
-        // Calculate orbit radius between 250km and 1500km
-        const minRadius = 250;
-        const maxRadius = 1500;
-        const totalPlanets = this.starSystem.planets.length;
-        const spacing = (maxRadius - minRadius) / (totalPlanets - 1);
-        const orbitRadius = minRadius + (index * spacing);
-        
-        const angle = Math.random() * Math.PI * 2; // Random starting angle
-        planet.position.set(
-            orbitRadius * Math.cos(angle),
-            0,
-            orbitRadius * Math.sin(angle)
-        );
-        
-        this.scene.add(planet);
-        this.celestialBodies.set(`planet_${index}`, planet);
-        
-        // Add orbital elements with mass and proper initialization
-        this.setOrbitalElements(`planet_${index}`, {
-            semiMajorAxis: orbitRadius,
-            eccentricity: 0.1,
-            inclination: Math.random() * 0.1,
-            longitudeOfAscendingNode: Math.random() * Math.PI * 2,
-            argumentOfPeriapsis: Math.random() * Math.PI * 2,
-            meanAnomaly: angle,
-            mass: planetSize * 1e24 // Mass proportional to size
-        });
-
-        // Create moons (limit to 5 moons per planet)
-        if (planetData.moons && Array.isArray(planetData.moons)) {
-            const maxMoons = Math.min(5, planetData.moons.length);
-            for (let moonIndex = 0; moonIndex < maxMoons; moonIndex++) {
-                const moonData = planetData.moons[moonIndex];
-                if (!moonData) {
-                    console.warn(`Invalid moon data for planet ${index}, moon ${moonIndex}`);
-                    continue;
-                }
-                await this.createMoon(moonData, index, moonIndex);
+        try {
+            // Create planet mesh
+            const planetSize = Math.max(0.1, planetData.planet_size || 1);
+            const planetGeometry = new THREE.SphereGeometry(planetSize, 32, 32);
+            const planetMaterial = new THREE.MeshPhongMaterial({
+                color: this.getPlanetColor(planetData.planet_type),
+                shininess: 0.5,
+                flatShading: true
+            });
+            const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+            
+            // Calculate orbit radius between 250km and 800km
+            const minRadius = 250;
+            const maxRadius = 800; // Reduced to ensure planets stay within sector boundaries
+            const totalPlanets = Math.max(1, this.starSystem.planets.length);
+            const spacing = (maxRadius - minRadius) / Math.max(1, totalPlanets - 1);
+            const orbitRadius = minRadius + (index * spacing);
+            
+            // Ensure angle is a valid number
+            const angle = (Math.random() * Math.PI * 2) || 0;
+            
+            // Set initial position
+            const x = orbitRadius * Math.cos(angle);
+            const y = 0;
+            const z = orbitRadius * Math.sin(angle);
+            
+            // Validate position before setting
+            if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                console.warn(`Invalid position calculated for planet ${index}:`, { x, y, z, orbitRadius, angle });
+                planet.position.set(0, 0, 0);
+            } else {
+                planet.position.set(x, y, z);
             }
+            
+            this.scene.add(planet);
+            this.celestialBodies.set(`planet_${index}`, planet);
+            
+            // Add orbital elements with mass and proper initialization
+            this.setOrbitalElements(`planet_${index}`, {
+                semiMajorAxis: orbitRadius,
+                eccentricity: 0.1,
+                inclination: Math.random() * 0.1,
+                longitudeOfAscendingNode: Math.random() * Math.PI * 2,
+                argumentOfPeriapsis: Math.random() * Math.PI * 2,
+                meanAnomaly: angle,
+                mass: planetSize * 1e24 // Mass proportional to size
+            });
+
+            // Create moons (limit to 5 moons per planet)
+            if (planetData.moons && Array.isArray(planetData.moons)) {
+                const maxMoons = Math.min(5, planetData.moons.length);
+                for (let moonIndex = 0; moonIndex < maxMoons; moonIndex++) {
+                    const moonData = planetData.moons[moonIndex];
+                    if (!moonData) {
+                        console.warn(`Invalid moon data for planet ${index}, moon ${moonIndex}`);
+                        continue;
+                    }
+                    await this.createMoon(moonData, index, moonIndex);
+                }
+            }
+        } catch (error) {
+            console.error(`Error creating planet ${index}:`, error);
         }
     }
 
@@ -199,44 +212,66 @@ export class SolarSystemManager {
             return;
         }
 
-        const moonSize = moonData.moon_size || 0.3;
-        const moonGeometry = new THREE.SphereGeometry(moonSize, 32, 32);
-        const moonMaterial = new THREE.MeshPhongMaterial({
-            color: this.getPlanetColor(moonData.moon_type),
-            shininess: 0.3,
-            flatShading: true
-        });
-        const moon = new THREE.Mesh(moonGeometry, moonMaterial);
-        
-        // Get parent planet position
-        const planet = this.celestialBodies.get(`planet_${planetIndex}`);
-        if (!planet) {
-            console.warn(`Parent planet not found for moon ${moonIndex}`);
-            return;
+        try {
+            const moonSize = Math.max(0.1, moonData.moon_size || 0.3);
+            const moonGeometry = new THREE.SphereGeometry(moonSize, 32, 32);
+            const moonMaterial = new THREE.MeshPhongMaterial({
+                color: this.getPlanetColor(moonData.moon_type),
+                shininess: 0.3,
+                flatShading: true
+            });
+            const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+            
+            // Get parent planet position
+            const planet = this.celestialBodies.get(`planet_${planetIndex}`);
+            if (!planet) {
+                console.warn(`Parent planet not found for moon ${moonIndex}`);
+                return;
+            }
+            
+            // Calculate initial position relative to planet
+            const moonOrbitRadius = Math.max(1, (moonIndex + 1) * 2);
+            const angle = (Math.random() * Math.PI * 2) || 0;
+            const verticalVariation = Math.sin(angle * 0.5) * moonOrbitRadius * 0.2;
+            
+            // Calculate moon position components
+            const x = moonOrbitRadius * Math.cos(angle);
+            const y = verticalVariation;
+            const z = moonOrbitRadius * Math.sin(angle);
+            
+            // Create position vector and validate
+            const moonPosition = new THREE.Vector3(x, y, z);
+            if (moonPosition.x === 0 && moonPosition.y === 0 && moonPosition.z === 0) {
+                console.warn(`Zero position calculated for moon ${moonIndex} of planet ${planetIndex}`);
+                return;
+            }
+            
+            // Add moon position to planet position
+            moon.position.copy(planet.position).add(moonPosition);
+            
+            // Validate final position
+            if (isNaN(moon.position.x) || isNaN(moon.position.y) || isNaN(moon.position.z)) {
+                console.warn(`Invalid position calculated for moon ${moonIndex} of planet ${planetIndex}:`, 
+                    moon.position.toArray());
+                return;
+            }
+            
+            this.scene.add(moon);
+            this.celestialBodies.set(`moon_${planetIndex}_${moonIndex}`, moon);
+            
+            // Add orbital elements with mass and proper initialization
+            this.setOrbitalElements(`moon_${planetIndex}_${moonIndex}`, {
+                semiMajorAxis: moonOrbitRadius,
+                eccentricity: 0.05,
+                inclination: Math.random() * 0.05,
+                longitudeOfAscendingNode: Math.random() * Math.PI * 2,
+                argumentOfPeriapsis: Math.random() * Math.PI * 2,
+                meanAnomaly: angle,
+                mass: moonSize * 1e22 // Mass proportional to size, but less than planets
+            });
+        } catch (error) {
+            console.error(`Error creating moon ${moonIndex} for planet ${planetIndex}:`, error);
         }
-        
-        // Calculate initial position relative to planet
-        const moonOrbitRadius = (moonIndex + 1) * 2;
-        const angle = Math.random() * Math.PI * 2; // Random starting angle
-        moon.position.copy(planet.position).add(new THREE.Vector3(
-            moonOrbitRadius * Math.cos(angle),
-            Math.sin(angle * 0.5) * moonOrbitRadius * 0.2, // Slight vertical variation
-            moonOrbitRadius * Math.sin(angle)
-        ));
-        
-        this.scene.add(moon);
-        this.celestialBodies.set(`moon_${planetIndex}_${moonIndex}`, moon);
-        
-        // Add orbital elements with mass and proper initialization
-        this.setOrbitalElements(`moon_${planetIndex}_${moonIndex}`, {
-            semiMajorAxis: moonOrbitRadius,
-            eccentricity: 0.05,
-            inclination: Math.random() * 0.05,
-            longitudeOfAscendingNode: Math.random() * Math.PI * 2,
-            argumentOfPeriapsis: Math.random() * Math.PI * 2,
-            meanAnomaly: angle,
-            mass: moonSize * 1e22 // Mass proportional to size, but less than planets
-        });
     }
 
     calculateOrbitalPeriod(semiMajorAxis) {
