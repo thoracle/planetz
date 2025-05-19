@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize the universe and then generate the initial star system
     try {
         await viewManager.galacticChart.fetchUniverseData();
-        
+    
         // Ensure universe data is shared with SolarSystemManager
         if (viewManager.galacticChart.universe) {
             solarSystemManager.universe = viewManager.galacticChart.universe;
@@ -141,14 +141,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 firstSystem: solarSystemManager.universe[0]?.star_name,
                 sectorA0: solarSystemManager.universe.find(system => system.sector === 'A0')
             });
-            
+
             // Generate initial star system for sector A0
             const success = await solarSystemManager.generateStarSystem('A0');
-            if (success) {
-                console.log('Star system generated successfully');
-            } else {
-                console.error('Failed to generate star system');
-            }
+        if (success) {
+            console.log('Star system generated successfully');
+        } else {
+            console.error('Failed to generate star system');
+        }
         } else {
             console.error('Failed to fetch universe data');
         }

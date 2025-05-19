@@ -133,7 +133,7 @@ global.THREE = {
         constructor() {
             this.attributes = {};
             this.setAttribute = jest.fn((name, attribute) => {
-                this.attributes[name] = attribute;
+            this.attributes[name] = attribute;
             });
         }
         dispose() {}

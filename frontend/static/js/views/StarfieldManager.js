@@ -493,7 +493,13 @@ export class StarfieldManager {
         // Show/hide targeting reticle and HUD based on view
         const showTargeting = this.viewManager.currentView === 'front';
         this.targetReticle.style.display = showTargeting ? 'block' : 'none';
-        this.targetHUD.style.display = showTargeting ? 'block' : 'none';
+        
+        // Only hide the HUD in galactic view, keep it visible in both front and aft views
+        const hideHUD = this.viewManager.currentView === 'galactic';
+        this.targetHUD.style.display = hideHUD ? 'none' : 'block';
+        
+        // Direction arrows should be visible in both front and aft views
+        this.updateDirectionArrow();
     }
 
     getCurrentTargetData() {

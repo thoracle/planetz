@@ -61,7 +61,7 @@ def serve_static(path):
         return send_from_directory(current_app.static_folder, 'index.html', mimetype='text/html')
     except Exception as e:
         logger.error(f"Error serving file {path}: {str(e)}")
-        return f"Error serving file: {path}", 404
+        return f"Error serving file: {path}", 404 
 
 @bp.route('/health')
 def health_check():
