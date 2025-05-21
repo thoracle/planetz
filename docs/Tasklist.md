@@ -77,9 +77,10 @@
   - [X] Create modal overlay system
   - [X] Add G key binding (disabled in Edit-Mode)
   - [X] Implement modal dismissal (A, F keys and X button)
-  - [ ] use verse.py to populate the universe with solar systems
-  - [ ] Visualize verse.py with galactic chart
-  - [ ] Add solar system cell labeling
+  - [X] use verse.py to populate the universe with solar systems
+  - [X] Visualize verse.py with galactic chart
+  - [X] Add solar system cell labeling
+  - [ ] Add ability to warp from sector to sector (see docs/warp_drive_spec.md)
 - [X] View Management System
   - [X] Implement view state management
   - [X] Create smooth transitions between views
