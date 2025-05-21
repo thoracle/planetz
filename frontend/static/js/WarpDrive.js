@@ -12,6 +12,7 @@ class WarpDrive {
         this.cooldownTime = 0;
         this.maxCooldownTime = 5000; // 5 seconds
         this.warpSequenceTime = 5000; // 5 seconds
+        this.lastUpdateTime = Date.now(); // Track last update time for debugging
 
         // Acceleration curve for smooth transitions
         this.accelerationCurve = new THREE.CubicBezierCurve3(
@@ -28,6 +29,12 @@ class WarpDrive {
 
         // Initialize feedback system
         this.feedback = new WarpFeedback();
+        
+        console.log('WarpDrive initialized:', {
+            maxCooldownTime: this.maxCooldownTime,
+            warpSequenceTime: this.warpSequenceTime,
+            timestamp: new Date().toISOString()
+        });
     }
 
     /**
@@ -108,6 +115,10 @@ class WarpDrive {
      * @param {number} deltaTime - Time elapsed since last update in milliseconds
      */
     update(deltaTime) {
+        const currentTime = Date.now();
+        const timeSinceLastUpdate = currentTime - this.lastUpdateTime;
+        this.lastUpdateTime = currentTime;
+
         if (this.isActive) {
             // Calculate energy consumption
             const energyConsumption = this.energyConsumptionRate * this.warpFactor * deltaTime;
@@ -137,13 +148,37 @@ class WarpDrive {
                 this.deactivate();
             }
         } else if (this.cooldownTime > 0) {
-            // Update cooldown timer
-            this.cooldownTime = Math.max(0, this.cooldownTime - deltaTime);
+            // Update cooldown timer using actual time elapsed
+            const previousCooldownTime = this.cooldownTime;
+            this.cooldownTime = Math.max(0, this.cooldownTime - timeSinceLastUpdate);
+            
+            // Calculate cooldown progress (0% to 100%)
+            const cooldownProgress = (this.cooldownTime / this.maxCooldownTime) * 100;
+            
+            // Update feedback with remaining cooldown time
             this.feedback.updateProgress(
-                ((this.maxCooldownTime - this.cooldownTime) / this.maxCooldownTime) * 100,
-                'Cooldown'
+                cooldownProgress,
+                `Cooldown (${Math.ceil(this.cooldownTime / 1000)}s)`
             );
+            
+            // Show cooldown visual cues
             this.feedback.showVisualCues('cooldown', 1.0);
+            
+            // Log if cooldown time reduction is unusually large
+            const timeReduced = previousCooldownTime - this.cooldownTime;
+            if (timeReduced > timeSinceLastUpdate * 1.5) {
+                console.warn('Large cooldown time reduction:', {
+                    timeReduced,
+                    timeSinceLastUpdate,
+                    previousCooldownTime,
+                    newCooldownTime: this.cooldownTime
+                });
+            }
+            
+            // Hide feedback when cooldown is complete
+            if (this.cooldownTime <= 0) {
+                this.feedback.hideAll();
+            }
         }
     }
 

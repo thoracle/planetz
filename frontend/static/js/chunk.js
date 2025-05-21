@@ -122,29 +122,41 @@ export class Chunk {
             this.worker = null;
         }
 
-        let timeoutCheckInterval;
+        let timeoutId;
         let meshPromise;
         
         try {
             // Create a new worker
             this.worker = new Worker('/js/workers/meshGenerator.worker.js');
             
-            // Promise for mesh generation
+            // Promise for mesh generation with timeout
             meshPromise = new Promise((resolve, reject) => {
+                // Set up timeout
+                timeoutId = setTimeout(() => {
+                    if (this.worker) {
+                        this.worker.terminate();
+                        this.worker = null;
+                    }
+                    reject(new Error('Mesh generation timed out after 30 seconds'));
+                }, 30000);
+
                 const messageHandler = (e) => {
                     if (generationId !== this.currentGenerationId) {
+                        clearTimeout(timeoutId);
                         this.worker.terminate();
                         reject(new Error('Generation superseded'));
                         return;
                     }
 
                     if (!e.data || !e.data.type) {
+                        clearTimeout(timeoutId);
                         reject(new Error('Invalid message format from worker'));
                         return;
                     }
 
                     switch (e.data.type) {
                         case MESSAGE_TYPES.ERROR:
+                            clearTimeout(timeoutId);
                             reject(new Error(e.data.errorMessage || 'Unknown worker error'));
                             return;
 
@@ -156,6 +168,7 @@ export class Chunk {
                             return;
 
                         case MESSAGE_TYPES.SUCCESS:
+                            clearTimeout(timeoutId);
                             if (!e.data.data) {
                                 reject(new Error('Missing mesh data in success message'));
                                 return;
@@ -164,12 +177,14 @@ export class Chunk {
                             return;
 
                         default:
+                            clearTimeout(timeoutId);
                             reject(new Error(`Unknown message type: ${e.data.type}`));
                             return;
                     }
                 };
 
                 const errorHandler = (error) => {
+                    clearTimeout(timeoutId);
                     reject(new Error(`Worker error: ${error.message || String(error)}`));
                 };
 
@@ -215,22 +230,10 @@ export class Chunk {
                     // Create a new density field since we transferred the buffer
                     this.densityField = new Float32Array(this.size * this.size * this.size);
                 } catch (error) {
+                    clearTimeout(timeoutId);
                     reject(new Error(`Failed to send data to worker: ${error.message}`));
                 }
             });
-
-            // Set up timeout check
-            const checkTimeout = () => {
-                const elapsedTime = Date.now() - generationId;
-                if (elapsedTime > 30000) { // 30 second timeout
-                    if (this.worker) {
-                        this.worker.terminate();
-                        this.worker = null;
-                    }
-                    throw new Error('Mesh generation timed out');
-                }
-            };
-            timeoutCheckInterval = setInterval(checkTimeout, 1000);
 
             // Wait for mesh generation
             const meshData = await meshPromise;
@@ -307,12 +310,12 @@ export class Chunk {
             return null;
         } finally {
             // Cleanup
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
             if (this.worker) {
                 this.worker.terminate();
                 this.worker = null;
-            }
-            if (timeoutCheckInterval) {
-                clearInterval(timeoutCheckInterval);
             }
             this.isGeneratingMesh = false;
             this.meshGenerationProgress = 0;

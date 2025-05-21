@@ -20,6 +20,9 @@ class WarpFeedback {
         this.visualCues = document.createElement('div');
         this.visualCues.className = 'visual-cues';
         document.body.appendChild(this.visualCues);
+
+        // Track cooldown display state
+        this.isCooldownDisplayed = false;
     }
 
     /**
@@ -74,6 +77,12 @@ class WarpFeedback {
      * @param {string} phase - Current warp phase
      */
     updateProgress(progress, phase) {
+        // Debug log when cooldown first appears
+        if (phase.includes('Cooldown') && !this.isCooldownDisplayed) {
+            console.log('[Debug] Cooldown display activated:', { phase, progress });
+            this.isCooldownDisplayed = true;
+        }
+
         this.progressBar.innerHTML = `
             <div class="progress-bar">
                 <div class="progress-fill" style="width: ${progress}%"></div>
@@ -108,10 +117,22 @@ class WarpFeedback {
      * Hide all feedback elements
      */
     hideAll() {
+        // Debug log when cooldown is hidden
+        if (this.isCooldownDisplayed) {
+            console.log('[Debug] Cooldown display deactivated');
+            this.isCooldownDisplayed = false;
+        }
+
+        // Hide all elements and their containers
         this.warningModal.style.display = 'none';
         this.energyIndicator.style.display = 'none';
         this.progressBar.style.display = 'none';
         this.visualCues.style.display = 'none';
+        
+        // Clear any remaining content
+        this.progressBar.innerHTML = '';
+        this.energyIndicator.innerHTML = '';
+        this.visualCues.innerHTML = '';
     }
 
     /**
