@@ -189,12 +189,10 @@ export class GalacticChart {
             // Get the SolarSystemManager safely
             const solarSystemManager = this.viewManager.getSolarSystemManager();
             
-            // Share the universe data with the SolarSystemManager
-            solarSystemManager.universe = this.universe;
-            console.log('Universe data shared with SolarSystemManager:', {
+            // No longer share universe data - we use API for system generation
+            console.log('Universe data loaded:', {
                 universeSize: this.universe.length,
-                firstSystem: this.universe[0]?.star_name,
-                sectorA0: this.universe.find(system => system.sector === 'A0')
+                firstSystem: this.universe[0]?.star_name
             });
 
             return this.universe;
@@ -454,28 +452,26 @@ export class GalacticChart {
 
         if (warpButton && !isCurrentSector) {
             warpButton.addEventListener('click', () => {
-                const currentEnergy = this.viewManager.getShipEnergy();
-                if (warpEnergy > currentEnergy) {
-                    // Create and show warning popup
-                    const warningPopup = document.createElement('div');
-                    warningPopup.className = 'warning-popup';
-                    warningPopup.innerHTML = `
-                        <div class="warning-content">
-                            <h3>Insufficient Energy</h3>
-                            <p>${system.star_name} requires ${warpEnergy} energy units</p>
-                            <button class="warning-close">OK</button>
-                        </div>
-                    `;
-                    document.body.appendChild(warningPopup);
-
-                    // Add event listener to close button
-                    const closeButton = warningPopup.querySelector('.warning-close');
-                    closeButton.addEventListener('click', () => {
-                        document.body.removeChild(warningPopup);
-                    });
-                } else {
-                    console.log('Warp initiated to system:', system.star_name);
-                    // TODO: Implement warp functionality
+                if (warpButton && !isCurrentSector) {
+                    const currentEnergy = this.viewManager.getShipEnergy();
+                    const requiredEnergy = warpEnergy;
+                    
+                    if (requiredEnergy > currentEnergy) {
+                        this.viewManager.warpFeedback.showWarning(
+                            'Insufficient Energy',
+                            `Required: ${requiredEnergy} energy units\n\nAvailable: ${currentEnergy} energy units`,
+                            () => {
+                                // Keep the galactic chart visible after warning is closed
+                                this.show();
+                            }
+                        );
+                    } else {
+                        console.log('Warp initiated to system:', coordinates);
+                        // Hide the galactic chart
+                        this.hide();
+                        // Initiate the warp process
+                        this.viewManager.warpDriveManager.navigateToSector(coordinates);
+                    }
                 }
             });
         }
@@ -483,10 +479,26 @@ export class GalacticChart {
 
     // Add method to set ship's location
     setShipLocation(systemIndex) {
+        // Convert sector string to index if needed (e.g., "B0" -> 9)
+        if (typeof systemIndex === 'string') {
+            const row = systemIndex.charCodeAt(0) - 65; // Convert A->0, B->1, etc.
+            const col = parseInt(systemIndex.slice(1));
+            systemIndex = row * 9 + col;
+            console.log('Converted sector', systemIndex, 'to index:', systemIndex);
+        }
+
+        // Ensure grid is initialized
+        if (!this.gridContainer.children.length) {
+            console.log('Grid not initialized, initializing now');
+            this.initializeGrid();
+        }
+
         // Remove ship location from previous cell
         if (this.shipSystemIndex !== null) {
             const cells = this.gridContainer.querySelectorAll('.grid-cell');
-            cells[this.shipSystemIndex].classList.remove('ship-location');
+            if (cells[this.shipSystemIndex]) {
+                cells[this.shipSystemIndex].classList.remove('ship-location');
+            }
         }
 
         this.shipSystemIndex = systemIndex;
@@ -494,7 +506,12 @@ export class GalacticChart {
         // Add ship location to new cell
         if (systemIndex !== null) {
             const cells = this.gridContainer.querySelectorAll('.grid-cell');
-            cells[systemIndex].classList.add('ship-location');
+            if (cells[systemIndex]) {
+                cells[systemIndex].classList.add('ship-location');
+                console.log('Updated ship location to index:', systemIndex);
+            } else {
+                console.warn('Grid cell not found for index:', systemIndex);
+            }
         }
 
         // Update grid to ensure proper combined state styling

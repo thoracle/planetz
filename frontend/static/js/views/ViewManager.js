@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { GalacticChart } from './GalacticChart.js';
+import WarpFeedback from '../WarpFeedback.js';
+import WarpDriveManager from '../WarpDriveManager.js';
 
 export const VIEW_TYPES = {
     FRONT: 'front',
@@ -15,9 +17,10 @@ export class ViewManager {
         this.previousView = VIEW_TYPES.FRONT;
         this.editMode = false;
         this.starfieldManager = null;
+        this.solarSystemManager = null;  // Initialize solarSystemManager
         
         // Initialize ship energy
-        this.shipEnergy = 9999; // Start with 1000 energy units
+        this.shipEnergy = 100; // Initial energy level
         
         // Store camera state
         this.savedCameraState = {
@@ -36,6 +39,12 @@ export class ViewManager {
         this.controls.enablePan = false;
         this.controls.enableZoom = true;
         
+        // Initialize feedback systems
+        this.warpFeedback = new WarpFeedback();
+        
+        // Initialize warp drive manager
+        this.warpDriveManager = new WarpDriveManager(scene, camera, this);
+        
         // Create crosshairs
         this.createCrosshairs();
         
@@ -53,17 +62,23 @@ export class ViewManager {
         this.starfieldManager = manager;
     }
 
-    // Add method to check if managers are properly initialized
-    areManagersReady() {
-        return this.starfieldManager && this.starfieldManager.solarSystemManager;
+    // Add method to set SolarSystemManager
+    setSolarSystemManager(manager) {
+        this.solarSystemManager = manager;
+        console.log('SolarSystemManager set in ViewManager');
     }
 
-    // Add method to get SolarSystemManager safely
+    // Update areManagersReady to check solarSystemManager directly
+    areManagersReady() {
+        return this.starfieldManager && this.solarSystemManager;
+    }
+
+    // Update getSolarSystemManager to use direct reference
     getSolarSystemManager() {
         if (!this.areManagersReady()) {
             throw new Error('Managers not properly initialized');
         }
-        return this.starfieldManager.solarSystemManager;
+        return this.solarSystemManager;
     }
 
     createCrosshairs() {
@@ -153,6 +168,24 @@ export class ViewManager {
         });
         
         if (this.editMode) return; // Don't change views in edit mode
+        
+        // Special handling for galactic view toggle
+        if (viewType === VIEW_TYPES.GALACTIC) {
+            if (this.galacticChart.isVisible()) {
+                // If chart is visible, hide it and restore previous view
+                this.galacticChart.hide(true);
+                return;
+            } else {
+                // If chart is not visible, show it
+                this.galacticChart.show();
+                // Store previous view and camera state
+                this.previousView = this.currentView;
+                this.savedCameraState.position.copy(this.camera.position);
+                this.savedCameraState.quaternion.copy(this.camera.quaternion);
+                this.currentView = viewType;
+                return;
+            }
+        }
         
         // Don't store previous view if we're already in that view
         if (this.currentView === viewType) {
@@ -355,4 +388,17 @@ export class ViewManager {
     getGalacticChart() {
         return this.galacticChart;
     }
-} 
+
+    /**
+     * Update the view manager state
+     * @param {number} deltaTime - Time elapsed since last update in milliseconds
+     */
+    update(deltaTime) {
+        // Update warp drive manager
+        if (this.warpDriveManager) {
+            this.warpDriveManager.update(deltaTime);
+        }
+    }
+}
+
+export default ViewManager; 

@@ -554,7 +554,7 @@ body.edit-mode .crosshair {
     box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 30px;
 }
 
 .warning-content h3 {
@@ -572,6 +572,7 @@ body.edit-mode .crosshair {
     text-align: center;
     font-size: 1.1em;
     min-height: 1.5em;
+    margin-bottom: 20px;
 }
 
 .warning-close {
@@ -580,7 +581,7 @@ body.edit-mode .crosshair {
     color: #00ff41;
     border: 1px solid #00ff41;
     padding: 10px 30px;
-    margin: 10px auto 0;
+    margin: 25px auto 0;
     font-family: "Courier New", monospace;
     font-size: 1.1em;
     cursor: pointer;

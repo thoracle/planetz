@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import Stats from 'three/addons/libs/stats.module.js';
 import PlanetGenerator from './planetGenerator.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Atmosphere } from './Atmosphere.js';
@@ -122,6 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize SolarSystemManager and connect it to StarfieldManager
     const solarSystemManager = new SolarSystemManager(scene, camera);
     starfieldManager.setSolarSystemManager(solarSystemManager);
+    viewManager.setSolarSystemManager(solarSystemManager);  // Add this line
 
     // Verify managers are properly connected
     if (!viewManager.areManagersReady()) {
@@ -1686,8 +1688,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Only update controls in edit mode
         if (editMode) {
-        controls.update();
+            controls.update();
         }
+        
+        // Update view manager
+        viewManager.update(deltaTime);
         
         // Update starfield
         starfieldManager.update(deltaTime);

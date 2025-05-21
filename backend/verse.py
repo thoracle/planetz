@@ -175,7 +175,8 @@ def generate_star_system(random_seed=None):
     # Save the current RNG state
     original_state = save_rng_state()
     
-    if random_seed is not None:
+    # Initialize RNG with seed, even if it's 0
+    if random_seed is not None or random_seed == 0:
         Lehmer32(random_seed)
     
     star_system = {}

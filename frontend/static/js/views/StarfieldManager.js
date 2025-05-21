@@ -11,7 +11,6 @@ export class StarfieldManager {
         this.acceleration = 0.02; // Much slower acceleration
         this.deceleration = 0.03; // Slightly faster deceleration than acceleration
         this.decelerating = false; // New flag for tracking deceleration state
-        this.energy = 9999;
         this.velocity = new THREE.Vector3();
         this.rotationSpeed = 2.0; // Radians per second
         this.cameraDirection = new THREE.Vector3();
@@ -162,7 +161,7 @@ export class StarfieldManager {
         }
         
         this.speedBox.textContent = `Speed: ${speedText}`;
-        this.energyBox.textContent = `Energy: ${this.energy}`;
+        this.energyBox.textContent = `Energy: ${this.viewManager.getShipEnergy()}`;
         this.viewBox.textContent = `View: ${this.view}`;
     }
 
@@ -358,6 +357,7 @@ export class StarfieldManager {
     }
 
     toggleTargetComputer() {
+        console.log('Toggling target computer. Current state:', this.targetComputerEnabled);
         this.targetComputerEnabled = !this.targetComputerEnabled;
         this.targetHUD.style.display = this.targetComputerEnabled ? 'block' : 'none';
         
@@ -368,12 +368,14 @@ export class StarfieldManager {
         }
         
         if (this.targetComputerEnabled) {
+            console.log('Target computer enabled, updating target list...');
             // Initialize or update target list when enabling
             this.updateTargetList();
             // Always start with the closest target (index 0) when enabling
             this.targetIndex = -1; // Will be incremented to 0 in cycleTarget
             this.cycleTarget();
         } else {
+            console.log('Target computer disabled, cleaning up...');
             // Clean up when disabling
             if (this.targetWireframe) {
                 this.wireframeScene.remove(this.targetWireframe);
@@ -387,11 +389,20 @@ export class StarfieldManager {
     }
 
     updateTargetList() {
+        console.log('Updating target list...');
+        if (!this.solarSystemManager) {
+            console.error('No solarSystemManager reference available');
+            return;
+        }
+
         // Get celestial bodies from SolarSystemManager
         const bodies = this.solarSystemManager.getCelestialBodies();
+        console.log('Retrieved celestial bodies:', bodies.size);
+        
         const celestialBodies = Array.from(bodies.entries())
             .map(([key, body]) => {
                 const info = this.solarSystemManager.getCelestialBodyInfo(body);
+                console.log('Processing celestial body:', key, info);
                 
                 // Validate body position
                 if (!body.position || 
@@ -411,6 +422,8 @@ export class StarfieldManager {
                 };
             })
             .filter(body => body !== null); // Remove any invalid bodies
+        
+        console.log('Processed celestial bodies:', celestialBodies.length);
         
         // Update target list
         this.targetObjects = celestialBodies;
@@ -755,9 +768,6 @@ export class StarfieldManager {
     cycleTarget() {
         if (!this.targetComputerEnabled || this.targetObjects.length === 0) return;
 
-        // Update target list first to ensure we have current distances
-        this.updateTargetList();
-
         // Remove previous wireframe if it exists
         if (this.targetWireframe) {
             this.wireframeScene.remove(this.targetWireframe);
@@ -1091,5 +1101,34 @@ export class StarfieldManager {
         star.position.x = radius * Math.sin(phi) * Math.cos(theta);
         star.position.y = radius * Math.sin(phi) * Math.sin(theta);
         star.position.z = radius * Math.cos(phi);
+    }
+
+    /**
+     * Clear target computer state
+     */
+    clearTargetComputer() {
+        // Reset target state
+        this.currentTarget = null;
+        this.targetIndex = -1;
+        this.targetObjects = [];
+        
+        // Hide HUD elements
+        if (this.targetHUD) {
+            this.targetHUD.style.display = 'none';
+        }
+        if (this.targetReticle) {
+            this.targetReticle.style.display = 'none';
+        }
+        
+        // Clear wireframe
+        if (this.targetWireframe) {
+            this.wireframeScene.remove(this.targetWireframe);
+            this.targetWireframe.geometry.dispose();
+            this.targetWireframe.material.dispose();
+            this.targetWireframe = null;
+        }
+        
+        // Disable target computer
+        this.targetComputerEnabled = false;
     }
 } 

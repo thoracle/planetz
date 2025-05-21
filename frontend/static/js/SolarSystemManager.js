@@ -13,7 +13,6 @@ export class SolarSystemManager {
         this.camera.lookAt(0, 0, 0);
         
         this.starSystem = null;
-        this.universe = null;  // Store the universe data
         this.celestialBodies = new Map();
         this.planetGenerators = new Map();
         this.orbitalSpeeds = new Map();
@@ -61,40 +60,105 @@ export class SolarSystemManager {
     }
 
     async generateStarSystem(sector) {
-        if (!this.universe) {
-            console.error('No universe data available');
-            return false;
-        }
-
-        // Find the star system for this sector
-        this.starSystem = this.universe.find(system => system.sector === sector);
+        console.log('Starting star system generation for sector:', sector);
         
-        if (!this.starSystem) {
-            console.error('No star system data found for sector:', sector);
-            return false;
-        }
-
-        console.log('Generating star system for sector:', sector, 'with data:', this.starSystem);
+        // Update current sector immediately
+        this.currentSector = sector;
+        console.log('Updated current sector to:', sector);
         
         try {
-            await this.createStarSystem();
+            // Clear existing system first
+            console.log('Clearing existing system');
+            this.clearSystem();
+            
+            // First try to get the system from universe data
+            if (this.universe) {
+                const systemData = this.universe.find(system => system.sector === sector);
+                if (systemData) {
+                    console.log('Found system in universe data:', {
+                        starName: systemData.star_name,
+                        starType: systemData.star_type,
+                        planetCount: systemData.planets?.length
+                    });
+                    this.starSystem = systemData;
+                } else {
+                    console.warn('System not found in universe data, falling back to API');
+                    // Fall back to API if not found in universe
+                    const response = await fetch(`/api/generate_star_system?seed=${sector}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    this.starSystem = await response.json();
+                }
+            } else {
+                console.warn('No universe data available, using API');
+                // Use API if no universe data
+                const response = await fetch(`/api/generate_star_system?seed=${sector}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                this.starSystem = await response.json();
+            }
+            
+            console.log('Star system data:', {
+                starName: this.starSystem?.star_name,
+                starType: this.starSystem?.star_type,
+                starSize: this.starSystem?.star_size,
+                planetCount: this.starSystem?.planets?.length
+            });
+            
+            // Generate new system
+            console.log('Generating new system for sector:', sector);
+            const success = await this.createStarSystem();
+            
+            if (!success) {
+                console.error('Failed to generate new star system');
+                return false;
+            }
+            
+            console.log('Successfully generated new star system for sector:', sector);
             return true;
         } catch (error) {
-            console.error('Failed to generate star system:', error);
+            console.error('Error generating star system:', error);
             return false;
         }
     }
 
     async createStarSystem() {
+        console.log('=== Starting Star System Creation ===');
         if (!this.starSystem) {
+            console.error('No star system data available for creation');
             throw new Error('No star system data available');
         }
 
+        console.log('Star system data:', {
+            name: this.starSystem.star_name,
+            type: this.starSystem.star_type,
+            size: this.starSystem.star_size,
+            planetCount: this.starSystem.planets?.length
+        });
+        
+        // Store the star system data before clearing
+        const starSystemData = this.starSystem;
+        console.log('Stored star system data for restoration');
+        
+        // Clear existing meshes and collections
+        console.log('Clearing existing system...');
         this.clearSystem();
+        
+        // Restore the star system data
+        this.starSystem = starSystemData;
+        console.log('Restored star system data');
 
         try {
             // Create star
             const starSize = this.starSystem.star_size || 5;
+            console.log('Creating star:', {
+                size: starSize,
+                type: this.starSystem.star_type,
+                name: this.starSystem.star_name
+            });
+            
             const starGeometry = new THREE.SphereGeometry(starSize, 32, 32);
             const starColor = this.getStarColor(this.starSystem.star_type);
             const starMaterial = new THREE.MeshPhongMaterial({
@@ -106,18 +170,25 @@ export class SolarSystemManager {
             const star = new THREE.Mesh(starGeometry, starMaterial);
             this.scene.add(star);
             this.celestialBodies.set('star', star);
+            console.log('Star created and added to scene');
 
             // Add star light
             const starLight = new THREE.PointLight(starColor, 1, 100);
             starLight.position.copy(star.position);
             this.scene.add(starLight);
+            console.log('Star light added');
 
             // Create planets
             if (!this.starSystem.planets || !Array.isArray(this.starSystem.planets)) {
                 console.warn('No planets data available or invalid planets array');
-                return;
+                return true; // Still return true as we created the star
             }
 
+            console.log('Starting planet creation:', {
+                totalPlanets: this.starSystem.planets.length,
+                maxPlanets: Math.min(10, this.starSystem.planets.length)
+            });
+            
             // Limit the number of planets to 10
             const maxPlanets = Math.min(10, this.starSystem.planets.length);
             for (let i = 0; i < maxPlanets; i++) {
@@ -126,12 +197,35 @@ export class SolarSystemManager {
                     console.warn(`Invalid planet data at index ${i}`);
                     continue;
                 }
+                console.log(`Creating planet ${i}:`, {
+                    name: planetData.planet_name,
+                    type: planetData.planet_type,
+                    size: planetData.planet_size,
+                    moonCount: planetData.moons?.length
+                });
                 await this.createPlanet(planetData, i, maxPlanets);
             }
+            
+            console.log('Planet creation completed:', {
+                totalBodies: this.celestialBodies.size,
+                planetCount: Array.from(this.celestialBodies.keys()).filter(k => k.startsWith('planet_')).length,
+                moonCount: Array.from(this.celestialBodies.keys()).filter(k => k.startsWith('moon_')).length
+            });
+            
+            console.log('=== Star System Creation Complete ===');
+            return true; // Return true on successful completion
         } catch (error) {
-            console.error('Error creating star system:', error);
+            console.error('=== Star System Creation Failed ===');
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                currentState: {
+                    hasStarSystem: !!this.starSystem,
+                    bodyCount: this.celestialBodies.size
+                }
+            });
             this.clearSystem(); // Clean up on error
-            throw error;
+            throw error; // Re-throw the error to be caught by generateStarSystem
         }
     }
 
@@ -288,16 +382,56 @@ export class SolarSystemManager {
     }
 
     clearSystem() {
-        // Remove all celestial bodies from scene
-        this.celestialBodies.forEach(body => {
-            this.scene.remove(body);
-        });
+        console.log('Clearing star system');
         
-        // Clear all maps
+        // Remove all celestial bodies from the scene
+        for (const [id, body] of this.celestialBodies) {
+            if (body) {
+                // Remove from scene
+                this.scene.remove(body);
+                
+                // Dispose of geometry
+                if (body.geometry) {
+                    body.geometry.dispose();
+                }
+                
+                // Dispose of materials
+                if (body.material) {
+                    if (Array.isArray(body.material)) {
+                        body.material.forEach(material => {
+                            if (material.map) material.map.dispose();
+                            material.dispose();
+                        });
+                    } else {
+                        if (body.material.map) body.material.map.dispose();
+                        body.material.dispose();
+                    }
+                }
+                
+                // Remove any custom properties
+                if (body.userData) {
+                    body.userData = {};
+                }
+            }
+        }
+        
+        // Clear all collections
         this.celestialBodies.clear();
         this.planetGenerators.clear();
         this.orbitalSpeeds.clear();
         this.rotationSpeeds.clear();
+        this.orbitalElements.clear();
+        this.spatialGrid.clear();
+        
+        // Reset star system data
+        this.starSystem = null;
+        
+        // Force garbage collection of any remaining references
+        if (window.gc) {
+            window.gc();
+        }
+        
+        console.log('Star system cleared and memory cleaned up');
     }
 
     getStarColor(starType) {
