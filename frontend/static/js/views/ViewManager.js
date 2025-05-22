@@ -4,7 +4,7 @@ import WarpFeedback from '../WarpFeedback.js';
 import WarpDriveManager from '../WarpDriveManager.js';
 
 export const VIEW_TYPES = {
-    FRONT: 'front',
+    FORE: 'fore',
     AFT: 'aft',
     GALACTIC: 'galactic'
 };
@@ -14,13 +14,13 @@ export class ViewManager {
         this.scene = scene;
         this.camera = camera;
         this.controls = controls;
-        this.previousView = VIEW_TYPES.FRONT;
+        this.previousView = VIEW_TYPES.FORE;
         this.editMode = false;
         this.starfieldManager = null;
         this.solarSystemManager = null;  // Initialize solarSystemManager
         
         // Initialize ship energy
-        this.shipEnergy = 100; // Initial energy level
+        this.shipEnergy = 9999; // Initial energy level
         
         // Store camera state
         this.savedCameraState = {
@@ -52,7 +52,7 @@ export class ViewManager {
         this.galacticChart = new GalacticChart(this);
         
         // Set initial view state - this will also set this.currentView
-        this.setView(VIEW_TYPES.FRONT);
+        this.setView(VIEW_TYPES.FORE);
         
         // Bind keyboard events
         this.bindKeyEvents();
@@ -151,8 +151,8 @@ export class ViewManager {
             } else if (key === 'f' && this.currentView === VIEW_TYPES.AFT) {
                 event.preventDefault();
                 event.stopPropagation();
-                this.setView(VIEW_TYPES.FRONT);
-            } else if (key === 'a' && this.currentView === VIEW_TYPES.FRONT) {
+                this.setView(VIEW_TYPES.FORE);
+            } else if (key === 'a' && this.currentView === VIEW_TYPES.FORE) {
                 event.preventDefault();
                 event.stopPropagation();
                 this.setView(VIEW_TYPES.AFT);
@@ -207,7 +207,7 @@ export class ViewManager {
         this.aftCrosshair.style.display = 'none';
         
         switch(viewType) {
-            case VIEW_TYPES.FRONT:
+            case VIEW_TYPES.FORE:
                 if (this.currentView === VIEW_TYPES.GALACTIC) {
                     console.log('Restoring camera state from galactic view');
                     // Restore camera state when coming from galactic view
@@ -333,8 +333,8 @@ export class ViewManager {
             return;
         }
         
-        // Default to FRONT view if no previous view is stored
-        const viewToRestore = this.previousView || VIEW_TYPES.FRONT;
+        // Default to FORE view if no previous view is stored
+        const viewToRestore = this.previousView || VIEW_TYPES.FORE;
         console.log('Restoring to view:', viewToRestore);
         
         // Hide the galactic chart without triggering another view restoration
@@ -352,7 +352,7 @@ export class ViewManager {
         }
         
         // Update crosshairs
-        this.frontCrosshair.style.display = viewToRestore === VIEW_TYPES.FRONT ? 'block' : 'none';
+        this.frontCrosshair.style.display = viewToRestore === VIEW_TYPES.FORE ? 'block' : 'none';
         this.aftCrosshair.style.display = viewToRestore === VIEW_TYPES.AFT ? 'block' : 'none';
         
         // Update the current view and notify StarfieldManager

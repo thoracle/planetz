@@ -62,7 +62,7 @@ export class GalacticChart {
                 } else if (key === 'f') {
                     event.preventDefault();
                     event.stopPropagation();
-                    this.viewManager.setView(VIEW_TYPES.FRONT);
+                    this.viewManager.setView(VIEW_TYPES.FORE);
                 }
             }
         });

@@ -14,6 +14,9 @@ class WarpDriveManager {
         this.warpEffects = new WarpEffects(scene);
         this.sectorNavigation = new SectorNavigation(scene, camera, this.warpDrive);
         
+        // Set sector navigation reference in warp drive
+        this.warpDrive.sectorNavigation = this.sectorNavigation;
+        
         // Ship properties
         this.ship = new THREE.Object3D();
         this.ship.position.set(0, 0, 0);

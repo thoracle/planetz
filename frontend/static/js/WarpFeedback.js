@@ -65,7 +65,7 @@ class WarpFeedback {
                 <div class="energy-fill" style="width: ${percentage}%"></div>
             </div>
             <div class="energy-text">
-                Energy: ${Math.round(currentEnergy)}/${maxEnergy}
+                Energy: ${Math.floor(currentEnergy)}/${maxEnergy}
                 ${requiredEnergy > 0 ? `<br>Required: ${requiredEnergy}` : ''}
             </div>
         `;
