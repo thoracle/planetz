@@ -141,7 +141,7 @@ class WarpDriveManager {
      * @param {number} energyLevel - Current energy level
      */
     handleEnergyUpdate(energyLevel) {
-        console.log(`Energy level: ${energyLevel}`);
+        // Energy updates are handled by WarpFeedback, no need for additional logging
     }
 
     /**

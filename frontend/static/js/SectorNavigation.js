@@ -180,13 +180,20 @@ class SectorNavigation {
         
         // Activate warp drive
         if (!this.warpDrive.activate()) {
-            console.error('Failed to activate warp drive');
+            console.log('Failed to activate warp drive');
             this.isNavigating = false;
             return false;
         }
 
+        // Change view to FORE when entering warp
+        if (this.viewManager && this.viewManager.starfieldManager) {
+            this.viewManager.starfieldManager.setView('FORE');
+        }
+
         console.log('Warp drive activated, starting navigation');
-        this.feedback.showVisualCues('accelerating', 1.0);
+        // Show initial progress
+        this.feedback.showAll();
+        this.feedback.updateProgress(0, 'Warp Navigation');
         return true;
     }
 
@@ -213,9 +220,10 @@ class SectorNavigation {
             progress.y
         );
 
-        // Update feedback
+        // Update feedback with progress percentage
+        const progressPercentage = Math.round(this.navigationProgress * 100);
         this.feedback.updateProgress(
-            this.navigationProgress * 100,
+            progressPercentage,
             'Warp Navigation'
         );
     }
@@ -251,6 +259,9 @@ class SectorNavigation {
             this.viewManager.galacticChart.setShipLocation(systemIndex);
         }
         
+        // Hide feedback elements before deactivating warp
+        this.feedback.hideAll();
+        
         // Deactivate warp drive
         console.log('Deactivating warp drive');
         this.warpDrive.deactivate();
@@ -258,12 +269,6 @@ class SectorNavigation {
         // Only set isNavigating to false after warp drive is deactivated
         // This ensures handleWarpEnd can generate the new system
         this.isNavigating = false;
-        
-        // Show completion feedback
-        this.feedback.showVisualCues('warping', 1.0);
-        setTimeout(() => {
-            this.feedback.hideAll();
-        }, 2000);
     }
 
     /**

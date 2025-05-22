@@ -346,6 +346,8 @@ export class StarfieldManager {
                 this.setView('FORE');
             } else if (event.key.toLowerCase() === 'a') {
                 this.setView('AFT');
+            } else if (event.key.toLowerCase() === 'g') {
+                this.setView('GALACTIC');
             }
         });
 
@@ -884,9 +886,11 @@ export class StarfieldManager {
             // Use original speed calculation with reduced speeds for 1 and 2
             let speedMultiplier = this.currentSpeed * 0.2;
             
-            // Apply 75% reduction for speeds 1 and 2 (two 50% reductions = 75% total)
-            if (this.currentSpeed <= 2) {
-                speedMultiplier *= 0.25;
+            // Apply 75% reduction for speed 1 (two 50% reductions = 75% total), and make speed 2 equal to current speed 1
+            if (this.currentSpeed === 1) {
+                speedMultiplier *= 0.25; // 75% reduction
+            } else if (this.currentSpeed === 2) {
+                speedMultiplier = 0.2; // Make speed 2 equal to what speed 1 was
             }
             
             // Move in the direction the camera is facing

@@ -10,7 +10,7 @@ class WarpDrive {
         this.viewManager = viewManager; // Store reference to ViewManager
         this.energyConsumptionRate = 0.1;
         this.cooldownTime = 0;
-        this.maxCooldownTime = 5000; // 5 seconds
+        this.maxCooldownTime = 60000; // 60 seconds
         this.warpSequenceTime = 5000; // 5 seconds
         this.lastUpdateTime = Date.now(); // Track last update time for debugging
 
@@ -69,7 +69,6 @@ class WarpDrive {
 
         this.isActive = true;
         this.feedback.showAll();
-        this.feedback.showVisualCues('accelerating', 1.0);
         if (this.onWarpStart) {
             this.onWarpStart(this.warpFactor);
         }
@@ -82,9 +81,24 @@ class WarpDrive {
     deactivate() {
         if (!this.isActive) return;
 
+        console.log('[Debug] WarpDrive deactivating:', {
+            wasActive: this.isActive,
+            cooldownTime: this.cooldownTime,
+            maxCooldownTime: this.maxCooldownTime
+        });
+
         this.isActive = false;
         this.cooldownTime = this.maxCooldownTime;
-        this.feedback.showVisualCues('decelerating', 1.0);
+        
+        // Show feedback for cooldown
+        console.log('[Debug] Showing cooldown feedback:', {
+            cooldownTime: this.cooldownTime,
+            maxCooldownTime: this.maxCooldownTime
+        });
+
+        // Ensure feedback is visible and showing cooldown
+        this.feedback.showAll();
+        this.feedback.updateProgress(100, `Cooldown (${Math.ceil(this.cooldownTime / 1000)}s)`);
         
         if (this.onWarpEnd) {
             this.onWarpEnd();
@@ -92,6 +106,7 @@ class WarpDrive {
 
         // Hide feedback after cooldown
         setTimeout(() => {
+            console.log('[Debug] Cooldown timeout triggered');
             this.feedback.hideAll();
         }, this.maxCooldownTime);
     }
@@ -152,7 +167,7 @@ class WarpDrive {
             const previousCooldownTime = this.cooldownTime;
             this.cooldownTime = Math.max(0, this.cooldownTime - timeSinceLastUpdate);
             
-            // Calculate cooldown progress (0% to 100%)
+            // Calculate cooldown progress (100% to 0%)
             const cooldownProgress = (this.cooldownTime / this.maxCooldownTime) * 100;
             
             // Update feedback with remaining cooldown time
@@ -160,9 +175,6 @@ class WarpDrive {
                 cooldownProgress,
                 `Cooldown (${Math.ceil(this.cooldownTime / 1000)}s)`
             );
-            
-            // Show cooldown visual cues
-            this.feedback.showVisualCues('cooldown', 1.0);
             
             // Log if cooldown time reduction is unusually large
             const timeReduced = previousCooldownTime - this.cooldownTime;
@@ -177,6 +189,7 @@ class WarpDrive {
             
             // Hide feedback when cooldown is complete
             if (this.cooldownTime <= 0) {
+                console.log('[Debug] Cooldown complete, hiding feedback');
                 this.feedback.hideAll();
             }
         }
