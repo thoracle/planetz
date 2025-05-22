@@ -52,6 +52,52 @@ export class StarfieldManager {
         this.bindKeyEvents();
         // Bind mouse events
         this.bindMouseEvents();
+
+        // Audio setup
+        this.listener = new THREE.AudioListener();
+        this.audioLoader = new THREE.AudioLoader();
+        this.engineSound = new THREE.Audio(this.listener);
+        this.soundLoaded = false;
+        this.engineState = 'stopped'; // 'stopped', 'starting', 'running', 'stopping'
+
+        // Load engine sound
+        console.log('Loading engine sound...');
+        this.audioLoader.load(
+            '/audio/engines.wav',
+            (buffer) => {
+                console.log('Engine sound loaded successfully');
+                this.engineSound.setBuffer(buffer);
+                this.engineSound.setLoop(true);
+                
+                // Set loop points for the middle portion of the sound
+                const duration = buffer.duration;
+                const startupTime = duration * 0.25; // Increased from 15% to 25% to ensure we're at full volume
+                const shutdownTime = duration * 0.70; // Keep at 70% to avoid end tapering
+                
+                // Ensure the loop points are at consistent volume points
+                this.engineSound.setLoopStart(startupTime);
+                this.engineSound.setLoopEnd(shutdownTime);
+                
+                // Store these times for later use
+                this.engineTimes = {
+                    startup: startupTime,
+                    shutdown: shutdownTime,
+                    total: duration
+                };
+                
+                this.engineSound.setVolume(0.0);
+                this.soundLoaded = true;
+            },
+            (progress) => {
+                console.log(`Loading engine sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
+            },
+            (error) => {
+                console.error('Error loading engine sound:', error);
+            }
+        );
+
+        // Add audio listener to camera
+        this.camera.add(this.listener);
     }
 
     createStarfield() {
@@ -324,9 +370,21 @@ export class StarfieldManager {
                     // Start deceleration and clear target speed
                     this.decelerating = true;
                     this.targetSpeed = 0;
+                    if (this.engineState === 'running') {
+                        this.playEngineShutdown();
+                    }
                 } else {
                     this.decelerating = false;
                     this.targetSpeed = speed;
+                    // Start or adjust engine sound
+                    if (this.soundLoaded) {
+                        const volume = speed / this.maxSpeed;
+                        if (this.engineState === 'stopped') {
+                            this.playEngineStartup(volume);
+                        } else if (this.engineState === 'running') {
+                            this.engineSound.setVolume(volume);
+                        }
+                    }
                 }
             }
             
@@ -870,11 +928,32 @@ export class StarfieldManager {
         if (this.decelerating) {
             // Continuously decelerate while in deceleration mode
             this.currentSpeed = Math.max(0, this.currentSpeed - this.deceleration);
-            // Only clear deceleration flag if we press another speed
-        } else if (this.currentSpeed < this.targetSpeed) {
-            this.currentSpeed = Math.min(this.targetSpeed, this.currentSpeed + this.acceleration);
-        } else if (this.currentSpeed > this.targetSpeed) {
-            this.currentSpeed = Math.max(this.targetSpeed, this.currentSpeed - this.deceleration);
+            // Adjust engine sound volume during deceleration
+            if (this.soundLoaded && this.engineState === 'running') {
+                const volume = this.currentSpeed / this.maxSpeed;
+                if (volume < 0.01) {
+                    this.playEngineShutdown();
+                } else {
+                    this.engineSound.setVolume(volume);
+                }
+            }
+        } else {
+            // Handle acceleration and normal speed changes
+            if (this.currentSpeed < this.targetSpeed) {
+                this.currentSpeed = Math.min(this.targetSpeed, this.currentSpeed + this.acceleration);
+            } else if (this.currentSpeed > this.targetSpeed) {
+                this.currentSpeed = Math.max(this.targetSpeed, this.currentSpeed - this.deceleration);
+            }
+            
+            // Adjust engine sound volume during speed changes
+            if (this.soundLoaded) {
+                const volume = this.currentSpeed / this.maxSpeed;
+                if (this.engineState === 'stopped' && this.currentSpeed > 0) {
+                    this.playEngineStartup(volume);
+                } else if (this.engineState === 'running') {
+                    this.engineSound.setVolume(volume);
+                }
+            }
         }
         
         this.updateSpeedIndicator();
@@ -1134,5 +1213,73 @@ export class StarfieldManager {
         
         // Disable target computer
         this.targetComputerEnabled = false;
+    }
+
+    playEngineStartup(targetVolume) {
+        if (!this.soundLoaded) return;
+        
+        // Reset the sound to the beginning for startup sound
+        this.engineSound.setLoop(false);
+        this.engineSound.offset = 0;
+        this.engineSound.setVolume(0); // Start silent
+        this.engineSound.play();
+        this.engineState = 'starting';
+        
+        // Gradually fade in during startup
+        const startupDuration = this.engineTimes.startup * 1000; // Convert to milliseconds
+        const fadeSteps = 20; // More steps for smoother transition
+        const fadeInterval = startupDuration / fadeSteps;
+        
+        let step = 0;
+        const fadeTimer = setInterval(() => {
+            step++;
+            if (step >= fadeSteps || this.engineState !== 'starting') {
+                clearInterval(fadeTimer);
+                if (this.engineState === 'starting') {
+                    // Transition to looping portion
+                    this.engineSound.stop();
+                    this.engineSound.offset = this.engineTimes.startup;
+                    this.engineSound.setLoop(true);
+                    this.engineSound.play();
+                    this.engineSound.setVolume(targetVolume);
+                    this.engineState = 'running';
+                }
+            } else {
+                // Smooth quadratic fade-in for more natural acceleration sound
+                const progress = step / fadeSteps;
+                const volume = targetVolume * (progress * progress);
+                this.engineSound.setVolume(volume);
+            }
+        }, fadeInterval);
+    }
+
+    playEngineShutdown() {
+        if (!this.soundLoaded || this.engineState === 'stopped') return;
+        
+        // Play the shutdown portion
+        this.engineSound.setLoop(false);
+        this.engineSound.offset = this.engineTimes.shutdown;
+        this.engineState = 'stopping';
+        
+        // Gradually decrease volume during shutdown
+        const shutdownDuration = (this.engineTimes.total - this.engineTimes.shutdown) * 1000;
+        const startVolume = this.engineSound.getVolume();
+        const fadeSteps = 10;
+        const fadeInterval = shutdownDuration / fadeSteps;
+        
+        let step = 0;
+        const fadeTimer = setInterval(() => {
+            step++;
+            if (step >= fadeSteps || this.engineState !== 'stopping') {
+                clearInterval(fadeTimer);
+                if (this.engineState === 'stopping') {
+                    this.engineSound.stop();
+                    this.engineState = 'stopped';
+                }
+            } else {
+                const volume = startVolume * (1 - step / fadeSteps);
+                this.engineSound.setVolume(volume);
+            }
+        }, fadeInterval);
     }
 } 
