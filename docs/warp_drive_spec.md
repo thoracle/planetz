@@ -159,12 +159,12 @@ startNavigation(targetSector) {
     if (!this.warpDrive.activate()) {
         console.error('Failed to activate warp drive');
         this.isNavigating = false;
-        return false;
-    }
-    
+            return false;
+        }
+
     console.log('Warp drive activated, starting navigation');
     this.feedback.showVisualCues('accelerating', 1.0);
-    return true;
+            return true;
 }
 ```
 

@@ -12,6 +12,7 @@ class WarpDriveManager {
         // Core components
         this.warpDrive = new WarpDrive(viewManager);
         this.warpEffects = new WarpEffects(scene);
+        this.warpEffects.initialize(scene, camera);
         this.sectorNavigation = new SectorNavigation(scene, camera, this.warpDrive);
         
         // Set sector navigation reference in warp drive
@@ -52,7 +53,23 @@ class WarpDriveManager {
         
         // Update visual effects
         if (this.warpDrive.isActive) {
-            this.warpEffects.update(deltaTime, this.warpDrive.warpFactor);
+            // Get current warp factor for effects
+            const warpFactor = this.warpDrive.warpFactor;
+            
+            // Update effects with current warp factor
+            if (this.warpEffects) {
+                this.warpEffects.update(deltaTime, warpFactor);
+                
+                // Log warp effect status every second (for debugging)
+                if (Math.floor(Date.now() / 1000) !== this._lastEffectLog) {
+                    this._lastEffectLog = Math.floor(Date.now() / 1000);
+                    console.log('Warp effects update:', {
+                        warpFactor,
+                        isActive: this.warpDrive.isActive,
+                        effectsInitialized: this.warpEffects.initialized
+                    });
+                }
+            }
         }
     }
 
@@ -62,7 +79,13 @@ class WarpDriveManager {
      */
     handleWarpStart(warpFactor) {
         console.log(`Warp drive activated at factor ${warpFactor}`);
-        this.warpEffects.showAll();
+        // Show warp effects
+        if (this.warpEffects && this.warpEffects.initialized) {
+            console.log('Showing warp effects');
+            this.warpEffects.showAll();
+        } else {
+            console.warn('Warp effects not initialized');
+        }
     }
 
     /**
@@ -71,7 +94,12 @@ class WarpDriveManager {
     async handleWarpEnd() {
         console.log('Warp drive deactivated');
         this.isActive = false;
-        this.hideAllWarpEffects();
+        
+        // Hide warp effects
+        if (this.warpEffects && this.warpEffects.initialized) {
+            console.log('Hiding warp effects');
+            this.warpEffects.hideAll();
+        }
 
         // Only proceed with system generation if we're in navigation mode
         if (this.sectorNavigation && this.sectorNavigation.isNavigating) {
@@ -223,8 +251,20 @@ class WarpDriveManager {
             this.viewManager.starfieldManager.clearTargetComputer();
         }
 
+        // Get destination system information
+        const destinationSystem = this.viewManager.galacticChart.getStarSystemForSector(targetSector);
+        if (!destinationSystem) {
+            console.error('Failed to get destination system information');
+            return false;
+        }
+
         // Store the state in the sector navigation for use after warp
         this.sectorNavigation.wasTargetComputerEnabled = wasTargetComputerEnabled;
+
+        // Pass destination system to warp effects
+        if (this.warpEffects) {
+            this.warpEffects.showAll(destinationSystem);
+        }
 
         // Start navigation
         return this.sectorNavigation.startNavigation(targetSector);
@@ -258,6 +298,9 @@ class WarpDriveManager {
         return this.currentSystem;
     }
 
+    /**
+     * Hide all warp effects
+     */
     hideAllWarpEffects() {
         this.warpEffects.hideAll();
     }

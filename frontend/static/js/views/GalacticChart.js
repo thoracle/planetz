@@ -415,16 +415,16 @@ export class GalacticChart {
                             <div class="table-row">
                                 <div class="col">${planet.planet_name}</div>
                                 <div class="col">${planet.planet_type}</div>
-                                <div class="col diplomacy-${planet.diplomacy?.toLowerCase() || 'neutral'}">${planet.diplomacy || 'Neutral'}</div>
+                                <div class="col ${planet.diplomacy?.toLowerCase() === 'enemy' ? 'diplomacy-hostile' : `diplomacy-${planet.diplomacy?.toLowerCase() || 'neutral'}`}">${planet.diplomacy || 'Neutral'}</div>
                                 <div class="col">${planet.government || 'None'}</div>
                                 <div class="col">${planet.economy || 'None'}</div>
                                 <div class="col">${planet.technology || 'None'}</div>
                             </div>
                             ${planet.moons.map(moon => `
                                 <div class="table-row moon-row">
-                                    <div class="col">└─ ${moon.moon_name}</div>
+                                    <div class="col">${moon.moon_name}</div>
                                     <div class="col">${moon.moon_type}</div>
-                                    <div class="col diplomacy-${moon.diplomacy?.toLowerCase() || 'neutral'}">${moon.diplomacy || 'Neutral'}</div>
+                                    <div class="col ${moon.diplomacy?.toLowerCase() === 'enemy' ? 'diplomacy-hostile' : `diplomacy-${moon.diplomacy?.toLowerCase() || 'neutral'}`}">${moon.diplomacy || 'Neutral'}</div>
                                     <div class="col">${moon.government || 'None'}</div>
                                     <div class="col">${moon.economy || 'None'}</div>
                                     <div class="col">${moon.technology || 'None'}</div>

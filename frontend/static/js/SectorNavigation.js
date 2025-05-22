@@ -13,6 +13,7 @@ class SectorNavigation {
         this.targetSector = null;
         this.isNavigating = false;
         this.navigationProgress = 0;
+        this._hasArrived = false;
         
         // Sector size and grid properties
         this.SECTOR_SIZE = 100000;
@@ -20,7 +21,8 @@ class SectorNavigation {
         this.GRID_COLS = 9;  // 0-8
         
         // Navigation timing
-        this.warpDuration = 5000; // 5 seconds
+        this.warpDuration = 12000; // Match WarpEffects duration
+        this.arrivalTime = 8000;   // Arrival at 8 seconds
         this.startTime = 0;
         
         // Position tracking
@@ -207,18 +209,50 @@ class SectorNavigation {
         const elapsedTime = Date.now() - this.startTime;
         this.navigationProgress = Math.min(1, elapsedTime / this.warpDuration);
 
+        // Check for arrival point
+        if (elapsedTime >= this.arrivalTime && !this._hasArrived) {
+            this._hasArrived = true;
+            // Update sector and position at arrival
+            this.currentSector = this.targetSector;
+            this.camera.position.copy(this.targetPosition);
+            
+            // Update the ship's location in the galactic chart
+            const row = this.currentSector.charCodeAt(0) - 65;
+            const col = parseInt(this.currentSector[1]);
+            const systemIndex = row * 9 + col;
+            
+            if (this.viewManager && this.viewManager.galacticChart) {
+                this.viewManager.galacticChart.setShipLocation(systemIndex);
+            }
+        }
+
         if (this.navigationProgress >= 1) {
             this.completeNavigation();
             return;
         }
 
-        // Update position using smooth interpolation
-        const progress = this.warpDrive.accelerationCurve.getPoint(this.navigationProgress);
-        this.camera.position.lerpVectors(
-            this.startPosition,
-            this.targetPosition,
-            progress.y
-        );
+        // Use different progress calculations before and after arrival
+        let progress;
+        if (elapsedTime < this.arrivalTime) {
+            // Accelerate to arrival point
+            progress = Math.sin((elapsedTime / this.arrivalTime) * Math.PI / 2);
+        } else {
+            // Hold position after arrival
+            progress = 1;
+        }
+
+        // Set warp factor based on progress
+        const warpFactor = 1 + (this.warpDrive.maxWarpFactor - 1) * progress;
+        this.warpDrive.setWarpFactor(warpFactor);
+
+        // Update position if we haven't arrived yet
+        if (!this._hasArrived) {
+            this.camera.position.lerpVectors(
+                this.startPosition,
+                this.targetPosition,
+                progress
+            );
+        }
 
         // Update feedback with progress percentage
         const progressPercentage = Math.round(this.navigationProgress * 100);
@@ -238,26 +272,8 @@ class SectorNavigation {
             timestamp: new Date().toISOString()
         });
 
-        // Update sector and position first
-        this.currentSector = this.targetSector;
         this.targetSector = null;
-        
-        // Ensure we're exactly at the target position
-        this.camera.position.copy(this.targetPosition);
-        
-        // Update the ship's location in the galactic chart
-        const row = this.currentSector.charCodeAt(0) - 65; // Convert A-J to 0-9
-        const col = parseInt(this.currentSector[1]);
-        const systemIndex = row * 9 + col;
-        
-        console.log('Updating galactic chart:', {
-            sector: this.currentSector,
-            systemIndex: systemIndex
-        });
-        
-        if (this.viewManager && this.viewManager.galacticChart) {
-            this.viewManager.galacticChart.setShipLocation(systemIndex);
-        }
+        this._hasArrived = false;
         
         // Hide feedback elements before deactivating warp
         this.feedback.hideAll();
@@ -267,7 +283,6 @@ class SectorNavigation {
         this.warpDrive.deactivate();
         
         // Only set isNavigating to false after warp drive is deactivated
-        // This ensures handleWarpEnd can generate the new system
         this.isNavigating = false;
     }
 

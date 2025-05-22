@@ -11,7 +11,7 @@ class WarpDrive {
         this.energyConsumptionRate = 1.0;
         this.cooldownTime = 0;
         this.maxCooldownTime = 60000; // 60 seconds
-        this.warpSequenceTime = 5000; // 5 seconds
+        this.warpSequenceTime = 12000; // Match WarpEffects duration
         this.lastUpdateTime = Date.now();
         this.totalEnergyCost = 0; // Track total energy cost for this warp
         this.energyConsumed = 0; // Track how much energy we've consumed
@@ -152,15 +152,6 @@ class WarpDrive {
             const currentEnergy = Math.floor(this.viewManager.getShipEnergy());
             const newEnergy = Math.max(0, currentEnergy - energyConsumption);
             this.energyConsumed += energyConsumption;
-            
-            // Only log significant energy changes (every 100 units)
-            if (this.energyConsumed % 100 === 0) {
-                console.log('Warp progress:', {
-                    consumed: this.energyConsumed,
-                    remaining: remainingEnergy,
-                    total: this.totalEnergyCost
-                });
-            }
             
             // Directly update the ship energy with the new value
             this.viewManager.shipEnergy = newEnergy;
