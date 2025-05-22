@@ -96,27 +96,105 @@ export class ViewManager {
         // Create front view crosshair (+)
         this.frontCrosshair = document.createElement('div');
         this.frontCrosshair.style.cssText = `
-            width: 40px;
-            height: 40px;
+            width: 60px;
+            height: 60px;
             position: relative;
             display: none;
         `;
         this.frontCrosshair.innerHTML = `
-            <div style="position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: white;"></div>
-            <div style="position: absolute; top: 0; left: 50%; width: 2px; height: 100%; background: white;"></div>
+            <div style="
+                position: absolute;
+                top: 50%;
+                left: 0;
+                width: calc(50% - 8px);
+                height: 2px;
+                background: #00ff41;
+                box-shadow: 0 0 4px #00ff41;
+                transform: translateY(-50%);
+            "></div>
+            <div style="
+                position: absolute;
+                top: 50%;
+                right: 0;
+                width: calc(50% - 8px);
+                height: 2px;
+                background: #00ff41;
+                box-shadow: 0 0 4px #00ff41;
+                transform: translateY(-50%);
+            "></div>
+            <div style="
+                position: absolute;
+                top: 0;
+                left: 50%;
+                height: calc(50% - 8px);
+                width: 2px;
+                background: #00ff41;
+                box-shadow: 0 0 4px #00ff41;
+                transform: translateX(-50%);
+            "></div>
+            <div style="
+                position: absolute;
+                bottom: 0;
+                left: 50%;
+                height: calc(50% - 8px);
+                width: 2px;
+                background: #00ff41;
+                box-shadow: 0 0 4px #00ff41;
+                transform: translateX(-50%);
+            "></div>
+            <div style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 4px;
+                height: 4px;
+                background: #00ff41;
+                border-radius: 50%;
+                box-shadow: 0 0 4px #00ff41;
+                transform: translate(-50%, -50%);
+            "></div>
         `;
         
         // Create aft view crosshair (-- --)
         this.aftCrosshair = document.createElement('div');
         this.aftCrosshair.style.cssText = `
-            width: 80px;
+            width: 60px;
             height: 40px;
             position: relative;
             display: none;
         `;
         this.aftCrosshair.innerHTML = `
-            <div style="position: absolute; top: 50%; left: 0; width: 30%; height: 2px; background: white;"></div>
-            <div style="position: absolute; top: 50%; right: 0; width: 30%; height: 2px; background: white;"></div>
+            <div style="
+                position: absolute;
+                top: 50%;
+                left: 0;
+                width: 18px;
+                height: 2px;
+                background: #00ff41;
+                box-shadow: 0 0 4px #00ff41;
+                transform: translateY(-50%);
+            "></div>
+            <div style="
+                position: absolute;
+                top: 50%;
+                right: 0;
+                width: 18px;
+                height: 2px;
+                background: #00ff41;
+                box-shadow: 0 0 4px #00ff41;
+                transform: translateY(-50%);
+            "></div>
+            <div style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 4px;
+                height: 4px;
+                background: #00ff41;
+                border-radius: 50%;
+                box-shadow: 0 0 4px #00ff41;
+                transform: translate(-50%, -50%);
+            "></div>
         `;
         
         this.crosshairContainer.appendChild(this.frontCrosshair);

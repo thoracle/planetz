@@ -246,12 +246,15 @@ export class SolarSystemManager {
             });
             const planet = new THREE.Mesh(planetGeometry, planetMaterial);
             
-            // Calculate orbit radius between 250km and 800km
-            const minRadius = 250;
-            const maxRadius = 800; // Reduced to ensure planets stay within sector boundaries
+            // Calculate orbit radius between 1000km and 5000km with exponential spacing
+            const minRadius = 1000;
+            const maxRadius = 5000;
             const totalPlanets = Math.max(1, this.starSystem.planets.length);
-            const spacing = (maxRadius - minRadius) / Math.max(1, totalPlanets - 1);
-            const orbitRadius = minRadius + (index * spacing);
+            
+            // Use exponential spacing to create more realistic orbital distances
+            const base = 1.8; // Base for exponential spacing
+            const normalizedIndex = index / (totalPlanets - 1 || 1);
+            const orbitRadius = minRadius + (maxRadius - minRadius) * (Math.pow(base, normalizedIndex) - 1) / (base - 1);
             
             // Ensure angle is a valid number
             const angle = (Math.random() * Math.PI * 2) || 0;

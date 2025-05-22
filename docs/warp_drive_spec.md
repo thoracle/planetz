@@ -13,7 +13,7 @@ class WarpDriveManager {
     constructor(scene, camera, viewManager) {
         // Store viewManager reference
         this.viewManager = viewManager;
-        
+
         // Core components
         this.warpDrive = new WarpDrive(viewManager);
         this.warpEffects = new WarpEffects(scene);

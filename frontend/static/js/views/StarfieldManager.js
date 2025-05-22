@@ -989,14 +989,16 @@ export class StarfieldManager {
         if (this.currentSpeed > 0) {
             const moveDirection = this.view === 'AFT' ? -1 : 1;
             
-            // Use original speed calculation with reduced speeds for 1 and 2
+            // Calculate speed multiplier with reduced speeds for impulse 1, 2, and 3
             let speedMultiplier = this.currentSpeed * 0.2;
             
-            // Apply 75% reduction for speed 1 (two 50% reductions = 75% total), and make speed 2 equal to current speed 1
+            // Apply speed reductions (fourth round)
             if (this.currentSpeed === 1) {
-                speedMultiplier *= 0.25; // 75% reduction
+                speedMultiplier *= 0.0625; // 50% reduction four times = 6.25% of original speed
             } else if (this.currentSpeed === 2) {
-                speedMultiplier = 0.2; // Make speed 2 equal to what speed 1 was
+                speedMultiplier *= 0.0625; // 50% reduction four times = 6.25% of original speed
+            } else if (this.currentSpeed === 3) {
+                speedMultiplier *= 0.20; // 33% reduction four times ≈ 20% of original speed
             }
             
             // Move in the direction the camera is facing
