@@ -57,7 +57,9 @@ export class StarfieldManager {
         this.listener = new THREE.AudioListener();
         this.audioLoader = new THREE.AudioLoader();
         this.engineSound = new THREE.Audio(this.listener);
+        this.commandSound = new THREE.Audio(this.listener);
         this.soundLoaded = false;
+        this.commandSoundLoaded = false;
         this.engineState = 'stopped'; // 'stopped', 'starting', 'running', 'stopping'
 
         // Load engine sound
@@ -93,6 +95,24 @@ export class StarfieldManager {
             },
             (error) => {
                 console.error('Error loading engine sound:', error);
+            }
+        );
+
+        // Load command sound
+        console.log('Loading command sound...');
+        this.audioLoader.load(
+            '/audio/command.wav',
+            (buffer) => {
+                console.log('Command sound loaded successfully');
+                this.commandSound.setBuffer(buffer);
+                this.commandSound.setVolume(0.5); // Set a reasonable volume
+                this.commandSoundLoaded = true;
+            },
+            (progress) => {
+                console.log(`Loading command sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
+            },
+            (error) => {
+                console.error('Error loading command sound:', error);
             }
         );
 
@@ -388,24 +408,31 @@ export class StarfieldManager {
                 }
             }
             
-            // Target computer toggle (T key)
-            if (event.key.toLowerCase() === 't') {
-                this.toggleTargetComputer();
+            // Handle Tab key for cycling targets
+            if (event.key === 'Tab') {
+                event.preventDefault(); // Prevent Tab from changing focus
+                if (this.targetComputerEnabled) {
+                    this.cycleTarget();
+                    this.playCommandSound(); // Play command sound when cycling targets
+                }
+                return; // Exit early to prevent further processing
             }
-
-            // Tab key for cycling targets when target computer is enabled
-            if (event.key === 'Tab' && this.targetComputerEnabled) {
-                event.preventDefault();
-                this.cycleTarget();
+            
+            // Play command sound for command keys
+            const commandKey = event.key.toLowerCase();
+            if (['a', 'f', 'g', 't'].includes(commandKey)) {
+                this.playCommandSound();
             }
 
             // Handle view changes
-            if (event.key.toLowerCase() === 'f') {
+            if (commandKey === 'f') {
                 this.setView('FORE');
-            } else if (event.key.toLowerCase() === 'a') {
+            } else if (commandKey === 'a') {
                 this.setView('AFT');
-            } else if (event.key.toLowerCase() === 'g') {
+            } else if (commandKey === 'g') {
                 this.setView('GALACTIC');
+            } else if (commandKey === 't') {
+                this.toggleTargetComputer();
             }
         });
 
@@ -1281,5 +1308,11 @@ export class StarfieldManager {
                 this.engineSound.setVolume(volume);
             }
         }, fadeInterval);
+    }
+
+    playCommandSound() {
+        if (this.commandSoundLoaded && !this.commandSound.isPlaying) {
+            this.commandSound.play();
+        }
     }
 } 
