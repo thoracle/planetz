@@ -658,4 +658,242 @@ body.warp-control-mode .crosshair {
 
 #warp-gui-title {
     text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+}
+
+/* Long Range Scanner Styles */
+.long-range-scanner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid #00ff41;
+    padding: 20px;
+    display: none;
+    color: #00ff41;
+    font-family: "Courier New", monospace;
+    z-index: 1000;
+    flex-direction: row;
+    height: 80vh;
+    max-height: 90vh;
+    width: 900px;
+    min-width: 800px;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+}
+
+.long-range-scanner.visible {
+    display: flex;
+}
+
+.scanner-content-wrapper {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    margin-right: 20px;
+    height: 100%;
+    min-width: 0;
+}
+
+.scanner-map-container {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    cursor: grab;
+    background: rgba(0, 20, 0, 0.3);
+    position: relative;
+}
+
+.scanner-map-container:active {
+    cursor: grabbing;
+}
+
+.scanner-map {
+    width: 1000px;
+    height: 1000px;
+    min-width: auto;
+    min-height: auto;
+}
+
+.scanner-star {
+    fill: #ffff00;
+    stroke: #ffff00;
+    stroke-width: 2;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 0, 0.5));
+}
+
+.scanner-orbit {
+    fill: none;
+    stroke: rgba(0, 255, 65, 0.4);
+    stroke-width: 1.5;
+    stroke-dasharray: 8,4;
+    filter: drop-shadow(0 0 2px rgba(0, 255, 65, 0.3));
+}
+
+.scanner-planet {
+    fill: #00ff41;
+    stroke: #00ff41;
+    stroke-width: 1;
+    transition: all 0.3s ease;
+}
+
+.scanner-planet:hover {
+    filter: brightness(1.5);
+    stroke-width: 2;
+}
+
+.scanner-planet-enemy {
+    fill: #ff0000;
+    stroke: #ff0000;
+}
+
+.scanner-planet-friendly {
+    fill: #00ff41;
+    stroke: #00ff41;
+}
+
+.scanner-planet-neutral {
+    fill: #ffff00;
+    stroke: #ffff00;
+}
+
+.scanner-moon {
+    fill: #808080;
+    stroke: #808080;
+    stroke-width: 1;
+    transition: all 0.3s ease;
+}
+
+.scanner-moon:hover {
+    filter: brightness(1.5);
+    stroke-width: 2;
+}
+
+.scanner-moon-enemy {
+    fill: #ff0000;
+    stroke: #ff0000;
+}
+
+.scanner-moon-friendly {
+    fill: #00ff41;
+    stroke: #00ff41;
+}
+
+.scanner-moon-neutral {
+    fill: #ffff00;
+    stroke: #ffff00;
+}
+
+.scanner-details {
+    background: rgba(0, 20, 0, 0.5);
+    padding: 15px;
+    border-left: 1px solid #00ff41;
+    width: 300px;
+    overflow-y: auto;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.scanner-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.scanner-details-header h2 {
+    margin: 0;
+    color: #00ff41;
+    font-size: 1.2em;
+}
+
+.body-type {
+    color: #808080;
+    font-style: italic;
+}
+
+.scanner-details-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+}
+
+.detail-row .label {
+    color: #808080;
+}
+
+.detail-row .value {
+    color: #00ff41;
+}
+
+.detail-row .value.enemy {
+    color: #ff0000;
+}
+
+.detail-row .value.friendly {
+    color: #00ff41;
+}
+
+.detail-row .value.neutral {
+    color: #ffff00;
+}
+
+/* Close button styles */
+.long-range-scanner .close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(0, 20, 0, 0.5);
+    z-index: 1;
+}
+
+.long-range-scanner .close-button:hover {
+    background: #00ff41;
+    color: #000;
+}
+
+/* Scanner Map Tooltip */
+.scanner-tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    padding: 5px 10px;
+    font-size: 0.9em;
+    pointer-events: none;
+    z-index: 1001;
+    font-family: "Courier New", monospace;
+    white-space: nowrap;
+    transform: translate(-50%, -100%);
+    margin-top: -10px;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+}
+
+.scanner-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid #00ff41;
 } 

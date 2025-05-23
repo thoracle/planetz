@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import { GalacticChart } from './GalacticChart.js';
+import { LongRangeScanner } from './LongRangeScanner.js';
 import WarpFeedback from '../WarpFeedback.js';
 import WarpDriveManager from '../WarpDriveManager.js';
 
 export const VIEW_TYPES = {
     FORE: 'fore',
     AFT: 'aft',
-    GALACTIC: 'galactic'
+    GALACTIC: 'galactic',
+    SCANNER: 'scanner'
 };
 
 export class ViewManager {
@@ -15,6 +17,7 @@ export class ViewManager {
         this.camera = camera;
         this.controls = controls;
         this.previousView = VIEW_TYPES.FORE;
+        this.lastNonModalView = VIEW_TYPES.FORE; // Track last FORE/AFT view
         this.editMode = false;
         this.starfieldManager = null;
         this.solarSystemManager = null;  // Initialize solarSystemManager
@@ -50,6 +53,9 @@ export class ViewManager {
         
         // Create galactic chart and ensure it's hidden
         this.galacticChart = new GalacticChart(this);
+        
+        // Create long range scanner and ensure it's hidden
+        this.longRangeScanner = new LongRangeScanner(this);
         
         // Set initial view state - this will also set this.currentView
         this.setView(VIEW_TYPES.FORE);
@@ -208,10 +214,12 @@ export class ViewManager {
             
             const key = event.key.toLowerCase();
             const isGalacticChartVisible = this.galacticChart.isVisible();
+            const isLongRangeScannerVisible = this.longRangeScanner.isVisible();
             
             if (key === 'g') {
                 console.log('G key pressed:', {
                     isGalacticChartVisible,
+                    isLongRangeScannerVisible,
                     currentView: this.currentView,
                     previousView: this.previousView
                 });
@@ -223,14 +231,35 @@ export class ViewManager {
                     console.log('Restoring previous view');
                     this.galacticChart.hide(true);
                 } else {
+                    // If scanner is visible, hide it first
+                    if (isLongRangeScannerVisible) {
+                        console.log('Hiding scanner before showing galactic chart');
+                        this.longRangeScanner.hide(false);
+                    }
                     console.log('Setting view to GALACTIC');
                     this.setView(VIEW_TYPES.GALACTIC);
                 }
-            } else if (key === 'f' && this.currentView === VIEW_TYPES.AFT) {
+            } else if (key === 'l') {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                if (isLongRangeScannerVisible) {
+                    console.log('Restoring previous view');
+                    this.longRangeScanner.hide(true);
+                } else {
+                    // If galactic chart is visible, hide it first
+                    if (isGalacticChartVisible) {
+                        console.log('Hiding galactic chart before showing scanner');
+                        this.galacticChart.hide(false);
+                    }
+                    console.log('Setting view to SCANNER');
+                    this.setView(VIEW_TYPES.SCANNER);
+                }
+            } else if (key === 'f' && (this.currentView === VIEW_TYPES.AFT || isGalacticChartVisible || isLongRangeScannerVisible)) {
                 event.preventDefault();
                 event.stopPropagation();
                 this.setView(VIEW_TYPES.FORE);
-            } else if (key === 'a' && this.currentView === VIEW_TYPES.FORE) {
+            } else if (key === 'a' && (this.currentView === VIEW_TYPES.FORE || isGalacticChartVisible || isLongRangeScannerVisible)) {
                 event.preventDefault();
                 event.stopPropagation();
                 this.setView(VIEW_TYPES.AFT);
@@ -242,25 +271,50 @@ export class ViewManager {
         console.log('setView called:', {
             viewType,
             currentView: this.currentView,
-            isGalacticVisible: this.galacticChart.isVisible()
+            isGalacticVisible: this.galacticChart.isVisible(),
+            isLongRangeScannerVisible: this.longRangeScanner.isVisible()
         });
         
-        if (this.editMode) return; // Don't change views in edit mode
+        if (this.editMode) return;
+        
+        // Store last non-modal view when switching to a modal view
+        if (viewType === VIEW_TYPES.GALACTIC || viewType === VIEW_TYPES.SCANNER) {
+            if (this.currentView === VIEW_TYPES.FORE || this.currentView === VIEW_TYPES.AFT) {
+                this.lastNonModalView = this.currentView;
+            }
+        }
         
         // Special handling for galactic view toggle
         if (viewType === VIEW_TYPES.GALACTIC) {
             if (this.galacticChart.isVisible()) {
-                // If chart is visible, hide it and restore previous view
                 this.galacticChart.hide(true);
                 return;
             } else {
-                // If chart is not visible, show it
                 this.galacticChart.show();
-                // Store previous view and camera state
                 this.previousView = this.currentView;
                 this.savedCameraState.position.copy(this.camera.position);
                 this.savedCameraState.quaternion.copy(this.camera.quaternion);
                 this.currentView = viewType;
+                return;
+            }
+        }
+        
+        // Special handling for scanner view toggle
+        if (viewType === VIEW_TYPES.SCANNER) {
+            if (this.longRangeScanner.isVisible()) {
+                this.longRangeScanner.hide();
+                return;
+            } else {
+                this.longRangeScanner.show();
+                this.previousView = this.currentView;
+                this.savedCameraState.position.copy(this.camera.position);
+                this.savedCameraState.quaternion.copy(this.camera.quaternion);
+                this.currentView = viewType;
+                
+                // Notify StarfieldManager of view change
+                if (this.starfieldManager) {
+                    this.starfieldManager.setView(viewType.toUpperCase());
+                }
                 return;
             }
         }
@@ -270,15 +324,6 @@ export class ViewManager {
             console.log('Already in requested view, returning');
             return;
         }
-
-        // Store previous view and camera state
-        if (viewType === VIEW_TYPES.GALACTIC) {
-            console.log('Storing previous view state');
-            // When entering galactic view, save current state
-            this.previousView = this.currentView;
-            this.savedCameraState.position.copy(this.camera.position);
-            this.savedCameraState.quaternion.copy(this.camera.quaternion);
-        }
         
         // Hide all crosshairs first
         this.frontCrosshair.style.display = 'none';
@@ -286,41 +331,29 @@ export class ViewManager {
         
         switch(viewType) {
             case VIEW_TYPES.FORE:
-                if (this.currentView === VIEW_TYPES.GALACTIC) {
-                    console.log('Restoring camera state from galactic view');
-                    // Restore camera state when coming from galactic view
+                if (this.currentView === VIEW_TYPES.GALACTIC || this.currentView === VIEW_TYPES.SCANNER) {
                     this.camera.position.copy(this.savedCameraState.position);
                     this.camera.quaternion.copy(this.savedCameraState.quaternion);
                 } else {
                     this.setFrontView();
                 }
-                this.galacticChart.hide(false); // Don't trigger view restoration
+                this.galacticChart.hide(false);
+                this.longRangeScanner.hide();
                 this.frontCrosshair.style.display = 'block';
                 break;
             case VIEW_TYPES.AFT:
-                if (this.currentView === VIEW_TYPES.GALACTIC) {
-                    console.log('Restoring camera state from galactic view');
-                    // Restore camera state when coming from galactic view
+                if (this.currentView === VIEW_TYPES.GALACTIC || this.currentView === VIEW_TYPES.SCANNER) {
                     this.camera.position.copy(this.savedCameraState.position);
                     this.camera.quaternion.copy(this.savedCameraState.quaternion);
-                    // Then rotate 180 degrees since we're switching to aft
                     const euler = new THREE.Euler().setFromQuaternion(this.camera.quaternion);
                     euler.y += Math.PI;
                     this.camera.quaternion.setFromEuler(euler);
                 } else {
                     this.setAftView();
                 }
-                this.galacticChart.hide(false); // Don't trigger view restoration
+                this.galacticChart.hide(false);
+                this.longRangeScanner.hide();
                 this.aftCrosshair.style.display = 'block';
-                break;
-            case VIEW_TYPES.GALACTIC:
-                // Only show galactic chart if it's not already visible
-                if (!this.galacticChart.isVisible()) {
-                    console.log('Setting galactic view');
-                    this.setGalacticView();
-                } else {
-                    console.log('Galactic chart already visible, skipping setGalacticView');
-                }
                 break;
         }
         
@@ -354,18 +387,6 @@ export class ViewManager {
         const euler = new THREE.Euler().setFromQuaternion(this.camera.quaternion);
         euler.y += Math.PI;
         this.camera.quaternion.setFromEuler(euler);
-    }
-
-    setGalacticView() {
-        // Hide crosshairs
-        this.frontCrosshair.style.display = 'none';
-        this.aftCrosshair.style.display = 'none';
-        
-        // Show galactic chart but keep the current camera view
-        this.galacticChart.show();
-        
-        // Keep the current camera state
-        // The 3D scene will continue to be visible through the semi-transparent overlay
     }
 
     setEditMode(enabled) {
@@ -402,21 +423,28 @@ export class ViewManager {
     restorePreviousView() {
         console.log('restorePreviousView called:', {
             currentView: this.currentView,
-            previousView: this.previousView
+            previousView: this.previousView,
+            lastNonModalView: this.lastNonModalView
         });
         
-        // Don't restore if we're not in galactic view
-        if (this.currentView !== VIEW_TYPES.GALACTIC) {
-            console.log('Not in galactic view, returning');
+        // Don't restore if we're not in galactic or scanner view
+        if (this.currentView !== VIEW_TYPES.GALACTIC && this.currentView !== VIEW_TYPES.SCANNER) {
+            console.log('Not in galactic or scanner view, returning');
             return;
         }
         
-        // Default to FORE view if no previous view is stored
-        const viewToRestore = this.previousView || VIEW_TYPES.FORE;
+        // Use lastNonModalView if coming from a modal view, otherwise use previousView
+        const viewToRestore = (this.previousView === VIEW_TYPES.GALACTIC || this.previousView === VIEW_TYPES.SCANNER) 
+            ? this.lastNonModalView 
+            : (this.previousView || VIEW_TYPES.FORE);
         console.log('Restoring to view:', viewToRestore);
         
-        // Hide the galactic chart without triggering another view restoration
-        this.galacticChart.hide(false);
+        // Hide the appropriate view without triggering another view restoration
+        if (this.currentView === VIEW_TYPES.GALACTIC) {
+            this.galacticChart.hide(false);
+        } else if (this.currentView === VIEW_TYPES.SCANNER) {
+            this.longRangeScanner.hide(false);
+        }
         
         // Restore the camera state
         this.camera.position.copy(this.savedCameraState.position);
@@ -460,6 +488,9 @@ export class ViewManager {
         }
         if (this.galacticChart) {
             this.galacticChart.dispose();
+        }
+        if (this.longRangeScanner) {
+            this.longRangeScanner.dispose();
         }
     }
 

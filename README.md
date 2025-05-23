@@ -121,6 +121,17 @@ The app features multiple perspectives, each rendered using Three.js:
    - Activated via G key (except in Edit-Mode) modal that takes over the screen for navigation.
    - Dismissed with A, F, G keys or X button in upper right corner of modal.
 
+4. **Long Range Scanner**
+   - A top-down tactical view of the current solar system.
+   - Shows all celestial bodies (star, planets, moons) with their orbits.
+   - Color-coded based on diplomacy status:
+     - Red: Enemy/Hostile
+     - Yellow: Neutral
+     - Green: Friendly
+   - Click on any celestial body to view detailed information.
+   - Draggable map for easy navigation.
+   - Activated via L key (except in Edit-Mode).
+   - Dismissed with L key or X button in upper right corner.
 
 ### Prerequisites
 - Python 3.x

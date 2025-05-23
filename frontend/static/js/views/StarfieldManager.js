@@ -1501,7 +1501,9 @@ export class StarfieldManager {
 
     // Update the setView method to handle view changes
     setView(viewType) {
-        this.view = viewType.toUpperCase();
+        // Convert SCANNER to LONG RANGE for display
+        this.view = viewType === 'SCANNER' ? 'LONG RANGE' : viewType.toUpperCase();
+        
         // Update camera rotation based on view - instant 180° rotation
         if (this.view === 'AFT') {
             this.camera.rotation.set(0, Math.PI, 0); // 180 degrees around Y axis
