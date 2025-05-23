@@ -707,11 +707,25 @@ body.warp-control-mode .crosshair {
     cursor: grabbing;
 }
 
+.scanner-star,
+.scanner-planet,
+.scanner-moon {
+    cursor: pointer;
+    transition: filter 0.2s ease;
+}
+
+.scanner-star:hover,
+.scanner-planet:hover,
+.scanner-moon:hover {
+    filter: brightness(1.5) drop-shadow(0 0 5px currentColor);
+}
+
 .scanner-map {
-    width: 1000px;
-    height: 1000px;
+    width: 100%;
+    height: 100%;
     min-width: auto;
     min-height: auto;
+    transition: all 0.3s ease;
 }
 
 .scanner-star {
@@ -761,24 +775,51 @@ body.warp-control-mode .crosshair {
     stroke: #808080;
     stroke-width: 1;
     transition: all 0.3s ease;
+    filter: drop-shadow(0 0 2px rgba(128, 128, 128, 0.3));
+    cursor: pointer;
 }
 
-.scanner-moon:hover {
-    filter: brightness(1.5);
+/* Invisible larger hit area for moons */
+.scanner-moon-hitbox {
+    fill: transparent;
+    stroke: transparent;
+    pointer-events: all;
+    cursor: pointer;
+}
+
+.scanner-moon:hover,
+.scanner-moon-hitbox:hover + .scanner-moon {
+    filter: brightness(1.5) drop-shadow(0 0 3px currentColor);
     stroke-width: 2;
 }
 
-.scanner-moon-enemy {
+/* Highlight moon orbit on hover */
+.scanner-moon:hover ~ .scanner-orbit-highlight,
+.scanner-moon-hitbox:hover ~ .scanner-orbit-highlight {
+    stroke: currentColor;
+    stroke-opacity: 0.5;
+    stroke-width: 1.5;
+}
+
+.scanner-orbit-highlight {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 1;
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.scanner-planet-enemy {
     fill: #ff0000;
     stroke: #ff0000;
 }
 
-.scanner-moon-friendly {
+.scanner-planet-friendly {
     fill: #00ff41;
     stroke: #00ff41;
 }
 
-.scanner-moon-neutral {
+.scanner-planet-neutral {
     fill: #ffff00;
     stroke: #ffff00;
 }
@@ -896,4 +937,79 @@ body.warp-control-mode .crosshair {
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
     border-top: 5px solid #00ff41;
+}
+
+/* Parent planet info in details panel */
+.detail-row.parent-planet {
+    border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+}
+
+.detail-row.parent-planet .value {
+    color: #00ff41;
+    font-weight: bold;
+}
+
+.scanner-ship-position {
+    fill: none;
+    stroke: #00ff41;
+    stroke-width: 2;
+    animation: shipPulse 2s infinite;
+    pointer-events: none;
+    filter: drop-shadow(0 0 5px #00ff41);
+}
+
+.scanner-ship-center {
+    fill: #00ff41;
+    r: 3;
+    pointer-events: none;
+    animation: shipCenterPulse 2s infinite;
+    filter: drop-shadow(0 0 3px #00ff41);
+}
+
+@keyframes shipPulse {
+    0% {
+        stroke-width: 2;
+        stroke-opacity: 1;
+        r: 8;
+        filter: drop-shadow(0 0 5px #00ff41);
+    }
+    50% {
+        stroke-width: 1;
+        stroke-opacity: 0.5;
+        r: 16;
+        filter: drop-shadow(0 0 10px #00ff41);
+    }
+    100% {
+        stroke-width: 2;
+        stroke-opacity: 1;
+        r: 8;
+        filter: drop-shadow(0 0 5px #00ff41);
+    }
+}
+
+@keyframes shipCenterPulse {
+    0% {
+        fill-opacity: 1;
+        r: 3;
+        filter: drop-shadow(0 0 3px #00ff41);
+    }
+    50% {
+        fill-opacity: 0.7;
+        r: 4;
+        filter: drop-shadow(0 0 6px #00ff41);
+    }
+    100% {
+        fill-opacity: 1;
+        r: 3;
+        filter: drop-shadow(0 0 3px #00ff41);
+    }
+}
+
+.scanner-tooltip.ship-tooltip {
+    background: rgba(0, 255, 65, 0.2);
+    border-color: #00ff41;
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
 } 

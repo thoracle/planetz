@@ -616,7 +616,7 @@ export class StarfieldManager {
             
             // Play command sound for command keys
             const commandKey = event.key.toLowerCase();
-            if (['a', 'f', 'g', 't'].includes(commandKey)) {
+            if (['a', 'f', 'g', 't', 'l'].includes(commandKey)) {
                 this.playCommandSound();
             }
 

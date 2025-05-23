@@ -5,6 +5,11 @@ export class LongRangeScanner {
     constructor(viewManager) {
         this.viewManager = viewManager;
         this._isVisible = false;
+        this.currentZoomLevel = 1;
+        this.maxZoomLevel = 3;
+        this.zoomFactor = 1.5;
+        this.currentCenter = { x: 0, y: 0 };
+        this.lastClickedBody = null; // Track last clicked celestial body
         
         // Create the modal container
         this.container = document.createElement('div');
@@ -108,6 +113,9 @@ export class LongRangeScanner {
         if (!this._isVisible) {
             this._isVisible = true;
             this.container.classList.add('visible');
+            // Reset zoom when showing the scanner
+            this.currentZoomLevel = 1;
+            this.currentCenter = { x: 0, y: 0 };
             this.updateScannerMap();
         }
     }
@@ -140,8 +148,78 @@ export class LongRangeScanner {
         // Create the map SVG
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'scanner-map');
-        svg.setAttribute('viewBox', '-500 -500 1000 1000');
+        svg.setAttribute('viewBox', `${-500/this.currentZoomLevel + this.currentCenter.x} ${-500/this.currentZoomLevel + this.currentCenter.y} ${1000/this.currentZoomLevel} ${1000/this.currentZoomLevel}`);
         this.mapContainer.appendChild(svg);
+
+        // Add double-click handler for zoom
+        svg.addEventListener('dblclick', (e) => {
+            e.preventDefault(); // Prevent text selection on double click
+            const rect = svg.getBoundingClientRect();
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            // Find the celestial body under the cursor
+            const element = document.elementFromPoint(x, y);
+            
+            if (element && (element.classList.contains('scanner-star') || 
+                          element.classList.contains('scanner-planet') || 
+                          element.classList.contains('scanner-moon'))) {
+                // Zoom in on the clicked object if not at max zoom
+                if (this.currentZoomLevel < this.maxZoomLevel) {
+                    this.currentZoomLevel *= this.zoomFactor;
+                    
+                    // Get the clicked object's center in SVG coordinates
+                    const cx = parseFloat(element.getAttribute('cx'));
+                    const cy = parseFloat(element.getAttribute('cy'));
+                    
+                    // Store the clicked body for reference when zooming out
+                    this.lastClickedBody = {
+                        type: element.classList.contains('scanner-star') ? 'star' :
+                              element.classList.contains('scanner-planet') ? 'planet' : 'moon',
+                        x: cx,
+                        y: cy,
+                        parentX: element.classList.contains('scanner-moon') ? 
+                                parseFloat(element.getAttribute('data-parent-x')) : null,
+                        parentY: element.classList.contains('scanner-moon') ? 
+                                parseFloat(element.getAttribute('data-parent-y')) : null
+                    };
+                    
+                    // Update the center point for the zoom
+                    this.currentCenter.x = cx;
+                    this.currentCenter.y = cy;
+                    
+                    this.updateScannerMap();
+                }
+            } else {
+                // Zoom out if clicked empty space and not at minimum zoom
+                if (this.currentZoomLevel > 1) {
+                    const previousZoom = this.currentZoomLevel;
+                    this.currentZoomLevel /= this.zoomFactor;
+                    
+                    // If zooming all the way out, reset center
+                    if (this.currentZoomLevel <= 1) {
+                        this.currentZoomLevel = 1;
+                        this.currentCenter = { x: 0, y: 0 };
+                        this.lastClickedBody = null;
+                    } else if (this.lastClickedBody) {
+                        // If zooming out from a moon, center on its parent planet
+                        if (this.lastClickedBody.type === 'moon' && previousZoom > 2) {
+                            this.currentCenter = {
+                                x: this.lastClickedBody.parentX,
+                                y: this.lastClickedBody.parentY
+                            };
+                        }
+                        // If zooming out from a planet, center on the star
+                        else if (this.lastClickedBody.type === 'planet' && this.currentZoomLevel === 1) {
+                            this.currentCenter = { x: 0, y: 0 };
+                            this.lastClickedBody = null;
+                        }
+                    }
+                    
+                    this.updateScannerMap();
+                }
+            }
+        });
 
         // Add mouse move handler for tooltips
         svg.addEventListener('mousemove', (e) => {
@@ -152,7 +230,12 @@ export class LongRangeScanner {
             // Find the celestial body under the cursor
             const element = document.elementFromPoint(x, y);
             if (element && element.hasAttribute('data-name')) {
-                this.tooltip.textContent = element.getAttribute('data-name');
+                let tooltipText = element.getAttribute('data-name');
+                // Add parent planet name for moons
+                if (element.classList.contains('scanner-moon') && element.hasAttribute('data-parent')) {
+                    tooltipText += ` (Moon of ${element.getAttribute('data-parent')})`;
+                }
+                this.tooltip.textContent = tooltipText;
                 this.tooltip.style.display = 'block';
                 this.tooltip.style.left = x + 'px';
                 this.tooltip.style.top = y + 'px';
@@ -226,7 +309,7 @@ export class LongRangeScanner {
                         const moonX = x + (moonOrbitRadius * Math.cos(moonAngle));
                         const moonY = y + (moonOrbitRadius * Math.sin(moonAngle));
 
-                        // Draw moon orbit
+                        // Draw moon orbit with highlight effect
                         const moonOrbit = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                         moonOrbit.setAttribute('cx', String(x));
                         moonOrbit.setAttribute('cy', String(y));
@@ -234,16 +317,128 @@ export class LongRangeScanner {
                         moonOrbit.setAttribute('class', 'scanner-orbit');
                         svg.appendChild(moonOrbit);
 
-                        // Draw moon
+                        // Add orbit highlight element (for hover effect)
+                        const moonOrbitHighlight = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        moonOrbitHighlight.setAttribute('cx', String(x));
+                        moonOrbitHighlight.setAttribute('cy', String(y));
+                        moonOrbitHighlight.setAttribute('r', String(moonOrbitRadius));
+                        moonOrbitHighlight.setAttribute('class', 'scanner-orbit-highlight');
+                        svg.appendChild(moonOrbitHighlight);
+
+                        // Add larger invisible hit area for the moon
+                        const moonHitbox = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        moonHitbox.setAttribute('cx', String(moonX));
+                        moonHitbox.setAttribute('cy', String(moonY));
+                        moonHitbox.setAttribute('r', '10'); // Larger clickable area
+                        moonHitbox.setAttribute('class', 'scanner-moon-hitbox');
+                        moonHitbox.setAttribute('data-name', moon.moon_name);
+                        moonHitbox.setAttribute('data-parent', planet.planet_name);
+                        moonHitbox.setAttribute('data-parent-x', String(x));
+                        moonHitbox.setAttribute('data-parent-y', String(y));
+                        svg.appendChild(moonHitbox);
+
+                        // Draw moon (visual representation)
                         const moonElement = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                         moonElement.setAttribute('cx', String(moonX));
                         moonElement.setAttribute('cy', String(moonY));
-                        moonElement.setAttribute('r', String(moon.moon_size * 2 || 2));
+                        moonElement.setAttribute('r', String(Math.max(moon.moon_size * 2 || 2, 3))); // Minimum visual size of 3
                         moonElement.setAttribute('class', `scanner-moon scanner-moon-${moon.diplomacy?.toLowerCase() || 'neutral'}`);
                         moonElement.setAttribute('data-name', moon.moon_name);
+                        moonElement.setAttribute('data-parent', planet.planet_name);
+                        moonElement.setAttribute('data-parent-x', String(x));
+                        moonElement.setAttribute('data-parent-y', String(y));
                         svg.appendChild(moonElement);
+
+                        // Add event listeners to both hitbox and moon
+                        [moonHitbox, moonElement].forEach(element => {
+                            // Click handler
+                            element.addEventListener('click', () => {
+                                this.showCelestialBodyDetails(moon.moon_name);
+                            });
+
+                            // Tooltip handler
+                            element.addEventListener('mousemove', (e) => {
+                                const rect = svg.getBoundingClientRect();
+                                const x = e.clientX;
+                                const y = e.clientY;
+                                
+                                this.tooltip.textContent = `${moon.moon_name} (Moon of ${planet.planet_name})`;
+                                this.tooltip.style.display = 'block';
+                                this.tooltip.style.left = x + 'px';
+                                this.tooltip.style.top = y + 'px';
+                            });
+
+                            element.addEventListener('mouseleave', () => {
+                                this.tooltip.style.display = 'none';
+                            });
+                        });
                     });
                 }
+            });
+        }
+
+        // Add ship position indicator
+        const camera = this.viewManager.getCamera();
+        if (camera) {
+            // Calculate ship position relative to star (origin)
+            const shipX = camera.position.x;
+            const shipZ = camera.position.z;
+            
+            // Create pulsing circle for ship position
+            const shipIndicator = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            shipIndicator.setAttribute('cx', String(shipX));
+            shipIndicator.setAttribute('cy', String(shipZ));
+            shipIndicator.setAttribute('class', 'scanner-ship-position');
+            shipIndicator.setAttribute('data-name', 'Your Ship');
+            svg.appendChild(shipIndicator);
+
+            // Add center dot for ship
+            const shipCenter = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            shipCenter.setAttribute('cx', String(shipX));
+            shipCenter.setAttribute('cy', String(shipZ));
+            shipCenter.setAttribute('class', 'scanner-ship-center');
+            svg.appendChild(shipCenter);
+
+            // Add direction indicator (small line pointing in ship's direction)
+            const directionLength = 15;
+            const shipRotation = new THREE.Euler().setFromQuaternion(camera.quaternion);
+            const directionX = shipX + Math.cos(shipRotation.y) * directionLength;
+            const directionZ = shipZ + Math.sin(shipRotation.y) * directionLength;
+            
+            const directionLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            directionLine.setAttribute('x1', String(shipX));
+            directionLine.setAttribute('y1', String(shipZ));
+            directionLine.setAttribute('x2', String(directionX));
+            directionLine.setAttribute('y2', String(directionZ));
+            directionLine.setAttribute('stroke', '#00ff41');
+            directionLine.setAttribute('stroke-width', '2');
+            svg.appendChild(directionLine);
+
+            // Add ship position to tooltip handling
+            [shipIndicator, shipCenter].forEach(element => {
+                element.addEventListener('mousemove', (e) => {
+                    const rect = svg.getBoundingClientRect();
+                    const x = e.clientX;
+                    const y = e.clientY;
+                    
+                    // Get current velocity if available
+                    let velocityInfo = '';
+                    if (this.viewManager.starfieldManager) {
+                        const velocity = this.viewManager.starfieldManager.velocity || 0;
+                        velocityInfo = `\nVelocity: ${velocity} metrons/sec`;
+                    }
+                    
+                    this.tooltip.textContent = `Your Ship${velocityInfo}`;
+                    this.tooltip.classList.add('ship-tooltip');
+                    this.tooltip.style.display = 'block';
+                    this.tooltip.style.left = x + 'px';
+                    this.tooltip.style.top = y + 'px';
+                });
+
+                element.addEventListener('mouseleave', () => {
+                    this.tooltip.classList.remove('ship-tooltip');
+                    this.tooltip.style.display = 'none';
+                });
             });
         }
 
@@ -264,6 +459,7 @@ export class LongRangeScanner {
         const bodies = solarSystemManager.getCelestialBodies();
         let targetBody = null;
         let bodyInfo = null;
+        let parentPlanetInfo = null;
 
         // First try to find the star
         if (solarSystemManager.starSystem.star_name === bodyName) {
@@ -275,6 +471,15 @@ export class LongRangeScanner {
                 if (info && info.name === bodyName) {
                     targetBody = body;
                     bodyInfo = info;
+                    // If this is a moon, get its parent planet info
+                    if (key.startsWith('moon_')) {
+                        const [_, planetIndex] = key.split('_');
+                        const planetKey = `planet_${planetIndex}`;
+                        const parentPlanet = bodies.get(planetKey);
+                        if (parentPlanet) {
+                            parentPlanetInfo = solarSystemManager.getCelestialBodyInfo(parentPlanet);
+                        }
+                    }
                     break;
                 }
             }
@@ -286,12 +491,25 @@ export class LongRangeScanner {
         }
         if (!bodyInfo) return;
 
-        this.detailsPanel.innerHTML = `
+        // Build the details HTML
+        let detailsHTML = `
             <div class="scanner-details-header">
                 <h2>${bodyInfo.name}</h2>
                 <span class="body-type">${bodyInfo.type}</span>
             </div>
-            <div class="scanner-details-content">
+            <div class="scanner-details-content">`;
+
+        // Add parent planet info for moons
+        if (parentPlanetInfo) {
+            detailsHTML += `
+                <div class="detail-row parent-planet">
+                    <span class="label">Parent Planet:</span>
+                    <span class="value">${parentPlanetInfo.name}</span>
+                </div>`;
+        }
+
+        // Add standard details
+        detailsHTML += `
                 <div class="detail-row">
                     <span class="label">Diplomacy:</span>
                     <span class="value ${bodyInfo.diplomacy?.toLowerCase()}">${bodyInfo.diplomacy || 'Unknown'}</span>
@@ -314,8 +532,9 @@ export class LongRangeScanner {
                     <span class="value">${bodyInfo.population}</span>
                 </div>
                 ` : ''}
-            </div>
-        `;
+            </div>`;
+
+        this.detailsPanel.innerHTML = detailsHTML;
     }
 
     dispose() {

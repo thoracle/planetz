@@ -508,6 +508,10 @@ export class ViewManager {
             this.warpDriveManager.update(deltaTime);
         }
     }
+
+    getCamera() {
+        return this.camera;
+    }
 }
 
 export default ViewManager; 
