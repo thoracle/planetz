@@ -138,7 +138,7 @@ def get_random_moon_name(seed=None):
     return name
 
 # Add new constants for planet attributes
-FACTION_TYPES = ['Friendly', 'Neutral', 'Enemy', 'Unknown']
+FACTION_TYPES = ['friendly', 'neutral', 'enemy', 'unknown']
 GOVERNMENT_TYPES = ['Tyranny', 'Democracy', 'Theocracy', 'Monarchy', 'Anarchy']
 ECONOMY_TYPES = ['Agricultural', 'Industrial', 'Technological', 'Commercial', 'Mining', 'Research', 'Tourism']
 TECHNOLOGY_LEVELS = [

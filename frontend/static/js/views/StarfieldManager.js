@@ -429,8 +429,8 @@ export class StarfieldManager {
                 position: absolute;
                 width: 10px;
                 height: 10px;
-                border: 2px solid #00ff41;
-                box-shadow: 0 0 2px #00ff41;
+                border: 2px solid #808080;  // Start with neutral gray
+                box-shadow: 0 0 2px #808080;
             `;
 
             // Position and style each corner
@@ -854,14 +854,32 @@ export class StarfieldManager {
         const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
         
         // Set reticle and wireframe color based on diplomacy
-        let targetColor = '#00ff41'; // Default friendly green
-        if (info && (info.type === 'planet' || info.type === 'moon')) {
-            if (info.diplomacy?.toLowerCase() === 'enemy') {
-                targetColor = '#ff0000'; // Red for hostile
-            } else if (info.diplomacy?.toLowerCase() === 'neutral') {
-                targetColor = '#ffff00'; // Yellow for neutral
-            }
+        let targetColor = '#808080'; // Default to gray for unknown
+        console.log('Target info:', info);
+        
+        // Case-insensitive comparison for diplomacy status
+        const isEnemy = info?.diplomacy && /^enemy$/i.test(info.diplomacy);
+        const isNeutral = info?.diplomacy && /^neutral$/i.test(info.diplomacy);
+        const isFriendly = info?.diplomacy && /^friendly$/i.test(info.diplomacy);
+        
+        console.log('Processing diplomacy:', {
+            original: info?.diplomacy,
+            isEnemy, isNeutral, isFriendly
+        });
+        
+        if (isEnemy) {
+            targetColor = '#ff0000'; // Red for hostile
+            console.log('Setting color to red for enemy');
+        } else if (isNeutral) {
+            targetColor = '#ffff00'; // Yellow for neutral
+            console.log('Setting color to yellow for neutral');
+        } else if (isFriendly) {
+            targetColor = '#00ff41'; // Green for friendly
+            console.log('Setting color to green for friendly');
+        } else {
+            console.log('Using default gray color');
         }
+        console.log('Final target color:', targetColor);
         
         // Update reticle colors
         const corners = this.targetReticle.getElementsByClassName('reticle-corner');
@@ -1131,14 +1149,31 @@ export class StarfieldManager {
                 const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
                 
                 // Determine wireframe color based on diplomacy
-                let wireframeColor = 0x00ff41; // Default friendly green
-                if (info && (info.type === 'planet' || info.type === 'moon')) {
-                    if (info.diplomacy?.toLowerCase() === 'enemy') {
-                        wireframeColor = 0xff0000; // Red for hostile
-                    } else if (info.diplomacy?.toLowerCase() === 'neutral') {
-                        wireframeColor = 0xffff00; // Yellow for neutral
-                    }
+                let wireframeColor = 0x808080; // Default gray for unknown
+                
+                // Case-insensitive comparison for diplomacy status
+                const isEnemy = info?.diplomacy && /^enemy$/i.test(info.diplomacy);
+                const isNeutral = info?.diplomacy && /^neutral$/i.test(info.diplomacy);
+                const isFriendly = info?.diplomacy && /^friendly$/i.test(info.diplomacy);
+                
+                console.log('Processing wireframe diplomacy:', {
+                    original: info?.diplomacy,
+                    isEnemy, isNeutral, isFriendly
+                });
+                
+                if (isEnemy) {
+                    wireframeColor = 0xff0000; // Red for hostile
+                    console.log('Setting wireframe to red');
+                } else if (isNeutral) {
+                    wireframeColor = 0xffff00; // Yellow for neutral
+                    console.log('Setting wireframe to yellow');
+                } else if (isFriendly) {
+                    wireframeColor = 0x00ff41; // Green for friendly
+                    console.log('Setting wireframe to green');
+                } else {
+                    console.log('Using default gray wireframe');
                 }
+                console.log('Final wireframe color:', wireframeColor.toString(16));
                 
                 if (info) {
                     // Create different shapes based on celestial body type
