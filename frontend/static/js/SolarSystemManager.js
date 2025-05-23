@@ -586,7 +586,8 @@ export class SolarSystemManager {
         if (key === 'star') {
             return {
                 name: this.starSystem.star_name || 'Unknown Star',
-                type: this.starSystem.star_type || 'Unknown'
+                type: 'star',
+                classification: this.starSystem.star_type || 'Unknown'
             };
         }
 
@@ -601,7 +602,8 @@ export class SolarSystemManager {
         if (type === 'planet') {
             return {
                 name: planet.planet_name || `Planet ${planetIndex}`,
-                type: planet.planet_type || 'Unknown',
+                type: 'planet',
+                classification: planet.planet_type || 'Unknown',
                 diplomacy: planet.diplomacy || 'Unknown',
                 government: planet.government || 'Unknown',
                 economy: planet.economy || 'Unknown',
@@ -616,7 +618,8 @@ export class SolarSystemManager {
             }
             return {
                 name: moon.moon_name || `Moon ${moonIndex}`,
-                type: moon.moon_type || 'Unknown',
+                type: 'moon',
+                classification: moon.moon_type || 'Unknown',
                 diplomacy: moon.diplomacy || 'Unknown',
                 government: moon.government || 'Unknown',
                 economy: moon.economy || 'Unknown',

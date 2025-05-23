@@ -452,26 +452,37 @@ export class GalacticChart {
 
         if (warpButton && !isCurrentSector) {
             warpButton.addEventListener('click', () => {
-                if (warpButton && !isCurrentSector) {
-                    const currentEnergy = this.viewManager.getShipEnergy();
-                    const requiredEnergy = warpEnergy;
-                    
-                    if (requiredEnergy > currentEnergy) {
-                        this.viewManager.warpFeedback.showWarning(
-                            'Insufficient Energy',
-                            `Required: ${requiredEnergy} energy units\n\nAvailable: ${currentEnergy} energy units`,
-                            () => {
-                                // Keep the galactic chart visible after warning is closed
-                                this.show();
-                            }
-                        );
-                    } else {
-                        console.log('Warp initiated to system:', coordinates);
-                        // Hide the galactic chart
-                        this.hide();
-                        // Initiate the warp process
-                        this.viewManager.warpDriveManager.navigateToSector(coordinates);
-                    }
+                // Check if ship is docked
+                if (this.viewManager.starfieldManager.isDocked) {
+                    this.viewManager.warpFeedback.showWarning(
+                        'Cannot Warp While Docked',
+                        'You must launch from the planet or moon before engaging warp drive.',
+                        () => {
+                            // Keep the galactic chart visible after warning is closed
+                            this.show();
+                        }
+                    );
+                    return;
+                }
+
+                const currentEnergy = this.viewManager.getShipEnergy();
+                const requiredEnergy = warpEnergy;
+                
+                if (requiredEnergy > currentEnergy) {
+                    this.viewManager.warpFeedback.showWarning(
+                        'Insufficient Energy',
+                        `Required: ${requiredEnergy} energy units\n\nAvailable: ${currentEnergy} energy units`,
+                        () => {
+                            // Keep the galactic chart visible after warning is closed
+                            this.show();
+                        }
+                    );
+                } else {
+                    console.log('Warp initiated to system:', coordinates);
+                    // Hide the galactic chart
+                    this.hide();
+                    // Initiate the warp process
+                    this.viewManager.warpDriveManager.navigateToSector(coordinates);
                 }
             });
         }

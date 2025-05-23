@@ -216,8 +216,6 @@ document.addEventListener('keydown', (event) => {
 }, true);
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Initializing application...');
-    
     // Scene setup
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);

@@ -179,12 +179,14 @@ describe('Universe Data Consistency Tests', () => {
             
             // Find matching body in galactic chart data
             const chartSystem = galacticChart.getStarSystemForSector(sector);
-            if (info.type === chartSystem.star_type) {
+            if (info.type === 'star') {
                 expect(info.name).toBe(chartSystem.star_name);
+                expect(info.classification).toBe(chartSystem.star_type);
             } else {
                 const planet = chartSystem.planets.find(p => p.planet_name === info.name);
                 if (planet) {
-                    expect(planet.planet_type).toBe(info.type);
+                    expect(info.type).toBe('planet');
+                    expect(info.classification).toBe(planet.planet_type);
                 } else {
                     // Check if it's a moon
                     const [type, planetIndex, moonIndex] = key.split('_');
@@ -192,7 +194,8 @@ describe('Universe Data Consistency Tests', () => {
                         const parentPlanet = chartSystem.planets[parseInt(planetIndex)];
                         const moon = parentPlanet.moons[parseInt(moonIndex)];
                         expect(moon.moon_name).toBe(info.name);
-                        expect(moon.moon_type).toBe(info.type);
+                        expect(info.type).toBe('moon');
+                        expect(info.classification).toBe(moon.moon_type);
                     }
                 }
             }

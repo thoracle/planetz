@@ -532,6 +532,10 @@ export class LongRangeScanner {
                 <div class="detail-row">
                     <span class="label">Type:</span>
                     <span class="value">${bodyInfo.type}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Class:</span>
+                    <span class="value">${bodyInfo.classification}</span>
                 </div>`;
 
         // Add parent planet info for moons

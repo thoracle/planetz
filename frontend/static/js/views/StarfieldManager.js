@@ -22,6 +22,14 @@ export class StarfieldManager {
         this.view = 'FORE'; // Initialize with FORE view
         this.solarSystemManager = null; // Will be set by setSolarSystemManager
         
+        // Docking state
+        this.isDocked = false;
+        this.dockedTo = null;
+        this.orbitRadius = 5; // 5km orbit radius
+        this.orbitAngle = 0;
+        this.orbitSpeed = 0.001; // Radians per frame
+        this.dockingRange = 10; // 10km docking range
+        
         // Target computer state
         this.targetComputerEnabled = false;
         this.currentTarget = null;
@@ -141,6 +149,54 @@ export class StarfieldManager {
                 });
             }
         );
+
+        // Make this instance globally available for button click handlers
+        window.starfieldManager = this;
+
+        // Add CSS for dock button
+        const style = document.createElement('style');
+        style.textContent = `
+            .dock-button {
+                background: #00aa41;
+                color: #000 !important;
+                border: none;
+                padding: 6px 15px;
+                cursor: pointer;
+                font-family: "Courier New", monospace;
+                font-weight: bold;
+                border-radius: 4px;
+                transition: all 0.2s ease-in-out;
+                pointer-events: auto;
+                z-index: 1001;
+                width: 100%;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                box-shadow: 0 0 10px rgba(0, 170, 65, 0.3);
+            }
+            .dock-button:hover {
+                filter: brightness(1.2);
+                transform: scale(1.02);
+                box-shadow: 0 0 15px rgba(0, 170, 65, 0.5);
+            }
+            .dock-button.launch {
+                background: #aa4100;
+                box-shadow: 0 0 10px rgba(170, 65, 0, 0.3);
+            }
+            .dock-button.launch:hover {
+                background: #cc4f00;
+                box-shadow: 0 0 15px rgba(170, 65, 0, 0.5);
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Add button state tracking
+        this.currentButtonState = {
+            hasDockButton: false,
+            isDocked: false,
+            hasScanButton: false,
+            hasTradeButton: false
+        };
     }
 
     createStarfield() {
@@ -346,13 +402,17 @@ export class StarfieldManager {
     updateSpeedIndicator() {
         // Convert speed to impulse format
         let speedText;
-        const currentSpeedLevel = Math.round(this.currentSpeed);
         
-        if (currentSpeedLevel === 0) {
-            speedText = "Full Stop";
+        if (this.isDocked) {
+            speedText = "DOCKED";
         } else {
-            // Display the exact impulse number matching the key pressed
-            speedText = `Impulse ${currentSpeedLevel}`;
+            const currentSpeedLevel = Math.round(this.currentSpeed);
+            if (currentSpeedLevel === 0) {
+                speedText = "Full Stop";
+            } else {
+                // Display the exact impulse number matching the key pressed
+                speedText = `Impulse ${currentSpeedLevel}`;
+            }
         }
         
         this.speedBox.textContent = `Speed: ${speedText}`;
@@ -365,10 +425,10 @@ export class StarfieldManager {
         this.targetHUD = document.createElement('div');
         this.targetHUD.style.cssText = `
             position: fixed;
-            bottom: 20px;
+            bottom: 80px;
             left: 20px;
             width: 200px;
-            height: 200px;
+            height: auto;
             border: 2px solid #00ff41;
             background: rgba(0, 0, 0, 0.7);
             color: #00ff41;
@@ -376,10 +436,32 @@ export class StarfieldManager {
             font-size: 14px;
             padding: 10px;
             display: none;
-            pointer-events: none;
-            z-index: 1000;
+            pointer-events: auto;
+            z-index: 999;
+            transition: border-color 0.3s ease;
         `;
-        
+
+        // Create direction arrows (one for each edge)
+        this.directionArrows = {
+            left: document.createElement('div'),
+            right: document.createElement('div'),
+            top: document.createElement('div'),
+            bottom: document.createElement('div')
+        };
+
+        // Style each arrow
+        Object.entries(this.directionArrows).forEach(([position, arrow]) => {
+            arrow.style.cssText = `
+                position: absolute;
+                width: 0;
+                height: 0;
+                display: none;
+                pointer-events: none;
+                z-index: 1000;
+            `;
+            document.body.appendChild(arrow); // Append to body, not HUD
+        });
+
         // Create wireframe container with a renderer
         this.wireframeContainer = document.createElement('div');
         this.wireframeContainer.style.cssText = `
@@ -389,25 +471,133 @@ export class StarfieldManager {
             margin-bottom: 10px;
             position: relative;
             overflow: visible;
-        `;
-        
-        // Create directional arrow
-        this.directionArrow = document.createElement('div');
-        this.directionArrow.style.cssText = `
-            position: absolute;
-            width: 0;
-            height: 0;
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-bottom: 12px solid #00ff41;
-            display: none;
-            z-index: 1001;
-            transform-origin: center center;
             pointer-events: none;
-            filter: drop-shadow(0 0 2px #00ff41);
         `;
-        this.wireframeContainer.appendChild(this.directionArrow);
 
+        // Create renderer for wireframe
+        this.wireframeRenderer = new THREE.WebGLRenderer({ alpha: true });
+        this.wireframeRenderer.setSize(200, 150);
+        this.wireframeRenderer.setClearColor(0x000000, 0);
+        
+        // Create scene and camera for wireframe
+        this.wireframeScene = new THREE.Scene();
+        this.wireframeCamera = new THREE.PerspectiveCamera(45, 200/150, 0.1, 1000);
+        this.wireframeCamera.position.z = 5;
+        
+        // Add lights to wireframe scene
+        const wireframeLight = new THREE.DirectionalLight(0x00ff41, 1);
+        wireframeLight.position.set(1, 1, 1);
+        this.wireframeScene.add(wireframeLight);
+        
+        const wireframeAmbient = new THREE.AmbientLight(0x00ff41, 0.4);
+        this.wireframeScene.add(wireframeAmbient);
+        
+        this.wireframeContainer.appendChild(this.wireframeRenderer.domElement);
+
+        // Create target info display
+        this.targetInfoDisplay = document.createElement('div');
+        this.targetInfoDisplay.style.cssText = `
+            width: 100%;
+            text-align: left;
+            margin-bottom: 10px;
+            pointer-events: none;
+        `;
+
+        // Create status icons container
+        this.statusIconsContainer = document.createElement('div');
+        this.statusIconsContainer.style.cssText = `
+            width: 100%;
+            text-align: center;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            font-size: 16px;
+        `;
+
+        // Create icons with tooltips
+        const createIcon = (emoji, tooltip) => {
+            const icon = document.createElement('div');
+            icon.style.cssText = `
+                cursor: help;
+                opacity: 0.8;
+                transition: opacity 0.2s ease;
+                position: relative;
+            `;
+            icon.innerHTML = emoji;
+            icon.title = tooltip;
+            icon.addEventListener('mouseenter', () => icon.style.opacity = '1');
+            icon.addEventListener('mouseleave', () => icon.style.opacity = '0.8');
+            return icon;
+        };
+
+        this.governmentIcon = createIcon('🏛️', 'Government');
+        this.economyIcon = createIcon('👥', 'Economy');
+        this.technologyIcon = createIcon('⚡', 'Technology');
+
+        this.statusIconsContainer.appendChild(this.governmentIcon);
+        this.statusIconsContainer.appendChild(this.economyIcon);
+        this.statusIconsContainer.appendChild(this.technologyIcon);
+
+        // Create action buttons container
+        this.actionButtonsContainer = document.createElement('div');
+        this.actionButtonsContainer.style.cssText = `
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        `;
+
+        // Add CSS for action buttons
+        const style = document.createElement('style');
+        style.textContent = `
+            .action-button {
+                flex: 1;
+                background: #00aa41;
+                color: #000;
+                border: none;
+                padding: 6px 8px;
+                cursor: pointer;
+                font-family: "Courier New", monospace;
+                font-weight: bold;
+                font-size: 12px;
+                border-radius: 4px;
+                transition: all 0.2s ease-in-out;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                pointer-events: auto;
+            }
+            .action-button:hover {
+                filter: brightness(1.2);
+                transform: scale(1.02);
+            }
+            .action-button:active {
+                transform: scale(0.98);
+            }
+            .action-button.launch {
+                background: #aa4100;
+            }
+            .action-button:disabled {
+                background: #555;
+                cursor: not-allowed;
+                opacity: 0.5;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Assemble the HUD
+        this.targetHUD.appendChild(this.wireframeContainer);
+        this.targetHUD.appendChild(this.targetInfoDisplay);
+        this.targetHUD.appendChild(this.statusIconsContainer);
+        this.targetHUD.appendChild(this.actionButtonsContainer);
+
+        document.body.appendChild(this.targetHUD);
+
+        // Create target reticle
+        this.createTargetReticle();
+    }
+
+    createTargetReticle() {
         // Create target reticle corners
         this.targetReticle = document.createElement('div');
         this.targetReticle.style.cssText = `
@@ -424,12 +614,12 @@ export class StarfieldManager {
         const corners = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
         corners.forEach(corner => {
             const el = document.createElement('div');
-            el.classList.add('reticle-corner');  // Add class for easier updating
+            el.classList.add('reticle-corner');
             el.style.cssText = `
                 position: absolute;
                 width: 10px;
                 height: 10px;
-                border: 2px solid #808080;  // Start with neutral gray
+                border: 2px solid #808080;
                 box-shadow: 0 0 2px #808080;
             `;
 
@@ -465,82 +655,6 @@ export class StarfieldManager {
         });
 
         document.body.appendChild(this.targetReticle);
-
-        // Create renderer for wireframe
-        this.wireframeRenderer = new THREE.WebGLRenderer({ alpha: true });
-        this.wireframeRenderer.setSize(200, 150);
-        this.wireframeRenderer.setClearColor(0x000000, 0);
-        
-        // Create scene and camera for wireframe
-        this.wireframeScene = new THREE.Scene();
-        this.wireframeCamera = new THREE.PerspectiveCamera(45, 200/150, 0.1, 1000);
-        this.wireframeCamera.position.z = 5;
-        
-        // Add lights to wireframe scene
-        const wireframeLight = new THREE.DirectionalLight(0x00ff41, 1);
-        wireframeLight.position.set(1, 1, 1);
-        this.wireframeScene.add(wireframeLight);
-        
-        const wireframeAmbient = new THREE.AmbientLight(0x00ff41, 0.4);
-        this.wireframeScene.add(wireframeAmbient);
-        
-        this.wireframeContainer.appendChild(this.wireframeRenderer.domElement);
-        
-        // Create target info display
-        this.targetInfoDisplay = document.createElement('div');
-        this.targetInfoDisplay.style.cssText = `
-            width: 100%;
-            text-align: left;
-            margin-top: 10px;
-        `;
-        
-        this.targetHUD.appendChild(this.wireframeContainer);
-        this.targetHUD.appendChild(this.targetInfoDisplay);
-
-        // Create intel icon
-        this.intelIcon = document.createElement('div');
-        this.intelIcon.style.cssText = `
-            position: fixed;
-            bottom: 230px;
-            left: 20px;
-            width: 30px;
-            height: 30px;
-            border: 2px solid #00ff41;
-            background: rgba(0, 0, 0, 0.7);
-            color: #00ff41;
-            display: none;
-            pointer-events: none;
-            z-index: 1001;
-            text-align: center;
-            line-height: 30px;
-            font-family: "Courier New", monospace;
-            font-size: 16px;
-            text-shadow: 0 0 5px #00ff41;
-            box-shadow: 0 0 5px #00ff41;
-            animation: pulse 2s infinite;
-        `;
-
-        // Add pulse animation style
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes pulse {
-                0% { box-shadow: 0 0 5px #00ff41; }
-                50% { box-shadow: 0 0 15px #00ff41; }
-                100% { box-shadow: 0 0 5px #00ff41; }
-            }
-        `;
-        document.head.appendChild(style);
-
-        // Add icon content (using a data icon)
-        this.intelIcon.innerHTML = `
-            <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; margin-top: 5px;">
-                <path fill="#00ff41" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-            </svg>
-        `;
-        
-        document.body.appendChild(this.intelIcon);
-
-        document.body.appendChild(this.targetHUD);
     }
 
     createIntelHUD() {
@@ -548,7 +662,7 @@ export class StarfieldManager {
         this.intelHUD = document.createElement('div');
         this.intelHUD.style.cssText = `
             position: fixed;
-            bottom: 240px;
+            bottom: 280px;
             left: 20px;
             width: 200px;
             border: 2px solid #00ff41;
@@ -558,9 +672,39 @@ export class StarfieldManager {
             font-size: 14px;
             padding: 10px;
             display: none;
-            pointer-events: none;
+            pointer-events: auto;
             z-index: 1000;
         `;
+        
+        // Add CSS for dock button
+        const style = document.createElement('style');
+        style.textContent = `
+            .dock-button {
+                background: #00aa41;
+                color: #000 !important;
+                border: none;
+                padding: 8px 20px;
+                cursor: pointer;
+                font-family: "Courier New", monospace;
+                font-weight: bold;
+                border-radius: 4px;
+                transition: all 0.2s ease-in-out;
+                pointer-events: auto;
+                z-index: 1001;
+                width: 100%;
+            }
+            .dock-button:hover {
+                filter: brightness(1.2);
+                transform: scale(1.05);
+            }
+            .dock-button.launch {
+                background: #aa4100;
+            }
+            .dock-button.launch:hover {
+                background: #cc4f00;
+            }
+        `;
+        document.head.appendChild(style);
         
         document.body.appendChild(this.intelHUD);
     }
@@ -607,7 +751,8 @@ export class StarfieldManager {
             // Handle Tab key for cycling targets
             if (event.key === 'Tab') {
                 event.preventDefault(); // Prevent Tab from changing focus
-                if (this.targetComputerEnabled) {
+                // Only allow cycling targets if not docked
+                if (this.targetComputerEnabled && !this.isDocked) {
                     this.cycleTarget();
                     this.playCommandSound(); // Play command sound when cycling targets
                 }
@@ -648,35 +793,34 @@ export class StarfieldManager {
     }
 
     toggleTargetComputer() {
-        console.log('Toggling target computer. Current state:', this.targetComputerEnabled);
         this.targetComputerEnabled = !this.targetComputerEnabled;
         
+        console.log('Target computer toggled:', {
+            enabled: this.targetComputerEnabled,
+            hasTargets: this.targetObjects.length > 0
+        });
+        
         if (!this.targetComputerEnabled) {
-            // When disabling targeting computer, hide everything
             this.targetHUD.style.display = 'none';
             this.targetReticle.style.display = 'none';
-            this.intelHUD.style.display = 'none';
-            this.intelIcon.style.display = 'none';
-            this.intelVisible = false;
-            this.intelAvailable = false;
             
-            // Clean up wireframe
+            // Clear wireframe if it exists
             if (this.targetWireframe) {
                 this.wireframeScene.remove(this.targetWireframe);
                 this.targetWireframe.geometry.dispose();
                 this.targetWireframe.material.dispose();
                 this.targetWireframe = null;
             }
-            this.currentTarget = null;
-            this.targetIndex = -1;
         } else {
-            // When enabling targeting computer
-            console.log('Target computer enabled, updating target list...');
-            // Initialize or update target list
             this.updateTargetList();
-            // Always start with the closest target (index 0) when enabling
-            this.targetIndex = -1; // Will be incremented to 0 in cycleTarget
-            this.cycleTarget();
+            // Only reset target index if we don't have a current target
+            if (!this.currentTarget) {
+                this.targetIndex = -1;
+                this.cycleTarget();
+            } else {
+                // Just update the display with existing target
+                this.updateTargetDisplay();
+            }
         }
     }
 
@@ -792,20 +936,20 @@ export class StarfieldManager {
     updateTargetDisplay() {
         // Don't show anything if targeting is completely disabled
         if (!this.targetComputerEnabled) {
-            this.targetReticle.style.display = 'none';
-            this.intelAvailable = false;
-            this.intelHUD.style.display = 'none';
-            this.intelIcon.style.display = 'none';
             this.targetHUD.style.display = 'none';
+            this.targetReticle.style.display = 'none';
+            this.currentButtonState = {
+                hasDockButton: false,
+                isDocked: false,
+                hasScanButton: false,
+                hasTradeButton: false
+            };
             return;
         }
 
         // Handle galactic view
-        const isGalacticView = this.viewManager.currentView === 'galactic';
-        if (isGalacticView) {
+        if (this.viewManager.currentView === 'galactic') {
             this.targetHUD.style.display = 'none';
-            this.intelHUD.style.display = 'none';
-            this.intelIcon.style.display = 'none';
             return;
         }
 
@@ -815,9 +959,6 @@ export class StarfieldManager {
         // Handle case where there's no current target
         if (!this.currentTarget) {
             this.targetReticle.style.display = 'none';
-            this.intelAvailable = false;
-            this.intelHUD.style.display = 'none';
-            this.intelIcon.style.display = 'none';
             return;
         }
 
@@ -825,97 +966,147 @@ export class StarfieldManager {
         const currentTargetData = this.getCurrentTargetData();
         if (!currentTargetData) {
             this.targetReticle.style.display = 'none';
-            this.intelAvailable = false;
-            this.intelHUD.style.display = 'none';
-            this.intelIcon.style.display = 'none';
             return;
         }
 
         // Calculate distance to target
         const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
-        const intelAvailable = distance <= this.intelRange;
         
-        // Update intel availability and icon
-        if (this.intelAvailable !== intelAvailable || !isGalacticView) {
-            this.intelAvailable = intelAvailable;
-            if (!intelAvailable) {
-                // If we move out of range, hide both HUD and icon
-                this.intelVisible = false;
-                this.intelHUD.style.display = 'none';
-                this.intelIcon.style.display = 'none';
-            } else {
-                // If we move into range or return from galactic view, show icon (unless intel HUD is visible)
-                this.intelIcon.style.display = this.intelVisible ? 'none' : 'block';
-                this.intelHUD.style.display = this.intelVisible ? 'block' : 'none';
+        // Get target info for diplomacy status and actions
+        const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+        
+        // Update HUD border color based on diplomacy
+        let diplomacyColor = '#808080'; // Default gray
+        if (info?.type === 'star') {
+            diplomacyColor = '#ffff00'; // Stars are neutral
+        } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
+            diplomacyColor = '#ff0000';
+        } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
+            diplomacyColor = '#ffff00';
+        } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
+            diplomacyColor = '#00ff41';
+        }
+        this.targetHUD.style.borderColor = diplomacyColor;
+        
+        // Update wireframe container border color to match
+        if (this.wireframeContainer) {
+            this.wireframeContainer.style.borderColor = diplomacyColor;
+        }
+
+        // Update target information display with colored text
+        this.targetInfoDisplay.innerHTML = `
+            <div style="font-size: 16px; margin-bottom: 4px; color: ${diplomacyColor};">${currentTargetData.name}</div>
+            <div style="font-size: 12px; opacity: 0.8;">
+                <span style="color: ${diplomacyColor}">${this.formatDistance(distance)}</span> • 
+                <span style="color: ${diplomacyColor}">${info?.type || 'Unknown'}</span>
+            </div>
+            ${info?.diplomacy ? `<div style="font-size: 12px; margin-top: 4px; color: ${diplomacyColor};">${info.diplomacy}</div>` : ''}
+        `;
+
+        // Update status icons with diplomacy color
+        this.governmentIcon.style.display = info?.government ? 'block' : 'none';
+        this.economyIcon.style.display = info?.economy ? 'block' : 'none';
+        this.technologyIcon.style.display = info?.technology ? 'block' : 'none';
+
+        // Update tooltips with current info and color
+        if (info?.government) {
+            this.governmentIcon.title = `Government: ${info.government}`;
+            this.governmentIcon.style.color = diplomacyColor;
+        }
+        if (info?.economy) {
+            this.economyIcon.title = `Economy: ${info.economy}`;
+            this.economyIcon.style.color = diplomacyColor;
+        }
+        if (info?.technology) {
+            this.technologyIcon.title = `Technology: ${info.technology}`;
+            this.technologyIcon.style.color = diplomacyColor;
+        }
+
+        // Calculate new button state
+        const canDock = distance <= this.dockingRange;
+        const isDocked = this.isDocked && this.dockedTo === this.currentTarget;
+
+        const newButtonState = {
+            hasDockButton: (info?.type === 'planet' || info?.type === 'moon') && (canDock || isDocked),
+            isDocked: isDocked,
+            hasScanButton: (info?.type === 'planet' || info?.type === 'moon'),
+            hasTradeButton: (info?.type === 'planet' || info?.type === 'moon') && 
+                          info?.diplomacy?.toLowerCase() === 'friendly' && 
+                          distance <= this.dockingRange
+        };
+
+        // Only recreate buttons if state has changed
+        const stateChanged = JSON.stringify(this.currentButtonState) !== JSON.stringify(newButtonState);
+        
+        if (stateChanged) {
+            console.log('Button state changed, recreating buttons');
+            this.currentButtonState = newButtonState;
+            
+            // Clear existing buttons
+            this.actionButtonsContainer.innerHTML = '';
+
+            // Add dock/launch button if applicable
+            if (newButtonState.hasDockButton) {
+                const dockButton = document.createElement('button');
+                dockButton.className = `action-button ${isDocked ? 'launch' : ''}`;
+                dockButton.textContent = isDocked ? 'LAUNCH' : 'DOCK';
+                dockButton.addEventListener('click', () => this.handleDockButtonClick(isDocked, currentTargetData.name));
+                this.actionButtonsContainer.appendChild(dockButton);
+            }
+
+            // Add scan button (always available for planets/moons)
+            if (newButtonState.hasScanButton) {
+                const scanButton = document.createElement('button');
+                scanButton.className = 'action-button';
+                scanButton.textContent = 'SCAN';
+                scanButton.disabled = distance > this.intelRange;
+                scanButton.title = distance > this.intelRange ? 'Out of scanning range' : 'Scan target';
+                if (!scanButton.disabled) {
+                    scanButton.style.background = diplomacyColor;
+                    scanButton.style.color = info?.diplomacy?.toLowerCase() === 'friendly' ? '#000' : '#fff';
+                }
+                this.actionButtonsContainer.appendChild(scanButton);
+            }
+
+            // Add trade button (only for friendly planets/moons in range)
+            if (newButtonState.hasTradeButton) {
+                const tradeButton = document.createElement('button');
+                tradeButton.className = 'action-button';
+                tradeButton.textContent = 'TRADE';
+                tradeButton.style.background = diplomacyColor;
+                tradeButton.style.color = '#000'; // Black text on friendly green
+                this.actionButtonsContainer.appendChild(tradeButton);
             }
         }
 
-        // Get target info for diplomacy status
-        const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-        
-        // Set reticle and wireframe color based on diplomacy
-        let targetColor = '#808080'; // Default to gray for unknown
-        console.log('Target info:', info);
-        
-        // Case-insensitive comparison for diplomacy status
-        const isEnemy = info?.diplomacy && /^enemy$/i.test(info.diplomacy);
-        const isNeutral = info?.diplomacy && /^neutral$/i.test(info.diplomacy);
-        const isFriendly = info?.diplomacy && /^friendly$/i.test(info.diplomacy);
-        
-        console.log('Processing diplomacy:', {
-            original: info?.diplomacy,
-            isEnemy, isNeutral, isFriendly
-        });
-        
-        if (isEnemy) {
-            targetColor = '#ff0000'; // Red for hostile
-            console.log('Setting color to red for enemy');
-        } else if (isNeutral) {
-            targetColor = '#ffff00'; // Yellow for neutral
-            console.log('Setting color to yellow for neutral');
-        } else if (isFriendly) {
-            targetColor = '#00ff41'; // Green for friendly
-            console.log('Setting color to green for friendly');
-        } else {
-            console.log('Using default gray color');
-        }
-        console.log('Final target color:', targetColor);
-        
         // Update reticle colors
         const corners = this.targetReticle.getElementsByClassName('reticle-corner');
         Array.from(corners).forEach(corner => {
-            corner.style.borderColor = targetColor;
-            corner.style.boxShadow = `0 0 2px ${targetColor}`;
+            corner.style.borderColor = diplomacyColor;
+            corner.style.boxShadow = `0 0 2px ${diplomacyColor}`;
         });
 
-        // Update wireframe color if it exists
-        if (this.targetWireframe && this.targetWireframe.material) {
-            this.targetWireframe.material.color.setStyle(targetColor);
-        }
+        // Update reticle position
+        this.updateReticlePosition();
+    }
 
-        // Update the target information display
-        this.targetInfoDisplay.innerHTML = `
-            <div class="target-name">${currentTargetData.name}</div>
-            <div class="target-type">${currentTargetData.type}${currentTargetData.isMoon ? ' (Moon)' : ''}</div>
-            <div class="target-distance">Distance: ${this.formatDistance(distance)}</div>
-        `;
+    updateReticlePosition() {
+        if (!this.currentTarget || !this.targetComputerEnabled) {
+            this.targetReticle.style.display = 'none';
+            return;
+        }
 
         // Calculate target's screen position
         const screenPosition = this.currentTarget.position.clone().project(this.camera);
-        
         const isOnScreen = Math.abs(screenPosition.x) <= 1 && Math.abs(screenPosition.y) <= 1;
 
         if (isOnScreen) {
-            // Convert to screen coordinates
             const x = (screenPosition.x + 1) * window.innerWidth / 2;
             const y = (-screenPosition.y + 1) * window.innerHeight / 2;
             
             const cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
             const relativePos = this.currentTarget.position.clone().sub(this.camera.position);
-            const dotProduct = relativePos.dot(cameraForward);
-            
-            // If dot product is negative, the target is behind the camera
-            const isBehindCamera = dotProduct < 0;
+            const isBehindCamera = relativePos.dot(cameraForward) < 0;
             
             this.targetReticle.style.display = isBehindCamera ? 'none' : 'block';
             this.targetReticle.style.left = `${x}px`;
@@ -923,9 +1114,6 @@ export class StarfieldManager {
         } else {
             this.targetReticle.style.display = 'none';
         }
-
-        // Update direction arrows
-        this.updateDirectionArrow();
     }
 
     getCurrentTargetData() {
@@ -975,150 +1163,151 @@ export class StarfieldManager {
 
     updateDirectionArrow() {
         // Only proceed if we have a target and the target computer is enabled
-        if (!this.currentTarget || !this.targetComputerEnabled) {
-            if (this.directionArrow.style.display !== 'none') {
-                this.directionArrow.style.display = 'none';
-                this.lastArrowState = null;
-            }
+        if (!this.currentTarget || !this.targetComputerEnabled || !this.directionArrows) {
+            // Hide all arrows
+            Object.values(this.directionArrows).forEach(arrow => {
+                arrow.style.display = 'none';
+            });
             return;
         }
 
         // Get target's world position relative to camera
-        const cameraPosition = this.camera.position;
         const targetPosition = this.currentTarget.position.clone();
-        const relativePosition = targetPosition.clone().sub(cameraPosition);
-        
-        // Get camera's view direction
-        const cameraDirection = new THREE.Vector3(0, 0, -1);
-        cameraDirection.applyQuaternion(this.camera.quaternion);
-        
-        // Project target onto screen
         const screenPosition = targetPosition.clone().project(this.camera);
         
         // Check if target is off screen
         const isOffScreen = Math.abs(screenPosition.x) > 1 || Math.abs(screenPosition.y) > 1;
 
         if (isOffScreen) {
-            // Position arrow based on target position relative to camera
-            let transform = '';
-            let position = {};
-            let edge = '';
-            let extraStyles = {};
-
-            // Get the angle between camera's view direction and relative position
-            const angle = cameraDirection.angleTo(relativePosition);
-            const isInFront = relativePosition.dot(cameraDirection) > 0;
+            // Get camera's view direction and relative position
+            const cameraDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+            const relativePosition = targetPosition.clone().sub(this.camera.position);
             
-            // Project relative position onto camera's XY plane
+            // Get camera's right and up vectors
             const cameraRight = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
             const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion);
             
+            // Project relative position onto camera's right and up vectors
             const rightComponent = relativePosition.dot(cameraRight);
             const upComponent = relativePosition.dot(cameraUp);
-            
-            // Determine which edge to show the arrow on based on the strongest component
+
+            // Get target info for color
+            const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+            let arrowColor = '#808080'; // Default gray
+            if (info?.type === 'star') {
+                arrowColor = '#ffff00'; // Stars are neutral
+            } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
+                arrowColor = '#ff0000';
+            } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
+                arrowColor = '#ffff00';
+            } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
+                arrowColor = '#00ff41';
+            }
+
+            // Hide all arrows first
+            Object.values(this.directionArrows).forEach(arrow => {
+                arrow.style.display = 'none';
+            });
+
+            // Get HUD position
+            const hudRect = this.targetHUD.getBoundingClientRect();
+
+            // Show and position the appropriate arrow
             if (Math.abs(rightComponent) > Math.abs(upComponent)) {
                 if (rightComponent > 0) {
-                    edge = 'right';
-                    extraStyles = {
-                        borderTop: '8px solid transparent',
-                        borderBottom: '8px solid transparent',
-                        borderLeft: '12px solid #00ff41',
-                        borderRight: 'none'
-                    };
-                    transform = 'rotate(0deg)';
-                    position = { 
-                        right: '-12px', 
-                        top: '50%', 
-                        marginTop: '-8px',
-                        left: 'auto',
-                        bottom: 'auto'
-                    };
+                    // Right arrow
+                    const arrow = this.directionArrows.right;
+                    arrow.style.cssText = `
+                        position: fixed;
+                        left: ${hudRect.right + 5}px;
+                        top: ${hudRect.top + hudRect.height / 2}px;
+                        width: 0;
+                        height: 0;
+                        border-top: 8px solid transparent;
+                        border-bottom: 8px solid transparent;
+                        border-left: 12px solid ${arrowColor};
+                        transform: translateY(-50%);
+                        display: block;
+                        pointer-events: none;
+                        z-index: 1000;
+                    `;
                 } else {
-                    edge = 'left';
-                    extraStyles = {
-                        borderTop: '8px solid transparent',
-                        borderBottom: '8px solid transparent',
-                        borderRight: '12px solid #00ff41',
-                        borderLeft: 'none'
-                    };
-                    transform = 'rotate(0deg)';
-                    position = { 
-                        left: '-12px', 
-                        top: '50%', 
-                        marginTop: '-8px',
-                        right: 'auto',
-                        bottom: 'auto'
-                    };
+                    // Left arrow
+                    const arrow = this.directionArrows.left;
+                    arrow.style.cssText = `
+                        position: fixed;
+                        left: ${hudRect.left - 17}px;
+                        top: ${hudRect.top + hudRect.height / 2}px;
+                        width: 0;
+                        height: 0;
+                        border-top: 8px solid transparent;
+                        border-bottom: 8px solid transparent;
+                        border-right: 12px solid ${arrowColor};
+                        transform: translateY(-50%);
+                        display: block;
+                        pointer-events: none;
+                        z-index: 1000;
+                    `;
                 }
             } else {
                 if (upComponent > 0) {
-                    edge = 'top';
-                    extraStyles = {
-                        borderLeft: '8px solid transparent',
-                        borderRight: '8px solid transparent',
-                        borderBottom: '12px solid #00ff41',
-                        borderTop: 'none'
-                    };
-                    transform = 'rotate(0deg)';
-                    position = { 
-                        top: '-12px', 
-                        left: '50%', 
-                        marginLeft: '-8px',
-                        right: 'auto',
-                        bottom: 'auto'
-                    };
+                    // Top arrow
+                    const arrow = this.directionArrows.top;
+                    arrow.style.cssText = `
+                        position: fixed;
+                        left: ${hudRect.left + hudRect.width / 2}px;
+                        top: ${hudRect.top - 17}px;
+                        width: 0;
+                        height: 0;
+                        border-left: 8px solid transparent;
+                        border-right: 8px solid transparent;
+                        border-bottom: 12px solid ${arrowColor};
+                        transform: translateX(-50%);
+                        display: block;
+                        pointer-events: none;
+                        z-index: 1000;
+                    `;
                 } else {
-                    edge = 'bottom';
-                    extraStyles = {
-                        borderLeft: '8px solid transparent',
-                        borderRight: '8px solid transparent',
-                        borderTop: '12px solid #00ff41',
-                        borderBottom: 'none'
-                    };
-                    transform = 'rotate(0deg)';
-                    position = { 
-                        bottom: '-12px', 
-                        left: '50%', 
-                        marginLeft: '-8px',
-                        right: 'auto',
-                        top: 'auto'
-                    };
+                    // Bottom arrow
+                    const arrow = this.directionArrows.bottom;
+                    arrow.style.cssText = `
+                        position: fixed;
+                        left: ${hudRect.left + hudRect.width / 2}px;
+                        top: ${hudRect.bottom + 5}px;
+                        width: 0;
+                        height: 0;
+                        border-left: 8px solid transparent;
+                        border-right: 8px solid transparent;
+                        border-top: 12px solid ${arrowColor};
+                        transform: translateX(-50%);
+                        display: block;
+                        pointer-events: none;
+                        z-index: 1000;
+                    `;
                 }
             }
-
-            // Apply styles to arrow
-            const styles = {
-                display: 'block',
-                transform: transform,
-                ...position,
-                ...extraStyles
-            };
-
-            Object.assign(this.directionArrow.style, styles);
-            this.lastArrowState = { edge, transform };
         } else {
-            this.directionArrow.style.display = 'none';
-            this.lastArrowState = null;
+            // Hide all arrows when target is on screen
+            Object.values(this.directionArrows).forEach(arrow => {
+                arrow.style.display = 'none';
+            });
         }
     }
 
     cycleTarget() {
-        if (!this.targetComputerEnabled || this.targetObjects.length === 0) return;
-
-        // Hide intel HUD and icon when switching targets
-        this.intelVisible = false;
-        this.intelAvailable = false;
-        this.intelHUD.style.display = 'none';
-        this.intelIcon.style.display = 'none';
-
-        // Remove previous wireframe if it exists
-        if (this.targetWireframe) {
-            this.wireframeScene.remove(this.targetWireframe);
-            this.targetWireframe.geometry.dispose();
-            this.targetWireframe.material.dispose();
-            this.targetWireframe = null;
+        // Prevent cycling targets while docked
+        if (this.isDocked) {
+            console.log('Cannot cycle targets while docked');
+            return;
         }
+
+        console.log('Cycling target:', {
+            targetComputerEnabled: this.targetComputerEnabled,
+            targetObjectsLength: this.targetObjects.length,
+            currentTargetIndex: this.targetIndex
+        });
+
+        if (!this.targetComputerEnabled || this.targetObjects.length === 0) return;
 
         // Hide reticle until new target is set
         if (this.targetReticle) {
@@ -1135,9 +1324,33 @@ export class StarfieldManager {
             this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
         }
 
+        console.log('New target index:', this.targetIndex);
+
         // Get the target object directly from our target list
         const targetData = this.targetObjects[this.targetIndex];
         this.currentTarget = targetData.object;
+
+        console.log('New target selected:', {
+            name: targetData.name,
+            type: targetData.type,
+            position: targetData.position
+        });
+
+        // Clean up existing wireframe before creating a new one
+        if (this.targetWireframe) {
+            this.wireframeScene.remove(this.targetWireframe);
+            if (this.targetWireframe.geometry) {
+                this.targetWireframe.geometry.dispose();
+            }
+            if (this.targetWireframe.material) {
+                if (Array.isArray(this.targetWireframe.material)) {
+                    this.targetWireframe.material.forEach(material => material.dispose());
+                } else {
+                    this.targetWireframe.material.dispose();
+                }
+            }
+            this.targetWireframe = null;
+        }
 
         // Create new wireframe in the HUD
         if (this.currentTarget) {
@@ -1151,44 +1364,24 @@ export class StarfieldManager {
                 // Determine wireframe color based on diplomacy
                 let wireframeColor = 0x808080; // Default gray for unknown
                 
-                // Case-insensitive comparison for diplomacy status
-                const isEnemy = info?.diplomacy && /^enemy$/i.test(info.diplomacy);
-                const isNeutral = info?.diplomacy && /^neutral$/i.test(info.diplomacy);
-                const isFriendly = info?.diplomacy && /^friendly$/i.test(info.diplomacy);
-                
-                console.log('Processing wireframe diplomacy:', {
-                    original: info?.diplomacy,
-                    isEnemy, isNeutral, isFriendly
-                });
-                
-                if (isEnemy) {
-                    wireframeColor = 0xff0000; // Red for hostile
-                    console.log('Setting wireframe to red');
-                } else if (isNeutral) {
-                    wireframeColor = 0xffff00; // Yellow for neutral
-                    console.log('Setting wireframe to yellow');
-                } else if (isFriendly) {
-                    wireframeColor = 0x00ff41; // Green for friendly
-                    console.log('Setting wireframe to green');
-                } else {
-                    console.log('Using default gray wireframe');
+                if (info?.diplomacy?.toLowerCase() === 'enemy') {
+                    wireframeColor = 0xff0000;
+                } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
+                    wireframeColor = 0xffff00;
+                } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
+                    wireframeColor = 0x00ff41;
                 }
-                console.log('Final wireframe color:', wireframeColor.toString(16));
                 
                 if (info) {
                     // Create different shapes based on celestial body type
                     if (info.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
-                        // Star: Dodecahedron (12-sided) for medium complexity
                         wireframeGeometry = new THREE.DodecahedronGeometry(radius, 0);
                     } else if (targetData.isMoon) {
-                        // Moon: Octahedron (8-sided) for simpler shape
                         wireframeGeometry = new THREE.OctahedronGeometry(radius, 0);
                     } else {
-                        // Planet: Icosahedron (20-sided) for most complex shape
                         wireframeGeometry = new THREE.IcosahedronGeometry(radius, 0);
                     }
                 } else {
-                    // Fallback to basic shape if no info
                     wireframeGeometry = new THREE.IcosahedronGeometry(radius, 1);
                 }
 
@@ -1199,18 +1392,17 @@ export class StarfieldManager {
                     opacity: 0.8
                 });
                 
-                // Create edges geometry for cleaner lines
                 const edgesGeometry = new THREE.EdgesGeometry(wireframeGeometry);
                 this.targetWireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
                 
-                // Reset wireframe position and add to wireframe scene
+                // Clean up the temporary geometries
+                wireframeGeometry.dispose();
+                edgesGeometry.dispose();
+                
                 this.targetWireframe.position.set(0, 0, 0);
                 this.wireframeScene.add(this.targetWireframe);
                 
-                // Position camera to fit the object
                 this.wireframeCamera.position.z = radius * 3;
-                
-                // Set initial rotation
                 this.targetWireframe.rotation.set(0.5, 0, 0.3);
             } catch (error) {
                 console.warn('Failed to create wireframe for target:', error);
@@ -1234,6 +1426,13 @@ export class StarfieldManager {
 
     update(deltaTime) {
         if (!deltaTime) deltaTime = 1/60;
+
+        // If docked, update orbit instead of normal movement
+        if (this.isDocked) {
+            this.updateOrbit(deltaTime);
+            this.updateSpeedIndicator();
+            return;
+        }
 
         // Handle rotation from arrow keys (instead of movement)
         const rotationSpeed = 0.015; // Reduced to match thoralexander.com's turning speed
@@ -1355,13 +1554,29 @@ export class StarfieldManager {
         }
         
         // Render wireframe if target computer is enabled and we have a target
-        if (this.targetComputerEnabled && this.targetWireframe) {
-            // Smooth rotation animation for wireframe
-            this.targetWireframe.rotation.y += deltaTime * 0.3;
-            this.targetWireframe.rotation.x = 0.5 + Math.sin(Date.now() * 0.001) * 0.1;
-            
-            // Render the wireframe scene
-            this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
+        if (this.targetComputerEnabled && this.targetWireframe && this.wireframeScene && this.wireframeRenderer) {
+            try {
+                // Rotate wireframe continuously
+                if (this.targetWireframe) {
+                    this.targetWireframe.rotation.y += deltaTime * 0.5; // Increased rotation speed
+                    this.targetWireframe.rotation.x = 0.5 + Math.sin(Date.now() * 0.001) * 0.2; // Increased oscillation
+                }
+                
+                // Render the wireframe scene
+                this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
+            } catch (error) {
+                console.warn('Error rendering wireframe:', error);
+            }
+        }
+
+        // Update direction arrow after updating target display
+        if (this.targetComputerEnabled && this.currentTarget) {
+            this.updateDirectionArrow();
+        } else {
+            // Hide all arrows
+            Object.values(this.directionArrows).forEach(arrow => {
+                arrow.style.display = 'none';
+            });
         }
     }
 
@@ -1476,6 +1691,45 @@ export class StarfieldManager {
         }
         if (this.intelIcon && this.intelIcon.parentNode) {
             this.intelIcon.parentNode.removeChild(this.intelIcon);
+        }
+        if (this.dockButtonContainer && this.dockButtonContainer.parentNode) {
+            this.dockButtonContainer.parentNode.removeChild(this.dockButtonContainer);
+        }
+
+        // Clean up wireframe resources
+        if (this.wireframeRenderer) {
+            this.wireframeRenderer.dispose();
+        }
+        if (this.wireframeScene) {
+            this.wireframeScene.traverse((object) => {
+                if (object.geometry) {
+                    object.geometry.dispose();
+                }
+                if (object.material) {
+                    if (Array.isArray(object.material)) {
+                        object.material.forEach(material => material.dispose());
+                    } else {
+                        object.material.dispose();
+                    }
+                }
+            });
+        }
+        if (this.targetWireframe) {
+            if (this.targetWireframe.geometry) {
+                this.targetWireframe.geometry.dispose();
+            }
+            if (this.targetWireframe.material) {
+                this.targetWireframe.material.dispose();
+            }
+        }
+
+        // Clean up direction arrows
+        if (this.directionArrows) {
+            Object.values(this.directionArrows).forEach(arrow => {
+                if (arrow && arrow.parentNode) {
+                    arrow.parentNode.removeChild(arrow);
+                }
+            });
         }
     }
 
@@ -1680,19 +1934,28 @@ export class StarfieldManager {
             return;
         }
 
-        // Get celestial body info from solar system manager
         const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
         if (!info) {
             this.intelHUD.style.display = 'none';
             return;
         }
-        
+
         // Format the intel information
         let intelHTML = `
             <div style="text-align: center; border-bottom: 1px solid #00ff41; padding-bottom: 5px; margin-bottom: 10px;">
                 INTEL: ${currentTargetData.name}
             </div>
         `;
+
+        // Add distance info if it's a planet or moon
+        if (info.type === 'planet' || info.type === 'moon') {
+            const distance = this.camera.position.distanceTo(this.currentTarget.position);
+            intelHTML += `
+                <div style="margin-bottom: 8px;">
+                    <span style="color: #00aa41;">Distance:</span> ${distance.toFixed(2)} km
+                </div>
+            `;
+        }
 
         // Check if it's a planet or moon by checking if diplomacy info exists
         if (info.diplomacy !== undefined) {
@@ -1717,7 +1980,6 @@ export class StarfieldManager {
                 </div>
             `;
 
-            // Add population if available
             if (info.population) {
                 intelHTML += `
                     <div style="margin-top: 12px; font-size: 0.9em; opacity: 0.8;">
@@ -1737,5 +1999,133 @@ export class StarfieldManager {
 
         this.intelHUD.innerHTML = intelHTML;
         this.intelHUD.style.display = 'block';
+    }
+
+    // Add new docking methods
+    canDock(target) {
+        if (!target || !target.position) return false;
+        return this.camera.position.distanceTo(target.position) <= this.dockingRange;
+    }
+
+    dock(target) {
+        if (!this.canDock(target)) {
+            return false;
+        }
+
+        this.isDocked = true;
+        this.dockedTo = target;
+        this.orbitAngle = Math.atan2(
+            this.camera.position.z - target.position.z,
+            this.camera.position.x - target.position.x
+        );
+
+        // Set speed to 0 since we're docked
+        this.targetSpeed = 0;
+        this.currentSpeed = 0;
+        this.decelerating = false;
+
+        // Update the dock button to show "LAUNCH"
+        this.updateTargetDisplay();
+        return true;
+    }
+
+    undock() {
+        if (!this.isDocked) {
+            return;
+        }
+
+        this.isDocked = false;
+        this.dockedTo = null;
+        
+        // Set speed to impulse 1 for a gentle launch
+        this.targetSpeed = 1;
+        this.currentSpeed = 1;
+        this.decelerating = false;
+        
+        // Reset camera orientation to face forward
+        this.camera.quaternion.set(0, 0, 0, 1);
+        
+        // Update the dock button to show "DOCK"
+        this.updateTargetDisplay();
+        this.updateSpeedIndicator();
+    }
+
+    updateOrbit(deltaTime) {
+        if (!this.isDocked || !this.dockedTo) return;
+
+        // Update orbit angle
+        this.orbitAngle += this.orbitSpeed;
+        if (this.orbitAngle > Math.PI * 2) this.orbitAngle -= Math.PI * 2;
+
+        // Calculate new position
+        const targetPos = this.dockedTo.position;
+        this.camera.position.x = targetPos.x + Math.cos(this.orbitAngle) * this.orbitRadius;
+        this.camera.position.z = targetPos.z + Math.sin(this.orbitAngle) * this.orbitRadius;
+        
+        // Keep camera at same height as target
+        this.camera.position.y = targetPos.y;
+        
+        // Point camera at the orbited object
+        const lookAtPos = new THREE.Vector3().copy(targetPos);
+        this.camera.lookAt(lookAtPos);
+        
+        // Update target display to maintain button visibility
+        this.updateTargetDisplay();
+    }
+
+    // Add new debug methods for dock/undock
+    dockWithDebug(target) {
+        const result = this.dock(target);
+        if (!result) {
+            console.log('Docking failed - out of range or invalid target');
+        }
+        return result;
+    }
+
+    undockWithDebug() {
+        if (!this.isDocked) {
+            console.log('Cannot undock - not currently docked');
+            return;
+        }
+        this.undock();
+    }
+
+    // Add new method to handle dock button clicks
+    handleDockButtonClick(isDocked, targetName) {
+        console.log('Dock button clicked:', {
+            action: isDocked ? 'LAUNCH' : 'DOCK',
+            targetName: targetName,
+            distance: this.currentTarget ? this.calculateDistance(this.camera.position, this.currentTarget.position) : 'N/A',
+            dockingRange: this.dockingRange,
+            isDocked: isDocked,
+            currentDockState: this.isDocked
+        });
+        
+        if (!this.currentTarget) {
+            console.warn('No current target available for docking');
+            return;
+        }
+
+        if (isDocked) {
+            console.log('Attempting to launch from:', targetName);
+            this.undockWithDebug();
+        } else {
+            const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
+            console.log('Attempting to dock:', {
+                distance: distance,
+                dockingRange: this.dockingRange,
+                isInRange: distance <= this.dockingRange,
+                targetName: targetName
+            });
+            
+            if (distance <= this.dockingRange) {
+                this.dockWithDebug(this.currentTarget);
+            } else {
+                console.warn('Target is out of docking range');
+            }
+        }
+        
+        // Update display after docking/undocking
+        this.updateTargetDisplay();
     }
 } 

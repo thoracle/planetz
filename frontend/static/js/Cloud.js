@@ -6,8 +6,6 @@ export class Cloud {
     p = new Array(512);
 
     constructor(planetRadius = 1.0, cloudScale = 1.06) {
-        console.log('Initializing Cloud system...');
-        
         // Initialize permutation table first
         this.initPermutationTable();
 
@@ -19,7 +17,6 @@ export class Cloud {
         this.geometry = new THREE.IcosahedronGeometry(planetRadius * this.cloudScale, 4);
         
         // Create noise textures
-        console.log('Generating cloud textures...');
         this.cloudTexture = this.generateCloudTexture();
         this.noiseTexture = this.generateNoiseTexture();
         
@@ -62,20 +59,6 @@ export class Cloud {
         
         // Initialize time
         this.time = 0;
-        
-        console.log('Cloud system initialized:', {
-            geometry: {
-                vertices: this.geometry.attributes.position.count,
-                radius: planetRadius * this.cloudScale
-            },
-            textures: {
-                cloudTexture: this.cloudTexture ? 'created' : 'failed',
-                noiseTexture: this.noiseTexture ? 'created' : 'failed'
-            },
-            material: {
-                uniforms: this.material.uniforms
-            }
-        });
     }
 
     generateCloudTexture() {
@@ -268,13 +251,11 @@ export class Cloud {
     }
 
     setCoverage(value) {
-        console.log('Setting cloud coverage:', value);
         this.material.uniforms.coverage.value = value;
         this.material.needsUpdate = true;
     }
 
     setDensity(value) {
-        console.log('Setting cloud density:', value);
         this.material.uniforms.density.value = value;
         this.material.needsUpdate = true;
     }
@@ -285,20 +266,17 @@ export class Cloud {
     }
 
     setCloudColor(color) {
-        console.log('Setting cloud color:', color);
         this.material.uniforms.cloudColor.value.copy(color);
         this.material.needsUpdate = true;
     }
 
     setCloudSpeed(value) {
-        console.log('Setting cloud speed:', value);
         // Apply exponential scaling for more dramatic high speeds
         this.material.uniforms.cloudSpeed.value = value;
         this.material.needsUpdate = true;
     }
 
     setTurbulence(value) {
-        console.log('Setting cloud turbulence:', value);
         // Apply exponential scaling for more dramatic turbulence
         this.material.uniforms.turbulence.value = Math.pow(value, 1.5);
         this.material.needsUpdate = true;
