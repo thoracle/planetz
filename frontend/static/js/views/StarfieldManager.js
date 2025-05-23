@@ -55,6 +55,13 @@ export class StarfieldManager {
 
         // Audio setup
         this.listener = new THREE.AudioListener();
+        if (!this.camera) {
+            console.error('No camera available for audio listener');
+            return;
+        }
+        console.log('Adding audio listener to camera');
+        this.camera.add(this.listener);
+
         this.audioLoader = new THREE.AudioLoader();
         this.engineSound = new THREE.Audio(this.listener);
         this.commandSound = new THREE.Audio(this.listener);
@@ -73,6 +80,7 @@ export class StarfieldManager {
                 
                 // Set loop points for the middle portion of the sound
                 const duration = buffer.duration;
+                console.log('Engine sound duration:', duration);
                 const startupTime = duration * 0.25; // Increased from 15% to 25% to ensure we're at full volume
                 const shutdownTime = duration * 0.70; // Keep at 70% to avoid end tapering
                 
@@ -89,12 +97,17 @@ export class StarfieldManager {
                 
                 this.engineSound.setVolume(0.0);
                 this.soundLoaded = true;
+                console.log('Engine sound initialization complete');
             },
             (progress) => {
                 console.log(`Loading engine sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
             },
             (error) => {
                 console.error('Error loading engine sound:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack
+                });
             }
         );
 
@@ -107,79 +120,187 @@ export class StarfieldManager {
                 this.commandSound.setBuffer(buffer);
                 this.commandSound.setVolume(0.5); // Set a reasonable volume
                 this.commandSoundLoaded = true;
+                console.log('Command sound initialization complete');
             },
             (progress) => {
                 console.log(`Loading command sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
             },
             (error) => {
                 console.error('Error loading command sound:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack
+                });
             }
         );
-
-        // Add audio listener to camera
-        this.camera.add(this.listener);
     }
 
     createStarfield() {
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(this.starCount * 3);
-        const colors = new Float32Array(this.starCount * 3);
-        const sizes = new Float32Array(this.starCount);
-        
-        // Create sprite texture for stars
-        const canvas = document.createElement('canvas');
-        canvas.width = 32;
-        canvas.height = 32;
-        const ctx = canvas.getContext('2d');
-        
-        // Create radial gradient for glow effect
-        const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-        gradient.addColorStop(0.1, 'rgba(255, 255, 255, 0.8)');
-        gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, 32, 32);
-        
-        const sprite = new THREE.Texture(canvas);
-        sprite.needsUpdate = true;
-        
-        for (let i = 0; i < this.starCount; i++) {
-            // Random position in a large sphere around the camera
-            const radius = 100 + Math.random() * 900; // Stars between 100 and 1000 units away
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.acos((Math.random() * 2) - 1);
+        try {
+            // Validate star count before proceeding
+            if (typeof this.starCount !== 'number' || isNaN(this.starCount)) {
+                console.warn('Invalid starCount:', this.starCount, 'falling back to 5000');
+                this.starCount = 5000;
+            }
+
+            // Ensure minimum and maximum values for star count
+            const validStarCount = Math.max(5000, Math.min(500000, Math.floor(this.starCount)));
+            if (validStarCount !== this.starCount) {
+                console.log('Adjusted star count from', this.starCount, 'to', validStarCount);
+                this.starCount = validStarCount;
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(validStarCount * 3);
+            const colors = new Float32Array(validStarCount * 3);
+            const sizes = new Float32Array(validStarCount);
             
-            positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-            positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-            positions[i * 3 + 2] = radius * Math.cos(phi);
+            // Create sprite texture for stars
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
             
-            // Brighter white colors with slight blue tint
-            const brightness = 0.9 + Math.random() * 0.1; // Much brighter base
-            colors[i * 3] = brightness;
-            colors[i * 3 + 1] = brightness;
-            colors[i * 3 + 2] = brightness + 0.1; // Slight blue tint
+            // Create radial gradient for glow effect
+            const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            gradient.addColorStop(0.1, 'rgba(255, 255, 255, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
             
-            // Larger, more varied sizes
-            sizes[i] = (1 + Math.random() * 3) * 2;
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 32, 32);
+            
+            const sprite = new THREE.Texture(canvas);
+            sprite.needsUpdate = true;
+
+            let validVertices = 0;
+            const minRadius = 100;
+            const maxRadius = 1000;
+            
+            // Create all star positions
+            for (let i = 0; i < validStarCount; i++) {
+                try {
+                    // Generate random spherical coordinates
+                    const radius = minRadius + Math.random() * (maxRadius - minRadius);
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos((Math.random() * 2) - 1);
+                    
+                    // Convert to Cartesian coordinates
+                    const x = radius * Math.sin(phi) * Math.cos(theta);
+                    const y = radius * Math.sin(phi) * Math.sin(theta);
+                    const z = radius * Math.cos(phi);
+                    
+                    // Validate each coordinate
+                    if (!isFinite(x) || !isFinite(y) || !isFinite(z) ||
+                        isNaN(x) || isNaN(y) || isNaN(z)) {
+                        throw new Error('Invalid coordinate calculation');
+                    }
+                    
+                    // Store valid position
+                    positions[validVertices * 3] = x;
+                    positions[validVertices * 3 + 1] = y;
+                    positions[validVertices * 3 + 2] = z;
+                    
+                    // Set color (brighter white with slight blue tint)
+                    const brightness = 0.9 + Math.random() * 0.1;
+                    colors[validVertices * 3] = brightness;
+                    colors[validVertices * 3 + 1] = brightness;
+                    colors[validVertices * 3 + 2] = brightness + 0.1;
+                    
+                    // Set size
+                    sizes[validVertices] = (1 + Math.random() * 3) * 2;
+                    
+                    validVertices++;
+                } catch (error) {
+                    console.warn('Failed to create vertex', i, error);
+                    continue;
+                }
+            }
+            
+            // If we have no valid vertices, throw error
+            if (validVertices === 0) {
+                throw new Error('No valid vertices created');
+            }
+            
+            // Trim arrays to actual size if needed
+            if (validVertices < validStarCount) {
+                console.warn(`Created ${validVertices} valid stars out of ${validStarCount} attempted`);
+                const trimmedPositions = new Float32Array(positions.buffer, 0, validVertices * 3);
+                const trimmedColors = new Float32Array(colors.buffer, 0, validVertices * 3);
+                const trimmedSizes = new Float32Array(sizes.buffer, 0, validVertices);
+                
+                geometry.setAttribute('position', new THREE.BufferAttribute(trimmedPositions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(trimmedColors, 3));
+                geometry.setAttribute('size', new THREE.BufferAttribute(trimmedSizes, 1));
+            } else {
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+            }
+            
+            // Verify geometry before creating mesh
+            geometry.computeBoundingSphere();
+            if (!geometry.boundingSphere || isNaN(geometry.boundingSphere.radius)) {
+                throw new Error('Failed to compute valid bounding sphere');
+            }
+            
+            const material = new THREE.PointsMaterial({
+                size: 1,
+                vertexColors: true,
+                transparent: true,
+                opacity: 1,
+                sizeAttenuation: true,
+                blending: THREE.AdditiveBlending,
+                map: sprite,
+                depthWrite: false
+            });
+            
+            return new THREE.Points(geometry, material);
+            
+        } catch (error) {
+            console.error('Error in createStarfield:', error);
+            // Create a minimal fallback starfield
+            return this.createFallbackStarfield();
         }
-        
+    }
+
+    createFallbackStarfield() {
+        console.log('Creating fallback starfield');
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(5000 * 3);
+        const colors = new Float32Array(5000 * 3);
+        const sizes = new Float32Array(5000);
+
+        // Create a simple cube distribution of stars
+        for (let i = 0; i < 5000; i++) {
+            // Position stars in a cube formation (-500 to 500 on each axis)
+            positions[i * 3] = (Math.random() - 0.5) * 1000;
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 1000;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 1000;
+
+            // White color
+            colors[i * 3] = 1;
+            colors[i * 3 + 1] = 1;
+            colors[i * 3 + 2] = 1;
+
+            // Uniform size
+            sizes[i] = 2;
+        }
+
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
         geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-        
+
         const material = new THREE.PointsMaterial({
             size: 1,
             vertexColors: true,
             transparent: true,
             opacity: 1,
             sizeAttenuation: true,
-            blending: THREE.AdditiveBlending,
-            map: sprite,
             depthWrite: false
         });
-        
+
         return new THREE.Points(geometry, material);
     }
 
@@ -1315,6 +1436,35 @@ export class StarfieldManager {
     playCommandSound() {
         if (this.commandSoundLoaded && !this.commandSound.isPlaying) {
             this.commandSound.play();
+        }
+    }
+
+    // Function to recreate the starfield with new density
+    recreateStarfield() {
+        // Remove old starfield
+        if (this.starfield) {
+            this.scene.remove(this.starfield);
+            if (this.starfield.geometry) {
+                this.starfield.geometry.dispose();
+            }
+            if (this.starfield.material) {
+                this.starfield.material.dispose();
+            }
+        }
+        
+        // Create new starfield with updated star count
+        try {
+            this.starfield = this.createStarfield();
+            if (this.starfield) {
+                this.scene.add(this.starfield);
+                console.log('Successfully recreated starfield with', this.starCount, 'stars');
+            }
+        } catch (error) {
+            console.error('Error recreating starfield:', error);
+            // Fallback to minimum star count if there's an error
+            this.starCount = 5000;
+            this.starfield = this.createStarfield();
+            this.scene.add(this.starfield);
         }
     }
 } 

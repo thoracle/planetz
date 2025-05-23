@@ -592,4 +592,70 @@ body.edit-mode .crosshair {
 .warning-close:hover {
     background: #00ff41;
     color: #000000;
+}
+
+/* Warp Control Mode styles */
+body.warp-control-mode .crosshair {
+    display: none !important;
+}
+
+#warp-gui-container {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 5px;
+    padding: 10px;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+}
+
+#warp-gui-container .dg.main {
+    background: transparent !important;
+}
+
+#warp-gui-container .dg .c {
+    width: 60% !important;
+}
+
+#warp-gui-container .dg .property-name {
+    width: 40% !important;
+}
+
+#warp-gui-container .dg .slider {
+    width: 60% !important;
+}
+
+#warp-gui-container .dg .c input[type="text"] {
+    background: rgba(0, 0, 0, 0.5) !important;
+    border: 1px solid rgba(0, 255, 65, 0.3) !important;
+    color: #00ff41 !important;
+}
+
+#warp-gui-container .dg .c select {
+    background: rgba(0, 0, 0, 0.5) !important;
+    border: 1px solid rgba(0, 255, 65, 0.3) !important;
+    color: #00ff41 !important;
+}
+
+#warp-gui-container .dg .closed li.title {
+    background: rgba(0, 0, 0, 0.5) !important;
+}
+
+#warp-gui-container .dg .cr.function:hover,
+#warp-gui-container .dg .cr.boolean:hover {
+    background: rgba(0, 255, 65, 0.1) !important;
+}
+
+#warp-gui-container .dg li:not(.folder) {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.1) !important;
+}
+
+#warp-gui-container .dg li.save-row select {
+    margin-left: 5px !important;
+}
+
+#warp-gui-container .dg li.save-row .button {
+    text-shadow: none !important;
+}
+
+#warp-gui-title {
+    text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
 } 

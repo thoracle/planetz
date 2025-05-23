@@ -8,6 +8,213 @@ import { ViewManager } from './views/ViewManager.js';
 import { StarfieldManager } from './views/StarfieldManager.js';
 import { SolarSystemManager } from './SolarSystemManager.js';
 
+// Global variables for warp control mode
+let warpControlMode = false;
+let warpGui = null;
+let warpGuiContainer = null;
+let editMode = false;
+let gui = null;
+let guiContainer = null;
+
+// Global variables for managers
+let viewManager = null;
+let solarSystemManager = null;
+let debugManager = null;
+
+// Function to update debug info
+function updateDebugInfo() {
+    if (debugManager) {
+        debugManager.updateInfo();
+    }
+}
+
+// Debug Manager class
+class DebugManager {
+    constructor() {
+        this.stats = new Stats();
+        this.debugInfo = document.createElement('div');
+        this.visible = false;
+        this.axesHelper = new THREE.AxesHelper(5);
+        this.gridHelper = new THREE.GridHelper(10, 10);
+        
+        // Configure stats
+        this.stats.dom.style.cssText = `
+            position: fixed !important;
+            top: 70px !important;
+            left: 10px !important;
+            display: none;
+            z-index: 1000;
+            pointer-events: none;
+        `;
+        
+        // Configure debug info
+        this.debugInfo.style.cssText = `
+            position: fixed !important;
+            top: 120px !important;
+            left: 10px !important;
+            color: #00ff00;
+            font-family: monospace;
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            pointer-events: auto;
+            transform: none !important;
+        `;
+        
+        // Configure helpers
+        this.axesHelper.visible = false;
+        this.gridHelper.visible = false;
+    }
+    
+    initialize(scene, uiContainer) {
+        document.body.appendChild(this.stats.dom);
+        uiContainer.appendChild(this.debugInfo);
+        scene.add(this.axesHelper);
+        scene.add(this.gridHelper);
+    }
+    
+    toggle() {
+        this.visible = !this.visible;
+        this.stats.dom.style.display = this.visible ? 'block' : 'none';
+        this.debugInfo.style.display = this.visible ? 'block' : 'none';
+        this.updateInfo();
+    }
+    
+    updateInfo() {
+        if (!this.visible) return;
+        
+        let html = '';
+        
+        // Add solar system info if available
+        if (solarSystemManager && solarSystemManager.getDebugInfo) {
+            const solarSystemInfo = solarSystemManager.getDebugInfo();
+            for (const [key, value] of Object.entries(solarSystemInfo)) {
+                html += `${key}: ${value}<br>`;
+            }
+        }
+        
+        // Add camera position if available
+        if (viewManager && viewManager.camera) {
+            const pos = viewManager.camera.position;
+            html += `<br>Camera Position: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})<br>`;
+        }
+        
+        this.debugInfo.innerHTML = html;
+    }
+    
+    setEditMode(enabled) {
+        this.axesHelper.visible = enabled;
+        this.gridHelper.visible = enabled;
+    }
+    
+    update() {
+        if (this.visible) {
+            this.updateInfo();
+        }
+        this.stats.update();
+    }
+}
+
+// Global functions for mode toggles
+function toggleDebugMode() {
+    if (!debugManager) return;
+    debugManager.toggle();
+}
+
+function toggleEditMode() {
+    editMode = !editMode;
+    viewManager.setEditMode(editMode);
+    
+    // If enabling edit mode, ensure warp control mode is off
+    if (editMode && warpControlMode) {
+        warpControlMode = false;
+        warpGuiContainer.style.display = 'none';
+        warpGui.domElement.style.display = 'none';
+        document.body.classList.remove('warp-control-mode');
+    }
+    
+    // Update debug visibility
+    if (debugManager) {
+        debugManager.setEditMode(editMode);
+    }
+    
+    // Update UI
+    if (editMode) {
+        document.body.classList.add('edit-mode');
+        guiContainer.style.display = 'block';
+        gui.domElement.style.display = 'block';
+        
+        // Initialize with the first celestial body
+        const bodies = solarSystemManager.getCelestialBodies();
+        if (bodies.length > 0) {
+            const firstBody = bodies[0];
+            solarSystemManager.setCurrentEditBody(firstBody);
+            updateGUIControls(firstBody);
+            updateGuiTitle(firstBody);
+        }
+    } else {
+        document.body.classList.remove('edit-mode');
+        guiContainer.style.display = 'none';
+        gui.domElement.style.display = 'none';
+    }
+    
+    // Update debug info
+    updateDebugInfo();
+}
+
+function toggleWarpControlMode() {
+    if (!warpGui) return; // Guard against calling before initialization
+    
+    warpControlMode = !warpControlMode;
+    
+    // If enabling warp control mode, ensure edit mode is off
+    if (warpControlMode && editMode) {
+        editMode = false;
+        viewManager.setEditMode(false);
+        guiContainer.style.display = 'none';
+        gui.domElement.style.display = 'none';
+        document.body.classList.remove('edit-mode');
+        if (debugManager) {
+            debugManager.setEditMode(false);
+        }
+    }
+    
+    // Update UI
+    if (warpControlMode) {
+        document.body.classList.add('warp-control-mode');
+        warpGuiContainer.style.display = 'block';
+        warpGui.domElement.style.display = 'block';
+    } else {
+        document.body.classList.remove('warp-control-mode');
+        warpGuiContainer.style.display = 'none';
+        warpGui.domElement.style.display = 'none';
+    }
+}
+
+// Add global keyboard event listener
+document.addEventListener('keydown', (event) => {
+    // Handle Ctrl/Cmd key combinations
+    if (event.ctrlKey || event.metaKey) {
+        if (event.key === 'd') {
+            event.preventDefault();
+            toggleDebugMode();
+        } else if (event.key === 'e') {
+            event.preventDefault();
+            toggleEditMode();
+        } else if (event.key === 'w') {
+            event.preventDefault();
+            toggleWarpControlMode();
+        }
+    } else if (editMode && event.key === 'Tab') {
+        event.preventDefault();
+        event.stopPropagation();
+        cycleCelestialBody();
+        return false;
+    }
+}, true);
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Initializing application...');
     
@@ -40,52 +247,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
     document.body.appendChild(uiContainer);
 
-    // Initialize FPS counter with fixed positioning but hidden
-    const stats = new Stats();
-    stats.dom.style.cssText = `
-        position: fixed !important;
-        top: 70px !important;
-        left: 10px !important;
-        display: none;
-        z-index: 1000;
-        pointer-events: none;
-    `;
-    document.body.appendChild(stats.dom);
-    
-    // Create debug info panel with fixed positioning but hidden
-    const debugInfo = document.createElement('div');
-    debugInfo.style.cssText = `
-        position: fixed !important;
-        top: 120px !important;
-        left: 10px !important;
-        color: #00ff00;
-        font-family: monospace;
-        font-size: 12px;
-        background: rgba(0, 0, 0, 0.5);
-        padding: 10px;
-        border-radius: 5px;
-        display: none;
-        pointer-events: auto;
-        transform: none !important;
-    `;
-    uiContainer.appendChild(debugInfo);
-    
-    // Debug visibility states
-    let debugVisible = false;
-    let editMode = false;
-    
-    // Create helper objects
-    const axesHelper = new THREE.AxesHelper(5);
-    const gridHelper = new THREE.GridHelper(10, 10);
-    
-    // Initially hide helpers
-    axesHelper.visible = false;
-    gridHelper.visible = false;
-    
-    // Add helpers to scene
-    scene.add(axesHelper);
-    scene.add(gridHelper);
-    
+    // Initialize debug manager first
+    debugManager = new DebugManager();
+    debugManager.initialize(scene, uiContainer);
+
     // Renderer setup
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
@@ -114,16 +279,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     
     // Initialize ViewManager
-    const viewManager = new ViewManager(scene, camera, controls);
+    viewManager = new ViewManager(scene, camera, controls);
 
     // Initialize StarfieldManager and connect it to ViewManager
     const starfieldManager = new StarfieldManager(scene, camera, viewManager);
     viewManager.setStarfieldManager(starfieldManager);
 
     // Initialize SolarSystemManager and connect it to StarfieldManager
-    const solarSystemManager = new SolarSystemManager(scene, camera);
+    solarSystemManager = new SolarSystemManager(scene, camera);
     starfieldManager.setSolarSystemManager(solarSystemManager);
-    viewManager.setSolarSystemManager(solarSystemManager);  // Add this line
+    viewManager.setSolarSystemManager(solarSystemManager);
 
     // Verify managers are properly connected
     if (!viewManager.areManagersReady()) {
@@ -146,11 +311,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Generate initial star system for sector A0
             const success = await solarSystemManager.generateStarSystem('A0');
-        if (success) {
-            console.log('Star system generated successfully');
-        } else {
-            console.error('Failed to generate star system');
-        }
+            if (success) {
+                console.log('Star system generated successfully');
+            } else {
+                console.error('Failed to generate star system');
+            }
         } else {
             console.error('Failed to fetch universe data');
         }
@@ -158,283 +323,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error during initialization:', error);
     }
 
-    // Debug logging function for mouse events
-    function logMouseEvent(type, event) {
-        if (!debugVisible) return;
-        console.debug(`Mouse ${type}:`, {
-                button: event.button,
-                buttons: event.buttons,
-                modifiers: {
-                    ctrl: event.ctrlKey,
-                    alt: event.altKey,
-                    meta: event.metaKey,
-                    shift: event.shiftKey
-                },
-                editMode: editMode,
-                controls: {
-                    enabled: controls.enabled,
-                enableRotate: controls.enableRotate,
-                    enablePan: controls.enablePan,
-                enableZoom: controls.enableZoom
-            }
-        });
-    }
-
-    // Add debug logging for initial mouse button configuration
-    console.debug('THREE.MOUSE values:', {
-        LEFT: THREE.MOUSE.LEFT,
-        MIDDLE: THREE.MOUSE.MIDDLE,
-        RIGHT: THREE.MOUSE.RIGHT,
-        ROTATE: THREE.MOUSE.ROTATE,
-        DOLLY: THREE.MOUSE.DOLLY,
-        PAN: THREE.MOUSE.PAN
-    });
-
-    // Always use left mouse button for all camera actions
-    controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
-    controls.mouseButtons.MIDDLE = undefined;
-    controls.mouseButtons.RIGHT = undefined;
-
-    // Simplified modifier-based camera controls for MacBook/trackpad
-    function updateControlScheme(event) {
-        if (!editMode) return;
-
-        // Determine which modifier is held
-        const isOption = event.altKey;
-        const isCommand = event.metaKey;
-        const isOptionCommand = event.altKey && event.metaKey;
-
-        // Only allow one mode at a time (priority: Option+Command > Command > Option)
-        if (isOptionCommand) {
-            // Option+Command+Drag: Rotate
-            controls.enablePan = false;
-            controls.enableRotate = false;
-            if (typeof controls.enableCameraRotate === 'function') {
-                controls.enableCameraRotate(true);
-            }
-        } else if (isCommand) {
-            // Command+Drag: Pan
-            controls.enablePan = true;
-            controls.enableRotate = false;
-            if (typeof controls.enableCameraRotate === 'function') {
-                controls.enableCameraRotate(false);
-            }
-        } else if (isOption) {
-            // Option+Drag: Orbit
-            controls.enablePan = false;
-            controls.enableRotate = true;
-            if (typeof controls.enableCameraRotate === 'function') {
-                controls.enableCameraRotate(false);
-            }
-        } else {
-            // No modifier: disable all
-            controls.enablePan = false;
-            controls.enableRotate = false;
-            if (typeof controls.enableCameraRotate === 'function') {
-                controls.enableCameraRotate(false);
-            }
-        }
-    }
-
-    // Handle key combinations for camera controls
-    document.addEventListener('keydown', (event) => {
-        updateControlScheme(event);
-        // Prevent default browser behaviors when using modifier keys in edit mode
-        if (editMode && (event.metaKey || event.altKey || event.ctrlKey)) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-    });
-    
-    document.addEventListener('keyup', (event) => {
-        // Always update control scheme on keyup
-        updateControlScheme(event);
-    });
-
-    // Remove all dynamic remapping from mousedown/mouseup handlers
-    // Only keep terraforming logic for mousedown with no modifier
-    container.addEventListener('mousedown', (event) => {
-        logMouseEvent('down', event);
-        // Only handle terraforming if in edit mode and no modifier keys
-        const hasModifier = event.altKey || event.metaKey || event.ctrlKey;
-        if (editMode) {
-            if (hasModifier) {
-                // Let OrbitControls handle the event
-                return;
-            }
-            event.preventDefault();
-            event.stopPropagation();  // Prevent event from reaching OrbitControls
-            handleTerraforming(event);
-            const handleMouseMove = (moveEvent) => {
-                const hasModifier = moveEvent.altKey || moveEvent.metaKey || moveEvent.ctrlKey;
-                if (!hasModifier) {
-                    moveEvent.preventDefault();
-                    moveEvent.stopPropagation();  // Prevent event from reaching OrbitControls
-                    handleTerraforming(moveEvent);
-                }
-            };
-            const handleMouseUp = () => {
-                document.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-            };
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-        }
-    }, { capture: true });
-
-    // Remove all dynamic mouse button logic from mousemove/mouseup
-    // Let OrbitControls handle camera movement when a modifier is held
-
-    // Handle wheel events only when in edit mode
-    container.addEventListener('wheel', (event) => {
-        if (!editMode) return;
-
-        const now = performance.now();
-        if (now - lastWheelLogTime > 100) {
-            console.debug('Wheel event:', {
-                delta: {
-                    x: event.deltaX,
-                    y: event.deltaY,
-                    mode: event.deltaMode
-                },
-                modifiers: {
-                    ctrl: event.ctrlKey,
-                    alt: event.altKey,
-                    meta: event.metaKey,
-                    shift: event.shiftKey
-                },
-                editMode: editMode,
-                camera: {
-                    zoom: camera.zoom,
-                    position: camera.position.clone().toArray(),
-                    distance: camera.position.length()
-                }
-            });
-            lastWheelLogTime = now;
-        }
-
-        // Handle zooming
-        const hasModifier = event.ctrlKey || event.altKey || event.metaKey;
-        const isTwoFingerGesture = Math.abs(event.deltaX) > 0;
-
-        if (hasModifier || isTwoFingerGesture) {
-            controls.enabled = true;
-            controls.enableZoom = true;
-            event.preventDefault();
-            event.stopPropagation();
-        } else {
-            controls.enabled = false;
-            controls.enableZoom = false;
-        }
-    }, { passive: false });
-
-    // Handle touch events
-    let touchStartTime = 0;
-    let touchStartDistance = 0;
-    
-    container.addEventListener('touchstart', (event) => {
-        if (!editMode) return;
-        
-        touchStartTime = performance.now();
-        if (event.touches.length === 2) {
-            const dx = event.touches[0].clientX - event.touches[1].clientX;
-            const dy = event.touches[0].clientY - event.touches[1].clientY;
-            touchStartDistance = Math.sqrt(dx * dx + dy * dy);
-            controls.enabled = true;
-        }
-    }, { passive: false });
-
-    container.addEventListener('touchmove', (event) => {
-        if (!editMode) return;
-        
-        if (event.touches.length === 2) {
-            event.preventDefault();
-            const dx = event.touches[0].clientX - event.touches[1].clientX;
-            const dy = event.touches[0].clientY - event.touches[1].clientY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            const deltaDistance = distance - touchStartDistance;
-            
-            // Enable zooming for two-finger pinch
-            controls.enabled = true;
-            controls.enableZoom = true;
-            
-            // Update touch start distance for next move event
-            touchStartDistance = distance;
-        }
-    }, { passive: false });
-
-    container.addEventListener('touchend', (event) => {
-        if (!editMode) return;
-        
-        const touchEndTime = performance.now();
-        const touchDuration = touchEndTime - touchStartTime;
-        
-        // Reset controls after touch
-        if (event.touches.length === 0) {
-            controls.enabled = false;
-            controls.enableZoom = false;
-            touchStartDistance = 0;
-        }
-        
-        console.debug('Touch interaction ended:', {
-            duration: touchDuration,
-            remainingTouches: event.touches.length,
-            controls: {
-                enabled: controls.enabled,
-                enableZoom: controls.enableZoom
-            }
-        });
-    });
-
-    // Prevent context menu in edit mode to avoid interfering with controls
-    container.addEventListener('contextmenu', (event) => {
-        if (editMode) {
-            event.preventDefault();
-        }
-    });
-
-    // Handle terraforming clicks
-    container.addEventListener('mousedown', (event) => {
-        logMouseEvent('down', event);
-        
-        // Only handle terraforming if in edit mode and no modifier keys
-        const hasModifier = event.altKey || event.metaKey || event.ctrlKey;
-        if (editMode) {
-            if (hasModifier) {
-                // Let OrbitControls handle the event
-                return;
-            }
-            
-            event.preventDefault();
-            event.stopPropagation();  // Prevent event from reaching OrbitControls
-            handleTerraforming(event);
-            
-            const handleMouseMove = (moveEvent) => {
-                const hasModifier = moveEvent.altKey || moveEvent.metaKey || moveEvent.ctrlKey;
-                if (!hasModifier) {
-                    moveEvent.preventDefault();
-                    moveEvent.stopPropagation();  // Prevent event from reaching OrbitControls
-                    handleTerraforming(moveEvent);
-                }
-            };
-            
-            const handleMouseUp = () => {
-                document.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-            };
-            
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-        }
-    }, { capture: true });  // Use capture phase to handle event before OrbitControls
-
     // Set up GUI controls with fixed positioning
     console.log('Setting up GUI...');
-    const gui = new dat.GUI({ autoPlace: false });
+    gui = new dat.GUI({ autoPlace: false });
     gui.domElement.style.display = 'none';
     
     // Create a fixed container for the GUI
-    const guiContainer = document.createElement('div');
+    guiContainer = document.createElement('div');
     guiContainer.id = 'gui-container';
     guiContainer.style.cssText = `
         position: fixed !important;
@@ -1158,22 +1053,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Function to toggle debug visibility
-    function toggleDebugMode() {
-        debugVisible = !debugVisible;
-        stats.dom.style.display = debugVisible ? 'block' : 'none';
-        debugInfo.style.display = debugVisible ? 'block' : 'none';
-        updateDebugInfo();
-    }
+    // Debug mode is now handled by the DebugManager class
     
     // Function to toggle edit mode
     function toggleEditMode() {
         editMode = !editMode;
         viewManager.setEditMode(editMode);
         
+        // If enabling edit mode, ensure warp control mode is off
+        if (editMode && warpControlMode) {
+            warpControlMode = false;
+            warpGuiContainer.style.display = 'none';
+            warpGui.domElement.style.display = 'none';
+            document.body.classList.remove('warp-control-mode');
+        }
+        
         // Update debug visibility
-        axesHelper.visible = editMode;
-        gridHelper.visible = editMode;
+        if (debugManager) {
+            debugManager.setEditMode(editMode);
+        }
         
         // Update UI
         if (editMode) {
@@ -1186,36 +1084,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (bodies.length > 0) {
                 const firstBody = bodies[0];
                 solarSystemManager.setCurrentEditBody(firstBody);
-                updateGUIControls(firstBody); // Update GUI controls for the first body
-                
-                // Update GUI title with proper name format
-                let bodyName = 'Unnamed Body';
-                if (firstBody === solarSystemManager.celestialBodies.get('star')) {
-                    if (solarSystemManager.starSystem && solarSystemManager.starSystem.star_name) {
-                        bodyName = `${solarSystemManager.starSystem.star_name} (Star)`;
-                    }
-                } else {
-                    for (const [key, body] of solarSystemManager.celestialBodies.entries()) {
-                        if (body === firstBody) {
-                            if (key.startsWith('planet_')) {
-                                const planetIndex = parseInt(key.split('_')[1]);
-                                const planet = solarSystemManager.starSystem?.planets?.[planetIndex];
-                                if (planet && planet.planet_name) {
-                                    bodyName = `${planet.planet_name} (Planet)`;
-                                }
-                            } else if (key.startsWith('moon_')) {
-                                const [_, planetIndex, moonIndex] = key.split('_').map(Number);
-                                const planet = solarSystemManager.starSystem?.planets?.[planetIndex];
-                                const moon = planet?.moons?.[moonIndex];
-                                if (moon && moon.moon_name) {
-                                    bodyName = `${moon.moon_name} (Moon)`;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-                guiTitle.textContent = bodyName;
+                updateGUIControls(firstBody);
+                updateGuiTitle(firstBody);
             }
         } else {
             document.body.classList.remove('edit-mode');
@@ -1236,6 +1106,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (event.key === 'e') {
                 event.preventDefault();
                 toggleEditMode();
+            } else if (event.key === 'w') {
+                event.preventDefault();
+                toggleWarpControlMode();
             }
         } else if (editMode && event.key === 'Tab') {
             event.preventDefault();
@@ -1408,20 +1281,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Function to update debug info
     function updateDebugInfo() {
-        if (debugVisible) {
-            let html = '';
-            
-            // Add solar system info
-            const solarSystemInfo = solarSystemManager.getDebugInfo();
-            for (const [key, value] of Object.entries(solarSystemInfo)) {
-                html += `${key}: ${value}<br>`;
-            }
-            
-            // Add camera position
-            const pos = camera.position;
-            html += `<br>Camera Position: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})<br>`;
-            
-            debugInfo.innerHTML = html;
+        if (debugManager) {
+            debugManager.updateInfo();
         }
     }
     
@@ -1691,14 +1552,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             controls.update();
         }
         
-        // Update view manager
+        // Update all managers
         viewManager.update(deltaTime);
-        
-        // Update starfield
         starfieldManager.update(deltaTime);
-        
-        // Update solar system
         solarSystemManager.update(deltaTime);
+        debugManager.update();
         
         // Update wave animation if enabled
         if (oceanParams.enabled && oceanParams.wavesEnabled && planet.oceanMesh) {
@@ -1748,13 +1606,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // Update debug info if visible
-        if (debugVisible) {
+        if (debugManager.visible) {
             updateDebugInfo();
         }
         
         // Render scene
         renderer.render(scene, camera);
-        stats.update();
     }
     
     // Start animation loop
@@ -2015,5 +1872,356 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
             moonFolder.open();
         }
+    }
+
+    // Initialize warp control GUI
+    warpGui = new dat.GUI({ autoPlace: false });
+    warpGui.domElement.style.display = 'none';
+
+    // Create a fixed container for the warp GUI
+    warpGuiContainer = document.createElement('div');
+    warpGuiContainer.id = 'warp-gui-container';
+    warpGuiContainer.style.cssText = `
+        position: fixed !important;
+        top: 10px !important;
+        right: 10px !important;
+        transform: none !important;
+        pointer-events: auto;
+        display: none;
+        padding-top: 90px;
+    `;
+
+    // Add title element for warp controls
+    const warpGuiTitle = document.createElement('div');
+    warpGuiTitle.id = 'warp-gui-title';
+    warpGuiTitle.textContent = 'Warp Drive Controls';
+    warpGuiTitle.style.cssText = `
+        color: white;
+        font-family: monospace;
+        font-size: 16px;
+        text-align: center;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 5px;
+        border-radius: 5px;
+        position: absolute;
+        top: 50px;
+        left: 0;
+        right: 0;
+        z-index: 1001;
+    `;
+    warpGuiContainer.appendChild(warpGuiTitle);
+
+    // Style the warp GUI element itself
+    warpGui.domElement.style.cssText = `
+        position: relative !important;
+        transform: none !important;
+        width: 300px !important;
+    `;
+
+    // Add warp GUI to our containers
+    warpGuiContainer.appendChild(warpGui.domElement);
+    uiContainer.appendChild(warpGuiContainer);
+
+    // Create warp drive control folders
+    const warpDriveFolder = warpGui.addFolder('Warp Drive');
+    const warpEffectsFolder = warpGui.addFolder('Warp Effects');
+    const impulseFolder = warpGui.addFolder('Impulse Drive');
+    const starfieldFolder = warpGui.addFolder('Starfield');
+    const shipPerformanceFolder = warpGui.addFolder('Ship Performance');
+
+    // Add warp drive controls
+    const maxWarpController = warpDriveFolder.add(viewManager.warpDriveManager.warpDrive, 'maxWarpFactor', 1.0, 9.9)
+        .name('Max Warp Factor')
+        .onChange((value) => {
+            console.log('Max warp factor changed:', value);
+        });
+    maxWarpController.__li.setAttribute('title', 'Maximum warp speed achievable by the ship. Higher values allow faster interstellar travel.');
+
+    const energyController = warpDriveFolder.add(viewManager.warpDriveManager.warpDrive, 'energyConsumptionRate', 0.1, 2.0)
+        .name('Energy Consumption')
+        .onChange((value) => {
+            console.log('Energy consumption rate changed:', value);
+        });
+    energyController.__li.setAttribute('title', 'Rate at which the warp drive consumes ship energy. Higher values drain energy faster but may improve performance.');
+
+    const cooldownController = warpDriveFolder.add(viewManager.warpDriveManager.warpDrive, 'cooldownTime', 5, 60)
+        .name('Cooldown Time (s)')
+        .onChange((value) => {
+            console.log('Warp drive cooldown time changed:', value);
+        });
+    cooldownController.__li.setAttribute('title', 'Time in seconds required between warp jumps to allow the drive to cool down and recharge.');
+
+    // Add warp effects controls
+    const warpEffects = viewManager.warpDriveManager.warpEffects;
+    const warpEffectsParams = {
+        warpDuration: warpEffects.warpDuration,
+        arrivalTime: warpEffects.arrivalTime,
+        streakCount: warpEffects.streaks ? warpEffects.streaks.length : 2000,
+        ringCount: warpEffects.rings ? warpEffects.rings.length : 40,
+        effectColor: '#aaffff',
+        warpSoundVolume: 1.0,
+        redAlertVolume: 1.0
+    };
+
+    const durationController = warpEffectsFolder.add(warpEffectsParams, 'warpDuration', 8000, 20000)
+        .name('Effect Duration (ms)')
+        .onChange((value) => {
+            warpEffects.warpDuration = value;
+            console.log('Warp effect duration changed:', value);
+        });
+    durationController.__li.setAttribute('title', 'Duration of the warp effect animation in milliseconds. Longer durations create more dramatic warp sequences.');
+
+    const arrivalController = warpEffectsFolder.add(warpEffectsParams, 'arrivalTime', 4000, 15000)
+        .name('Arrival Time (ms)')
+        .onChange((value) => {
+            warpEffects.arrivalTime = value;
+            console.log('Warp arrival time changed:', value);
+        });
+    arrivalController.__li.setAttribute('title', 'Time until arrival at destination during warp. Affects the timing of the warp exit sequence.');
+
+    const streakController = warpEffectsFolder.add(warpEffectsParams, 'streakCount', 500, 5000)
+        .name('Streak Density')
+        .onChange((value) => {
+            // Recreate streaks with new count
+            if (warpEffects.container) {
+                // Remove old streaks
+                warpEffects.streaks.forEach(streak => {
+                    warpEffects.container.remove(streak);
+                    streak.geometry.dispose();
+                    streak.material.dispose();
+                });
+                
+                // Create new streaks
+                warpEffects.streaks = [];
+                for (let i = 0; i < value; i++) {
+                    const streak = warpEffects.createStreak();
+                    warpEffects.streaks.push(streak);
+                    warpEffects.container.add(streak);
+                }
+            }
+            console.log('Warp streak count changed:', value);
+        });
+    streakController.__li.setAttribute('title', 'Number of light streaks during warp. Higher values create a denser, more intense warp effect.');
+
+    const ringController = warpEffectsFolder.add(warpEffectsParams, 'ringCount', 10, 100)
+        .name('Ring Count')
+        .onChange((value) => {
+            // Recreate rings with new count
+            if (warpEffects.container) {
+                // Remove old rings
+                warpEffects.rings.forEach(ring => {
+                    warpEffects.container.remove(ring);
+                    ring.geometry.dispose();
+                    ring.material.dispose();
+                });
+                
+                // Create new rings
+                warpEffects.rings = [];
+                const ringSpacing = 50;
+                for (let i = 0; i < value; i++) {
+                    const geometry = new THREE.RingGeometry(30, 31, 64);
+                    const material = new THREE.MeshBasicMaterial({
+                        color: new THREE.Color(warpEffectsParams.effectColor),
+                        transparent: true,
+                        opacity: 0,
+                        side: THREE.DoubleSide,
+                        blending: THREE.AdditiveBlending
+                    });
+                    const ring = new THREE.Mesh(geometry, material);
+                    ring.position.z = -i * ringSpacing;
+                    warpEffects.rings.push(ring);
+                    warpEffects.container.add(ring);
+                }
+            }
+            console.log('Warp ring count changed:', value);
+        });
+    ringController.__li.setAttribute('title', 'Number of warp rings displayed during travel. More rings create a more pronounced tunnel effect.');
+
+    const colorController = warpEffectsFolder.addColor(warpEffectsParams, 'effectColor')
+        .name('Effect Color')
+        .onChange((value) => {
+            const color = new THREE.Color(value);
+            // Update streak colors
+            warpEffects.streaks.forEach(streak => {
+                streak.material.color = color;
+            });
+            // Update ring colors
+            warpEffects.rings.forEach(ring => {
+                ring.material.color = color;
+            });
+            console.log('Warp effect color changed:', value);
+        });
+    colorController.__li.setAttribute('title', 'Color of the warp effect visuals. Customize the appearance of streaks and rings during warp travel.');
+
+    const warpSoundController = warpEffectsFolder.add(warpEffectsParams, 'warpSoundVolume', 0, 1)
+        .name('Warp Sound Volume')
+        .onChange((value) => {
+            if (warpEffects.warpSound) {
+                warpEffects.warpSound.setVolume(value);
+            }
+            console.log('Warp sound volume changed:', value);
+        });
+    warpSoundController.__li.setAttribute('title', 'Volume of the warp drive sound effects. Adjust for the desired audio intensity during warp.');
+
+    const alertSoundController = warpEffectsFolder.add(warpEffectsParams, 'redAlertVolume', 0, 1)
+        .name('Red Alert Volume')
+        .onChange((value) => {
+            if (warpEffects.warpRedAlertSound) {
+                warpEffects.warpRedAlertSound.setVolume(value);
+            }
+            console.log('Red alert volume changed:', value);
+        });
+    alertSoundController.__li.setAttribute('title', 'Volume of the red alert sound during emergency warp procedures.');
+
+    // Add ship performance controls
+    const shipPerformance = {
+        acceleration: starfieldManager.acceleration,
+        deceleration: starfieldManager.deceleration,
+        rotationSpeed: starfieldManager.rotationSpeed,
+        mouseSensitivity: starfieldManager.mouseSensitivity
+    };
+
+    const accelController = shipPerformanceFolder.add(shipPerformance, 'acceleration', 0.01, 0.1)
+        .name('Acceleration')
+        .onChange((value) => {
+            starfieldManager.acceleration = value;
+            console.log('Ship acceleration changed:', value);
+        });
+    accelController.__li.setAttribute('title', 'Rate at which the ship increases speed. Higher values mean faster acceleration.');
+
+    const decelController = shipPerformanceFolder.add(shipPerformance, 'deceleration', 0.01, 0.1)
+        .name('Deceleration')
+        .onChange((value) => {
+            starfieldManager.deceleration = value;
+            console.log('Ship deceleration changed:', value);
+        });
+    decelController.__li.setAttribute('title', 'Rate at which the ship decreases speed. Higher values mean faster braking.');
+
+    const turnRateController = shipPerformanceFolder.add(shipPerformance, 'rotationSpeed', 0.005, 0.05)
+        .name('Turn Rate')
+        .onChange((value) => {
+            starfieldManager.rotationSpeed = value;
+            console.log('Ship rotation speed changed:', value);
+        });
+    turnRateController.__li.setAttribute('title', 'Speed at which the ship rotates when turning. Higher values increase maneuverability.');
+
+    // Add starfield density control
+    const starfieldParams = {
+        starCount: starfieldManager.starCount
+    };
+
+    const densityController = starfieldFolder.add(starfieldParams, 'starCount', 5000, 500000)
+        .name('Star Density')
+        .onChange((value) => {
+            starfieldManager.starCount = value;
+            starfieldManager.recreateStarfield();
+            console.log('Starfield density changed:', value);
+        });
+    densityController.__li.setAttribute('title', 'Number of visible stars in space. Higher values create a denser star field but may impact performance.');
+
+    // Add impulse drive controls
+    const impulseSettings = {
+        velocityKeys: {
+            0: 0,
+            1: 0.25,
+            2: 0.50,
+            3: 1,
+            4: 3,
+            5: 6,
+            6: 12,
+            7: 25,
+            8: 37,
+            9: 43
+        }
+    };
+
+    // Add tooltips for each impulse velocity control
+    for (let i = 0; i <= 9; i++) {
+        const velocityController = impulseFolder.add(impulseSettings.velocityKeys, i.toString(), 0, 50)
+            .name(`Impulse ${i} Velocity`)
+            .onChange((value) => {
+                console.log(`Impulse velocity for key ${i} changed:`, value);
+            });
+        velocityController.__li.setAttribute('title', `Speed setting for Impulse ${i}. Press ${i} key to engage this velocity (in metrons per second).`);
+    }
+
+    // Open all folders by default
+    warpDriveFolder.open();
+    warpEffectsFolder.open();
+    impulseFolder.open();
+    starfieldFolder.open();
+    shipPerformanceFolder.open();
+
+    // Function to toggle warp control mode
+    function toggleWarpControlMode() {
+        if (!warpGui) return; // Guard against calling before initialization
+        
+        warpControlMode = !warpControlMode;
+        
+        // If enabling warp control mode, ensure edit mode is off
+        if (warpControlMode && editMode) {
+            editMode = false;
+            viewManager.setEditMode(false);
+            guiContainer.style.display = 'none';
+            gui.domElement.style.display = 'none';
+            document.body.classList.remove('edit-mode');
+            if (debugManager) {
+                debugManager.setEditMode(false);
+            }
+        }
+        
+        // Update UI
+        if (warpControlMode) {
+            document.body.classList.add('warp-control-mode');
+            warpGuiContainer.style.display = 'block';
+            warpGui.domElement.style.display = 'block';
+        } else {
+            document.body.classList.remove('warp-control-mode');
+            warpGuiContainer.style.display = 'none';
+            warpGui.domElement.style.display = 'none';
+        }
+    }
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', (event) => {
+        if (event.ctrlKey) {
+            if (event.key === 'd') {
+                event.preventDefault();
+                toggleDebugMode();
+            } else if (event.key === 'e') {
+                event.preventDefault();
+                toggleEditMode();
+            } else if (event.key === 'w') {
+                event.preventDefault();
+                toggleWarpControlMode();
+            }
+        } else if (editMode && event.key === 'Tab') {
+            event.preventDefault();
+            event.stopPropagation();
+            cycleCelestialBody();
+            return false;
+        }
+    }, true);
+
+    // Debug logging function for mouse events
+    function logMouseEvent(type, event) {
+        if (!debugManager || !debugManager.visible) return;
+        console.debug(`Mouse ${type}:`, {
+            button: event.button,
+            buttons: event.buttons,
+            modifiers: {
+                ctrl: event.ctrlKey,
+                alt: event.altKey,
+                meta: event.metaKey,
+                shift: event.shiftKey
+            },
+            editMode: editMode,
+            controls: {
+                enabled: controls.enabled,
+                enableRotate: controls.enableRotate,
+                enablePan: controls.enablePan,
+                enableZoom: controls.enableZoom
+            }
+        });
     }
 }); 
