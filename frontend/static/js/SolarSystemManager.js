@@ -164,7 +164,7 @@ export class SolarSystemManager {
             const starMaterial = new THREE.MeshPhongMaterial({
                 color: starColor,
                 emissive: starColor,
-                emissiveIntensity: 1,
+                emissiveIntensity: 2,
                 shininess: 100
             });
             const star = new THREE.Mesh(starGeometry, starMaterial);
@@ -172,11 +172,22 @@ export class SolarSystemManager {
             this.celestialBodies.set('star', star);
             console.log('Star created and added to scene');
 
-            // Add star light
-            const starLight = new THREE.PointLight(starColor, 1, 100);
+            // Add star light with increased intensity and range
+            const starLight = new THREE.PointLight(starColor, 2, 1000);
             starLight.position.copy(star.position);
             this.scene.add(starLight);
             console.log('Star light added');
+
+            // Add ambient light for base illumination
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+            this.scene.add(ambientLight);
+            console.log('Ambient light added');
+
+            // Add hemisphere light to simulate scattered light
+            const hemisphereLight = new THREE.HemisphereLight(starColor, 0x404040, 0.8);
+            hemisphereLight.position.copy(star.position);
+            this.scene.add(hemisphereLight);
+            console.log('Hemisphere light added');
 
             // Create planets
             if (!this.starSystem.planets || !Array.isArray(this.starSystem.planets)) {
