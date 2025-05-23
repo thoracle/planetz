@@ -20,24 +20,29 @@ class ChunkManager {
         this.lastMemoryCheck = 0;
         this.memoryCheckInterval = 5000; // Check every 5 seconds
 
-        // Mesh generation throttling
+        // Mesh generation throttling - adjusted values
         this.concurrentGenerations = 0;
-        this.maxConcurrentGenerations = 4;
+        this.maxConcurrentGenerations = 2; // Reduced from 4 to 2
         this.generationQueue = [];
         this.lastGenerationError = 0;
-        this.baseErrorCooldown = 1000; // Base cooldown of 1 second
-        this.maxErrorCooldown = 30000; // Maximum cooldown of 30 seconds
+        this.baseErrorCooldown = 2000; // Increased from 1000 to 2000
+        this.maxErrorCooldown = 60000; // Increased from 30000 to 60000
         this.currentErrorCooldown = this.baseErrorCooldown;
-        this.errorTimeWindow = 60000; // 1 minute window for error rate calculation
-        this.errorHistory = []; // Track timing of errors
-        this.maxErrorRate = 10; // Maximum errors per minute before circuit breaker trips
+        this.errorTimeWindow = 120000; // Increased from 60000 to 120000
+        this.errorHistory = [];
+        this.maxErrorRate = 5; // Reduced from 10 to 5
         this.circuitBreakerTripped = false;
         this.circuitBreakerResetTimeout = null;
         
         // Enhanced queue management
-        this.generationQueue = []; // Now will be sorted by priority
+        this.generationQueue = [];
         this.queueProcessingInterval = null;
         this.lastSuccessfulGeneration = Date.now();
+        
+        // Adaptive timeout handling
+        this.baseTimeout = 30000; // Base timeout of 30 seconds
+        this.maxTimeout = 60000; // Maximum timeout of 60 seconds
+        this.timeoutMultiplier = 1.0; // Dynamically adjusted based on success/failure
     }
 
     setScene(scene) {

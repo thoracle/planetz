@@ -7,9 +7,19 @@ export class LongRangeScanner {
         this._isVisible = false;
         this.currentZoomLevel = 1;
         this.maxZoomLevel = 3;
-        this.zoomFactor = 1.5;
+        this.zoomLevels = {
+            overview: 1,
+            medium: 2,
+            detail: 3
+        };
         this.currentCenter = { x: 0, y: 0 };
-        this.lastClickedBody = null; // Track last clicked celestial body
+        this.lastClickedBody = null;
+        this.defaultViewBox = {
+            width: 1000,
+            height: 1000,
+            x: -500,
+            y: -500
+        };
         
         // Create the modal container
         this.container = document.createElement('div');
@@ -69,44 +79,6 @@ export class LongRangeScanner {
 
         // Add to document
         document.body.appendChild(this.container);
-
-        // Initialize drag scrolling
-        this.initDragScroll();
-    }
-
-    initDragScroll() {
-        let isDragging = false;
-        let startX, startY, scrollLeft, scrollTop;
-
-        this.mapContainer.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            this.mapContainer.style.cursor = 'grabbing';
-            startX = e.pageX - this.mapContainer.offsetLeft;
-            startY = e.pageY - this.mapContainer.offsetTop;
-            scrollLeft = this.mapContainer.scrollLeft;
-            scrollTop = this.mapContainer.scrollTop;
-        });
-
-        this.mapContainer.addEventListener('mouseleave', () => {
-            isDragging = false;
-            this.mapContainer.style.cursor = 'grab';
-        });
-
-        this.mapContainer.addEventListener('mouseup', () => {
-            isDragging = false;
-            this.mapContainer.style.cursor = 'grab';
-        });
-
-        this.mapContainer.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            e.preventDefault();
-            const x = e.pageX - this.mapContainer.offsetLeft;
-            const y = e.pageY - this.mapContainer.offsetTop;
-            const moveX = (x - startX) * 2;  // Multiply by 2 for faster scrolling
-            const moveY = (y - startY) * 2;
-            this.mapContainer.scrollLeft = scrollLeft - moveX;
-            this.mapContainer.scrollTop = scrollTop - moveY;
-        });
     }
 
     show() {
@@ -116,6 +88,12 @@ export class LongRangeScanner {
             // Reset zoom when showing the scanner
             this.currentZoomLevel = 1;
             this.currentCenter = { x: 0, y: 0 };
+            // Update targeting-active class based on targeting computer state
+            if (this.viewManager.starfieldManager?.targetComputerEnabled) {
+                this.container.classList.add('targeting-active');
+            } else {
+                this.container.classList.remove('targeting-active');
+            }
             this.updateScannerMap();
         }
     }
@@ -124,6 +102,7 @@ export class LongRangeScanner {
         if (this._isVisible) {
             this._isVisible = false;
             this.container.classList.remove('visible');
+            this.container.classList.remove('targeting-active');
             if (shouldRestoreView && this.viewManager) {
                 this.viewManager.restorePreviousView();
             }
@@ -148,76 +127,72 @@ export class LongRangeScanner {
         // Create the map SVG
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'scanner-map');
-        svg.setAttribute('viewBox', `${-500/this.currentZoomLevel + this.currentCenter.x} ${-500/this.currentZoomLevel + this.currentCenter.y} ${1000/this.currentZoomLevel} ${1000/this.currentZoomLevel}`);
+        svg.style.cursor = 'default'; // Set default cursor instead of grab
+        
+        // Ensure valid zoom level
+        if (isNaN(this.currentZoomLevel) || this.currentZoomLevel <= 0) {
+            this.currentZoomLevel = 1;
+        }
+
+        // Ensure valid center coordinates
+        if (!this.currentCenter || isNaN(this.currentCenter.x) || isNaN(this.currentCenter.y)) {
+            this.currentCenter = { x: 0, y: 0 };
+        }
+
+        // Calculate viewBox dimensions
+        const viewBoxWidth = this.defaultViewBox.width / this.currentZoomLevel;
+        const viewBoxHeight = this.defaultViewBox.height / this.currentZoomLevel;
+        
+        // Calculate viewBox position ensuring the center point
+        const viewBoxX = this.currentCenter.x - (viewBoxWidth / 2);
+        const viewBoxY = this.currentCenter.y - (viewBoxHeight / 2);
+
+        // Final validation of viewBox values
+        const safeViewBox = {
+            width: isNaN(viewBoxWidth) ? this.defaultViewBox.width : viewBoxWidth,
+            height: isNaN(viewBoxHeight) ? this.defaultViewBox.height : viewBoxHeight,
+            x: isNaN(viewBoxX) ? this.defaultViewBox.x : viewBoxX,
+            y: isNaN(viewBoxY) ? this.defaultViewBox.y : viewBoxY
+        };
+
+        svg.setAttribute('viewBox', `${safeViewBox.x} ${safeViewBox.y} ${safeViewBox.width} ${safeViewBox.height}`);
         this.mapContainer.appendChild(svg);
 
-        // Add double-click handler for zoom
-        svg.addEventListener('dblclick', (e) => {
-            e.preventDefault(); // Prevent text selection on double click
-            const rect = svg.getBoundingClientRect();
-            const x = e.clientX;
-            const y = e.clientY;
-            
-            // Find the celestial body under the cursor
-            const element = document.elementFromPoint(x, y);
-            
-            if (element && (element.classList.contains('scanner-star') || 
-                          element.classList.contains('scanner-planet') || 
-                          element.classList.contains('scanner-moon'))) {
-                // Zoom in on the clicked object if not at max zoom
-                if (this.currentZoomLevel < this.maxZoomLevel) {
-                    this.currentZoomLevel *= this.zoomFactor;
-                    
-                    // Get the clicked object's center in SVG coordinates
-                    const cx = parseFloat(element.getAttribute('cx'));
-                    const cy = parseFloat(element.getAttribute('cy'));
-                    
-                    // Store the clicked body for reference when zooming out
-                    this.lastClickedBody = {
-                        type: element.classList.contains('scanner-star') ? 'star' :
-                              element.classList.contains('scanner-planet') ? 'planet' : 'moon',
-                        x: cx,
-                        y: cy,
-                        parentX: element.classList.contains('scanner-moon') ? 
-                                parseFloat(element.getAttribute('data-parent-x')) : null,
-                        parentY: element.classList.contains('scanner-moon') ? 
-                                parseFloat(element.getAttribute('data-parent-y')) : null
-                    };
-                    
-                    // Update the center point for the zoom
-                    this.currentCenter.x = cx;
-                    this.currentCenter.y = cy;
-                    
-                    this.updateScannerMap();
-                }
-            } else {
-                // Zoom out if clicked empty space and not at minimum zoom
+        // Add click handler for empty space zoom out
+        svg.addEventListener('click', (e) => {
+            const clickedElement = document.elementFromPoint(e.clientX, e.clientY);
+            // If clicked element is the SVG itself or a non-celestial body element, zoom out one level
+            if (clickedElement === svg || 
+                (clickedElement && !clickedElement.classList.contains('scanner-star') && 
+                 !clickedElement.classList.contains('scanner-planet') && 
+                 !clickedElement.classList.contains('scanner-moon') &&
+                 !clickedElement.classList.contains('scanner-moon-hitbox'))) {
+                
                 if (this.currentZoomLevel > 1) {
-                    const previousZoom = this.currentZoomLevel;
-                    this.currentZoomLevel /= this.zoomFactor;
+                    // Step down zoom level by 1
+                    this.currentZoomLevel--;
                     
-                    // If zooming all the way out, reset center
-                    if (this.currentZoomLevel <= 1) {
-                        this.currentZoomLevel = 1;
+                    // If we're zooming back to overview, reset center
+                    if (this.currentZoomLevel === 1) {
                         this.currentCenter = { x: 0, y: 0 };
                         this.lastClickedBody = null;
-                    } else if (this.lastClickedBody) {
-                        // If zooming out from a moon, center on its parent planet
-                        if (this.lastClickedBody.type === 'moon' && previousZoom > 2) {
-                            this.currentCenter = {
-                                x: this.lastClickedBody.parentX,
-                                y: this.lastClickedBody.parentY
-                            };
-                        }
-                        // If zooming out from a planet, center on the star
-                        else if (this.lastClickedBody.type === 'planet' && this.currentZoomLevel === 1) {
-                            this.currentCenter = { x: 0, y: 0 };
-                            this.lastClickedBody = null;
-                        }
                     }
                     
                     this.updateScannerMap();
                 }
+            }
+        });
+
+        // Add double-click handler for zoom out
+        svg.addEventListener('dblclick', (e) => {
+            e.preventDefault(); // Prevent text selection on double click
+            
+            // If we're zoomed in, zoom out to overview
+            if (this.currentZoomLevel > 1) {
+                this.currentZoomLevel = 1;
+                this.currentCenter = { x: 0, y: 0 };
+                this.lastClickedBody = null;
+                this.updateScannerMap();
             }
         });
 
@@ -256,6 +231,8 @@ export class LongRangeScanner {
         star.setAttribute('r', String(starSystem.star_size * 10));
         star.setAttribute('class', 'scanner-star');
         star.setAttribute('data-name', starSystem.star_name);
+        star.setAttribute('data-original-r', String(starSystem.star_size * 10));
+        this.addHoverEffects(star);
         svg.appendChild(star);
 
         // Add planets and their orbits
@@ -288,9 +265,12 @@ export class LongRangeScanner {
                 const planetElement = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 planetElement.setAttribute('cx', String(x));
                 planetElement.setAttribute('cy', String(y));
-                planetElement.setAttribute('r', String(planet.planet_size * 5));
+                const planetRadius = planet.planet_size * 5;
+                planetElement.setAttribute('r', String(planetRadius));
+                planetElement.setAttribute('data-original-r', String(planetRadius));
                 planetElement.setAttribute('class', `scanner-planet scanner-planet-${planet.diplomacy?.toLowerCase() || 'neutral'}`);
                 planetElement.setAttribute('data-name', planet.planet_name);
+                this.addHoverEffects(planetElement);
                 svg.appendChild(planetElement);
 
                 // Add moons if any
@@ -337,16 +317,27 @@ export class LongRangeScanner {
                         moonHitbox.setAttribute('data-parent-y', String(y));
                         svg.appendChild(moonHitbox);
 
-                        // Draw moon (visual representation)
+                        // Draw moon
                         const moonElement = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                         moonElement.setAttribute('cx', String(moonX));
                         moonElement.setAttribute('cy', String(moonY));
-                        moonElement.setAttribute('r', String(Math.max(moon.moon_size * 2 || 2, 3))); // Minimum visual size of 3
+                        let moonSize = moon.moon_size * 2 || 2;
+                        // Increase moon size at higher zoom levels
+                        if (this.currentZoomLevel > 2) {
+                            moonSize *= 1.5;
+                        }
+                        if (this.currentZoomLevel > 3) {
+                            moonSize *= 1.5;
+                        }
+                        moonSize = Math.max(moonSize, 3);
+                        moonElement.setAttribute('r', String(moonSize));
+                        moonElement.setAttribute('data-original-r', String(moonSize));
                         moonElement.setAttribute('class', `scanner-moon scanner-moon-${moon.diplomacy?.toLowerCase() || 'neutral'}`);
                         moonElement.setAttribute('data-name', moon.moon_name);
                         moonElement.setAttribute('data-parent', planet.planet_name);
                         moonElement.setAttribute('data-parent-x', String(x));
                         moonElement.setAttribute('data-parent-y', String(y));
+                        this.addHoverEffects(moonElement);
                         svg.appendChild(moonElement);
 
                         // Add event listeners to both hitbox and moon
@@ -491,13 +482,57 @@ export class LongRangeScanner {
         }
         if (!bodyInfo) return;
 
+        // Get the clicked element's position for zooming
+        const svg = this.mapContainer.querySelector('svg');
+        const clickedElement = svg.querySelector(`[data-name="${bodyName}"]`);
+        if (clickedElement) {
+            const cx = parseFloat(clickedElement.getAttribute('cx')) || 0;
+            const cy = parseFloat(clickedElement.getAttribute('cy')) || 0;
+            
+            // Store the clicked body info
+            this.lastClickedBody = {
+                type: clickedElement.classList.contains('scanner-star') ? 'star' :
+                      clickedElement.classList.contains('scanner-planet') ? 'planet' : 'moon',
+                x: cx,
+                y: cy,
+                parentX: parseFloat(clickedElement.getAttribute('data-parent-x')) || null,
+                parentY: parseFloat(clickedElement.getAttribute('data-parent-y')) || null
+            };
+
+            // Simple progressive zoom: go to next zoom level
+            if (this.currentZoomLevel < this.maxZoomLevel) {
+                this.currentZoomLevel++;
+            }
+
+            // Update center with validation
+            this.currentCenter = { 
+                x: isNaN(cx) ? 0 : cx,
+                y: isNaN(cy) ? 0 : cy
+            };
+            
+            this.updateScannerMap();
+        }
+
+        // If targeting computer is enabled, set this body as the target
+        const starfieldManager = this.viewManager.starfieldManager;
+        if (starfieldManager && starfieldManager.targetComputerEnabled) {
+            const targetIndex = starfieldManager.targetObjects.findIndex(obj => obj.name === bodyName);
+            if (targetIndex !== -1) {
+                starfieldManager.targetIndex = targetIndex - 1; // Subtract 1 because cycleTarget will add 1
+                starfieldManager.cycleTarget();
+            }
+        }
+
         // Build the details HTML
         let detailsHTML = `
             <div class="scanner-details-header">
                 <h2>${bodyInfo.name}</h2>
-                <span class="body-type">${bodyInfo.type}</span>
             </div>
-            <div class="scanner-details-content">`;
+            <div class="scanner-details-content">
+                <div class="detail-row">
+                    <span class="label">Type:</span>
+                    <span class="value">${bodyInfo.type}</span>
+                </div>`;
 
         // Add parent planet info for moons
         if (parentPlanetInfo) {
@@ -544,5 +579,22 @@ export class LongRangeScanner {
         if (this.tooltip && this.tooltip.parentNode) {
             this.tooltip.parentNode.removeChild(this.tooltip);
         }
+    }
+
+    addHoverEffects(element) {
+        const growFactor = 1.3; // How much the object grows on hover
+        const transitionDuration = 150; // Animation duration in milliseconds
+
+        element.addEventListener('mouseenter', () => {
+            const originalR = parseFloat(element.getAttribute('data-original-r'));
+            element.style.transition = `r ${transitionDuration}ms ease-out`;
+            element.setAttribute('r', String(originalR * growFactor));
+        });
+
+        element.addEventListener('mouseleave', () => {
+            const originalR = element.getAttribute('data-original-r');
+            element.style.transition = `r ${transitionDuration}ms ease-out`;
+            element.setAttribute('r', originalR);
+        });
     }
 } 

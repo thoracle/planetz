@@ -41,6 +41,9 @@ export class Chunk {
         this.consecutiveErrors = 0;
         this.lastSuccessfulGeneration = 0;
         this.nextRetryTime = 0;
+        this.maxTimeout = 60000; // Maximum timeout in milliseconds
+        this.baseTimeout = 30000; // Base timeout in milliseconds
+        this.timeoutMultiplier = 1.0; // Multiplier for adaptive timeout
     }
 
     getBoundingBox() {
@@ -129,16 +132,23 @@ export class Chunk {
             // Create a new worker
             this.worker = new Worker('/js/workers/meshGenerator.worker.js');
             
-            // Promise for mesh generation with timeout
+            // Calculate adaptive timeout based on chunk complexity
+            const chunkComplexity = this.calculateChunkComplexity();
+            const timeout = Math.min(
+                this.maxTimeout || 60000,
+                (this.baseTimeout || 30000) * Math.max(1, chunkComplexity * this.timeoutMultiplier)
+            );
+
+            // Promise for mesh generation with adaptive timeout
             meshPromise = new Promise((resolve, reject) => {
-                // Set up timeout
+                // Set up timeout with adaptive duration
                 timeoutId = setTimeout(() => {
                     if (this.worker) {
                         this.worker.terminate();
                         this.worker = null;
                     }
-                    reject(new Error('Mesh generation timed out after 30 seconds'));
-                }, 30000);
+                    reject(new Error(`Mesh generation timed out after ${timeout/1000} seconds`));
+                }, timeout);
 
                 const messageHandler = (e) => {
                     if (generationId !== this.currentGenerationId) {
@@ -164,6 +174,18 @@ export class Chunk {
                             if (e.data.data) {
                                 this.meshGenerationProgress = e.data.data.progress || 0;
                                 this.verticesFound = e.data.data.verticesFound || 0;
+                                
+                                // Extend timeout if making good progress
+                                if (this.meshGenerationProgress > 0.5 && timeoutId) {
+                                    clearTimeout(timeoutId);
+                                    timeoutId = setTimeout(() => {
+                                        if (this.worker) {
+                                            this.worker.terminate();
+                                            this.worker = null;
+                                        }
+                                        reject(new Error(`Mesh generation timed out after extended period`));
+                                    }, timeout * 0.5); // Add 50% more time if we're over halfway
+                                }
                             }
                             return;
 
@@ -191,7 +213,7 @@ export class Chunk {
                 this.worker.onmessage = messageHandler;
                 this.worker.onerror = errorHandler;
 
-                // Send initial data to worker
+                // Send initial data to worker with complexity hint
                 try {
                     const center = this.getCenter();
                     const distance = Math.sqrt(
@@ -223,7 +245,8 @@ export class Chunk {
                             densityField: this.densityField,
                             size: this.size,
                             distance: distance,
-                            viewAngle: viewAngle
+                            viewAngle: viewAngle,
+                            complexity: chunkComplexity
                         }
                     }, [this.densityField.buffer]);
 
@@ -326,6 +349,43 @@ export class Chunk {
                 this.currentGenerationId = null;
             }
         }
+    }
+
+    // Helper method to calculate chunk complexity
+    calculateChunkComplexity() {
+        if (!this.densityField) return 1.0;
+        
+        let surfaceCount = 0;
+        let totalSamples = 0;
+        const sampleStep = 2; // Sample every other point to save time
+        
+        for (let x = 0; x < this.size; x += sampleStep) {
+            for (let y = 0; y < this.size; y += sampleStep) {
+                for (let z = 0; z < this.size; z += sampleStep) {
+                    const idx = x * this.size * this.size + y * this.size + z;
+                    const density = this.densityField[idx];
+                    
+                    // Check neighbors for sign changes (surface indication)
+                    if (x > 0) {
+                        const prevX = this.densityField[(x-sampleStep) * this.size * this.size + y * this.size + z];
+                        if (Math.sign(density) !== Math.sign(prevX)) surfaceCount++;
+                    }
+                    if (y > 0) {
+                        const prevY = this.densityField[x * this.size * this.size + (y-sampleStep) * this.size + z];
+                        if (Math.sign(density) !== Math.sign(prevY)) surfaceCount++;
+                    }
+                    if (z > 0) {
+                        const prevZ = this.densityField[x * this.size * this.size + y * this.size + (z-sampleStep)];
+                        if (Math.sign(density) !== Math.sign(prevZ)) surfaceCount++;
+                    }
+                    
+                    totalSamples++;
+                }
+            }
+        }
+        
+        // Return complexity factor (1.0 - 2.0)
+        return 1.0 + Math.min(1.0, surfaceCount / (totalSamples * 0.5));
     }
 
     // Update chunk visibility based on camera position with LOD consideration

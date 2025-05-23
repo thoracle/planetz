@@ -711,13 +711,19 @@ body.warp-control-mode .crosshair {
 .scanner-planet,
 .scanner-moon {
     cursor: pointer;
-    transition: filter 0.2s ease;
+    transition: all 0.3s ease;
 }
 
 .scanner-star:hover,
 .scanner-planet:hover,
 .scanner-moon:hover {
     filter: brightness(1.5) drop-shadow(0 0 5px currentColor);
+}
+
+/* Remove target indicator styles */
+.detail-row.target-selection,
+.target-button {
+    display: none;
 }
 
 .scanner-map {
@@ -1012,4 +1018,39 @@ body.warp-control-mode .crosshair {
     border-color: #00ff41;
     font-weight: bold;
     box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+}
+
+.detail-row.target-selection {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(0, 255, 65, 0.2);
+    justify-content: center;
+}
+
+.target-button {
+    background: rgba(0, 0, 0, 0.5);
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    padding: 8px 20px;
+    font-family: "Courier New", monospace;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    text-align: center;
+}
+
+.target-button:hover {
+    background: rgba(0, 255, 65, 0.2);
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+}
+
+.target-button.targeted {
+    background: #00ff41;
+    color: #000000;
+    font-weight: bold;
+}
+
+.target-button.targeted:hover {
+    background: #00cc35;
 } 
