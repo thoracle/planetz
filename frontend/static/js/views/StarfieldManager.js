@@ -48,6 +48,14 @@ export class StarfieldManager {
         // Create target computer HUD
         this.createTargetComputerHUD();
         
+        // Add intel state
+        this.intelVisible = false;
+        this.intelAvailable = false;
+        this.intelRange = 10; // Changed from 5km to 10km
+        
+        // Create intel HUD
+        this.createIntelHUD();
+        
         // Bind keyboard events
         this.bindKeyEvents();
         // Bind mouse events
@@ -416,6 +424,7 @@ export class StarfieldManager {
         const corners = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
         corners.forEach(corner => {
             const el = document.createElement('div');
+            el.classList.add('reticle-corner');  // Add class for easier updating
             el.style.cssText = `
                 position: absolute;
                 width: 10px;
@@ -487,7 +496,73 @@ export class StarfieldManager {
         
         this.targetHUD.appendChild(this.wireframeContainer);
         this.targetHUD.appendChild(this.targetInfoDisplay);
+
+        // Create intel icon
+        this.intelIcon = document.createElement('div');
+        this.intelIcon.style.cssText = `
+            position: fixed;
+            bottom: 230px;
+            left: 20px;
+            width: 30px;
+            height: 30px;
+            border: 2px solid #00ff41;
+            background: rgba(0, 0, 0, 0.7);
+            color: #00ff41;
+            display: none;
+            pointer-events: none;
+            z-index: 1001;
+            text-align: center;
+            line-height: 30px;
+            font-family: "Courier New", monospace;
+            font-size: 16px;
+            text-shadow: 0 0 5px #00ff41;
+            box-shadow: 0 0 5px #00ff41;
+            animation: pulse 2s infinite;
+        `;
+
+        // Add pulse animation style
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% { box-shadow: 0 0 5px #00ff41; }
+                50% { box-shadow: 0 0 15px #00ff41; }
+                100% { box-shadow: 0 0 5px #00ff41; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Add icon content (using a data icon)
+        this.intelIcon.innerHTML = `
+            <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; margin-top: 5px;">
+                <path fill="#00ff41" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+            </svg>
+        `;
+        
+        document.body.appendChild(this.intelIcon);
+
         document.body.appendChild(this.targetHUD);
+    }
+
+    createIntelHUD() {
+        // Create intel HUD container
+        this.intelHUD = document.createElement('div');
+        this.intelHUD.style.cssText = `
+            position: fixed;
+            bottom: 240px;
+            left: 20px;
+            width: 200px;
+            border: 2px solid #00ff41;
+            background: rgba(0, 0, 0, 0.7);
+            color: #00ff41;
+            font-family: "Courier New", monospace;
+            font-size: 14px;
+            padding: 10px;
+            display: none;
+            pointer-events: none;
+            z-index: 1000;
+        `;
+        
+        document.body.appendChild(this.intelHUD);
     }
 
     bindKeyEvents() {
@@ -555,6 +630,14 @@ export class StarfieldManager {
             } else if (commandKey === 't') {
                 this.toggleTargetComputer();
             }
+
+            // Add Intel key binding
+            if (event.key.toLowerCase() === 'i') {
+                if (this.intelAvailable && this.targetComputerEnabled && this.currentTarget) {
+                    this.toggleIntel();
+                    this.playCommandSound();
+                }
+            }
         });
 
         document.addEventListener('keyup', (event) => {
@@ -567,24 +650,17 @@ export class StarfieldManager {
     toggleTargetComputer() {
         console.log('Toggling target computer. Current state:', this.targetComputerEnabled);
         this.targetComputerEnabled = !this.targetComputerEnabled;
-        this.targetHUD.style.display = this.targetComputerEnabled ? 'block' : 'none';
         
         if (!this.targetComputerEnabled) {
-            if (this.targetReticle) {
-                this.targetReticle.style.display = 'none';
-            }
-        }
-        
-        if (this.targetComputerEnabled) {
-            console.log('Target computer enabled, updating target list...');
-            // Initialize or update target list when enabling
-            this.updateTargetList();
-            // Always start with the closest target (index 0) when enabling
-            this.targetIndex = -1; // Will be incremented to 0 in cycleTarget
-            this.cycleTarget();
-        } else {
-            console.log('Target computer disabled, cleaning up...');
-            // Clean up when disabling
+            // When disabling targeting computer, hide everything
+            this.targetHUD.style.display = 'none';
+            this.targetReticle.style.display = 'none';
+            this.intelHUD.style.display = 'none';
+            this.intelIcon.style.display = 'none';
+            this.intelVisible = false;
+            this.intelAvailable = false;
+            
+            // Clean up wireframe
             if (this.targetWireframe) {
                 this.wireframeScene.remove(this.targetWireframe);
                 this.targetWireframe.geometry.dispose();
@@ -593,6 +669,14 @@ export class StarfieldManager {
             }
             this.currentTarget = null;
             this.targetIndex = -1;
+        } else {
+            // When enabling targeting computer
+            console.log('Target computer enabled, updating target list...');
+            // Initialize or update target list
+            this.updateTargetList();
+            // Always start with the closest target (index 0) when enabling
+            this.targetIndex = -1; // Will be incremented to 0 in cycleTarget
+            this.cycleTarget();
         }
     }
 
@@ -706,9 +790,34 @@ export class StarfieldManager {
     }
 
     updateTargetDisplay() {
-        // Don't show anything if targeting is disabled
-        if (!this.targetComputerEnabled || !this.currentTarget) {
+        // Don't show anything if targeting is completely disabled
+        if (!this.targetComputerEnabled) {
             this.targetReticle.style.display = 'none';
+            this.intelAvailable = false;
+            this.intelHUD.style.display = 'none';
+            this.intelIcon.style.display = 'none';
+            this.targetHUD.style.display = 'none';
+            return;
+        }
+
+        // Handle galactic view
+        const isGalacticView = this.viewManager.currentView === 'galactic';
+        if (isGalacticView) {
+            this.targetHUD.style.display = 'none';
+            this.intelHUD.style.display = 'none';
+            this.intelIcon.style.display = 'none';
+            return;
+        }
+
+        // Keep target HUD visible as long as targeting is enabled
+        this.targetHUD.style.display = 'block';
+
+        // Handle case where there's no current target
+        if (!this.currentTarget) {
+            this.targetReticle.style.display = 'none';
+            this.intelAvailable = false;
+            this.intelHUD.style.display = 'none';
+            this.intelIcon.style.display = 'none';
             return;
         }
 
@@ -716,45 +825,61 @@ export class StarfieldManager {
         const currentTargetData = this.getCurrentTargetData();
         if (!currentTargetData) {
             this.targetReticle.style.display = 'none';
+            this.intelAvailable = false;
+            this.intelHUD.style.display = 'none';
+            this.intelIcon.style.display = 'none';
             return;
         }
 
-        // Validate target position
-        if (!this.currentTarget.position || 
-            isNaN(this.currentTarget.position.x) || 
-            isNaN(this.currentTarget.position.y) || 
-            isNaN(this.currentTarget.position.z)) {
-            console.warn('Invalid target position detected:', currentTargetData.name);
-            this.targetReticle.style.display = 'none';
-            return;
-        }
-
-        // Calculate distance
+        // Calculate distance to target
         const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
-        if (isNaN(distance)) {
-            console.warn('Invalid distance calculation for target:', currentTargetData.name);
-            this.targetReticle.style.display = 'none';
-            return;
+        const intelAvailable = distance <= this.intelRange;
+        
+        // Update intel availability and icon
+        if (this.intelAvailable !== intelAvailable || !isGalacticView) {
+            this.intelAvailable = intelAvailable;
+            if (!intelAvailable) {
+                // If we move out of range, hide both HUD and icon
+                this.intelVisible = false;
+                this.intelHUD.style.display = 'none';
+                this.intelIcon.style.display = 'none';
+            } else {
+                // If we move into range or return from galactic view, show icon (unless intel HUD is visible)
+                this.intelIcon.style.display = this.intelVisible ? 'none' : 'block';
+                this.intelHUD.style.display = this.intelVisible ? 'block' : 'none';
+            }
         }
-        const formattedDistance = this.formatDistance(distance);
+
+        // Get target info for diplomacy status
+        const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+        
+        // Set reticle color based on diplomacy
+        let reticleColor = '#00ff41'; // Default friendly green
+        if (info && (info.type === 'planet' || info.type === 'moon')) {
+            if (info.diplomacy?.toLowerCase() === 'enemy') {
+                reticleColor = '#ff0000'; // Red for hostile
+            } else if (info.diplomacy?.toLowerCase() === 'neutral') {
+                reticleColor = '#ffff00'; // Yellow for neutral
+            }
+        }
+        
+        // Update reticle colors
+        const corners = this.targetReticle.getElementsByClassName('reticle-corner');
+        Array.from(corners).forEach(corner => {
+            corner.style.borderColor = reticleColor;
+            corner.style.boxShadow = `0 0 2px ${reticleColor}`;
+        });
 
         // Update the target information display
         this.targetInfoDisplay.innerHTML = `
             <div class="target-name">${currentTargetData.name}</div>
             <div class="target-type">${currentTargetData.type}${currentTargetData.isMoon ? ' (Moon)' : ''}</div>
-            <div class="target-distance">Distance: ${formattedDistance}</div>
+            <div class="target-distance">Distance: ${this.formatDistance(distance)}</div>
         `;
 
         // Calculate target's screen position
         const screenPosition = this.currentTarget.position.clone().project(this.camera);
         
-        // Validate screen position
-        if (isNaN(screenPosition.x) || isNaN(screenPosition.y)) {
-            console.warn('Invalid screen position calculated for target:', currentTargetData.name);
-            this.targetReticle.style.display = 'none';
-            return;
-        }
-
         const isOnScreen = Math.abs(screenPosition.x) <= 1 && Math.abs(screenPosition.y) <= 1;
 
         if (isOnScreen) {
@@ -762,23 +887,9 @@ export class StarfieldManager {
             const x = (screenPosition.x + 1) * window.innerWidth / 2;
             const y = (-screenPosition.y + 1) * window.innerHeight / 2;
             
-            // Validate screen coordinates
-            if (isNaN(x) || isNaN(y)) {
-                console.warn('Invalid screen coordinates calculated for target:', currentTargetData.name);
-                this.targetReticle.style.display = 'none';
-                return;
-            }
-            
             const cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
             const relativePos = this.currentTarget.position.clone().sub(this.camera.position);
             const dotProduct = relativePos.dot(cameraForward);
-            
-            // Validate dot product
-            if (isNaN(dotProduct)) {
-                console.warn('Invalid relative position calculation for target:', currentTargetData.name);
-                this.targetReticle.style.display = 'none';
-                return;
-            }
             
             // If dot product is negative, the target is behind the camera
             const isBehindCamera = dotProduct < 0;
@@ -789,12 +900,8 @@ export class StarfieldManager {
         } else {
             this.targetReticle.style.display = 'none';
         }
-        
-        // Only hide the HUD in galactic view, keep it visible in both front and aft views
-        const hideHUD = this.viewManager.currentView === 'galactic';
-        this.targetHUD.style.display = hideHUD ? 'none' : 'block';
-        
-        // Direction arrows should be visible in both front and aft views
+
+        // Update direction arrows
         this.updateDirectionArrow();
     }
 
@@ -976,6 +1083,12 @@ export class StarfieldManager {
     cycleTarget() {
         if (!this.targetComputerEnabled || this.targetObjects.length === 0) return;
 
+        // Hide intel HUD and icon when switching targets
+        this.intelVisible = false;
+        this.intelAvailable = false;
+        this.intelHUD.style.display = 'none';
+        this.intelIcon.style.display = 'none';
+
         // Remove previous wireframe if it exists
         if (this.targetWireframe) {
             this.wireframeScene.remove(this.targetWireframe);
@@ -988,6 +1101,9 @@ export class StarfieldManager {
         if (this.targetReticle) {
             this.targetReticle.style.display = 'none';
         }
+
+        // Keep target HUD visible
+        this.targetHUD.style.display = 'block';
 
         // Cycle to next target
         if (this.targetIndex === -1 || !this.currentTarget) {
@@ -1029,15 +1145,12 @@ export class StarfieldManager {
                 
                 // Set initial rotation
                 this.targetWireframe.rotation.set(0.3, 0, 0);
-
-                // Ensure HUD is visible
-                this.targetHUD.style.display = 'block';
             } catch (error) {
                 console.warn('Failed to create wireframe for target:', error);
-                // Continue without wireframe
             }
         }
 
+        // Update display after cycling target
         this.updateTargetDisplay();
     }
 
@@ -1290,6 +1403,12 @@ export class StarfieldManager {
             this.starfield.geometry.dispose();
             this.starfield.material.dispose();
         }
+        if (this.intelHUD && this.intelHUD.parentNode) {
+            this.intelHUD.parentNode.removeChild(this.intelHUD);
+        }
+        if (this.intelIcon && this.intelIcon.parentNode) {
+            this.intelIcon.parentNode.removeChild(this.intelIcon);
+        }
     }
 
     // Add this method to create the star sprite texture
@@ -1466,5 +1585,87 @@ export class StarfieldManager {
             this.starfield = this.createStarfield();
             this.scene.add(this.starfield);
         }
+    }
+
+    toggleIntel() {
+        this.intelVisible = !this.intelVisible;
+        
+        // Toggle HUD and icon visibility
+        this.intelHUD.style.display = this.intelVisible ? 'block' : 'none';
+        // Only show icon when intel HUD is hidden AND we're in range
+        this.intelIcon.style.display = (!this.intelVisible && this.intelAvailable) ? 'block' : 'none';
+        
+        this.updateIntelDisplay();
+    }
+
+    updateIntelDisplay() {
+        if (!this.intelVisible || !this.currentTarget || !this.intelAvailable) {
+            this.intelHUD.style.display = 'none';
+            return;
+        }
+
+        const currentTargetData = this.getCurrentTargetData();
+        if (!currentTargetData) {
+            this.intelHUD.style.display = 'none';
+            return;
+        }
+
+        // Get celestial body info from solar system manager
+        const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+        if (!info) {
+            this.intelHUD.style.display = 'none';
+            return;
+        }
+        
+        // Format the intel information
+        let intelHTML = `
+            <div style="text-align: center; border-bottom: 1px solid #00ff41; padding-bottom: 5px; margin-bottom: 10px;">
+                INTEL: ${currentTargetData.name}
+            </div>
+        `;
+
+        // Check if it's a planet or moon by checking if diplomacy info exists
+        if (info.diplomacy !== undefined) {
+            // For planets and moons, show civilization data
+            const diplomacyClass = info.diplomacy?.toLowerCase() === 'enemy' ? 'diplomacy-hostile' : 
+                                 info.diplomacy?.toLowerCase() === 'friendly' ? 'diplomacy-friendly' :
+                                 info.diplomacy?.toLowerCase() === 'neutral' ? 'diplomacy-neutral' :
+                                 'diplomacy-unknown';
+            
+            intelHTML += `
+                <div style="margin-bottom: 8px;">
+                    <span style="color: #00aa41;">Diplomacy:</span> <span class="${diplomacyClass}">${info.diplomacy || 'Unknown'}</span>
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <span style="color: #00aa41;">Government:</span> ${info.government || 'Unknown'}
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <span style="color: #00aa41;">Economy:</span> ${info.economy || 'Unknown'}
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <span style="color: #00aa41;">Technology:</span> ${info.technology || 'Unknown'}
+                </div>
+            `;
+
+            // Add population if available
+            if (info.population) {
+                intelHTML += `
+                    <div style="margin-top: 12px; font-size: 0.9em; opacity: 0.8;">
+                        Population: ${info.population}
+                    </div>
+                `;
+            }
+        } else {
+            // For other celestial bodies (stars, asteroids, etc.)
+            intelHTML += `
+                <div style="margin-bottom: 5px;">Type: ${info.type || 'Unknown'}</div>
+                <div style="margin-bottom: 5px;">Mass: ${info.mass || 'Unknown'}</div>
+                <div style="margin-bottom: 5px;">Atmosphere: ${info.atmosphere || 'Unknown'}</div>
+                <div style="margin-bottom: 5px;">Resources: ${info.resources || 'Unknown'}</div>
+            `;
+        }
+
+        this.intelHUD.innerHTML = intelHTML;
+        this.intelHUD.style.display = 'block';
     }
 } 

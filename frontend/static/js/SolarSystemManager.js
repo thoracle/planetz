@@ -582,16 +582,35 @@ export class SolarSystemManager {
         const [type, planetIndex, moonIndex] = key.split('_');
         const planet = this.starSystem.planets[parseInt(planetIndex)];
         
+        if (!planet) {
+            console.warn(`No planet data found for index ${planetIndex}`);
+            return null;
+        }
+        
         if (type === 'planet') {
             return {
                 name: planet.planet_name || `Planet ${planetIndex}`,
-                type: planet.planet_type || 'Unknown'
+                type: planet.planet_type || 'Unknown',
+                diplomacy: planet.diplomacy || 'Unknown',
+                government: planet.government || 'Unknown',
+                economy: planet.economy || 'Unknown',
+                technology: planet.technology || 'Unknown',
+                population: planet.population
             };
         } else if (type === 'moon') {
             const moon = planet.moons[parseInt(moonIndex)];
+            if (!moon) {
+                console.warn(`No moon data found for planet ${planetIndex}, moon ${moonIndex}`);
+                return null;
+            }
             return {
                 name: moon.moon_name || `Moon ${moonIndex}`,
-                type: moon.moon_type || 'Unknown'
+                type: moon.moon_type || 'Unknown',
+                diplomacy: moon.diplomacy || 'Unknown',
+                government: moon.government || 'Unknown',
+                economy: moon.economy || 'Unknown',
+                technology: moon.technology || 'Unknown',
+                population: moon.population
             };
         }
 
