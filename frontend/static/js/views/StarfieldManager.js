@@ -853,22 +853,27 @@ export class StarfieldManager {
         // Get target info for diplomacy status
         const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
         
-        // Set reticle color based on diplomacy
-        let reticleColor = '#00ff41'; // Default friendly green
+        // Set reticle and wireframe color based on diplomacy
+        let targetColor = '#00ff41'; // Default friendly green
         if (info && (info.type === 'planet' || info.type === 'moon')) {
             if (info.diplomacy?.toLowerCase() === 'enemy') {
-                reticleColor = '#ff0000'; // Red for hostile
+                targetColor = '#ff0000'; // Red for hostile
             } else if (info.diplomacy?.toLowerCase() === 'neutral') {
-                reticleColor = '#ffff00'; // Yellow for neutral
+                targetColor = '#ffff00'; // Yellow for neutral
             }
         }
         
         // Update reticle colors
         const corners = this.targetReticle.getElementsByClassName('reticle-corner');
         Array.from(corners).forEach(corner => {
-            corner.style.borderColor = reticleColor;
-            corner.style.boxShadow = `0 0 2px ${reticleColor}`;
+            corner.style.borderColor = targetColor;
+            corner.style.boxShadow = `0 0 2px ${targetColor}`;
         });
+
+        // Update wireframe color if it exists
+        if (this.targetWireframe && this.targetWireframe.material) {
+            this.targetWireframe.material.color.setStyle(targetColor);
+        }
 
         // Update the target information display
         this.targetInfoDisplay.innerHTML = `
@@ -1119,32 +1124,59 @@ export class StarfieldManager {
         // Create new wireframe in the HUD
         if (this.currentTarget) {
             try {
-                // Create wireframe from the target's geometry
-                const wireframeGeometry = new THREE.WireframeGeometry(this.currentTarget.geometry);
+                const radius = this.currentTarget.geometry.boundingSphere?.radius || 1;
+                let wireframeGeometry;
+                
+                // Get celestial body info
+                const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+                
+                // Determine wireframe color based on diplomacy
+                let wireframeColor = 0x00ff41; // Default friendly green
+                if (info && (info.type === 'planet' || info.type === 'moon')) {
+                    if (info.diplomacy?.toLowerCase() === 'enemy') {
+                        wireframeColor = 0xff0000; // Red for hostile
+                    } else if (info.diplomacy?.toLowerCase() === 'neutral') {
+                        wireframeColor = 0xffff00; // Yellow for neutral
+                    }
+                }
+                
+                if (info) {
+                    // Create different shapes based on celestial body type
+                    if (info.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
+                        // Star: Dodecahedron (12-sided) for medium complexity
+                        wireframeGeometry = new THREE.DodecahedronGeometry(radius, 0);
+                    } else if (targetData.isMoon) {
+                        // Moon: Octahedron (8-sided) for simpler shape
+                        wireframeGeometry = new THREE.OctahedronGeometry(radius, 0);
+                    } else {
+                        // Planet: Icosahedron (20-sided) for most complex shape
+                        wireframeGeometry = new THREE.IcosahedronGeometry(radius, 0);
+                    }
+                } else {
+                    // Fallback to basic shape if no info
+                    wireframeGeometry = new THREE.IcosahedronGeometry(radius, 1);
+                }
+
                 const wireframeMaterial = new THREE.LineBasicMaterial({ 
-                    color: 0x00ff41,
+                    color: wireframeColor,
                     linewidth: 1,
                     transparent: true,
                     opacity: 0.8
                 });
-                this.targetWireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
+                
+                // Create edges geometry for cleaner lines
+                const edgesGeometry = new THREE.EdgesGeometry(wireframeGeometry);
+                this.targetWireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
                 
                 // Reset wireframe position and add to wireframe scene
                 this.targetWireframe.position.set(0, 0, 0);
                 this.wireframeScene.add(this.targetWireframe);
                 
-                // Auto-fit the wireframe to the view
-                const bbox = new THREE.Box3().setFromObject(this.targetWireframe);
-                const center = bbox.getCenter(new THREE.Vector3());
-                const size = bbox.getSize(new THREE.Vector3());
-                const maxDim = Math.max(size.x, size.y, size.z);
-                
-                // Position camera to fit the object with some padding
-                this.wireframeCamera.position.z = maxDim * 2.5;
-                this.targetWireframe.position.sub(center);
+                // Position camera to fit the object
+                this.wireframeCamera.position.z = radius * 3;
                 
                 // Set initial rotation
-                this.targetWireframe.rotation.set(0.3, 0, 0);
+                this.targetWireframe.rotation.set(0.5, 0, 0.3);
             } catch (error) {
                 console.warn('Failed to create wireframe for target:', error);
             }
@@ -1289,8 +1321,9 @@ export class StarfieldManager {
         
         // Render wireframe if target computer is enabled and we have a target
         if (this.targetComputerEnabled && this.targetWireframe) {
-            // Rotate wireframe for visual effect
-            this.targetWireframe.rotation.y += deltaTime * 0.5;
+            // Smooth rotation animation for wireframe
+            this.targetWireframe.rotation.y += deltaTime * 0.3;
+            this.targetWireframe.rotation.x = 0.5 + Math.sin(Date.now() * 0.001) * 0.1;
             
             // Render the wireframe scene
             this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
