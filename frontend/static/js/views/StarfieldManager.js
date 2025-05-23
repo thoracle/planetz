@@ -28,7 +28,7 @@ export class StarfieldManager {
         this.orbitRadius = 5; // 5km orbit radius
         this.orbitAngle = 0;
         this.orbitSpeed = 0.001; // Radians per frame
-        this.dockingRange = 10; // 10km docking range
+        this.dockingRange = 20; // Changed from 10km to 20km docking range
         
         // Target computer state
         this.targetComputerEnabled = false;
@@ -723,8 +723,8 @@ export class StarfieldManager {
                 this.keys[event.key] = true;
             }
             
-            // Handle number keys for speed control
-            if (/^[0-9]$/.test(event.key)) {
+            // Handle number keys for speed control - only if not docked
+            if (/^[0-9]$/.test(event.key) && !this.isDocked) {
                 const speed = parseInt(event.key);
                 if (speed === 0) {
                     // Start deceleration and clear target speed
@@ -1025,9 +1025,12 @@ export class StarfieldManager {
         // Calculate new button state
         const canDock = distance <= this.dockingRange;
         const isDocked = this.isDocked && this.dockedTo === this.currentTarget;
+        const isHostile = info?.diplomacy?.toLowerCase() === 'enemy';
 
         const newButtonState = {
-            hasDockButton: (info?.type === 'planet' || info?.type === 'moon') && (canDock || isDocked),
+            hasDockButton: (info?.type === 'planet' || info?.type === 'moon') && 
+                          (canDock || isDocked) && 
+                          !isHostile, // Don't show dock button for hostile bodies
             isDocked: isDocked,
             hasScanButton: (info?.type === 'planet' || info?.type === 'moon'),
             hasTradeButton: (info?.type === 'planet' || info?.type === 'moon') && 
@@ -2004,6 +2007,16 @@ export class StarfieldManager {
     // Add new docking methods
     canDock(target) {
         if (!target || !target.position) return false;
+        
+        // Get target info
+        const info = this.solarSystemManager.getCelestialBodyInfo(target);
+        
+        // Check if target is hostile
+        if (info?.diplomacy?.toLowerCase() === 'enemy') {
+            return false;
+        }
+        
+        // Check distance
         return this.camera.position.distanceTo(target.position) <= this.dockingRange;
     }
 
@@ -2012,12 +2025,81 @@ export class StarfieldManager {
             return false;
         }
 
+        // Stop engine sounds when docking
+        if (this.engineState === 'running') {
+            this.playEngineShutdown();
+        }
+
+        // Calculate initial position relative to target
+        const relativePos = new THREE.Vector3().subVectors(this.camera.position, target.position);
+        this.orbitAngle = Math.atan2(relativePos.z, relativePos.x);
+        
+        // Store initial state for transition
+        this.dockingState = {
+            startPos: this.camera.position.clone(),
+            startRot: this.camera.quaternion.clone(),
+            progress: 0,
+            transitioning: true,
+            phase: 'decelerate', // New sequence: decelerate -> approach -> align -> descend -> orbit
+            subProgress: 0,
+            startDistance: relativePos.length()
+        };
+
+        // Calculate positions for each phase
+        const approachDistance = this.orbitRadius * 3; // Start approach from further out
+        const alignDistance = this.orbitRadius * 2; // Position for alignment
+        const orbitDistance = this.orbitRadius; // Final orbit distance
+
+        // Calculate positions for each phase
+        const direction = relativePos.clone().normalize();
+        this.dockingState.approachPos = new THREE.Vector3()
+            .copy(target.position)
+            .add(direction.clone().multiplyScalar(approachDistance));
+
+        this.dockingState.alignPos = new THREE.Vector3()
+            .copy(target.position)
+            .add(direction.clone().multiplyScalar(alignDistance));
+
+        // Calculate final orbit position with slight vertical offset
+        const finalOrbitPos = new THREE.Vector3(
+            target.position.x + Math.cos(this.orbitAngle) * orbitDistance,
+            target.position.y + Math.sin(this.orbitAngle * 0.5) * (orbitDistance * 0.2),
+            target.position.z + Math.sin(this.orbitAngle) * orbitDistance
+        );
+        this.dockingState.endPos = finalOrbitPos;
+
+        // Calculate rotations for each phase
+        // Approach rotation (looking at planet)
+        const approachRot = new THREE.Quaternion();
+        const approachMatrix = new THREE.Matrix4();
+        approachMatrix.lookAt(this.dockingState.approachPos, target.position, new THREE.Vector3(0, 1, 0));
+        approachRot.setFromRotationMatrix(approachMatrix);
+        this.dockingState.approachRot = approachRot;
+
+        // Calculate orbit direction for final rotation
+        const orbitTangent = new THREE.Vector3(
+            -Math.sin(this.orbitAngle),
+            0,
+            Math.cos(this.orbitAngle)
+        ).normalize();
+
+        // Final orbit rotation
+        const targetRot = new THREE.Quaternion();
+        const lookAtMatrix = new THREE.Matrix4();
+        const targetDirection = orbitTangent.clone();
+        const up = new THREE.Vector3(0, 1, 0);
+        const right = new THREE.Vector3().crossVectors(targetDirection, up).normalize();
+        up.crossVectors(right, targetDirection);
+        
+        lookAtMatrix.makeBasis(right, up, targetDirection.negate());
+        targetRot.setFromRotationMatrix(lookAtMatrix);
+        this.dockingState.endRot = targetRot;
+
+        // Store target for reference
+        this.dockingState.target = target;
+
         this.isDocked = true;
         this.dockedTo = target;
-        this.orbitAngle = Math.atan2(
-            this.camera.position.z - target.position.z,
-            this.camera.position.x - target.position.x
-        );
 
         // Set speed to 0 since we're docked
         this.targetSpeed = 0;
@@ -2034,6 +2116,28 @@ export class StarfieldManager {
             return;
         }
 
+        // Start engine sound at impulse 1
+        if (this.soundLoaded && this.engineState === 'stopped') {
+            this.playEngineStartup(1/this.maxSpeed); // Volume for impulse 1
+        }
+
+        // Store initial state for transition
+        this.undockingState = {
+            startPos: this.camera.position.clone(),
+            startRot: this.camera.quaternion.clone(),
+            progress: 0,
+            transitioning: true
+        };
+
+        // Calculate undock position (move away from the body in the current direction)
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+        const targetPos = this.camera.position.clone().add(forward.multiplyScalar(this.orbitRadius * 2));
+        this.undockingState.endPos = targetPos;
+
+        // Reset to forward-facing rotation
+        const targetRot = new THREE.Quaternion();
+        this.undockingState.endRot = targetRot;
+
         this.isDocked = false;
         this.dockedTo = null;
         
@@ -2041,9 +2145,11 @@ export class StarfieldManager {
         this.targetSpeed = 1;
         this.currentSpeed = 1;
         this.decelerating = false;
-        
-        // Reset camera orientation to face forward
-        this.camera.quaternion.set(0, 0, 0, 1);
+
+        // Close target computer
+        if (this.targetComputerEnabled) {
+            this.toggleTargetComputer();
+        }
         
         // Update the dock button to show "DOCK"
         this.updateTargetDisplay();
@@ -2053,21 +2159,190 @@ export class StarfieldManager {
     updateOrbit(deltaTime) {
         if (!this.isDocked || !this.dockedTo) return;
 
-        // Update orbit angle
-        this.orbitAngle += this.orbitSpeed;
+        // Handle docking transition
+        if (this.dockingState && this.dockingState.transitioning) {
+            // Update main progress
+            this.dockingState.progress = Math.min(1, this.dockingState.progress + deltaTime * 0.5); // Slower overall progress
+            
+            // Update sub-progress for current phase
+            const phaseSpeed = {
+                decelerate: 0.7,
+                approach: 0.5,
+                align: 0.4,
+                descend: 0.3,
+                orbit: 0.4
+            }[this.dockingState.phase];
+            
+            this.dockingState.subProgress = Math.min(1, this.dockingState.subProgress + deltaTime * phaseSpeed);
+            
+            // Custom easing functions for smoother transitions
+            const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+            const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+            const easeInOutQuart = t => t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
+            
+            const smoothT = easeInOutCubic(this.dockingState.subProgress);
+            const target = this.dockingState.target;
+            
+            // Handle different phases of docking
+            switch (this.dockingState.phase) {
+                case 'decelerate':
+                    // Gradually slow down while maintaining current direction
+                    const deceleratePos = new THREE.Vector3().lerpVectors(
+                        this.dockingState.startPos,
+                        this.dockingState.approachPos,
+                        easeOutQuart(smoothT)
+                    );
+                    this.camera.position.copy(deceleratePos);
+                    
+                    // Slightly begin rotating towards target
+                    const initialLook = new THREE.Quaternion();
+                    const decelerateMatrix = new THREE.Matrix4();
+                    decelerateMatrix.lookAt(deceleratePos, target.position, new THREE.Vector3(0, 1, 0));
+                    initialLook.setFromRotationMatrix(decelerateMatrix);
+                    this.camera.quaternion.slerp(initialLook, smoothT * 0.3); // Subtle initial rotation
+                    
+                    if (this.dockingState.subProgress >= 1) {
+                        this.dockingState.phase = 'approach';
+                        this.dockingState.subProgress = 0;
+                    }
+                    break;
+                    
+                case 'approach':
+                    // Move to approach position while smoothly looking at planet
+                    const approachPos = new THREE.Vector3().lerpVectors(
+                        this.dockingState.approachPos,
+                        this.dockingState.alignPos,
+                        easeInOutQuart(smoothT)
+                    );
+                    this.camera.position.copy(approachPos);
+                    
+                    // Gradually rotate to look at target
+                    const approachLook = new THREE.Quaternion();
+                    const approachMatrix = new THREE.Matrix4();
+                    approachMatrix.lookAt(approachPos, target.position, new THREE.Vector3(0, 1, 0));
+                    approachLook.setFromRotationMatrix(approachMatrix);
+                    this.camera.quaternion.slerp(approachLook, easeInOutCubic(smoothT));
+                    
+                    if (this.dockingState.subProgress >= 1) {
+                        this.dockingState.phase = 'align';
+                        this.dockingState.subProgress = 0;
+                    }
+                    break;
+                    
+                case 'align':
+                    // Hold relative position but rotate to orbital orientation
+                    const alignRot = new THREE.Quaternion();
+                    alignRot.slerpQuaternions(this.dockingState.approachRot, this.dockingState.endRot, easeInOutCubic(smoothT));
+                    this.camera.quaternion.copy(alignRot);
+                    
+                    // Slight circular motion during alignment
+                    const alignAngle = smoothT * Math.PI * 0.5;
+                    const alignRadius = this.dockingState.alignPos.distanceTo(target.position);
+                    const alignOffset = new THREE.Vector3(
+                        Math.cos(alignAngle) * alignRadius,
+                        Math.sin(alignAngle * 0.5) * (alignRadius * 0.1),
+                        Math.sin(alignAngle) * alignRadius
+                    );
+                    const alignPos = new THREE.Vector3().copy(target.position).add(alignOffset);
+                    this.camera.position.lerp(alignPos, deltaTime * 2);
+                    
+                    if (this.dockingState.subProgress >= 1) {
+                        this.dockingState.phase = 'descend';
+                        this.dockingState.subProgress = 0;
+                    }
+                    break;
+                    
+                case 'descend':
+                    // Spiral down to orbital position
+                    const descentProgress = easeInOutQuart(smoothT);
+                    const spiralAngle = descentProgress * Math.PI * 2; // One full spiral
+                    const currentRadius = this.dockingState.alignPos.distanceTo(target.position) * (1 - descentProgress * 0.5);
+                    const descentPos = new THREE.Vector3(
+                        target.position.x + Math.cos(spiralAngle) * currentRadius,
+                        target.position.y + Math.sin(spiralAngle * 0.5) * (currentRadius * 0.2),
+                        target.position.z + Math.sin(spiralAngle) * currentRadius
+                    );
+                    this.camera.position.lerp(descentPos, deltaTime * 3);
+                    
+                    // Maintain orbital orientation during descent
+                    const descentRot = new THREE.Quaternion();
+                    const descentMatrix = new THREE.Matrix4();
+                    const descentTangent = new THREE.Vector3(
+                        -Math.sin(spiralAngle),
+                        0,
+                        Math.cos(spiralAngle)
+                    ).normalize();
+                    const descentUp = new THREE.Vector3(0, 1, 0);
+                    const descentRight = new THREE.Vector3().crossVectors(descentTangent, descentUp).normalize();
+                    descentUp.crossVectors(descentRight, descentTangent);
+                    descentMatrix.makeBasis(descentRight, descentUp, descentTangent.negate());
+                    descentRot.setFromRotationMatrix(descentMatrix);
+                    this.camera.quaternion.slerp(descentRot, deltaTime * 3);
+                    
+                    if (this.dockingState.subProgress >= 1) {
+                        this.dockingState.phase = 'orbit';
+                        this.dockingState.subProgress = 0;
+                    }
+                    break;
+                    
+                case 'orbit':
+                    // Final adjustment into stable orbit
+                    this.camera.position.lerp(this.dockingState.endPos, easeInOutCubic(smoothT));
+                    this.camera.quaternion.slerp(this.dockingState.endRot, easeInOutCubic(smoothT));
+                    
+                    if (this.dockingState.subProgress >= 1) {
+                        this.dockingState.transitioning = false;
+                    }
+                    break;
+            }
+            
+            return;
+        }
+
+        // Regular orbit update
+        const targetPos = this.dockedTo.position;
+        
+        // Update orbit angle with smooth acceleration/deceleration
+        const targetSpeed = this.orbitSpeed;
+        this.currentOrbitSpeed = this.currentOrbitSpeed || targetSpeed;
+        this.currentOrbitSpeed += (targetSpeed - this.currentOrbitSpeed) * deltaTime * 2;
+        
+        this.orbitAngle += this.currentOrbitSpeed;
         if (this.orbitAngle > Math.PI * 2) this.orbitAngle -= Math.PI * 2;
 
-        // Calculate new position
-        const targetPos = this.dockedTo.position;
+        // Calculate new position with slight banking effect
+        const bankAngle = Math.sin(this.orbitAngle) * 0.1; // Subtle banking angle
+        const verticalOffset = Math.sin(this.orbitAngle * 0.5) * (this.orbitRadius * 0.1); // Reduced vertical oscillation
+        
+        // Update position
         this.camera.position.x = targetPos.x + Math.cos(this.orbitAngle) * this.orbitRadius;
+        this.camera.position.y = targetPos.y + verticalOffset;
         this.camera.position.z = targetPos.z + Math.sin(this.orbitAngle) * this.orbitRadius;
         
-        // Keep camera at same height as target
-        this.camera.position.y = targetPos.y;
+        // Calculate orbit direction (tangent to orbit)
+        const orbitTangent = new THREE.Vector3(
+            -Math.sin(this.orbitAngle),
+            0,
+            Math.cos(this.orbitAngle)
+        ).normalize();
+
+        // Create rotation matrix for ship orientation with banking
+        const targetRot = new THREE.Quaternion();
+        const lookAtMatrix = new THREE.Matrix4();
+        const targetDirection = orbitTangent.clone();
+        const up = new THREE.Vector3(0, 1, 0);
         
-        // Point camera at the orbited object
-        const lookAtPos = new THREE.Vector3().copy(targetPos);
-        this.camera.lookAt(lookAtPos);
+        // Apply banking effect
+        up.applyAxisAngle(targetDirection, bankAngle);
+        
+        const right = new THREE.Vector3().crossVectors(targetDirection, up).normalize();
+        up.crossVectors(right, targetDirection);
+        
+        lookAtMatrix.makeBasis(right, up, targetDirection.negate());
+        targetRot.setFromRotationMatrix(lookAtMatrix);
+        
+        // Smoothly interpolate to target rotation
+        this.camera.quaternion.slerp(targetRot, deltaTime * 3);
         
         // Update target display to maintain button visibility
         this.updateTargetDisplay();
@@ -2111,12 +2386,25 @@ export class StarfieldManager {
             this.undockWithDebug();
         } else {
             const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
+            const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+            
             console.log('Attempting to dock:', {
                 distance: distance,
                 dockingRange: this.dockingRange,
                 isInRange: distance <= this.dockingRange,
-                targetName: targetName
+                targetName: targetName,
+                diplomacy: info?.diplomacy
             });
+            
+            // Check if target is hostile
+            if (info?.diplomacy?.toLowerCase() === 'enemy') {
+                this.viewManager.warpFeedback.showWarning(
+                    'Cannot Dock at Hostile Target',
+                    'This planet or moon is hostile to your ship.',
+                    () => {}
+                );
+                return;
+            }
             
             if (distance <= this.dockingRange) {
                 this.dockWithDebug(this.currentTarget);
