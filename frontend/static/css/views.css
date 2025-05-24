@@ -80,7 +80,7 @@ body.edit-mode .crosshair {
     padding: 20px;
     display: none;
     color: #00ff41;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     z-index: 1000;
     flex-direction: column;
     max-height: 90vh;
@@ -300,7 +300,7 @@ body.edit-mode .crosshair {
     color: #00ff41;
     border: 1px solid #00ff41;
     padding: 5px 15px;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     font-size: 0.9em;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -415,7 +415,7 @@ body.edit-mode .crosshair {
 }
 
 .diplomacy-unknown {
-    color: #808080;
+    color: #b3b3b3;
 }
 
 .planets-table {
@@ -547,7 +547,7 @@ body.edit-mode .crosshair {
     border: 2px solid #00ff41;
     padding: 30px;
     color: #00ff41;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     width: 400px;
     max-width: 90%;
     margin: 20px;
@@ -582,7 +582,7 @@ body.edit-mode .crosshair {
     border: 1px solid #00ff41;
     padding: 10px 30px;
     margin: 25px auto 0;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     font-size: 1.1em;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -671,7 +671,7 @@ body.warp-control-mode .crosshair {
     padding: 20px;
     display: none;
     color: #00ff41;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     z-index: 1000;
     flex-direction: row;
     height: 80vh;
@@ -777,11 +777,11 @@ body.warp-control-mode .crosshair {
 }
 
 .scanner-moon {
-    fill: #808080;
-    stroke: #808080;
+    fill: #b3b3b3;
+    stroke: #b3b3b3;
     stroke-width: 1;
     transition: all 0.3s ease;
-    filter: drop-shadow(0 0 2px rgba(128, 128, 128, 0.3));
+    filter: drop-shadow(0 0 2px rgba(179, 179, 179, 0.3));
     cursor: pointer;
 }
 
@@ -858,7 +858,7 @@ body.warp-control-mode .crosshair {
 }
 
 .body-type {
-    color: #808080;
+    color: #b3b3b3;
     font-style: italic;
 }
 
@@ -876,7 +876,7 @@ body.warp-control-mode .crosshair {
 }
 
 .detail-row .label {
-    color: #808080;
+    color: #b3b3b3;
 }
 
 .detail-row .value {
@@ -928,7 +928,7 @@ body.warp-control-mode .crosshair {
     font-size: 0.9em;
     pointer-events: none;
     z-index: 1001;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     white-space: nowrap;
     transform: translate(-50%, -100%);
     margin-top: -10px;
@@ -1035,7 +1035,7 @@ body.warp-control-mode .crosshair {
     color: #00ff41;
     border: 1px solid #00ff41;
     padding: 8px 20px;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     font-size: 0.9em;
     cursor: pointer;
     transition: all 0.3s ease;

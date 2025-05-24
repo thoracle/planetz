@@ -635,8 +635,8 @@ export class StarfieldManager {
                 position: absolute;
                 width: 10px;
                 height: 10px;
-                border: 2px solid #808080;
-                box-shadow: 0 0 2px #808080;
+                border: 2px solid #D0D0D0;
+                box-shadow: 0 0 2px #D0D0D0;
             `;
 
             // Position and style each corner
@@ -1003,7 +1003,7 @@ export class StarfieldManager {
         const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
         
         // Update HUD border color based on diplomacy
-        let diplomacyColor = '#808080'; // Default gray
+        let diplomacyColor = '#D0D0D0'; // Default gray
         if (info?.type === 'star') {
             diplomacyColor = '#ffff00'; // Stars are neutral
         } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
@@ -1211,7 +1211,7 @@ export class StarfieldManager {
 
             // Get target info for color
             const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-            let arrowColor = '#808080'; // Default gray
+            let arrowColor = '#D0D0D0'; // Default gray
             if (info?.type === 'star') {
                 arrowColor = '#ffff00'; // Stars are neutral
             } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
@@ -1382,7 +1382,9 @@ export class StarfieldManager {
                 // Determine wireframe color based on diplomacy
                 let wireframeColor = 0x808080; // Default gray for unknown
                 
-                if (info?.diplomacy?.toLowerCase() === 'enemy') {
+                if (info?.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
+                    wireframeColor = 0xffff00; // Stars are always yellow
+                } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
                     wireframeColor = 0xff0000;
                 } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
                     wireframeColor = 0xffff00;
