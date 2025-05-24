@@ -79,12 +79,22 @@ export class StarfieldManager {
         console.log('Adding audio listener to camera');
         this.camera.add(this.listener);
 
+        // Ensure AudioContext is running
+        this.ensureAudioContextRunning();
+
         this.audioLoader = new THREE.AudioLoader();
         this.engineSound = new THREE.Audio(this.listener);
         this.commandSound = new THREE.Audio(this.listener);
         this.soundLoaded = false;
         this.commandSoundLoaded = false;
         this.engineState = 'stopped'; // 'stopped', 'starting', 'running', 'stopping'
+
+        // Add visibility change listener
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                this.ensureAudioContextRunning();
+            }
+        });
 
         // Load engine sound
         console.log('Loading engine sound...');
@@ -199,6 +209,17 @@ export class StarfieldManager {
             hasScanButton: false,
             hasTradeButton: false
         };
+    }
+
+    ensureAudioContextRunning() {
+        if (this.listener && this.listener.context) {
+            if (this.listener.context.state === 'suspended') {
+                console.log('Resuming suspended AudioContext');
+                this.listener.context.resume().catch(error => {
+                    console.error('Failed to resume AudioContext:', error);
+                });
+            }
+        }
     }
 
     createStarfield() {
@@ -1871,6 +1892,9 @@ export class StarfieldManager {
     playEngineStartup(targetVolume) {
         if (!this.soundLoaded) return;
         
+        // Ensure AudioContext is running before playing sounds
+        this.ensureAudioContextRunning();
+        
         // Reset the sound to the beginning for startup sound
         this.engineSound.setLoop(false);
         this.engineSound.offset = 0;
@@ -1938,6 +1962,8 @@ export class StarfieldManager {
 
     playCommandSound() {
         if (this.commandSoundLoaded && !this.commandSound.isPlaying) {
+            // Ensure AudioContext is running before playing sounds
+            this.ensureAudioContextRunning();
             this.commandSound.play();
         }
     }
