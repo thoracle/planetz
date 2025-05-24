@@ -27,10 +27,10 @@ export class SolarSystemManager {
         this.SCALE_FACTOR = 1e-9;
         
         // Visual scale factor for scene representation - increased for ultra-compact system
-        this.VISUAL_SCALE = 200.0;
+        this.VISUAL_SCALE = 100.0;
         
         // Maximum distance from sun in kilometers
-        this.MAX_DISTANCE_KM = 3.2e6; // 3.2 million kilometers - increased from 800,000
+        this.MAX_DISTANCE_KM = 1.6e6; // 1.6 million kilometers - reduced from 3.2 million
         
         // Orbital elements storage
         this.orbitalElements = new Map();

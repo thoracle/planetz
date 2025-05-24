@@ -785,6 +785,24 @@ body.warp-control-mode .crosshair {
     cursor: pointer;
 }
 
+.scanner-moon-enemy {
+    fill: #ff0000;
+    stroke: #ff0000;
+    filter: drop-shadow(0 0 2px rgba(255, 0, 0, 0.3));
+}
+
+.scanner-moon-friendly {
+    fill: #00ff41;
+    stroke: #00ff41;
+    filter: drop-shadow(0 0 2px rgba(0, 255, 65, 0.3));
+}
+
+.scanner-moon-neutral {
+    fill: #ffff00;
+    stroke: #ffff00;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 0, 0.3));
+}
+
 /* Invisible larger hit area for moons */
 .scanner-moon-hitbox {
     fill: transparent;
@@ -813,21 +831,6 @@ body.warp-control-mode .crosshair {
     stroke-width: 1;
     transition: all 0.3s ease;
     pointer-events: none;
-}
-
-.scanner-planet-enemy {
-    fill: #ff0000;
-    stroke: #ff0000;
-}
-
-.scanner-planet-friendly {
-    fill: #00ff41;
-    stroke: #00ff41;
-}
-
-.scanner-planet-neutral {
-    fill: #ffff00;
-    stroke: #ffff00;
 }
 
 .scanner-details {

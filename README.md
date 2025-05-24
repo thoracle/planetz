@@ -1,6 +1,6 @@
 # Planetz
 
-A web application for generating and customizing 3D spherical planets using procedural generation with real-time visual feedback in a Three.js scene.
+A 3d web game of intergalactic exploration, trading and combat. Includes features for generating and customizing 3D spherical planets using procedural generation with real-time visual feedback in a Three.js scene. The project combines design elements from Doug Neubauer's Star Raiders, Sebastian Lague's Tiny Planet demos and technical optimizations from Daniel Esteban's softxels to name a few.
 
 ## Features
 
@@ -55,8 +55,6 @@ The server will start at http://localhost:5000
 (Coming soon)
 
 ## Architecture
-
-The project combines design elements from Sebastian Lague's Terraforming and technical optimizations from DanielEsteban's softxels:
 
 ### Core Components
 

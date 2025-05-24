@@ -20,15 +20,16 @@ export class StarfieldManager {
         this.mouseRotation = new THREE.Vector2();
         this.isMouseLookEnabled = false; // Disable mouse look to match thoralexander.com
         this.view = 'FORE'; // Initialize with FORE view
+        this.previousView = 'FORE'; // Add previous view tracking
         this.solarSystemManager = null; // Will be set by setSolarSystemManager
         
         // Docking state
         this.isDocked = false;
         this.dockedTo = null;
-        this.orbitRadius = 5; // 5km orbit radius
+        this.orbitRadius = 1.5; // Changed from 5km to 1.5km orbit radius
         this.orbitAngle = 0;
         this.orbitSpeed = 0.001; // Radians per frame
-        this.dockingRange = 20; // Changed from 10km to 20km docking range
+        this.dockingRange = 1.5; // Changed from 20km to 1.5km docking range
         
         // Target computer state
         this.targetComputerEnabled = false;
@@ -167,12 +168,13 @@ export class StarfieldManager {
                 border-radius: 4px;
                 transition: all 0.2s ease-in-out;
                 pointer-events: auto;
-                z-index: 1001;
+                z-index: 1005;
                 width: 100%;
                 font-size: 12px;
                 text-transform: uppercase;
                 letter-spacing: 1px;
                 box-shadow: 0 0 10px rgba(0, 170, 65, 0.3);
+                position: relative;
             }
             .dock-button:hover {
                 filter: brightness(1.2);
@@ -437,7 +439,7 @@ export class StarfieldManager {
             padding: 10px;
             display: none;
             pointer-events: auto;
-            z-index: 999;
+            z-index: 1000;
             transition: border-color 0.3s ease;
         `;
 
@@ -457,7 +459,7 @@ export class StarfieldManager {
                 height: 0;
                 display: none;
                 pointer-events: none;
-                z-index: 1000;
+                z-index: 1001;
             `;
             document.body.appendChild(arrow); // Append to body, not HUD
         });
@@ -472,6 +474,7 @@ export class StarfieldManager {
             position: relative;
             overflow: visible;
             pointer-events: none;
+            z-index: 1001;
         `;
 
         // Create renderer for wireframe
@@ -501,6 +504,8 @@ export class StarfieldManager {
             text-align: left;
             margin-bottom: 10px;
             pointer-events: none;
+            position: relative;
+            z-index: 1002;
         `;
 
         // Create status icons container
@@ -513,27 +518,52 @@ export class StarfieldManager {
             justify-content: center;
             gap: 15px;
             font-size: 16px;
+            position: relative;
+            z-index: 1003;
         `;
 
         // Create icons with tooltips
-        const createIcon = (emoji, tooltip) => {
+        const createIcon = (symbol, tooltip) => {
             const icon = document.createElement('div');
             icon.style.cssText = `
                 cursor: help;
                 opacity: 0.8;
-                transition: opacity 0.2s ease;
+                transition: all 0.2s ease;
                 position: relative;
+                width: 24px;
+                height: 24px;
+                border: 1px solid #00ff41;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: "Courier New", monospace;
+                font-size: 14px;
+                text-shadow: 0 0 4px #00ff41;
+                box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
             `;
-            icon.innerHTML = emoji;
+            icon.innerHTML = symbol;
             icon.title = tooltip;
-            icon.addEventListener('mouseenter', () => icon.style.opacity = '1');
-            icon.addEventListener('mouseleave', () => icon.style.opacity = '0.8');
+            
+            // Add hover effects
+            icon.addEventListener('mouseenter', () => {
+                icon.style.opacity = '1';
+                icon.style.transform = 'scale(1.1)';
+                icon.style.boxShadow = '0 0 8px rgba(0, 255, 65, 0.6)';
+            });
+            
+            icon.addEventListener('mouseleave', () => {
+                icon.style.opacity = '0.8';
+                icon.style.transform = 'scale(1)';
+                icon.style.boxShadow = '0 0 4px rgba(0, 255, 65, 0.4)';
+            });
+            
             return icon;
         };
 
-        this.governmentIcon = createIcon('🏛️', 'Government');
-        this.economyIcon = createIcon('👥', 'Economy');
-        this.technologyIcon = createIcon('⚡', 'Technology');
+        // Create sci-fi style icons
+        this.governmentIcon = createIcon('⬡', 'Government'); // Hexagon for government/structure
+        this.economyIcon = createIcon('⬢', 'Economy');      // Filled hexagon for economy/resources
+        this.technologyIcon = createIcon('⬨', 'Technology'); // Diamond with dot for technology/advancement
 
         this.statusIconsContainer.appendChild(this.governmentIcon);
         this.statusIconsContainer.appendChild(this.economyIcon);
@@ -546,44 +576,9 @@ export class StarfieldManager {
             display: flex;
             justify-content: space-between;
             gap: 8px;
+            position: relative;
+            z-index: 1004;
         `;
-
-        // Add CSS for action buttons
-        const style = document.createElement('style');
-        style.textContent = `
-            .action-button {
-                flex: 1;
-                background: #00aa41;
-                color: #000;
-                border: none;
-                padding: 6px 8px;
-                cursor: pointer;
-                font-family: "Courier New", monospace;
-                font-weight: bold;
-                font-size: 12px;
-                border-radius: 4px;
-                transition: all 0.2s ease-in-out;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-                pointer-events: auto;
-            }
-            .action-button:hover {
-                filter: brightness(1.2);
-                transform: scale(1.02);
-            }
-            .action-button:active {
-                transform: scale(0.98);
-            }
-            .action-button.launch {
-                background: #aa4100;
-            }
-            .action-button:disabled {
-                background: #555;
-                cursor: not-allowed;
-                opacity: 0.5;
-            }
-        `;
-        document.head.appendChild(style);
 
         // Assemble the HUD
         this.targetHUD.appendChild(this.wireframeContainer);
@@ -726,17 +721,20 @@ export class StarfieldManager {
             // Handle number keys for speed control - only if not docked
             if (/^[0-9]$/.test(event.key) && !this.isDocked) {
                 const speed = parseInt(event.key);
-                if (speed === 0) {
-                    // Start deceleration and clear target speed
+                
+                // Always set target speed first
+                this.targetSpeed = speed;
+                
+                // Determine if we need to decelerate
+                if (speed < this.currentSpeed) {
                     this.decelerating = true;
-                    this.targetSpeed = 0;
-                    if (this.engineState === 'running') {
+                    // Start engine shutdown if going to zero
+                    if (speed === 0 && this.engineState === 'running') {
                         this.playEngineShutdown();
                     }
                 } else {
                     this.decelerating = false;
-                    this.targetSpeed = speed;
-                    // Start or adjust engine sound
+                    // Handle engine sounds for acceleration
                     if (this.soundLoaded) {
                         const volume = speed / this.maxSpeed;
                         if (this.engineState === 'stopped') {
@@ -759,28 +757,36 @@ export class StarfieldManager {
                 return; // Exit early to prevent further processing
             }
             
-            // Play command sound for command keys
             const commandKey = event.key.toLowerCase();
-            if (['a', 'f', 'g', 't', 'l'].includes(commandKey)) {
-                this.playCommandSound();
+
+            // Handle view changes - prevent fore/aft changes while docked
+            if (!this.isDocked) {
+                if (commandKey === 'f') {
+                    this.playCommandSound();
+                    this.setView('FORE');
+                } else if (commandKey === 'a') {
+                    this.playCommandSound();
+                    this.setView('AFT');
+                }
             }
 
-            // Handle view changes
-            if (commandKey === 'f') {
-                this.setView('FORE');
-            } else if (commandKey === 'a') {
-                this.setView('AFT');
-            } else if (commandKey === 'g') {
+            // Always allow galactic, scanner and target computer toggles
+            if (commandKey === 'g') {
+                this.playCommandSound();
                 this.setView('GALACTIC');
+            } else if (commandKey === 'l') {
+                this.playCommandSound();
+                this.setView('SCANNER');
             } else if (commandKey === 't') {
+                this.playCommandSound();
                 this.toggleTargetComputer();
             }
 
             // Add Intel key binding
-            if (event.key.toLowerCase() === 'i') {
+            if (commandKey === 'i') {
                 if (this.intelAvailable && this.targetComputerEnabled && this.currentTarget) {
-                    this.toggleIntel();
                     this.playCommandSound();
+                    this.toggleIntel();
                 }
             }
         });
@@ -1008,34 +1014,46 @@ export class StarfieldManager {
         this.economyIcon.style.display = info?.economy ? 'block' : 'none';
         this.technologyIcon.style.display = info?.technology ? 'block' : 'none';
 
-        // Update tooltips with current info and color
+        // Update icon colors and borders to match diplomacy
+        [this.governmentIcon, this.economyIcon, this.technologyIcon].forEach(icon => {
+            if (icon.style.display !== 'none') {
+                icon.style.borderColor = diplomacyColor;
+                icon.style.color = diplomacyColor;
+                icon.style.textShadow = `0 0 4px ${diplomacyColor}`;
+                icon.style.boxShadow = `0 0 4px ${diplomacyColor.replace(')', ', 0.4)')}`;
+            }
+        });
+
+        // Update tooltips with current info
         if (info?.government) {
             this.governmentIcon.title = `Government: ${info.government}`;
-            this.governmentIcon.style.color = diplomacyColor;
         }
         if (info?.economy) {
             this.economyIcon.title = `Economy: ${info.economy}`;
-            this.economyIcon.style.color = diplomacyColor;
         }
         if (info?.technology) {
             this.technologyIcon.title = `Technology: ${info.technology}`;
-            this.technologyIcon.style.color = diplomacyColor;
+        }
+
+        // Calculate docking range based on body size
+        let dockingRange = this.dockingRange; // Default 1.5 for moons
+        if (info?.type === 'planet') {
+            // For planets, use a fixed 4.0KM range
+            dockingRange = 4.0;
         }
 
         // Calculate new button state
-        const canDock = distance <= this.dockingRange;
+        const canDock = distance <= dockingRange;
         const isDocked = this.isDocked && this.dockedTo === this.currentTarget;
         const isHostile = info?.diplomacy?.toLowerCase() === 'enemy';
 
         const newButtonState = {
             hasDockButton: (info?.type === 'planet' || info?.type === 'moon') && 
                           (canDock || isDocked) && 
-                          !isHostile, // Don't show dock button for hostile bodies
+                          !isHostile,
             isDocked: isDocked,
-            hasScanButton: (info?.type === 'planet' || info?.type === 'moon'),
-            hasTradeButton: (info?.type === 'planet' || info?.type === 'moon') && 
-                          info?.diplomacy?.toLowerCase() === 'friendly' && 
-                          distance <= this.dockingRange
+            hasScanButton: false,
+            hasTradeButton: false
         };
 
         // Only recreate buttons if state has changed
@@ -1051,34 +1069,10 @@ export class StarfieldManager {
             // Add dock/launch button if applicable
             if (newButtonState.hasDockButton) {
                 const dockButton = document.createElement('button');
-                dockButton.className = `action-button ${isDocked ? 'launch' : ''}`;
+                dockButton.className = `dock-button ${isDocked ? 'launch' : ''}`;
                 dockButton.textContent = isDocked ? 'LAUNCH' : 'DOCK';
                 dockButton.addEventListener('click', () => this.handleDockButtonClick(isDocked, currentTargetData.name));
                 this.actionButtonsContainer.appendChild(dockButton);
-            }
-
-            // Add scan button (always available for planets/moons)
-            if (newButtonState.hasScanButton) {
-                const scanButton = document.createElement('button');
-                scanButton.className = 'action-button';
-                scanButton.textContent = 'SCAN';
-                scanButton.disabled = distance > this.intelRange;
-                scanButton.title = distance > this.intelRange ? 'Out of scanning range' : 'Scan target';
-                if (!scanButton.disabled) {
-                    scanButton.style.background = diplomacyColor;
-                    scanButton.style.color = info?.diplomacy?.toLowerCase() === 'friendly' ? '#000' : '#fff';
-                }
-                this.actionButtonsContainer.appendChild(scanButton);
-            }
-
-            // Add trade button (only for friendly planets/moons in range)
-            if (newButtonState.hasTradeButton) {
-                const tradeButton = document.createElement('button');
-                tradeButton.className = 'action-button';
-                tradeButton.textContent = 'TRADE';
-                tradeButton.style.background = diplomacyColor;
-                tradeButton.style.color = '#000'; // Black text on friendly green
-                this.actionButtonsContainer.appendChild(tradeButton);
             }
         }
 
@@ -1438,7 +1432,7 @@ export class StarfieldManager {
         }
 
         // Handle rotation from arrow keys (instead of movement)
-        const rotationSpeed = 0.015; // Reduced to match thoralexander.com's turning speed
+        const rotationSpeed = 0.015;
         
         // Rotate camera based on arrow keys
         if (this.keys.ArrowLeft) {
@@ -1456,9 +1450,25 @@ export class StarfieldManager {
 
         // Handle speed changes with acceleration/deceleration
         if (this.decelerating) {
-            // Continuously decelerate while in deceleration mode
-            this.currentSpeed = Math.max(0, this.currentSpeed - this.deceleration);
-            // Adjust engine sound volume during deceleration
+            // Calculate deceleration rate based on current speed
+            const baseDecelRate = this.deceleration;
+            const speedDiff = this.currentSpeed - this.targetSpeed;
+            const decelRate = baseDecelRate * (1 + (speedDiff / this.maxSpeed) * 2);
+            
+            // Apply deceleration
+            const previousSpeed = this.currentSpeed;
+            this.currentSpeed = Math.max(
+                this.targetSpeed,
+                this.currentSpeed - decelRate
+            );
+            
+            // Check if we've reached target speed
+            if (Math.abs(this.currentSpeed - this.targetSpeed) < 0.01) {
+                this.currentSpeed = this.targetSpeed;
+                this.decelerating = false;
+            }
+            
+            // Update engine sound
             if (this.soundLoaded && this.engineState === 'running') {
                 const volume = this.currentSpeed / this.maxSpeed;
                 if (volume < 0.01) {
@@ -1467,15 +1477,16 @@ export class StarfieldManager {
                     this.engineSound.setVolume(volume);
                 }
             }
-        } else {
-            // Handle acceleration and normal speed changes
-            if (this.currentSpeed < this.targetSpeed) {
-                this.currentSpeed = Math.min(this.targetSpeed, this.currentSpeed + this.acceleration);
-            } else if (this.currentSpeed > this.targetSpeed) {
-                this.currentSpeed = Math.max(this.targetSpeed, this.currentSpeed - this.deceleration);
-            }
+        } else if (this.currentSpeed < this.targetSpeed) {
+            // Only handle acceleration if we're not decelerating
+            const previousSpeed = this.currentSpeed;
+            const newSpeed = Math.min(
+                this.targetSpeed,
+                this.currentSpeed + this.acceleration
+            );
+            this.currentSpeed = newSpeed;
             
-            // Adjust engine sound volume during speed changes
+            // Update engine sound during acceleration
             if (this.soundLoaded) {
                 const volume = this.currentSpeed / this.maxSpeed;
                 if (this.engineState === 'stopped' && this.currentSpeed > 0) {
@@ -1493,28 +1504,28 @@ export class StarfieldManager {
             const moveDirection = this.view === 'AFT' ? -1 : 1;
             
             // Calculate speed multiplier with reduced speeds for impulse 1, 2, and 3
-            let speedMultiplier = this.currentSpeed * 0.2;
+            let speedMultiplier = this.currentSpeed * 0.3; // Base multiplier
             
-            // Apply speed reductions (fourth round)
-            if (this.currentSpeed === 1) {
-                speedMultiplier *= 0.0625; // 50% reduction four times = 6.25% of original speed
-            } else if (this.currentSpeed === 2) {
-                speedMultiplier *= 0.0625; // 50% reduction four times = 6.25% of original speed
-            } else if (this.currentSpeed === 3) {
-                speedMultiplier *= 0.20; // 33% reduction four times ≈ 20% of original speed
+            // Apply speed reductions for lower impulse levels
+            if (this.currentSpeed <= 3) {
+                // Exponential reduction for impulse 1-3
+                const reductionFactor = Math.pow(0.15, 4 - this.currentSpeed); // Changed from 0.3 to 0.15 to reduce impulse 1 speed by 50%
+                speedMultiplier *= reductionFactor;
             }
             
-            // Move in the direction the camera is facing
+            // Calculate actual movement based on current speed
             const forwardVector = new THREE.Vector3(0, 0, -speedMultiplier * moveDirection);
             forwardVector.applyQuaternion(this.camera.quaternion);
+            
+            // Apply movement
             this.camera.position.add(forwardVector);
             this.camera.updateMatrixWorld();
         }
 
-        // Update starfield
+        // Update starfield positions
         const positions = this.starfield.geometry.attributes.position;
-        const maxDistance = 1000; // Maximum distance from camera before respawning
-        const minDistance = 100;  // Minimum spawn distance from camera
+        const maxDistance = 1000;
+        const minDistance = 100;
 
         for (let i = 0; i < positions.count; i++) {
             const x = positions.array[i * 3];
@@ -1758,15 +1769,61 @@ export class StarfieldManager {
 
     // Update the setView method to handle view changes
     setView(viewType) {
-        // Convert SCANNER to LONG RANGE for display
-        this.view = viewType === 'SCANNER' ? 'LONG RANGE' : viewType.toUpperCase();
-        
-        // Update camera rotation based on view - instant 180° rotation
-        if (this.view === 'AFT') {
-            this.camera.rotation.set(0, Math.PI, 0); // 180 degrees around Y axis
-        } else {
-            this.camera.rotation.set(0, 0, 0); // Reset to forward
+        // Store previous view when switching to GALACTIC or SCANNER
+        if (viewType === 'GALACTIC' || viewType === 'SCANNER') {
+            // Only store previous view if it's not GALACTIC or SCANNER
+            if (this.view !== 'GALACTIC' && this.view !== 'LONG RANGE') {
+                this.previousView = this.view;
+            }
         }
+
+        // Don't allow view changes while docked (except for GALACTIC and SCANNER)
+        if (this.isDocked && viewType !== 'GALACTIC' && viewType !== 'SCANNER' && viewType !== 'LONG RANGE') {
+            return;
+        }
+
+        // When leaving GALACTIC or SCANNER view while docked, restore to previous view or force FORE
+        if (this.isDocked && (this.view === 'GALACTIC' || this.view === 'LONG RANGE') && viewType !== 'GALACTIC' && viewType !== 'SCANNER') {
+            // Use previous view if it exists and is valid (FORE or AFT), otherwise default to FORE
+            const validView = this.previousView === 'FORE' || this.previousView === 'AFT' ? this.previousView : 'FORE';
+            this.view = validView;
+            this.camera.rotation.set(0, validView === 'AFT' ? Math.PI : 0, 0);
+            
+            // Always ensure crosshairs are hidden while docked
+            if (this.viewManager) {
+                this.viewManager.frontCrosshair.style.display = 'none';
+                this.viewManager.aftCrosshair.style.display = 'none';
+            }
+            
+            this.updateSpeedIndicator();
+            return;
+        }
+
+        // Set the view type, converting SCANNER to LONG RANGE for display
+        if (!this.isDocked) {
+            this.view = viewType === 'SCANNER' ? 'LONG RANGE' : viewType.toUpperCase();
+            
+            // Update camera rotation based on view
+            if (this.view === 'AFT') {
+                this.camera.rotation.set(0, Math.PI, 0); // 180 degrees around Y axis
+            } else if (this.view === 'FORE') {
+                this.camera.rotation.set(0, 0, 0); // Reset to forward
+            }
+        } else {
+            // If docked, only allow GALACTIC and SCANNER views
+            if (viewType === 'GALACTIC' || viewType === 'SCANNER') {
+                this.view = viewType === 'SCANNER' ? 'LONG RANGE' : viewType.toUpperCase();
+            }
+        }
+
+        // Handle crosshair visibility
+        if (this.viewManager) {
+            // Hide crosshairs if docked or in non-flight views
+            const showCrosshairs = !this.isDocked && this.view !== 'GALACTIC' && this.view !== 'LONG RANGE';
+            this.viewManager.frontCrosshair.style.display = showCrosshairs && this.view === 'FORE' ? 'block' : 'none';
+            this.viewManager.aftCrosshair.style.display = showCrosshairs && this.view === 'AFT' ? 'block' : 'none';
+        }
+
         this.camera.updateMatrixWorld();
         this.updateSpeedIndicator();
     }
@@ -2016,14 +2073,24 @@ export class StarfieldManager {
             return false;
         }
         
+        // Calculate docking range based on body size
+        let dockingRange = this.dockingRange; // Default 1.5 for moons
+        if (info?.type === 'planet') {
+            // For planets, use a fixed 4.0KM range
+            dockingRange = 4.0;
+        }
+        
         // Check distance
-        return this.camera.position.distanceTo(target.position) <= this.dockingRange;
+        return this.camera.position.distanceTo(target.position) <= dockingRange;
     }
 
     dock(target) {
         if (!this.canDock(target)) {
             return false;
         }
+
+        // Store the current view before docking
+        this.previousView = this.view;
 
         // Stop engine sounds when docking
         if (this.engineState === 'running') {
@@ -2040,71 +2107,49 @@ export class StarfieldManager {
             startRot: this.camera.quaternion.clone(),
             progress: 0,
             transitioning: true,
-            phase: 'decelerate', // New sequence: decelerate -> approach -> align -> descend -> orbit
-            subProgress: 0,
-            startDistance: relativePos.length()
+            target: target
         };
 
-        // Calculate positions for each phase
-        const approachDistance = this.orbitRadius * 3; // Start approach from further out
-        const alignDistance = this.orbitRadius * 2; // Position for alignment
-        const orbitDistance = this.orbitRadius; // Final orbit distance
+        // Get target info for orbit radius calculation
+        const info = this.solarSystemManager.getCelestialBodyInfo(target);
+        
+        // Calculate orbit radius based on body size
+        this.orbitRadius = this.dockingRange; // Default 1.5 for moons
+        if (info?.type === 'planet') {
+            // For planets, use a fixed 4.0KM orbit
+            this.orbitRadius = 4.0;
+        }
 
-        // Calculate positions for each phase
-        const direction = relativePos.clone().normalize();
-        this.dockingState.approachPos = new THREE.Vector3()
-            .copy(target.position)
-            .add(direction.clone().multiplyScalar(approachDistance));
-
-        this.dockingState.alignPos = new THREE.Vector3()
-            .copy(target.position)
-            .add(direction.clone().multiplyScalar(alignDistance));
-
-        // Calculate final orbit position with slight vertical offset
+        // Calculate final orbit position
         const finalOrbitPos = new THREE.Vector3(
-            target.position.x + Math.cos(this.orbitAngle) * orbitDistance,
-            target.position.y + Math.sin(this.orbitAngle * 0.5) * (orbitDistance * 0.2),
-            target.position.z + Math.sin(this.orbitAngle) * orbitDistance
+            target.position.x + Math.cos(this.orbitAngle) * this.orbitRadius,
+            target.position.y,
+            target.position.z + Math.sin(this.orbitAngle) * this.orbitRadius
         );
         this.dockingState.endPos = finalOrbitPos;
 
-        // Calculate rotations for each phase
-        // Approach rotation (looking at planet)
-        const approachRot = new THREE.Quaternion();
-        const approachMatrix = new THREE.Matrix4();
-        approachMatrix.lookAt(this.dockingState.approachPos, target.position, new THREE.Vector3(0, 1, 0));
-        approachRot.setFromRotationMatrix(approachMatrix);
-        this.dockingState.approachRot = approachRot;
-
-        // Calculate orbit direction for final rotation
-        const orbitTangent = new THREE.Vector3(
-            -Math.sin(this.orbitAngle),
-            0,
-            Math.cos(this.orbitAngle)
-        ).normalize();
-
-        // Final orbit rotation
+        // Calculate final rotation (looking at target)
         const targetRot = new THREE.Quaternion();
         const lookAtMatrix = new THREE.Matrix4();
-        const targetDirection = orbitTangent.clone();
-        const up = new THREE.Vector3(0, 1, 0);
-        const right = new THREE.Vector3().crossVectors(targetDirection, up).normalize();
-        up.crossVectors(right, targetDirection);
-        
-        lookAtMatrix.makeBasis(right, up, targetDirection.negate());
+        lookAtMatrix.lookAt(finalOrbitPos, target.position, new THREE.Vector3(0, 1, 0));
         targetRot.setFromRotationMatrix(lookAtMatrix);
         this.dockingState.endRot = targetRot;
 
-        // Store target for reference
-        this.dockingState.target = target;
-
+        // Set docking state
         this.isDocked = true;
         this.dockedTo = target;
-
-        // Set speed to 0 since we're docked
         this.targetSpeed = 0;
         this.currentSpeed = 0;
         this.decelerating = false;
+
+        // Hide crosshairs when docked
+        if (this.viewManager) {
+            this.viewManager.frontCrosshair.style.display = 'none';
+            this.viewManager.aftCrosshair.style.display = 'none';
+        }
+
+        // Play command sound for successful dock
+        this.playCommandSound();
 
         // Update the dock button to show "LAUNCH"
         this.updateTargetDisplay();
@@ -2115,6 +2160,9 @@ export class StarfieldManager {
         if (!this.isDocked) {
             return;
         }
+
+        // Play command sound for successful launch
+        this.playCommandSound();
 
         // Start engine sound at impulse 1
         if (this.soundLoaded && this.engineState === 'stopped') {
@@ -2146,9 +2194,22 @@ export class StarfieldManager {
         this.currentSpeed = 1;
         this.decelerating = false;
 
-        // Close target computer
-        if (this.targetComputerEnabled) {
-            this.toggleTargetComputer();
+        // Restore crosshairs based on previous view
+        if (this.viewManager) {
+            // Use the previous view that was stored when docking
+            const viewToRestore = this.previousView === 'AFT' ? 'AFT' : 'FORE';
+            this.view = viewToRestore;
+            
+            // Update camera rotation based on the restored view
+            if (viewToRestore === 'AFT') {
+                this.camera.rotation.set(0, Math.PI, 0); // 180 degrees around Y axis
+            } else {
+                this.camera.rotation.set(0, 0, 0); // Reset to forward
+            }
+            
+            // Show appropriate crosshair
+            this.viewManager.frontCrosshair.style.display = viewToRestore === 'FORE' ? 'block' : 'none';
+            this.viewManager.aftCrosshair.style.display = viewToRestore === 'AFT' ? 'block' : 'none';
         }
         
         // Update the dock button to show "DOCK"
@@ -2161,191 +2222,42 @@ export class StarfieldManager {
 
         // Handle docking transition
         if (this.dockingState && this.dockingState.transitioning) {
-            // Update main progress
-            this.dockingState.progress = Math.min(1, this.dockingState.progress + deltaTime * 0.5); // Slower overall progress
+            // Update progress with smooth easing
+            this.dockingState.progress = Math.min(1, this.dockingState.progress + deltaTime * 0.5);
+            const smoothProgress = this.easeInOutCubic(this.dockingState.progress);
             
-            // Update sub-progress for current phase
-            const phaseSpeed = {
-                decelerate: 0.7,
-                approach: 0.5,
-                align: 0.4,
-                descend: 0.3,
-                orbit: 0.4
-            }[this.dockingState.phase];
+            // Move to final position and rotate to face target
+            this.camera.position.lerp(this.dockingState.endPos, smoothProgress);
+            this.camera.quaternion.slerp(this.dockingState.endRot, smoothProgress);
             
-            this.dockingState.subProgress = Math.min(1, this.dockingState.subProgress + deltaTime * phaseSpeed);
-            
-            // Custom easing functions for smoother transitions
-            const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-            const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
-            const easeInOutQuart = t => t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
-            
-            const smoothT = easeInOutCubic(this.dockingState.subProgress);
-            const target = this.dockingState.target;
-            
-            // Handle different phases of docking
-            switch (this.dockingState.phase) {
-                case 'decelerate':
-                    // Gradually slow down while maintaining current direction
-                    const deceleratePos = new THREE.Vector3().lerpVectors(
-                        this.dockingState.startPos,
-                        this.dockingState.approachPos,
-                        easeOutQuart(smoothT)
-                    );
-                    this.camera.position.copy(deceleratePos);
-                    
-                    // Slightly begin rotating towards target
-                    const initialLook = new THREE.Quaternion();
-                    const decelerateMatrix = new THREE.Matrix4();
-                    decelerateMatrix.lookAt(deceleratePos, target.position, new THREE.Vector3(0, 1, 0));
-                    initialLook.setFromRotationMatrix(decelerateMatrix);
-                    this.camera.quaternion.slerp(initialLook, smoothT * 0.3); // Subtle initial rotation
-                    
-                    if (this.dockingState.subProgress >= 1) {
-                        this.dockingState.phase = 'approach';
-                        this.dockingState.subProgress = 0;
-                    }
-                    break;
-                    
-                case 'approach':
-                    // Move to approach position while smoothly looking at planet
-                    const approachPos = new THREE.Vector3().lerpVectors(
-                        this.dockingState.approachPos,
-                        this.dockingState.alignPos,
-                        easeInOutQuart(smoothT)
-                    );
-                    this.camera.position.copy(approachPos);
-                    
-                    // Gradually rotate to look at target
-                    const approachLook = new THREE.Quaternion();
-                    const approachMatrix = new THREE.Matrix4();
-                    approachMatrix.lookAt(approachPos, target.position, new THREE.Vector3(0, 1, 0));
-                    approachLook.setFromRotationMatrix(approachMatrix);
-                    this.camera.quaternion.slerp(approachLook, easeInOutCubic(smoothT));
-                    
-                    if (this.dockingState.subProgress >= 1) {
-                        this.dockingState.phase = 'align';
-                        this.dockingState.subProgress = 0;
-                    }
-                    break;
-                    
-                case 'align':
-                    // Hold relative position but rotate to orbital orientation
-                    const alignRot = new THREE.Quaternion();
-                    alignRot.slerpQuaternions(this.dockingState.approachRot, this.dockingState.endRot, easeInOutCubic(smoothT));
-                    this.camera.quaternion.copy(alignRot);
-                    
-                    // Slight circular motion during alignment
-                    const alignAngle = smoothT * Math.PI * 0.5;
-                    const alignRadius = this.dockingState.alignPos.distanceTo(target.position);
-                    const alignOffset = new THREE.Vector3(
-                        Math.cos(alignAngle) * alignRadius,
-                        Math.sin(alignAngle * 0.5) * (alignRadius * 0.1),
-                        Math.sin(alignAngle) * alignRadius
-                    );
-                    const alignPos = new THREE.Vector3().copy(target.position).add(alignOffset);
-                    this.camera.position.lerp(alignPos, deltaTime * 2);
-                    
-                    if (this.dockingState.subProgress >= 1) {
-                        this.dockingState.phase = 'descend';
-                        this.dockingState.subProgress = 0;
-                    }
-                    break;
-                    
-                case 'descend':
-                    // Spiral down to orbital position
-                    const descentProgress = easeInOutQuart(smoothT);
-                    const spiralAngle = descentProgress * Math.PI * 2; // One full spiral
-                    const currentRadius = this.dockingState.alignPos.distanceTo(target.position) * (1 - descentProgress * 0.5);
-                    const descentPos = new THREE.Vector3(
-                        target.position.x + Math.cos(spiralAngle) * currentRadius,
-                        target.position.y + Math.sin(spiralAngle * 0.5) * (currentRadius * 0.2),
-                        target.position.z + Math.sin(spiralAngle) * currentRadius
-                    );
-                    this.camera.position.lerp(descentPos, deltaTime * 3);
-                    
-                    // Maintain orbital orientation during descent
-                    const descentRot = new THREE.Quaternion();
-                    const descentMatrix = new THREE.Matrix4();
-                    const descentTangent = new THREE.Vector3(
-                        -Math.sin(spiralAngle),
-                        0,
-                        Math.cos(spiralAngle)
-                    ).normalize();
-                    const descentUp = new THREE.Vector3(0, 1, 0);
-                    const descentRight = new THREE.Vector3().crossVectors(descentTangent, descentUp).normalize();
-                    descentUp.crossVectors(descentRight, descentTangent);
-                    descentMatrix.makeBasis(descentRight, descentUp, descentTangent.negate());
-                    descentRot.setFromRotationMatrix(descentMatrix);
-                    this.camera.quaternion.slerp(descentRot, deltaTime * 3);
-                    
-                    if (this.dockingState.subProgress >= 1) {
-                        this.dockingState.phase = 'orbit';
-                        this.dockingState.subProgress = 0;
-                    }
-                    break;
-                    
-                case 'orbit':
-                    // Final adjustment into stable orbit
-                    this.camera.position.lerp(this.dockingState.endPos, easeInOutCubic(smoothT));
-                    this.camera.quaternion.slerp(this.dockingState.endRot, easeInOutCubic(smoothT));
-                    
-                    if (this.dockingState.subProgress >= 1) {
-                        this.dockingState.transitioning = false;
-                    }
-                    break;
+            if (this.dockingState.progress >= 1) {
+                this.dockingState.transitioning = false;
             }
-            
             return;
         }
 
         // Regular orbit update
         const targetPos = this.dockedTo.position;
         
-        // Update orbit angle with smooth acceleration/deceleration
-        const targetSpeed = this.orbitSpeed;
-        this.currentOrbitSpeed = this.currentOrbitSpeed || targetSpeed;
-        this.currentOrbitSpeed += (targetSpeed - this.currentOrbitSpeed) * deltaTime * 2;
-        
-        this.orbitAngle += this.currentOrbitSpeed;
+        // Update orbit angle
+        this.orbitAngle += this.orbitSpeed;
         if (this.orbitAngle > Math.PI * 2) this.orbitAngle -= Math.PI * 2;
 
-        // Calculate new position with slight banking effect
-        const bankAngle = Math.sin(this.orbitAngle) * 0.1; // Subtle banking angle
-        const verticalOffset = Math.sin(this.orbitAngle * 0.5) * (this.orbitRadius * 0.1); // Reduced vertical oscillation
-        
         // Update position
         this.camera.position.x = targetPos.x + Math.cos(this.orbitAngle) * this.orbitRadius;
-        this.camera.position.y = targetPos.y + verticalOffset;
+        this.camera.position.y = targetPos.y;
         this.camera.position.z = targetPos.z + Math.sin(this.orbitAngle) * this.orbitRadius;
         
-        // Calculate orbit direction (tangent to orbit)
-        const orbitTangent = new THREE.Vector3(
-            -Math.sin(this.orbitAngle),
-            0,
-            Math.cos(this.orbitAngle)
-        ).normalize();
-
-        // Create rotation matrix for ship orientation with banking
-        const targetRot = new THREE.Quaternion();
-        const lookAtMatrix = new THREE.Matrix4();
-        const targetDirection = orbitTangent.clone();
-        const up = new THREE.Vector3(0, 1, 0);
-        
-        // Apply banking effect
-        up.applyAxisAngle(targetDirection, bankAngle);
-        
-        const right = new THREE.Vector3().crossVectors(targetDirection, up).normalize();
-        up.crossVectors(right, targetDirection);
-        
-        lookAtMatrix.makeBasis(right, up, targetDirection.negate());
-        targetRot.setFromRotationMatrix(lookAtMatrix);
-        
-        // Smoothly interpolate to target rotation
-        this.camera.quaternion.slerp(targetRot, deltaTime * 3);
+        // Always look at target center
+        this.camera.lookAt(targetPos);
         
         // Update target display to maintain button visibility
         this.updateTargetDisplay();
+    }
+
+    // Helper function for smooth easing
+    easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
 
     // Add new debug methods for dock/undock
@@ -2388,10 +2300,17 @@ export class StarfieldManager {
             const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
             const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
             
+            // Calculate docking range based on body size
+            let dockingRange = this.dockingRange; // Default 1.5 for moons
+            if (info?.type === 'planet') {
+                // For planets, use a fixed 4.0KM range
+                dockingRange = 4.0;
+            }
+            
             console.log('Attempting to dock:', {
                 distance: distance,
-                dockingRange: this.dockingRange,
-                isInRange: distance <= this.dockingRange,
+                dockingRange: dockingRange,
+                isInRange: distance <= dockingRange,
                 targetName: targetName,
                 diplomacy: info?.diplomacy
             });
@@ -2406,7 +2325,7 @@ export class StarfieldManager {
                 return;
             }
             
-            if (distance <= this.dockingRange) {
+            if (distance <= dockingRange) {
                 this.dockWithDebug(this.currentTarget);
             } else {
                 console.warn('Target is out of docking range');

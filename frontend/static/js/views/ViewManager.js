@@ -215,6 +215,7 @@ export class ViewManager {
             const key = event.key.toLowerCase();
             const isGalacticChartVisible = this.galacticChart.isVisible();
             const isLongRangeScannerVisible = this.longRangeScanner.isVisible();
+            const isDocked = this.starfieldManager?.isDocked;
             
             if (key === 'g') {
                 console.log('G key pressed:', {
@@ -255,11 +256,11 @@ export class ViewManager {
                     console.log('Setting view to SCANNER');
                     this.setView(VIEW_TYPES.SCANNER);
                 }
-            } else if (key === 'f' && (this.currentView === VIEW_TYPES.AFT || isGalacticChartVisible || isLongRangeScannerVisible)) {
+            } else if (!isDocked && key === 'f' && (this.currentView === VIEW_TYPES.AFT || isGalacticChartVisible || isLongRangeScannerVisible)) {
                 event.preventDefault();
                 event.stopPropagation();
                 this.setView(VIEW_TYPES.FORE);
-            } else if (key === 'a' && (this.currentView === VIEW_TYPES.FORE || isGalacticChartVisible || isLongRangeScannerVisible)) {
+            } else if (!isDocked && key === 'a' && (this.currentView === VIEW_TYPES.FORE || isGalacticChartVisible || isLongRangeScannerVisible)) {
                 event.preventDefault();
                 event.stopPropagation();
                 this.setView(VIEW_TYPES.AFT);
@@ -272,7 +273,8 @@ export class ViewManager {
             viewType,
             currentView: this.currentView,
             isGalacticVisible: this.galacticChart.isVisible(),
-            isLongRangeScannerVisible: this.longRangeScanner.isVisible()
+            isLongRangeScannerVisible: this.longRangeScanner.isVisible(),
+            isDocked: this.starfieldManager?.isDocked
         });
         
         if (this.editMode) return;
@@ -295,6 +297,10 @@ export class ViewManager {
                 this.savedCameraState.position.copy(this.camera.position);
                 this.savedCameraState.quaternion.copy(this.camera.quaternion);
                 this.currentView = viewType;
+                // Notify StarfieldManager of view change
+                if (this.starfieldManager) {
+                    this.starfieldManager.setView(viewType.toUpperCase());
+                }
                 return;
             }
         }
@@ -339,7 +345,10 @@ export class ViewManager {
                 }
                 this.galacticChart.hide(false);
                 this.longRangeScanner.hide();
-                this.frontCrosshair.style.display = 'block';
+                // Only show crosshair if not docked
+                if (!this.starfieldManager?.isDocked) {
+                    this.frontCrosshair.style.display = 'block';
+                }
                 break;
             case VIEW_TYPES.AFT:
                 if (this.currentView === VIEW_TYPES.GALACTIC || this.currentView === VIEW_TYPES.SCANNER) {
@@ -353,7 +362,10 @@ export class ViewManager {
                 }
                 this.galacticChart.hide(false);
                 this.longRangeScanner.hide();
-                this.aftCrosshair.style.display = 'block';
+                // Only show crosshair if not docked
+                if (!this.starfieldManager?.isDocked) {
+                    this.aftCrosshair.style.display = 'block';
+                }
                 break;
         }
         
@@ -424,7 +436,8 @@ export class ViewManager {
         console.log('restorePreviousView called:', {
             currentView: this.currentView,
             previousView: this.previousView,
-            lastNonModalView: this.lastNonModalView
+            lastNonModalView: this.lastNonModalView,
+            isDocked: this.starfieldManager?.isDocked
         });
         
         // Don't restore if we're not in galactic or scanner view
@@ -433,12 +446,6 @@ export class ViewManager {
             return;
         }
         
-        // Use lastNonModalView if coming from a modal view, otherwise use previousView
-        const viewToRestore = (this.previousView === VIEW_TYPES.GALACTIC || this.previousView === VIEW_TYPES.SCANNER) 
-            ? this.lastNonModalView 
-            : (this.previousView || VIEW_TYPES.FORE);
-        console.log('Restoring to view:', viewToRestore);
-        
         // Hide the appropriate view without triggering another view restoration
         if (this.currentView === VIEW_TYPES.GALACTIC) {
             this.galacticChart.hide(false);
@@ -446,26 +453,60 @@ export class ViewManager {
             this.longRangeScanner.hide(false);
         }
         
+        // If docked, restore to previous view or force FORE
+        if (this.starfieldManager?.isDocked) {
+            console.log('Ship is docked, restoring to previous view or FORE');
+            const validView = (this.previousView === VIEW_TYPES.FORE || this.previousView === VIEW_TYPES.AFT) ? 
+                this.previousView : VIEW_TYPES.FORE;
+                
+            // Restore the camera state first
+            this.camera.position.copy(this.savedCameraState.position);
+            this.camera.quaternion.copy(this.savedCameraState.quaternion);
+            
+            // Update the current view
+            this.currentView = validView;
+            
+            // Ensure crosshairs are hidden
+            this.frontCrosshair.style.display = 'none';
+            this.aftCrosshair.style.display = 'none';
+            
+            // Notify StarfieldManager of view change
+            if (this.starfieldManager) {
+                this.starfieldManager.setView(validView.toUpperCase());
+            }
+            
+            return;
+        }
+        
+        // Use lastNonModalView if coming from a modal view, otherwise use previousView
+        let viewToRestore = (this.previousView === VIEW_TYPES.GALACTIC || this.previousView === VIEW_TYPES.SCANNER) 
+            ? this.lastNonModalView 
+            : (this.previousView || VIEW_TYPES.FORE);
+            
+        console.log('Restoring to view:', viewToRestore);
+        
         // Restore the camera state
         this.camera.position.copy(this.savedCameraState.position);
         this.camera.quaternion.copy(this.savedCameraState.quaternion);
         
-        // If restoring to AFT view, apply the 180-degree rotation
-        if (viewToRestore === VIEW_TYPES.AFT) {
+        // If restoring to AFT view and not docked, apply the 180-degree rotation
+        if (viewToRestore === VIEW_TYPES.AFT && !this.starfieldManager?.isDocked) {
             const euler = new THREE.Euler().setFromQuaternion(this.camera.quaternion);
             euler.y += Math.PI;
             this.camera.quaternion.setFromEuler(euler);
         }
         
-        // Update crosshairs
-        this.frontCrosshair.style.display = viewToRestore === VIEW_TYPES.FORE ? 'block' : 'none';
-        this.aftCrosshair.style.display = viewToRestore === VIEW_TYPES.AFT ? 'block' : 'none';
+        // Update crosshairs based on docked state
+        const showCrosshairs = !this.starfieldManager?.isDocked;
+        this.frontCrosshair.style.display = showCrosshairs && viewToRestore === VIEW_TYPES.FORE ? 'block' : 'none';
+        this.aftCrosshair.style.display = showCrosshairs && viewToRestore === VIEW_TYPES.AFT ? 'block' : 'none';
         
         // Update the current view and notify StarfieldManager
         this.currentView = viewToRestore;
         console.log('Updated current view to:', this.currentView);
         
         if (this.starfieldManager) {
+            // Convert view type to uppercase before passing to starfieldManager
             this.starfieldManager.setView(viewToRestore.toUpperCase());
         }
     }
