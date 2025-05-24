@@ -239,6 +239,16 @@
     - [ ] Fire rate management
     - [ ] Power consumption
     - [ ] Level-specific damage
+  - [ ] Long Range Scanner
+    - [ ] Add damage state tracking
+    - [ ] Implement scan range reduction
+    - [ ] Add accuracy penalties
+    - [ ] Create repair integration
+  - [ ] Subspace Radio
+    - [ ] Add damage state tracking
+    - [ ] Implement chart update degradation
+    - [ ] Add power management
+    - [ ] Create repair integration
 
 ### UI Implementation
 - [ ] Extend Ship Systems HUD
@@ -246,18 +256,38 @@
   - [ ] Implement power usage displays
   - [ ] Create health indicators
   - [ ] Add energy pool display
+  - [ ] Implement color-coded health states
+  - [ ] Add pulsing effects for critical systems
+  - [ ] Create system icons with status overlays
 
 - [ ] Damage Control Interface
   - [ ] Create system status display
   - [ ] Implement repair priority controls
   - [ ] Add repair kit management
   - [ ] Create damage effects visualization
+  - [ ] Implement 3D wireframe model
+    - [ ] Add color-coded damage indicators
+    - [ ] Create interactive system selection
+    - [ ] Implement rotating view
+    - [ ] Add zoom capability
+  - [ ] Add damage log
+    - [ ] Create scrolling ticker for notifications
+    - [ ] Implement damage type indicators
+    - [ ] Add timestamp tracking
+  - [ ] Create repair interface
+    - [ ] Add repair kit inventory display
+    - [ ] Implement station repair cost display
+    - [ ] Add repair time estimates
+    - [ ] Create priority setting controls
 
 - [ ] Station Interface
   - [ ] Create repair service interface
   - [ ] Implement system shop
   - [ ] Add hull shop
   - [ ] Create upgrade preview
+  - [ ] Add service menu navigation
+  - [ ] Implement credit balance display
+  - [ ] Create compatibility indicators
 
 ### Ship Editor Mode (Ctrl-S)
 - [ ] Create Ship Editor UI
@@ -348,9 +378,15 @@
 
 - [ ] System Dependencies
   - [ ] Implement system relationships
-  - [ ] Add cascading effects
-  - [ ] Create system synergies
-  - [ ] Add system conflicts
+    - [ ] Add engine-shield interaction
+    - [ ] Create weapon-power dependencies
+    - [ ] Implement scanner-radio synergy
+    - [ ] Add targeting-weapon integration
+  - [ ] Create cascading effects
+    - [ ] Implement damage propagation
+    - [ ] Add performance impact calculations
+    - [ ] Create system failure chains
+    - [ ] Implement repair priority effects
 
 - [ ] Advanced Damage System
   - [ ] Implement critical hits
@@ -363,6 +399,13 @@
   - [ ] Implement upgrade trees
   - [ ] Create special upgrades
   - [ ] Add upgrade limitations
+
+- [ ] Distress Call System
+  - [ ] Implement distress call reception
+  - [ ] Add call type classification
+  - [ ] Create response options
+  - [ ] Implement reward system
+  - [ ] Add faction reputation effects
 
 ### UI Enhancements
 - [ ] Visual Improvements
