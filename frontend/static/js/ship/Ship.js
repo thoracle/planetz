@@ -64,7 +64,64 @@ export default class Ship {
         // Initialize system state tracking
         this.systemStates = new Map();
         
+        // Initialize default systems based on ship configuration
+        this.initializeDefaultSystemInstances();
+        
         console.log('Default systems initialized for', this.shipType);
+    }
+    
+    /**
+     * Create default system instances for the ship
+     */
+    async initializeDefaultSystemInstances() {
+        try {
+            // Import system classes
+            const { default: ImpulseEngines } = await import('./systems/ImpulseEngines.js');
+            const { default: WarpDrive } = await import('./systems/WarpDrive.js');
+            const { default: Shields } = await import('./systems/Shields.js');
+            const { default: Weapons } = await import('./systems/Weapons.js');
+            const { default: LongRangeScanner } = await import('./systems/LongRangeScanner.js');
+            const { default: GalacticChartSystem } = await import('./systems/GalacticChartSystem.js');
+            
+            // Get default system configurations
+            const defaultSystems = this.shipConfig.defaultSystems;
+            
+            // Create and add default systems
+            if (defaultSystems.impulse_engines) {
+                const engines = new ImpulseEngines(defaultSystems.impulse_engines.level);
+                this.addSystem('impulse_engines', engines);
+            }
+            
+            if (defaultSystems.warp_drive) {
+                const warpDrive = new WarpDrive(defaultSystems.warp_drive.level);
+                this.addSystem('warp_drive', warpDrive);
+            }
+            
+            if (defaultSystems.shields) {
+                const shields = new Shields(defaultSystems.shields.level);
+                this.addSystem('shields', shields);
+            }
+            
+            if (defaultSystems.weapons) {
+                const weapons = new Weapons(defaultSystems.weapons.level);
+                this.addSystem('weapons', weapons);
+            }
+            
+            if (defaultSystems.long_range_scanner) {
+                const scanner = new LongRangeScanner(defaultSystems.long_range_scanner.level);
+                this.addSystem('long_range_scanner', scanner);
+            }
+            
+            if (defaultSystems.subspace_radio) {
+                const radio = new GalacticChartSystem(defaultSystems.subspace_radio.level);
+                this.addSystem('subspace_radio', radio);
+            }
+            
+            console.log(`Initialized ${this.systems.size} default systems for ${this.shipType}`);
+            
+        } catch (error) {
+            console.error('Error initializing default systems:', error);
+        }
     }
     
     /**
@@ -323,5 +380,22 @@ export default class Ship {
         }
         
         return totalConsumption;
+    }
+    
+    /**
+     * Get a specific system by name
+     * @param {string} systemName - Name of the system to retrieve
+     * @returns {System|null} The system instance or null if not found
+     */
+    getSystem(systemName) {
+        return this.systems.get(systemName) || null;
+    }
+    
+    /**
+     * Get the warp drive system
+     * @returns {WarpDrive|null} The warp drive system or null if not available
+     */
+    getWarpDrive() {
+        return this.getSystem('warp_drive');
     }
 } 

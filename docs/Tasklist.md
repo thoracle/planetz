@@ -216,10 +216,10 @@
   - [X] **SIMPLIFIED**: Auto-deactivate systems when insufficient energy
 
 - [ ] System Integration
-  - [ ] Warp Drive Integration
-    - [ ] Add warp drive damage status check
+  - [X] Warp Drive Integration
+    - [X] Add warp drive damage status check
     - [X] Energy consumption during warp (already implemented via ViewManager)
-    - [ ] Convert existing WarpDrive to use Ship's WarpDrive system
+    - [X] Convert existing WarpDrive to use Ship's WarpDrive system
   - [ ] HUD Integration
     - [ ] Add damage control interface (Press 'D' to toggle Damage Control View)
     - [ ] Create station repair interface
@@ -239,12 +239,12 @@
     - [X] Variable energy consumption: Impulse 1 = base consumption, Impulse 9 = 15x consumption
     - [X] Free rotation (no energy cost for turning)
     - [X] Travel time/energy cost calculations
-  - [ ] Warp Drive (extend existing implementation)
+  - [X] Warp Drive (extend existing implementation)
     - [X] Warp cost calculations (already implemented)
     - [X] Cooldown management (already implemented)
     - [X] Energy consumption (already implemented)
-    - [ ] Convert to System class for damage/repair functionality
-    - [ ] Level-specific capabilities
+    - [X] Convert to System class for damage/repair functionality
+    - [X] Level-specific capabilities
   - [X] Shields
     - [X] Shield capacity
     - [X] Recharge rate
