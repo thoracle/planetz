@@ -6,6 +6,10 @@ export class StarfieldManager {
         this.scene = scene;
         this.camera = camera;
         this.viewManager = viewManager;  // Store the viewManager
+        
+        // Get Ship instance from ViewManager for direct access to ship systems
+        this.ship = this.viewManager.getShip();
+        
         this.targetSpeed = 0;
         this.currentSpeed = 0;
         this.maxSpeed = 9;
@@ -426,7 +430,119 @@ export class StarfieldManager {
         
         stats.forEach(box => document.body.appendChild(box));
 
+        // Create ship systems status display
+        this.createShipSystemsHUD();
+
         this.updateSpeedIndicator();
+    }
+
+    createShipSystemsHUD() {
+        // Create ship systems status container
+        this.shipSystemsHUD = document.createElement('div');
+        this.shipSystemsHUD.style.cssText = `
+            position: fixed;
+            top: 60px;
+            left: 10px;
+            color: #00ff41;
+            font-family: "Courier New", monospace;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 1000;
+            border: 1px solid #00ff41;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.7);
+            min-width: 200px;
+        `;
+
+        // Create systems list container
+        this.systemsList = document.createElement('div');
+        this.systemsList.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        `;
+
+        this.shipSystemsHUD.appendChild(this.systemsList);
+        document.body.appendChild(this.shipSystemsHUD);
+
+        // Update the systems display
+        this.updateShipSystemsDisplay();
+    }
+
+    updateShipSystemsDisplay() {
+        if (!this.ship || !this.systemsList) {
+            return;
+        }
+
+        // Clear existing system displays
+        this.systemsList.innerHTML = '';
+
+        // Get ship status
+        const shipStatus = this.ship.getStatus();
+        
+        // Create header
+        const header = document.createElement('div');
+        header.style.cssText = `
+            font-weight: bold;
+            margin-bottom: 4px;
+            border-bottom: 1px solid #00ff41;
+            padding-bottom: 2px;
+        `;
+        header.textContent = 'SHIP SYSTEMS';
+        this.systemsList.appendChild(header);
+
+        // Add energy consumption rate
+        const energyRate = this.ship.getEnergyConsumptionRate();
+        const energyDisplay = document.createElement('div');
+        energyDisplay.style.cssText = `font-size: 12px; color: #00aa41;`;
+        energyDisplay.textContent = `Energy Usage: ${energyRate.toFixed(1)}/s`;
+        this.systemsList.appendChild(energyDisplay);
+
+        // Display each system
+        for (const [systemName, systemInfo] of Object.entries(shipStatus.systems)) {
+            const systemElement = document.createElement('div');
+            systemElement.style.cssText = `
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 12px;
+            `;
+
+            // System name
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = this.formatSystemName(systemName);
+            
+            // System status (health + active state)
+            const statusSpan = document.createElement('span');
+            const health = Math.round(systemInfo.health * 100);
+            const isActive = systemInfo.isActive;
+            
+            // Color code based on health and active state
+            let color = '#00ff41'; // Green for healthy
+            if (health < 75) color = '#ffaa00'; // Orange for damaged
+            if (health < 25) color = '#ff4400'; // Red for critical
+            if (!isActive && systemInfo.canBeActivated) color = '#888888'; // Gray for inactive
+            
+            statusSpan.style.color = color;
+            statusSpan.textContent = `${health}% ${isActive ? 'ON' : 'OFF'}`;
+            
+            systemElement.appendChild(nameSpan);
+            systemElement.appendChild(statusSpan);
+            this.systemsList.appendChild(systemElement);
+        }
+    }
+
+    formatSystemName(systemName) {
+        // Convert system names to display format
+        const nameMap = {
+            'shields': 'SHIELDS',
+            'impulse_engines': 'ENGINES',
+            'warp_drive': 'WARP',
+            'weapons': 'WEAPONS',
+            'sensors': 'SENSORS',
+            'life_support': 'LIFE SUP'
+        };
+        return nameMap[systemName] || systemName.toUpperCase();
     }
 
     updateSpeedIndicator() {
@@ -446,8 +562,12 @@ export class StarfieldManager {
         }
         
         this.speedBox.textContent = `Speed: ${speedText}`;
-        this.energyBox.textContent = `Energy: ${this.viewManager.getShipEnergy().toFixed(2)}`;
+        // Connect Ship energy to existing energy display (using ship directly)
+        this.energyBox.textContent = `Energy: ${this.ship.currentEnergy.toFixed(2)}`;
         this.viewBox.textContent = `View: ${this.view}`;
+        
+        // Update ship systems display
+        this.updateShipSystemsDisplay();
     }
 
     createTargetComputerHUD() {
@@ -1794,6 +1914,12 @@ export class StarfieldManager {
         }
         if (this.viewBox && this.viewBox.parentNode) {
             this.viewBox.parentNode.removeChild(this.viewBox);
+        }
+        if (this.energyBox && this.energyBox.parentNode) {
+            this.energyBox.parentNode.removeChild(this.energyBox);
+        }
+        if (this.shipSystemsHUD && this.shipSystemsHUD.parentNode) {
+            this.shipSystemsHUD.parentNode.removeChild(this.shipSystemsHUD);
         }
         if (this.targetHUD && this.targetHUD.parentNode) {
             this.targetHUD.parentNode.removeChild(this.targetHUD);

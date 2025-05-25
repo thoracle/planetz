@@ -5,6 +5,8 @@ import WarpFeedback from '../WarpFeedback.js';
 import WarpDriveManager from '../WarpDriveManager.js';
 import Ship from '../ship/Ship.js';
 import Shields from '../ship/systems/Shields.js';
+import ImpulseEngines from '../ship/systems/ImpulseEngines.js';
+import Weapons from '../ship/systems/Weapons.js';
 
 export const VIEW_TYPES = {
     FORE: 'fore',
@@ -297,6 +299,29 @@ export class ViewManager {
                     console.log(`Shield strength: ${status.currentShieldStrength.toFixed(2)}/${status.maxShieldStrength.toFixed(2)} - Damage absorption: ${(status.damageAbsorption * 100).toFixed(1)}%`);
                 } else {
                     console.log('No shields system found on ship');
+                }
+            } else if (key === ' ' && !isDocked) {
+                // Weapon firing - only when not docked
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // Play command sound like other command keys
+                if (this.starfieldManager && this.starfieldManager.playCommandSound) {
+                    this.starfieldManager.playCommandSound();
+                }
+                
+                // Get weapons system from ship
+                const weaponsSystem = this.ship.systems.get('weapons');
+                if (weaponsSystem) {
+                    const fireResult = weaponsSystem.fire(this.ship);
+                    if (fireResult) {
+                        console.log(`Weapons fired: ${fireResult.damage.toFixed(1)} damage, ${fireResult.energyConsumed.toFixed(1)} energy consumed`);
+                        console.log(`${fireResult.weaponType} - ${fireResult.hit ? 'HIT' : 'MISS'} at ${fireResult.distance.toFixed(1)} range`);
+                    } else {
+                        console.log('Cannot fire weapons - check energy or cooldown');
+                    }
+                } else {
+                    console.log('No weapons system found on ship');
                 }
             } else if (!isDocked && key === 'f' && (this.currentView === VIEW_TYPES.AFT || isGalacticChartVisible || isLongRangeScannerVisible)) {
                 event.preventDefault();
@@ -621,7 +646,15 @@ export class ViewManager {
         const shields = new Shields(1);
         this.ship.addSystem('shields', shields);
         
-        console.log('Ship systems initialized - shields added');
+        // Add impulse engines
+        const impulseEngines = new ImpulseEngines();
+        this.ship.addSystem('impulse_engines', impulseEngines);
+        
+        // Add weapons system
+        const weapons = new Weapons();
+        this.ship.addSystem('weapons', weapons);
+        
+        console.log('Ship systems initialized - shields, impulse engines, and weapons added');
     }
 }
 

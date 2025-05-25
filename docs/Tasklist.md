@@ -189,11 +189,11 @@
     - [X] Replace ViewManager.shipEnergy with Ship instance
     - [X] Connect Ship energy methods to existing getShipEnergy/updateShipEnergy
     - [X] Maintain backward compatibility with existing energy system
-  - [ ] Add Ship instance to StarfieldManager
-    - [ ] Update HUD to display Ship status
-    - [ ] Connect Ship energy to existing energy display
+  - [X] Add Ship instance to StarfieldManager
+    - [X] Update HUD to display Ship status
+    - [X] Connect Ship energy to existing energy display
   - [X] Connect Ship energy system to existing UI
-  - [ ] Add Ship status display to HUD
+  - [X] Add Ship status display to HUD
 
 - [X] Implement System interface
   - [X] Define base system properties
@@ -245,17 +245,17 @@
     - [X] Energy consumption (already implemented)
     - [ ] Convert to System class for damage/repair functionality
     - [ ] Level-specific capabilities
-  - [ ] Shields
-    - [ ] Shield capacity
-    - [ ] Recharge rate
-    - [ ] **SIMPLIFIED**: Energy consumption per second when active
-    - [ ] Level-specific protection
-    - [ ] Press 'S' to toggle Shields on/off.  Tint screen blue when shields are on.
-  - [ ] Weapons
-    - [ ] Damage calculations
-    - [ ] Fire rate management
-    - [ ] **SIMPLIFIED**: Energy consumption per shot (instant consumption)
-    - [ ] Level-specific damage
+  - [X] Shields
+    - [X] Shield capacity
+    - [X] Recharge rate
+    - [X] **SIMPLIFIED**: Energy consumption per second when active
+    - [X] Level-specific protection
+    - [X] Press 'S' to toggle Shields on/off.  Tint screen blue when shields are on.
+  - [X] Weapons
+    - [X] Damage calculations
+    - [X] Fire rate management
+    - [X] **SIMPLIFIED**: Energy consumption per shot (instant consumption)
+    - [X] Level-specific damage
   - [ ] Long Range Scanner (extend existing implementation)
     - [X] Basic long range scanner exists (already implemented)
     - [ ] Convert to System class for damage/repair functionality

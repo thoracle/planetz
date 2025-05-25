@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weapons Debug Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #00ff41;
+            font-family: "Courier New", monospace;
+        }
+        #debug-panel {
+            border: 1px solid #00ff41;
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .status-good { color: #00ff41; }
+        .status-warning { color: #ffaa00; }
+        .status-error { color: #ff4400; }
+        .status-section { margin: 10px 0; border-left: 3px solid #333; padding-left: 10px; }
+        #live-status {
+            border: 1px solid #333;
+            padding: 10px;
+            margin: 10px 0;
+            background: rgba(0, 0, 0, 0.5);
+            font-family: monospace;
+            font-size: 12px;
+        }
+        button {
+            background: #003300;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: "Courier New", monospace;
+        }
+        button:hover {
+            background: #004400;
+        }
+        button:disabled {
+            background: #111;
+            color: #666;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Weapons System Debug Test</h1>
+    
+    <div id="debug-panel">
+        <h3>Weapon Status Debug</h3>
+        <div id="weapon-status"></div>
+        
+        <div style="margin: 20px 0;">
+            <button id="fire-btn">🔫 Fire Weapon (Spacebar)</button>
+            <button id="reset-cooldown-btn">⏰ Reset Cooldown</button>
+            <button id="damage-weapon-btn">💥 Damage Weapon</button>
+            <button id="repair-weapon-btn">🔧 Repair Weapon</button>
+        </div>
+        
+        <div id="live-status">
+            <div>Press buttons or spacebar to test weapon firing...</div>
+        </div>
+    </div>
+
+    <div style="margin-top: 20px; padding: 10px; border: 1px solid #333;">
+        <h4>Instructions:</h4>
+        <ul>
+            <li>Press <strong>SPACEBAR</strong> to fire weapons (same as in game)</li>
+            <li>Level 1 weapons have a fire rate of 2 shots/second (500ms cooldown)</li>
+            <li>Watch the live status to see why firing might fail</li>
+            <li>Use the buttons above to test different weapon states</li>
+        </ul>
+    </div>
+    
+    <script type="module">
+        // Mock THREE.js for testing (minimal implementation)
+        window.THREE = {
+            Vector3: class Vector3 {
+                constructor(x = 0, y = 0, z = 0) {
+                    this.x = x;
+                    this.y = y;
+                    this.z = z;
+                }
+                
+                distanceTo(other) {
+                    const dx = this.x - other.x;
+                    const dy = this.y - other.y;
+                    const dz = this.z - other.z;
+                    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+                }
+                
+                set(x, y, z) {
+                    this.x = x;
+                    this.y = y;
+                    this.z = z;
+                    return this;
+                }
+                
+                copy(other) {
+                    this.x = other.x;
+                    this.y = other.y;
+                    this.z = other.z;
+                    return this;
+                }
+            }
+        };
+        
+        import Ship from './static/js/ship/Ship.js';
+        import Weapons from './static/js/ship/systems/Weapons.js';
+        
+        // Create ship and weapons for testing
+        const ship = new Ship('heavy_fighter');
+        const weapons = new Weapons(1);
+        ship.addSystem('weapons', weapons);
+        
+        const weaponStatus = document.getElementById('weapon-status');
+        const liveStatus = document.getElementById('live-status');
+        const fireBtn = document.getElementById('fire-btn');
+        const resetCooldownBtn = document.getElementById('reset-cooldown-btn');
+        const damageWeaponBtn = document.getElementById('damage-weapon-btn');
+        const repairWeaponBtn = document.getElementById('repair-weapon-btn');
+        
+        let fireAttempts = 0;
+        let successfulFires = 0;
+        
+        function updateStatus() {
+            const status = weapons.getStatus();
+            const shipStatus = ship.getStatus();
+            const now = Date.now();
+            const timeSinceLastFire = now - weapons.lastFireTime;
+            const cooldownRequired = weapons.getShotCooldown();
+            const canFire = weapons.canFire();
+            
+            weaponStatus.innerHTML = `
+                <div class="status-section">
+                    <strong>System Status:</strong>
+                    <div>Operational: <span class="${status.isOperational ? 'status-good' : 'status-error'}">${status.isOperational ? 'YES' : 'NO'}</span></div>
+                    <div>Health: <span class="${status.healthPercentage > 0.5 ? 'status-good' : status.healthPercentage > 0.2 ? 'status-warning' : 'status-error'}">${(status.healthPercentage * 100).toFixed(1)}%</span></div>
+                    <div>Level: <span class="status-good">${status.level}</span></div>
+                    <div>Active: <span class="${status.isActive ? 'status-good' : 'status-warning'}">${status.isActive ? 'YES' : 'NO'}</span></div>
+                </div>
+                
+                <div class="status-section">
+                    <strong>Weapon Stats:</strong>
+                    <div>Damage: <span class="status-good">${status.currentDamage.toFixed(1)}</span></div>
+                    <div>Fire Rate: <span class="status-good">${status.currentFireRate.toFixed(1)}/sec</span></div>
+                    <div>Energy/Shot: <span class="status-good">${status.energyPerShot.toFixed(1)}</span></div>
+                    <div>Weapon Type: <span class="status-good">${status.weaponType}</span></div>
+                </div>
+                
+                <div class="status-section">
+                    <strong>Cooldown Status:</strong>
+                    <div>Can Fire: <span class="${canFire ? 'status-good' : 'status-error'}">${canFire ? 'YES' : 'NO'}</span></div>
+                    <div>Cooldown Required: <span class="status-good">${cooldownRequired.toFixed(0)}ms</span></div>
+                    <div>Time Since Last Fire: <span class="${timeSinceLastFire >= cooldownRequired ? 'status-good' : 'status-warning'}">${timeSinceLastFire.toFixed(0)}ms</span></div>
+                    <div>Cooldown Remaining: <span class="${status.cooldownRemaining <= 0 ? 'status-good' : 'status-warning'}">${Math.max(0, status.cooldownRemaining).toFixed(0)}ms</span></div>
+                </div>
+                
+                <div class="status-section">
+                    <strong>Ship Energy:</strong>
+                    <div>Current: <span class="${shipStatus.energy.current >= status.energyPerShot ? 'status-good' : 'status-error'}">${shipStatus.energy.current.toFixed(1)}</span></div>
+                    <div>Enough for Shot: <span class="${ship.hasEnergy(status.energyPerShot) ? 'status-good' : 'status-error'}">${ship.hasEnergy(status.energyPerShot) ? 'YES' : 'NO'}</span></div>
+                </div>
+                
+                <div class="status-section">
+                    <strong>Test Stats:</strong>
+                    <div>Fire Attempts: <span class="status-good">${fireAttempts}</span></div>
+                    <div>Successful Fires: <span class="status-good">${successfulFires}</span></div>
+                    <div>Success Rate: <span class="status-good">${fireAttempts > 0 ? ((successfulFires / fireAttempts) * 100).toFixed(1) : 0}%</span></div>
+                </div>
+            `;
+            
+            // Update fire button state
+            fireBtn.disabled = !canFire;
+            fireBtn.textContent = canFire ? '🔫 Fire Weapon (Ready)' : `🔫 Fire Weapon (Cooldown: ${Math.max(0, status.cooldownRemaining).toFixed(0)}ms)`;
+        }
+        
+        function logToLiveStatus(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'success' ? '#00ff41' : type === 'error' ? '#ff4400' : type === 'warning' ? '#ffaa00' : '#ffffff';
+            
+            const div = document.createElement('div');
+            div.style.color = color;
+            div.innerHTML = `[${timestamp}] ${message}`;
+            
+            liveStatus.appendChild(div);
+            
+            // Keep only last 10 messages
+            while (liveStatus.children.length > 10) {
+                liveStatus.removeChild(liveStatus.firstChild);
+            }
+            
+            // Scroll to bottom
+            liveStatus.scrollTop = liveStatus.scrollHeight;
+        }
+        
+        function attemptFire() {
+            fireAttempts++;
+            
+            const canFire = weapons.canFire();
+            const hasEnergy = ship.hasEnergy(weapons.getEnergyPerShot());
+            const isOperational = weapons.isOperational();
+            
+            logToLiveStatus(`Fire attempt #${fireAttempts}:`);
+            logToLiveStatus(`  Can Fire: ${canFire}, Has Energy: ${hasEnergy}, Operational: ${isOperational}`, canFire ? 'info' : 'warning');
+            
+            if (!isOperational) {
+                logToLiveStatus('  ❌ FAILED: Weapon not operational', 'error');
+                updateStatus();
+                return;
+            }
+            
+            if (!hasEnergy) {
+                logToLiveStatus('  ❌ FAILED: Insufficient energy', 'error');
+                updateStatus();
+                return;
+            }
+            
+            if (!canFire) {
+                const cooldownRemaining = Math.max(0, weapons.getShotCooldown() - (Date.now() - weapons.lastFireTime));
+                logToLiveStatus(`  ❌ FAILED: Weapon on cooldown (${cooldownRemaining.toFixed(0)}ms remaining)`, 'error');
+                updateStatus();
+                return;
+            }
+            
+            // Attempt to fire
+            const fireResult = weapons.fire(ship);
+            
+            if (fireResult) {
+                successfulFires++;
+                logToLiveStatus(`  ✅ SUCCESS: Fired! Damage: ${fireResult.damage.toFixed(1)}, Energy: ${fireResult.energyConsumed.toFixed(1)}`, 'success');
+                logToLiveStatus(`  🎯 ${fireResult.hit ? 'HIT' : 'MISS'} - ${fireResult.weaponType}`, fireResult.hit ? 'success' : 'warning');
+            } else {
+                logToLiveStatus('  ❌ FAILED: Fire method returned null', 'error');
+            }
+            
+            updateStatus();
+        }
+        
+        // Event listeners
+        fireBtn.addEventListener('click', attemptFire);
+        
+        resetCooldownBtn.addEventListener('click', () => {
+            weapons.lastFireTime = 0;
+            weapons.currentCooldown = 0;
+            logToLiveStatus('🔄 Cooldown reset', 'info');
+            updateStatus();
+        });
+        
+        damageWeaponBtn.addEventListener('click', () => {
+            weapons.takeDamage(25);
+            logToLiveStatus(`💥 Weapon damaged (Health: ${(weapons.healthPercentage * 100).toFixed(1)}%)`, 'warning');
+            updateStatus();
+        });
+        
+        repairWeaponBtn.addEventListener('click', () => {
+            weapons.repair(100);
+            logToLiveStatus('🔧 Weapon fully repaired', 'success');
+            updateStatus();
+        });
+        
+        // Keyboard listener for spacebar
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                attemptFire();
+            }
+        });
+        
+        // Update status every 100ms
+        setInterval(updateStatus, 100);
+        
+        // Initial status update
+        updateStatus();
+        logToLiveStatus('🚀 Weapons debug test initialized', 'success');
+        logToLiveStatus('Press SPACEBAR or click Fire button to test weapons', 'info');
+        
+        // Make objects available in console
+        window.debugShip = ship;
+        window.debugWeapons = weapons;
+        console.log('Debug objects available: debugShip, debugWeapons');
+    </script>
+</body>
+</html> 

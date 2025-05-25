@@ -231,6 +231,18 @@ export default class Ship {
      * Get current ship status
      */
     getStatus() {
+        // Build systems status information
+        const systemsStatus = {};
+        for (const [systemName, system] of this.systems) {
+            systemsStatus[systemName] = {
+                health: system.healthPercentage,
+                isActive: system.isActive,
+                canBeActivated: system.isOperational(),
+                level: system.level,
+                systemType: system.systemType || systemName
+            };
+        }
+        
         return {
             shipType: this.shipType,
             hull: {
@@ -249,6 +261,7 @@ export default class Ship {
                 available: this.availableSlots
             },
             stats: this.calculateTotalStats(),
+            systems: systemsStatus,
             systemCount: this.systems.size
         };
     }

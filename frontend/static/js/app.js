@@ -278,6 +278,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Initialize ViewManager
     viewManager = new ViewManager(scene, camera, controls);
+    
+    // Expose viewManager globally for debugging
+    window.viewManager = viewManager;
 
     // Initialize StarfieldManager and connect it to ViewManager
     const starfieldManager = new StarfieldManager(scene, camera, viewManager);
