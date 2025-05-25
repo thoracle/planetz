@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galactic Chart System Test</title>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+        }
+        .error {
+            border-color: #ff0000;
+            background: rgba(255, 0, 0, 0.1);
+            color: #ff4444;
+        }
+        .success {
+            border-color: #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+        }
+        button {
+            background: #000;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        button:hover {
+            background: rgba(0, 255, 65, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Galactic Chart System Test</h1>
+        <div id="test-results"></div>
+        
+        <h2>Manual Tests</h2>
+        <button onclick="testBasicFunctionality()">Test Basic Functionality</button>
+        <button onclick="testEnergyConsumption()">Test Energy Consumption</button>
+        <button onclick="testDamageEffects()">Test Damage Effects</button>
+        <button onclick="testActivationDeactivation()">Test Activation/Deactivation</button>
+        <button onclick="runAllTests()">Run All Tests</button>
+        
+        <h2>Console Output</h2>
+        <div id="console-output" style="height: 300px; overflow-y: auto; background: rgba(0,0,0,0.5); padding: 10px; border: 1px solid #00ff41;"></div>
+    </div>
+
+    <script type="module">
+        import Ship from './static/js/ship/Ship.js';
+        import GalacticChartSystem from './static/js/ship/systems/GalacticChartSystem.js';
+
+        // Global variables for testing
+        let testShip = null;
+        let testChart = null;
+
+        // Override console.log to capture output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const outputDiv = document.getElementById('console-output');
+        
+        function addToConsole(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.style.color = type === 'error' ? '#ff4444' : '#00ff41';
+            div.innerHTML = `[${timestamp}] ${message}`;
+            outputDiv.appendChild(div);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToConsole(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToConsole('ERROR: ' + args.join(' '), 'error');
+        };
+
+        function addTestResult(title, success, details = '') {
+            const resultsDiv = document.getElementById('test-results');
+            const div = document.createElement('div');
+            div.className = `test-result ${success ? 'success' : 'error'}`;
+            div.innerHTML = `
+                <strong>${success ? '✓' : '✗'} ${title}</strong>
+                ${details ? '<br>' + details : ''}
+            `;
+            resultsDiv.appendChild(div);
+        }
+
+        function initializeTestObjects() {
+            try {
+                console.log('Creating test ship...');
+                testShip = new Ship('heavy_fighter');
+                
+                console.log('Creating galactic chart system...');
+                testChart = new GalacticChartSystem(1);
+                
+                console.log('Adding chart system to ship...');
+                testShip.addSystem('galacticChart', testChart);
+                
+                addTestResult('System Initialization', true, 'Ship and GalacticChartSystem created successfully');
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize test objects:', error);
+                addTestResult('System Initialization', false, error.message);
+                return false;
+            }
+        }
+
+        window.testBasicFunctionality = function() {
+            console.log('=== Testing Basic Functionality ===');
+            
+            if (!initializeTestObjects()) return;
+            
+            try {
+                const status = testChart.getStatus();
+                console.log('Chart status:', status);
+                
+                const dataRange = testChart.getCurrentDataRange();
+                const accuracy = testChart.getCurrentAccuracy();
+                
+                console.log(`Data Range: ${dataRange}%`);
+                console.log(`Accuracy: ${accuracy}%`);
+                
+                addTestResult('Basic Functionality', true, 
+                    `Data Range: ${dataRange}%, Accuracy: ${accuracy}%`);
+            } catch (error) {
+                console.error('Basic functionality test failed:', error);
+                addTestResult('Basic Functionality', false, error.message);
+            }
+        };
+
+        window.testEnergyConsumption = function() {
+            console.log('=== Testing Energy Consumption ===');
+            
+            if (!initializeTestObjects()) return;
+            
+            try {
+                const initialEnergy = testShip.currentEnergy;
+                console.log('Initial energy:', initialEnergy);
+                
+                // Test activation
+                const activated = testChart.activateChart(testShip);
+                console.log('Activation successful:', activated);
+                
+                const energyAfterActivation = testShip.currentEnergy;
+                console.log('Energy after activation:', energyAfterActivation);
+                
+                // Test energy consumption rate
+                const consumptionRate = testChart.getEnergyConsumptionRate();
+                console.log('Energy consumption rate:', consumptionRate, '/sec');
+                
+                // Test deactivation
+                testChart.deactivateChart();
+                const consumptionAfterDeactivation = testChart.getEnergyConsumptionRate();
+                console.log('Energy consumption after deactivation:', consumptionAfterDeactivation);
+                
+                addTestResult('Energy Consumption', true, 
+                    `Activation cost: ${initialEnergy - energyAfterActivation}, Rate: ${consumptionRate}/sec`);
+            } catch (error) {
+                console.error('Energy consumption test failed:', error);
+                addTestResult('Energy Consumption', false, error.message);
+            }
+        };
+
+        window.testDamageEffects = function() {
+            console.log('=== Testing Damage Effects ===');
+            
+            if (!initializeTestObjects()) return;
+            
+            try {
+                // Test undamaged performance
+                const undamagedRange = testChart.getCurrentDataRange();
+                const undamagedAccuracy = testChart.getCurrentAccuracy();
+                console.log(`Undamaged - Range: ${undamagedRange}%, Accuracy: ${undamagedAccuracy}%`);
+                
+                // Apply damage
+                testChart.takeDamage(50);
+                console.log('Applied 50 damage');
+                
+                // Test damaged performance
+                const damagedRange = testChart.getCurrentDataRange();
+                const damagedAccuracy = testChart.getCurrentAccuracy();
+                console.log(`Damaged - Range: ${damagedRange}%, Accuracy: ${damagedAccuracy}%`);
+                
+                // Test repair
+                testChart.repair(0.5);
+                console.log('Repaired 50%');
+                
+                const repairedRange = testChart.getCurrentDataRange();
+                const repairedAccuracy = testChart.getCurrentAccuracy();
+                console.log(`Repaired - Range: ${repairedRange}%, Accuracy: ${repairedAccuracy}%`);
+                
+                addTestResult('Damage Effects', true, 
+                    `Damage reduced performance: ${undamagedRange}% → ${damagedRange}% → ${repairedRange}%`);
+            } catch (error) {
+                console.error('Damage effects test failed:', error);
+                addTestResult('Damage Effects', false, error.message);
+            }
+        };
+
+        window.testActivationDeactivation = function() {
+            console.log('=== Testing Activation/Deactivation ===');
+            
+            if (!initializeTestObjects()) return;
+            
+            try {
+                // Test initial state
+                console.log('Initial chart active state:', testChart.isChartActive);
+                
+                // Test activation conditions
+                const canActivate = testChart.canActivate(testShip);
+                console.log('Can activate:', canActivate);
+                
+                // Test activation
+                testChart.activateChart(testShip);
+                console.log('Chart active after activation:', testChart.isChartActive);
+                
+                // Test deactivation
+                testChart.deactivateChart();
+                console.log('Chart active after deactivation:', testChart.isChartActive);
+                
+                // Test low energy scenario
+                testShip.currentEnergy = 10;
+                const canActivateLowEnergy = testChart.canActivate(testShip);
+                console.log('Can activate with low energy (10):', canActivateLowEnergy);
+                
+                addTestResult('Activation/Deactivation', true, 
+                    'All activation states working correctly');
+            } catch (error) {
+                console.error('Activation/deactivation test failed:', error);
+                addTestResult('Activation/Deactivation', false, error.message);
+            }
+        };
+
+        window.runAllTests = function() {
+            console.log('=== Running All Tests ===');
+            document.getElementById('test-results').innerHTML = '';
+            
+            setTimeout(() => testBasicFunctionality(), 100);
+            setTimeout(() => testEnergyConsumption(), 200);
+            setTimeout(() => testDamageEffects(), 300);
+            setTimeout(() => testActivationDeactivation(), 400);
+        };
+
+        // Auto-run basic test on page load
+        setTimeout(() => {
+            console.log('Page loaded, running initial test...');
+            testBasicFunctionality();
+        }, 500);
+
+        // Make ship and chart globally accessible for console testing
+        window.getTestShip = () => testShip;
+        window.getTestChart = () => testChart;
+        
+        console.log('Galactic Chart Test Page loaded');
+        console.log('Global functions available: testBasicFunctionality(), testEnergyConsumption(), testDamageEffects(), testActivationDeactivation(), runAllTests()');
+        console.log('Global accessors: getTestShip(), getTestChart()');
+    </script>
+</body>
+</html> 

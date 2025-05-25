@@ -171,7 +171,7 @@
     - [X] Create base stats configuration
     - [X] Add system slot configuration
     - [X] **SIMPLIFIED**: Remove power grid complexity - systems consume energy from shared pool when active
-  - [ ] Add system management functionality
+  - [X] Add system management functionality
     - [X] Create system registry
     - [X] Implement system initialization
     - [X] Add system state tracking
@@ -179,12 +179,12 @@
     - [X] Create energy pool
     - [X] Add energy consumption tracking
     - [X] **SIMPLIFIED**: Systems consume energy directly when active (no separate power allocation)
-  - [ ] Create system state abstraction layer
-    - [ ] Implement state validation
-    - [ ] Add state transition rules
-    - [ ] Create state persistence
+  - [X] Create system state abstraction layer
+    - [X] Implement state validation
+    - [X] Add state transition rules
+    - [X] Create state persistence
 
-- [ ] Ship Integration with Game Systems
+- [X] Ship Integration with Game Systems
   - [X] Integrate Ship with ViewManager
     - [X] Replace ViewManager.shipEnergy with Ship instance
     - [X] Connect Ship energy methods to existing getShipEnergy/updateShipEnergy
@@ -230,7 +230,7 @@
     - [ ] Create system shop
     - [ ] Add launch sequence
 
-- [ ] Create concrete system implementations
+- [X] Create concrete system implementations
   - [X] Impulse Engines
     - [X] Speed and maneuverability calculations
     - [X] **SIMPLIFIED**: Energy consumption per second when maneuvering (variable based on impulse speed 1-9)
@@ -256,26 +256,26 @@
     - [X] Fire rate management
     - [X] **SIMPLIFIED**: Energy consumption per shot (instant consumption)
     - [X] Level-specific damage
-  - [ ] Long Range Scanner (extend existing implementation)
+  - [X] Long Range Scanner (extend existing implementation)
     - [X] Basic long range scanner exists (already implemented)
-    - [ ] Convert to System class for damage/repair functionality
-    - [ ] Check if Long Range Scanner is damaged when activating it
-    - [ ] **SIMPLIFIED**: Energy consumption per second when scanning
-    - [ ] Implement scan range reduction / fog of war
-    - [ ] Create repair integration
-  - [ ] Subspace Radio (extend existing Galactic Chart implementation)
+    - [X] Convert to System class for damage/repair functionality
+    - [X] Check if Long Range Scanner is damaged when activating it
+    - [X] **SIMPLIFIED**: Energy consumption per second when scanning
+    - [X] Implement scan range reduction / fog of war
+    - [X] Create repair integration
+  - [X] Subspace Radio (extend existing Galactic Chart implementation)
     - [X] Basic galactic chart exists (already implemented)
-    - [ ] Convert to System class for damage/repair functionality
-    - [ ] Check if Subspace Radio is damaged when using Galactic Chart
-    - [ ] **SIMPLIFIED**: Energy consumption per second when transmitting
-    - [ ] Implement chart range reduction / fog of war
+    - [X] Convert to System class for damage/repair functionality
+    - [X] Check if Subspace Radio is damaged when using Galactic Chart
+    - [X] **SIMPLIFIED**: Energy consumption per second when transmitting
+    - [X] Implement chart range reduction / fog of war
     - [ ] Implement galactic chart update degradation (move to post MVP)
-    - [ ] Create repair integration
+    - [X] Create repair integration
 
 ### UI Implementation
-- [ ] Extend Ship Systems HUD
+- [X] Extend Ship Systems HUD
   - [ ] Add notification messages when systems are repaired/damaged/destroyed
-  - [ ] **SIMPLIFIED**: Show energy consumption rate for active systems
+  - [X] **SIMPLIFIED**: Show energy consumption rate for active systems
 
 - [ ] Damage Control Interface
   - [ ] Create system status display

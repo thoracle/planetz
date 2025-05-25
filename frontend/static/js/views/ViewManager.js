@@ -7,6 +7,8 @@ import Ship from '../ship/Ship.js';
 import Shields from '../ship/systems/Shields.js';
 import ImpulseEngines from '../ship/systems/ImpulseEngines.js';
 import Weapons from '../ship/systems/Weapons.js';
+import LongRangeScannerSystem from '../ship/systems/LongRangeScanner.js';
+import GalacticChartSystem from '../ship/systems/GalacticChartSystem.js';
 
 export const VIEW_TYPES = {
     FORE: 'fore',
@@ -245,10 +247,44 @@ export class ViewManager {
                 event.preventDefault();
                 event.stopPropagation();
                 
+                // Get the galactic chart system from ship
+                const chartSystem = this.ship.systems.get('galactic_chart');
+                
                 if (isGalacticChartVisible) {
                     console.log('Restoring previous view');
+                    // Deactivate chart system when hiding
+                    if (chartSystem) {
+                        chartSystem.deactivateChart();
+                    }
                     this.galacticChart.hide(true);
                 } else {
+                    // Check if chart system is operational
+                    if (!chartSystem) {
+                        console.warn('No Galactic Chart system found on ship');
+                        return;
+                    }
+                    
+                    if (!chartSystem.canActivate(this.ship)) {
+                        if (!chartSystem.isOperational()) {
+                            console.warn('Cannot activate Galactic Chart: System damaged or offline');
+                        } else {
+                            console.warn('Cannot activate Galactic Chart: Insufficient energy');
+                        }
+                        return;
+                    }
+                    
+                    // Play command sound like other command keys
+                    if (this.starfieldManager && this.starfieldManager.playCommandSound) {
+                        this.starfieldManager.playCommandSound();
+                    }
+                    
+                    // Activate chart system
+                    const chartActivated = chartSystem.activateChart(this.ship);
+                    if (!chartActivated) {
+                        console.warn('Failed to activate Galactic Chart');
+                        return;
+                    }
+                    
                     // If scanner is visible, hide it first
                     if (isLongRangeScannerVisible) {
                         console.log('Hiding scanner before showing galactic chart');
@@ -266,10 +302,44 @@ export class ViewManager {
                 event.preventDefault();
                 event.stopPropagation();
                 
+                // Get the long range scanner system from ship
+                const scannerSystem = this.ship.systems.get('long_range_scanner');
+                
                 if (isLongRangeScannerVisible) {
                     console.log('Restoring previous view');
+                    // Stop scanning when hiding scanner
+                    if (scannerSystem) {
+                        scannerSystem.stopScan();
+                    }
                     this.longRangeScanner.hide(true);
                 } else {
+                    // Check if scanner system is operational
+                    if (!scannerSystem) {
+                        console.warn('No Long Range Scanner system found on ship');
+                        return;
+                    }
+                    
+                    if (!scannerSystem.canActivate(this.ship)) {
+                        if (!scannerSystem.isOperational()) {
+                            console.warn('Cannot activate Long Range Scanner: System damaged or offline');
+                        } else {
+                            console.warn('Cannot activate Long Range Scanner: Insufficient energy');
+                        }
+                        return;
+                    }
+                    
+                    // Play command sound like other command keys
+                    if (this.starfieldManager && this.starfieldManager.playCommandSound) {
+                        this.starfieldManager.playCommandSound();
+                    }
+                    
+                    // Start scanning operation
+                    const scanStarted = scannerSystem.startScan(this.ship);
+                    if (!scanStarted) {
+                        console.warn('Failed to start Long Range Scanner');
+                        return;
+                    }
+                    
                     // If galactic chart is visible, hide it first
                     if (isGalacticChartVisible) {
                         console.log('Hiding galactic chart before showing scanner');
@@ -355,10 +425,25 @@ export class ViewManager {
         
         // Special handling for galactic view toggle
         if (viewType === VIEW_TYPES.GALACTIC) {
+            const chartSystem = this.ship.systems.get('galactic_chart');
+            
             if (this.galacticChart.isVisible()) {
+                // Deactivate chart system when hiding
+                if (chartSystem) {
+                    chartSystem.deactivateChart();
+                }
                 this.galacticChart.hide(true);
                 return;
             } else {
+                // Check if chart system can be activated (already handled in G key binding)
+                // This is a secondary check for programmatic setView calls
+                if (chartSystem && chartSystem.canActivate(this.ship)) {
+                    // Activate chart system if not already active
+                    if (!chartSystem.isChartActive) {
+                        chartSystem.activateChart(this.ship);
+                    }
+                }
+                
                 this.galacticChart.show();
                 this.previousView = this.currentView;
                 this.savedCameraState.position.copy(this.camera.position);
@@ -374,10 +459,25 @@ export class ViewManager {
         
         // Special handling for scanner view toggle
         if (viewType === VIEW_TYPES.SCANNER) {
+            const scannerSystem = this.ship.systems.get('long_range_scanner');
+            
             if (this.longRangeScanner.isVisible()) {
+                // Stop scanning when hiding scanner
+                if (scannerSystem) {
+                    scannerSystem.stopScan();
+                }
                 this.longRangeScanner.hide();
                 return;
             } else {
+                // Check if scanner system can be activated (already handled in L key binding)
+                // This is a secondary check for programmatic setView calls
+                if (scannerSystem && scannerSystem.canActivate(this.ship)) {
+                    // Start scanning operation if not already scanning
+                    if (!scannerSystem.isScanning) {
+                        scannerSystem.startScan(this.ship);
+                    }
+                }
+                
                 this.longRangeScanner.show();
                 this.previousView = this.currentView;
                 this.savedCameraState.position.copy(this.camera.position);
@@ -626,6 +726,12 @@ export class ViewManager {
         // Update ship systems
         if (this.ship) {
             this.ship.update(deltaTime);
+            
+            // Update galactic chart system specifically for energy consumption
+            const chartSystem = this.ship.systems.get('galactic_chart');
+            if (chartSystem) {
+                chartSystem.update(deltaTime / 1000, this.ship); // Convert to seconds
+            }
         }
         
         // Update warp drive manager
@@ -654,7 +760,15 @@ export class ViewManager {
         const weapons = new Weapons();
         this.ship.addSystem('weapons', weapons);
         
-        console.log('Ship systems initialized - shields, impulse engines, and weapons added');
+        // Add long range scanner system
+        const longRangeScannerSystem = new LongRangeScannerSystem();
+        this.ship.addSystem('long_range_scanner', longRangeScannerSystem);
+        
+        // Add galactic chart system
+        const galacticChartSystem = new GalacticChartSystem();
+        this.ship.addSystem('galactic_chart', galacticChartSystem);
+        
+        console.log('Ship systems initialized - shields, impulse engines, weapons, long range scanner, and galactic chart added');
     }
 }
 

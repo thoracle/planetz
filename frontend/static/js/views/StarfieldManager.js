@@ -540,7 +540,9 @@ export class StarfieldManager {
             'warp_drive': 'WARP',
             'weapons': 'WEAPONS',
             'sensors': 'SENSORS',
-            'life_support': 'LIFE SUP'
+            'life_support': 'LIFE SUP',
+            'long_range_scanner': 'LR SCANNER',
+            'galactic_chart': 'GALACTIC'
         };
         return nameMap[systemName] || systemName.toUpperCase();
     }

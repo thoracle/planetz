@@ -173,12 +173,32 @@ export class GalacticChart {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
-            const data = await response.json();
-            if (!data || !Array.isArray(data)) {
+            const rawData = await response.json();
+            if (!rawData || !Array.isArray(rawData)) {
                 throw new Error('Invalid universe data format');
             }
 
-            this.universe = data;
+            // Get the Galactic Chart system from the ship
+            const ship = this.viewManager.getShip();
+            const chartSystem = ship ? ship.systems.get('galactic_chart') : null;
+            
+            // Process universe data through the chart system (applies damage effects)
+            if (chartSystem && chartSystem.isOperational()) {
+                this.universe = chartSystem.processUniverseData(rawData);
+                
+                const systemStatus = chartSystem.getStatus();
+                console.log(`Galactic Chart data processed - Range: ${systemStatus.dataRange}%, Accuracy: ${systemStatus.accuracy}%`);
+                
+                // Show warning if data is limited due to damage
+                if (systemStatus.dataRange < 100 || systemStatus.accuracy < 100) {
+                    console.warn(`Chart system performance degraded - showing ${systemStatus.dataRange}% of systems with ${systemStatus.accuracy}% accuracy`);
+                }
+            } else {
+                // Fallback to raw data if no chart system (shouldn't happen)
+                console.warn('No operational Galactic Chart system found - using raw data');
+                this.universe = rawData;
+            }
+            
             this.updateGrid();
             
             // Wait for managers to be ready
@@ -192,6 +212,7 @@ export class GalacticChart {
             // No longer share universe data - we use API for system generation
             console.log('Universe data loaded:', {
                 universeSize: this.universe.length,
+                processedBySystems: !!chartSystem,
                 firstSystem: this.universe[0]?.star_name
             });
 
