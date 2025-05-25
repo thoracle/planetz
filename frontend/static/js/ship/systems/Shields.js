@@ -10,7 +10,7 @@ export default class Shields extends System {
     constructor(level = 1, config = {}) {
         // Base configuration for shields
         const baseConfig = {
-            slotCost: 2,
+            slotCost: 1,
             energyConsumptionRate: 25, // Energy per second when shields are up
             systemType: 'shields',
             maxHealth: 120,
@@ -29,6 +29,9 @@ export default class Shields extends System {
         this.isShieldsUp = false; // Whether shields are activated
         this.lastDamageTime = 0; // When shields last took damage
         this.isRecharging = false; // Whether shields are currently recharging
+        
+        // Override default active state - shields are only active when up
+        this.isActive = false;
         
         // Damage absorption efficiency (0.0 - 1.0)
         this.damageAbsorption = 0.8; // 80% of damage absorbed by shields

@@ -10,7 +10,7 @@ export default class ImpulseEngines extends System {
     constructor(level = 1, config = {}) {
         // Base energy consumption at impulse 1 (will scale with speed)
         const baseConfig = {
-            slotCost: 2,
+            slotCost: 1,
             energyConsumptionRate: 5, // Base consumption at impulse 1
             systemType: 'impulse_engines',
             maxHealth: 150,
@@ -26,6 +26,9 @@ export default class ImpulseEngines extends System {
         // Movement state
         this.isMovingForward = false;
         this.isRotating = false;
+        
+        // Engines start powered down (override base System default)
+        this.isActive = false;
         
         // Energy consumption scaling by impulse speed
         this.energyScaling = {
@@ -80,7 +83,7 @@ export default class ImpulseEngines extends System {
     }
     
     /**
-     * Get maximum impulse speed for current system level
+     * Get maximum impulse speed for current system level and health
      * @returns {number} Maximum impulse speed
      */
     getMaxImpulseSpeed() {
@@ -89,7 +92,26 @@ export default class ImpulseEngines extends System {
         }
         
         const levelStats = this.levelStats[this.level] || this.levelStats[1];
-        return Math.min(levelStats.maxSpeed || 6, this.maxImpulseSpeed);
+        const maxForLevel = levelStats.maxSpeed || 6;
+        
+        // Damaged engines have reduced max speed
+        const effectiveness = this.getEffectiveness();
+        let speedReduction;
+        
+        if (effectiveness < 0.2) {
+            // Severely damaged (below 20%) - emergency speed only (impulse 1)
+            speedReduction = 1; // Max impulse 1 for emergency movement
+        } else if (effectiveness < 0.5) {
+            // Moderately damaged - half speed
+            speedReduction = Math.ceil(maxForLevel * 0.5);
+        } else {
+            // Lightly damaged or operational - full capability
+            speedReduction = maxForLevel;
+        }
+        
+        // Ensure minimum emergency movement capability (at least impulse 1)
+        const calculatedMax = Math.min(speedReduction, this.maxImpulseSpeed);
+        return Math.max(1, calculatedMax);
     }
     
     /**
@@ -111,6 +133,10 @@ export default class ImpulseEngines extends System {
         }
         
         this.currentImpulseSpeed = clampedSpeed;
+        
+        // Update active state based on impulse speed
+        this.isActive = clampedSpeed > 0;
+        
         console.log(`Impulse speed set to ${clampedSpeed}`);
         return true;
     }
@@ -129,6 +155,9 @@ export default class ImpulseEngines extends System {
      */
     setMovingForward(moving) {
         this.isMovingForward = moving;
+        
+        // Update active state - engines are active if moving and have impulse speed > 0
+        this.isActive = moving && this.currentImpulseSpeed > 0;
     }
     
     /**
@@ -182,6 +211,40 @@ export default class ImpulseEngines extends System {
     }
     
     /**
+     * Apply damage to the impulse engines with special protection
+     * Impulse engines can never be completely disabled to prevent stranding
+     * @param {number} damage Amount of damage to apply
+     */
+    takeDamage(damage) {
+        if (damage <= 0) return;
+        
+        this.currentHealth = Math.max(0, this.currentHealth - damage);
+        this.healthPercentage = this.currentHealth / this.maxHealth;
+        
+        // SPECIAL PROTECTION: Impulse engines can never go below 10% health
+        // This ensures they can always be repaired and provide minimal movement
+        if (this.healthPercentage < 0.1) {
+            this.currentHealth = this.maxHealth * 0.1;
+            this.healthPercentage = 0.1;
+            console.log(`${this.name} protected from complete failure - minimum 10% health maintained`);
+        }
+        
+        // Update system state based on health
+        this.updateSystemState();
+        
+        console.log(`${this.name} took ${damage.toFixed(1)} damage. Health: ${this.healthPercentage.toFixed(2)}`);
+    }
+
+    /**
+     * Check if system is operational - impulse engines are always minimally operational
+     * @returns {boolean} True if system can function
+     */
+    isOperational() {
+        // Impulse engines are always operational at some level (never completely disabled)
+        return this.healthPercentage > 0;
+    }
+
+    /**
      * Handle system state effects specific to impulse engines
      * @param {string} newState The new system state
      */
@@ -190,17 +253,19 @@ export default class ImpulseEngines extends System {
         
         switch (newState) {
             case SYSTEM_STATES.CRITICAL:
-                // Critical engines can't go above impulse 3
-                if (this.currentImpulseSpeed > 3) {
-                    console.log('Critical engine damage - impulse speed reduced to 3');
-                    this.setImpulseSpeed(3);
+                // Critical engines can't go above impulse 2 (emergency speed only)
+                if (this.currentImpulseSpeed > 2) {
+                    console.log('Critical engine damage - impulse speed reduced to emergency speed (2)');
+                    this.setImpulseSpeed(2);
                 }
                 break;
             case SYSTEM_STATES.DISABLED:
-                // Disabled engines can't move
-                this.currentImpulseSpeed = 0;
-                this.isMovingForward = false;
-                console.log('Impulse engines disabled - ship dead in space!');
+                // Impulse engines can never be completely disabled due to special protection
+                // Instead, they operate at minimal capacity (impulse 1 only)
+                if (this.currentImpulseSpeed > 1) {
+                    console.log('Severe engine damage - limited to minimal impulse speed (1)');
+                    this.setImpulseSpeed(1);
+                }
                 break;
         }
     }

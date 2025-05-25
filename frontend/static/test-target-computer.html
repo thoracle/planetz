@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Target Computer System Test</title>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff41;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #00ff41;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            border: 1px solid #00ff41;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(0, 255, 65, 0.05);
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .status-box {
+            border: 1px solid #00aa41;
+            padding: 15px;
+            background: rgba(0, 170, 65, 0.1);
+        }
+        .energy-display {
+            font-size: 24px;
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            border: 2px solid #ffaa00;
+            background: rgba(255, 170, 0, 0.1);
+        }
+        .system-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .system-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            border: 1px solid #555;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        .system-active {
+            border-color: #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+        }
+        .system-inactive {
+            border-color: #666;
+            background: rgba(100, 100, 100, 0.1);
+            color: #888;
+        }
+        .target-computer-details {
+            border: 2px solid #00aaff;
+            background: rgba(0, 170, 255, 0.1);
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .controls {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .btn {
+            background: #00aa41;
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            margin: 0 10px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: #00cc51;
+            transform: scale(1.05);
+        }
+        .btn:disabled {
+            background: #666;
+            color: #999;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-danger {
+            background: #aa4100;
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #cc4f00;
+        }
+        .log {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff41;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        .log-info { color: #00ff41; }
+        .log-warning { color: #ffaa00; }
+        .log-error { color: #ff4444; }
+        .log-success { color: #44ff44; }
+        .targeting-status {
+            border: 2px solid #ff00aa;
+            background: rgba(255, 0, 170, 0.1);
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 TARGET COMPUTER SYSTEM TEST 🎯</h1>
+            <p>Testing Target Computer energy consumption, activation/deactivation, and damage effects</p>
+        </div>
+
+        <div class="test-section">
+            <h2>Ship Energy Status</h2>
+            <div class="energy-display" id="energyDisplay">
+                Energy: Loading... | Consumption: Loading...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Target Computer Details</h2>
+            <div class="target-computer-details" id="targetComputerDetails">
+                Loading target computer information...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Ship Systems Status</h2>
+            <div class="system-list" id="systemsList">
+                Loading systems...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Target Computer Controls</h2>
+            <div class="controls">
+                <button class="btn" id="activateTargetingBtn" onclick="activateTargetComputer()">Activate Target Computer</button>
+                <button class="btn" id="deactivateTargetingBtn" onclick="deactivateTargetComputer()">Deactivate Target Computer</button>
+                <button class="btn btn-danger" id="damageTargetingBtn" onclick="damageTargetComputer()">Damage Target Computer</button>
+                <button class="btn" id="repairTargetingBtn" onclick="repairTargetComputer()">Repair Target Computer</button>
+                <button class="btn" id="drainEnergyBtn" onclick="drainEnergy()">Drain Energy</button>
+                <button class="btn" id="refreshBtn" onclick="refreshDisplay()">Refresh Display</button>
+            </div>
+            <div class="status-grid">
+                <div class="status-box">
+                    <h3>Target Computer Status</h3>
+                    <div id="targetingStatus">Inactive</div>
+                </div>
+                <div class="status-box">
+                    <h3>Energy Consumption</h3>
+                    <div id="energyConsumption">0.0 units/sec</div>
+                </div>
+                <div class="status-box">
+                    <h3>System Health</h3>
+                    <div id="systemHealth">100%</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Targeting Simulation</h2>
+            <div class="targeting-status" id="targetingSimulation">
+                <div class="controls">
+                    <button class="btn" onclick="simulateTargeting()">Simulate Target Acquisition</button>
+                    <button class="btn" onclick="simulateTargetLock()">Attempt Target Lock</button>
+                    <button class="btn" onclick="clearTarget()">Clear Target</button>
+                </div>
+                <div id="targetingInfo" style="margin-top: 15px;">
+                    No target selected
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>System Log</h2>
+            <div class="log" id="systemLog"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import Ship from './js/ship/Ship.js';
+        
+        let ship = null;
+        let targetComputer = null;
+        let mockTarget = {
+            id: 'mock_target_1',
+            name: 'Test Planet Alpha',
+            position: { x: 100, y: 0, z: 50 }
+        };
+        
+        // Initialize ship
+        async function initializeShip() {
+            try {
+                ship = new Ship('heavy_fighter');
+                
+                // Wait for systems to initialize
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                targetComputer = ship.getSystem('target_computer');
+                if (!targetComputer) {
+                    log('ERROR: Target Computer system not found on ship!', 'error');
+                    return;
+                }
+                
+                log('Ship initialized successfully', 'success');
+                log(`Target Computer found: ${targetComputer.name} (Level ${targetComputer.level})`, 'success');
+                refreshDisplay();
+            } catch (error) {
+                log(`Error initializing ship: ${error.message}`, 'error');
+            }
+        }
+        
+        // Activate target computer
+        window.activateTargetComputer = function() {
+            if (!targetComputer) {
+                log('Target Computer not available', 'error');
+                return;
+            }
+            
+            if (targetComputer.activate(ship)) {
+                log('Target Computer activated successfully', 'success');
+            } else {
+                log('Failed to activate Target Computer - check energy and system status', 'error');
+            }
+            
+            refreshDisplay();
+        };
+        
+        // Deactivate target computer
+        window.deactivateTargetComputer = function() {
+            if (!targetComputer) {
+                log('Target Computer not available', 'error');
+                return;
+            }
+            
+            targetComputer.deactivate();
+            log('Target Computer deactivated', 'info');
+            refreshDisplay();
+        };
+        
+        // Damage target computer
+        window.damageTargetComputer = function() {
+            if (!targetComputer) {
+                log('Target Computer not available', 'error');
+                return;
+            }
+            
+            const damage = 20 + Math.random() * 30; // 20-50% damage
+            targetComputer.takeDamage(damage);
+            log(`Target Computer damaged: ${damage.toFixed(1)}% damage applied`, 'warning');
+            refreshDisplay();
+        };
+        
+        // Repair target computer
+        window.repairTargetComputer = function() {
+            if (!targetComputer) {
+                log('Target Computer not available', 'error');
+                return;
+            }
+            
+            const repairAmount = 0.5; // 50% repair
+            targetComputer.repair(repairAmount);
+            log(`Target Computer repaired: ${(repairAmount * 100).toFixed(1)}% health restored`, 'success');
+            refreshDisplay();
+        };
+        
+        // Drain ship energy
+        window.drainEnergy = function() {
+            if (!ship) {
+                log('Ship not available', 'error');
+                return;
+            }
+            
+            const drainAmount = 1000;
+            ship.currentEnergy = Math.max(0, ship.currentEnergy - drainAmount);
+            log(`Energy drained: ${drainAmount} units`, 'warning');
+            refreshDisplay();
+        };
+        
+        // Simulate targeting
+        window.simulateTargeting = function() {
+            if (!targetComputer || !targetComputer.isActive) {
+                log('Target Computer not active', 'error');
+                return;
+            }
+            
+            if (targetComputer.setTarget(mockTarget)) {
+                log(`Target acquired: ${mockTarget.name}`, 'success');
+            } else {
+                log('Failed to acquire target', 'error');
+            }
+            
+            refreshDisplay();
+        };
+        
+        // Simulate target lock
+        window.simulateTargetLock = function() {
+            if (!targetComputer || !targetComputer.isActive) {
+                log('Target Computer not active', 'error');
+                return;
+            }
+            
+            if (!targetComputer.currentTarget) {
+                log('No target selected for lock attempt', 'warning');
+                return;
+            }
+            
+            if (targetComputer.lockTarget()) {
+                log('Target lock acquired!', 'success');
+            } else {
+                log('Target lock failed - insufficient accuracy', 'warning');
+            }
+            
+            refreshDisplay();
+        };
+        
+        // Clear target
+        window.clearTarget = function() {
+            if (!targetComputer) {
+                log('Target Computer not available', 'error');
+                return;
+            }
+            
+            targetComputer.clearTarget();
+            log('Target cleared', 'info');
+            refreshDisplay();
+        };
+        
+        // Refresh display
+        window.refreshDisplay = function() {
+            if (!ship || !targetComputer) return;
+            
+            updateEnergyDisplay();
+            updateTargetComputerDetails();
+            updateSystemsList();
+            updateTargetingStatus();
+            updateTargetingSimulation();
+        };
+        
+        function updateEnergyDisplay() {
+            const energyDisplay = document.getElementById('energyDisplay');
+            const energyConsumption = document.getElementById('energyConsumption');
+            
+            const currentEnergy = ship.currentEnergy.toFixed(1);
+            const maxEnergy = ship.maxEnergy;
+            const consumptionRate = ship.getEnergyConsumptionRate().toFixed(1);
+            
+            energyDisplay.innerHTML = `Energy: ${currentEnergy}/${maxEnergy} | Total Consumption: ${consumptionRate}/sec`;
+            energyConsumption.textContent = `${consumptionRate} units/sec`;
+        }
+        
+        function updateTargetComputerDetails() {
+            const detailsElement = document.getElementById('targetComputerDetails');
+            const status = targetComputer.getStatus();
+            
+            detailsElement.innerHTML = `
+                <h3>${status.name} (Level ${status.level})</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 10px;">
+                    <div>
+                        <strong>Status:</strong> ${status.isActive ? 'ACTIVE' : 'INACTIVE'}<br>
+                        <strong>Health:</strong> ${(status.healthPercentage * 100).toFixed(1)}%<br>
+                        <strong>State:</strong> ${status.state}
+                    </div>
+                    <div>
+                        <strong>Energy Usage:</strong> ${status.energyConsumptionRate.toFixed(1)}/sec<br>
+                        <strong>Targeting:</strong> ${status.isTargeting ? 'YES' : 'NO'}<br>
+                        <strong>Target Lock:</strong> ${status.targetLock ? 'LOCKED' : 'UNLOCKED'}
+                    </div>
+                    <div>
+                        <strong>Range:</strong> ${status.currentTargetingRange.toFixed(0)} km<br>
+                        <strong>Accuracy:</strong> ${(status.currentTargetingAccuracy * 100).toFixed(1)}%<br>
+                        <strong>Max Targets:</strong> ${status.maxTargets}
+                    </div>
+                    <div>
+                        <strong>Computer Type:</strong> ${status.computerType}<br>
+                        <strong>Current Target:</strong> ${status.currentTarget || 'None'}<br>
+                        <strong>Tracked Targets:</strong> ${status.trackedTargetsCount}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function updateSystemsList() {
+            const systemsList = document.getElementById('systemsList');
+            systemsList.innerHTML = '';
+            
+            for (const [systemName, system] of ship.systems) {
+                const systemItem = document.createElement('div');
+                systemItem.className = `system-item ${system.isActive ? 'system-active' : 'system-inactive'}`;
+                
+                const health = Math.round(system.healthPercentage * 100);
+                const consumption = system.getEnergyConsumptionRate().toFixed(1);
+                
+                systemItem.innerHTML = `
+                    <span>${formatSystemName(systemName)}</span>
+                    <span>${health}% | ${system.isActive ? 'ON' : 'OFF'} | ${consumption}/s</span>
+                `;
+                
+                systemsList.appendChild(systemItem);
+            }
+        }
+        
+        function updateTargetingStatus() {
+            const targetingStatus = document.getElementById('targetingStatus');
+            const systemHealth = document.getElementById('systemHealth');
+            
+            targetingStatus.textContent = targetComputer.isActive ? 'ACTIVE - CONSUMING ENERGY' : 'INACTIVE - NO ENERGY CONSUMPTION';
+            targetingStatus.style.color = targetComputer.isActive ? '#00ff41' : '#888';
+            
+            systemHealth.textContent = `${(targetComputer.healthPercentage * 100).toFixed(1)}%`;
+            systemHealth.style.color = targetComputer.healthPercentage > 0.75 ? '#00ff41' : 
+                                      targetComputer.healthPercentage > 0.25 ? '#ffaa00' : '#ff4444';
+        }
+        
+        function updateTargetingSimulation() {
+            const targetingInfo = document.getElementById('targetingInfo');
+            
+            if (!targetComputer.currentTarget) {
+                targetingInfo.innerHTML = 'No target selected';
+                return;
+            }
+            
+            targetingInfo.innerHTML = `
+                <strong>Current Target:</strong> ${targetComputer.currentTarget.name}<br>
+                <strong>Target Lock:</strong> ${targetComputer.targetLock ? 'LOCKED' : 'UNLOCKED'}<br>
+                <strong>Lock Strength:</strong> ${targetComputer.targetLock ? 'Strong' : 'None'}<br>
+                <strong>Tracking Range:</strong> ${targetComputer.getCurrentTargetingRange().toFixed(0)} km<br>
+                <strong>Targeting Accuracy:</strong> ${(targetComputer.getCurrentTargetingAccuracy() * 100).toFixed(1)}%
+            `;
+        }
+        
+        function formatSystemName(systemName) {
+            const nameMap = {
+                'shields': 'SHIELDS',
+                'impulse_engines': 'IMPULSE ENGINES',
+                'warp_drive': 'WARP DRIVE',
+                'weapons': 'WEAPONS',
+                'long_range_scanner': 'LR SCANNER',
+                'target_computer': 'TARGET COMPUTER',
+                'subspace_radio': 'SUBSPACE RADIO'
+            };
+            return nameMap[systemName] || systemName.toUpperCase();
+        }
+        
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('systemLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            // Also log to console
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        // Auto-refresh display every second
+        setInterval(() => {
+            if (ship && targetComputer) {
+                ship.update(1000); // Update ship systems
+                refreshDisplay();
+            }
+        }, 1000);
+        
+        // Initialize when page loads
+        window.addEventListener('load', initializeShip);
+        
+        // Make functions globally available
+        window.log = log;
+    </script>
+</body>
+</html> 

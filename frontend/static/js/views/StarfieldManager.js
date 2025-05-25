@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { DockingInterface } from '../ui/DockingInterface.js';
+import DockingSystemManager from '../ship/DockingSystemManager.js';
 
 export class StarfieldManager {
     constructor(scene, camera, viewManager) {
@@ -54,6 +55,9 @@ export class StarfieldManager {
         // Add arrow state tracking
         this.lastArrowState = null;
         
+        // Add button state logging throttling
+        this.lastButtonStateLog = null;
+        
         // Create starfield with quintuple density
         this.starCount = 40000;  // Increased from 8000 to 40000
         this.starfield = this.createStarfield();
@@ -73,8 +77,9 @@ export class StarfieldManager {
         // Create intel HUD
         this.createIntelHUD();
         
-        // Create docking interface
+        // Create docking interface and system manager
         this.dockingInterface = new DockingInterface(this);
+        this.dockingSystemManager = new DockingSystemManager();
         
         // Bind keyboard events
         this.bindKeyEvents();
@@ -542,6 +547,8 @@ export class StarfieldManager {
             'sensors': 'SENSORS',
             'life_support': 'LIFE SUP',
             'long_range_scanner': 'LR SCANNER',
+            'target_computer': 'TARGETING',
+            'subspace_radio': 'SUBSPACE',
             'galactic_chart': 'GALACTIC'
         };
         return nameMap[systemName] || systemName.toUpperCase();
@@ -554,12 +561,25 @@ export class StarfieldManager {
         if (this.isDocked) {
             speedText = "DOCKED";
         } else {
-            const currentSpeedLevel = Math.round(this.currentSpeed);
-            if (currentSpeedLevel === 0) {
-                speedText = "Full Stop";
+            // Get actual speed from impulse engines system (accounts for clamping)
+            const ship = this.viewManager?.getShip();
+            const impulseEngines = ship?.getSystem('impulse_engines');
+            
+            if (impulseEngines) {
+                const actualSpeed = impulseEngines.getImpulseSpeed();
+                if (actualSpeed === 0) {
+                    speedText = "Full Stop";
+                } else {
+                    speedText = `Impulse ${actualSpeed}`;
+                }
             } else {
-                // Display the exact impulse number matching the key pressed
-                speedText = `Impulse ${currentSpeedLevel}`;
+                // Fallback to internal speed if no impulse engines found
+                const currentSpeedLevel = Math.round(this.currentSpeed);
+                if (currentSpeedLevel === 0) {
+                    speedText = "Full Stop";
+                } else {
+                    speedText = `Impulse ${currentSpeedLevel}`;
+                }
             }
         }
         
@@ -578,7 +598,7 @@ export class StarfieldManager {
         this.targetHUD.style.cssText = `
             position: fixed;
             bottom: 80px;
-            left: 20px;
+            left: 10px;
             width: 200px;
             height: auto;
             border: 2px solid #00ff41;
@@ -870,23 +890,36 @@ export class StarfieldManager {
             
             // Handle number keys for speed control - only if not docked
             if (/^[0-9]$/.test(event.key) && !this.isDocked) {
-                const speed = parseInt(event.key);
+                const requestedSpeed = parseInt(event.key);
                 
-                // Always set target speed first
-                this.targetSpeed = speed;
+                // Update impulse engines with new speed setting (this will clamp the speed)
+                const ship = this.viewManager?.getShip();
+                let actualSpeed = requestedSpeed; // fallback
+                
+                if (ship) {
+                    const impulseEngines = ship.getSystem('impulse_engines');
+                    if (impulseEngines) {
+                        impulseEngines.setImpulseSpeed(requestedSpeed);
+                        // Get the actual clamped speed from the impulse engines
+                        actualSpeed = impulseEngines.getImpulseSpeed();
+                    }
+                }
+                
+                // Set target speed to the actual clamped speed
+                this.targetSpeed = actualSpeed;
                 
                 // Determine if we need to decelerate
-                if (speed < this.currentSpeed) {
+                if (actualSpeed < this.currentSpeed) {
                     this.decelerating = true;
                     // Start engine shutdown if going to zero
-                    if (speed === 0 && this.engineState === 'running') {
+                    if (actualSpeed === 0 && this.engineState === 'running') {
                         this.playEngineShutdown();
                     }
                 } else {
                     this.decelerating = false;
                     // Handle engine sounds for acceleration
                     if (this.soundLoaded) {
-                        const volume = speed / this.maxSpeed;
+                        const volume = actualSpeed / this.maxSpeed;
                         if (this.engineState === 'stopped') {
                             this.playEngineStartup(volume);
                         } else if (this.engineState === 'running') {
@@ -964,10 +997,35 @@ export class StarfieldManager {
     }
 
     toggleTargetComputer() {
-        this.targetComputerEnabled = !this.targetComputerEnabled;
+        const ship = this.viewManager?.getShip();
+        if (!ship) {
+            console.warn('No ship available for target computer control');
+            return;
+        }
+        
+        const targetComputer = ship.getSystem('target_computer');
+        if (!targetComputer) {
+            console.warn('No target computer system found on ship');
+            return;
+        }
+        
+        // Toggle the target computer system
+        if (targetComputer.isActive) {
+            targetComputer.deactivate();
+            this.targetComputerEnabled = false;
+        } else {
+            if (targetComputer.activate(ship)) {
+                this.targetComputerEnabled = true;
+            } else {
+                this.targetComputerEnabled = false;
+                console.warn('Failed to activate target computer - check system status and energy');
+                return;
+            }
+        }
         
         console.log('Target computer toggled:', {
             enabled: this.targetComputerEnabled,
+            systemActive: targetComputer.isActive,
             hasTargets: this.targetObjects.length > 0
         });
         
@@ -1275,12 +1333,17 @@ export class StarfieldManager {
         }
         
         if (stateChanged) {
-            console.log('Button state changed, recreating buttons', {
-                targetName: currentTargetData.name,
-                targetType: info?.type,
-                oldState: this.currentButtonState,
-                newState: newButtonState
-            });
+            // Throttle button state change logging to prevent spam
+            const now = Date.now();
+            if (!this.lastButtonStateLog || now - this.lastButtonStateLog > 2000) { // Log at most every 2 seconds
+                console.log('Button state changed, recreating buttons', {
+                    targetName: currentTargetData.name,
+                    targetType: info?.type,
+                    oldState: this.currentButtonState,
+                    newState: newButtonState
+                });
+                this.lastButtonStateLog = now;
+            }
             this.currentButtonState = newButtonState;
             
             // Clear existing buttons
@@ -1731,6 +1794,15 @@ export class StarfieldManager {
         if (this.currentSpeed > 0) {
             const moveDirection = this.view === 'AFT' ? -1 : 1;
             
+            // Update impulse engines movement state
+            const ship = this.viewManager?.getShip();
+            if (ship) {
+                const impulseEngines = ship.getSystem('impulse_engines');
+                if (impulseEngines) {
+                    impulseEngines.setMovingForward(true);
+                }
+            }
+            
             // Calculate speed multiplier with reduced speeds for impulse 1, 2, and 3
             let speedMultiplier = this.currentSpeed * 0.3; // Base multiplier
             
@@ -1748,6 +1820,15 @@ export class StarfieldManager {
             // Apply movement
             this.camera.position.add(forwardVector);
             this.camera.updateMatrixWorld();
+        } else {
+            // Update impulse engines movement state when not moving
+            const ship = this.viewManager?.getShip();
+            if (ship) {
+                const impulseEngines = ship.getSystem('impulse_engines');
+                if (impulseEngines) {
+                    impulseEngines.setMovingForward(false);
+                }
+            }
         }
 
         // Update starfield positions
@@ -2307,30 +2388,48 @@ export class StarfieldManager {
 
     // Add new docking methods
     canDock(target) {
-        if (!target || !target.position) return false;
+        // Use the comprehensive DockingSystemManager for validation
+        const ship = this.viewManager?.getShip();
+        const validation = this.dockingSystemManager.validateDocking(ship, target, this);
         
-        // Get target info
-        const info = this.solarSystemManager.getCelestialBodyInfo(target);
+        // Only log validation results when actively attempting to dock (not during continuous checks)
+        // This prevents console spam during normal operation
         
-        // Check if target is hostile
-        if (info?.diplomacy?.toLowerCase() === 'enemy') {
-            return false;
+        return validation.canDock;
+    }
+    
+    // Method for getting docking validation with logging (used when player actively tries to dock)
+    canDockWithLogging(target) {
+        const ship = this.viewManager?.getShip();
+        const validation = this.dockingSystemManager.validateDocking(ship, target, this);
+        
+        // Log detailed validation results only when explicitly requested
+        if (!validation.canDock) {
+            console.warn('Cannot dock:', validation.reasons.join(', '));
         }
         
-        // Calculate docking range based on body size
-        let dockingRange = this.dockingRange; // Default 1.5 for moons
-        if (info?.type === 'planet') {
-            // For planets, use a fixed 4.0KM range
-            dockingRange = 4.0;
+        if (validation.warnings.length > 0) {
+            console.log('Docking warnings:', validation.warnings.join(', '));
         }
         
-        // Check distance
-        return this.camera.position.distanceTo(target.position) <= dockingRange;
+        return validation.canDock;
     }
 
     dock(target) {
-        if (!this.canDock(target)) {
+        if (!this.canDockWithLogging(target)) {
             return false;
+        }
+
+        // Get ship instance for docking procedures
+        const ship = this.viewManager?.getShip();
+        if (ship) {
+            // Consume energy for docking procedures
+            const dockingEnergyCost = 25;
+            if (!ship.consumeEnergy(dockingEnergyCost)) {
+                console.warn('Docking failed: Insufficient energy for docking procedures');
+                return false;
+            }
+            console.log(`Docking procedures initiated. Energy consumed: ${dockingEnergyCost}`);
         }
 
         // Store the current view before docking
@@ -2391,21 +2490,23 @@ export class StarfieldManager {
             this.viewManager.frontCrosshair.style.display = 'none';
             this.viewManager.aftCrosshair.style.display = 'none';
             
-            // Automatically power down all ship systems when docking to save energy
-            const ship = this.viewManager.getShip();
-            if (ship) {
-                // Power down shields
-                const shieldsSystem = ship.systems.get('shields');
-                if (shieldsSystem && shieldsSystem.isShieldsUp) {
-                    shieldsSystem.deactivateShields();
-                    console.log('Shields automatically powered down during docking to conserve energy');
-                }
-            }
+            // Comprehensively power down all ship systems when docking to save energy
+            this.powerDownAllSystems();
             
-            // Power down target computer
+            // Power down target computer UI (system is already powered down in powerDownAllSystems)
             if (this.targetComputerEnabled) {
-                this.toggleTargetComputer(); // This will disable it and clean up displays
-                console.log('Target computer automatically powered down during docking');
+                this.targetComputerEnabled = false;
+                this.targetHUD.style.display = 'none';
+                this.targetReticle.style.display = 'none';
+                
+                // Clear wireframe if it exists
+                if (this.targetWireframe) {
+                    this.wireframeScene.remove(this.targetWireframe);
+                    this.targetWireframe.geometry.dispose();
+                    this.targetWireframe.material.dispose();
+                    this.targetWireframe = null;
+                }
+                console.log('Target computer UI powered down during docking');
             }
             
             // Close galactic chart if open
@@ -2440,6 +2541,30 @@ export class StarfieldManager {
     undock() {
         if (!this.isDocked) {
             return;
+        }
+
+        // Get ship instance for launch procedures
+        const ship = this.viewManager?.getShip();
+        if (ship) {
+            // Use DockingSystemManager for comprehensive launch validation
+            const launchValidation = this.dockingSystemManager.validateLaunch(ship);
+            
+            if (!launchValidation.canLaunch) {
+                console.warn('Launch failed:', launchValidation.reasons.join(', '));
+                // Show error in docking interface instead of hiding it
+                return;
+            }
+            
+            if (launchValidation.warnings.length > 0) {
+                console.log('Launch warnings:', launchValidation.warnings.join(', '));
+            }
+            
+            // Consume energy for launch procedures
+            if (!ship.consumeEnergy(launchValidation.energyCost)) {
+                console.warn('Launch failed: Insufficient energy for launch procedures');
+                return;
+            }
+            console.log(`Launch procedures initiated. Energy consumed: ${launchValidation.energyCost}`);
         }
 
         // Hide docking interface
@@ -2514,6 +2639,9 @@ export class StarfieldManager {
             // Show appropriate crosshair
             this.viewManager.frontCrosshair.style.display = viewToRestore === 'FORE' ? 'block' : 'none';
             this.viewManager.aftCrosshair.style.display = viewToRestore === 'AFT' ? 'block' : 'none';
+            
+            // Restore all ship systems to their pre-docking state
+            this.restoreAllSystems();
             
             // Remind player about shields after undocking
             console.log('Launch successful! Consider raising shields (S) for protection in open space');
@@ -2598,8 +2726,8 @@ export class StarfieldManager {
             return;
         }
 
-        // Use the canDock method for consistent logic
-        if (this.canDock(this.currentTarget)) {
+        // Use the canDockWithLogging method for user-initiated docking attempts
+        if (this.canDockWithLogging(this.currentTarget)) {
             this.dockWithDebug(this.currentTarget);
         } else {
             // Get target info to provide helpful feedback
@@ -2625,5 +2753,137 @@ export class StarfieldManager {
         
         // Update display after docking attempt
         this.updateTargetDisplay();
+    }
+    
+    /**
+     * Get comprehensive docking status information
+     * @returns {Object} Detailed docking status
+     */
+    getDockingStatus() {
+        const ship = this.viewManager?.getShip();
+        return this.dockingSystemManager.getDockingStatus(ship, this);
+    }
+    
+    /**
+     * Get docking requirements for UI display
+     * @returns {Object} Docking requirements
+     */
+    getDockingRequirements() {
+        return this.dockingSystemManager.getDockingRequirements();
+    }
+    
+    /**
+     * Power down all ship systems when docking to conserve energy
+     */
+    powerDownAllSystems() {
+        const ship = this.viewManager?.getShip();
+        if (!ship) {
+            console.warn('No ship available for system power management');
+            return;
+        }
+        
+        // Store the current state of all systems before powering them down
+        this.preDockingSystemStates = new Map();
+        
+        console.log('Powering down all ship systems for docking...');
+        
+        // Iterate through all ship systems and store their current state
+        for (const [systemName, system] of ship.systems) {
+            // Store the current active state
+            this.preDockingSystemStates.set(systemName, {
+                isActive: system.isActive,
+                // Store additional system-specific states
+                ...(systemName === 'shields' && system.isShieldsUp ? { isShieldsUp: true } : {}),
+                ...(systemName === 'long_range_scanner' && system.isScanning ? { isScanning: true } : {}),
+                ...(systemName === 'target_computer' && system.isTargeting ? { isTargeting: true } : {}),
+                ...(systemName === 'subspace_radio' && system.isChartActive ? { isChartActive: true } : {}),
+                ...(systemName === 'impulse_engines' && system.currentImpulseSpeed > 0 ? { 
+                    currentImpulseSpeed: system.currentImpulseSpeed,
+                    isMovingForward: system.isMovingForward 
+                } : {})
+            });
+            
+            // Power down the system based on its type
+            if (systemName === 'shields' && system.isShieldsUp) {
+                system.deactivateShields();
+                console.log(`  - Shields powered down (was active)`);
+            } else if (systemName === 'long_range_scanner' && system.isScanning) {
+                system.stopScan();
+                console.log(`  - Long Range Scanner powered down (was scanning)`);
+            } else if (systemName === 'target_computer' && system.isTargeting) {
+                system.deactivate();
+                console.log(`  - Target Computer powered down (was targeting)`);
+            } else if (systemName === 'subspace_radio' && system.isChartActive) {
+                system.deactivateChart();
+                console.log(`  - Galactic Chart powered down (was active)`);
+            } else if (systemName === 'impulse_engines') {
+                // Impulse engines are already stopped when docked, but ensure they're not active
+                system.setImpulseSpeed(0);
+                system.setMovingForward(false);
+                console.log(`  - Impulse Engines powered down`);
+            } else if (system.isActive) {
+                // For other systems, simply deactivate them
+                system.deactivate();
+                console.log(`  - ${system.name} powered down (was active)`);
+            }
+        }
+        
+        console.log('All ship systems powered down. Energy consumption minimized for docking.');
+        console.log('Systems will be restored to their previous state when undocking.');
+    }
+    
+    /**
+     * Restore all ship systems to their pre-docking state when undocking
+     */
+    restoreAllSystems() {
+        const ship = this.viewManager?.getShip();
+        if (!ship) {
+            console.warn('No ship available for system power management');
+            return;
+        }
+        
+        if (!this.preDockingSystemStates) {
+            console.log('No pre-docking system states found. Systems will remain in default state.');
+            return;
+        }
+        
+        console.log('Restoring ship systems to pre-docking state...');
+        
+        // Restore each system to its previous state
+        for (const [systemName, system] of ship.systems) {
+            const previousState = this.preDockingSystemStates.get(systemName);
+            
+            if (previousState) {
+                // Restore system-specific states
+                if (systemName === 'shields' && previousState.isShieldsUp) {
+                    system.activateShields();
+                    console.log(`  - Shields restored (reactivated)`);
+                } else if (systemName === 'long_range_scanner' && previousState.isScanning) {
+                    system.startScan(ship);
+                    console.log(`  - Long Range Scanner restored (scanning resumed)`);
+                } else if (systemName === 'target_computer' && previousState.isTargeting) {
+                    system.activate(ship);
+                    this.targetComputerEnabled = true; // Also restore UI state
+                    console.log(`  - Target Computer restored (targeting resumed)`);
+                } else if (systemName === 'subspace_radio' && previousState.isChartActive) {
+                    system.activateChart(ship);
+                    console.log(`  - Galactic Chart restored (chart reactivated)`);
+                } else if (systemName === 'impulse_engines' && previousState.currentImpulseSpeed > 0) {
+                    system.setImpulseSpeed(previousState.currentImpulseSpeed);
+                    system.setMovingForward(previousState.isMovingForward);
+                    console.log(`  - Impulse Engines restored (speed: ${previousState.currentImpulseSpeed})`);
+                } else if (previousState.isActive && system.isOperational()) {
+                    // For other systems, restore their active state
+                    system.activate(ship);
+                    console.log(`  - ${system.name} restored (reactivated)`);
+                }
+            }
+        }
+        
+        // Clear the stored states
+        this.preDockingSystemStates = null;
+        
+        console.log('All ship systems restored to pre-docking state.');
+        console.log('Ship is ready for space operations.');
     }
 } 

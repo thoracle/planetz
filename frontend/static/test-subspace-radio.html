@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subspace Radio Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #00ff41;
+            font-family: "Courier New", monospace;
+            font-size: 14px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #00ff41;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            border: 1px solid #00ff41;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 255, 65, 0.05);
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #ffff00;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: rgba(0, 255, 65, 0.2);
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-family: "Courier New", monospace;
+            font-size: 12px;
+        }
+        
+        button:hover {
+            background: rgba(0, 255, 65, 0.3);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .status-item {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #333;
+            padding: 10px;
+        }
+        
+        .status-label {
+            color: #888;
+            font-size: 11px;
+        }
+        
+        .status-value {
+            color: #00ff41;
+            font-weight: bold;
+        }
+        
+        .log {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 12px;
+            margin: 15px 0;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        
+        .log-info { color: #00ff41; }
+        .log-warning { color: #ffff00; }
+        .log-error { color: #ff0000; }
+        .log-success { color: #00ffff; }
+        
+        .instructions {
+            background: rgba(255, 255, 0, 0.1);
+            border: 1px solid #ffff00;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .instructions h4 {
+            margin-top: 0;
+            color: #ffff00;
+        }
+        
+        .key-binding {
+            background: rgba(0, 255, 65, 0.2);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛰️ SUBSPACE RADIO SYSTEM TEST</h1>
+            <p>Testing the new dedicated SubspaceRadioSystem with ticker tape UI</p>
+        </div>
+
+        <div class="instructions">
+            <h4>📡 Instructions:</h4>
+            <p>• Press <span class="key-binding">R</span> key to toggle the Subspace Radio ticker tape at the bottom of the screen</p>
+            <p>• Use the controls below to test system functionality and damage scenarios</p>
+            <p>• Watch the energy consumption and signal quality as you activate/deactivate the radio</p>
+            <p>• Test damage effects on signal strength and message clarity</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🚀 Ship Status</h3>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">Ship Energy</div>
+                    <div class="status-value" id="shipEnergy">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Total Energy Consumption</div>
+                    <div class="status-value" id="energyConsumption">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">System Slots Used</div>
+                    <div class="status-value" id="systemSlots">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Active Systems</div>
+                    <div class="status-value" id="activeSystems">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📡 Subspace Radio System</h3>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">System Health</div>
+                    <div class="status-value" id="radioHealth">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Radio Status</div>
+                    <div class="status-value" id="radioStatus">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Signal Range</div>
+                    <div class="status-value" id="signalRange">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Signal Strength</div>
+                    <div class="status-value" id="signalStrength">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Energy Consumption</div>
+                    <div class="status-value" id="radioEnergyConsumption">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Max Channels</div>
+                    <div class="status-value" id="maxChannels">Loading...</div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button onclick="toggleRadio()">Toggle Radio (R key)</button>
+                <button onclick="testMessage()">Send Test Message</button>
+                <button onclick="testUrgentMessage()">Send Urgent Message</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 System Testing</h3>
+            <div class="controls">
+                <button onclick="damageRadio()">Apply Damage (25%)</button>
+                <button onclick="severeDamageRadio()">Severe Damage (50%)</button>
+                <button onclick="repairRadio()">Repair System (50%)</button>
+                <button onclick="fullRepairRadio()">Full Repair</button>
+                <button onclick="drainEnergy()">Drain Energy (-500)</button>
+                <button onclick="restoreEnergy()">Restore Energy (+1000)</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 System Log</h3>
+            <div class="log" id="systemLog"></div>
+            <div class="controls">
+                <button onclick="clearLog()">Clear Log</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import map for module resolution -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/lib/three.min.js"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import Ship from '/js/ship/Ship.js';
+        import SubspaceRadio from '/js/ui/SubspaceRadio.js';
+
+        // Global variables
+        let ship = null;
+        let subspaceRadio = null;
+        let updateInterval = null;
+
+        // Initialize the test
+        async function initializeTest() {
+            try {
+                log('Initializing Subspace Radio Test...', 'info');
+                
+                // Create ship instance
+                ship = new Ship('heavy_fighter');
+                ship.currentEnergy = 1000; // Start with good energy
+                
+                // Initialize subspace radio UI
+                subspaceRadio = new SubspaceRadio(ship);
+                
+                // Start update loop
+                updateInterval = setInterval(updateDisplay, 1000);
+                
+                // Initial display update
+                updateDisplay();
+                
+                log('✅ Subspace Radio Test initialized successfully', 'success');
+                log('Press R key to toggle the radio ticker tape', 'info');
+                
+            } catch (error) {
+                log(`❌ Error initializing test: ${error.message}`, 'error');
+                console.error('Initialization error:', error);
+            }
+        }
+
+        function updateDisplay() {
+            if (!ship) return;
+
+            try {
+                const shipStatus = ship.getStatus();
+                const radioSystem = ship.getSystem('subspace_radio');
+                
+                // Update ship status
+                document.getElementById('shipEnergy').textContent = 
+                    `${shipStatus.energy.current.toFixed(1)}/${shipStatus.energy.max} (${shipStatus.energy.percentage.toFixed(1)}%)`;
+                
+                document.getElementById('energyConsumption').textContent = 
+                    `${ship.getEnergyConsumptionRate().toFixed(1)}/sec`;
+                
+                document.getElementById('systemSlots').textContent = 
+                    `${shipStatus.slots.used}/${shipStatus.slots.total}`;
+                
+                const activeSystems = Array.from(ship.systems.entries())
+                    .filter(([name, system]) => system.isActive)
+                    .map(([name]) => name)
+                    .join(', ') || 'None';
+                document.getElementById('activeSystems').textContent = activeSystems;
+
+                // Update radio system status
+                if (radioSystem) {
+                    const radioStatus = radioSystem.getStatus();
+                    
+                    document.getElementById('radioHealth').textContent = 
+                        `${(radioStatus.health.percentage).toFixed(1)}%`;
+                    
+                    document.getElementById('radioStatus').textContent = 
+                        radioStatus.isRadioActive ? 'ACTIVE' : 'INACTIVE';
+                    
+                    document.getElementById('signalRange').textContent = 
+                        `${radioStatus.signalRange}%`;
+                    
+                    document.getElementById('signalStrength').textContent = 
+                        `${radioStatus.signalStrength}%`;
+                    
+                    document.getElementById('radioEnergyConsumption').textContent = 
+                        `${radioStatus.energyConsumptionRate.toFixed(1)}/sec`;
+                    
+                    document.getElementById('maxChannels').textContent = 
+                        `${radioStatus.maxChannels}`;
+                } else {
+                    document.getElementById('radioHealth').textContent = 'System Not Found';
+                    document.getElementById('radioStatus').textContent = 'N/A';
+                    document.getElementById('signalRange').textContent = 'N/A';
+                    document.getElementById('signalStrength').textContent = 'N/A';
+                    document.getElementById('radioEnergyConsumption').textContent = 'N/A';
+                    document.getElementById('maxChannels').textContent = 'N/A';
+                }
+
+                // Update ship systems (energy consumption)
+                ship.update(1000); // 1 second update
+                
+            } catch (error) {
+                log(`Error updating display: ${error.message}`, 'error');
+            }
+        }
+
+        // Test functions
+        window.toggleRadio = function() {
+            if (!subspaceRadio) {
+                log('Subspace radio not initialized', 'error');
+                return;
+            }
+            
+            subspaceRadio.toggle();
+            log('Radio toggle requested', 'info');
+        };
+
+        window.testMessage = function() {
+            if (!subspaceRadio || !subspaceRadio.isVisible) {
+                log('Radio must be active to send messages', 'warning');
+                return;
+            }
+            
+            const testMessages = [
+                'Test message from ship systems',
+                'Communication array functioning normally',
+                'Signal strength optimal for transmission',
+                'Subspace frequency clear and stable'
+            ];
+            
+            const message = testMessages[Math.floor(Math.random() * testMessages.length)];
+            subspaceRadio.addMessage(message, 'system');
+            log(`Test message sent: ${message}`, 'info');
+        };
+
+        window.testUrgentMessage = function() {
+            if (!subspaceRadio || !subspaceRadio.isVisible) {
+                log('Radio must be active to send messages', 'warning');
+                return;
+            }
+            
+            const urgentMessages = [
+                'URGENT: System test in progress',
+                'PRIORITY: Communication test successful',
+                'ALERT: Emergency broadcast test',
+                'CRITICAL: Signal integrity verified'
+            ];
+            
+            const message = urgentMessages[Math.floor(Math.random() * urgentMessages.length)];
+            subspaceRadio.addUrgentMessage(message, 'emergency');
+            log(`Urgent message sent: ${message}`, 'warning');
+        };
+
+        window.damageRadio = function() {
+            const radioSystem = ship?.getSystem('subspace_radio');
+            if (!radioSystem) {
+                log('Radio system not found', 'error');
+                return;
+            }
+            
+            const damage = radioSystem.maxHealth * 0.25;
+            radioSystem.takeDamage(damage);
+            log(`Applied 25% damage to radio system`, 'warning');
+        };
+
+        window.severeDamageRadio = function() {
+            const radioSystem = ship?.getSystem('subspace_radio');
+            if (!radioSystem) {
+                log('Radio system not found', 'error');
+                return;
+            }
+            
+            const damage = radioSystem.maxHealth * 0.5;
+            radioSystem.takeDamage(damage);
+            log(`Applied 50% damage to radio system`, 'error');
+        };
+
+        window.repairRadio = function() {
+            const radioSystem = ship?.getSystem('subspace_radio');
+            if (!radioSystem) {
+                log('Radio system not found', 'error');
+                return;
+            }
+            
+            radioSystem.repair(0.5);
+            log(`Repaired radio system by 50%`, 'success');
+        };
+
+        window.fullRepairRadio = function() {
+            const radioSystem = ship?.getSystem('subspace_radio');
+            if (!radioSystem) {
+                log('Radio system not found', 'error');
+                return;
+            }
+            
+            radioSystem.repair(1.0);
+            log(`Fully repaired radio system`, 'success');
+        };
+
+        window.drainEnergy = function() {
+            if (!ship) return;
+            
+            ship.currentEnergy = Math.max(0, ship.currentEnergy - 500);
+            log(`Drained 500 energy. Current: ${ship.currentEnergy.toFixed(1)}`, 'warning');
+        };
+
+        window.restoreEnergy = function() {
+            if (!ship) return;
+            
+            ship.currentEnergy = Math.min(ship.maxEnergy, ship.currentEnergy + 1000);
+            log(`Restored 1000 energy. Current: ${ship.currentEnergy.toFixed(1)}`, 'success');
+        };
+
+        window.clearLog = function() {
+            document.getElementById('systemLog').innerHTML = '';
+        };
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('systemLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeTest);
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            if (subspaceRadio) {
+                subspaceRadio.dispose();
+            }
+        });
+    </script>
+</body>
+</html> 

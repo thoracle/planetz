@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ship Slot Debug Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff41;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .debug-section {
+            border: 1px solid #00ff41;
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(0, 20, 0, 0.3);
+        }
+        .error { color: #ff4444; }
+        .success { color: #00ff41; }
+        .warning { color: #ffff00; }
+        .info { color: #00ffff; }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #00ff41;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: rgba(0, 255, 65, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Ship Slot Allocation Debug</h1>
+    
+    <div class="debug-section">
+        <h2>Ship Configuration</h2>
+        <div id="shipConfig"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>System Initialization Order</h2>
+        <div id="initOrder"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Slot Usage Breakdown</h2>
+        <div id="slotBreakdown"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Final System Status</h2>
+        <div id="systemStatus"></div>
+    </div>
+
+    <script type="module">
+        import Ship from '/js/ship/Ship.js';
+        
+        let ship = null;
+        let initLog = [];
+        
+        // Override console.log to capture initialization logs
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        
+        console.log = function(...args) {
+            initLog.push({ type: 'log', message: args.join(' '), timestamp: Date.now() });
+            originalLog.apply(console, args);
+        };
+        
+        console.warn = function(...args) {
+            initLog.push({ type: 'warn', message: args.join(' '), timestamp: Date.now() });
+            originalWarn.apply(console, args);
+        };
+        
+        async function debugShipInitialization() {
+            try {
+                console.log('=== Starting Ship Debug ===');
+                
+                // Display ship configuration
+                const { getShipConfig } = await import('/js/ship/ShipConfigs.js');
+                const config = getShipConfig('heavy_fighter');
+                
+                document.getElementById('shipConfig').innerHTML = `
+                    <table>
+                        <tr><th>Property</th><th>Value</th></tr>
+                        <tr><td>Total System Slots</td><td>${config.systemSlots}</td></tr>
+                        <tr><td>Default Systems Count</td><td>${Object.keys(config.defaultSystems).length}</td></tr>
+                    </table>
+                    <h3>Default Systems Configuration:</h3>
+                    <table>
+                        <tr><th>System</th><th>Level</th><th>Slots</th></tr>
+                        ${Object.entries(config.defaultSystems).map(([name, sys]) => 
+                            `<tr><td>${name}</td><td>${sys.level}</td><td>${sys.slots}</td></tr>`
+                        ).join('')}
+                    </table>
+                    <p><strong>Total Configured Slots:</strong> ${Object.values(config.defaultSystems).reduce((sum, sys) => sum + sys.slots, 0)}</p>
+                `;
+                
+                // Create ship and monitor initialization
+                ship = new Ship('heavy_fighter');
+                
+                // Wait for async initialization to complete
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Display initialization order
+                const initOrderHtml = initLog.map(entry => {
+                    const className = entry.type === 'warn' ? 'warning' : 
+                                    entry.type === 'error' ? 'error' : 'info';
+                    return `<div class="${className}">[${entry.type.toUpperCase()}] ${entry.message}</div>`;
+                }).join('');
+                
+                document.getElementById('initOrder').innerHTML = initOrderHtml;
+                
+                // Display slot breakdown
+                const slotBreakdownHtml = `
+                    <table>
+                        <tr><th>Metric</th><th>Value</th></tr>
+                        <tr><td>Total Slots</td><td>${ship.totalSlots}</td></tr>
+                        <tr><td>Used Slots</td><td>${ship.usedSlots}</td></tr>
+                        <tr><td>Available Slots</td><td>${ship.availableSlots}</td></tr>
+                        <tr><td>Systems Installed</td><td>${ship.systems.size}</td></tr>
+                    </table>
+                    
+                    <h3>Individual System Slot Usage:</h3>
+                    <table>
+                        <tr><th>System Name</th><th>Slot Cost</th><th>Status</th></tr>
+                        ${Array.from(ship.systems.entries()).map(([name, system]) => 
+                            `<tr><td>${name}</td><td>${system.slotCost}</td><td class="success">Installed</td></tr>`
+                        ).join('')}
+                    </table>
+                `;
+                
+                document.getElementById('slotBreakdown').innerHTML = slotBreakdownHtml;
+                
+                // Display final system status
+                const status = ship.getStatus();
+                const systemStatusHtml = `
+                    <table>
+                        <tr><th>System</th><th>Level</th><th>Health</th><th>Active</th><th>Type</th></tr>
+                        ${Object.entries(status.systems).map(([name, sys]) => 
+                            `<tr>
+                                <td>${name}</td>
+                                <td>${sys.level}</td>
+                                <td>${(sys.health * 100).toFixed(1)}%</td>
+                                <td>${sys.isActive ? 'Yes' : 'No'}</td>
+                                <td>${sys.systemType}</td>
+                            </tr>`
+                        ).join('')}
+                    </table>
+                    
+                    <h3>Missing Systems:</h3>
+                    ${Object.keys(config.defaultSystems).filter(sysName => !ship.systems.has(sysName)).map(missing => 
+                        `<div class="error">❌ ${missing} - Not installed</div>`
+                    ).join('') || '<div class="success">✅ All systems installed successfully</div>'}
+                `;
+                
+                document.getElementById('systemStatus').innerHTML = systemStatusHtml;
+                
+            } catch (error) {
+                console.error('Debug error:', error);
+                document.body.innerHTML += `<div class="error">Debug Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Start debug when page loads
+        debugShipInitialization();
+    </script>
+</body>
+</html> 

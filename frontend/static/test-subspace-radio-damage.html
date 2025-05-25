@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subspace Radio Damage Status Test</title>
+    <style>
+        body {
+            font-family: 'VT323', 'Courier New', monospace;
+            background: #000;
+            color: #00ff41;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            border: 1px solid #00ff41;
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(0, 20, 0, 0.3);
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+        button {
+            background: rgba(0, 255, 65, 0.2);
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+        }
+        button:hover {
+            background: rgba(0, 255, 65, 0.4);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .status-item {
+            border: 1px solid #00ff41;
+            padding: 10px;
+            background: rgba(0, 20, 0, 0.2);
+        }
+        .status-label {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        .status-value {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .success { color: #00ff41; }
+        .warning { color: #ffff00; }
+        .error { color: #ff4444; }
+        .info { color: #00ffff; }
+        .instructions {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .key-binding {
+            background: rgba(0, 255, 65, 0.3);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>📡 SUBSPACE RADIO DAMAGE STATUS TEST</h1>
+    <p>Testing damage status indicators in the subspace radio HUD</p>
+    
+    <div class="instructions">
+        <h4>📋 Test Instructions:</h4>
+        <p>• Press <span class="key-binding">R</span> key to toggle the Subspace Radio ticker tape</p>
+        <p>• Use the damage controls below to test different damage states</p>
+        <p>• Watch the status indicator text in the bottom-right corner of the radio</p>
+        <p>• Expected behavior:</p>
+        <ul>
+            <li><span class="success">Operational (75-100% health):</span> "SUBSPACE RADIO" in green</li>
+            <li><span class="warning">Damaged (25-74% health):</span> "SUBSPACE RADIO - DAMAGED" in yellow</li>
+            <li><span class="error">Destroyed (0-24% health):</span> "SUBSPACE RADIO - DESTROYED" in bright red</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h3>🚀 Ship Status</h3>
+        <div class="status-grid">
+            <div class="status-item">
+                <div class="status-label">Ship Energy</div>
+                <div class="status-value" id="shipEnergy">Loading...</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">Radio Active</div>
+                <div class="status-value" id="radioActive">Loading...</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">Radio Visible</div>
+                <div class="status-value" id="radioVisible">Loading...</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>📡 Subspace Radio System Health</h3>
+        <div class="status-grid">
+            <div class="status-item">
+                <div class="status-label">System Health</div>
+                <div class="status-value" id="systemHealth">Loading...</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">System State</div>
+                <div class="status-value" id="systemState">Loading...</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">Status Indicator Text</div>
+                <div class="status-value" id="statusIndicatorText">Loading...</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">Status Indicator Color</div>
+                <div class="status-value" id="statusIndicatorColor">Loading...</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button onclick="toggleRadio()">Toggle Radio (R key)</button>
+            <button onclick="setSystemHealth(100)">Full Health (100%)</button>
+            <button onclick="setSystemHealth(75)">Good Health (75%)</button>
+            <button onclick="setSystemHealth(50)">Damaged (50%)</button>
+            <button onclick="setSystemHealth(25)">Critical (25%)</button>
+            <button onclick="setSystemHealth(10)">Severely Damaged (10%)</button>
+            <button onclick="setSystemHealth(0)">Destroyed (0%)</button>
+            <button onclick="repairSystem()">Full Repair</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "/lib/three.min.js"
+            }
+        }
+    </script>
+    <script type="module">
+        import Ship from '/js/ship/Ship.js';
+        import SubspaceRadio from '/js/ui/SubspaceRadio.js';
+
+        // Global variables
+        let ship = null;
+        let subspaceRadio = null;
+        let updateInterval = null;
+
+        // Initialize the test
+        async function initializeTest() {
+            try {
+                console.log('Initializing Subspace Radio Damage Test...');
+                
+                // Create ship instance
+                ship = new Ship('heavy_fighter');
+                ship.currentEnergy = 2000; // Start with good energy
+                
+                // Wait for ship initialization
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Initialize subspace radio UI
+                subspaceRadio = new SubspaceRadio(ship);
+                
+                // Start update loop
+                updateInterval = setInterval(updateDisplay, 500);
+                
+                // Initial display update
+                updateDisplay();
+                
+                console.log('✅ Subspace Radio Damage Test initialized successfully');
+                console.log('Press R key to toggle the radio and test damage states');
+                
+            } catch (error) {
+                console.error(`❌ Error initializing test: ${error.message}`, error);
+            }
+        }
+
+        function updateDisplay() {
+            if (!ship || !subspaceRadio) return;
+
+            try {
+                const shipStatus = ship.getStatus();
+                const radioSystem = ship.getSystem('subspace_radio');
+                
+                // Update ship status
+                document.getElementById('shipEnergy').textContent = 
+                    `${shipStatus.energy.current.toFixed(1)}/${shipStatus.energy.max}`;
+                
+                document.getElementById('radioActive').textContent = 
+                    radioSystem ? (radioSystem.isActive ? 'YES' : 'NO') : 'N/A';
+                
+                document.getElementById('radioVisible').textContent = 
+                    subspaceRadio.isVisible ? 'YES' : 'NO';
+
+                // Update radio system status
+                if (radioSystem) {
+                    const healthPercentage = (radioSystem.healthPercentage * 100).toFixed(1);
+                    document.getElementById('systemHealth').textContent = `${healthPercentage}%`;
+                    
+                    document.getElementById('systemState').textContent = radioSystem.state.toUpperCase();
+                    
+                    // Get status indicator text and color from the actual UI element
+                    if (subspaceRadio.statusIndicator) {
+                        document.getElementById('statusIndicatorText').textContent = 
+                            subspaceRadio.statusIndicator.textContent;
+                        document.getElementById('statusIndicatorColor').textContent = 
+                            subspaceRadio.statusIndicator.style.color;
+                    } else {
+                        document.getElementById('statusIndicatorText').textContent = 'Not Available';
+                        document.getElementById('statusIndicatorColor').textContent = 'Not Available';
+                    }
+                } else {
+                    document.getElementById('systemHealth').textContent = 'System Not Found';
+                    document.getElementById('systemState').textContent = 'N/A';
+                    document.getElementById('statusIndicatorText').textContent = 'N/A';
+                    document.getElementById('statusIndicatorColor').textContent = 'N/A';
+                }
+
+                // Update ship systems
+                ship.update(500); // 0.5 second update
+                
+                // Update subspace radio
+                if (subspaceRadio) {
+                    subspaceRadio.update(500);
+                }
+                
+            } catch (error) {
+                console.error(`Error updating display: ${error.message}`);
+            }
+        }
+
+        // Test functions
+        window.toggleRadio = function() {
+            if (!subspaceRadio) {
+                console.error('Subspace radio not initialized');
+                return;
+            }
+            
+            subspaceRadio.toggle();
+            console.log('Radio toggle requested');
+        };
+
+        window.setSystemHealth = function(healthPercentage) {
+            const radioSystem = ship.getSystem('subspace_radio');
+            if (!radioSystem) {
+                console.error('Radio system not found');
+                return;
+            }
+            
+            // Calculate target health
+            const targetHealth = radioSystem.maxHealth * (healthPercentage / 100);
+            const currentHealth = radioSystem.currentHealth;
+            
+            if (targetHealth > currentHealth) {
+                // Repair to target health
+                const repairAmount = (targetHealth - currentHealth) / radioSystem.maxHealth;
+                radioSystem.repair(repairAmount);
+            } else if (targetHealth < currentHealth) {
+                // Damage to target health
+                const damageAmount = currentHealth - targetHealth;
+                radioSystem.takeDamage(damageAmount);
+            }
+            
+            console.log(`Set radio system health to ${healthPercentage}%`);
+            
+            // Force update of status indicator
+            if (subspaceRadio.isVisible) {
+                subspaceRadio.updateStatusIndicator();
+            }
+        };
+
+        window.repairSystem = function() {
+            const radioSystem = ship.getSystem('subspace_radio');
+            if (!radioSystem) {
+                console.error('Radio system not found');
+                return;
+            }
+            
+            radioSystem.repair(1.0); // Full repair
+            console.log('Radio system fully repaired');
+            
+            // Force update of status indicator
+            if (subspaceRadio.isVisible) {
+                subspaceRadio.updateStatusIndicator();
+            }
+        };
+
+        // Bind R key for radio toggle
+        document.addEventListener('keydown', (event) => {
+            if (event.key.toLowerCase() === 'r') {
+                toggleRadio();
+            }
+        });
+
+        // Initialize when page loads
+        initializeTest();
+    </script>
+</body>
+</html> 

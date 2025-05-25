@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simplified Slot Allocation Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff41;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            border: 1px solid #00ff41;
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(0, 20, 0, 0.3);
+        }
+        .success { color: #00ff41; }
+        .error { color: #ff4444; }
+        .warning { color: #ffff00; }
+        .info { color: #00ffff; }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #00ff41;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: rgba(0, 255, 65, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Simplified Slot Allocation Test</h1>
+    <p>Testing that all systems now take exactly 1 slot each</p>
+    
+    <div class="test-section">
+        <h2>Ship Configuration</h2>
+        <div id="configInfo"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>System Installation Results</h2>
+        <div id="installResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Final Status</h2>
+        <div id="finalStatus"></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "/lib/three.min.js"
+            }
+        }
+    </script>
+    <script type="module">
+        import Ship from '/js/ship/Ship.js';
+        
+        async function testSimplifiedSlots() {
+            try {
+                console.log('=== Testing Simplified Slot Allocation ===');
+                
+                // Get ship configuration
+                const { getShipConfig } = await import('/js/ship/ShipConfigs.js');
+                const config = getShipConfig('heavy_fighter');
+                
+                // Display configuration
+                const expectedSlots = Object.values(config.defaultSystems).reduce((sum, sys) => sum + sys.slots, 0);
+                document.getElementById('configInfo').innerHTML = `
+                    <table>
+                        <tr><th>Property</th><th>Value</th></tr>
+                        <tr><td>Total System Slots</td><td>${config.systemSlots}</td></tr>
+                        <tr><td>Default Systems Count</td><td>${Object.keys(config.defaultSystems).length}</td></tr>
+                        <tr><td>Expected Slot Usage</td><td>${expectedSlots}</td></tr>
+                        <tr><td>Expected Available Slots</td><td>${config.systemSlots - expectedSlots}</td></tr>
+                    </table>
+                    
+                    <h3>System Slot Allocation:</h3>
+                    <table>
+                        <tr><th>System</th><th>Level</th><th>Slots</th></tr>
+                        ${Object.entries(config.defaultSystems).map(([name, sys]) => 
+                            `<tr><td>${name}</td><td>${sys.level}</td><td class="${sys.slots === 1 ? 'success' : 'error'}">${sys.slots}</td></tr>`
+                        ).join('')}
+                    </table>
+                `;
+                
+                // Create ship and test installation
+                const ship = new Ship('heavy_fighter');
+                
+                // Wait for async initialization
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Check installation results
+                const installedSystems = Array.from(ship.systems.entries());
+                const installResultsHtml = `
+                    <table>
+                        <tr><th>System Name</th><th>Slot Cost</th><th>Status</th><th>Expected</th></tr>
+                        ${installedSystems.map(([name, system]) => {
+                            const isCorrect = system.slotCost === 1;
+                            return `<tr>
+                                <td>${name}</td>
+                                <td class="${isCorrect ? 'success' : 'error'}">${system.slotCost}</td>
+                                <td class="success">✅ Installed</td>
+                                <td>1 slot</td>
+                            </tr>`;
+                        }).join('')}
+                    </table>
+                    
+                    <h3>Missing Systems:</h3>
+                    ${Object.keys(config.defaultSystems).filter(sysName => !ship.systems.has(sysName)).map(missing => 
+                        `<div class="error">❌ ${missing} - Not installed</div>`
+                    ).join('') || '<div class="success">✅ All systems installed successfully</div>'}
+                `;
+                
+                document.getElementById('installResults').innerHTML = installResultsHtml;
+                
+                // Final status
+                const status = ship.getStatus();
+                const allSystemsUseOneSlot = installedSystems.every(([name, system]) => system.slotCost === 1);
+                const allSystemsInstalled = Object.keys(config.defaultSystems).every(sysName => ship.systems.has(sysName));
+                
+                document.getElementById('finalStatus').innerHTML = `
+                    <table>
+                        <tr><th>Metric</th><th>Value</th><th>Status</th></tr>
+                        <tr>
+                            <td>Total Slots</td>
+                            <td>${ship.totalSlots}</td>
+                            <td class="info">Available</td>
+                        </tr>
+                        <tr>
+                            <td>Used Slots</td>
+                            <td>${ship.usedSlots}</td>
+                            <td class="${ship.usedSlots === expectedSlots ? 'success' : 'error'}">
+                                ${ship.usedSlots === expectedSlots ? '✅ Correct' : '❌ Incorrect'}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Available Slots</td>
+                            <td>${ship.availableSlots}</td>
+                            <td class="success">Remaining</td>
+                        </tr>
+                        <tr>
+                            <td>Systems Installed</td>
+                            <td>${ship.systems.size}</td>
+                            <td class="${allSystemsInstalled ? 'success' : 'error'}">
+                                ${allSystemsInstalled ? '✅ All installed' : '❌ Missing systems'}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Slot Allocation</td>
+                            <td>1 slot per system</td>
+                            <td class="${allSystemsUseOneSlot ? 'success' : 'error'}">
+                                ${allSystemsUseOneSlot ? '✅ Simplified' : '❌ Mixed allocation'}
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <h3>Test Results:</h3>
+                    <div class="${allSystemsInstalled && allSystemsUseOneSlot ? 'success' : 'error'}">
+                        ${allSystemsInstalled && allSystemsUseOneSlot ? 
+                            '🎉 SUCCESS: All systems installed with simplified 1-slot allocation!' : 
+                            '❌ FAILED: Issues with system installation or slot allocation'}
+                    </div>
+                `;
+                
+                // Log results
+                console.log('Ship Status:', status);
+                console.log('All systems use 1 slot:', allSystemsUseOneSlot);
+                console.log('All systems installed:', allSystemsInstalled);
+                
+            } catch (error) {
+                console.error('Test error:', error);
+                document.body.innerHTML += `<div class="error">Test Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Run test when page loads
+        testSimplifiedSlots();
+    </script>
+</body>
+</html> 

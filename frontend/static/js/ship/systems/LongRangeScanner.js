@@ -35,6 +35,9 @@ export default class LongRangeScannerSystem extends System {
         this.scanDuration = 2000; // Time for full scan (2 seconds)
         this.fogOfWarEnabled = false; // Whether fog of war is active due to damage
         
+        // Override default active state - scanner is only active when scanning
+        this.isActive = false;
+        
         // Scanning performance metrics
         this.currentScanRange = baseScanRange;
         this.currentResolution = baseResolution;

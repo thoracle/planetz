@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galactic Chart System Debug</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff41;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            border: 1px solid #00ff41;
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(0, 20, 0, 0.3);
+        }
+        .success { color: #00ff41; }
+        .error { color: #ff4444; }
+        .warning { color: #ffff00; }
+        .info { color: #00ffff; }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #00ff41;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: rgba(0, 255, 65, 0.2);
+        }
+        button {
+            background: rgba(0, 255, 65, 0.2);
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        button:hover {
+            background: rgba(0, 255, 65, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <h1>🛰️ Galactic Chart System Debug</h1>
+    <p>Debugging galactic chart system performance issues</p>
+    
+    <div class="test-section">
+        <h2>Ship Initialization</h2>
+        <div id="shipStatus"></div>
+        <button onclick="initializeShip()">Initialize Ship</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Galactic Chart System Status</h2>
+        <div id="chartStatus"></div>
+        <button onclick="checkChartSystem()">Check Chart System</button>
+        <button onclick="repairChartSystem()">Repair Chart System</button>
+        <button onclick="damageChartSystem()">Damage Chart System</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Performance Test</h2>
+        <div id="performanceTest"></div>
+        <button onclick="testPerformance()">Test Performance</button>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "/lib/three.min.js"
+            }
+        }
+    </script>
+    <script type="module">
+        import Ship from '/js/ship/Ship.js';
+        
+        let ship = null;
+        let chartSystem = null;
+        
+        window.initializeShip = async function() {
+            try {
+                ship = new Ship('heavy_fighter');
+                
+                // Wait for async initialization
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                chartSystem = ship.getSystem('galactic_chart');
+                
+                document.getElementById('shipStatus').innerHTML = `
+                    <div class="success">✅ Ship initialized successfully</div>
+                    <table>
+                        <tr><th>Property</th><th>Value</th></tr>
+                        <tr><td>Ship Type</td><td>${ship.shipType}</td></tr>
+                        <tr><td>Systems Count</td><td>${ship.systems.size}</td></tr>
+                        <tr><td>Current Energy</td><td>${ship.currentEnergy}/${ship.maxEnergy}</td></tr>
+                        <tr><td>Current Hull</td><td>${ship.currentHull}/${ship.maxHull}</td></tr>
+                        <tr><td>Chart System Found</td><td class="${chartSystem ? 'success' : 'error'}">${chartSystem ? 'Yes' : 'No'}</td></tr>
+                    </table>
+                `;
+                
+                checkChartSystem();
+                
+            } catch (error) {
+                document.getElementById('shipStatus').innerHTML = `
+                    <div class="error">❌ Error: ${error.message}</div>
+                `;
+                console.error('Ship initialization error:', error);
+            }
+        };
+        
+        window.checkChartSystem = function() {
+            if (!chartSystem) {
+                document.getElementById('chartStatus').innerHTML = `
+                    <div class="error">❌ No galactic chart system found</div>
+                `;
+                return;
+            }
+            
+            const status = chartSystem.getStatus();
+            const effectiveness = chartSystem.getEffectiveness();
+            const dataRange = chartSystem.getCurrentDataRange();
+            const accuracy = chartSystem.getCurrentAccuracy();
+            
+            document.getElementById('chartStatus').innerHTML = `
+                <table>
+                    <tr><th>Property</th><th>Value</th><th>Status</th></tr>
+                    <tr>
+                        <td>System Name</td>
+                        <td>${chartSystem.name}</td>
+                        <td class="info">Info</td>
+                    </tr>
+                    <tr>
+                        <td>Level</td>
+                        <td>${chartSystem.level}</td>
+                        <td class="info">Info</td>
+                    </tr>
+                    <tr>
+                        <td>Health</td>
+                        <td>${chartSystem.currentHealth}/${chartSystem.maxHealth} (${(chartSystem.healthPercentage * 100).toFixed(1)}%)</td>
+                        <td class="${chartSystem.healthPercentage > 0.75 ? 'success' : chartSystem.healthPercentage > 0.25 ? 'warning' : 'error'}">
+                            ${chartSystem.healthPercentage > 0.75 ? 'Good' : chartSystem.healthPercentage > 0.25 ? 'Damaged' : 'Critical'}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>State</td>
+                        <td>${chartSystem.state}</td>
+                        <td class="${chartSystem.isOperational() ? 'success' : 'error'}">
+                            ${chartSystem.isOperational() ? 'Operational' : 'Non-operational'}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Effectiveness</td>
+                        <td>${(effectiveness * 100).toFixed(1)}%</td>
+                        <td class="${effectiveness > 0.75 ? 'success' : effectiveness > 0.25 ? 'warning' : 'error'}">
+                            ${effectiveness > 0.75 ? 'Good' : effectiveness > 0.25 ? 'Degraded' : 'Poor'}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Data Range</td>
+                        <td>${dataRange}%</td>
+                        <td class="${dataRange > 75 ? 'success' : dataRange > 25 ? 'warning' : 'error'}">
+                            ${dataRange > 75 ? 'Good' : dataRange > 25 ? 'Limited' : 'Severely Limited'}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Accuracy</td>
+                        <td>${accuracy}%</td>
+                        <td class="${accuracy > 75 ? 'success' : accuracy > 25 ? 'warning' : 'error'}">
+                            ${accuracy > 75 ? 'Good' : accuracy > 25 ? 'Degraded' : 'Poor'}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Is Active</td>
+                        <td>${chartSystem.isActive}</td>
+                        <td class="info">Status</td>
+                    </tr>
+                    <tr>
+                        <td>Chart Active</td>
+                        <td>${chartSystem.isChartActive}</td>
+                        <td class="info">Status</td>
+                    </tr>
+                    <tr>
+                        <td>Energy Consumption</td>
+                        <td>${chartSystem.getEnergyConsumptionRate()}/sec</td>
+                        <td class="info">Rate</td>
+                    </tr>
+                </table>
+            `;
+        };
+        
+        window.repairChartSystem = function() {
+            if (!chartSystem) {
+                alert('No chart system found');
+                return;
+            }
+            
+            chartSystem.repair(1.0); // Full repair
+            checkChartSystem();
+            console.log('Chart system fully repaired');
+        };
+        
+        window.damageChartSystem = function() {
+            if (!chartSystem) {
+                alert('No chart system found');
+                return;
+            }
+            
+            chartSystem.takeDamage(50); // Apply 50 damage
+            checkChartSystem();
+            console.log('Applied 50 damage to chart system');
+        };
+        
+        window.testPerformance = function() {
+            if (!chartSystem) {
+                document.getElementById('performanceTest').innerHTML = `
+                    <div class="error">❌ No chart system found</div>
+                `;
+                return;
+            }
+            
+            // Test with different damage levels
+            const testResults = [];
+            
+            // Test undamaged
+            chartSystem.repair(1.0);
+            testResults.push({
+                condition: 'Undamaged',
+                health: chartSystem.healthPercentage,
+                effectiveness: chartSystem.getEffectiveness(),
+                dataRange: chartSystem.getCurrentDataRange(),
+                accuracy: chartSystem.getCurrentAccuracy()
+            });
+            
+            // Test lightly damaged
+            chartSystem.takeDamage(25);
+            testResults.push({
+                condition: 'Lightly Damaged',
+                health: chartSystem.healthPercentage,
+                effectiveness: chartSystem.getEffectiveness(),
+                dataRange: chartSystem.getCurrentDataRange(),
+                accuracy: chartSystem.getCurrentAccuracy()
+            });
+            
+            // Test moderately damaged
+            chartSystem.takeDamage(25);
+            testResults.push({
+                condition: 'Moderately Damaged',
+                health: chartSystem.healthPercentage,
+                effectiveness: chartSystem.getEffectiveness(),
+                dataRange: chartSystem.getCurrentDataRange(),
+                accuracy: chartSystem.getCurrentAccuracy()
+            });
+            
+            // Test heavily damaged
+            chartSystem.takeDamage(25);
+            testResults.push({
+                condition: 'Heavily Damaged',
+                health: chartSystem.healthPercentage,
+                effectiveness: chartSystem.getEffectiveness(),
+                dataRange: chartSystem.getCurrentDataRange(),
+                accuracy: chartSystem.getCurrentAccuracy()
+            });
+            
+            // Restore to undamaged for further testing
+            chartSystem.repair(1.0);
+            
+            const resultsHtml = `
+                <table>
+                    <tr>
+                        <th>Condition</th>
+                        <th>Health %</th>
+                        <th>Effectiveness %</th>
+                        <th>Data Range %</th>
+                        <th>Accuracy %</th>
+                    </tr>
+                    ${testResults.map(result => `
+                        <tr>
+                            <td>${result.condition}</td>
+                            <td>${(result.health * 100).toFixed(1)}%</td>
+                            <td>${(result.effectiveness * 100).toFixed(1)}%</td>
+                            <td>${result.dataRange}%</td>
+                            <td>${result.accuracy}%</td>
+                        </tr>
+                    `).join('')}
+                </table>
+                
+                <h3>Analysis:</h3>
+                <div class="info">
+                    Level 1 galactic chart base stats:<br>
+                    - Data Range: 60-100% (based on level)<br>
+                    - Accuracy: 70-100% (based on level)<br>
+                    - Effectiveness multiplier applies to both
+                </div>
+            `;
+            
+            document.getElementById('performanceTest').innerHTML = resultsHtml;
+            checkChartSystem();
+        };
+        
+        // Auto-initialize on page load
+        window.addEventListener('load', () => {
+            setTimeout(initializeShip, 500);
+        });
+    </script>
+</body>
+</html> 

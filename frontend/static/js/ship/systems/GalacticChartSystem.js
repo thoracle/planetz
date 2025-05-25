@@ -34,6 +34,9 @@ export default class GalacticChartSystem extends System {
         this.lastActivationTime = 0;
         this.activationCooldown = 1000; // 1 second cooldown between activations
         
+        // Override default active state - chart is only active when HUD is open
+        this.isActive = false;
+        
         // Now levelStats should be properly initialized, so this should work
         console.log(`Galactic Chart System created (Level ${this.level}) - Data Range: ${this.getCurrentDataRange()}%, Accuracy: ${this.getCurrentAccuracy()}%`);
     }
@@ -49,10 +52,10 @@ export default class GalacticChartSystem extends System {
         
         for (let level = 1; level <= this.maxLevel; level++) {
             levelStats[level] = {
-                effectiveness: level / this.maxLevel, // 0.2 to 1.0
-                dataRange: Math.floor(baseDataRange * (0.6 + 0.4 * (level / this.maxLevel))), // 60% to 100%
-                energyConsumptionRate: Math.floor(baseEnergyConsumptionRate * (1.2 - 0.2 * (level / this.maxLevel))), // 10 to 6 energy/sec
-                accuracy: Math.floor(baseAccuracy * (0.7 + 0.3 * (level / this.maxLevel))), // 70% to 100%
+                effectiveness: 1.0, // All levels have full effectiveness - damage is handled separately
+                dataRange: Math.floor(baseDataRange * (0.8 + 0.2 * (level / this.maxLevel))), // 80% to 100%
+                energyConsumptionRate: baseEnergyConsumptionRate, // Fixed at 8 energy/sec for all levels
+                accuracy: Math.floor(baseAccuracy * (0.85 + 0.15 * (level / this.maxLevel))), // 85% to 100%
                 maxConcurrentConnections: level * 2, // 2 to 10 data streams
                 refreshRate: Math.max(1, 6 - level) // 5 to 1 seconds between updates
             };
@@ -64,7 +67,7 @@ export default class GalacticChartSystem extends System {
 
     // Energy consumption only when chart is active
     getEnergyConsumptionRate() {
-        if (!this.isOperational() || !this.isChartActive) {
+        if (!this.isOperational() || !this.isActive || !this.isChartActive) {
             return 0;
         }
         
@@ -113,6 +116,7 @@ export default class GalacticChartSystem extends System {
         
         // Consume energy for activation
         ship.currentEnergy -= 20;
+        this.isActive = true;
         this.isChartActive = true;
         this.lastActivationTime = Date.now();
         
@@ -122,6 +126,7 @@ export default class GalacticChartSystem extends System {
 
     // Deactivate galactic chart
     deactivateChart() {
+        this.isActive = false;
         this.isChartActive = false;
         console.log('Galactic Chart deactivated');
     }

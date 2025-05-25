@@ -220,12 +220,12 @@
     - [X] Add warp drive damage status check
     - [X] Energy consumption during warp (already implemented via ViewManager)
     - [X] Convert existing WarpDrive to use Ship's WarpDrive system
-  - [ ] HUD Integration
-    - [ ] Add damage control interface (Press 'D' to toggle Damage Control View)
+  - [X] HUD Integration
+    - [X] Add damage control interface (Press 'D' to toggle Damage Control View)
     - [ ] Create station repair interface
     - [ ] Add system shop interface
   - [ ] Station Integration
-    - [ ] Add docking system checks
+    - [X] Add docking system checks
     - [ ] Implement repair services
     - [ ] Create system shop
     - [ ] Add launch sequence
@@ -274,7 +274,7 @@
 
 ### UI Implementation
 - [X] Extend Ship Systems HUD
-  - [ ] Add notification messages when systems are repaired/damaged/destroyed
+  - [X] Add notification messages when systems are repaired/damaged/destroyed
   - [X] **SIMPLIFIED**: Show energy consumption rate for active systems
 
 - [X] Damage Control Interface

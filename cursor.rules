@@ -43,7 +43,22 @@ A web application for generating and customizing 3D spherical planets using proc
    - Include Three.js directly via CDN
    - Put all frontend files directly in the static directory
 
-2. UI Components:
+2. **CRITICAL: Three.js Import Map Rule**
+   - **ALWAYS** include the import map when creating HTML test pages that import Ship.js or any module that uses Three.js
+   - **REQUIRED** import map format:
+   ```html
+   <script type="importmap">
+       {
+           "imports": {
+               "three": "/lib/three.min.js"
+           }
+       }
+   </script>
+   ```
+   - This prevents "Module name, 'three' does not resolve to a valid URL" errors
+   - Must be placed BEFORE any module script tags that import Three.js
+
+3. UI Components:
    - Noise parameter sliders (scale, octaves, persistence)
    - Terrain height controls
    - Color pickers for terrain gradients

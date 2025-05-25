@@ -80,8 +80,11 @@ export default class Ship {
             const { default: WarpDrive } = await import('./systems/WarpDrive.js');
             const { default: Shields } = await import('./systems/Shields.js');
             const { default: Weapons } = await import('./systems/Weapons.js');
+            const { default: MissileTubes } = await import('./systems/MissileTubes.js');
             const { default: LongRangeScanner } = await import('./systems/LongRangeScanner.js');
             const { default: GalacticChartSystem } = await import('./systems/GalacticChartSystem.js');
+            const { default: SubspaceRadioSystem } = await import('./systems/SubspaceRadioSystem.js');
+            const { default: TargetComputer } = await import('./systems/TargetComputer.js');
             
             // Get default system configurations
             const defaultSystems = this.shipConfig.defaultSystems;
@@ -89,32 +92,66 @@ export default class Ship {
             // Create and add default systems
             if (defaultSystems.impulse_engines) {
                 const engines = new ImpulseEngines(defaultSystems.impulse_engines.level);
+                // Override slot cost from ship configuration
+                engines.slotCost = defaultSystems.impulse_engines.slots;
                 this.addSystem('impulse_engines', engines);
             }
             
             if (defaultSystems.warp_drive) {
                 const warpDrive = new WarpDrive(defaultSystems.warp_drive.level);
+                // Override slot cost from ship configuration
+                warpDrive.slotCost = defaultSystems.warp_drive.slots;
                 this.addSystem('warp_drive', warpDrive);
             }
             
             if (defaultSystems.shields) {
                 const shields = new Shields(defaultSystems.shields.level);
+                // Override slot cost from ship configuration
+                shields.slotCost = defaultSystems.shields.slots;
                 this.addSystem('shields', shields);
             }
             
             if (defaultSystems.weapons) {
                 const weapons = new Weapons(defaultSystems.weapons.level);
+                // Override slot cost from ship configuration
+                weapons.slotCost = defaultSystems.weapons.slots;
                 this.addSystem('weapons', weapons);
             }
             
             if (defaultSystems.long_range_scanner) {
                 const scanner = new LongRangeScanner(defaultSystems.long_range_scanner.level);
+                // Override slot cost from ship configuration
+                scanner.slotCost = defaultSystems.long_range_scanner.slots;
                 this.addSystem('long_range_scanner', scanner);
             }
             
             if (defaultSystems.subspace_radio) {
-                const radio = new GalacticChartSystem(defaultSystems.subspace_radio.level);
+                const radio = new SubspaceRadioSystem(defaultSystems.subspace_radio.level);
+                // Override slot cost from ship configuration
+                radio.slotCost = defaultSystems.subspace_radio.slots;
                 this.addSystem('subspace_radio', radio);
+            }
+            
+            if (defaultSystems.galactic_chart) {
+                const galacticChart = new GalacticChartSystem(defaultSystems.galactic_chart.level);
+                // Override slot cost from ship configuration
+                galacticChart.slotCost = defaultSystems.galactic_chart.slots;
+                this.addSystem('galactic_chart', galacticChart);
+            }
+            
+            if (defaultSystems.target_computer) {
+                const targetComputer = new TargetComputer(defaultSystems.target_computer.level);
+                // Override slot cost from ship configuration
+                targetComputer.slotCost = defaultSystems.target_computer.slots;
+                this.addSystem('target_computer', targetComputer);
+            }
+            
+            // Missile tubes are optional and compete with laser weapons for slots
+            if (defaultSystems.missile_tubes) {
+                const missileTubes = new MissileTubes(defaultSystems.missile_tubes.level);
+                // Override slot cost from ship configuration
+                missileTubes.slotCost = defaultSystems.missile_tubes.slots;
+                this.addSystem('missile_tubes', missileTubes);
             }
             
             console.log(`Initialized ${this.systems.size} default systems for ${this.shipType}`);
@@ -147,6 +184,7 @@ export default class Ship {
                         armorModifier *= (1 + (system.getArmorBonus() * effectiveness));
                         break;
                     case 'weapons':
+                    case 'missile_tubes':
                         firepowerModifier *= (1 + (system.getFirepowerBonus() * effectiveness));
                         break;
                 }
@@ -253,14 +291,16 @@ export default class Ship {
      * @param {Object} system - System instance
      */
     addSystem(systemName, system) {
-        // Check slot availability
-        if (this.usedSlots >= this.totalSlots) {
-            console.warn('No available slots for system:', systemName);
+        const systemSlotCost = system.slotCost || 1;
+        
+        // Check slot availability - ensure we have enough slots for this system
+        if (this.usedSlots + systemSlotCost > this.totalSlots) {
+            console.warn(`No available slots for system: ${systemName} (needs ${systemSlotCost} slots, ${this.availableSlots} available)`);
             return false;
         }
         
         this.systems.set(systemName, system);
-        this.usedSlots += system.slotCost || 1;
+        this.usedSlots += systemSlotCost;
         this.availableSlots = this.totalSlots - this.usedSlots;
         
         console.log(`Added system: ${systemName} (${this.usedSlots}/${this.totalSlots} slots used)`);

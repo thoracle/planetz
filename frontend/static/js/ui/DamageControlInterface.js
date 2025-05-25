@@ -29,6 +29,9 @@ export default class DamageControlInterface {
         this.damageLog = [];
         this.maxLogEntries = 50;
         
+        // Bind event handlers to maintain proper 'this' context
+        this.boundKeyHandler = this.handleKeyPress.bind(this);
+        
         console.log('Damage Control Interface initialized');
     }
     
@@ -146,18 +149,13 @@ export default class DamageControlInterface {
     createInterfaceHTML() {
         return `
             <div class="damage-control-header">
-                <h2>🔧 DAMAGE CONTROL</h2>
-                <div class="ship-status-summary">
-                    <span id="ship-name">${this.ship?.shipType || 'Unknown'}</span>
-                    <span id="hull-status">Hull: --</span>
-                    <span id="energy-status">Energy: --</span>
-                </div>
-                <button class="close-button" onclick="window.damageControl?.hide()">✕</button>
+                <div class="view-label">View: DAMAGE</div>
             </div>
+            
+            <button class="close-button" onclick="window.damageControl?.hide()">✕</button>
             
             <div class="damage-control-content">
                 <div class="systems-panel">
-                    <h3>Ship Systems</h3>
                     <div class="systems-grid" id="systems-grid">
                         <!-- Systems will be populated here -->
                     </div>
@@ -165,12 +163,10 @@ export default class DamageControlInterface {
                 
                 <div class="details-panel">
                     <div class="system-details" id="system-details">
-                        <h3>System Details</h3>
                         <p>Select a system to view details</p>
                     </div>
                     
                     <div class="repair-section" id="repair-section">
-                        <h3>Repair Options</h3>
                         <div class="repair-kits">
                             <div class="repair-kit" data-type="basic">
                                 <span class="kit-name">Basic Repair Kit</span>
@@ -195,16 +191,9 @@ export default class DamageControlInterface {
                 </div>
                 
                 <div class="damage-log-panel">
-                    <h3>Damage Log</h3>
                     <div class="damage-log" id="damage-log">
                         <!-- Damage log entries will be populated here -->
                     </div>
-                </div>
-            </div>
-            
-            <div class="damage-control-footer">
-                <div class="instructions">
-                    Press 'D' to toggle | Press 'A' or 'F' to close | Click systems for details
                 </div>
             </div>
         `;
@@ -216,40 +205,10 @@ export default class DamageControlInterface {
     updateInterface() {
         if (!this.isVisible || !this.ship) return;
         
-        this.updateShipStatus();
         this.updateSystemsGrid();
         this.updateSystemDetails();
         this.updateRepairSection();
         this.updateDamageLog();
-    }
-    
-    /**
-     * Update ship status summary
-     */
-    updateShipStatus() {
-        const shipStatus = this.ship.getStatus();
-        
-        // Update ship name
-        const shipName = document.getElementById('ship-name');
-        if (shipName) {
-            shipName.textContent = shipStatus.shipType.replace('_', ' ').toUpperCase();
-        }
-        
-        // Update hull status
-        const hullStatus = document.getElementById('hull-status');
-        if (hullStatus) {
-            const hullPercent = shipStatus.hull.percentage.toFixed(1);
-            hullStatus.textContent = `Hull: ${shipStatus.hull.current}/${shipStatus.hull.max} (${hullPercent}%)`;
-            hullStatus.className = this.getStatusClass(shipStatus.hull.percentage);
-        }
-        
-        // Update energy status
-        const energyStatus = document.getElementById('energy-status');
-        if (energyStatus) {
-            const energyPercent = shipStatus.energy.percentage.toFixed(1);
-            energyStatus.textContent = `Energy: ${shipStatus.energy.current.toFixed(0)}/${shipStatus.energy.max} (${energyPercent}%)`;
-            energyStatus.className = this.getStatusClass(shipStatus.energy.percentage);
-        }
     }
     
     /**
@@ -260,7 +219,24 @@ export default class DamageControlInterface {
         if (!systemsGrid) return;
         
         const shipStatus = this.ship.getStatus();
+        
+        // Create ship status header
+        const statusHeader = document.createElement('div');
+        statusHeader.className = 'ship-status-header';
+        statusHeader.innerHTML = `
+            <div class="status-title">${shipStatus.shipType.replace('_', ' ').toUpperCase()}</div>
+            <div class="status-info">
+                <span class="hull-status ${this.getStatusClass(shipStatus.hull.percentage)}">
+                    Hull: ${shipStatus.hull.current}/${shipStatus.hull.max} (${shipStatus.hull.percentage.toFixed(1)}%)
+                </span>
+                <span class="energy-status ${this.getStatusClass(shipStatus.energy.percentage)}">
+                    Energy: ${shipStatus.energy.current.toFixed(0)}/${shipStatus.energy.max} (${shipStatus.energy.percentage.toFixed(1)}%)
+                </span>
+            </div>
+        `;
+        
         systemsGrid.innerHTML = '';
+        systemsGrid.appendChild(statusHeader);
         
         // Create system cards
         for (const [systemName, systemStatus] of Object.entries(shipStatus.systems)) {
@@ -282,6 +258,7 @@ export default class DamageControlInterface {
         
         const healthPercent = (systemStatus.health * 100).toFixed(1);
         const statusIcon = this.getSystemStatusIcon(systemStatus);
+        const healthClass = this.getStatusClass(healthPercent);
         
         card.innerHTML = `
             <div class="system-header">
@@ -290,7 +267,7 @@ export default class DamageControlInterface {
             </div>
             <div class="system-info">
                 <div class="health-bar">
-                    <div class="health-fill" style="width: ${healthPercent}%"></div>
+                    <div class="health-fill ${healthClass}" style="width: ${healthPercent}%"></div>
                 </div>
                 <div class="system-stats">
                     <span class="health-text">${healthPercent}%</span>
@@ -329,7 +306,7 @@ export default class DamageControlInterface {
         const systemData = system.getStatus();
         
         detailsPanel.innerHTML = `
-            <h3>${this.formatSystemName(this.selectedSystem)} Details</h3>
+            <div class="system-details-header">${this.formatSystemName(this.selectedSystem)} Details</div>
             <div class="detail-grid">
                 <div class="detail-row">
                     <span class="detail-label">Health:</span>
@@ -464,16 +441,49 @@ export default class DamageControlInterface {
      * Update repair section
      */
     updateRepairSection() {
-        if (!this.selectedSystem) return;
+        const repairSection = document.getElementById('repair-section');
+        if (!repairSection) return;
+        
+        if (!this.selectedSystem) {
+            repairSection.innerHTML = `
+                <div class="repair-section-header">Repair Options</div>
+                <p>Select a system to view repair options</p>
+            `;
+            return;
+        }
         
         const system = this.ship.getSystem(this.selectedSystem);
         if (!system) return;
         
         const healthPercent = system.healthPercentage * 100;
         
+        repairSection.innerHTML = `
+            <div class="repair-section-header">Repair Options</div>
+            <div class="repair-kits">
+                <div class="repair-kit" data-type="basic">
+                    <span class="kit-name">Basic Repair Kit</span>
+                    <span class="kit-info">Repairs 25% | Cost: 100 credits</span>
+                    <span class="kit-count">Available: ${this.repairKits.basic.count}</span>
+                    <button class="repair-button" onclick="window.damageControl?.performRepair('basic')">Use</button>
+                </div>
+                <div class="repair-kit" data-type="advanced">
+                    <span class="kit-name">Advanced Repair Kit</span>
+                    <span class="kit-info">Repairs 50% | Cost: 250 credits</span>
+                    <span class="kit-count">Available: ${this.repairKits.advanced.count}</span>
+                    <button class="repair-button" onclick="window.damageControl?.performRepair('advanced')">Use</button>
+                </div>
+                <div class="repair-kit" data-type="emergency">
+                    <span class="kit-name">Emergency Repair Kit</span>
+                    <span class="kit-info">Full Repair | Cost: 500 credits</span>
+                    <span class="kit-count">Available: ${this.repairKits.emergency.count}</span>
+                    <button class="repair-button" onclick="window.damageControl?.performRepair('emergency')">Use</button>
+                </div>
+            </div>
+        `;
+        
         // Update repair kit availability and enable/disable buttons
         for (const [kitType, kitData] of Object.entries(this.repairKits)) {
-            const kitElement = document.querySelector(`[data-type="${kitType}"]`);
+            const kitElement = repairSection.querySelector(`[data-type="${kitType}"]`);
             const button = kitElement?.querySelector('.repair-button');
             const countElement = kitElement?.querySelector('.kit-count');
             
@@ -493,27 +503,28 @@ export default class DamageControlInterface {
      * Update damage log
      */
     updateDamageLog() {
-        const logElement = document.getElementById('damage-log');
-        if (!logElement) return;
+        const logPanel = document.getElementById('damage-log');
+        if (!logPanel) return;
         
-        logElement.innerHTML = '';
+        let logHTML = '<div class="damage-log-header">Damage Log</div>';
         
         // Show recent log entries
         const recentEntries = this.damageLog.slice(-10).reverse();
         
-        for (const entry of recentEntries) {
-            const logEntry = document.createElement('div');
-            logEntry.className = `log-entry ${entry.type}`;
-            logEntry.innerHTML = `
-                <span class="log-time">${entry.timestamp}</span>
-                <span class="log-message">${entry.message}</span>
-            `;
-            logElement.appendChild(logEntry);
+        if (recentEntries.length === 0) {
+            logHTML += '<div class="log-entry info">No recent damage reports</div>';
+        } else {
+            for (const entry of recentEntries) {
+                logHTML += `
+                    <div class="log-entry ${entry.type}">
+                        <span class="log-time">${entry.timestamp}</span>
+                        <span class="log-message">${entry.message}</span>
+                    </div>
+                `;
+            }
         }
         
-        if (recentEntries.length === 0) {
-            logElement.innerHTML = '<div class="log-entry info">No recent damage reports</div>';
-        }
+        logPanel.innerHTML = logHTML;
     }
     
     /**
@@ -627,7 +638,7 @@ export default class DamageControlInterface {
      */
     bindEvents() {
         // Keyboard events
-        document.addEventListener('keydown', this.handleKeyPress.bind(this));
+        document.addEventListener('keydown', this.boundKeyHandler);
         
         // Click outside to close
         const overlay = document.getElementById('damage-control-overlay');
@@ -655,6 +666,93 @@ export default class DamageControlInterface {
                 this.hide();
                 event.preventDefault();
                 break;
+            case 'g':
+                // Close damage control and activate galactic chart
+                this.hide();
+                this.activateGalacticChart();
+                event.preventDefault();
+                break;
+            case 'l':
+                // Close damage control and activate long range scanner
+                this.hide();
+                this.activateLongRangeScanner();
+                event.preventDefault();
+                break;
+        }
+    }
+    
+    /**
+     * Activate galactic chart system
+     */
+    activateGalacticChart() {
+        if (!this.ship) {
+            console.warn('No ship available for galactic chart activation');
+            return;
+        }
+        
+        const chartSystem = this.ship.getSystem('galactic_chart');
+        if (!chartSystem) {
+            console.warn('No galactic chart system found on ship');
+            return;
+        }
+        
+        // Check if chart system can be activated
+        if (!chartSystem.canActivate(this.ship)) {
+            if (!chartSystem.isOperational()) {
+                console.warn('Cannot activate Galactic Chart: System damaged or offline');
+            } else {
+                console.warn('Cannot activate Galactic Chart: Insufficient energy');
+            }
+            return;
+        }
+        
+        // Activate the chart system
+        if (chartSystem.activateChart(this.ship)) {
+            // Trigger the view change through ViewManager if available
+            if (window.viewManager) {
+                window.viewManager.setView('GALACTIC');
+            }
+            console.log('Galactic Chart activated from Damage Control');
+        } else {
+            console.warn('Failed to activate Galactic Chart');
+        }
+    }
+    
+    /**
+     * Activate long range scanner system
+     */
+    activateLongRangeScanner() {
+        if (!this.ship) {
+            console.warn('No ship available for long range scanner activation');
+            return;
+        }
+        
+        const scannerSystem = this.ship.getSystem('long_range_scanner');
+        if (!scannerSystem) {
+            console.warn('No long range scanner system found on ship');
+            return;
+        }
+        
+        // Check if scanner system can be activated
+        if (!scannerSystem.canActivate(this.ship)) {
+            if (!scannerSystem.isOperational()) {
+                console.warn('Cannot activate Long Range Scanner: System damaged or offline');
+            } else {
+                console.warn('Cannot activate Long Range Scanner: Insufficient energy');
+            }
+            return;
+        }
+        
+        // Start scanning operation
+        const scanStarted = scannerSystem.startScan(this.ship);
+        if (scanStarted) {
+            // Trigger the view change through ViewManager if available
+            if (window.viewManager) {
+                window.viewManager.setView('SCANNER');
+            }
+            console.log('Long Range Scanner activated from Damage Control');
+        } else {
+            console.warn('Failed to start Long Range Scanner');
         }
     }
     
@@ -668,7 +766,7 @@ export default class DamageControlInterface {
         }
         
         // Remove event listeners
-        document.removeEventListener('keydown', this.handleKeyPress.bind(this));
+        document.removeEventListener('keydown', this.boundKeyHandler);
     }
     
     /**
@@ -746,56 +844,84 @@ export default class DamageControlInterface {
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                font-family: 'Courier New', monospace;
+                font-family: 'VT323', monospace;
             }
             
             .damage-control-container {
                 width: 90%;
                 max-width: 1200px;
                 height: 80%;
-                background: linear-gradient(135deg, #001122 0%, #002244 100%);
-                border: 2px solid #00ffff;
-                border-radius: 10px;
+                background: rgba(0, 0, 0, 0.9);
+                border: 2px solid #00ff41;
+                border-radius: 0;
                 display: flex;
                 flex-direction: column;
-                color: #00ffff;
-                box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+                color: #00ff41;
+                box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .damage-control-container::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(
+                    transparent 50%,
+                    rgba(0, 255, 65, 0.03) 50%
+                );
+                background-size: 100% 4px;
+                pointer-events: none;
+                z-index: 1000;
             }
             
             .damage-control-header {
                 display: flex;
-                justify-content: space-between;
+                justify-content: center;
                 align-items: center;
-                padding: 15px 20px;
-                border-bottom: 1px solid #00ffff;
-                background: rgba(0, 255, 255, 0.1);
+                padding: 10px 20px;
+                position: relative;
             }
             
-            .damage-control-header h2 {
-                margin: 0;
-                color: #00ffff;
-                text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-            }
-            
-            .ship-status-summary {
-                display: flex;
-                gap: 20px;
-                font-size: 14px;
+            .view-label {
+                color: #00ff41;
+                font-family: "Courier New", monospace;
+                font-size: 20px;
+                text-align: center;
+                border: 1px solid #00ff41;
+                padding: 5px 10px;
+                min-width: 120px;
+                background: rgba(0, 0, 0, 0.5);
             }
             
             .close-button {
-                background: none;
-                border: 1px solid #ff4444;
-                color: #ff4444;
-                padding: 5px 10px;
+                position: absolute;
+                top: 15px;
+                right: 15px;
+                background: rgba(0, 20, 0, 0.5);
+                border: 1px solid #00ff41;
+                color: #00ff41;
+                padding: 8px 12px;
                 cursor: pointer;
-                border-radius: 3px;
+                border-radius: 0;
                 font-family: inherit;
                 font-size: 16px;
+                z-index: 1000;
+                transition: all 0.2s ease;
+                width: 30px;
+                height: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
             
             .close-button:hover {
-                background: rgba(255, 68, 68, 0.2);
+                background: #00ff41;
+                color: #000;
+                box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
             }
             
             .damage-control-content {
@@ -808,18 +934,42 @@ export default class DamageControlInterface {
             }
             
             .systems-panel, .details-panel, .damage-log-panel {
-                background: rgba(0, 0, 0, 0.3);
-                border: 1px solid #004466;
-                border-radius: 5px;
+                background: rgba(0, 20, 0, 0.3);
+                border: 1px solid #00ff41;
+                border-radius: 0;
                 padding: 15px;
                 overflow-y: auto;
             }
             
-            .systems-panel h3, .details-panel h3, .damage-log-panel h3 {
-                margin: 0 0 15px 0;
-                color: #00ccff;
-                border-bottom: 1px solid #004466;
-                padding-bottom: 5px;
+            .ship-status-header {
+                grid-column: 1 / -1;
+                background: rgba(0, 20, 0, 0.5);
+                border: 1px solid #00ff41;
+                padding: 10px;
+                margin-bottom: 15px;
+                border-radius: 0;
+            }
+            
+            .status-title {
+                font-size: 18px;
+                font-weight: bold;
+                color: #00ff41;
+                text-align: center;
+                margin-bottom: 8px;
+                text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+                letter-spacing: 1px;
+            }
+            
+            .status-info {
+                display: flex;
+                justify-content: space-between;
+                font-size: 14px;
+                gap: 20px;
+            }
+            
+            .hull-status, .energy-status {
+                flex: 1;
+                text-align: center;
             }
             
             .systems-grid {
@@ -829,23 +979,26 @@ export default class DamageControlInterface {
             }
             
             .system-card {
-                background: rgba(0, 0, 0, 0.5);
-                border: 1px solid #006699;
-                border-radius: 5px;
-                padding: 10px;
+                background: rgba(0, 20, 0, 0.3);
+                border: 1px solid #00ff41;
+                border-radius: 0;
+                padding: 12px;
                 cursor: pointer;
                 transition: all 0.3s ease;
             }
             
             .system-card:hover {
-                border-color: #00ccff;
-                box-shadow: 0 0 10px rgba(0, 204, 255, 0.3);
+                border-color: #00ff41;
+                box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+                background: rgba(0, 255, 65, 0.1);
+                transform: translateY(-1px);
             }
             
             .system-card.selected {
-                border-color: #00ff00;
-                box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
-                background: rgba(0, 255, 0, 0.1);
+                border-color: #00ff41;
+                box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
+                background: rgba(0, 255, 65, 0.2);
+                border-width: 2px;
             }
             
             .system-header {
@@ -861,22 +1014,41 @@ export default class DamageControlInterface {
             
             .system-name {
                 font-weight: bold;
-                font-size: 12px;
+                font-size: 14px;
+                color: #00ff41;
+                text-shadow: 0 0 3px rgba(0, 255, 65, 0.3);
             }
             
             .health-bar {
                 width: 100%;
                 height: 8px;
-                background: rgba(255, 255, 255, 0.2);
-                border-radius: 4px;
+                background: rgba(0, 255, 65, 0.2);
+                border: 1px solid #00ff41;
+                border-radius: 0;
                 overflow: hidden;
                 margin-bottom: 5px;
             }
             
             .health-fill {
                 height: 100%;
-                background: linear-gradient(90deg, #ff4444 0%, #ffaa00 50%, #44ff44 100%);
+                background: #00ff41;
                 transition: width 0.3s ease;
+                box-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+            }
+            
+            .health-fill.critical {
+                background: #ff4444;
+                box-shadow: 0 0 5px rgba(255, 68, 68, 0.5);
+            }
+            
+            .health-fill.poor {
+                background: #ff8800;
+                box-shadow: 0 0 5px rgba(255, 136, 0, 0.5);
+            }
+            
+            .health-fill.fair {
+                background: #ffff00;
+                box-shadow: 0 0 5px rgba(255, 255, 0, 0.5);
             }
             
             .system-info {
@@ -895,8 +1067,8 @@ export default class DamageControlInterface {
                 opacity: 0.8;
             }
             
-            .system-good { border-color: #44ff44; }
-            .system-fair { border-color: #ffaa00; }
+            .system-good { border-color: #00ff41; }
+            .system-fair { border-color: #ffff00; }
             .system-poor { border-color: #ff8800; }
             .system-critical { border-color: #ff4444; }
             .system-disabled { border-color: #666666; opacity: 0.6; }
@@ -910,45 +1082,59 @@ export default class DamageControlInterface {
                 display: flex;
                 justify-content: space-between;
                 padding: 3px 0;
-                border-bottom: 1px solid rgba(0, 68, 102, 0.3);
+                border-bottom: 1px solid rgba(0, 255, 65, 0.3);
             }
             
             .detail-label {
-                color: #aaccff;
-                font-size: 12px;
+                color: rgba(0, 255, 65, 0.8);
+                font-size: 13px;
             }
             
             .detail-value {
-                color: #ffffff;
-                font-size: 12px;
+                color: #00ff41;
+                font-size: 13px;
                 font-weight: bold;
+                text-shadow: 0 0 3px rgba(0, 255, 65, 0.3);
             }
             
-            .status-good { color: #44ff44; }
-            .status-fair { color: #ffaa00; }
+            .status-good { color: #00ff41; }
+            .status-fair { color: #ffff00; }
             .status-poor { color: #ff8800; }
             .status-critical { color: #ff4444; }
             
-            .status-operational { color: #44ff44; }
-            .status-critical { color: #ffaa00; }
+            .status-operational { color: #00ff41; }
+            .status-critical { color: #ffff00; }
             .status-disabled { color: #ff4444; }
             
             .system-specific {
                 margin-top: 15px;
                 padding-top: 10px;
-                border-top: 1px solid #004466;
+                border-top: 1px solid #00ff41;
+            }
+            
+            .system-details-header, .repair-section-header, .damage-log-header {
+                margin: 0 0 15px 0;
+                color: #00ff41;
+                border-bottom: 1px solid #00ff41;
+                padding-bottom: 8px;
+                font-size: 16px;
+                text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+                letter-spacing: 1px;
+                font-weight: bold;
             }
             
             .system-specific h4 {
                 margin: 0 0 10px 0;
-                color: #00ccff;
-                font-size: 14px;
+                color: #00ff41;
+                font-size: 16px;
+                text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+                letter-spacing: 1px;
             }
             
             .repair-section {
                 margin-top: 15px;
                 padding-top: 15px;
-                border-top: 1px solid #004466;
+                border-top: 1px solid #00ff41;
             }
             
             .repair-kits {
@@ -957,48 +1143,60 @@ export default class DamageControlInterface {
             }
             
             .repair-kit {
-                background: rgba(0, 0, 0, 0.5);
-                border: 1px solid #004466;
-                border-radius: 3px;
-                padding: 8px;
+                background: rgba(0, 20, 0, 0.3);
+                border: 1px solid #00ff41;
+                border-radius: 0;
+                padding: 10px;
                 display: grid;
                 grid-template-columns: 1fr auto;
                 grid-template-rows: auto auto;
-                gap: 3px;
-                font-size: 11px;
+                gap: 5px;
+                font-size: 12px;
+                transition: all 0.2s ease;
+            }
+            
+            .repair-kit:hover {
+                background: rgba(0, 255, 65, 0.1);
+                box-shadow: 0 0 5px rgba(0, 255, 65, 0.2);
             }
             
             .kit-name {
                 font-weight: bold;
-                color: #00ccff;
+                color: #00ff41;
             }
             
             .repair-button {
                 grid-row: 1 / 3;
-                background: #006699;
-                border: 1px solid #00ccff;
-                color: white;
-                padding: 5px 10px;
-                border-radius: 3px;
+                background: rgba(0, 20, 0, 0.5);
+                border: 1px solid #00ff41;
+                color: #00ff41;
+                padding: 8px 12px;
+                border-radius: 0;
                 cursor: pointer;
                 font-family: inherit;
-                font-size: 10px;
+                font-size: 12px;
+                transition: all 0.2s ease;
+                text-shadow: 0 0 3px rgba(0, 255, 65, 0.3);
             }
             
             .repair-button:hover:not(:disabled) {
-                background: #0088cc;
+                background: #00ff41;
+                color: #000;
+                box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+                text-shadow: none;
             }
             
             .repair-button:disabled {
-                background: #333333;
+                background: rgba(100, 100, 100, 0.2);
                 border-color: #666666;
                 color: #999999;
                 cursor: not-allowed;
+                text-shadow: none;
             }
             
             .kit-info, .kit-count {
-                color: #aaccff;
-                font-size: 10px;
+                color: rgba(0, 255, 65, 0.8);
+                font-size: 11px;
             }
             
             .damage-log {
@@ -1009,36 +1207,65 @@ export default class DamageControlInterface {
                 overflow-y: auto;
             }
             
+            .damage-log::-webkit-scrollbar,
+            .systems-panel::-webkit-scrollbar,
+            .details-panel::-webkit-scrollbar {
+                width: 8px;
+            }
+            
+            .damage-log::-webkit-scrollbar-track,
+            .systems-panel::-webkit-scrollbar-track,
+            .details-panel::-webkit-scrollbar-track {
+                background: rgba(0, 255, 65, 0.1);
+                border-radius: 0;
+            }
+            
+            .damage-log::-webkit-scrollbar-thumb,
+            .systems-panel::-webkit-scrollbar-thumb,
+            .details-panel::-webkit-scrollbar-thumb {
+                background-color: #00ff41;
+                border-radius: 0;
+                border: 2px solid transparent;
+                background-clip: content-box;
+            }
+            
             .log-entry {
-                background: rgba(0, 0, 0, 0.3);
-                border-left: 3px solid #006699;
-                padding: 5px 8px;
-                border-radius: 3px;
-                font-size: 11px;
+                background: rgba(0, 20, 0, 0.2);
+                border-left: 3px solid #00ff41;
+                padding: 6px 10px;
+                border-radius: 0;
+                font-size: 12px;
+                margin-bottom: 2px;
+                transition: all 0.2s ease;
+            }
+            
+            .log-entry:hover {
+                background: rgba(0, 255, 65, 0.1);
             }
             
             .log-entry.damage { border-left-color: #ff4444; }
-            .log-entry.repair { border-left-color: #44ff44; }
-            .log-entry.info { border-left-color: #00ccff; }
+            .log-entry.repair { border-left-color: #00ff41; }
+            .log-entry.info { border-left-color: #00ff41; }
             .log-entry.error { border-left-color: #ff8800; }
             
             .log-time {
-                color: #888888;
+                color: rgba(0, 255, 65, 0.6);
                 font-size: 10px;
                 margin-right: 8px;
             }
             
             .log-message {
-                color: #cccccc;
+                color: #00ff41;
             }
             
             .damage-control-footer {
-                padding: 10px 20px;
-                border-top: 1px solid #00ffff;
-                background: rgba(0, 255, 255, 0.1);
+                padding: 12px 20px;
+                border-top: 1px solid #00ff41;
+                background: rgba(0, 20, 0, 0.3);
                 text-align: center;
-                font-size: 12px;
-                color: #aaccff;
+                font-size: 14px;
+                color: rgba(0, 255, 65, 0.8);
+                text-shadow: 0 0 3px rgba(0, 255, 65, 0.3);
             }
             
             @media (max-width: 1024px) {

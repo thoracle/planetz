@@ -35,7 +35,7 @@ export default class System {
         // SIMPLIFIED: Only slot cost, no power cost (systems consume energy when active)
         this.slotCost = config.slotCost || 1;
         this.energyConsumptionRate = config.energyConsumptionRate || 0; // Energy per second when active
-        this.isActive = false; // Track if system is actively consuming energy
+        this.isActive = true; // Track if system is actively consuming energy - default to true for operational systems
         
         // System state
         this.state = SYSTEM_STATES.OPERATIONAL;
@@ -173,7 +173,7 @@ export default class System {
         
         if (this.healthPercentage <= 0) {
             this.state = SYSTEM_STATES.DISABLED;
-            this.deactivate(); // Auto-deactivate disabled systems
+            this.isActive = false; // Disabled systems are not active
         } else if (this.healthPercentage <= DAMAGE_THRESHOLDS.MINOR) {
             this.state = SYSTEM_STATES.CRITICAL;
         } else if (this.healthPercentage <= DAMAGE_THRESHOLDS.MODERATE) {

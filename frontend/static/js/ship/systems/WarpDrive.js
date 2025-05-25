@@ -5,7 +5,6 @@
  */
 
 import System, { SYSTEM_STATES } from '../System.js';
-import * as THREE from 'three';
 
 export default class WarpDrive extends System {
     constructor(level = 1, config = {}) {
@@ -29,6 +28,9 @@ export default class WarpDrive extends System {
         this.warpSequenceTime = 12000; // Match WarpEffects duration
         this.lastUpdateTime = Date.now();
         
+        // Override default active state - warp drive is only active when warping
+        this.isActive = false;
+        
         // Energy tracking for current warp
         this.totalEnergyCost = 0;
         this.energyConsumed = 0;
@@ -42,13 +44,20 @@ export default class WarpDrive extends System {
         this.onWarpEnd = null;
         this.onEnergyUpdate = null;
         
-        // Acceleration curve for smooth transitions
-        this.accelerationCurve = new THREE.CubicBezierCurve3(
-            new THREE.Vector3(0, 0, 0),
-            new THREE.Vector3(0.2, 0.8, 0),
-            new THREE.Vector3(0.8, 1, 0),
-            new THREE.Vector3(1, 1, 0)
-        );
+        // Acceleration curve for smooth transitions (optional - only if Three.js is available)
+        this.accelerationCurve = null;
+        if (typeof window !== 'undefined' && window.THREE && window.THREE.CubicBezierCurve3) {
+            try {
+                this.accelerationCurve = new window.THREE.CubicBezierCurve3(
+                    new window.THREE.Vector3(0, 0, 0),
+                    new window.THREE.Vector3(0.2, 0.8, 0),
+                    new window.THREE.Vector3(0.8, 1, 0),
+                    new window.THREE.Vector3(1, 1, 0)
+                );
+            } catch (error) {
+                console.warn('Three.js not available for warp drive acceleration curve');
+            }
+        }
         
         console.log(`Warp Drive created (Level ${level}) - Max Warp Factor: ${this.getMaxWarpFactor()}`);
     }
@@ -108,9 +117,47 @@ export default class WarpDrive extends System {
         
         // Damaged warp drives have reduced max warp factor
         const effectiveness = this.getEffectiveness();
-        const damageReduction = effectiveness < 0.5 ? 0.5 : 1.0; // Severely damaged = half warp factor
+        let damageReduction;
         
-        return Math.min(this.maxWarpFactor, maxForLevel * damageReduction);
+        if (effectiveness < 0.2) {
+            // Severely damaged (below 20%) - emergency warp only (warp 1-2)
+            damageReduction = 0.2; // Max warp 2 for emergency escape
+        } else if (effectiveness < 0.5) {
+            // Moderately damaged - half warp factor
+            damageReduction = 0.5;
+        } else {
+            // Lightly damaged or operational - full capability
+            damageReduction = 1.0;
+        }
+        
+        // Ensure minimum emergency warp capability (at least warp 1)
+        const calculatedMax = Math.min(this.maxWarpFactor, maxForLevel * damageReduction);
+        return Math.max(1.0, calculatedMax);
+    }
+    
+    /**
+     * Get maximum travel distance per warp jump based on system health
+     * When damaged, warp drive loses range capability rather than speed
+     * @returns {number} Maximum travel distance in sectors (Manhattan distance)
+     */
+    getMaxTravelDistance() {
+        // Always maintain emergency capability (minimum 1 sector)
+        if (!this.isOperational()) {
+            return 1;
+        }
+        
+        const effectiveness = this.getEffectiveness();
+        
+        if (effectiveness < 0.2) {
+            // Severely damaged (below 20%) - emergency range only (1-2 sectors)
+            return 2;
+        } else if (effectiveness < 0.5) {
+            // Moderately damaged (20-50%) - reduced range (2-4 sectors)
+            return Math.floor(8 * effectiveness);
+        } else {
+            // Lightly damaged or operational (50%+) - full galactic range
+            return 9; // Full 9x9 galactic grid range
+        }
     }
     
     /**
@@ -225,6 +272,7 @@ export default class WarpDrive extends System {
         });
         
         this.isWarping = true;
+        this.isActive = true; // Set active when warping starts
         this.lastUpdateTime = Date.now();
         
         // Show feedback if available
@@ -247,6 +295,7 @@ export default class WarpDrive extends System {
         if (!this.isWarping) return;
         
         this.isWarping = false;
+        this.isActive = false; // Set inactive when warping ends
         this.cooldownTime = this.getEffectiveCooldownTime();
         
         console.log(`Warp deactivated - Cooldown: ${this.cooldownTime}ms`);
@@ -313,6 +362,40 @@ export default class WarpDrive extends System {
     }
     
     /**
+     * Apply damage to the warp drive with special protection
+     * Warp drive can never be completely disabled to prevent stranding
+     * @param {number} damage Amount of damage to apply
+     */
+    takeDamage(damage) {
+        if (damage <= 0) return;
+        
+        this.currentHealth = Math.max(0, this.currentHealth - damage);
+        this.healthPercentage = this.currentHealth / this.maxHealth;
+        
+        // SPECIAL PROTECTION: Warp drive can never go below 15% health
+        // This ensures it can always be repaired and provide emergency warp capability
+        if (this.healthPercentage < 0.15) {
+            this.currentHealth = this.maxHealth * 0.15;
+            this.healthPercentage = 0.15;
+            console.log(`${this.name} protected from complete failure - minimum 15% health maintained`);
+        }
+        
+        // Update system state based on health
+        this.updateSystemState();
+        
+        console.log(`${this.name} took ${damage.toFixed(1)} damage. Health: ${this.healthPercentage.toFixed(2)}`);
+    }
+
+    /**
+     * Check if system is operational - warp drive is always minimally operational
+     * @returns {boolean} True if system can function
+     */
+    isOperational() {
+        // Warp drive is always operational at some level (never completely disabled)
+        return this.healthPercentage > 0;
+    }
+
+    /**
      * Handle system state effects specific to warp drive
      * @param {string} newState The new system state
      */
@@ -331,16 +414,19 @@ export default class WarpDrive extends System {
                 }
                 break;
             case SYSTEM_STATES.DISABLED:
-                // Disabled warp drive immediately stops any warp in progress
+                // Warp drive can never be completely disabled due to special protection
+                // Instead, it operates at minimal capacity (emergency warp only)
                 if (this.isWarping) {
-                    console.log('Warp drive disabled - emergency warp termination!');
+                    console.log('Severe warp drive damage - emergency warp termination!');
                     this.isWarping = false;
-                    this.cooldownTime = this.getEffectiveCooldownTime() * 2; // Double cooldown for emergency stop
+                    this.isActive = false; // Set inactive on emergency stop
+                    this.cooldownTime = this.getEffectiveCooldownTime() * 3; // Triple cooldown for emergency stop
                     
                     if (this.onWarpEnd) {
                         this.onWarpEnd();
                     }
                 }
+                console.log('Warp drive severely damaged - limited to emergency warp capability only');
                 break;
         }
     }
@@ -469,8 +555,9 @@ export default class WarpDrive extends System {
         return {
             ...baseStatus,
             isWarping: this.isWarping,
-            warpFactor: this.warpFactor,
-            maxWarpFactor: this.getMaxWarpFactor(),
+            warpFactor: this.warpFactor, // Legacy field for visual effects
+            maxWarpFactor: this.getMaxWarpFactor(), // Legacy field for compatibility
+            maxTravelDistance: this.getMaxTravelDistance(), // Actual travel capability
             cooldownTime: this.cooldownTime,
             cooldownProgress: this.cooldownTime > 0 ? (this.cooldownTime / this.getEffectiveCooldownTime()) : 0,
             totalEnergyCost: this.totalEnergyCost,

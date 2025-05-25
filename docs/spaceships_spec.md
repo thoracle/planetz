@@ -3,8 +3,37 @@
 ### Overview
 The spaceship feature allows players to pilot one of five distinct ship types, inspired by Elite, Privateer, and Freelancer, with upgradable and damageable systems. Players fly one ship at a time, upgrading systems to enhance performance and tailoring it to their playstyle. Nine critical systems can take damage, impacting gameplay, with limited in-space repair capabilities and full repairs available at space stations. A damage report screen provides real-time system status. The system emphasizes strategic trade-offs in upgrades, repairs, and ship roles, balancing speed, firepower, armor, and cargo capacity.
 
+#### Overview
+We will employ a gear based progression system where players define their ship through sloted NFT item cards. These cards, collected from loot drops and missions or traded on marketplaces like OpenSea, are equipped in their ships slots. An item card collection supports flexible build loadouts. The game uses a stacking inventory and skips skill trees, focusing on accessibility and gear based progression while avoiding inventory tetris and a trashy economy where the player has to throw out items he can't fit in his inventory.  
+
+#### Card Types and Abilities
+- **Card Definition**: NFT item cards with stats, abilities, and XP level/faction prerequisites.
+- **Ability Types**:
+  - **Passive Abilities**: Constant boosts applied when equipped (ex: Shield Generator grants +50 Shield Boost when installed.  Doesn't require any action on the players part beyond installing the gear card in a slot).
+  - **Active Abilities**: Abilities invoked in combat/exploration.  ex: Laser Cannon, Player installs the laser gear card in an open slot, the weapon is now shown and he presses the space button to fire it.
+  - XP and Faction prerequisites are checked before an item can be installed. This will be a post-MVP feature addition.
+
+## Card Collecting and Upgrades
+- Gear is upgraded by collecting multiple version of the same card associated with the gear.
+- Once the required number of cards are collected the card's upgrade option is made available.
+- Upgrades require a set amount of in-game credits.
+- Once gear is upgrades it's stats and capabilities increase to match the new level of the gear.
+
+## Hardpoint Slots
+- Ship types come in different chasis types that determine the number of hard points available.  Different gear cards can be slotted into the these hard points to customize the look and capability of each ship.
+- Slots don't have any pre-assigned type and can accept any type of gear card.
+- Builds are tested against some basic rules to prevent broken builds.  Ships that fail these rule checks can not be launched into space until gear is swapped to pass the checks.  ex: Ship must have at least one engine card slotted.
+
+## NFT Card HUD
+- We will use a stacking inventory design where all cards of the same type stack in a single slot.  This does imply that we can not support socketed item design.
+- We will use a pokedex like design where we flag some of these card stacks to be locked and greyed out until the player finds the first card of this type.  Advanced cards will be mystery stacks that are not revealed until the player finds the first card of this type.
+- The main use of this UI will be to drag and drop NFT cards to and from the ship slots ui.
+- NFT Trading is handled via external websites like OpenSea and not a feature that we need to support in-game.
+- Crypto Wallet support will be delayed until post MVP.
+
 ##Core Ship Types
-Five ship classes offer distinct roles, with base stats reflecting their strengths and weaknesses. Players select one ship to pilot, with options to purchase or unlock others.
+- Based on the above chasis, slots and card collections we have the functionality needed to create different ship in a data driven fashion. 
+-Five ship classes offer distinct roles, with base stats reflecting their strengths and weaknesses. Players select one ship to pilot, with options to purchase or unlock others.
 
 #Scout
 Role: Fast, agile recon vessel for exploration, evasion and stealth attacks.

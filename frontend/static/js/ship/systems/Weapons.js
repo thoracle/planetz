@@ -49,6 +49,10 @@ export default class Weapons extends System {
         this.isFiring = false;
         this.muzzleFlashActive = false;
         
+        // Weapons don't consume continuous power, so they should not be marked as "active"
+        // in the power management sense. They're always "ready" when operational.
+        this.isActive = false;
+        
         // Re-initialize level-specific values now that base properties are set
         this.levelStats = this.initializeLevelStats();
         this.updateLevelStats();
@@ -63,48 +67,47 @@ export default class Weapons extends System {
     initializeLevelStats() {
         const baseDamage = this.baseDamage;
         const baseFireRate = this.baseFireRate;
-        const baseEnergyPerShot = this.energyPerShot;
         
         return {
             1: { 
                 effectiveness: 1.0,
                 damage: baseDamage,
                 fireRate: baseFireRate,
-                energyPerShot: baseEnergyPerShot,
+                energyPerShot: 5, // Level 1 lasers take 5 energy to fire
                 maxBurstShots: 1, // Single shot
-                weaponType: 'Standard Lasers'
+                weaponType: 'Level 1 Lasers'
             },
             2: { 
                 effectiveness: 1.2,
                 damage: baseDamage * 1.3, // 30% more damage
                 fireRate: baseFireRate * 1.1, // 10% faster fire rate
-                energyPerShot: baseEnergyPerShot * 0.95, // 5% more efficient
+                energyPerShot: 8, // Level 2 lasers take 8 energy to fire
                 maxBurstShots: 2, // Dual shot
-                weaponType: 'Laser Cannons'
+                weaponType: 'Level 2 Laser Cannons'
             },
             3: { 
                 effectiveness: 1.4,
                 damage: baseDamage * 1.6, // 60% more damage
                 fireRate: baseFireRate * 1.2, // 20% faster fire rate
-                energyPerShot: baseEnergyPerShot * 0.90, // 10% more efficient
+                energyPerShot: 15, // Level 3 lasers take 15 energy to fire
                 maxBurstShots: 3, // Triple shot
-                weaponType: 'Laser Turrets'
+                weaponType: 'Level 3 Laser Turrets'
             },
             4: { 
                 effectiveness: 1.6,
                 damage: baseDamage * 2.0, // 100% more damage
                 fireRate: baseFireRate * 1.3, // 30% faster fire rate
-                energyPerShot: baseEnergyPerShot * 0.85, // 15% more efficient
+                energyPerShot: 22, // Level 4 lasers take 22 energy to fire
                 maxBurstShots: 4, // Quad shot
-                weaponType: 'Heavy Laser Turrets'
+                weaponType: 'Level 4 Pulse Lasers'
             },
             5: { 
                 effectiveness: 1.8,
                 damage: baseDamage * 2.5, // 150% more damage
-                fireRate: baseFireRate * 1.5, // 50% faster fire rate
-                energyPerShot: baseEnergyPerShot * 0.80, // 20% more efficient
-                maxBurstShots: 5, // Quintuple shot
-                weaponType: 'Double Fire Laser Turrets'
+                fireRate: baseFireRate * 1.4, // 40% faster fire rate
+                energyPerShot: 30, // Level 5 lasers take 30 energy to fire
+                maxBurstShots: 5, // Penta shot
+                weaponType: 'Level 5 Plasma Cannons'
             }
         };
     }
@@ -373,6 +376,34 @@ export default class Weapons extends System {
     }
     
     /**
+     * Activate weapons (override base method)
+     * Weapons don't consume continuous power, so activation just means "ready to fire"
+     * @param {Ship} ship - Ship instance (not used for weapons)
+     * @returns {boolean} True if weapons are operational
+     */
+    activate(ship) {
+        if (!this.isOperational()) {
+            console.warn(`Cannot activate ${this.name}: system not operational`);
+            return false;
+        }
+        
+        // Weapons don't have an "active" state in the power consumption sense
+        // They're always ready to fire when operational
+        console.log(`${this.name} ready to fire`);
+        return true;
+    }
+    
+    /**
+     * Deactivate weapons (override base method)
+     * Weapons don't consume continuous power, so deactivation is not applicable
+     */
+    deactivate() {
+        // Weapons don't have an "active" state in the power consumption sense
+        // This method exists for interface compatibility but doesn't change state
+        console.log(`${this.name} deactivation requested (weapons don't consume continuous power)`);
+    }
+    
+    /**
      * Upgrade system to next level
      * @returns {boolean} True if upgrade successful
      */
@@ -394,6 +425,8 @@ export default class Weapons extends System {
         
         return {
             ...baseStatus,
+            // Override isActive to reflect "ready to fire" status rather than power consumption
+            isActive: this.isOperational() && this.canFire(),
             currentDamage: this.getCurrentDamage(),
             currentFireRate: this.getCurrentFireRate(),
             energyPerShot: this.getEnergyPerShot(),
@@ -405,7 +438,10 @@ export default class Weapons extends System {
             targetLock: this.targetLock,
             targetDistance: this.targetDistance,
             firepowerBonus: this.getFirepowerBonus(),
-            maxBurstShots: this.maxBurstShots
+            maxBurstShots: this.maxBurstShots,
+            // Add clarification that weapons don't consume continuous power
+            energyConsumptionType: 'per-shot',
+            continuousEnergyConsumption: 0
         };
     }
     

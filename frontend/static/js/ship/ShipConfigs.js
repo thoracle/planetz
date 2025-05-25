@@ -23,24 +23,29 @@ export const SHIP_CONFIGS = {
         // Hull
         maxHull: 1000,         // Hull hit points
         
-        // System slots
-        systemSlots: 10,       // Available system slots
+        // System slots (increased to accommodate future systems)
+        systemSlots: 18,       // Available system slots
         
-        // System slot allocations (for reference)
+        // System slot allocations (for reference) - SIMPLIFIED: All systems take 1 slot
         slotConfig: {
-            engines: 2,        // Impulse engines
+            engines: 1,        // Impulse engines
             warpDrive: 1,       // Warp drive
-            shields: 2,         // Deflector shields
-            weapons: 3,         // Laser weapons
+            shields: 1,         // Deflector shields
+            weapons: 1,         // Laser weapons (default)
+            missileTubes: 0,    // Missile tubes (optional, competes with weapons)
             scanner: 1,         // Long range scanner
-            radio: 1           // Subspace radio
+            radio: 1,           // Subspace radio
+            galacticChart: 1,   // Galactic chart
+            targetComputer: 1,  // Target computer
+            // Available slots: 10 (18 total - 8 used = 10 free for future systems)
         },
         
         // Default system configurations (energy consumption per second when active)
+        // SIMPLIFIED: All systems take exactly 1 slot
         defaultSystems: {
             impulse_engines: { 
                 level: 1, 
-                slots: 2, 
+                slots: 1, 
                 energyConsumption: 20 // Energy per second when maneuvering
             },
             warp_drive: { 
@@ -50,12 +55,12 @@ export const SHIP_CONFIGS = {
             },
             shields: { 
                 level: 1, 
-                slots: 2, 
+                slots: 1, 
                 energyConsumption: 25 // Energy per second when active
             },
             weapons: { 
                 level: 1, 
-                slots: 3, 
+                slots: 1, 
                 energyConsumption: 0 // Uses energy per shot (handled separately)
             },
             long_range_scanner: { 
@@ -66,7 +71,17 @@ export const SHIP_CONFIGS = {
             subspace_radio: { 
                 level: 1, 
                 slots: 1, 
-                energyConsumption: 3 // Energy per second when transmitting
+                energyConsumption: 6 // Energy per second when transmitting
+            },
+            galactic_chart: { 
+                level: 1, 
+                slots: 1, 
+                energyConsumption: 8 // Energy per second when active
+            },
+            target_computer: { 
+                level: 1, 
+                slots: 1, 
+                energyConsumption: 8 // Energy per second when active
             }
         }
     }

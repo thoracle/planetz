@@ -9,7 +9,9 @@ import ImpulseEngines from '../ship/systems/ImpulseEngines.js';
 import Weapons from '../ship/systems/Weapons.js';
 import LongRangeScannerSystem from '../ship/systems/LongRangeScanner.js';
 import GalacticChartSystem from '../ship/systems/GalacticChartSystem.js';
+import SubspaceRadioSystem from '../ship/systems/SubspaceRadioSystem.js';
 import DamageControlInterface from '../ui/DamageControlInterface.js';
+import SubspaceRadio from '../ui/SubspaceRadio.js';
 
 export const VIEW_TYPES = {
     FORE: 'fore',
@@ -72,6 +74,9 @@ export class ViewManager {
         // Initialize damage control interface
         this.damageControl = new DamageControlInterface();
         this.damageControl.setShip(this.ship);
+        
+        // Initialize subspace radio
+        this.subspaceRadio = new SubspaceRadio(this.ship);
         
         // Expose damage control globally for HTML event handlers
         window.damageControl = this.damageControl;
@@ -293,9 +298,13 @@ export class ViewManager {
                         return;
                     }
                     
-                    // If scanner is visible, hide it first
+                    // If scanner is visible, hide it first and deactivate the system
                     if (isLongRangeScannerVisible) {
                         console.log('Hiding scanner before showing galactic chart');
+                        const scannerSystem = this.ship.systems.get('long_range_scanner');
+                        if (scannerSystem) {
+                            scannerSystem.stopScan();
+                        }
                         this.longRangeScanner.hide(false);
                     }
                     console.log('Setting view to GALACTIC');
@@ -348,9 +357,13 @@ export class ViewManager {
                         return;
                     }
                     
-                    // If galactic chart is visible, hide it first
+                    // If galactic chart is visible, hide it first and deactivate the system
                     if (isGalacticChartVisible) {
                         console.log('Hiding galactic chart before showing scanner');
+                        const chartSystem = this.ship.systems.get('galactic_chart');
+                        if (chartSystem) {
+                            chartSystem.deactivateChart();
+                        }
                         this.galacticChart.hide(false);
                     }
                     console.log('Setting view to SCANNER');
@@ -531,6 +544,15 @@ export class ViewManager {
                 } else {
                     this.setFrontView();
                 }
+                // Deactivate systems when switching away from modal views
+                const chartSystem = this.ship.systems.get('galactic_chart');
+                if (chartSystem) {
+                    chartSystem.deactivateChart();
+                }
+                const scannerSystem = this.ship.systems.get('long_range_scanner');
+                if (scannerSystem) {
+                    scannerSystem.stopScan();
+                }
                 this.galacticChart.hide(false);
                 this.longRangeScanner.hide();
                 // Only show crosshair if not docked
@@ -547,6 +569,15 @@ export class ViewManager {
                     this.camera.quaternion.setFromEuler(euler);
                 } else {
                     this.setAftView();
+                }
+                // Deactivate systems when switching away from modal views
+                const chartSystemAft = this.ship.systems.get('galactic_chart');
+                if (chartSystemAft) {
+                    chartSystemAft.deactivateChart();
+                }
+                const scannerSystemAft = this.ship.systems.get('long_range_scanner');
+                if (scannerSystemAft) {
+                    scannerSystemAft.stopScan();
                 }
                 this.galacticChart.hide(false);
                 this.longRangeScanner.hide();
@@ -634,10 +665,18 @@ export class ViewManager {
             return;
         }
         
-        // Hide the appropriate view without triggering another view restoration
+        // Hide the appropriate view and deactivate systems without triggering another view restoration
         if (this.currentView === VIEW_TYPES.GALACTIC) {
+            const chartSystem = this.ship.systems.get('galactic_chart');
+            if (chartSystem) {
+                chartSystem.deactivateChart();
+            }
             this.galacticChart.hide(false);
         } else if (this.currentView === VIEW_TYPES.SCANNER) {
+            const scannerSystem = this.ship.systems.get('long_range_scanner');
+            if (scannerSystem) {
+                scannerSystem.stopScan();
+            }
             this.longRangeScanner.hide(false);
         }
         
@@ -733,6 +772,9 @@ export class ViewManager {
         if (this.longRangeScanner) {
             this.longRangeScanner.dispose();
         }
+        if (this.subspaceRadio) {
+            this.subspaceRadio.dispose();
+        }
     }
 
     getGalacticChart() {
@@ -755,6 +797,11 @@ export class ViewManager {
             }
         }
         
+        // Update subspace radio
+        if (this.subspaceRadio) {
+            this.subspaceRadio.update(deltaTime);
+        }
+        
         // Update warp drive manager
         if (this.warpDriveManager) {
             this.warpDriveManager.update(deltaTime);
@@ -767,29 +814,13 @@ export class ViewManager {
 
     /**
      * Initialize default ship systems
+     * NOTE: Ship class now handles all default system initialization automatically
+     * This method is kept for backward compatibility but no longer adds systems
      */
     initializeShipSystems() {
-        // Add shields system (Level 1)
-        const shields = new Shields(1);
-        this.ship.addSystem('shields', shields);
-        
-        // Add impulse engines
-        const impulseEngines = new ImpulseEngines();
-        this.ship.addSystem('impulse_engines', impulseEngines);
-        
-        // Add weapons system
-        const weapons = new Weapons();
-        this.ship.addSystem('weapons', weapons);
-        
-        // Add long range scanner system
-        const longRangeScannerSystem = new LongRangeScannerSystem();
-        this.ship.addSystem('long_range_scanner', longRangeScannerSystem);
-        
-        // Add galactic chart system
-        const galacticChartSystem = new GalacticChartSystem();
-        this.ship.addSystem('galactic_chart', galacticChartSystem);
-        
-        console.log('Ship systems initialized - shields, impulse engines, weapons, long range scanner, and galactic chart added');
+        // Ship class now handles all default system initialization in its constructor
+        // No need to add systems here as they're already added by Ship.initializeDefaultSystemInstances()
+        console.log('Ship systems already initialized by Ship class - no additional systems needed');
     }
     
     /**
