@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shields System Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #000;
+            color: #00ff41;
+            padding: 20px;
+        }
+        .console {
+            background: #001100;
+            border: 1px solid #00ff41;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        button {
+            background: #003300;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        button:hover {
+            background: #00ff41;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <h1>Shields System Test</h1>
+    
+    <div class="console">
+        <h3>Instructions:</h3>
+        <p>1. Click "Run Integration Test" to test the shields system</p>
+        <p>2. Press 'S' key to toggle shields (check console for feedback)</p>
+        <p>3. Open browser console to see detailed output</p>
+    </div>
+    
+    <button onclick="runTest()">Run Integration Test</button>
+    <button onclick="testKeyPress()">Simulate S Key Press</button>
+    <button onclick="testShieldsToggle()">Test Shields Toggle</button>
+    
+    <div id="output" class="console">
+        <p>Ready to test...</p>
+    </div>
+
+    <script type="module">
+        import { testShieldsIntegration } from './static/js/test-shields-integration.js';
+        import { ViewManager } from './static/js/views/ViewManager.js';
+        
+        // Make functions available globally
+        window.testShieldsIntegration = testShieldsIntegration;
+        window.ViewManager = ViewManager;
+        
+        window.runTest = function() {
+            console.log('=== Running Shields Integration Test ===');
+            const result = testShieldsIntegration();
+            
+            const output = document.getElementById('output');
+            if (result.success) {
+                output.innerHTML = '<p style="color: #00ff41;">✓ Integration test passed! Check console for details.</p>';
+            } else {
+                output.innerHTML = `<p style="color: #ff4141;">❌ Test failed: ${result.error}</p>`;
+            }
+        };
+        
+        window.testKeyPress = function() {
+            console.log('=== Testing S Key Press (Simulated) ===');
+            
+            // Create a simple scene and camera for ViewManager
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const controls = { enabled: false }; // Mock controls
+            
+            const viewManager = new ViewManager(scene, camera, controls);
+            
+            // Simulate S key press
+            const shieldsSystem = viewManager.ship.systems.get('shields');
+            if (shieldsSystem) {
+                const newState = shieldsSystem.toggleShields();
+                console.log(`Simulated S key: Shields ${newState ? 'UP' : 'DOWN'}`);
+                console.log(`Energy consumption: ${shieldsSystem.getEnergyConsumptionRate().toFixed(2)}/sec`);
+                
+                const output = document.getElementById('output');
+                output.innerHTML = `<p>✓ S key simulation: Shields ${newState ? 'UP' : 'DOWN'}<br>Energy: ${shieldsSystem.getEnergyConsumptionRate().toFixed(2)}/sec</p>`;
+            } else {
+                console.error('No shields found on ViewManager ship');
+                const output = document.getElementById('output');
+                output.innerHTML = '<p style="color: #ff4141;">❌ No shields found on ViewManager ship</p>';
+            }
+        };
+        
+        window.testShieldsToggle = function() {
+            console.log('=== Testing Direct Shields Toggle ===');
+            
+            try {
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                const controls = { enabled: false };
+                
+                const viewManager = new ViewManager(scene, camera, controls);
+                const shields = viewManager.ship.systems.get('shields');
+                
+                if (shields) {
+                    // Test multiple toggles
+                    console.log('Initial state:', shields.isShieldsUp);
+                    
+                    const state1 = shields.toggleShields();
+                    console.log('After toggle 1:', state1, 'Energy:', shields.getEnergyConsumptionRate().toFixed(2));
+                    
+                    const state2 = shields.toggleShields();
+                    console.log('After toggle 2:', state2, 'Energy:', shields.getEnergyConsumptionRate().toFixed(2));
+                    
+                    const output = document.getElementById('output');
+                    output.innerHTML = `<p>✓ Shields toggle test complete<br>Final state: ${state2 ? 'UP' : 'DOWN'}</p>`;
+                } else {
+                    throw new Error('No shields system found');
+                }
+            } catch (error) {
+                console.error('Shields toggle test failed:', error);
+                const output = document.getElementById('output');
+                output.innerHTML = `<p style="color: #ff4141;">❌ ${error.message}</p>`;
+            }
+        };
+        
+        // Add THREE.js to global scope for testing
+        import * as THREE from './static/js/three.module.js';
+        window.THREE = THREE;
+        
+        console.log('Test page loaded. Use buttons above or browser console.');
+    </script>
+</body>
+</html> 

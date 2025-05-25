@@ -231,7 +231,7 @@ export class GalacticChart {
                     // Create custom tooltip
                     const tooltip = document.createElement('div');
                     tooltip.className = 'custom-tooltip';
-                    tooltip.innerHTML = `Warp Energy Required: ${warpEnergy}`;
+                    tooltip.innerHTML = `Warp Energy Required: ${warpEnergy.toFixed(2)}`;
                     if (warpEnergy > currentEnergy) {
                         tooltip.classList.add('insufficient');
                     }
@@ -471,7 +471,7 @@ export class GalacticChart {
                 if (requiredEnergy > currentEnergy) {
                     this.viewManager.warpFeedback.showWarning(
                         'Insufficient Energy',
-                        `Required: ${requiredEnergy} energy units\n\nAvailable: ${currentEnergy} energy units`,
+                        `Required: ${requiredEnergy.toFixed(2)} energy units\n\nAvailable: ${currentEnergy.toFixed(2)} energy units`,
                         () => {
                             // Keep the galactic chart visible after warning is closed
                             this.show();

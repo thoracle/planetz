@@ -165,34 +165,63 @@
 ## MVP Phase
 
 ### Core Ship Systems
-- [ ] Create base Ship class
-  - [ ] Implement data-driven ship configuration
-    - [ ] Add heavy fighter configuration
-    - [ ] Create base stats configuration
-    - [ ] Add system slot configuration
-    - [ ] Implement power grid configuration
+- [X] Create base Ship class
+  - [X] Implement data-driven ship configuration
+    - [X] Add heavy fighter configuration
+    - [X] Create base stats configuration
+    - [X] Add system slot configuration
+    - [X] **SIMPLIFIED**: Remove power grid complexity - systems consume energy from shared pool when active
   - [ ] Add system management functionality
-    - [ ] Create system registry
-    - [ ] Implement system initialization
-    - [ ] Add system state tracking
-  - [ ] Implement central energy management
-    - [ ] Create energy pool
-    - [ ] Add energy consumption tracking
-    - [ ] Implement energy distribution
-    - [ ] Add warp drive energy integration
+    - [X] Create system registry
+    - [X] Implement system initialization
+    - [X] Add system state tracking
+  - [X] Implement central energy management
+    - [X] Create energy pool
+    - [X] Add energy consumption tracking
+    - [X] **SIMPLIFIED**: Systems consume energy directly when active (no separate power allocation)
   - [ ] Create system state abstraction layer
     - [ ] Implement state validation
     - [ ] Add state transition rules
     - [ ] Create state persistence
 
+- [ ] Ship Integration with Game Systems
+  - [X] Integrate Ship with ViewManager
+    - [X] Replace ViewManager.shipEnergy with Ship instance
+    - [X] Connect Ship energy methods to existing getShipEnergy/updateShipEnergy
+    - [X] Maintain backward compatibility with existing energy system
+  - [ ] Add Ship instance to StarfieldManager
+    - [ ] Update HUD to display Ship status
+    - [ ] Connect Ship energy to existing energy display
+  - [X] Connect Ship energy system to existing UI
+  - [ ] Add Ship status display to HUD
+
+- [X] Implement System interface
+  - [X] Define base system properties
+  - [X] Create health/damage tracking
+  - [X] Add effectiveness calculations
+  - [X] Implement state management
+    - [X] Create state machine for system states
+    - [X] Implement state transition logic
+    - [X] Add state effect handlers
+  - [X] Add system level progression (1-5)
+    - [X] Level 1 base implementation
+    - [X] Level 2 upgrade path
+    - [X] Level 3 upgrade path
+    - [X] Level 4 upgrade path
+    - [X] Level 5 upgrade path
+  - [X] Implement level-specific stats
+  - [X] Add level requirements tracking
+  - [X] **SIMPLIFIED**: Add energy consumption per second when active (no static power allocation)
+  - [X] **SIMPLIFIED**: Add system activation/deactivation methods
+  - [X] **SIMPLIFIED**: Auto-deactivate systems when insufficient energy
+
 - [ ] System Integration
   - [ ] Warp Drive Integration
-    - [ ] Add warp drive status check
-    - [ ] Implement energy consumption
-    - [ ] Add damage effects
+    - [ ] Add warp drive damage status check
+    - [X] Energy consumption during warp (already implemented via ViewManager)
+    - [ ] Convert existing WarpDrive to use Ship's WarpDrive system
   - [ ] HUD Integration
-    - [ ] Extend existing HUD for systems
-    - [ ] Add damage control interface
+    - [ ] Add damage control interface (Press 'D' to toggle Damage Control View)
     - [ ] Create station repair interface
     - [ ] Add system shop interface
   - [ ] Station Integration
@@ -201,67 +230,57 @@
     - [ ] Create system shop
     - [ ] Add launch sequence
 
-- [ ] Implement System interface
-  - [ ] Define base system properties
-  - [ ] Create health/damage tracking
-  - [ ] Add effectiveness calculations
-  - [ ] Implement state management
-    - [ ] Create state machine for system states
-    - [ ] Implement state transition logic
-    - [ ] Add state effect handlers
-  - [ ] Add system level progression (1-5)
-    - [ ] Level 1 base implementation
-    - [ ] Level 2 upgrade path
-    - [ ] Level 3 upgrade path
-    - [ ] Level 4 upgrade path
-    - [ ] Level 5 upgrade path
-  - [ ] Implement level-specific stats
-  - [ ] Add level requirements tracking
-
 - [ ] Create concrete system implementations
-  - [ ] Impulse Engines
-    - [ ] Speed and maneuverability calculations
-    - [ ] Power consumption
-    - [ ] Damage effects
-    - [ ] Level-specific performance
-  - [ ] Warp Drive
-    - [ ] Warp cost calculations
-    - [ ] Cooldown management
-    - [ ] Power requirements
+  - [X] Impulse Engines
+    - [X] Speed and maneuverability calculations
+    - [X] **SIMPLIFIED**: Energy consumption per second when maneuvering (variable based on impulse speed 1-9)
+    - [X] Damage effects (critical damage limits max speed to impulse 3)
+    - [X] Level-specific performance (higher levels more efficient and faster)
+    - [X] Variable energy consumption: Impulse 1 = base consumption, Impulse 9 = 15x consumption
+    - [X] Free rotation (no energy cost for turning)
+    - [X] Travel time/energy cost calculations
+  - [ ] Warp Drive (extend existing implementation)
+    - [X] Warp cost calculations (already implemented)
+    - [X] Cooldown management (already implemented)
+    - [X] Energy consumption (already implemented)
+    - [ ] Convert to System class for damage/repair functionality
     - [ ] Level-specific capabilities
   - [ ] Shields
     - [ ] Shield capacity
     - [ ] Recharge rate
-    - [ ] Power management
+    - [ ] **SIMPLIFIED**: Energy consumption per second when active
     - [ ] Level-specific protection
+    - [ ] Press 'S' to toggle Shields on/off.  Tint screen blue when shields are on.
   - [ ] Weapons
     - [ ] Damage calculations
     - [ ] Fire rate management
-    - [ ] Power consumption
+    - [ ] **SIMPLIFIED**: Energy consumption per shot (instant consumption)
     - [ ] Level-specific damage
-  - [ ] Long Range Scanner
-    - [ ] Add damage state tracking
-    - [ ] Implement scan range reduction
-    - [ ] Add accuracy penalties
+  - [ ] Long Range Scanner (extend existing implementation)
+    - [X] Basic long range scanner exists (already implemented)
+    - [ ] Convert to System class for damage/repair functionality
+    - [ ] Check if Long Range Scanner is damaged when activating it
+    - [ ] **SIMPLIFIED**: Energy consumption per second when scanning
+    - [ ] Implement scan range reduction / fog of war
     - [ ] Create repair integration
-  - [ ] Subspace Radio
-    - [ ] Add damage state tracking
-    - [ ] Implement chart update degradation
-    - [ ] Add power management
+  - [ ] Subspace Radio (extend existing Galactic Chart implementation)
+    - [X] Basic galactic chart exists (already implemented)
+    - [ ] Convert to System class for damage/repair functionality
+    - [ ] Check if Subspace Radio is damaged when using Galactic Chart
+    - [ ] **SIMPLIFIED**: Energy consumption per second when transmitting
+    - [ ] Implement chart range reduction / fog of war
+    - [ ] Implement galactic chart update degradation (move to post MVP)
     - [ ] Create repair integration
 
 ### UI Implementation
 - [ ] Extend Ship Systems HUD
-  - [ ] Add system status indicators
-  - [ ] Implement power usage displays
-  - [ ] Create health indicators
-  - [ ] Add energy pool display
-  - [ ] Implement color-coded health states
-  - [ ] Add pulsing effects for critical systems
-  - [ ] Create system icons with status overlays
+  - [ ] Add notification messages when systems are repaired/damaged/destroyed
+  - [ ] **SIMPLIFIED**: Show energy consumption rate for active systems
 
 - [ ] Damage Control Interface
   - [ ] Create system status display
+  - [ ] Toggle Damage Control Modal HUD View when user presses 'D'
+    - [ ] Don't allow user to activate Damage Control when docked.
   - [ ] Implement repair priority controls
   - [ ] Add repair kit management
   - [ ] Create damage effects visualization
@@ -289,44 +308,13 @@
   - [ ] Implement credit balance display
   - [ ] Create compatibility indicators
 
-### Ship Editor Mode (Ctrl-S)
-- [ ] Create Ship Editor UI
-  - [ ] Implement modal overlay system
-    - [ ] Add Ctrl-S key binding
-    - [ ] Create modal dismissal (A, F keys and X button)
-    - [ ] Add edit mode state management
-  - [ ] Create ship property controls
-    - [ ] Add ship type selector
-    - [ ] Implement system level controls
-    - [ ] Add power grid allocation controls
-    - [ ] Create upgrade slot management
-  - [ ] Add real-time preview
-    - [ ] Show system status changes
-    - [ ] Display power grid effects
-    - [ ] Update ship performance metrics
-    - [ ] Show system dependencies
-  - [ ] Implement save/load functionality
-    - [ ] Add ship configuration storage
-    - [ ] Create configuration export
-    - [ ] Add configuration import
-    - [ ] Add configuration validation
-
 ### Backend Integration
-- [ ] Database Schema Updates
-  - [ ] Add ship systems tables
-  - [ ] Create upgrade tables
-  - [ ] Add damage tracking tables
-  - [ ] Implement power grid tables
-  - [ ] Add ship class tables
-  - [ ] Create repair kit tables
-  - [ ] Add faction standing tables
-  - [ ] Implement resource tracking tables
 
 - [ ] API Endpoints
   - [ ] System status endpoints
   - [ ] Upgrade management endpoints
   - [ ] Repair system endpoints
-  - [ ] Power management endpoints
+  - [ ] **SIMPLIFIED**: Energy management endpoints (no power grid)
   - [ ] Ship class management endpoints
   - [ ] Repair kit management endpoints
   - [ ] Faction standing endpoints
@@ -334,10 +322,30 @@
 
 ## Post-MVP Phase
 
+### Ship Editor Mode (Ctrl-S)
+- [ ] Create Ship Editor UI (follow form and function of existing Ctrl-E Planet Editor and sits in same place in UI)
+  - [ ] Implement modal overlay system
+    - [ ] Add Ctrl-S key binding
+    - [ ] Create modal dismissal (A, F keys and X button)
+    - [ ] Add edit mode state management
+  - [ ] Create ship property controls
+    - [ ] Add ship type selector
+    - [ ] Implement system level controls
+    - [ ] Create upgrade slot management
+  - [ ] Add real-time preview
+    - [ ] Show system status changes
+    - [ ] Update ship performance metrics
+    - [ ] Show system dependencies
+    - [ ] **SIMPLIFIED**: Show total energy consumption of active systems
+  - [ ] Implement save/load functionality
+    - [ ] Add ship configuration storage
+    - [ ] Create configuration export
+    - [ ] Add configuration import
+    - [ ] Add configuration validation
+    
 ### Optimization
 - [ ] Performance Optimization
   - [ ] Optimize system calculations
-  - [ ] Improve power grid efficiency
   - [ ] Enhance damage calculations
   - [ ] Optimize UI rendering
 
@@ -351,7 +359,6 @@
 - [ ] Unit Tests
   - [ ] Ship class tests
   - [ ] System interface tests
-  - [ ] Power grid tests
   - [ ] Upgrade system tests
 
 - [ ] Integration Tests
@@ -364,9 +371,13 @@
   - [ ] HUD functionality tests
   - [ ] Damage report tests
   - [ ] Upgrade interface tests
-  - [ ] Power grid interface tests
 
 ### Advanced Features
+- [ ] Advanced Warp Interactions
+    - [ ] Add damage effects from collisions with asteroids during warp sequence (post-MVP)
+    - [ ] Manuever with arrow keys durring warp to keep crosshairs centered while avoiding/destroying asteroids
+       - [ ] if player can't keep crosshairs centered then they arrive off course
+
 - [ ] Ship Class System
   - [ ] Implement ship class selection
   - [ ] Add ship purchase interface
@@ -431,7 +442,7 @@
   - [ ] System guide
   - [ ] Upgrade guide
   - [ ] Repair guide
-  - [ ] Power management guide
+  - [ ] **SIMPLIFIED**: Energy management guide (no power grid complexity)
 
 ## Dependencies
 - MVP Phase must be completed before starting Post-MVP
@@ -446,4 +457,5 @@
 - Update dependencies if they change
 - Document any blockers or issues
 - Track time estimates for each task
+- **SIMPLIFIED POWER GRID**: Systems now consume energy directly from shared pool when active, eliminating the complexity of separate power allocation and management
 

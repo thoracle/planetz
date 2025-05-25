@@ -97,7 +97,7 @@ Description: Maximizes cargo hauling with strong armor but minimal speed and fir
 Playstyle: Best for trading and logistics, relying on escorts or defenses.
 
 ## Upgradable Systems
-Each ship has five upgradable systems, allowing customization within its role. Upgrades are purchased, looted or traded and installed at space stations or shipyards. Upgrades have rarity (Rare, Legendary, Mythic) with increasing costs and benefits, consuming power grid and slots.
+Each ship has five upgradable systems, allowing customization within its role. Upgrades are purchased, looted or traded and installed at space stations or shipyards. Upgrades have rarity (Rare, Legendary, Mythic) with increasing costs and benefits, consuming power and slots.
 
 # Engines (Impulse Engines)
 Function: Affects sublight speed and maneuverability.
@@ -377,7 +377,7 @@ Displays differnt ships available, stats, equipped upgrades, slots and damage st
 
 Drag-and-drop for upgrades; repair options for damaged systems.
 
-Visual indicators for trade-offs (e.g., red bar for overloaded power grid) and damage.
+Visual indicators for trade-offs and damage.
 
 Upgrade Market:
 Lists upgrades with stats, costs, and compatibility; filters by ship class, system, or tier.
@@ -387,7 +387,7 @@ Damage Report Screen: As described above, integrated into the ship management me
 Feedback: Tooltips explain trade-offs, damage effects, and repair options.
 
 Technical Notes
-Data Structure: Ship stat block (JSON) includes base stats, slots, power grid, and system health. Upgrades and damage modify values dynamically.
+Data Structure: Ship stat block (JSON) includes base stats, slots and system health. Upgrades and damage modify values dynamically.
 
 Balancing: Use formulas (e.g., Speed = BaseSpeed × (1 + EngineBonus - ArmorPenalty - DamagePenalty)).
 

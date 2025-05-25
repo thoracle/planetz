@@ -3,6 +3,8 @@ import { GalacticChart } from './GalacticChart.js';
 import { LongRangeScanner } from './LongRangeScanner.js';
 import WarpFeedback from '../WarpFeedback.js';
 import WarpDriveManager from '../WarpDriveManager.js';
+import Ship from '../ship/Ship.js';
+import Shields from '../ship/systems/Shields.js';
 
 export const VIEW_TYPES = {
     FORE: 'fore',
@@ -22,8 +24,13 @@ export class ViewManager {
         this.starfieldManager = null;
         this.solarSystemManager = null;  // Initialize solarSystemManager
         
-        // Initialize ship energy
-        this.shipEnergy = 9999; // Initial energy level
+        // Initialize Ship instance (replacing simple shipEnergy)
+        this.ship = new Ship('heavy_fighter');
+        // Maintain backward compatibility by setting ship energy to existing value
+        this.ship.currentEnergy = 9999;
+        
+        // Initialize default ship systems
+        this.initializeShipSystems();
         
         // Store camera state
         this.savedCameraState = {
@@ -62,6 +69,8 @@ export class ViewManager {
         
         // Bind keyboard events
         this.bindKeyEvents();
+        
+        console.log('ViewManager initialized with Ship:', this.ship.getStatus());
     }
 
     setStarfieldManager(manager) {
@@ -218,11 +227,17 @@ export class ViewManager {
             const isDocked = this.starfieldManager?.isDocked;
             
             if (key === 'g') {
+                // Block galactic chart completely when docked
+                if (isDocked) {
+                    return; // Early return - completely ignore the key when docked
+                }
+                
                 console.log('G key pressed:', {
                     isGalacticChartVisible,
                     isLongRangeScannerVisible,
                     currentView: this.currentView,
-                    previousView: this.previousView
+                    previousView: this.previousView,
+                    isDocked: isDocked
                 });
                 
                 event.preventDefault();
@@ -241,6 +256,11 @@ export class ViewManager {
                     this.setView(VIEW_TYPES.GALACTIC);
                 }
             } else if (key === 'l') {
+                // Block long range scanner completely when docked
+                if (isDocked) {
+                    return; // Early return - completely ignore the key when docked
+                }
+                
                 event.preventDefault();
                 event.stopPropagation();
                 
@@ -255,6 +275,28 @@ export class ViewManager {
                     }
                     console.log('Setting view to SCANNER');
                     this.setView(VIEW_TYPES.SCANNER);
+                }
+            } else if (key === 's' && !isDocked) {
+                // Shield toggle - only when not docked
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // Play command sound like other command keys
+                if (this.starfieldManager && this.starfieldManager.playCommandSound) {
+                    this.starfieldManager.playCommandSound();
+                }
+                
+                // Get shields system from ship
+                const shieldsSystem = this.ship.systems.get('shields');
+                if (shieldsSystem) {
+                    const newState = shieldsSystem.toggleShields();
+                    console.log(`Shields ${newState ? 'UP' : 'DOWN'} - Energy consumption: ${shieldsSystem.getEnergyConsumptionRate().toFixed(2)}/sec`);
+                    
+                    // Show shield status in console for feedback
+                    const status = shieldsSystem.getStatus();
+                    console.log(`Shield strength: ${status.currentShieldStrength.toFixed(2)}/${status.maxShieldStrength.toFixed(2)} - Damage absorption: ${(status.damageAbsorption * 100).toFixed(1)}%`);
+                } else {
+                    console.log('No shields system found on ship');
                 }
             } else if (!isDocked && key === 'f' && (this.currentView === VIEW_TYPES.AFT || isGalacticChartVisible || isLongRangeScannerVisible)) {
                 event.preventDefault();
@@ -511,15 +553,27 @@ export class ViewManager {
         }
     }
 
-    // Add method to get current ship energy
+    // Update method to get current ship energy (backward compatibility)
     getShipEnergy() {
-        return this.shipEnergy;
+        return this.ship.currentEnergy;
     }
 
-    // Add method to update ship energy
+    // Update method to update ship energy (backward compatibility)
     updateShipEnergy(amount) {
-        this.shipEnergy = Math.max(0, this.shipEnergy + amount);
-        return this.shipEnergy;
+        const oldEnergy = this.ship.currentEnergy;
+        this.ship.currentEnergy = Math.max(0, this.ship.currentEnergy + amount);
+        console.log(`Ship energy updated: ${oldEnergy.toFixed(2)} -> ${this.ship.currentEnergy.toFixed(2)} (change: ${amount.toFixed(2)})`);
+        return this.ship.currentEnergy;
+    }
+
+    // Add new method to get ship status
+    getShipStatus() {
+        return this.ship.getStatus();
+    }
+
+    // Add new method to access ship directly
+    getShip() {
+        return this.ship;
     }
 
     dispose() {
@@ -544,6 +598,11 @@ export class ViewManager {
      * @param {number} deltaTime - Time elapsed since last update in milliseconds
      */
     update(deltaTime) {
+        // Update ship systems
+        if (this.ship) {
+            this.ship.update(deltaTime);
+        }
+        
         // Update warp drive manager
         if (this.warpDriveManager) {
             this.warpDriveManager.update(deltaTime);
@@ -552,6 +611,17 @@ export class ViewManager {
 
     getCamera() {
         return this.camera;
+    }
+
+    /**
+     * Initialize default ship systems
+     */
+    initializeShipSystems() {
+        // Add shields system (Level 1)
+        const shields = new Shields(1);
+        this.ship.addSystem('shields', shields);
+        
+        console.log('Ship systems initialized - shields added');
     }
 }
 

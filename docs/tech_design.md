@@ -461,7 +461,7 @@ classDiagram
    - Maintains base stats that are modified by systems and upgrades
    - Uses composition over inheritance for systems and upgrades
    - Implements observer pattern for system state changes
-   - Handles power grid management and slot allocation
+   - Handles power management and slot allocation
 
 2. **System Interface**
    - Defines common interface for all ship systems
@@ -561,10 +561,8 @@ sequenceDiagram
    - Cost and requirements clearly displayed
    - Preview of stat changes available
    - Compatibility checks performed
-   - Power grid impact calculated
 
 2. **Installation Process**
-   - Validates power grid capacity
    - Checks slot availability
    - Handles upgrade conflicts
    - Manages upgrade dependencies
@@ -655,7 +653,6 @@ graph TD
    - View cost and requirements
    - Preview performance changes
    - System slot management
-   - Power grid requirements
    - Upgrade paths
 
 5. **Launch Sequence**
@@ -687,7 +684,6 @@ graph TD
         Systems[System Manager]
         Damage[Damage Manager]
         Upgrades[Upgrade Manager]
-        Power[Power Grid]
     end
 
     subgraph UI Components
@@ -770,7 +766,6 @@ graph TD
         Engine[Engine Status]
         Weapons[Weapons Status]
         Cargo[Cargo Status]
-        Power[Power Grid]
     end
 
     subgraph ShieldPanel[Shield Panel]
@@ -939,38 +934,8 @@ graph TD
    - Stat change visualization
    - Cost breakdown
    - Installation time
-   - Power grid impact
    - Compatibility check
 
-#### Power Grid Interface
-```mermaid
-graph TD
-    subgraph PowerGrid[Power Grid Interface]
-        direction TB
-        TotalPower[Total Power: 1000]
-        SystemPower[System Power Usage]
-        ReservePower[Reserve Power]
-        PowerFlow[Power Flow]
-    end
-
-    subgraph SystemPowerPanel[System Power Panel]
-        direction TB
-        Shields[Shields: 300]
-        Engines[Engines: 200]
-        Weapons[Weapons: 400]
-        LifeSupport[Life Support: 100]
-    end
-
-    subgraph ReservePanel[Reserve Power Panel]
-        direction TB
-        Available[Available: 0]
-        Emergency[Emergency: 100]
-        Recharge[Recharge Rate]
-    end
-
-    SystemPower --> SystemPowerPanel
-    ReservePower --> ReservePanel
-```
 
 **Design Notes:**
 1. **Power Distribution**
@@ -987,12 +952,6 @@ graph TD
    - Overload protection
    - Power routing options
 
-3. **Reserve Power**
-   - Emergency power allocation
-   - Recharge rate control
-   - Power conservation modes
-   - System shutdown options
-   - Power grid stability
 
 #### Warp Drive Sequence Diagram
 ```mermaid
@@ -1114,7 +1073,6 @@ sequenceDiagram
     Shop->>Ship: Check System Compatibility
     Ship-->>Shop: Return Compatibility Status
     
-    Shop->>Ship: Check Power Grid Capacity
     Ship-->>Shop: Return Power Status
     
     Shop->>Ship: Check System Slots
@@ -1161,7 +1119,6 @@ sequenceDiagram
 
 3. **Compatibility Check**
    - Verifies system type compatibility
-   - Checks power grid capacity
    - Validates system slots
    - Ensures upgrade path compatibility
    - Maintains system dependencies
@@ -1170,7 +1127,6 @@ sequenceDiagram
    - Validates credit balance
    - Handles credit transaction
    - Manages system installation
-   - Updates power grid
    - Confirms successful installation
 
 5. **Error Handling**
@@ -1182,7 +1138,6 @@ sequenceDiagram
 
 6. **System Installation**
    - Graceful system integration
-   - Power grid adjustment
    - Performance calibration
    - State initialization
    - UI updates

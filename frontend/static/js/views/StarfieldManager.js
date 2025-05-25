@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { DockingInterface } from '../ui/DockingInterface.js';
 
 export class StarfieldManager {
     constructor(scene, camera, viewManager) {
@@ -39,6 +40,9 @@ export class StarfieldManager {
         this.targetWireframe = null;
         this.targetReticle = null;
         
+        // Undocking cooldown to prevent immediate re-targeting
+        this.undockCooldown = null;
+        
         // Add sorting state
         this.lastSortTime = 0;
         this.sortInterval = 2000; // Sort every 2 seconds
@@ -64,6 +68,9 @@ export class StarfieldManager {
         
         // Create intel HUD
         this.createIntelHUD();
+        
+        // Create docking interface
+        this.dockingInterface = new DockingInterface(this);
         
         // Bind keyboard events
         this.bindKeyEvents();
@@ -439,7 +446,7 @@ export class StarfieldManager {
         }
         
         this.speedBox.textContent = `Speed: ${speedText}`;
-        this.energyBox.textContent = `Energy: ${this.viewManager.getShipEnergy()}`;
+        this.energyBox.textContent = `Energy: ${this.viewManager.getShipEnergy().toFixed(2)}`;
         this.viewBox.textContent = `View: ${this.view}`;
     }
 
@@ -770,8 +777,13 @@ export class StarfieldManager {
             // Handle Tab key for cycling targets
             if (event.key === 'Tab') {
                 event.preventDefault(); // Prevent Tab from changing focus
-                // Only allow cycling targets if not docked
+                // Only allow cycling targets if not docked and cooldown is not active
                 if (this.targetComputerEnabled && !this.isDocked) {
+                    // Check for undock cooldown
+                    if (this.undockCooldown && Date.now() < this.undockCooldown) {
+                        console.log('Target cycling disabled - undock cooldown active');
+                        return;
+                    }
                     this.cycleTarget();
                     this.playCommandSound(); // Play command sound when cycling targets
                 }
@@ -793,19 +805,29 @@ export class StarfieldManager {
 
             // Always allow galactic, scanner and target computer toggles
             if (commandKey === 'g') {
-                this.playCommandSound();
-                this.setView('GALACTIC');
+                // Block galactic chart when docked
+                if (!this.isDocked) {
+                    this.playCommandSound();
+                    this.setView('GALACTIC');
+                }
             } else if (commandKey === 'l') {
-                this.playCommandSound();
-                this.setView('SCANNER');
+                // Block long range scanner when docked
+                if (!this.isDocked) {
+                    this.playCommandSound();
+                    this.setView('SCANNER');
+                }
             } else if (commandKey === 't') {
-                this.playCommandSound();
-                this.toggleTargetComputer();
+                // Block target computer when docked
+                if (!this.isDocked) {
+                    this.playCommandSound();
+                    this.toggleTargetComputer();
+                }
             }
 
             // Add Intel key binding
             if (commandKey === 'i') {
-                if (this.intelAvailable && this.targetComputerEnabled && this.currentTarget) {
+                // Block intel when docked or if conditions aren't met
+                if (!this.isDocked && this.intelAvailable && this.targetComputerEnabled && this.currentTarget) {
                     this.playCommandSound();
                     this.toggleIntel();
                 }
@@ -986,6 +1008,17 @@ export class StarfieldManager {
         // Handle case where there's no current target
         if (!this.currentTarget) {
             this.targetReticle.style.display = 'none';
+            // Clear any existing action buttons to prevent stale dock buttons
+            if (this.actionButtonsContainer) {
+                this.actionButtonsContainer.innerHTML = '';
+            }
+            // Reset button state
+            this.currentButtonState = {
+                hasDockButton: false,
+                isDocked: false,
+                hasScanButton: false,
+                hasTradeButton: false
+            };
             return;
         }
 
@@ -993,6 +1026,17 @@ export class StarfieldManager {
         const currentTargetData = this.getCurrentTargetData();
         if (!currentTargetData) {
             this.targetReticle.style.display = 'none';
+            // Clear any existing action buttons to prevent stale dock buttons
+            if (this.actionButtonsContainer) {
+                this.actionButtonsContainer.innerHTML = '';
+            }
+            // Reset button state
+            this.currentButtonState = {
+                hasDockButton: false,
+                isDocked: false,
+                hasScanButton: false,
+                hasTradeButton: false
+            };
             return;
         }
 
@@ -1063,16 +1107,32 @@ export class StarfieldManager {
             dockingRange = 4.0;
         }
 
-        // Calculate new button state
-        const canDock = distance <= dockingRange;
+        // Calculate button state for docking (show dock button, but launch is handled by docking interface)
+        const canDock = this.canDock(this.currentTarget);
         const isDocked = this.isDocked && this.dockedTo === this.currentTarget;
         const isHostile = info?.diplomacy?.toLowerCase() === 'enemy';
 
+        // Add a small buffer to button display: only show button if distance is comfortably within range
+        let showButton = false;
+        if ((info?.type === 'planet' || info?.type === 'moon') && canDock && !isDocked && !isHostile) {
+            // Add 0.3km buffer - only show button if we're well within docking range
+            const currentDistance = this.camera.position.distanceTo(this.currentTarget.position);
+            let buttonRange = this.dockingRange - 0.3; // Default 1.2 for moons
+            if (info?.type === 'planet') {
+                buttonRange = 3.7; // 3.7km for planets (was 4.0km)
+            }
+            showButton = currentDistance <= buttonRange;
+        }
+
+        // Debug hostile detection
+        if (info?.diplomacy) {
+            // console.log(`Target ${currentTargetData.name}: diplomacy="${info.diplomacy}", isHostile=${isHostile}`);
+        }
+
+        // Show dock button when in range and not docked, but launch is handled by docking interface
         const newButtonState = {
-            hasDockButton: (info?.type === 'planet' || info?.type === 'moon') && 
-                          (canDock || isDocked) && 
-                          !isHostile,
-            isDocked: isDocked,
+            hasDockButton: showButton,
+            isDocked: this.isDocked,
             hasScanButton: false,
             hasTradeButton: false
         };
@@ -1080,19 +1140,36 @@ export class StarfieldManager {
         // Only recreate buttons if state has changed
         const stateChanged = JSON.stringify(this.currentButtonState) !== JSON.stringify(newButtonState);
         
+        // Debug button state for stars and other issues
+        if (info?.type === 'star' && showButton) {
+            console.log('ERROR: Dock button showing for star!', {
+                targetName: currentTargetData.name,
+                targetType: info?.type,
+                showButton: showButton,
+                canDock: canDock,
+                isDocked: isDocked,
+                isHostile: isHostile
+            });
+        }
+        
         if (stateChanged) {
-            console.log('Button state changed, recreating buttons');
+            console.log('Button state changed, recreating buttons', {
+                targetName: currentTargetData.name,
+                targetType: info?.type,
+                oldState: this.currentButtonState,
+                newState: newButtonState
+            });
             this.currentButtonState = newButtonState;
             
             // Clear existing buttons
             this.actionButtonsContainer.innerHTML = '';
 
-            // Add dock/launch button if applicable
+            // Add dock button if applicable (launch button is in docking interface)
             if (newButtonState.hasDockButton) {
                 const dockButton = document.createElement('button');
-                dockButton.className = `dock-button ${isDocked ? 'launch' : ''}`;
-                dockButton.textContent = isDocked ? 'LAUNCH' : 'DOCK';
-                dockButton.addEventListener('click', () => this.handleDockButtonClick(isDocked, currentTargetData.name));
+                dockButton.className = 'dock-button';
+                dockButton.textContent = 'DOCK';
+                dockButton.addEventListener('click', () => this.handleDockButtonClick(false, currentTargetData.name));
                 this.actionButtonsContainer.appendChild(dockButton);
             }
         }
@@ -1316,6 +1393,12 @@ export class StarfieldManager {
         // Prevent cycling targets while docked
         if (this.isDocked) {
             console.log('Cannot cycle targets while docked');
+            return;
+        }
+
+        // Prevent cycling targets immediately after undocking
+        if (this.undockCooldown && Date.now() < this.undockCooldown) {
+            console.log('Cannot cycle targets - undock cooldown active');
             return;
         }
 
@@ -1768,6 +1851,11 @@ export class StarfieldManager {
                 }
             });
         }
+
+        // Clean up docking interface
+        if (this.dockingInterface) {
+            this.dockingInterface.dispose();
+        }
     }
 
     // Add this method to create the star sprite texture
@@ -2174,10 +2262,47 @@ export class StarfieldManager {
         if (this.viewManager) {
             this.viewManager.frontCrosshair.style.display = 'none';
             this.viewManager.aftCrosshair.style.display = 'none';
+            
+            // Automatically power down all ship systems when docking to save energy
+            const ship = this.viewManager.getShip();
+            if (ship) {
+                // Power down shields
+                const shieldsSystem = ship.systems.get('shields');
+                if (shieldsSystem && shieldsSystem.isShieldsUp) {
+                    shieldsSystem.deactivateShields();
+                    console.log('Shields automatically powered down during docking to conserve energy');
+                }
+            }
+            
+            // Power down target computer
+            if (this.targetComputerEnabled) {
+                this.toggleTargetComputer(); // This will disable it and clean up displays
+                console.log('Target computer automatically powered down during docking');
+            }
+            
+            // Close galactic chart if open
+            if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
+                this.viewManager.galacticChart.hide(false);
+                console.log('Galactic chart closed during docking');
+            }
+            
+            // Close long range scanner if open
+            if (this.viewManager.longRangeScanner && this.viewManager.longRangeScanner.isVisible()) {
+                this.viewManager.longRangeScanner.hide(false);
+                console.log('Long range scanner closed during docking');
+            }
+            
+            // Restore view to FORE if in modal view
+            if (this.viewManager.currentView === 'GALACTIC' || this.viewManager.currentView === 'SCANNER') {
+                this.viewManager.restorePreviousView();
+            }
         }
 
         // Play command sound for successful dock
         this.playCommandSound();
+
+        // Show docking interface with services available at this location
+        this.dockingInterface.show(target);
 
         // Update the dock button to show "LAUNCH"
         this.updateTargetDisplay();
@@ -2188,6 +2313,9 @@ export class StarfieldManager {
         if (!this.isDocked) {
             return;
         }
+
+        // Hide docking interface
+        this.dockingInterface.hide();
 
         // Play command sound for successful launch
         this.playCommandSound();
@@ -2217,6 +2345,26 @@ export class StarfieldManager {
         this.isDocked = false;
         this.dockedTo = null;
         
+        // Reset button state to prevent stale dock buttons after undocking
+        this.currentButtonState = {
+            hasDockButton: false,
+            isDocked: false,
+            hasScanButton: false,
+            hasTradeButton: false
+        };
+        
+        // Clear current target to prevent showing dock button for previously docked body
+        this.currentTarget = null;
+        this.targetIndex = -1;
+        
+        // Explicitly clear any existing action buttons to prevent stale dock buttons
+        if (this.actionButtonsContainer) {
+            this.actionButtonsContainer.innerHTML = '';
+        }
+        
+        // Add a brief delay before target computer can be used again
+        this.undockCooldown = Date.now() + 2000; // 2 second cooldown
+        
         // Set speed to impulse 1 for a gentle launch
         this.targetSpeed = 1;
         this.currentSpeed = 1;
@@ -2238,6 +2386,10 @@ export class StarfieldManager {
             // Show appropriate crosshair
             this.viewManager.frontCrosshair.style.display = viewToRestore === 'FORE' ? 'block' : 'none';
             this.viewManager.aftCrosshair.style.display = viewToRestore === 'AFT' ? 'block' : 'none';
+            
+            // Remind player about shields after undocking
+            console.log('Launch successful! Consider raising shields (S) for protection in open space');
+            console.log('Ship systems now available: T (Target Computer), G (Galactic Chart), L (Long Range Scanner)');
         }
         
         // Update the dock button to show "DOCK"
@@ -2305,15 +2457,12 @@ export class StarfieldManager {
         this.undock();
     }
 
-    // Add new method to handle dock button clicks
+    // Add new method to handle dock button clicks (launch is handled by docking interface)
     handleDockButtonClick(isDocked, targetName) {
         console.log('Dock button clicked:', {
-            action: isDocked ? 'LAUNCH' : 'DOCK',
+            action: 'DOCK',
             targetName: targetName,
-            distance: this.currentTarget ? this.calculateDistance(this.camera.position, this.currentTarget.position) : 'N/A',
-            dockingRange: this.dockingRange,
-            isDocked: isDocked,
-            currentDockState: this.isDocked
+            isDocked: this.isDocked
         });
         
         if (!this.currentTarget) {
@@ -2321,46 +2470,32 @@ export class StarfieldManager {
             return;
         }
 
-        if (isDocked) {
-            console.log('Attempting to launch from:', targetName);
-            this.undockWithDebug();
+        // Use the canDock method for consistent logic
+        if (this.canDock(this.currentTarget)) {
+            this.dockWithDebug(this.currentTarget);
         } else {
-            const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
+            // Get target info to provide helpful feedback
             const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+            const distance = this.camera.position.distanceTo(this.currentTarget.position);
             
-            // Calculate docking range based on body size
+            // Calculate docking range for display
             let dockingRange = this.dockingRange; // Default 1.5 for moons
             if (info?.type === 'planet') {
-                // For planets, use a fixed 4.0KM range
                 dockingRange = 4.0;
             }
             
-            console.log('Attempting to dock:', {
-                distance: distance,
-                dockingRange: dockingRange,
-                isInRange: distance <= dockingRange,
-                targetName: targetName,
-                diplomacy: info?.diplomacy
-            });
-            
-            // Check if target is hostile
             if (info?.diplomacy?.toLowerCase() === 'enemy') {
                 this.viewManager.warpFeedback.showWarning(
                     'Cannot Dock at Hostile Target',
                     'This planet or moon is hostile to your ship.',
                     () => {}
                 );
-                return;
-            }
-            
-            if (distance <= dockingRange) {
-                this.dockWithDebug(this.currentTarget);
             } else {
-                console.warn('Target is out of docking range');
+                console.warn(`Target is out of docking range: ${distance.toFixed(2)}km (max: ${dockingRange}km)`);
             }
         }
         
-        // Update display after docking/undocking
+        // Update display after docking attempt
         this.updateTargetDisplay();
     }
 } 
