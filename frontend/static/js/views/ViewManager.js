@@ -9,6 +9,7 @@ import ImpulseEngines from '../ship/systems/ImpulseEngines.js';
 import Weapons from '../ship/systems/Weapons.js';
 import LongRangeScannerSystem from '../ship/systems/LongRangeScanner.js';
 import GalacticChartSystem from '../ship/systems/GalacticChartSystem.js';
+import DamageControlInterface from '../ui/DamageControlInterface.js';
 
 export const VIEW_TYPES = {
     FORE: 'fore',
@@ -67,6 +68,13 @@ export class ViewManager {
         
         // Create long range scanner and ensure it's hidden
         this.longRangeScanner = new LongRangeScanner(this);
+        
+        // Initialize damage control interface
+        this.damageControl = new DamageControlInterface();
+        this.damageControl.setShip(this.ship);
+        
+        // Expose damage control globally for HTML event handlers
+        window.damageControl = this.damageControl;
         
         // Set initial view state - this will also set this.currentView
         this.setView(VIEW_TYPES.FORE);
@@ -393,6 +401,19 @@ export class ViewManager {
                 } else {
                     console.log('No weapons system found on ship');
                 }
+            } else if (key === 'd') {
+                // Damage Control Interface toggle
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // Play command sound like other command keys
+                if (this.starfieldManager && this.starfieldManager.playCommandSound) {
+                    this.starfieldManager.playCommandSound();
+                }
+                
+                // Update docking status and toggle interface
+                this.damageControl.setDockingStatus(isDocked);
+                this.damageControl.toggle();
             } else if (!isDocked && key === 'f' && (this.currentView === VIEW_TYPES.AFT || isGalacticChartVisible || isLongRangeScannerVisible)) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -769,6 +790,57 @@ export class ViewManager {
         this.ship.addSystem('galactic_chart', galacticChartSystem);
         
         console.log('Ship systems initialized - shields, impulse engines, weapons, long range scanner, and galactic chart added');
+    }
+    
+    /**
+     * Test method to apply random damage to ship systems
+     * Used for testing the Damage Control Interface
+     */
+    applyTestDamage() {
+        const systems = Array.from(this.ship.systems.keys());
+        if (systems.length === 0) return;
+        
+        // Randomly select 1-3 systems to damage
+        const systemsToDamage = Math.floor(Math.random() * 3) + 1;
+        const selectedSystems = [];
+        
+        for (let i = 0; i < systemsToDamage; i++) {
+            const randomSystem = systems[Math.floor(Math.random() * systems.length)];
+            if (!selectedSystems.includes(randomSystem)) {
+                selectedSystems.push(randomSystem);
+            }
+        }
+        
+        // Apply random damage to selected systems
+        for (const systemName of selectedSystems) {
+            const system = this.ship.getSystem(systemName);
+            if (system) {
+                const damageAmount = Math.random() * 0.7 + 0.1; // 10% to 80% damage
+                const beforeHealth = system.healthPercentage;
+                system.takeDamage(system.maxHealth * damageAmount);
+                const afterHealth = system.healthPercentage;
+                
+                console.log(`Applied ${(damageAmount * 100).toFixed(1)}% damage to ${systemName}: ${(beforeHealth * 100).toFixed(1)}% → ${(afterHealth * 100).toFixed(1)}%`);
+                
+                // Add to damage control log if available
+                if (this.damageControl) {
+                    this.damageControl.addLogEntry('damage', 
+                        `${this.damageControl.formatSystemName(systemName)} damaged: ${(beforeHealth * 100).toFixed(1)}% → ${(afterHealth * 100).toFixed(1)}%`
+                    );
+                }
+            }
+        }
+        
+        console.log('Test damage applied. Press D to open Damage Control Interface.');
+        return selectedSystems;
+    }
+    
+    /**
+     * Get damage control interface
+     * @returns {DamageControlInterface} The damage control interface instance
+     */
+    getDamageControl() {
+        return this.damageControl;
     }
 }
 

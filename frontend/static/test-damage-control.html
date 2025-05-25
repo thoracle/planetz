@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Damage Control Interface Test</title>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            font-family: 'Courier New', monospace; 
+            background: #000; 
+            color: #00ff41; 
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+        }
+        .test-section { 
+            margin-bottom: 30px; 
+            padding: 20px; 
+            border: 1px solid #00ff41; 
+            background: rgba(0, 255, 65, 0.1); 
+        }
+        .test-controls button {
+            background: #000;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .test-controls button:hover {
+            background: rgba(0, 255, 65, 0.2);
+        }
+        #console {
+            background: #000;
+            border: 1px solid #00ff41;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 12px;
+        }
+        .status-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .status-card {
+            border: 1px solid #00ff41;
+            padding: 15px;
+            background: rgba(0, 255, 65, 0.05);
+        }
+        .status-card h3 {
+            margin-top: 0;
+            color: #00ff41;
+        }
+        .status-value {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        .status-good { color: #44ff44; }
+        .status-fair { color: #ffaa00; }
+        .status-poor { color: #ff8800; }
+        .status-critical { color: #ff4444; }
+        .instructions {
+            background: rgba(0, 255, 65, 0.2);
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Damage Control Interface Test</h1>
+        
+        <div class="instructions">
+            <h3>📋 Instructions:</h3>
+            <ul>
+                <li><strong>Press 'D'</strong> to toggle the Damage Control Interface</li>
+                <li><strong>Click "Apply Test Damage"</strong> to damage random ship systems</li>
+                <li><strong>Use repair kits</strong> in the interface to fix damaged systems</li>
+                <li><strong>Select systems</strong> in the interface to view detailed information</li>
+                <li><strong>Monitor the damage log</strong> for real-time notifications</li>
+            </ul>
+            <p><em>Note: Damage Control Interface is automatically disabled when docked (simulated docking available via controls below)</em></p>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Controls</h2>
+            <div class="test-controls">
+                <button onclick="showDamageControl()">Show Damage Control (D)</button>
+                <button onclick="applyRandomDamage()">Apply Test Damage</button>
+                <button onclick="repairAllSystems()">Repair All Systems</button>
+                <button onclick="simulateDocking()">Toggle Docking Simulation</button>
+                <button onclick="showShipStatus()">Show Ship Status</button>
+                <button onclick="clearConsole()">Clear Console</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Ship Status Overview</h2>
+            <div class="status-display" id="statusDisplay">
+                <!-- Status cards will be populated here -->
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Console Output</h2>
+            <div id="console"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        let ship = null;
+        let damageControl = null;
+        let isDockedSimulation = false;
+        
+        // Console output capture
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        
+        const consoleElement = document.getElementById('console');
+        
+        function appendToConsole(type, ...args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            
+            const prefix = type === 'error' ? '❌ ' : type === 'warn' ? '⚠️ ' : '';
+            consoleElement.textContent += `[${timestamp}] ${prefix}${message}\n`;
+            consoleElement.scrollTop = consoleElement.scrollHeight;
+            
+            // Also call original console method
+            switch(type) {
+                case 'error': originalConsoleError(...args); break;
+                case 'warn': originalConsoleWarn(...args); break;
+                default: originalConsoleLog(...args); break;
+            }
+        }
+        
+        // Override console methods
+        console.log = (...args) => appendToConsole('log', ...args);
+        console.error = (...args) => appendToConsole('error', ...args);
+        console.warn = (...args) => appendToConsole('warn', ...args);
+        
+        // Initialize ship and damage control interface
+        async function initializeSystems() {
+            try {
+                const { default: Ship } = await import('./js/ship/Ship.js');
+                const { default: DamageControlInterface } = await import('./js/ui/DamageControlInterface.js');
+                
+                console.log('Initializing ship and damage control systems...');
+                
+                // Create ship and wait for systems to initialize
+                ship = new Ship('heavy_fighter');
+                
+                // Wait for async system initialization
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                // Create damage control interface
+                damageControl = new DamageControlInterface();
+                damageControl.setShip(ship);
+                
+                // Expose globally for button handlers
+                window.damageControl = damageControl;
+                window.testShip = ship;
+                
+                console.log('✅ Systems initialized successfully');
+                console.log('Ship systems:', Array.from(ship.systems.keys()));
+                
+                updateStatusDisplay();
+                
+            } catch (error) {
+                console.error('❌ Failed to initialize systems:', error);
+            }
+        }
+        
+        // Test functions
+        window.showDamageControl = function() {
+            if (!window.damageControl) {
+                console.error('Damage Control Interface not initialized');
+                return;
+            }
+            
+            window.damageControl.setDockingStatus(isDockedSimulation);
+            const shown = window.damageControl.toggle();
+            console.log(`Damage Control Interface ${shown ? 'shown' : 'hidden'}`);
+        };
+        
+        window.applyRandomDamage = function() {
+            if (!ship) {
+                console.error('Ship not initialized');
+                return;
+            }
+            
+            const systems = Array.from(ship.systems.keys());
+            if (systems.length === 0) {
+                console.warn('No systems available to damage');
+                return;
+            }
+            
+            // Randomly select 1-3 systems to damage
+            const systemsToDamage = Math.floor(Math.random() * 3) + 1;
+            const selectedSystems = [];
+            
+            for (let i = 0; i < systemsToDamage; i++) {
+                const randomSystem = systems[Math.floor(Math.random() * systems.length)];
+                if (!selectedSystems.includes(randomSystem)) {
+                    selectedSystems.push(randomSystem);
+                }
+            }
+            
+            console.log(`🔥 Applying damage to ${selectedSystems.length} systems: ${selectedSystems.join(', ')}`);
+            
+            // Apply random damage to selected systems
+            for (const systemName of selectedSystems) {
+                const system = ship.getSystem(systemName);
+                if (system) {
+                    const damageAmount = Math.random() * 0.6 + 0.2; // 20% to 80% damage
+                    const beforeHealth = system.healthPercentage;
+                    system.takeDamage(system.maxHealth * damageAmount);
+                    const afterHealth = system.healthPercentage;
+                    
+                    console.log(`💥 ${systemName}: ${(beforeHealth * 100).toFixed(1)}% → ${(afterHealth * 100).toFixed(1)}% (${(damageAmount * 100).toFixed(1)}% damage)`);
+                    
+                    // Add to damage control log if available
+                    if (window.damageControl) {
+                        window.damageControl.addLogEntry('damage', 
+                            `${window.damageControl.formatSystemName(systemName)} damaged: ${(beforeHealth * 100).toFixed(1)}% → ${(afterHealth * 100).toFixed(1)}%`
+                        );
+                    }
+                }
+            }
+            
+            updateStatusDisplay();
+            console.log('⚠️ Damage applied! Press D to open Damage Control Interface for repairs.');
+        };
+        
+        window.repairAllSystems = function() {
+            if (!ship) {
+                console.error('Ship not initialized');
+                return;
+            }
+            
+            console.log('🔧 Repairing all ship systems to full health...');
+            
+            let repairedCount = 0;
+            for (const [systemName, system] of ship.systems) {
+                if (system.healthPercentage < 1.0) {
+                    const beforeHealth = system.healthPercentage;
+                    system.repair(1.0); // Full repair
+                    const afterHealth = system.healthPercentage;
+                    
+                    console.log(`✅ ${systemName}: ${(beforeHealth * 100).toFixed(1)}% → ${(afterHealth * 100).toFixed(1)}%`);
+                    
+                    // Add to damage control log if available
+                    if (window.damageControl) {
+                        window.damageControl.addLogEntry('repair', 
+                            `${window.damageControl.formatSystemName(systemName)} fully repaired`
+                        );
+                    }
+                    
+                    repairedCount++;
+                }
+            }
+            
+            if (repairedCount === 0) {
+                console.log('✅ All systems already at full health');
+            } else {
+                console.log(`✅ Repaired ${repairedCount} systems to full health`);
+            }
+            
+            updateStatusDisplay();
+        };
+        
+        window.simulateDocking = function() {
+            isDockedSimulation = !isDockedSimulation;
+            
+            if (window.damageControl) {
+                window.damageControl.setDockingStatus(isDockedSimulation);
+            }
+            
+            console.log(`🚢 Docking simulation ${isDockedSimulation ? 'ENABLED' : 'DISABLED'}`);
+            console.log(isDockedSimulation ? 
+                '⚠️ Damage Control Interface disabled while docked' : 
+                '✅ Damage Control Interface available'
+            );
+            
+            updateStatusDisplay();
+        };
+        
+        window.showShipStatus = function() {
+            if (!ship) {
+                console.error('Ship not initialized');
+                return;
+            }
+            
+            const status = ship.getStatus();
+            console.log('🚀 Ship Status Report:');
+            console.log(`Ship Type: ${status.shipType}`);
+            console.log(`Hull: ${status.hull.current}/${status.hull.max} (${status.hull.percentage.toFixed(1)}%)`);
+            console.log(`Energy: ${status.energy.current.toFixed(0)}/${status.energy.max} (${status.energy.percentage.toFixed(1)}%)`);
+            console.log(`Systems: ${status.systemCount} installed`);
+            console.log(`Slots: ${status.slots.used}/${status.slots.total} used`);
+            
+            console.log('\n📊 System Status:');
+            for (const [systemName, systemStatus] of Object.entries(status.systems)) {
+                const health = (systemStatus.health * 100).toFixed(1);
+                const statusText = systemStatus.canBeActivated ? 
+                    (systemStatus.isActive ? 'ACTIVE' : 'READY') : 'OFFLINE';
+                console.log(`  ${systemName.padEnd(20)} | ${health.padStart(5)}% | Level ${systemStatus.level} | ${statusText}`);
+            }
+        };
+        
+        window.clearConsole = function() {
+            consoleElement.textContent = '';
+        };
+        
+        // Update status display
+        function updateStatusDisplay() {
+            const statusDisplay = document.getElementById('statusDisplay');
+            
+            if (!ship) {
+                statusDisplay.innerHTML = '<div class="status-card"><h3>No Ship Available</h3><p>Initializing systems...</p></div>';
+                return;
+            }
+            
+            const shipStatus = ship.getStatus();
+            
+            // Calculate overall system health
+            const systemHealthValues = Object.values(shipStatus.systems).map(s => s.health);
+            const avgSystemHealth = systemHealthValues.length > 0 ? 
+                systemHealthValues.reduce((a, b) => a + b, 0) / systemHealthValues.length : 1;
+            
+            const getHealthClass = (percentage) => {
+                if (percentage >= 0.75) return 'status-good';
+                if (percentage >= 0.50) return 'status-fair';
+                if (percentage >= 0.25) return 'status-poor';
+                return 'status-critical';
+            };
+            
+            statusDisplay.innerHTML = `
+                <div class="status-card">
+                    <h3>🚀 Ship Overview</h3>
+                    <div class="status-value">
+                        <span>Type:</span>
+                        <span>${shipStatus.shipType.replace('_', ' ').toUpperCase()}</span>
+                    </div>
+                    <div class="status-value">
+                        <span>Hull Integrity:</span>
+                        <span class="${getHealthClass(shipStatus.hull.percentage / 100)}">${shipStatus.hull.percentage.toFixed(1)}%</span>
+                    </div>
+                    <div class="status-value">
+                        <span>Energy Level:</span>
+                        <span class="${getHealthClass(shipStatus.energy.percentage / 100)}">${shipStatus.energy.percentage.toFixed(1)}%</span>
+                    </div>
+                    <div class="status-value">
+                        <span>Systems Health:</span>
+                        <span class="${getHealthClass(avgSystemHealth)}">${(avgSystemHealth * 100).toFixed(1)}%</span>
+                    </div>
+                    <div class="status-value">
+                        <span>Docked Status:</span>
+                        <span>${isDockedSimulation ? '🟢 DOCKED' : '🔴 SPACE'}</span>
+                    </div>
+                </div>
+                
+                <div class="status-card">
+                    <h3>⚙️ System Count</h3>
+                    <div class="status-value">
+                        <span>Total Systems:</span>
+                        <span>${shipStatus.systemCount}</span>
+                    </div>
+                    <div class="status-value">
+                        <span>Operational:</span>
+                        <span class="status-good">${Object.values(shipStatus.systems).filter(s => s.canBeActivated).length}</span>
+                    </div>
+                    <div class="status-value">
+                        <span>Damaged:</span>
+                        <span class="status-poor">${Object.values(shipStatus.systems).filter(s => s.health < 1.0 && s.canBeActivated).length}</span>
+                    </div>
+                    <div class="status-value">
+                        <span>Offline:</span>
+                        <span class="status-critical">${Object.values(shipStatus.systems).filter(s => !s.canBeActivated).length}</span>
+                    </div>
+                </div>
+                
+                <div class="status-card">
+                    <h3>🔧 Most Damaged Systems</h3>
+                    ${Object.entries(shipStatus.systems)
+                        .sort(([,a], [,b]) => a.health - b.health)
+                        .slice(0, 5)
+                        .map(([name, sys]) => `
+                            <div class="status-value">
+                                <span>${name.replace(/_/g, ' ').toUpperCase()}:</span>
+                                <span class="${getHealthClass(sys.health)}">${(sys.health * 100).toFixed(1)}%</span>
+                            </div>
+                        `).join('')}
+                </div>
+            `;
+        }
+        
+        // Keyboard event handler
+        document.addEventListener('keydown', (event) => {
+            if (event.key.toLowerCase() === 'd') {
+                window.showDamageControl();
+            }
+        });
+        
+        // Initialize on page load
+        console.log('🚀 Damage Control Interface Test Page Loaded');
+        console.log('Initializing ship systems...');
+        
+        initializeSystems().then(() => {
+            console.log('🎯 Ready for testing!');
+            console.log('📝 Use the controls above or press D to open Damage Control Interface');
+        });
+        
+        // Update status display every 2 seconds
+        setInterval(updateStatusDisplay, 2000);
+    </script>
+</body>
+</html> 

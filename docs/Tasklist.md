@@ -277,27 +277,27 @@
   - [ ] Add notification messages when systems are repaired/damaged/destroyed
   - [X] **SIMPLIFIED**: Show energy consumption rate for active systems
 
-- [ ] Damage Control Interface
-  - [ ] Create system status display
-  - [ ] Toggle Damage Control Modal HUD View when user presses 'D'
-    - [ ] Don't allow user to activate Damage Control when docked.
-  - [ ] Implement repair priority controls
-  - [ ] Add repair kit management
-  - [ ] Create damage effects visualization
-  - [ ] Implement 3D wireframe model
-    - [ ] Add color-coded damage indicators
-    - [ ] Create interactive system selection
-    - [ ] Implement rotating view
-    - [ ] Add zoom capability
-  - [ ] Add damage log
-    - [ ] Create scrolling ticker for notifications
-    - [ ] Implement damage type indicators
-    - [ ] Add timestamp tracking
-  - [ ] Create repair interface
-    - [ ] Add repair kit inventory display
-    - [ ] Implement station repair cost display
-    - [ ] Add repair time estimates
-    - [ ] Create priority setting controls
+- [X] Damage Control Interface
+  - [X] Create system status display
+  - [X] Toggle Damage Control Modal HUD View when user presses 'D'
+    - [X] Don't allow user to activate Damage Control when docked.
+  - [X] Implement repair priority controls
+  - [X] Add repair kit management
+  - [X] Create damage effects visualization
+  - [ ] Implement 3D wireframe model (moved to post-MVP)
+    - [ ] Add color-coded damage indicators (moved to post-MVP)
+    - [ ] Create interactive system selection (moved to post-MVP)
+    - [ ] Implement rotating view (moved to post-MVP)
+    - [ ] Add zoom capability (moved to post-MVP)
+  - [X] Add damage log
+    - [X] Create scrolling ticker for notifications
+    - [X] Implement damage type indicators
+    - [X] Add timestamp tracking
+  - [X] Create repair interface
+    - [X] Add repair kit inventory display
+    - [X] Implement station repair cost display
+    - [X] Add repair time estimates
+    - [X] Create priority setting controls
 
 - [ ] Station Interface
   - [ ] Create repair service interface
