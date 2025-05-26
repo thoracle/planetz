@@ -4,7 +4,7 @@
  * Energy consumption when active, damage affects targeting accuracy and range
  */
 
-import System, { SYSTEM_STATES } from '../System.js';
+import System, { SYSTEM_STATES, getSystemDisplayName } from '../System.js';
 
 export default class TargetComputer extends System {
     constructor(level = 1, config = {}) {
@@ -312,7 +312,7 @@ export default class TargetComputer extends System {
                 targetableSystems.push({
                     systemName: systemName,
                     system: system,
-                    displayName: system.name || systemName.replace('_', ' ').toUpperCase(),
+                    displayName: system.displayName || getSystemDisplayName(systemName),
                     health: system.healthPercentage,
                     priority: this.getSystemTargetPriority(systemName)
                 });

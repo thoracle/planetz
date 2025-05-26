@@ -1,6 +1,7 @@
 // THREE is handled dynamically in constructor
 import { DockingInterface } from '../ui/DockingInterface.js';
 import DockingSystemManager from '../ship/DockingSystemManager.js';
+import { getSystemDisplayName } from '../ship/System.js';
 // SimplifiedDamageControl removed - damage control integrated into ship systems HUD
 
 export class StarfieldManager {
@@ -767,20 +768,8 @@ export class StarfieldManager {
     }
 
     formatSystemName(systemName) {
-        // Convert system names to display format
-        const nameMap = {
-            'shields': 'SHIELDS',
-            'impulse_engines': 'ENGINES',
-            'warp_drive': 'WARP',
-            'weapons': 'WEAPONS',
-            'sensors': 'SENSORS',
-            'life_support': 'LIFE SUP',
-            'long_range_scanner': 'LR SCANNER',
-            'target_computer': 'TARGETING',
-            'subspace_radio': 'SUBSPACE',
-            'galactic_chart': 'GALACTIC'
-        };
-        return nameMap[systemName] || systemName.toUpperCase();
+        // Use the standardized display name function
+        return getSystemDisplayName(systemName).toUpperCase();
     }
 
     updateSpeedIndicator() {

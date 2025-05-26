@@ -10,6 +10,8 @@
  * - System status overview
  */
 
+import { getSystemDisplayName } from '../ship/System.js';
+
 export default class SimplifiedDamageControl {
     constructor() {
         this.isVisible = false;
@@ -368,7 +370,7 @@ export default class SimplifiedDamageControl {
      * @returns {string} Formatted name
      */
     formatSystemName(systemName) {
-        return systemName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        return getSystemDisplayName(systemName);
     }
     
     /**

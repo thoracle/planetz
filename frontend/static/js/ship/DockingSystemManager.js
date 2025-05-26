@@ -4,6 +4,8 @@
  * Based on docs/spaceships_spec.md and docs/tech_design.md
  */
 
+import { getSystemDisplayName } from './System.js';
+
 export default class DockingSystemManager {
     constructor() {
         this.dockingRequirements = {
@@ -301,9 +303,7 @@ export default class DockingSystemManager {
      * @returns {string} Formatted name
      */
     formatSystemName(systemName) {
-        return systemName
-            .replace(/_/g, ' ')
-            .replace(/\b\w/g, l => l.toUpperCase());
+        return getSystemDisplayName(systemName);
     }
     
     /**

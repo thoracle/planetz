@@ -78,7 +78,7 @@ export const SHIP_CONFIGS = {
                 slots: 1, 
                 energyConsumption: 25 // Energy per second when active
             },
-            weapons: { 
+            laser_cannon: { 
                 level: 7, // Level 7 = 84 firepower (7 * 12) - close to target 80
                 slots: 1, 
                 energyConsumption: 0 // Uses energy per shot (handled separately)
@@ -182,8 +182,8 @@ export const SHIP_CONFIGS = {
                 slots: 1, 
                 energyConsumption: 15 // Lower energy consumption
             },
-            weapons: { 
-                level: 1,       // Basic weapons
+            pulse_cannon: { 
+                level: 1,       // Basic pulse cannon - faster firing, lower damage
                 slots: 1, 
                 energyConsumption: 0
             },
@@ -281,8 +281,8 @@ export const SHIP_CONFIGS = {
                 slots: 1, 
                 energyConsumption: 20
             },
-            weapons: { 
-                level: 2,       // Enhanced weapons
+            plasma_cannon: { 
+                level: 2,       // Enhanced plasma cannon - balanced damage and efficiency
                 slots: 1, 
                 energyConsumption: 0
             },
@@ -380,8 +380,8 @@ export const SHIP_CONFIGS = {
                 slots: 1, 
                 energyConsumption: 30 // Higher consumption for cargo protection
             },
-            weapons: { 
-                level: 1,       // Basic defensive weapons
+            pulse_cannon: { 
+                level: 1,       // Basic defensive pulse cannon
                 slots: 1, 
                 energyConsumption: 0
             },
@@ -479,8 +479,8 @@ export const SHIP_CONFIGS = {
                 slots: 1, 
                 energyConsumption: 40 // High consumption for maximum protection
             },
-            weapons: { 
-                level: 1,       // Minimal weapons
+            pulse_cannon: { 
+                level: 1,       // Minimal defensive pulse cannon
                 slots: 1, 
                 energyConsumption: 0
             },
@@ -554,8 +554,8 @@ export const ENEMY_SHIP_CONFIGS = {
                 slots: 1, 
                 energyConsumption: 20
             },
-            weapons: { 
-                level: 4, // 48 firepower
+            laser_cannon: { 
+                level: 4, // 48 firepower - standard enemy weapon
                 slots: 1, 
                 energyConsumption: 0
             },
@@ -617,8 +617,8 @@ export const ENEMY_SHIP_CONFIGS = {
                 slots: 1, 
                 energyConsumption: 15
             },
-            weapons: { 
-                level: 3, // 36 firepower
+            pulse_cannon: { 
+                level: 3, // 36 firepower - fast firing for interceptor
                 slots: 1, 
                 energyConsumption: 0
             },
@@ -680,8 +680,8 @@ export const ENEMY_SHIP_CONFIGS = {
                 slots: 1, 
                 energyConsumption: 30
             },
-            weapons: { 
-                level: 6, // 72 firepower
+            plasma_cannon: { 
+                level: 6, // 72 firepower - heavy hitting for gunship
                 slots: 1, 
                 energyConsumption: 0
             },

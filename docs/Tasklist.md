@@ -327,6 +327,7 @@
             - [X] Fix test page method name error (waitForSystemsInitialized vs waitForSystemsInitialization)
             - [X] Standardize enemy ship configurations to have exactly 7 essential systems
             - [X] Fix system name inconsistencies (shields vs shield_generator)
+            - [X] Verify all sub-targeting restrictions work correctly through comprehensive testing
     - [X] Level-specific targeting capabilities
       - [X] Level 1-2: Basic targeting (existing functionality)
       - [X] Level 3+: Sub-targeting of specific enemy systems
@@ -337,12 +338,14 @@
 - [X] Extend Ship Systems HUD
   - [X] Add notification messages when systems are repaired/damaged/destroyed
   - [X] **SIMPLIFIED**: Show energy consumption rate for active systems
-  - [ ] **NEW**: Enhanced Targeting HUD (Level 3+ Target Computer)
-    - [ ] Add sub-target selection display
-    - [ ] Show targetable enemy systems list
-    - [ ] Add visual indicators for selected sub-target
-    - [ ] Implement sub-target cycling UI feedback
-    - [ ] Add accuracy bonus indicators for sub-targeted systems
+          - [X] **NEW**: Enhanced Targeting HUD (Level 3+ Target Computer)
+            - [X] Add sub-target selection display
+            - [X] Show targetable enemy systems list
+            - [X] Add visual indicators for selected sub-target
+            - [X] Implement sub-target cycling UI feedback
+            - [X] Add accuracy bonus indicators for sub-targeted systems
+            - [X] Standardize system display names across all UI components
+            - [X] Replace generic "weapons" system with specific weapon types (Laser Cannon, Plasma Cannon, etc.)
 
 - [X] Damage Control Interface
   - [X] Create system status display

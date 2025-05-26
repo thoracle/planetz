@@ -20,10 +20,59 @@ export const DAMAGE_THRESHOLDS = {
     CRITICAL: 1.0    // 76-100% damage
 };
 
+// Standardized display names for all systems
+export const SYSTEM_DISPLAY_NAMES = {
+    // Core ship systems
+    'hull_plating': 'Hull Plating',
+    'energy_reactor': 'Energy Reactor',
+    'shield_generator': 'Shield Generator',
+    'cargo_hold': 'Cargo Hold',
+    
+    // Operational systems
+    'impulse_engines': 'Impulse Engines',
+    'warp_drive': 'Warp Drive',
+    'shields': 'Deflector Shields',
+    'laser_cannon': 'Laser Cannon',
+    'plasma_cannon': 'Plasma Cannon',
+    'pulse_cannon': 'Pulse Cannon',
+    'phaser_array': 'Phaser Array',
+    'disruptor_cannon': 'Disruptor Cannon',
+    'particle_beam': 'Particle Beam',
+    'missile_tubes': 'Missile Tubes',
+    'torpedo_launcher': 'Torpedo Launcher',
+    
+    // Legacy weapon system (for backward compatibility)
+    'weapons': 'Laser Cannon',
+    
+    // Sensor and communication systems
+    'long_range_scanner': 'Long Range Scanner',
+    'subspace_radio': 'Subspace Radio',
+    'galactic_chart': 'Galactic Chart',
+    'target_computer': 'Target Computer',
+    
+    // Legacy/alternative names
+    'sensors': 'Sensors',
+    'life_support': 'Life Support',
+    'targeting': 'Target Computer',
+    'scanner': 'Long Range Scanner',
+    'radio': 'Subspace Radio'
+};
+
+/**
+ * Get standardized display name for a system
+ * @param {string} systemName - Internal system name
+ * @returns {string} User-friendly display name
+ */
+export function getSystemDisplayName(systemName) {
+    return SYSTEM_DISPLAY_NAMES[systemName] || 
+           systemName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
 export default class System {
     constructor(name, level = 1, config = {}) {
         // Basic properties
         this.name = name;
+        this.displayName = getSystemDisplayName(name);
         this.level = level;
         this.maxLevel = 5;
         
@@ -48,7 +97,7 @@ export default class System {
         // Level-specific stats (to be overridden by concrete systems)
         this.levelStats = this.initializeLevelStats();
         
-        console.log(`System created: ${name} (Level ${level}) - Energy consumption: ${this.energyConsumptionRate}/sec`);
+        console.log(`System created: ${this.displayName} (Level ${level}) - Energy consumption: ${this.energyConsumptionRate}/sec`);
     }
     
     /**
@@ -115,12 +164,12 @@ export default class System {
      */
     activate(ship) {
         if (!this.isOperational()) {
-            console.warn(`Cannot activate ${this.name}: system not operational`);
+            console.warn(`Cannot activate ${this.displayName}: system not operational`);
             return false;
         }
         
         this.isActive = true;
-        console.log(`${this.name} activated`);
+        console.log(`${this.displayName} activated`);
         return true;
     }
     
@@ -129,7 +178,7 @@ export default class System {
      */
     deactivate() {
         this.isActive = false;
-        console.log(`${this.name} deactivated`);
+        console.log(`${this.displayName} deactivated`);
     }
     
     /**
@@ -145,7 +194,7 @@ export default class System {
         // Update system state based on health
         this.updateSystemState();
         
-        console.log(`${this.name} took ${damage.toFixed(1)} damage. Health: ${this.healthPercentage.toFixed(2)}`);
+        console.log(`${this.displayName} took ${damage.toFixed(1)} damage. Health: ${this.healthPercentage.toFixed(2)}`);
     }
     
     /**
@@ -162,7 +211,7 @@ export default class System {
         // Update system state based on new health
         this.updateSystemState();
         
-        console.log(`${this.name} repaired by ${(repairAmount * 100).toFixed(1)}%. Health: ${this.healthPercentage.toFixed(2)}`);
+        console.log(`${this.displayName} repaired by ${(repairAmount * 100).toFixed(1)}%. Health: ${this.healthPercentage.toFixed(2)}`);
     }
     
     /**
@@ -194,7 +243,7 @@ export default class System {
      * @param {string} toState New state
      */
     onStateChanged(fromState, toState) {
-        console.log(`${this.name} state changed: ${fromState} -> ${toState}`);
+        console.log(`${this.displayName} state changed: ${fromState} -> ${toState}`);
         
         // Trigger cascading effects based on state changes
         this.handleStateEffects(toState);
@@ -210,11 +259,11 @@ export default class System {
             case SYSTEM_STATES.CRITICAL:
                 // Systems in critical state may have chance of failure
                 if (Math.random() < 0.1) { // 10% chance of cascading failure
-                    console.log(`${this.name} experiencing cascading failure!`);
+                    console.log(`${this.displayName} experiencing cascading failure!`);
                 }
                 break;
             case SYSTEM_STATES.DISABLED:
-                console.log(`${this.name} is completely disabled!`);
+                console.log(`${this.displayName} is completely disabled!`);
                 break;
         }
     }
@@ -225,7 +274,7 @@ export default class System {
      */
     upgrade() {
         if (this.level >= this.maxLevel) {
-            console.warn(`${this.name} is already at maximum level (${this.maxLevel})`);
+            console.warn(`${this.displayName} is already at maximum level (${this.maxLevel})`);
             return false;
         }
         
@@ -237,7 +286,7 @@ export default class System {
             this.energyConsumptionRate = levelStats.energyConsumptionRate;
         }
         
-        console.log(`${this.name} upgraded to level ${this.level}`);
+        console.log(`${this.displayName} upgraded to level ${this.level}`);
         return true;
     }
     
@@ -248,6 +297,7 @@ export default class System {
     getStatus() {
         return {
             name: this.name,
+            displayName: this.displayName,
             level: this.level,
             maxLevel: this.maxLevel,
             health: {
@@ -276,7 +326,7 @@ export default class System {
             if (energyPerFrame > 0) {
                 if (!ship.consumeEnergy(energyPerFrame)) {
                     // Not enough energy - deactivate system
-                    console.log(`${this.name} deactivated due to insufficient energy`);
+                    console.log(`${this.displayName} deactivated due to insufficient energy`);
                     this.deactivate();
                 }
             }

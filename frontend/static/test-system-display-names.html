@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Display Names Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff41;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #00ff41;
+            padding-bottom: 20px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: rgba(0, 255, 65, 0.05);
+        }
+        
+        .test-section h3 {
+            color: #00aa41;
+            margin-top: 0;
+            border-bottom: 1px solid #00aa41;
+            padding-bottom: 10px;
+        }
+        
+        .system-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .system-item {
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        .system-name {
+            font-weight: bold;
+            color: #00ff41;
+        }
+        
+        .system-internal {
+            color: #888;
+            font-size: 0.9em;
+        }
+        
+        .test-results {
+            margin-top: 20px;
+            padding: 15px;
+            border: 2px solid #00aa41;
+            border-radius: 8px;
+            background: rgba(0, 170, 65, 0.1);
+        }
+        
+        .pass {
+            color: #00ff41;
+        }
+        
+        .fail {
+            color: #ff4400;
+        }
+        
+        .warning {
+            color: #ffaa00;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #00aa41;
+            padding-left: 10px;
+        }
+        
+        .log-entry.error {
+            border-left-color: #ff4400;
+            color: #ff4400;
+        }
+        
+        .log-entry.warning {
+            border-left-color: #ffaa00;
+            color: #ffaa00;
+        }
+        
+        button {
+            background: #00aa41;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #00ff41;
+        }
+        
+        button:disabled {
+            background: #444;
+            color: #888;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>System Display Names Test</h1>
+            <p>Testing standardized system display names across all components</p>
+            <button onclick="runAllTests()">Run All Tests</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <div class="test-section">
+            <h3>System Display Name Mapping</h3>
+            <div id="system-mapping" class="system-grid">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>Ship System Display Names</h3>
+            <div id="ship-systems" class="system-grid">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>Interface Consistency Test</h3>
+            <div id="interface-test">
+                <p>Testing display name consistency across different UI components...</p>
+                <button onclick="testInterfaceConsistency()">Test Interface Consistency</button>
+            </div>
+        </div>
+
+        <div class="test-results">
+            <h3>Test Results</h3>
+            <div id="test-log">
+                <div class="log-entry">Ready to run tests...</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Ship } from './js/ship/Ship.js';
+        import { getSystemDisplayName, SYSTEM_DISPLAY_NAMES } from './js/ship/System.js';
+        import { StarfieldManager } from './js/views/StarfieldManager.js';
+        import DamageControlInterface from './js/ui/DamageControlInterface.js';
+        import SimplifiedDamageControl from './js/ui/SimplifiedDamageControl.js';
+        import DockingSystemManager from './js/ship/DockingSystemManager.js';
+
+        let ship = null;
+        let testResults = [];
+
+        // Initialize test environment
+        async function initializeTest() {
+            try {
+                // Create a test ship
+                ship = new Ship('heavy_fighter');
+                await ship.waitForSystemsInitialized();
+                
+                log('Test environment initialized successfully', 'pass');
+                return true;
+            } catch (error) {
+                log(`Failed to initialize test environment: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Test system display name mapping
+        function testSystemMapping() {
+            log('Testing system display name mapping...', 'info');
+            
+            const mappingDiv = document.getElementById('system-mapping');
+            let html = '';
+            let testsPassed = 0;
+            let testsTotal = 0;
+
+            for (const [internalName, displayName] of Object.entries(SYSTEM_DISPLAY_NAMES)) {
+                testsTotal++;
+                const computedName = getSystemDisplayName(internalName);
+                const isCorrect = computedName === displayName;
+                
+                if (isCorrect) testsPassed++;
+                
+                html += `
+                    <div class="system-item">
+                        <div class="system-name ${isCorrect ? 'pass' : 'fail'}">${displayName}</div>
+                        <div class="system-internal">Internal: ${internalName}</div>
+                        <div class="system-internal">Computed: ${computedName}</div>
+                        <div class="${isCorrect ? 'pass' : 'fail'}">${isCorrect ? '✓ Correct' : '✗ Mismatch'}</div>
+                    </div>
+                `;
+            }
+
+            mappingDiv.innerHTML = html;
+            
+            if (testsPassed === testsTotal) {
+                log(`✓ System mapping test passed: ${testsPassed}/${testsTotal} mappings correct`, 'pass');
+            } else {
+                log(`✗ System mapping test failed: ${testsPassed}/${testsTotal} mappings correct`, 'error');
+            }
+            
+            return testsPassed === testsTotal;
+        }
+
+        // Test ship system display names
+        function testShipSystems() {
+            if (!ship) {
+                log('✗ Ship not initialized for system test', 'error');
+                return false;
+            }
+
+            log('Testing ship system display names...', 'info');
+            
+            const systemsDiv = document.getElementById('ship-systems');
+            let html = '';
+            let testsPassed = 0;
+            let testsTotal = 0;
+
+            for (const [systemName, system] of ship.systems) {
+                testsTotal++;
+                const expectedDisplayName = getSystemDisplayName(systemName);
+                const actualDisplayName = system.displayName;
+                const isCorrect = actualDisplayName === expectedDisplayName;
+                
+                if (isCorrect) testsPassed++;
+                
+                html += `
+                    <div class="system-item">
+                        <div class="system-name ${isCorrect ? 'pass' : 'fail'}">${actualDisplayName}</div>
+                        <div class="system-internal">Internal: ${systemName}</div>
+                        <div class="system-internal">Expected: ${expectedDisplayName}</div>
+                        <div class="system-internal">Level: ${system.level}</div>
+                        <div class="${isCorrect ? 'pass' : 'fail'}">${isCorrect ? '✓ Correct' : '✗ Mismatch'}</div>
+                    </div>
+                `;
+            }
+
+            systemsDiv.innerHTML = html;
+            
+            if (testsPassed === testsTotal) {
+                log(`✓ Ship systems test passed: ${testsPassed}/${testsTotal} systems correct`, 'pass');
+            } else {
+                log(`✗ Ship systems test failed: ${testsPassed}/${testsTotal} systems correct`, 'error');
+            }
+            
+            return testsPassed === testsTotal;
+        }
+
+        // Test interface consistency
+        function testInterfaceConsistency() {
+            if (!ship) {
+                log('✗ Ship not initialized for interface test', 'error');
+                return false;
+            }
+
+            log('Testing interface consistency...', 'info');
+            
+            let allTestsPassed = true;
+            
+            // Test DamageControlInterface
+            try {
+                const damageControl = new DamageControlInterface();
+                damageControl.setShip(ship);
+                
+                // Test formatSystemName method
+                const testSystemName = 'impulse_engines';
+                const formattedName = damageControl.formatSystemName(testSystemName);
+                const expectedName = getSystemDisplayName(testSystemName);
+                
+                if (formattedName === expectedName) {
+                    log(`✓ DamageControlInterface formatting correct: "${formattedName}"`, 'pass');
+                } else {
+                    log(`✗ DamageControlInterface formatting incorrect: got "${formattedName}", expected "${expectedName}"`, 'error');
+                    allTestsPassed = false;
+                }
+            } catch (error) {
+                log(`✗ DamageControlInterface test failed: ${error.message}`, 'error');
+                allTestsPassed = false;
+            }
+
+            // Test SimplifiedDamageControl
+            try {
+                const simplifiedDamageControl = new SimplifiedDamageControl();
+                
+                // Test formatSystemName method
+                const testSystemName = 'target_computer';
+                const formattedName = simplifiedDamageControl.formatSystemName(testSystemName);
+                const expectedName = getSystemDisplayName(testSystemName);
+                
+                if (formattedName === expectedName) {
+                    log(`✓ SimplifiedDamageControl formatting correct: "${formattedName}"`, 'pass');
+                } else {
+                    log(`✗ SimplifiedDamageControl formatting incorrect: got "${formattedName}", expected "${expectedName}"`, 'error');
+                    allTestsPassed = false;
+                }
+            } catch (error) {
+                log(`✗ SimplifiedDamageControl test failed: ${error.message}`, 'error');
+                allTestsPassed = false;
+            }
+
+            // Test DockingSystemManager
+            try {
+                const dockingManager = new DockingSystemManager();
+                
+                // Test formatSystemName method
+                const testSystemName = 'subspace_radio';
+                const formattedName = dockingManager.formatSystemName(testSystemName);
+                const expectedName = getSystemDisplayName(testSystemName);
+                
+                if (formattedName === expectedName) {
+                    log(`✓ DockingSystemManager formatting correct: "${formattedName}"`, 'pass');
+                } else {
+                    log(`✗ DockingSystemManager formatting incorrect: got "${formattedName}", expected "${expectedName}"`, 'error');
+                    allTestsPassed = false;
+                }
+            } catch (error) {
+                log(`✗ DockingSystemManager test failed: ${error.message}`, 'error');
+                allTestsPassed = false;
+            }
+
+            if (allTestsPassed) {
+                log('✓ All interface consistency tests passed', 'pass');
+            } else {
+                log('✗ Some interface consistency tests failed', 'error');
+            }
+            
+            return allTestsPassed;
+        }
+
+        // Run all tests
+        async function runAllTests() {
+            log('Starting comprehensive system display name tests...', 'info');
+            clearLog();
+            
+            const initialized = await initializeTest();
+            if (!initialized) {
+                log('✗ Cannot run tests - initialization failed', 'error');
+                return;
+            }
+
+            const results = [];
+            
+            // Run all test suites
+            results.push(testSystemMapping());
+            results.push(testShipSystems());
+            results.push(testInterfaceConsistency());
+            
+            // Summary
+            const passedTests = results.filter(r => r).length;
+            const totalTests = results.length;
+            
+            log(`\n=== TEST SUMMARY ===`, 'info');
+            if (passedTests === totalTests) {
+                log(`✓ All tests passed: ${passedTests}/${totalTests}`, 'pass');
+                log('✓ System display names are standardized and consistent!', 'pass');
+            } else {
+                log(`✗ Some tests failed: ${passedTests}/${totalTests}`, 'error');
+                log('✗ System display names need attention', 'error');
+            }
+        }
+
+        // Logging function
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('test-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            // Also log to console
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Clear log
+        function clearLog() {
+            const logElement = document.getElementById('test-log');
+            logElement.innerHTML = '<div class="log-entry">Log cleared...</div>';
+        }
+
+        // Make functions globally available
+        window.runAllTests = runAllTests;
+        window.testInterfaceConsistency = testInterfaceConsistency;
+        window.clearLog = clearLog;
+        window.log = log;
+
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            log('System Display Names Test page loaded', 'info');
+            log('Click "Run All Tests" to verify display name standardization', 'info');
+        });
+    </script>
+</body>
+</html> 
