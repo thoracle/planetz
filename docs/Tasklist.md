@@ -162,19 +162,20 @@
 
 # Ship Systems Implementation Plan
 
-## MVP Phase
+## MVP Phase - Simplified Hardpoint/Inventory System
 
 ### Core Ship Systems
 - [X] Create base Ship class
   - [X] Implement data-driven ship configuration
     - [X] Add heavy fighter configuration
     - [X] Create base stats configuration
-    - [X] Add system slot configuration
+    - [X] **SIMPLIFIED**: Universal slot system - all systems take 1 slot (no hardpoint types)
     - [X] **SIMPLIFIED**: Remove power grid complexity - systems consume energy from shared pool when active
   - [X] Add system management functionality
     - [X] Create system registry
     - [X] Implement system initialization
     - [X] Add system state tracking
+    - [X] **SIMPLIFIED**: Slot-based installation (no card/NFT system for MVP)
   - [X] Implement central energy management
     - [X] Create energy pool
     - [X] Add energy consumption tracking
@@ -183,6 +184,38 @@
     - [X] Implement state validation
     - [X] Add state transition rules
     - [X] Create state persistence
+
+### Simplified Inventory System (MVP)
+- [X] **SIMPLIFIED**: Direct system installation/removal
+  - [X] Implement slot availability checking
+  - [X] Add system compatibility validation
+  - [X] Create basic build rules (e.g., must have engines)
+  - [X] **DEFERRED**: NFT/Card system moved to post-MVP
+  - [X] **DEFERRED**: Stacking inventory moved to post-MVP
+  - [X] **DEFERRED**: Drag-and-drop interface moved to post-MVP
+
+### Ship Configuration System (MVP)
+- [X] **SIMPLIFIED**: Level-based system progression
+  - [X] Systems upgrade through level progression (1-5)
+  - [X] Level requirements based on credits/materials
+  - [X] **DEFERRED**: Card collection system moved to post-MVP
+  - [X] **DEFERRED**: Multiple card requirement for upgrades moved to post-MVP
+
+- [X] **SIMPLIFIED**: Ship Type System
+  - [X] Heavy Fighter implemented
+  - [X] Add remaining ship types (Scout, Light Fighter, Light Freighter, Heavy Freighter)
+  - [X] Increase slot counts to support 8 core systems plus expansion room
+  - [X] **NEW**: Implement gear-based stats system
+    - [X] Create HullPlating system (provides hull hit points)
+    - [X] Create EnergyReactor system (provides energy capacity and recharge rate)
+    - [X] Create ShieldGenerator system (provides armor rating when active)
+    - [X] Create CargoHold system (provides cargo capacity)
+    - [X] Modify Ship class to derive all stats from installed gear
+    - [X] Update all ship configurations to use gear-based stats
+    - [X] Create test interface for gear-based stats system
+  - [ ] Implement ship type selection interface
+  - [ ] **DEFERRED**: Ship purchasing system moved to post-MVP
+  - [ ] **DEFERRED**: Cross-ship system transfer moved to post-MVP
 
 - [X] Ship Integration with Game Systems
   - [X] Integrate Ship with ViewManager
@@ -215,7 +248,7 @@
   - [X] **SIMPLIFIED**: Add system activation/deactivation methods
   - [X] **SIMPLIFIED**: Auto-deactivate systems when insufficient energy
 
-- [ ] System Integration
+- [X] System Integration
   - [X] Warp Drive Integration
     - [X] Add warp drive damage status check
     - [X] Energy consumption during warp (already implemented via ViewManager)
@@ -223,11 +256,11 @@
   - [X] HUD Integration
     - [X] Add damage control interface (Press 'D' to toggle Damage Control View)
     - [ ] Create station repair interface
-    - [ ] Add system shop interface
+    - [ ] **DEFERRED**: System shop interface moved to post-MVP (no card system)
   - [ ] Station Integration
     - [X] Add docking system checks
     - [ ] Implement repair services
-    - [ ] Create system shop
+    - [ ] **DEFERRED**: System shop moved to post-MVP
     - [ ] Add launch sequence
 
 - [X] Create concrete system implementations
@@ -271,11 +304,36 @@
     - [X] Implement chart range reduction / fog of war
     - [ ] Implement galactic chart update degradation (move to post MVP)
     - [X] Create repair integration
+  - [X] Target Computer (extend existing implementation)
+    - [X] Basic targeting computer exists (already implemented)
+    - [X] Convert to System class for damage/repair functionality
+    - [X] **SIMPLIFIED**: Energy consumption per second when active
+    - [X] **NEW**: Implement sub-targeting system (Level 3+ targeting computer)
+      - [X] Create targetable system detection for enemy ships
+      - [X] Create sub-target cycling logic (cycleSubTargetNext/Previous methods)
+      - [X] Implement enhanced weapon accuracy for sub-targeted systems (accuracy bonus)
+      - [X] Implement damage bonus calculations for targeted systems
+      - [X] Add system priority targeting (weapons > shields > engines, etc.)
+      - [X] Create test interface for sub-targeting functionality
+      - [ ] Add < and > key bindings to iterate through targetable enemy systems ⬅️ **NEXT MVP TASK**
+      - [ ] Extend targeting HUD UI to show selected sub-target
+      - [ ] Add visual indicators for targetable systems
+    - [X] Level-specific targeting capabilities
+      - [X] Level 1-2: Basic targeting (existing functionality)
+      - [X] Level 3+: Sub-targeting of specific enemy systems
+      - [X] Higher levels: Improved sub-target detection range and accuracy
+    - [X] Update all ship configurations to use Level 3+ targeting computers for testing
 
 ### UI Implementation
 - [X] Extend Ship Systems HUD
   - [X] Add notification messages when systems are repaired/damaged/destroyed
   - [X] **SIMPLIFIED**: Show energy consumption rate for active systems
+  - [ ] **NEW**: Enhanced Targeting HUD (Level 3+ Target Computer)
+    - [ ] Add sub-target selection display
+    - [ ] Show targetable enemy systems list
+    - [ ] Add visual indicators for selected sub-target
+    - [ ] Implement sub-target cycling UI feedback
+    - [ ] Add accuracy bonus indicators for sub-targeted systems
 
 - [X] Damage Control Interface
   - [X] Create system status display
@@ -299,28 +357,71 @@
     - [X] Add repair time estimates
     - [X] Create priority setting controls
 
-- [ ] Station Interface
+- [ ] **SIMPLIFIED**: Basic Station Interface (MVP)
   - [ ] Create repair service interface
-  - [ ] Implement system shop
-  - [ ] Add hull shop
-  - [ ] Create upgrade preview
+  - [ ] **DEFERRED**: System shop moved to post-MVP (no card system)
+  - [ ] Add hull repair service
+  - [ ] **DEFERRED**: Upgrade preview moved to post-MVP
   - [ ] Add service menu navigation
   - [ ] Implement credit balance display
-  - [ ] Create compatibility indicators
+  - [ ] **DEFERRED**: Compatibility indicators moved to post-MVP
 
 ### Backend Integration
 
 - [ ] API Endpoints
   - [ ] System status endpoints
-  - [ ] Upgrade management endpoints
+  - [ ] **SIMPLIFIED**: Basic upgrade management endpoints (level-based)
   - [ ] Repair system endpoints
   - [ ] **SIMPLIFIED**: Energy management endpoints (no power grid)
   - [ ] Ship class management endpoints
   - [ ] Repair kit management endpoints
-  - [ ] Faction standing endpoints
-  - [ ] Resource management endpoints
+  - [ ] **DEFERRED**: Faction standing endpoints moved to post-MVP
+  - [ ] **DEFERRED**: Resource management endpoints moved to post-MVP
 
-## Post-MVP Phase
+## Post-MVP Phase - Full NFT/Card System
+
+### Advanced Inventory System (Post-MVP)
+- [ ] **NFT/Card System Implementation**
+  - [ ] Implement NFT item card system
+    - [ ] Create card definition structure
+    - [ ] Add passive/active ability system
+    - [ ] Implement XP/faction prerequisites
+    - [ ] Add card rarity system
+  - [ ] Create stacking inventory system
+    - [ ] Implement card stack management
+    - [ ] Add Pokédex-style discovery system
+    - [ ] Create mystery card reveals
+    - [ ] Add card collection tracking
+  - [ ] Implement drag-and-drop interface
+    - [ ] Create card inventory UI
+    - [ ] Add ship slot interface
+    - [ ] Implement card transfer system
+    - [ ] Add visual feedback for valid drops
+
+### Card Collection and Upgrade System (Post-MVP)
+- [ ] **Card-Based Progression**
+  - [ ] Implement card collection mechanics
+    - [ ] Add loot drop system
+    - [ ] Create mission reward system
+    - [ ] Implement card trading (external marketplace)
+  - [ ] Create card upgrade system
+    - [ ] Implement multiple card requirements
+    - [ ] Add credit cost system
+    - [ ] Create upgrade preview system
+    - [ ] Add upgrade confirmation system
+
+### Advanced Hardpoint System (Post-MVP)
+- [ ] **Enhanced Slot System**
+  - [ ] Implement hardpoint specialization
+    - [ ] Add weapon hardpoints
+    - [ ] Create utility hardpoints
+    - [ ] Implement engine hardpoints
+    - [ ] Add defensive hardpoints
+  - [ ] Create build validation system
+    - [ ] Implement advanced build rules
+    - [ ] Add compatibility checking
+    - [ ] Create performance warnings
+    - [ ] Add optimization suggestions
 
 ### Ship Editor Mode (Ctrl-S)
 - [ ] Create Ship Editor UI (follow form and function of existing Ctrl-E Planet Editor and sits in same place in UI)
@@ -330,8 +431,8 @@
     - [ ] Add edit mode state management
   - [ ] Create ship property controls
     - [ ] Add ship type selector
-    - [ ] Implement system level controls
-    - [ ] Create upgrade slot management
+    - [ ] **ENHANCED**: Card-based system management
+    - [ ] **ENHANCED**: Drag-and-drop card installation
   - [ ] Add real-time preview
     - [ ] Show system status changes
     - [ ] Update ship performance metrics
@@ -348,6 +449,7 @@
   - [ ] Optimize system calculations
   - [ ] Enhance damage calculations
   - [ ] Optimize UI rendering
+  - [ ] Optimize card system performance
 
 - [ ] Memory Management
   - [ ] Implement object pooling
@@ -359,18 +461,21 @@
 - [ ] Unit Tests
   - [ ] Ship class tests
   - [ ] System interface tests
-  - [ ] Upgrade system tests
+  - [ ] **ENHANCED**: Card system tests
+  - [ ] **ENHANCED**: NFT integration tests
 
 - [ ] Integration Tests
   - [ ] System interaction tests
   - [ ] UI integration tests
   - [ ] Backend integration tests
   - [ ] Performance tests
+  - [ ] **ENHANCED**: Card collection tests
 
 - [ ] UI Tests
   - [ ] HUD functionality tests
   - [ ] Damage report tests
-  - [ ] Upgrade interface tests
+  - [ ] **ENHANCED**: Card inventory tests
+  - [ ] **ENHANCED**: Drag-and-drop tests
 
 ### Advanced Features
 - [ ] Advanced Warp Interactions
@@ -378,10 +483,10 @@
     - [ ] Manuever with arrow keys durring warp to keep crosshairs centered while avoiding/destroying asteroids
        - [ ] if player can't keep crosshairs centered then they arrive off course
 
-- [ ] Ship Class System
+- [ ] **ENHANCED**: Ship Class System
   - [ ] Implement ship class selection
   - [ ] Add ship purchase interface
-  - [ ] Create system transfer system
+  - [ ] **ENHANCED**: Card-based system transfer system
   - [ ] Add ship class restrictions
   - [ ] Implement faction availability
   - [ ] Add ship comparison tools
@@ -393,6 +498,10 @@
     - [ ] Create weapon-power dependencies
     - [ ] Implement scanner-radio synergy
     - [ ] Add targeting-weapon integration
+    - [ ] **NEW**: Enhanced targeting-weapon integration (Level 3+ Target Computer)
+      - [ ] Implement sub-system targeting mechanics
+      - [ ] Add targeted damage calculations
+      - [ ] Create system vulnerability detection
   - [ ] Create cascading effects
     - [ ] Implement damage propagation
     - [ ] Add performance impact calculations
@@ -405,11 +514,11 @@
   - [ ] Create damage types
   - [ ] Add repair complexity
 
-- [ ] Enhanced Upgrade System
-  - [ ] Add upgrade combinations
+- [ ] **ENHANCED**: Card-Based Upgrade System
+  - [ ] Add card combinations
   - [ ] Implement upgrade trees
-  - [ ] Create special upgrades
-  - [ ] Add upgrade limitations
+  - [ ] Create special card abilities
+  - [ ] Add card limitations
 
 - [ ] Distress Call System
   - [ ] Implement distress call reception
@@ -424,12 +533,14 @@
   - [ ] Enhance damage effects
   - [ ] Improve power flow visualization
   - [ ] Add system status effects
+  - [ ] **ENHANCED**: Card visual effects
 
 - [ ] UX Improvements
   - [ ] Add tooltips and help
   - [ ] Implement keyboard shortcuts
   - [ ] Add context menus
   - [ ] Create quick actions
+  - [ ] **ENHANCED**: Card management shortcuts
 
 ### Documentation
 - [ ] Technical Documentation
@@ -437,19 +548,21 @@
   - [ ] API documentation
   - [ ] Database schema docs
   - [ ] Performance guidelines
+  - [ ] **ENHANCED**: NFT/Card system docs
 
 - [ ] User Documentation
   - [ ] System guide
   - [ ] Upgrade guide
   - [ ] Repair guide
   - [ ] **SIMPLIFIED**: Energy management guide (no power grid complexity)
+  - [ ] **ENHANCED**: Card collection guide
 
 ## Dependencies
 - MVP Phase must be completed before starting Post-MVP
 - UI Implementation can begin after Core Ship Systems
 - Backend Integration can be done in parallel with UI
-- Testing should be done throughout but formalized in Post-MVP
-- Documentation should be maintained throughout but finalized in Post-MVP
+- **NFT/Card System requires MVP completion and crypto wallet integration**
+- **Advanced Hardpoint System builds on basic slot system**
 
 ## Notes
 - Mark tasks as [X] when complete

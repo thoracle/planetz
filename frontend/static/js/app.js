@@ -283,7 +283,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.viewManager = viewManager;
 
     // Initialize StarfieldManager and connect it to ViewManager
-    const starfieldManager = new StarfieldManager(scene, camera, viewManager);
+    const starfieldManager = new StarfieldManager(scene, camera, viewManager, THREE);
     viewManager.setStarfieldManager(starfieldManager);
 
     // Initialize SolarSystemManager and connect it to StarfieldManager

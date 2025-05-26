@@ -31,6 +31,9 @@ We will employ a gear based progression system where players define their ship t
 - NFT Trading is handled via external websites like OpenSea and not a feature that we need to support in-game.
 - Crypto Wallet support will be delayed until post MVP.
 
+## Power System
+- Use a simplified energy pool system instead of the complex power grid management system.
+
 ##Core Ship Types
 - Based on the above chasis, slots and card collections we have the functionality needed to create different ship in a data driven fashion. 
 -Five ship classes offer distinct roles, with base stats reflecting their strengths and weaknesses. Players select one ship to pilot, with options to purchase or unlock others.
@@ -267,6 +270,8 @@ Gameplay Impact: Limits tactical awareness and reception range of distress calls
 
 #Targeting Computer
 Function: Enhances weapon accuracy and lock-on for guided missiles, detects range to target.
+- Higher level targeting computer allows to sub-targeting of specific slots/systems.
+    - ex: upgrade to level 3 targeting cpu and unlock two new keys: <, > that allow the user to iterate through the exposed targetable systems on the enemy ship.  When the player fires his laser cannons at the sub-target and has a greater chance of damaging it than basic damage that is applied randomly. Note this does not apply to missiles they still just work on splash damage.  Requires extension of the existing targeting HUD ui.
 
 Damage Effect:
 Reduces accuracy and lock-on speed of missiles (e.g., 50% damage = 50% accuracy penalty).

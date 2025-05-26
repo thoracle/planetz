@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ship Types Test (Simple)</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .ship-selector {
+            margin-bottom: 20px;
+        }
+        
+        .ship-selector select {
+            background: #001100;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+        }
+        
+        .ship-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .info-panel {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        
+        .info-panel h3 {
+            margin-top: 0;
+            color: #00ffff;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        
+        .systems-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .system-panel {
+            background: rgba(0, 255, 0, 0.05);
+            border: 1px solid #00aa00;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        
+        .system-panel h4 {
+            margin-top: 0;
+            color: #ffff00;
+        }
+        
+        .test-controls {
+            margin: 20px 0;
+        }
+        
+        .test-controls button {
+            background: #001100;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .test-controls button:hover {
+            background: #002200;
+        }
+        
+        .log {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff00;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ship Types Configuration Test (Simple)</h1>
+        
+        <div class="ship-selector">
+            <label for="shipType">Select Ship Type: </label>
+            <select id="shipType">
+                <option value="heavy_fighter">Heavy Fighter</option>
+                <option value="scout">Scout</option>
+                <option value="light_fighter">Light Fighter</option>
+                <option value="light_freighter">Light Freighter</option>
+                <option value="heavy_freighter">Heavy Freighter</option>
+            </select>
+        </div>
+        
+        <div class="ship-info">
+            <div class="info-panel">
+                <h3>Ship Statistics</h3>
+                <div id="shipStats"></div>
+            </div>
+            
+            <div class="info-panel">
+                <h3>Ship Configuration</h3>
+                <div id="shipConfig"></div>
+            </div>
+        </div>
+        
+        <div class="test-controls">
+            <button onclick="testShipConfig()">Test Ship Configuration</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <div class="systems-grid" id="systemsGrid"></div>
+        
+        <div class="log" id="testLog"></div>
+    </div>
+
+    <script type="module">
+        import { getShipConfig, getAvailableShipTypes } from './js/ship/ShipConfigs.js';
+        
+        function log(message) {
+            const logElement = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}<br>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function updateShipDisplay() {
+            const shipType = document.getElementById('shipType').value;
+            const config = getShipConfig(shipType);
+            
+            // Update ship stats
+            const statsHtml = `
+                <div class="stat-row"><span>Name:</span><span>${config.name}</span></div>
+                <div class="stat-row"><span>Description:</span><span>${config.description}</span></div>
+                <div class="stat-row"><span>Speed:</span><span>${config.baseSpeed}/100</span></div>
+                <div class="stat-row"><span>Armor:</span><span>${config.baseArmor}/100</span></div>
+                <div class="stat-row"><span>Firepower:</span><span>${config.baseFirepower}/100</span></div>
+                <div class="stat-row"><span>Cargo:</span><span>${config.baseCargoCapacity} units</span></div>
+                <div class="stat-row"><span>Hardpoints:</span><span>${config.baseHardpoints}</span></div>
+            `;
+            document.getElementById('shipStats').innerHTML = statsHtml;
+            
+            // Update ship config
+            const configHtml = `
+                <div class="stat-row"><span>Max Energy:</span><span>${config.maxEnergy}</span></div>
+                <div class="stat-row"><span>Energy Recharge:</span><span>${config.energyRechargeRate}/sec</span></div>
+                <div class="stat-row"><span>Max Hull:</span><span>${config.maxHull}</span></div>
+                <div class="stat-row"><span>System Slots:</span><span>${config.systemSlots}</span></div>
+            `;
+            document.getElementById('shipConfig').innerHTML = configHtml;
+            
+            // Update systems display
+            updateSystemsDisplay(config);
+        }
+        
+        function updateSystemsDisplay(config) {
+            const systemsGrid = document.getElementById('systemsGrid');
+            let systemsHtml = '';
+            
+            for (const [systemName, systemConfig] of Object.entries(config.defaultSystems)) {
+                systemsHtml += `
+                    <div class="system-panel">
+                        <h4>${systemName.replace(/_/g, ' ').toUpperCase()}</h4>
+                        <div class="stat-row"><span>Level:</span><span>${systemConfig.level}</span></div>
+                        <div class="stat-row"><span>Slots:</span><span>${systemConfig.slots}</span></div>
+                        <div class="stat-row"><span>Energy/sec:</span><span>${systemConfig.energyConsumption}</span></div>
+                    </div>
+                `;
+            }
+            
+            systemsGrid.innerHTML = systemsHtml;
+        }
+        
+        window.testShipConfig = function() {
+            const shipType = document.getElementById('shipType').value;
+            log(`Testing ship configuration for: ${shipType}`);
+            
+            try {
+                const config = getShipConfig(shipType);
+                log(`✓ Ship config loaded successfully: ${config.name}`);
+                log(`✓ Base stats - Speed: ${config.baseSpeed}, Armor: ${config.baseArmor}, Firepower: ${config.baseFirepower}`);
+                log(`✓ Energy system - Max: ${config.maxEnergy}, Recharge: ${config.energyRechargeRate}/sec`);
+                log(`✓ Slots - Total: ${config.systemSlots}`);
+                log(`✓ Default systems: ${Object.keys(config.defaultSystems).length} systems`);
+                
+                // Test each system configuration
+                for (const [systemName, systemConfig] of Object.entries(config.defaultSystems)) {
+                    log(`  ✓ ${systemName}: Level ${systemConfig.level}, Slots ${systemConfig.slots}, Energy ${systemConfig.energyConsumption}/sec`);
+                }
+                
+            } catch (error) {
+                log(`✗ Ship configuration test failed: ${error.message}`);
+            }
+        };
+        
+        window.clearLog = function() {
+            document.getElementById('testLog').innerHTML = '';
+        };
+        
+        // Initialize display
+        document.getElementById('shipType').addEventListener('change', updateShipDisplay);
+        updateShipDisplay();
+        
+        log('Ship Types Configuration Test initialized. Select a ship type and run tests.');
+    </script>
+</body>
+</html> 

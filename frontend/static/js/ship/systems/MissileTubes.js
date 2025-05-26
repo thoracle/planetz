@@ -52,7 +52,7 @@ export default class MissileTubes extends System {
         this.levelStats = this.initializeLevelStats();
         this.updateLevelStats();
         
-        console.log(`Missile Tubes created (Level ${level}) - Damage: ${this.getCurrentDamage()}, Fire Rate: ${this.getCurrentFireRate()}/sec`);
+        console.log(`Missile Tubes created (Level ${level}) - Damage: ${this.getCurrentDamage()}, Cooldown: ${this.getCurrentCooldownSeconds()}s`);
     }
     
     /**
@@ -61,46 +61,40 @@ export default class MissileTubes extends System {
      */
     initializeLevelStats() {
         const baseDamage = this.baseDamage;
-        const baseFireRate = this.baseFireRate;
         
         return {
             1: { 
                 effectiveness: 1.0,
                 damage: baseDamage,
-                fireRate: baseFireRate,
-                energyPerShot: 5, // Level 1 missile tubes take 5 energy to fire
+                cooldownSeconds: 15, // 15 second cooldown between shots
                 maxBurstShots: 1, // Single missile
                 weaponType: 'Level 1 Light Missiles'
             },
             2: { 
                 effectiveness: 1.2,
                 damage: baseDamage * 1.4, // 40% more damage
-                fireRate: baseFireRate * 0.9, // 10% slower fire rate
-                energyPerShot: 12, // Level 2 missile tubes take 12 energy to fire
+                cooldownSeconds: 12, // 12 second cooldown (faster reload)
                 maxBurstShots: 2, // Dual missile launch
                 weaponType: 'Level 2 Standard Missiles'
             },
             3: { 
                 effectiveness: 1.4,
                 damage: baseDamage * 1.8, // 80% more damage
-                fireRate: baseFireRate * 0.8, // 20% slower fire rate
-                energyPerShot: 20, // Level 3 missile tubes take 20 energy to fire
+                cooldownSeconds: 10, // 10 second cooldown
                 maxBurstShots: 2, // Dual missile launch
                 weaponType: 'Level 3 Heavy Missiles'
             },
             4: { 
                 effectiveness: 1.6,
                 damage: baseDamage * 2.5, // 150% more damage
-                fireRate: baseFireRate * 0.7, // 30% slower fire rate
-                energyPerShot: 30, // Level 4 missile tubes take 30 energy to fire
+                cooldownSeconds: 8, // 8 second cooldown
                 maxBurstShots: 3, // Triple missile launch
                 weaponType: 'Level 4 Plasma Missiles'
             },
             5: { 
                 effectiveness: 1.8,
                 damage: baseDamage * 3.5, // 250% more damage
-                fireRate: baseFireRate * 0.6, // 40% slower fire rate
-                energyPerShot: 40, // Level 5 missile tubes take 40 energy to fire
+                cooldownSeconds: 6, // 6 second cooldown (fastest reload)
                 maxBurstShots: 4, // Quad missile launch
                 weaponType: 'Level 5 Quantum Torpedoes'
             }
@@ -135,34 +129,22 @@ export default class MissileTubes extends System {
     }
     
     /**
-     * Get current fire rate (shots per second) based on level and system health
-     * @returns {number} Fire rate in shots per second
+     * Get current cooldown time in seconds based on level and system health
+     * @returns {number} Cooldown time in seconds
      */
-    getCurrentFireRate() {
+    getCurrentCooldownSeconds() {
         if (!this.isOperational()) {
-            return 0;
+            return Infinity;
         }
         
         const levelStats = this.levelStats[this.level] || this.levelStats[1];
-        const baseFireRate = levelStats.fireRate;
+        const baseCooldown = levelStats.cooldownSeconds;
         const effectiveness = this.getEffectiveness();
         
-        return baseFireRate * effectiveness;
-    }
-    
-    /**
-     * Get energy cost per shot based on level and system health
-     * @returns {number} Energy consumed per shot
-     */
-    getEnergyPerShot() {
-        const levelStats = this.levelStats[this.level] || this.levelStats[1];
-        const baseEnergyPerShot = levelStats.energyPerShot;
+        // Damaged systems reload slower (longer cooldown)
+        const damagePenalty = 1 + (1 - effectiveness) * 0.5; // Up to 50% longer cooldown when damaged
         
-        // Damaged systems are less efficient (consume more energy)
-        const effectiveness = this.getEffectiveness();
-        const inefficiencyPenalty = 1 + (1 - effectiveness) * 0.3; // Up to 30% more energy when damaged
-        
-        return baseEnergyPerShot * inefficiencyPenalty;
+        return baseCooldown * damagePenalty;
     }
     
     /**
@@ -170,8 +152,23 @@ export default class MissileTubes extends System {
      * @returns {number} Cooldown time in milliseconds
      */
     getShotCooldown() {
-        const fireRate = this.getCurrentFireRate();
-        return fireRate > 0 ? 1000 / fireRate : Infinity;
+        return this.getCurrentCooldownSeconds() * 1000;
+    }
+    
+    /**
+     * Get remaining cooldown time in seconds
+     * @returns {number} Remaining cooldown time in seconds
+     */
+    getRemainingCooldown() {
+        if (!this.isOperational()) {
+            return Infinity;
+        }
+        
+        const now = Date.now();
+        const timeSinceLastShot = (now - this.lastFireTime) / 1000;
+        const totalCooldown = this.getCurrentCooldownSeconds();
+        
+        return Math.max(0, totalCooldown - timeSinceLastShot);
     }
     
     /**
@@ -191,7 +188,7 @@ export default class MissileTubes extends System {
     
     /**
      * Attempt to fire missile
-     * @param {Ship} ship - Ship instance for energy consumption
+     * @param {Ship} ship - Ship instance (not used for cooldown-based system)
      * @param {Object} target - Optional target object with position
      * @returns {Object} Fire result with success status and details
      */
@@ -200,24 +197,9 @@ export default class MissileTubes extends System {
             return {
                 success: false,
                 reason: 'Missile tubes on cooldown or not operational',
-                cooldownRemaining: this.getShotCooldown() - (Date.now() - this.lastFireTime)
+                cooldownRemaining: this.getRemainingCooldown()
             };
         }
-        
-        const energyCost = this.getEnergyPerShot();
-        
-        // Check if ship has enough energy
-        if (!ship.hasEnergy(energyCost)) {
-            return {
-                success: false,
-                reason: 'Insufficient energy for missile launch',
-                energyRequired: energyCost,
-                energyAvailable: ship.currentEnergy
-            };
-        }
-        
-        // Consume energy
-        ship.consumeEnergy(energyCost);
         
         // Record fire time
         this.lastFireTime = Date.now();
@@ -232,14 +214,15 @@ export default class MissileTubes extends System {
             hitResult = this.calculateHit(target);
         }
         
-        console.log(`Missile fired! Energy consumed: ${energyCost}, Damage: ${this.getCurrentDamage()}`);
+        const levelStats = this.levelStats[this.level] || this.levelStats[1];
+        console.log(`Missile fired! ${levelStats.weaponType} - Damage: ${this.getCurrentDamage()}, Next reload: ${this.getCurrentCooldownSeconds()}s`);
         
         return {
             success: true,
             damage: this.getCurrentDamage(),
-            energyConsumed: energyCost,
+            cooldownSeconds: this.getCurrentCooldownSeconds(),
             hitResult: hitResult,
-            weaponType: this.levelStats[this.level]?.weaponType || 'Missiles'
+            weaponType: levelStats.weaponType || 'Missiles'
         };
     }
     
@@ -361,11 +344,11 @@ export default class MissileTubes extends System {
     
     /**
      * Get current energy consumption rate per second
-     * Missile tubes don't consume continuous energy, only per shot
+     * Missile tubes don't consume any energy - they use cooldown-based system
      * @returns {number} Always returns 0 for missile tubes
      */
     getEnergyConsumptionRate() {
-        return 0; // Missile tubes only consume energy per shot, not continuously
+        return 0; // Missile tubes use cooldown system, no energy consumption
     }
     
     /**
@@ -420,18 +403,18 @@ export default class MissileTubes extends System {
             // Add backward compatibility for HUD
             healthPercentage: baseStatus.health.percentage,
             currentDamage: this.getCurrentDamage(),
-            currentFireRate: this.getCurrentFireRate(),
-            energyPerShot: this.getEnergyPerShot(),
+            cooldownSeconds: this.getCurrentCooldownSeconds(),
+            cooldownRemaining: this.getRemainingCooldown(),
             canFire: this.canFire(),
             isCharging: this.isCharging,
-            cooldownRemaining: this.currentCooldown,
             weaponType: levelStats.weaponType,
             hasTarget: this.hasTarget,
             targetLock: this.targetLock,
             targetDistance: this.targetDistance,
             firepowerBonus: this.getFirepowerBonus(),
             maxBurstShots: this.maxBurstShots,
-            readyToFire: this.isOperational() && !this.isActive // Ready when operational but not consuming power
+            readyToFire: this.canFire(),
+            lastFireTime: this.lastFireTime
         };
     }
     

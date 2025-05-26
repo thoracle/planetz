@@ -195,7 +195,21 @@ export default class ImpulseEngines extends System {
     }
     
     /**
-     * Get speed bonus for ship stats calculation
+     * Get base speed provided by this engine system
+     * @returns {number} Base speed rating provided by engines
+     */
+    getBaseSpeed() {
+        if (!this.isOperational()) return 0;
+        
+        // Base speed per level
+        const speedPerLevel = 15; // Base speed units per level
+        const baseSpeed = speedPerLevel * this.level;
+        
+        return baseSpeed * this.getEffectiveness();
+    }
+    
+    /**
+     * Get speed bonus for ship stats calculation (legacy method for compatibility)
      * @returns {number} Speed multiplier based on impulse speed
      */
     getSpeedBonus() {
@@ -211,8 +225,8 @@ export default class ImpulseEngines extends System {
     }
     
     /**
-     * Apply damage to the impulse engines with special protection
-     * Impulse engines can never be completely disabled to prevent stranding
+     * Apply damage to the impulse engines
+     * Impulse engines can be completely destroyed but remain repairable
      * @param {number} damage Amount of damage to apply
      */
     takeDamage(damage) {
@@ -221,26 +235,22 @@ export default class ImpulseEngines extends System {
         this.currentHealth = Math.max(0, this.currentHealth - damage);
         this.healthPercentage = this.currentHealth / this.maxHealth;
         
-        // SPECIAL PROTECTION: Impulse engines can never go below 10% health
-        // This ensures they can always be repaired and provide minimal movement
-        if (this.healthPercentage < 0.1) {
-            this.currentHealth = this.maxHealth * 0.1;
-            this.healthPercentage = 0.1;
-            console.log(`${this.name} protected from complete failure - minimum 10% health maintained`);
-        }
-        
         // Update system state based on health
         this.updateSystemState();
         
         console.log(`${this.name} took ${damage.toFixed(1)} damage. Health: ${this.healthPercentage.toFixed(2)}`);
+        
+        if (this.healthPercentage === 0) {
+            console.log(`${this.name} has been completely destroyed but can still be repaired`);
+        }
     }
 
     /**
-     * Check if system is operational - impulse engines are always minimally operational
+     * Check if system is operational
      * @returns {boolean} True if system can function
      */
     isOperational() {
-        // Impulse engines are always operational at some level (never completely disabled)
+        // Impulse engines can be completely destroyed (0% health) but are still repairable
         return this.healthPercentage > 0;
     }
 
@@ -260,11 +270,10 @@ export default class ImpulseEngines extends System {
                 }
                 break;
             case SYSTEM_STATES.DISABLED:
-                // Impulse engines can never be completely disabled due to special protection
-                // Instead, they operate at minimal capacity (impulse 1 only)
-                if (this.currentImpulseSpeed > 1) {
-                    console.log('Severe engine damage - limited to minimal impulse speed (1)');
-                    this.setImpulseSpeed(1);
+                // Impulse engines are completely destroyed and cannot function
+                if (this.currentImpulseSpeed > 0) {
+                    console.log('Impulse engines destroyed - all stop!');
+                    this.emergencyStop();
                 }
                 break;
         }

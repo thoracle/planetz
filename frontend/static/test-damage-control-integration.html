@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Damage Control Integration Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #00ff41;
+            font-family: "Courier New", monospace;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #00ff41;
+            background: rgba(0, 0, 0, 0.7);
+        }
+        .test-button {
+            background: #00aa41;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: "Courier New", monospace;
+            font-weight: bold;
+        }
+        .test-button:hover {
+            background: #00ff41;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 255, 65, 0.1);
+            border-left: 3px solid #00ff41;
+        }
+        .instructions {
+            background: rgba(0, 100, 0, 0.2);
+            padding: 15px;
+            border: 1px solid #00aa41;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Damage Control Integration Test</h1>
+        
+        <div class="instructions">
+            <h3>Instructions:</h3>
+            <p>1. Click "Initialize Ship" to create a ship with systems</p>
+            <p>2. Press 'D' key to open the new centered damage control interface</p>
+            <p>3. Test the priority sliders and auto-repair controls</p>
+            <p>4. Press 'D' or ESC to close the interface</p>
+            <p>5. Verify the old ship systems HUD is no longer visible</p>
+        </div>
+        
+        <div class="test-section">
+            <h3>Ship Initialization</h3>
+            <button class="test-button" onclick="initializeShip()">Initialize Ship</button>
+            <button class="test-button" onclick="damageRandomSystem()">Damage Random System</button>
+            <button class="test-button" onclick="repairAllSystems()">Repair All Systems</button>
+            <div id="ship-status" class="status">Ship not initialized</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Damage Control Interface</h3>
+            <button class="test-button" onclick="openDamageControl()">Open Damage Control (D key)</button>
+            <button class="test-button" onclick="closeDamageControl()">Close Damage Control</button>
+            <div id="interface-status" class="status">Interface closed</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>System Status</h3>
+            <div id="systems-list">No systems loaded</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import Ship from './js/ship/Ship.js';
+        import SimplifiedDamageControl from './js/ui/SimplifiedDamageControl.js';
+
+        let ship = null;
+        let damageControl = null;
+
+        // Make functions globally available
+        window.initializeShip = async function() {
+            try {
+                ship = new Ship('heavy_fighter');
+                await ship.waitForSystemsInitialized();
+                
+                damageControl = new SimplifiedDamageControl();
+                window.simplifiedDamageControl = damageControl;
+                
+                document.getElementById('ship-status').textContent = 'Ship initialized with ' + ship.systems.size + ' systems';
+                updateSystemsList();
+                
+                // Add keyboard listener for 'D' key
+                document.addEventListener('keydown', (event) => {
+                    if (event.key.toLowerCase() === 'd') {
+                        if (damageControl && ship) {
+                            const wasVisible = damageControl.isVisible;
+                            damageControl.toggle(ship, false);
+                            document.getElementById('interface-status').textContent = 
+                                damageControl.isVisible ? 'Interface opened' : 'Interface closed';
+                        }
+                    }
+                });
+                
+                console.log('Ship initialized successfully');
+            } catch (error) {
+                console.error('Error initializing ship:', error);
+                document.getElementById('ship-status').textContent = 'Error: ' + error.message;
+            }
+        };
+
+        window.damageRandomSystem = function() {
+            if (!ship) {
+                alert('Initialize ship first');
+                return;
+            }
+            
+            const systemNames = Array.from(ship.systems.keys());
+            const randomSystem = systemNames[Math.floor(Math.random() * systemNames.length)];
+            const system = ship.systems.get(randomSystem);
+            
+            if (system) {
+                system.takeDamage(30); // 30% damage
+                console.log(`Damaged ${randomSystem} by 30%`);
+                updateSystemsList();
+            }
+        };
+
+        window.repairAllSystems = function() {
+            if (!ship) {
+                alert('Initialize ship first');
+                return;
+            }
+            
+            for (const [systemName, system] of ship.systems) {
+                system.repair(1.0); // Full repair
+            }
+            console.log('All systems repaired');
+            updateSystemsList();
+        };
+
+        window.openDamageControl = function() {
+            if (!damageControl || !ship) {
+                alert('Initialize ship first');
+                return;
+            }
+            
+            damageControl.show(ship, false);
+            document.getElementById('interface-status').textContent = 'Interface opened';
+        };
+
+        window.closeDamageControl = function() {
+            if (!damageControl) {
+                alert('Initialize ship first');
+                return;
+            }
+            
+            damageControl.hide();
+            document.getElementById('interface-status').textContent = 'Interface closed';
+        };
+
+        function updateSystemsList() {
+            if (!ship) return;
+            
+            const systemsList = document.getElementById('systems-list');
+            let html = '';
+            
+            for (const [systemName, system] of ship.systems) {
+                const health = Math.round(system.healthPercentage * 100);
+                const status = system.isOperational() ? 'OPERATIONAL' : 'OFFLINE';
+                const color = health > 75 ? '#00ff41' : health > 25 ? '#ffaa00' : '#ff4400';
+                
+                html += `
+                    <div style="margin: 5px 0; color: ${color};">
+                        ${systemName.toUpperCase()}: ${health}% (${status})
+                    </div>
+                `;
+            }
+            
+            systemsList.innerHTML = html;
+        }
+
+        // Auto-initialize for testing
+        setTimeout(() => {
+            console.log('Auto-initializing ship for testing...');
+            window.initializeShip();
+        }, 1000);
+    </script>
+</body>
+</html> 

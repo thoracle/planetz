@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THREE.js Fix Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #00ff41;
+            font-family: "Courier New", monospace;
+            overflow: hidden;
+        }
+        
+        .test-controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 2000;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff41;
+            padding: 10px;
+            font-size: 12px;
+        }
+        
+        .test-button {
+            background: #00aa41;
+            color: #000;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-family: "Courier New", monospace;
+            font-weight: bold;
+            border-radius: 4px;
+            margin: 5px 0;
+            display: block;
+            width: 100%;
+        }
+        
+        .test-button:hover {
+            filter: brightness(1.2);
+        }
+        
+        .status {
+            margin: 10px 0;
+            padding: 5px;
+            border: 1px solid #00ff41;
+            background: rgba(0, 20, 0, 0.3);
+        }
+        
+        .success {
+            border-color: #00ff41;
+            color: #00ff41;
+        }
+        
+        .error {
+            border-color: #ff4141;
+            color: #ff4141;
+        }
+    </style>
+    
+    <!-- Load Three.js as global script (for test pages) -->
+    <script src="./lib/three.min.js"></script>
+</head>
+<body>
+    <div class="test-controls">
+        <h3>THREE.js Fix Test</h3>
+        <button class="test-button" onclick="testStarfieldManager()">Test StarfieldManager</button>
+        <button class="test-button" onclick="testShipCreation()">Test Ship Creation</button>
+        <div id="status" class="status">Ready to test...</div>
+    </div>
+
+    <script type="module">
+        import Ship from './js/ship/Ship.js';
+        import { StarfieldManager } from './js/views/StarfieldManager.js';
+        
+        let scene, camera, starfieldManager, ship;
+        
+        // Initialize basic Three.js scene
+        function initScene() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+            
+            const renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+            
+            return { scene, camera, renderer };
+        }
+        
+        window.testStarfieldManager = async function() {
+            const statusDiv = document.getElementById('status');
+            
+            try {
+                statusDiv.innerHTML = 'Testing StarfieldManager creation...';
+                statusDiv.className = 'status';
+                
+                // Initialize scene if not already done
+                if (!scene) {
+                    const sceneData = initScene();
+                    scene = sceneData.scene;
+                    camera = sceneData.camera;
+                }
+                
+                // Create a mock ViewManager
+                const mockViewManager = {
+                    ship: null,
+                    setStarfieldManager: () => {},
+                    playCommandSound: () => {}
+                };
+                
+                // Test StarfieldManager creation with global THREE
+                starfieldManager = new StarfieldManager(scene, camera, mockViewManager);
+                
+                statusDiv.innerHTML = '✅ SUCCESS: StarfieldManager created successfully with global THREE.js!';
+                statusDiv.className = 'status success';
+                
+                console.log('StarfieldManager created:', starfieldManager);
+                console.log('StarfieldManager.THREE:', starfieldManager.THREE);
+                
+            } catch (error) {
+                statusDiv.innerHTML = `❌ ERROR: ${error.message}`;
+                statusDiv.className = 'status error';
+                console.error('StarfieldManager test failed:', error);
+            }
+        };
+        
+        window.testShipCreation = async function() {
+            const statusDiv = document.getElementById('status');
+            
+            try {
+                statusDiv.innerHTML = 'Testing Ship creation...';
+                statusDiv.className = 'status';
+                
+                // Create ship
+                ship = new Ship('heavy_fighter');
+                await ship.waitForSystemsInitialized();
+                
+                statusDiv.innerHTML = '✅ SUCCESS: Ship created and systems initialized!';
+                statusDiv.className = 'status success';
+                
+                console.log('Ship created:', ship);
+                console.log('Ship systems:', Array.from(ship.systems.keys()));
+                
+            } catch (error) {
+                statusDiv.innerHTML = `❌ ERROR: ${error.message}`;
+                statusDiv.className = 'status error';
+                console.error('Ship creation test failed:', error);
+            }
+        };
+        
+        // Auto-run tests on load
+        setTimeout(() => {
+            testStarfieldManager();
+        }, 1000);
+    </script>
+</body>
+</html> 

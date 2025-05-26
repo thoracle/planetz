@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { getShipConfig, validateShipConfig } from './ShipConfigs.js';
 
 /**
@@ -17,18 +16,18 @@ export default class Ship {
             throw new Error(`Invalid ship configuration for ${shipType}`);
         }
         
-        // Base stats from configuration
-        this.baseSpeed = this.shipConfig.baseSpeed;
-        this.baseArmor = this.shipConfig.baseArmor;
-        this.baseFirepower = this.shipConfig.baseFirepower;
-        this.baseCargoCapacity = this.shipConfig.baseCargoCapacity;
+        // Base stats are now minimal - most stats come from installed gear
+        this.baseSpeed = 0;         // Speed comes from engines
+        this.baseArmor = 0;         // Armor comes from shield generators
+        this.baseFirepower = 0;     // Firepower comes from weapons
+        this.baseCargoCapacity = 0; // Cargo comes from cargo holds
         this.baseHardpoints = this.shipConfig.baseHardpoints;
         
-        // Current calculated stats (modified by systems and damage)
-        this.currentSpeed = this.baseSpeed;
-        this.currentArmor = this.baseArmor;
-        this.currentFirepower = this.baseFirepower;
-        this.currentCargoCapacity = this.baseCargoCapacity;
+        // Current calculated stats (derived from installed gear)
+        this.currentSpeed = 0;
+        this.currentArmor = 0;
+        this.currentFirepower = 0;
+        this.currentCargoCapacity = 0;
         
         // System management
         this.systems = new Map();
@@ -39,17 +38,20 @@ export default class Ship {
         this.usedSlots = 0;
         this.availableSlots = this.totalSlots;
         
-        // Energy management (central energy pool) - SIMPLIFIED: no separate power grid
-        this.maxEnergy = this.shipConfig.maxEnergy;
-        this.currentEnergy = this.maxEnergy;
-        this.energyRechargeRate = this.shipConfig.energyRechargeRate;
+        // Energy management (central energy pool) - now comes from energy reactors
+        this.maxEnergy = 0;         // Energy capacity comes from reactors
+        this.currentEnergy = 0;
+        this.energyRechargeRate = 0; // Energy recharge comes from reactors
         
-        // Hull integrity
-        this.maxHull = this.shipConfig.maxHull;
-        this.currentHull = this.maxHull;
+        // Hull integrity - now comes from hull plating
+        this.maxHull = 0;           // Hull capacity comes from hull plating
+        this.currentHull = 0;
         
         // Initialize default systems
         this.initializeDefaultSystems();
+        
+        // Initialize auto-repair system
+        this.autoRepairSystem = null; // Will be initialized after systems are loaded
         
         console.log(`Ship created: ${shipType} (simplified energy system)`, this.shipConfig);
     }
@@ -71,6 +73,23 @@ export default class Ship {
     }
     
     /**
+     * Wait for systems to be fully initialized
+     * @returns {Promise} Promise that resolves when systems are loaded
+     */
+    async waitForSystemsInitialized() {
+        return new Promise((resolve) => {
+            const checkSystems = () => {
+                if (this.systems.size > 0) {
+                    resolve();
+                } else {
+                    setTimeout(checkSystems, 10);
+                }
+            };
+            checkSystems();
+        });
+    }
+    
+    /**
      * Create default system instances for the ship
      */
     async initializeDefaultSystemInstances() {
@@ -85,6 +104,12 @@ export default class Ship {
             const { default: GalacticChartSystem } = await import('./systems/GalacticChartSystem.js');
             const { default: SubspaceRadioSystem } = await import('./systems/SubspaceRadioSystem.js');
             const { default: TargetComputer } = await import('./systems/TargetComputer.js');
+            
+            // Import new gear systems
+            const { default: HullPlating } = await import('./systems/HullPlating.js');
+            const { default: EnergyReactor } = await import('./systems/EnergyReactor.js');
+            const { default: ShieldGenerator } = await import('./systems/ShieldGenerator.js');
+            const { default: CargoHold } = await import('./systems/CargoHold.js');
             
             // Get default system configurations
             const defaultSystems = this.shipConfig.defaultSystems;
@@ -147,14 +172,48 @@ export default class Ship {
             }
             
             // Missile tubes are optional and compete with laser weapons for slots
+            console.log('Checking for missile_tubes in defaultSystems:', !!defaultSystems.missile_tubes);
+            console.log('defaultSystems.missile_tubes config:', defaultSystems.missile_tubes);
             if (defaultSystems.missile_tubes) {
+                console.log('Initializing missile tubes...');
                 const missileTubes = new MissileTubes(defaultSystems.missile_tubes.level);
                 // Override slot cost from ship configuration
                 missileTubes.slotCost = defaultSystems.missile_tubes.slots;
                 this.addSystem('missile_tubes', missileTubes);
+            } else {
+                console.log('No missile_tubes found in defaultSystems');
+            }
+            
+            // Add new gear systems that provide base ship stats
+            if (defaultSystems.hull_plating) {
+                const hullPlating = new HullPlating(defaultSystems.hull_plating.level);
+                hullPlating.slotCost = defaultSystems.hull_plating.slots;
+                this.addSystem('hull_plating', hullPlating);
+            }
+            
+            if (defaultSystems.energy_reactor) {
+                const energyReactor = new EnergyReactor(defaultSystems.energy_reactor.level);
+                energyReactor.slotCost = defaultSystems.energy_reactor.slots;
+                this.addSystem('energy_reactor', energyReactor);
+            }
+            
+            if (defaultSystems.shield_generator) {
+                const shieldGenerator = new ShieldGenerator(defaultSystems.shield_generator.level);
+                shieldGenerator.slotCost = defaultSystems.shield_generator.slots;
+                this.addSystem('shield_generator', shieldGenerator);
+            }
+            
+            if (defaultSystems.cargo_hold) {
+                const cargoHold = new CargoHold(defaultSystems.cargo_hold.level);
+                cargoHold.slotCost = defaultSystems.cargo_hold.slots;
+                this.addSystem('cargo_hold', cargoHold);
             }
             
             console.log(`Initialized ${this.systems.size} default systems for ${this.shipType}`);
+            
+            // Initialize auto-repair system after systems are loaded
+            const { default: AutoRepairSystem } = await import('./AutoRepairSystem.js');
+            this.autoRepairSystem = new AutoRepairSystem(this);
             
         } catch (error) {
             console.error('Error initializing default systems:', error);
@@ -162,57 +221,100 @@ export default class Ship {
     }
     
     /**
-     * Calculate total stats including system modifications
+     * Calculate total stats from installed gear/systems
      */
     calculateTotalStats() {
-        let speedModifier = 1.0;
-        let armorModifier = 1.0;
-        let firepowerModifier = 1.0;
-        let cargoModifier = 1.0;
+        // Reset stats to base (minimal) values
+        let totalSpeed = this.baseSpeed;
+        let totalArmor = this.baseArmor;
+        let totalFirepower = this.baseFirepower;
+        let totalCargoCapacity = this.baseCargoCapacity;
+        let totalEnergyCapacity = 0;
+        let totalEnergyRechargeRate = 0;
+        let totalHullCapacity = 0;
         
-        // Apply system modifications
+        // Sum stats from all installed systems/gear
         for (let [systemName, system] of this.systems) {
             if (system.isOperational()) {
-                const effectiveness = system.getEffectiveness();
-                
-                // Apply system-specific modifiers
-                switch (systemName) {
-                    case 'impulse_engines':
-                        speedModifier *= (1 + (system.getSpeedBonus() * effectiveness));
-                        break;
-                    case 'shields':
-                        armorModifier *= (1 + (system.getArmorBonus() * effectiveness));
-                        break;
-                    case 'weapons':
-                    case 'missile_tubes':
-                        firepowerModifier *= (1 + (system.getFirepowerBonus() * effectiveness));
-                        break;
+                // Add base stats provided by each system
+                if (system.getBaseSpeed) {
+                    totalSpeed += system.getBaseSpeed();
+                }
+                if (system.getArmorBonus) {
+                    totalArmor += system.getArmorBonus();
+                }
+                if (system.getBaseFirepower) {
+                    totalFirepower += system.getBaseFirepower();
+                }
+                if (system.getCargoCapacity) {
+                    totalCargoCapacity += system.getCargoCapacity();
+                }
+                if (system.getEnergyCapacity) {
+                    totalEnergyCapacity += system.getEnergyCapacity();
+                }
+                if (system.getEnergyRechargeRate) {
+                    totalEnergyRechargeRate += system.getEnergyRechargeRate();
+                }
+                if (system.getHullCapacity) {
+                    totalHullCapacity += system.getHullCapacity();
                 }
             }
         }
         
-        // Apply upgrade modifications
+        // Apply upgrade modifications (if any)
         for (let [upgradeName, upgrade] of this.upgrades) {
             if (upgrade.isInstalled) {
                 const stats = upgrade.stats;
-                speedModifier *= (1 + (stats.speed || 0));
-                armorModifier *= (1 + (stats.armor || 0));
-                firepowerModifier *= (1 + (stats.firepower || 0));
-                cargoModifier *= (1 + (stats.cargo || 0));
+                totalSpeed *= (1 + (stats.speed || 0));
+                totalArmor *= (1 + (stats.armor || 0));
+                totalFirepower *= (1 + (stats.firepower || 0));
+                totalCargoCapacity *= (1 + (stats.cargo || 0));
             }
         }
         
-        // Calculate final stats
-        this.currentSpeed = this.baseSpeed * speedModifier;
-        this.currentArmor = this.baseArmor * armorModifier;
-        this.currentFirepower = this.baseFirepower * firepowerModifier;
-        this.currentCargoCapacity = this.baseCargoCapacity * cargoModifier;
+        // Update ship stats
+        this.currentSpeed = totalSpeed;
+        this.currentArmor = totalArmor;
+        this.currentFirepower = totalFirepower;
+        this.currentCargoCapacity = totalCargoCapacity;
+        
+        // Update energy and hull stats
+        const oldMaxEnergy = this.maxEnergy;
+        const oldMaxHull = this.maxHull;
+        
+        this.maxEnergy = totalEnergyCapacity;
+        this.energyRechargeRate = totalEnergyRechargeRate;
+        this.maxHull = totalHullCapacity;
+        
+        // Adjust current energy and hull if maximums changed
+        if (oldMaxEnergy !== this.maxEnergy) {
+            // Scale current energy proportionally if max changed
+            if (oldMaxEnergy > 0) {
+                const energyRatio = this.currentEnergy / oldMaxEnergy;
+                this.currentEnergy = this.maxEnergy * energyRatio;
+            } else {
+                this.currentEnergy = this.maxEnergy; // Start with full energy
+            }
+        }
+        
+        if (oldMaxHull !== this.maxHull) {
+            // Scale current hull proportionally if max changed
+            if (oldMaxHull > 0) {
+                const hullRatio = this.currentHull / oldMaxHull;
+                this.currentHull = this.maxHull * hullRatio;
+            } else {
+                this.currentHull = this.maxHull; // Start with full hull
+            }
+        }
         
         return {
             speed: this.currentSpeed,
             armor: this.currentArmor,
             firepower: this.currentFirepower,
-            cargo: this.currentCargoCapacity
+            cargo: this.currentCargoCapacity,
+            maxEnergy: this.maxEnergy,
+            energyRechargeRate: this.energyRechargeRate,
+            maxHull: this.maxHull
         };
     }
     
@@ -269,6 +371,37 @@ export default class Ship {
                 console.log(`System damage: ${randomSystem} took ${systemDamage.toFixed(1)} damage`);
             }
         }
+    }
+    
+    /**
+     * Apply damage to a specific system (for sub-targeting)
+     * @param {string} systemName - Name of the system to damage
+     * @param {number} damage - Amount of damage to apply
+     * @param {string} damageType - Type of damage
+     * @returns {boolean} True if damage was applied successfully
+     */
+    applySubTargetDamage(systemName, damage, damageType = 'kinetic') {
+        const system = this.systems.get(systemName);
+        if (!system) {
+            console.warn(`Cannot apply sub-target damage: system ${systemName} not found`);
+            return false;
+        }
+        
+        const healthBefore = system.healthPercentage;
+        system.takeDamage(damage);
+        const healthAfter = system.healthPercentage;
+        
+        console.log(`Sub-target damage: ${systemName} took ${damage.toFixed(1)} ${damageType} damage`);
+        console.log(`System health: ${(healthBefore * 100).toFixed(1)}% → ${(healthAfter * 100).toFixed(1)}%`);
+        
+        if (healthAfter === 0 && healthBefore > 0) {
+            console.log(`System ${systemName} DESTROYED!`);
+        }
+        
+        // Recalculate stats after system damage
+        this.calculateTotalStats();
+        
+        return true;
     }
     
     /**
@@ -381,6 +514,11 @@ export default class Ship {
             if (system.update) {
                 system.update(deltaTime, this); // Pass ship reference for energy consumption
             }
+        }
+        
+        // Update auto-repair system
+        if (this.autoRepairSystem) {
+            this.autoRepairSystem.update(deltaTime);
         }
     }
     

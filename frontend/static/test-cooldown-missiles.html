@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cooldown-Based Missile System Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff41;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.4;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            border: 2px solid #00ff41;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: rgba(0, 20, 0, 0.3);
+        }
+        
+        .test-section {
+            border: 1px solid #00ff41;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 20, 0, 0.2);
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        button {
+            background: rgba(0, 20, 0, 0.5);
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+        
+        button:hover {
+            background: rgba(0, 255, 65, 0.1);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .status-panel {
+            border: 1px solid #00ff41;
+            padding: 15px;
+            background: rgba(0, 20, 0, 0.3);
+        }
+        
+        .status-panel h3 {
+            margin: 0 0 10px 0;
+            color: #00ff41;
+            text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+        }
+        
+        .status-line {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .ready { color: #00ff41; }
+        .cooldown { color: #ffaa00; }
+        .disabled { color: #ff4444; }
+        
+        .cooldown-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 255, 65, 0.2);
+            border: 1px solid #00ff41;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .cooldown-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ffaa00, #00ff41);
+            transition: width 0.1s ease;
+        }
+        
+        .cooldown-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+        
+        .log {
+            background: rgba(0, 20, 0, 0.5);
+            border: 1px solid #00ff41;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            margin: 15px 0;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        
+        .log-fire { color: #ff6600; }
+        .log-cooldown { color: #ffaa00; }
+        .log-ready { color: #00ff41; }
+        .log-error { color: #ff4444; }
+        
+        .instructions {
+            background: rgba(0, 20, 0, 0.3);
+            border: 1px solid #00ff41;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        
+        .instructions h3 {
+            color: #00ff41;
+            margin: 0 0 10px 0;
+        }
+        
+        .instructions ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 COOLDOWN-BASED MISSILE SYSTEM TEST 🚀</h1>
+            <p>Testing the new consumable-free missile system with cooldown mechanics</p>
+        </div>
+
+        <div class="test-section">
+            <h2>Missile Tube Controls</h2>
+            <div class="controls">
+                <button onclick="fireMissile()">🚀 FIRE MISSILE</button>
+                <button onclick="upgradeMissiles()">⬆️ UPGRADE TUBES</button>
+                <button onclick="damageMissiles()">💥 DAMAGE SYSTEM</button>
+                <button onclick="repairMissiles()">🔧 REPAIR SYSTEM</button>
+                <button onclick="destroyMissiles()">💀 DESTROY SYSTEM</button>
+                <button onclick="resetMissiles()">🔄 RESET SYSTEM</button>
+            </div>
+        </div>
+
+        <div class="status-grid">
+            <div class="status-panel">
+                <h3>Missile System Status</h3>
+                <div id="missile-status">
+                    <!-- Status will be populated here -->
+                </div>
+                
+                <div class="cooldown-bar">
+                    <div class="cooldown-fill" id="cooldown-fill"></div>
+                    <div class="cooldown-text" id="cooldown-text">READY</div>
+                </div>
+            </div>
+            
+            <div class="status-panel">
+                <h3>Ship Energy Status</h3>
+                <div id="energy-status">
+                    <!-- Energy status will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Combat Log</h2>
+            <div class="log" id="combat-log">
+                <!-- Log entries will appear here -->
+            </div>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <div class="instructions">
+            <h3>Instructions:</h3>
+            <ul>
+                <li><strong>Fire Missile:</strong> Launch a missile (if not on cooldown)</li>
+                <li><strong>Upgrade Tubes:</strong> Increase missile level (better damage, faster reload)</li>
+                <li><strong>Damage System:</strong> Reduce system health (increases cooldown time)</li>
+                <li><strong>Repair System:</strong> Restore system health</li>
+                <li><strong>Destroy System:</strong> Set health to 0% (disables missiles)</li>
+                <li><strong>Reset System:</strong> Restore to Level 1, 100% health</li>
+            </ul>
+            
+            <h3>Key Features:</h3>
+            <ul>
+                <li>🚀 <strong>No Energy Cost:</strong> Missiles use cooldown instead of energy</li>
+                <li>⏱️ <strong>Level-Based Cooldown:</strong> Higher levels reload faster</li>
+                <li>💥 <strong>Damage Scaling:</strong> Higher levels deal more damage</li>
+                <li>🔧 <strong>Health Effects:</strong> Damaged systems reload slower</li>
+                <li>🎯 <strong>No Ammo:</strong> Unlimited missiles with time-based reloading</li>
+            </ul>
+        </div>
+    </div>
+
+    <script type="module">
+        import Ship from './js/ship/Ship.js';
+
+        let ship = null;
+        let missileSystem = null;
+        let updateInterval = null;
+
+        // Initialize ship and missile system
+        async function initializeTest() {
+            try {
+                ship = new Ship('heavy_fighter');
+                await ship.waitForSystemsInitialized();
+                
+                missileSystem = ship.getSystem('missile_tubes');
+                if (!missileSystem) {
+                    log('ERROR: No missile tubes found on ship!', 'log-error');
+                    return;
+                }
+                
+                log('Missile system initialized successfully', 'log-ready');
+                updateDisplay();
+                
+                // Start update loop
+                updateInterval = setInterval(updateDisplay, 100);
+                
+            } catch (error) {
+                log(`ERROR: Failed to initialize ship: ${error.message}`, 'log-error');
+            }
+        }
+
+        // Fire missile
+        window.fireMissile = function() {
+            if (!missileSystem) return;
+            
+            const result = missileSystem.fire(ship);
+            
+            if (result.success) {
+                log(`🚀 MISSILE FIRED! ${result.weaponType} - Damage: ${result.damage.toFixed(1)} - Cooldown: ${result.cooldownSeconds.toFixed(1)}s`, 'log-fire');
+            } else {
+                log(`❌ FIRE FAILED: ${result.reason} (${result.cooldownRemaining?.toFixed(1)}s remaining)`, 'log-error');
+            }
+        };
+
+        // Upgrade missile system
+        window.upgradeMissiles = function() {
+            if (!missileSystem) return;
+            
+            const oldLevel = missileSystem.level;
+            const upgraded = missileSystem.upgrade();
+            
+            if (upgraded) {
+                log(`⬆️ UPGRADED: Level ${oldLevel} → Level ${missileSystem.level}`, 'log-ready');
+            } else {
+                log(`❌ UPGRADE FAILED: Already at maximum level (${missileSystem.level})`, 'log-error');
+            }
+        };
+
+        // Damage missile system
+        window.damageMissiles = function() {
+            if (!missileSystem) return;
+            
+            const damage = 25; // 25% damage
+            const oldHealth = missileSystem.healthPercentage;
+            missileSystem.takeDamage(damage);
+            const newHealth = missileSystem.healthPercentage;
+            
+            log(`💥 SYSTEM DAMAGED: ${(oldHealth * 100).toFixed(1)}% → ${(newHealth * 100).toFixed(1)}%`, 'log-cooldown');
+        };
+
+        // Repair missile system
+        window.repairMissiles = function() {
+            if (!missileSystem) return;
+            
+            const repair = 0.3; // 30% repair
+            const oldHealth = missileSystem.healthPercentage;
+            missileSystem.repair(repair);
+            const newHealth = missileSystem.healthPercentage;
+            
+            log(`🔧 SYSTEM REPAIRED: ${(oldHealth * 100).toFixed(1)}% → ${(newHealth * 100).toFixed(1)}%`, 'log-ready');
+        };
+
+        // Destroy missile system
+        window.destroyMissiles = function() {
+            if (!missileSystem) return;
+            
+            const oldHealth = missileSystem.healthPercentage;
+            missileSystem.takeDamage(missileSystem.currentHealth); // Destroy completely
+            
+            log(`💀 SYSTEM DESTROYED: ${(oldHealth * 100).toFixed(1)}% → 0%`, 'log-error');
+        };
+
+        // Reset missile system
+        window.resetMissiles = function() {
+            if (!missileSystem) return;
+            
+            missileSystem.level = 1;
+            missileSystem.currentHealth = missileSystem.maxHealth;
+            missileSystem.healthPercentage = 1.0;
+            missileSystem.lastFireTime = 0;
+            missileSystem.updateLevelStats();
+            
+            log(`🔄 SYSTEM RESET: Level 1, 100% health`, 'log-ready');
+        };
+
+        // Update display
+        function updateDisplay() {
+            if (!missileSystem) return;
+            
+            updateMissileStatus();
+            updateEnergyStatus();
+            updateCooldownBar();
+        }
+
+        // Update missile status display
+        function updateMissileStatus() {
+            const status = missileSystem.getStatus();
+            const statusDiv = document.getElementById('missile-status');
+            
+            const healthPercent = (status.health.percentage * 100).toFixed(1);
+            const canFireStatus = status.canFire ? 'READY' : 'COOLDOWN';
+            const canFireClass = status.canFire ? 'ready' : 'cooldown';
+            
+            // Check if system is operational (health > 0)
+            if (!missileSystem.isOperational()) {
+                statusDiv.innerHTML = `
+                    <div class="status-line disabled">System: DESTROYED</div>
+                    <div class="status-line">Level: ${missileSystem.level}</div>
+                    <div class="status-line">Health: ${healthPercent}%</div>
+                    <div class="status-line disabled">Status: OFFLINE</div>
+                `;
+                return;
+            }
+            
+            statusDiv.innerHTML = `
+                <div class="status-line">System: ${status.weaponType}</div>
+                <div class="status-line">Level: ${missileSystem.level}</div>
+                <div class="status-line">Health: ${healthPercent}%</div>
+                <div class="status-line ${canFireClass}">Status: ${canFireStatus}</div>
+                <div class="status-line">Damage: ${status.currentDamage.toFixed(1)}</div>
+                <div class="status-line">Cooldown: ${status.cooldownSeconds.toFixed(1)}s</div>
+                <div class="status-line">Remaining: ${status.cooldownRemaining.toFixed(1)}s</div>
+                <div class="status-line">Burst Size: ${status.maxBurstShots}</div>
+            `;
+        }
+
+        // Update energy status display
+        function updateEnergyStatus() {
+            const shipStatus = ship.getStatus();
+            const energyDiv = document.getElementById('energy-status');
+            
+            const energyPercent = shipStatus.energy.percentage.toFixed(1);
+            const energyConsumption = ship.getEnergyConsumptionRate();
+            
+            energyDiv.innerHTML = `
+                <div class="status-line">Current: ${shipStatus.energy.current.toFixed(1)} / ${shipStatus.energy.max.toFixed(1)}</div>
+                <div class="status-line">Percentage: ${energyPercent}%</div>
+                <div class="status-line">Recharge Rate: ${ship.energyRechargeRate.toFixed(1)}/s</div>
+                <div class="status-line">Consumption: ${energyConsumption.toFixed(1)}/s</div>
+                <div class="status-line ready">Missile Energy Cost: 0 (Cooldown-based)</div>
+            `;
+        }
+
+        // Update cooldown bar
+        function updateCooldownBar() {
+            const status = missileSystem.getStatus();
+            const fillDiv = document.getElementById('cooldown-fill');
+            const textDiv = document.getElementById('cooldown-text');
+            
+            if (!missileSystem.isOperational()) {
+                fillDiv.style.width = '0%';
+                textDiv.textContent = 'DESTROYED';
+                textDiv.className = 'cooldown-text disabled';
+                return;
+            }
+            
+            if (status.canFire) {
+                fillDiv.style.width = '100%';
+                textDiv.textContent = 'READY';
+                textDiv.className = 'cooldown-text ready';
+            } else {
+                const progress = 1 - (status.cooldownRemaining / status.cooldownSeconds);
+                fillDiv.style.width = `${(progress * 100).toFixed(1)}%`;
+                textDiv.textContent = `${status.cooldownRemaining.toFixed(1)}s`;
+                textDiv.className = 'cooldown-text cooldown';
+            }
+        }
+
+        // Log function
+        function log(message, className = '') {
+            const logDiv = document.getElementById('combat-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${className}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Clear log
+        window.clearLog = function() {
+            document.getElementById('combat-log').innerHTML = '';
+        };
+
+        // Initialize when page loads
+        initializeTest();
+    </script>
+</body>
+</html> 

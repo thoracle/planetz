@@ -1,12 +1,38 @@
-import * as THREE from 'three';
+// THREE is handled dynamically in constructor
 import { DockingInterface } from '../ui/DockingInterface.js';
 import DockingSystemManager from '../ship/DockingSystemManager.js';
+// SimplifiedDamageControl removed - damage control integrated into ship systems HUD
 
 export class StarfieldManager {
-    constructor(scene, camera, viewManager) {
+    constructor(scene, camera, viewManager, threeModule = null) {
         this.scene = scene;
         this.camera = camera;
-        this.viewManager = viewManager;  // Store the viewManager
+        this.viewManager = viewManager;
+        
+        // Handle THREE.js - use passed module or fall back to global
+        this.THREE = threeModule || window.THREE;
+        if (!this.THREE) {
+            console.error('THREE.js not available. Checking available options:', {
+                threeModule: !!threeModule,
+                windowTHREE: !!window.THREE,
+                globalTHREE: typeof THREE !== 'undefined' ? !!THREE : false,
+                documentReadyState: document.readyState,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Try to wait a bit and retry if document is still loading
+            if (document.readyState === 'loading') {
+                console.warn('Document still loading, THREE.js might not be available yet');
+            }
+            
+            throw new Error('THREE.js not available. Please ensure THREE.js is loaded either as a module or globally.');
+        }
+        
+        console.log('StarfieldManager initialized with THREE.js:', {
+            source: threeModule ? 'module parameter' : 'window.THREE',
+            version: this.THREE.REVISION,
+            timestamp: new Date().toISOString()
+        });
         
         // Get Ship instance from ViewManager for direct access to ship systems
         this.ship = this.viewManager.getShip();
@@ -17,13 +43,13 @@ export class StarfieldManager {
         this.acceleration = 0.02; // Much slower acceleration
         this.deceleration = 0.03; // Slightly faster deceleration than acceleration
         this.decelerating = false; // New flag for tracking deceleration state
-        this.velocity = new THREE.Vector3();
+        this.velocity = new this.THREE.Vector3();
         this.rotationSpeed = 2.0; // Radians per second
-        this.cameraDirection = new THREE.Vector3();
-        this.cameraRight = new THREE.Vector3();
-        this.cameraUp = new THREE.Vector3();
+        this.cameraDirection = new this.THREE.Vector3();
+        this.cameraRight = new this.THREE.Vector3();
+        this.cameraUp = new this.THREE.Vector3();
         this.mouseSensitivity = 0.002;
-        this.mouseRotation = new THREE.Vector2();
+        this.mouseRotation = new this.THREE.Vector2();
         this.isMouseLookEnabled = false; // Disable mouse look to match thoralexander.com
         this.view = 'FORE'; // Initialize with FORE view
         this.previousView = 'FORE'; // Add previous view tracking
@@ -66,6 +92,11 @@ export class StarfieldManager {
         // Create speed indicator
         this.createSpeedIndicator();
         
+        // Create ship systems HUD (initially hidden)
+        this.createShipSystemsHUD();
+        this.shipSystemsHUD.style.display = 'none'; // Hide by default
+        this.damageControlVisible = false; // Track damage control visibility
+        
         // Create target computer HUD
         this.createTargetComputerHUD();
         
@@ -81,13 +112,16 @@ export class StarfieldManager {
         this.dockingInterface = new DockingInterface(this);
         this.dockingSystemManager = new DockingSystemManager();
         
+        // Damage control is now integrated into ship systems HUD
+        // No separate interface needed
+        
         // Bind keyboard events
         this.bindKeyEvents();
         // Bind mouse events
         this.bindMouseEvents();
 
         // Audio setup
-        this.listener = new THREE.AudioListener();
+        this.listener = new this.THREE.AudioListener();
         if (!this.camera) {
             console.error('No camera available for audio listener');
             return;
@@ -98,9 +132,9 @@ export class StarfieldManager {
         // Ensure AudioContext is running
         this.ensureAudioContextRunning();
 
-        this.audioLoader = new THREE.AudioLoader();
-        this.engineSound = new THREE.Audio(this.listener);
-        this.commandSound = new THREE.Audio(this.listener);
+        this.audioLoader = new this.THREE.AudioLoader();
+        this.engineSound = new this.THREE.Audio(this.listener);
+        this.commandSound = new this.THREE.Audio(this.listener);
         this.soundLoaded = false;
         this.commandSoundLoaded = false;
         this.engineState = 'stopped'; // 'stopped', 'starting', 'running', 'stopping'
@@ -253,7 +287,7 @@ export class StarfieldManager {
                 this.starCount = validStarCount;
             }
 
-            const geometry = new THREE.BufferGeometry();
+            const geometry = new this.THREE.BufferGeometry();
             const positions = new Float32Array(validStarCount * 3);
             const colors = new Float32Array(validStarCount * 3);
             const sizes = new Float32Array(validStarCount);
@@ -274,7 +308,7 @@ export class StarfieldManager {
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, 32, 32);
             
-            const sprite = new THREE.Texture(canvas);
+            const sprite = new this.THREE.Texture(canvas);
             sprite.needsUpdate = true;
 
             let validVertices = 0;
@@ -333,13 +367,13 @@ export class StarfieldManager {
                 const trimmedColors = new Float32Array(colors.buffer, 0, validVertices * 3);
                 const trimmedSizes = new Float32Array(sizes.buffer, 0, validVertices);
                 
-                geometry.setAttribute('position', new THREE.BufferAttribute(trimmedPositions, 3));
-                geometry.setAttribute('color', new THREE.BufferAttribute(trimmedColors, 3));
-                geometry.setAttribute('size', new THREE.BufferAttribute(trimmedSizes, 1));
+                geometry.setAttribute('position', new this.THREE.BufferAttribute(trimmedPositions, 3));
+                geometry.setAttribute('color', new this.THREE.BufferAttribute(trimmedColors, 3));
+                geometry.setAttribute('size', new this.THREE.BufferAttribute(trimmedSizes, 1));
             } else {
-                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-                geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                geometry.setAttribute('position', new this.THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new this.THREE.BufferAttribute(colors, 3));
+                geometry.setAttribute('size', new this.THREE.BufferAttribute(sizes, 1));
             }
             
             // Verify geometry before creating mesh
@@ -348,18 +382,18 @@ export class StarfieldManager {
                 throw new Error('Failed to compute valid bounding sphere');
             }
             
-            const material = new THREE.PointsMaterial({
+            const material = new this.THREE.PointsMaterial({
                 size: 1,
                 vertexColors: true,
                 transparent: true,
                 opacity: 1,
                 sizeAttenuation: true,
-                blending: THREE.AdditiveBlending,
+                blending: this.THREE.AdditiveBlending,
                 map: sprite,
                 depthWrite: false
             });
             
-            return new THREE.Points(geometry, material);
+            return new this.THREE.Points(geometry, material);
             
         } catch (error) {
             console.error('Error in createStarfield:', error);
@@ -370,7 +404,7 @@ export class StarfieldManager {
 
     createFallbackStarfield() {
         console.log('Creating fallback starfield');
-        const geometry = new THREE.BufferGeometry();
+        const geometry = new this.THREE.BufferGeometry();
         const positions = new Float32Array(5000 * 3);
         const colors = new Float32Array(5000 * 3);
         const sizes = new Float32Array(5000);
@@ -391,11 +425,11 @@ export class StarfieldManager {
             sizes[i] = 2;
         }
 
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+        geometry.setAttribute('position', new this.THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new this.THREE.BufferAttribute(colors, 3));
+        geometry.setAttribute('size', new this.THREE.BufferAttribute(sizes, 1));
 
-        const material = new THREE.PointsMaterial({
+        const material = new this.THREE.PointsMaterial({
             size: 1,
             vertexColors: true,
             transparent: true,
@@ -404,7 +438,7 @@ export class StarfieldManager {
             depthWrite: false
         });
 
-        return new THREE.Points(geometry, material);
+        return new this.THREE.Points(geometry, material);
     }
 
     createSpeedIndicator() {
@@ -435,36 +469,100 @@ export class StarfieldManager {
         
         stats.forEach(box => document.body.appendChild(box));
 
-        // Create ship systems status display
-        this.createShipSystemsHUD();
-
         this.updateSpeedIndicator();
     }
 
+    /**
+     * Create ship systems HUD with integrated damage control
+     */
     createShipSystemsHUD() {
         // Create ship systems status container
         this.shipSystemsHUD = document.createElement('div');
         this.shipSystemsHUD.style.cssText = `
             position: fixed;
-            top: 60px;
-            left: 10px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             color: #00ff41;
             font-family: "Courier New", monospace;
-            font-size: 14px;
-            pointer-events: none;
+            font-size: 16px;
+            pointer-events: auto;
             z-index: 1000;
-            border: 1px solid #00ff41;
-            padding: 8px 12px;
-            background: rgba(0, 0, 0, 0.7);
-            min-width: 200px;
+            border: 2px solid #00ff41;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.85);
+            width: 600px;
+            max-height: 70vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #00ff41 #333;
         `;
+
+        // Create the close button
+        this.damageControlCloseButton = document.createElement('div');
+        this.damageControlCloseButton.innerHTML = 'X';
+        this.damageControlCloseButton.style.cssText = `
+            position: absolute;
+            top: 2px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(0, 20, 0, 0.5);
+            z-index: 1;
+            pointer-events: auto;
+        `;
+        this.shipSystemsHUD.appendChild(this.damageControlCloseButton);
+
+        // Add close button hover effect and click handler
+        this.damageControlCloseButton.addEventListener('mouseenter', () => {
+            this.damageControlCloseButton.style.background = '#00ff41';
+            this.damageControlCloseButton.style.color = '#000';
+        });
+        
+        this.damageControlCloseButton.addEventListener('mouseleave', () => {
+            this.damageControlCloseButton.style.background = 'rgba(0, 20, 0, 0.5)';
+            this.damageControlCloseButton.style.color = '#00ff41';
+        });
+        
+        this.damageControlCloseButton.addEventListener('click', () => {
+            this.toggleDamageControl();
+        });
+
+        // Add custom scrollbar styles for webkit browsers
+        const style = document.createElement('style');
+        style.textContent = `
+            .damage-control-hud::-webkit-scrollbar {
+                width: 8px;
+            }
+            .damage-control-hud::-webkit-scrollbar-track {
+                background: #333;
+                border-radius: 4px;
+            }
+            .damage-control-hud::-webkit-scrollbar-thumb {
+                background: #00ff41;
+                border-radius: 4px;
+            }
+            .damage-control-hud::-webkit-scrollbar-thumb:hover {
+                background: #00cc33;
+            }
+        `;
+        document.head.appendChild(style);
+        this.shipSystemsHUD.className = 'damage-control-hud';
 
         // Create systems list container
         this.systemsList = document.createElement('div');
         this.systemsList.style.cssText = `
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
+            pointer-events: none;
         `;
 
         this.shipSystemsHUD.appendChild(this.systemsList);
@@ -474,6 +572,9 @@ export class StarfieldManager {
         this.updateShipSystemsDisplay();
     }
 
+    /**
+     * Update ship systems display
+     */
     updateShipSystemsDisplay() {
         if (!this.ship || !this.systemsList) {
             return;
@@ -485,56 +586,180 @@ export class StarfieldManager {
         // Get ship status
         const shipStatus = this.ship.getStatus();
         
+        // Only show damage control view now (no more original systems view)
+        this.updateDamageControlDisplay(shipStatus);
+    }
+
+    /**
+     * Update damage control display
+     */
+    updateDamageControlDisplay(shipStatus) {
         // Create header
         const header = document.createElement('div');
         header.style.cssText = `
             font-weight: bold;
-            margin-bottom: 4px;
-            border-bottom: 1px solid #00ff41;
-            padding-bottom: 2px;
+            font-size: 18px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #00ff41;
+            padding-bottom: 4px;
+            text-align: center;
         `;
-        header.textContent = 'SHIP SYSTEMS';
+        header.textContent = 'DAMAGE CONTROL';
         this.systemsList.appendChild(header);
 
-        // Add energy consumption rate
-        const energyRate = this.ship.getEnergyConsumptionRate();
-        const energyDisplay = document.createElement('div');
-        energyDisplay.style.cssText = `font-size: 12px; color: #00aa41;`;
-        energyDisplay.textContent = `Energy Usage: ${energyRate.toFixed(1)}/s`;
-        this.systemsList.appendChild(energyDisplay);
+        // Get auto-repair system
+        const autoRepair = this.ship.autoRepairSystem;
+        if (!autoRepair) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = `color: #ff4400; font-size: 14px;`;
+            errorDiv.textContent = 'Auto-repair system not available';
+            this.systemsList.appendChild(errorDiv);
+            return;
+        }
 
-        // Display each system
+        // Current repair status
+        const statusDiv = document.createElement('div');
+        statusDiv.style.cssText = `font-size: 14px; color: #00aa41; margin-bottom: 12px; text-align: center;`;
+        const currentTarget = autoRepair.getCurrentRepairTarget();
+        statusDiv.textContent = currentTarget ? 
+            `Repairing: ${this.formatSystemName(currentTarget)}` : 
+            'Auto-repair: Standby';
+        this.systemsList.appendChild(statusDiv);
+
+        // Priority sliders for each system
         for (const [systemName, systemInfo] of Object.entries(shipStatus.systems)) {
-            const systemElement = document.createElement('div');
-            systemElement.style.cssText = `
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                font-size: 12px;
+            const systemDiv = document.createElement('div');
+            systemDiv.style.cssText = `
+                margin-bottom: 10px;
+                font-size: 14px;
+                padding: 8px;
+                border: 1px solid #333;
+                border-radius: 4px;
+                background: rgba(0, 0, 0, 0.3);
             `;
 
-            // System name
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = this.formatSystemName(systemName);
+            // System name with status dot and health
+            const nameDiv = document.createElement('div');
+            nameDiv.style.cssText = `
+                display: flex;
+                align-items: center;
+                margin-bottom: 6px;
+            `;
+
+            const nameWithDot = document.createElement('span');
+            nameWithDot.style.cssText = `display: flex; align-items: center; font-size: 15px;`;
             
-            // System status (health + active state)
-            const statusSpan = document.createElement('span');
+            const statusDot = document.createElement('span');
+            statusDot.style.cssText = `
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                display: inline-block;
+                margin-right: 8px;
+                background-color: ${systemInfo.isActive ? '#00ff41' : '#666666'};
+            `;
+            
             const health = Math.round(systemInfo.health * 100);
-            const isActive = systemInfo.isActive;
+            let healthColor = '#00ff41';
+            if (health < 75) healthColor = '#ffaa00';
+            if (health < 25) healthColor = '#ff4400';
             
-            // Color code based on health and active state
-            let color = '#00ff41'; // Green for healthy
-            if (health < 75) color = '#ffaa00'; // Orange for damaged
-            if (health < 25) color = '#ff4400'; // Red for critical
-            if (!isActive && systemInfo.canBeActivated) color = '#888888'; // Gray for inactive
+            nameWithDot.appendChild(statusDot);
+            nameWithDot.appendChild(document.createTextNode(`${this.formatSystemName(systemName)} (`));
             
-            statusSpan.style.color = color;
-            statusSpan.textContent = `${health}% ${isActive ? 'ON' : 'OFF'}`;
+            const healthSpan = document.createElement('span');
+            healthSpan.style.color = healthColor;
+            healthSpan.style.fontWeight = 'bold';
+            healthSpan.textContent = `${health}%`;
+            nameWithDot.appendChild(healthSpan);
             
-            systemElement.appendChild(nameSpan);
-            systemElement.appendChild(statusSpan);
-            this.systemsList.appendChild(systemElement);
+            nameWithDot.appendChild(document.createTextNode(')'));
+
+            nameDiv.appendChild(nameWithDot);
+
+            // Priority slider
+            const sliderDiv = document.createElement('div');
+            sliderDiv.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                pointer-events: auto;
+            `;
+
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.min = '0';
+            slider.max = '10';
+            slider.value = autoRepair.getPriority(systemName).toString();
+            slider.style.cssText = `
+                flex: 1;
+                height: 6px;
+                background: #333;
+                outline: none;
+                -webkit-appearance: none;
+                appearance: none;
+                border-radius: 3px;
+            `;
+
+            const valueSpan = document.createElement('span');
+            valueSpan.style.cssText = `
+                min-width: 30px;
+                text-align: right;
+                color: #00ff41;
+                font-weight: bold;
+                font-size: 14px;
+            `;
+            valueSpan.textContent = slider.value;
+
+            // Update priority when slider changes with zero-sum behavior
+            slider.addEventListener('input', (e) => {
+                const newPriority = parseInt(e.target.value);
+                const oldPriority = autoRepair.getPriority(systemName);
+                const difference = newPriority - oldPriority;
+                
+                if (difference > 0) {
+                    // Increasing priority - need to reduce others to maintain 100 total
+                    const currentTotal = autoRepair.getTotalPriority();
+                    const maxTotal = 100;
+                    
+                    if (currentTotal + difference > maxTotal) {
+                        // Get all other systems and their current priorities
+                        const otherSystems = Object.entries(autoRepair.priorities)
+                            .filter(([name, priority]) => name !== systemName && priority > 0);
+                        
+                        if (otherSystems.length > 0) {
+                            const excessPoints = (currentTotal + difference) - maxTotal;
+                            const totalOtherPriority = otherSystems.reduce((sum, [name, priority]) => sum + priority, 0);
+                            
+                            // Reduce other systems proportionally
+                            if (totalOtherPriority > 0) {
+                                for (const [otherSystemName, otherPriority] of otherSystems) {
+                                    const proportion = otherPriority / totalOtherPriority;
+                                    const reduction = Math.min(otherPriority, Math.ceil(excessPoints * proportion));
+                                    autoRepair.setPriority(otherSystemName, otherPriority - reduction);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Set the new priority for this system
+                autoRepair.setPriority(systemName, newPriority);
+                valueSpan.textContent = newPriority.toString();
+                
+                // Update display to show all changes
+                setTimeout(() => this.updateShipSystemsDisplay(), 50);
+            });
+
+            sliderDiv.appendChild(slider);
+            sliderDiv.appendChild(valueSpan);
+
+            systemDiv.appendChild(nameDiv);
+            systemDiv.appendChild(sliderDiv);
+            this.systemsList.appendChild(systemDiv);
         }
+
+
     }
 
     formatSystemName(systemName) {
@@ -587,9 +812,6 @@ export class StarfieldManager {
         // Connect Ship energy to existing energy display (using ship directly)
         this.energyBox.textContent = `Energy: ${this.ship.currentEnergy.toFixed(2)}`;
         this.viewBox.textContent = `View: ${this.view}`;
-        
-        // Update ship systems display
-        this.updateShipSystemsDisplay();
     }
 
     createTargetComputerHUD() {
@@ -648,21 +870,21 @@ export class StarfieldManager {
         `;
 
         // Create renderer for wireframe
-        this.wireframeRenderer = new THREE.WebGLRenderer({ alpha: true });
+        this.wireframeRenderer = new this.THREE.WebGLRenderer({ alpha: true });
         this.wireframeRenderer.setSize(200, 150);
         this.wireframeRenderer.setClearColor(0x000000, 0);
         
         // Create scene and camera for wireframe
-        this.wireframeScene = new THREE.Scene();
-        this.wireframeCamera = new THREE.PerspectiveCamera(45, 200/150, 0.1, 1000);
+        this.wireframeScene = new this.THREE.Scene();
+        this.wireframeCamera = new this.THREE.PerspectiveCamera(45, 200/150, 0.1, 1000);
         this.wireframeCamera.position.z = 5;
         
         // Add lights to wireframe scene
-        const wireframeLight = new THREE.DirectionalLight(0x00ff41, 1);
+        const wireframeLight = new this.THREE.DirectionalLight(0x00ff41, 1);
         wireframeLight.position.set(1, 1, 1);
         this.wireframeScene.add(wireframeLight);
         
-        const wireframeAmbient = new THREE.AmbientLight(0x00ff41, 0.4);
+        const wireframeAmbient = new this.THREE.AmbientLight(0x00ff41, 0.4);
         this.wireframeScene.add(wireframeAmbient);
         
         this.wireframeContainer.appendChild(this.wireframeRenderer.domElement);
@@ -987,6 +1209,12 @@ export class StarfieldManager {
                     this.toggleIntel();
                 }
             }
+
+            // Damage control key (D) - toggle damage control view
+            if (commandKey === 'd') {
+                this.playCommandSound();
+                this.toggleDamageControl();
+            }
         });
 
         document.addEventListener('keyup', (event) => {
@@ -1050,6 +1278,26 @@ export class StarfieldManager {
                 // Just update the display with existing target
                 this.updateTargetDisplay();
             }
+        }
+    }
+
+    toggleDamageControl() {
+        this.damageControlVisible = !this.damageControlVisible;
+        
+        if (this.damageControlVisible) {
+            // Store the previous view before switching to damage control
+            this.previousView = this.view;
+            this.view = 'DAMAGE';
+            this.shipSystemsHUD.style.display = 'block';
+            this.updateShipSystemsDisplay(); // Refresh the display
+            this.updateSpeedIndicator(); // Update the view indicator
+            console.log('Damage control view enabled');
+        } else {
+            // Restore the previous view when closing damage control
+            this.view = this.previousView || 'FORE';
+            this.shipSystemsHUD.style.display = 'none';
+            this.updateSpeedIndicator(); // Update the view indicator
+            console.log('Damage control view disabled');
         }
     }
 
@@ -1384,7 +1632,7 @@ export class StarfieldManager {
             const x = (screenPosition.x + 1) * window.innerWidth / 2;
             const y = (-screenPosition.y + 1) * window.innerHeight / 2;
             
-            const cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+            const cameraForward = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
             const relativePos = this.currentTarget.position.clone().sub(this.camera.position);
             const isBehindCamera = relativePos.dot(cameraForward) < 0;
             
@@ -1460,12 +1708,12 @@ export class StarfieldManager {
 
         if (isOffScreen) {
             // Get camera's view direction and relative position
-            const cameraDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+            const cameraDirection = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
             const relativePosition = targetPosition.clone().sub(this.camera.position);
             
             // Get camera's right and up vectors
-            const cameraRight = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
-            const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion);
+            const cameraRight = new this.THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
+            const cameraUp = new this.THREE.Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion);
             
             // Project relative position onto camera's right and up vectors
             const rightComponent = relativePosition.dot(cameraRight);
@@ -1663,25 +1911,25 @@ export class StarfieldManager {
                 if (info) {
                     // Create different shapes based on celestial body type
                     if (info.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
-                        wireframeGeometry = new THREE.DodecahedronGeometry(radius, 0);
+                        wireframeGeometry = new this.THREE.DodecahedronGeometry(radius, 0);
                     } else if (targetData.isMoon) {
-                        wireframeGeometry = new THREE.OctahedronGeometry(radius, 0);
+                        wireframeGeometry = new this.THREE.OctahedronGeometry(radius, 0);
                     } else {
-                        wireframeGeometry = new THREE.IcosahedronGeometry(radius, 0);
+                        wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
                     }
                 } else {
-                    wireframeGeometry = new THREE.IcosahedronGeometry(radius, 1);
+                    wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 1);
                 }
 
-                const wireframeMaterial = new THREE.LineBasicMaterial({ 
+                const wireframeMaterial = new this.THREE.LineBasicMaterial({ 
                     color: wireframeColor,
                     linewidth: 1,
                     transparent: true,
                     opacity: 0.8
                 });
                 
-                const edgesGeometry = new THREE.EdgesGeometry(wireframeGeometry);
-                this.targetWireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
+                const edgesGeometry = new this.THREE.EdgesGeometry(wireframeGeometry);
+                this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
                 
                 // Clean up the temporary geometries
                 wireframeGeometry.dispose();
@@ -1789,6 +2037,9 @@ export class StarfieldManager {
         }
         
         this.updateSpeedIndicator();
+        
+        // Update ship systems display
+        this.updateShipSystemsDisplay();
 
         // Forward/backward movement based on view
         if (this.currentSpeed > 0) {
@@ -1814,7 +2065,7 @@ export class StarfieldManager {
             }
             
             // Calculate actual movement based on current speed
-            const forwardVector = new THREE.Vector3(0, 0, -speedMultiplier * moveDirection);
+            const forwardVector = new this.THREE.Vector3(0, 0, -speedMultiplier * moveDirection);
             forwardVector.applyQuaternion(this.camera.quaternion);
             
             // Apply movement
@@ -1842,7 +2093,7 @@ export class StarfieldManager {
             const z = positions.array[i * 3 + 2];
 
             // Calculate distance from camera
-            const starPos = new THREE.Vector3(x, y, z);
+            const starPos = new this.THREE.Vector3(x, y, z);
             const distanceToCamera = starPos.distanceTo(this.camera.position);
 
             // If star is too far, respawn it closer to the camera
@@ -2089,21 +2340,31 @@ export class StarfieldManager {
 
     // Update the setView method to handle view changes
     setView(viewType) {
-        // Store previous view when switching to GALACTIC or SCANNER
+        // Hide damage control UI when switching to any other view
+        if (this.damageControlVisible && viewType !== 'DAMAGE') {
+            this.damageControlVisible = false;
+            if (this.shipSystemsHUD) {
+                this.shipSystemsHUD.style.display = 'none';
+            }
+            console.log('Damage control view auto-hidden when switching to', viewType);
+        }
+
+        // Store previous view when switching to special views
         if (viewType === 'GALACTIC' || viewType === 'SCANNER') {
-            // Only store previous view if it's not GALACTIC or SCANNER
-            if (this.view !== 'GALACTIC' && this.view !== 'LONG RANGE') {
+            // Only store previous view if it's not a special view
+            if (this.view !== 'GALACTIC' && this.view !== 'LONG RANGE' && this.view !== 'DAMAGE') {
                 this.previousView = this.view;
             }
         }
 
-        // Don't allow view changes while docked (except for GALACTIC and SCANNER)
+        // Don't allow view changes while docked (except for special views)
         if (this.isDocked && viewType !== 'GALACTIC' && viewType !== 'SCANNER' && viewType !== 'LONG RANGE') {
             return;
         }
 
-        // When leaving GALACTIC or SCANNER view while docked, restore to previous view or force FORE
-        if (this.isDocked && (this.view === 'GALACTIC' || this.view === 'LONG RANGE') && viewType !== 'GALACTIC' && viewType !== 'SCANNER') {
+        // When leaving special views while docked, restore to previous view or force FORE
+        if (this.isDocked && (this.view === 'GALACTIC' || this.view === 'LONG RANGE') && 
+            viewType !== 'GALACTIC' && viewType !== 'SCANNER') {
             // Use previous view if it exists and is valid (FORE or AFT), otherwise default to FORE
             const validView = this.previousView === 'FORE' || this.previousView === 'AFT' ? this.previousView : 'FORE';
             this.view = validView;
@@ -2123,14 +2384,14 @@ export class StarfieldManager {
         if (!this.isDocked) {
             this.view = viewType === 'SCANNER' ? 'LONG RANGE' : viewType.toUpperCase();
             
-            // Update camera rotation based on view
+            // Update camera rotation based on view (only for flight views)
             if (this.view === 'AFT') {
                 this.camera.rotation.set(0, Math.PI, 0); // 180 degrees around Y axis
             } else if (this.view === 'FORE') {
                 this.camera.rotation.set(0, 0, 0); // Reset to forward
             }
         } else {
-            // If docked, only allow GALACTIC and SCANNER views
+            // If docked, allow special views
             if (viewType === 'GALACTIC' || viewType === 'SCANNER') {
                 this.view = viewType === 'SCANNER' ? 'LONG RANGE' : viewType.toUpperCase();
             }
@@ -2138,7 +2399,7 @@ export class StarfieldManager {
 
         // Handle crosshair visibility
         if (this.viewManager) {
-            // Hide crosshairs if docked or in non-flight views
+            // Hide crosshairs if docked or in special views
             const showCrosshairs = !this.isDocked && this.view !== 'GALACTIC' && this.view !== 'LONG RANGE';
             this.viewManager.frontCrosshair.style.display = showCrosshairs && this.view === 'FORE' ? 'block' : 'none';
             this.viewManager.aftCrosshair.style.display = showCrosshairs && this.view === 'AFT' ? 'block' : 'none';
@@ -2441,7 +2702,7 @@ export class StarfieldManager {
         }
 
         // Calculate initial position relative to target
-        const relativePos = new THREE.Vector3().subVectors(this.camera.position, target.position);
+        const relativePos = new this.THREE.Vector3().subVectors(this.camera.position, target.position);
         this.orbitAngle = Math.atan2(relativePos.z, relativePos.x);
         
         // Store initial state for transition
@@ -2464,7 +2725,7 @@ export class StarfieldManager {
         }
 
         // Calculate final orbit position
-        const finalOrbitPos = new THREE.Vector3(
+        const finalOrbitPos = new this.THREE.Vector3(
             target.position.x + Math.cos(this.orbitAngle) * this.orbitRadius,
             target.position.y,
             target.position.z + Math.sin(this.orbitAngle) * this.orbitRadius
@@ -2472,9 +2733,9 @@ export class StarfieldManager {
         this.dockingState.endPos = finalOrbitPos;
 
         // Calculate final rotation (looking at target)
-        const targetRot = new THREE.Quaternion();
-        const lookAtMatrix = new THREE.Matrix4();
-        lookAtMatrix.lookAt(finalOrbitPos, target.position, new THREE.Vector3(0, 1, 0));
+        const targetRot = new this.THREE.Quaternion();
+        const lookAtMatrix = new this.THREE.Matrix4();
+        lookAtMatrix.lookAt(finalOrbitPos, target.position, new this.THREE.Vector3(0, 1, 0));
         targetRot.setFromRotationMatrix(lookAtMatrix);
         this.dockingState.endRot = targetRot;
 
@@ -2587,12 +2848,12 @@ export class StarfieldManager {
         };
 
         // Calculate undock position (move away from the body in the current direction)
-        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+        const forward = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
         const targetPos = this.camera.position.clone().add(forward.multiplyScalar(this.orbitRadius * 2));
         this.undockingState.endPos = targetPos;
 
         // Reset to forward-facing rotation
-        const targetRot = new THREE.Quaternion();
+        const targetRot = new this.THREE.Quaternion();
         this.undockingState.endRot = targetRot;
 
         this.isDocked = false;

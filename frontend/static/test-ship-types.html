@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ship Types Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .ship-selector {
+            margin-bottom: 20px;
+        }
+        
+        .ship-selector select {
+            background: #001100;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+        }
+        
+        .ship-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .info-panel {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        
+        .info-panel h3 {
+            margin-top: 0;
+            color: #00ffff;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        
+        .systems-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .system-panel {
+            background: rgba(0, 255, 0, 0.05);
+            border: 1px solid #00aa00;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        
+        .system-panel h4 {
+            margin-top: 0;
+            color: #ffff00;
+        }
+        
+        .test-controls {
+            margin: 20px 0;
+        }
+        
+        .test-controls button {
+            background: #001100;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .test-controls button:hover {
+            background: #002200;
+        }
+        
+        .log {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff00;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ship Types Configuration Test</h1>
+        
+        <div class="ship-selector">
+            <label for="shipType">Select Ship Type: </label>
+            <select id="shipType">
+                <option value="heavy_fighter">Heavy Fighter</option>
+                <option value="scout">Scout</option>
+                <option value="light_fighter">Light Fighter</option>
+                <option value="light_freighter">Light Freighter</option>
+                <option value="heavy_freighter">Heavy Freighter</option>
+            </select>
+        </div>
+        
+        <div class="ship-info">
+            <div class="info-panel">
+                <h3>Ship Statistics</h3>
+                <div id="shipStats"></div>
+            </div>
+            
+            <div class="info-panel">
+                <h3>Ship Configuration</h3>
+                <div id="shipConfig"></div>
+            </div>
+        </div>
+        
+        <div class="test-controls">
+            <button onclick="testShipCreation()">Test Ship Creation</button>
+            <button onclick="testSystemInitialization()">Test System Initialization</button>
+            <button onclick="testEnergyConsumption()">Test Energy Consumption</button>
+            <button onclick="testDamageSystem()">Test Damage System</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <div class="systems-grid" id="systemsGrid"></div>
+        
+        <div class="log" id="testLog"></div>
+    </div>
+
+    <!-- Import map for module resolution -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/lib/three.min.js"
+        }
+    }
+    </script>
+    
+    <script type="module">
+        import Ship from './js/ship/Ship.js';
+        import { getShipConfig, getAvailableShipTypes } from './js/ship/ShipConfigs.js';
+        
+        let currentShip = null;
+        
+        function log(message) {
+            const logElement = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}<br>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function updateShipDisplay() {
+            const shipType = document.getElementById('shipType').value;
+            const config = getShipConfig(shipType);
+            
+            // Update ship stats
+            const statsHtml = `
+                <div class="stat-row"><span>Name:</span><span>${config.name}</span></div>
+                <div class="stat-row"><span>Description:</span><span>${config.description}</span></div>
+                <div class="stat-row"><span>Speed:</span><span>${config.baseSpeed}/100</span></div>
+                <div class="stat-row"><span>Armor:</span><span>${config.baseArmor}/100</span></div>
+                <div class="stat-row"><span>Firepower:</span><span>${config.baseFirepower}/100</span></div>
+                <div class="stat-row"><span>Cargo:</span><span>${config.baseCargoCapacity} units</span></div>
+                <div class="stat-row"><span>Hardpoints:</span><span>${config.baseHardpoints}</span></div>
+            `;
+            document.getElementById('shipStats').innerHTML = statsHtml;
+            
+            // Update ship config
+            const configHtml = `
+                <div class="stat-row"><span>Max Energy:</span><span>${config.maxEnergy}</span></div>
+                <div class="stat-row"><span>Energy Recharge:</span><span>${config.energyRechargeRate}/sec</span></div>
+                <div class="stat-row"><span>Max Hull:</span><span>${config.maxHull}</span></div>
+                <div class="stat-row"><span>System Slots:</span><span>${config.systemSlots}</span></div>
+            `;
+            document.getElementById('shipConfig').innerHTML = configHtml;
+            
+            // Update systems display
+            updateSystemsDisplay(config);
+        }
+        
+        function updateSystemsDisplay(config) {
+            const systemsGrid = document.getElementById('systemsGrid');
+            let systemsHtml = '';
+            
+            for (const [systemName, systemConfig] of Object.entries(config.defaultSystems)) {
+                systemsHtml += `
+                    <div class="system-panel">
+                        <h4>${systemName.replace(/_/g, ' ').toUpperCase()}</h4>
+                        <div class="stat-row"><span>Level:</span><span>${systemConfig.level}</span></div>
+                        <div class="stat-row"><span>Slots:</span><span>${systemConfig.slots}</span></div>
+                        <div class="stat-row"><span>Energy/sec:</span><span>${systemConfig.energyConsumption}</span></div>
+                    </div>
+                `;
+            }
+            
+            systemsGrid.innerHTML = systemsHtml;
+        }
+        
+        window.testShipCreation = function() {
+            const shipType = document.getElementById('shipType').value;
+            log(`Testing ship creation for: ${shipType}`);
+            
+            try {
+                currentShip = new Ship(shipType);
+                log(`✓ Ship created successfully: ${currentShip.shipType}`);
+                log(`✓ Base stats - Speed: ${currentShip.baseSpeed}, Armor: ${currentShip.baseArmor}, Firepower: ${currentShip.baseFirepower}`);
+                log(`✓ Energy system - Max: ${currentShip.maxEnergy}, Current: ${currentShip.currentEnergy}, Recharge: ${currentShip.energyRechargeRate}/sec`);
+                log(`✓ Slots - Total: ${currentShip.totalSlots}, Used: ${currentShip.usedSlots}, Available: ${currentShip.availableSlots}`);
+                log(`✓ Systems initialized: ${currentShip.systems.size} systems`);
+            } catch (error) {
+                log(`✗ Ship creation failed: ${error.message}`);
+            }
+        };
+        
+        window.testSystemInitialization = function() {
+            if (!currentShip) {
+                log('✗ No ship created. Run ship creation test first.');
+                return;
+            }
+            
+            log('Testing system initialization...');
+            
+            for (const [systemName, system] of currentShip.systems) {
+                log(`✓ System: ${systemName} - Level: ${system.level}, Health: ${system.healthPercentage.toFixed(1)}%, Slots: ${system.slotCost}`);
+                
+                if (system.getEnergyConsumptionRate) {
+                    log(`  Energy consumption: ${system.getEnergyConsumptionRate().toFixed(2)}/sec`);
+                }
+            }
+        };
+        
+        window.testEnergyConsumption = function() {
+            if (!currentShip) {
+                log('✗ No ship created. Run ship creation test first.');
+                return;
+            }
+            
+            log('Testing energy consumption...');
+            
+            const totalConsumption = currentShip.getEnergyConsumptionRate();
+            log(`✓ Total energy consumption rate: ${totalConsumption.toFixed(2)}/sec`);
+            
+            const energyDuration = currentShip.currentEnergy / totalConsumption;
+            log(`✓ Energy duration at current consumption: ${energyDuration.toFixed(1)} seconds`);
+            
+            // Test energy consumption simulation
+            const originalEnergy = currentShip.currentEnergy;
+            currentShip.update(1000); // Simulate 1 second
+            const energyAfter1Sec = currentShip.currentEnergy;
+            
+            log(`✓ Energy after 1 second: ${originalEnergy.toFixed(1)} → ${energyAfter1Sec.toFixed(1)} (consumed: ${(originalEnergy - energyAfter1Sec).toFixed(1)})`);
+        };
+        
+        window.testDamageSystem = function() {
+            if (!currentShip) {
+                log('✗ No ship created. Run ship creation test first.');
+                return;
+            }
+            
+            log('Testing damage system...');
+            
+            const originalHull = currentShip.currentHull;
+            log(`✓ Original hull: ${originalHull}`);
+            
+            // Apply test damage
+            currentShip.applyDamage(100, 'kinetic');
+            log(`✓ Applied 100 kinetic damage. New hull: ${currentShip.currentHull}`);
+            
+            // Check system status
+            for (const [systemName, system] of currentShip.systems) {
+                if (system.healthPercentage < 100) {
+                    log(`⚠ System damaged: ${systemName} - Health: ${system.healthPercentage.toFixed(1)}%`);
+                }
+            }
+            
+            // Test repair
+            const damagedSystems = Array.from(currentShip.systems.entries()).filter(([name, system]) => system.healthPercentage < 100);
+            if (damagedSystems.length > 0) {
+                const [systemName, system] = damagedSystems[0];
+                const originalHealth = system.healthPercentage;
+                currentShip.repairSystem(systemName, 0.5); // 50% repair
+                log(`✓ Repaired ${systemName}: ${originalHealth.toFixed(1)}% → ${system.healthPercentage.toFixed(1)}%`);
+            }
+        };
+        
+        window.clearLog = function() {
+            document.getElementById('testLog').innerHTML = '';
+        };
+        
+        // Initialize display
+        document.getElementById('shipType').addEventListener('change', updateShipDisplay);
+        updateShipDisplay();
+        
+        log('Ship Types Test initialized. Select a ship type and run tests.');
+    </script>
+</body>
+</html> 

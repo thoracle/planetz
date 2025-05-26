@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Damage Control Interface Fix Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #00ff41;
+            font-family: 'VT323', monospace;
+            font-size: 16px;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 2px solid #00ff41;
+            background: rgba(0, 20, 0, 0.3);
+        }
+        
+        .test-header {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #00ff41;
+            text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+        
+        .test-instructions {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+        }
+        
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .test-button {
+            background: rgba(0, 20, 0, 0.5);
+            border: 2px solid #00ff41;
+            color: #00ff41;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .test-button:hover {
+            background: rgba(0, 255, 65, 0.2);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+        
+        .status-display {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #00ff41;
+            background: rgba(0, 20, 0, 0.3);
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        
+        .key-hint {
+            text-align: center;
+            font-size: 18px;
+            color: #ffff00;
+            margin: 20px 0;
+            text-shadow: 0 0 5px rgba(255, 255, 0, 0.5);
+        }
+        
+        .success {
+            color: #00ff41;
+        }
+        
+        .error {
+            color: #ff4444;
+        }
+        
+        .warning {
+            color: #ffaa00;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">🔧 Damage Control Interface Fix Test</div>
+        
+        <div class="test-instructions">
+            <strong>Test Instructions:</strong><br>
+            1. Click "Initialize Ship" to create a test ship<br>
+            2. Press the 'D' key to open damage control interface<br>
+            3. Verify that only ONE damage control interface appears<br>
+            4. Close the interface and verify no other interface is visible behind it<br>
+            5. Test multiple open/close cycles to ensure consistency
+        </div>
+        
+        <div class="test-buttons">
+            <button class="test-button" onclick="initializeShip()">Initialize Ship</button>
+            <button class="test-button" onclick="damageRandomSystem()">Damage Random System</button>
+            <button class="test-button" onclick="repairAllSystems()">Repair All Systems</button>
+            <button class="test-button" onclick="checkInterfaces()">Check Active Interfaces</button>
+        </div>
+        
+        <div class="key-hint">
+            Press 'D' to test damage control interface
+        </div>
+        
+        <div class="status-display" id="status">
+            Status: Ready to initialize ship...
+        </div>
+    </div>
+
+    <script type="module">
+        import Ship from './js/ship/Ship.js';
+        import SimplifiedDamageControl from './js/ui/SimplifiedDamageControl.js';
+
+        let ship = null;
+        let damageControlInterface = null;
+        let testResults = [];
+
+        // Initialize ship and damage control interface
+        window.initializeShip = async function() {
+            try {
+                updateStatus('Initializing ship...', 'warning');
+                
+                ship = new Ship('heavy_fighter');
+                await ship.waitForSystemsInitialized();
+                
+                // Create damage control interface
+                damageControlInterface = new SimplifiedDamageControl();
+                window.simplifiedDamageControl = damageControlInterface;
+                
+                updateStatus('✅ Ship initialized successfully!\n' +
+                           `Type: ${ship.shipType}\n` +
+                           `Systems: ${ship.systems.size}\n` +
+                           'Damage control interface ready.\n\n' +
+                           'Press D to test interface!', 'success');
+                
+                // Bind keyboard events
+                bindKeyEvents();
+                
+            } catch (error) {
+                updateStatus(`❌ Error initializing ship: ${error.message}`, 'error');
+                console.error('Ship initialization error:', error);
+            }
+        };
+
+        // Damage a random system for testing
+        window.damageRandomSystem = function() {
+            if (!ship) {
+                updateStatus('❌ No ship available. Initialize ship first.', 'error');
+                return;
+            }
+
+            const systemNames = Array.from(ship.systems.keys());
+            const randomSystem = systemNames[Math.floor(Math.random() * systemNames.length)];
+            const system = ship.systems.get(randomSystem);
+            
+            if (system) {
+                const damage = 0.2 + Math.random() * 0.3; // 20-50% damage
+                const beforeHealth = system.healthPercentage;
+                system.takeDamage(damage);
+                const afterHealth = system.healthPercentage;
+                
+                updateStatus(`🔧 Damaged ${randomSystem}:\n` +
+                           `Health: ${(beforeHealth * 100).toFixed(1)}% → ${(afterHealth * 100).toFixed(1)}%\n` +
+                           'Press D to open damage control interface!', 'warning');
+            }
+        };
+
+        // Repair all systems
+        window.repairAllSystems = function() {
+            if (!ship) {
+                updateStatus('❌ No ship available. Initialize ship first.', 'error');
+                return;
+            }
+
+            let repairedCount = 0;
+            for (const [systemName, system] of ship.systems) {
+                if (system.healthPercentage < 1.0) {
+                    system.repair(1.0);
+                    repairedCount++;
+                }
+            }
+
+            updateStatus(`✅ Repaired ${repairedCount} systems.\nAll systems at 100% health.`, 'success');
+        };
+
+        // Check for active interfaces
+        window.checkInterfaces = function() {
+            const overlays = document.querySelectorAll('[id*="damage-control"], [id*="simplified-damage-control"]');
+            const visibleOverlays = Array.from(overlays).filter(el => 
+                el.style.display !== 'none' && 
+                getComputedStyle(el).display !== 'none'
+            );
+
+            let status = `Interface Check Results:\n`;
+            status += `Total damage control overlays found: ${overlays.length}\n`;
+            status += `Visible overlays: ${visibleOverlays.length}\n\n`;
+
+            if (overlays.length === 0) {
+                status += '✅ No damage control overlays found (good - none should exist when closed)\n';
+            } else {
+                overlays.forEach((overlay, index) => {
+                    const isVisible = visibleOverlays.includes(overlay);
+                    status += `Overlay ${index + 1}: ${overlay.id || 'unnamed'} - ${isVisible ? '👁️ VISIBLE' : '🙈 HIDDEN'}\n`;
+                });
+            }
+
+            if (visibleOverlays.length > 1) {
+                status += '\n❌ ERROR: Multiple damage control interfaces are visible!';
+                updateStatus(status, 'error');
+            } else if (visibleOverlays.length === 1) {
+                status += '\n✅ Only one interface visible (correct)';
+                updateStatus(status, 'success');
+            } else {
+                status += '\n✅ No interfaces visible (correct when closed)';
+                updateStatus(status, 'success');
+            }
+        };
+
+        // Bind keyboard events
+        function bindKeyEvents() {
+            document.addEventListener('keydown', (event) => {
+                if (event.key.toLowerCase() === 'd') {
+                    event.preventDefault();
+                    
+                    if (!ship || !damageControlInterface) {
+                        updateStatus('❌ Ship or damage control interface not initialized', 'error');
+                        return;
+                    }
+
+                    // Test the interface toggle
+                    const wasVisible = damageControlInterface.isVisible;
+                    const result = damageControlInterface.toggle(ship, false);
+                    const isNowVisible = damageControlInterface.isVisible;
+
+                    let status = `🔧 Damage Control Interface Test:\n`;
+                    status += `Was visible: ${wasVisible}\n`;
+                    status += `Toggle result: ${result}\n`;
+                    status += `Now visible: ${isNowVisible}\n\n`;
+
+                    // Check for multiple interfaces
+                    setTimeout(() => {
+                        checkInterfaces();
+                    }, 100);
+
+                    if (isNowVisible) {
+                        status += '✅ Interface opened successfully!\n';
+                        status += 'Close it and verify no other interface appears behind it.';
+                    } else {
+                        status += '✅ Interface closed successfully!\n';
+                        status += 'Verify no other interface is visible.';
+                    }
+
+                    updateStatus(status, isNowVisible ? 'success' : 'warning');
+                }
+            });
+        }
+
+        // Update status display
+        function updateStatus(message, type = 'success') {
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = message;
+            statusElement.className = `status-display ${type}`;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Initialize on page load
+        updateStatus('Ready to test damage control interface fix.\nClick "Initialize Ship" to begin.', 'warning');
+    </script>
+</body>
+</html> 

@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sub-Targeting System Test</title>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/lib/three.min.js"
+        }
+    }
+    </script>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .panel {
+            background: rgba(0, 50, 0, 0.8);
+            border: 1px solid #0f0;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .ship-display {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .ship-info {
+            flex: 1;
+        }
+        .system-list {
+            background: rgba(0, 30, 0, 0.9);
+            border: 1px solid #080;
+            padding: 10px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .system-item {
+            padding: 5px;
+            margin: 2px 0;
+            border-left: 3px solid #080;
+            cursor: pointer;
+        }
+        .system-item:hover {
+            background: rgba(0, 100, 0, 0.3);
+        }
+        .system-item.targeted {
+            border-left-color: #ff0;
+            background: rgba(100, 100, 0, 0.3);
+        }
+        .system-item.sub-targeted {
+            border-left-color: #f00;
+            background: rgba(100, 0, 0, 0.3);
+        }
+        .system-item.destroyed {
+            border-left-color: #666;
+            background: rgba(50, 50, 50, 0.3);
+            color: #888;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #004400;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        button:hover {
+            background: #006600;
+        }
+        button:disabled {
+            background: #222;
+            color: #666;
+            cursor: not-allowed;
+        }
+        .status {
+            font-size: 12px;
+            color: #888;
+        }
+        .targeting-info {
+            background: rgba(0, 0, 50, 0.8);
+            border: 1px solid #00f;
+            color: #88f;
+        }
+        .sub-target-display {
+            background: rgba(50, 0, 0, 0.8);
+            border: 1px solid #f00;
+            color: #f88;
+            margin: 10px 0;
+            padding: 10px;
+        }
+        .accuracy-bonus {
+            color: #ff0;
+            font-weight: bold;
+        }
+        .damage-bonus {
+            color: #f80;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sub-Targeting System Test</h1>
+        <p>Testing Level 3+ Targeting Computer sub-targeting functionality</p>
+        
+        <div class="panel">
+            <h3>Test Controls</h3>
+            <div class="controls">
+                <button onclick="createPlayerShip()">Create Player Ship (Level 3 Targeting)</button>
+                <button onclick="createEnemyShip()">Create Enemy Ship</button>
+                <button onclick="activateTargeting()">Activate Targeting Computer</button>
+                <button onclick="setTarget()">Target Enemy Ship</button>
+                <button onclick="cycleSubTargetNext()">&gt; Next Sub-Target</button>
+                <button onclick="cycleSubTargetPrevious()">&lt; Previous Sub-Target</button>
+                <button onclick="selectRandomSubTarget()">Select Random Sub-Target</button>
+                <button onclick="fireAtSubTarget()">Fire at Sub-Target</button>
+                <button onclick="damageEnemySystem()">Damage Random Enemy System</button>
+                <button onclick="destroyEnemySystem()">Destroy Random Enemy System</button>
+                <button onclick="repairEnemySystem()">Repair Random Enemy System</button>
+            </div>
+        </div>
+
+        <div class="ship-display">
+            <div class="ship-info">
+                <div class="panel">
+                    <h3>Player Ship - Targeting Computer Status</h3>
+                    <div id="player-targeting-status">No ship created</div>
+                </div>
+                
+                <div class="panel targeting-info">
+                    <h3>Current Target Information</h3>
+                    <div id="target-info">No target selected</div>
+                </div>
+                
+                <div class="sub-target-display">
+                    <h3>Sub-Targeting System</h3>
+                    <div id="sub-target-info">Sub-targeting not available</div>
+                    <div id="sub-target-bonuses"></div>
+                </div>
+            </div>
+            
+            <div class="ship-info">
+                <div class="panel">
+                    <h3>Enemy Ship Systems</h3>
+                    <div id="enemy-systems" class="system-list">No enemy ship created</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>Test Log</h3>
+            <div id="log" style="height: 200px; overflow-y: auto; background: rgba(0,0,0,0.5); padding: 10px;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import Ship from './js/ship/Ship.js';
+        
+        let playerShip = null;
+        let enemyShip = null;
+        let targetingComputer = null;
+        
+        // Log function
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        // Create player ship with Level 3 targeting computer
+        window.createPlayerShip = async function() {
+            try {
+                playerShip = new Ship('heavy_fighter');
+                
+                // Wait for systems to be initialized
+                await playerShip.waitForSystemsInitialized();
+                
+                targetingComputer = playerShip.getSystem('target_computer');
+                
+                if (targetingComputer) {
+                    log(`Player ship created with ${targetingComputer.name} Level ${targetingComputer.level}`);
+                    log(`Sub-targeting available: ${targetingComputer.hasSubTargeting()}`);
+                } else {
+                    log('ERROR: No targeting computer found on player ship');
+                    log(`Available systems: ${Array.from(playerShip.systems.keys()).join(', ')}`);
+                }
+                
+                updatePlayerStatus();
+            } catch (error) {
+                log(`ERROR creating player ship: ${error.message}`);
+            }
+        };
+        
+        // Create enemy ship
+        window.createEnemyShip = async function() {
+            try {
+                enemyShip = new Ship('light_fighter');
+                enemyShip.name = 'Enemy Light Fighter';
+                enemyShip.id = 'enemy_001';
+                
+                // Wait for systems to be initialized
+                await enemyShip.waitForSystemsInitialized();
+                
+                log(`Enemy ship created: ${enemyShip.name}`);
+                log(`Enemy systems: ${enemyShip.systems.size}`);
+                
+                updateEnemySystemsDisplay();
+                updateTargetInfo();
+            } catch (error) {
+                log(`ERROR creating enemy ship: ${error.message}`);
+            }
+        };
+        
+        // Activate targeting computer
+        window.activateTargeting = function() {
+            if (!playerShip || !targetingComputer) {
+                log('ERROR: No player ship or targeting computer');
+                return;
+            }
+            
+            const success = targetingComputer.activate(playerShip);
+            if (success) {
+                log('Targeting computer activated');
+            } else {
+                log('Failed to activate targeting computer');
+            }
+            
+            updatePlayerStatus();
+        };
+        
+        // Set target to enemy ship
+        window.setTarget = function() {
+            if (!targetingComputer || !enemyShip) {
+                log('ERROR: No targeting computer or enemy ship');
+                return;
+            }
+            
+            const success = targetingComputer.setTarget(enemyShip);
+            if (success) {
+                log(`Target set to: ${enemyShip.name}`);
+                if (targetingComputer.hasSubTargeting()) {
+                    log(`Sub-targets detected: ${targetingComputer.availableSubTargets.length}`);
+                }
+            } else {
+                log('Failed to set target');
+            }
+            
+            updatePlayerStatus();
+            updateTargetInfo();
+            updateSubTargetInfo();
+            updateEnemySystemsDisplay();
+        };
+        
+        // Cycle to next sub-target
+        window.cycleSubTargetNext = function() {
+            if (!targetingComputer) {
+                log('ERROR: No targeting computer');
+                return;
+            }
+            
+            const success = targetingComputer.cycleSubTargetNext();
+            if (success) {
+                log(`Next sub-target: ${targetingComputer.currentSubTarget.displayName}`);
+            } else {
+                log('Cannot cycle sub-target (no targets available or sub-targeting not available)');
+            }
+            
+            updateSubTargetInfo();
+            updateEnemySystemsDisplay();
+        };
+        
+        // Cycle to previous sub-target
+        window.cycleSubTargetPrevious = function() {
+            if (!targetingComputer) {
+                log('ERROR: No targeting computer');
+                return;
+            }
+            
+            const success = targetingComputer.cycleSubTargetPrevious();
+            if (success) {
+                log(`Previous sub-target: ${targetingComputer.currentSubTarget.displayName}`);
+            } else {
+                log('Cannot cycle sub-target (no targets available or sub-targeting not available)');
+            }
+            
+            updateSubTargetInfo();
+            updateEnemySystemsDisplay();
+        };
+        
+        // Select random sub-target
+        window.selectRandomSubTarget = function() {
+            if (!targetingComputer) {
+                log('ERROR: No targeting computer');
+                return;
+            }
+            
+            const success = targetingComputer.selectRandomSubTarget();
+            if (success) {
+                log(`Random sub-target selected: ${targetingComputer.currentSubTarget.displayName}`);
+            } else {
+                log('Cannot select random sub-target (no targets available or sub-targeting not available)');
+            }
+            
+            updateSubTargetInfo();
+            updateEnemySystemsDisplay();
+        };
+        
+        // Fire at current sub-target
+        window.fireAtSubTarget = function() {
+            if (!targetingComputer || !enemyShip) {
+                log('ERROR: No targeting computer or enemy ship');
+                return;
+            }
+            
+            if (!targetingComputer.currentSubTarget) {
+                log('No sub-target selected - selecting random target');
+                if (!targetingComputer.selectRandomSubTarget()) {
+                    log('No targetable systems available');
+                    return;
+                }
+            }
+            
+            const subTarget = targetingComputer.currentSubTarget;
+            const targetSystem = enemyShip.systems.get(subTarget.systemName);
+            
+            if (!targetSystem) {
+                log(`ERROR: Target system ${subTarget.systemName} not found on enemy ship`);
+                return;
+            }
+            
+            // Record health before damage
+            const healthBefore = targetSystem.healthPercentage;
+            
+            const baseDamage = 25 + Math.random() * 25; // 25-50 base damage
+            const accuracyBonus = targetingComputer.getSubTargetAccuracyBonus();
+            const damageBonus = targetingComputer.getSubTargetDamageBonus();
+            
+            // Apply bonuses
+            const finalDamage = baseDamage * (1 + damageBonus);
+            
+            log(`🎯 Firing at sub-target: ${subTarget.displayName}`);
+            log(`📊 Health before: ${(healthBefore * 100).toFixed(1)}%`);
+            log(`💥 Base damage: ${baseDamage.toFixed(1)}, Accuracy bonus: +${(accuracyBonus * 100).toFixed(1)}%, Damage bonus: +${(damageBonus * 100).toFixed(1)}%`);
+            log(`⚡ Final damage: ${finalDamage.toFixed(1)}`);
+            
+            // Apply damage to specific system
+            const success = enemyShip.applySubTargetDamage(subTarget.systemName, finalDamage);
+            
+            // Record health after damage
+            const healthAfter = targetSystem.healthPercentage;
+            const healthChange = healthBefore - healthAfter;
+            
+            if (success) {
+                log(`✅ Sub-target hit! ${subTarget.displayName} took ${finalDamage.toFixed(1)} damage`);
+                log(`📉 Health after: ${(healthAfter * 100).toFixed(1)}% (lost ${(healthChange * 100).toFixed(1)}%)`);
+                
+                if (healthAfter === 0) {
+                    log(`💀 ${subTarget.displayName} DESTROYED!`);
+                }
+                
+                // Update sub-targets after damage
+                targetingComputer.updateSubTargets();
+            } else {
+                log('❌ Sub-target attack failed');
+            }
+            
+            updateEnemySystemsDisplay();
+            updateSubTargetInfo();
+        };
+        
+        // Damage random enemy system
+        window.damageEnemySystem = function() {
+            if (!enemyShip) {
+                log('ERROR: No enemy ship');
+                return;
+            }
+            
+            const systemNames = Array.from(enemyShip.systems.keys());
+            if (systemNames.length === 0) {
+                log('No systems to damage');
+                return;
+            }
+            
+            const randomSystem = systemNames[Math.floor(Math.random() * systemNames.length)];
+            const system = enemyShip.systems.get(randomSystem);
+            
+            system.takeDamage(20 + Math.random() * 30); // 20-50 damage
+            
+            log(`Damaged ${randomSystem}: ${(system.healthPercentage * 100).toFixed(1)}% health`);
+            
+            // Update sub-targets since system health changed
+            if (targetingComputer && targetingComputer.currentTarget === enemyShip) {
+                targetingComputer.updateSubTargets();
+            }
+            
+            updateEnemySystemsDisplay();
+            updateSubTargetInfo();
+        };
+        
+        // Destroy random enemy system (set health to 0)
+        window.destroyEnemySystem = function() {
+            if (!enemyShip) {
+                log('ERROR: No enemy ship');
+                return;
+            }
+            
+            const systemNames = Array.from(enemyShip.systems.keys());
+            if (systemNames.length === 0) {
+                log('No systems to destroy');
+                return;
+            }
+            
+            // Filter to only systems that aren't already destroyed
+            const aliveSystemNames = systemNames.filter(name => {
+                const system = enemyShip.systems.get(name);
+                return system.healthPercentage > 0;
+            });
+            
+            if (aliveSystemNames.length === 0) {
+                log('All systems are already destroyed');
+                return;
+            }
+            
+            const randomSystem = aliveSystemNames[Math.floor(Math.random() * aliveSystemNames.length)];
+            const system = enemyShip.systems.get(randomSystem);
+            
+            // Set health to 0 (destroyed)
+            system.currentHealth = 0;
+            system.healthPercentage = 0;
+            
+            log(`Destroyed ${randomSystem}: 0% health (DESTROYED)`);
+            
+            // Update sub-targets since system was destroyed
+            if (targetingComputer && targetingComputer.currentTarget === enemyShip) {
+                targetingComputer.updateSubTargets();
+            }
+            
+            updateEnemySystemsDisplay();
+            updateSubTargetInfo();
+        };
+        
+        // Repair random enemy system
+        window.repairEnemySystem = function() {
+            if (!enemyShip) {
+                log('ERROR: No enemy ship');
+                return;
+            }
+            
+            const systemNames = Array.from(enemyShip.systems.keys());
+            if (systemNames.length === 0) {
+                log('No systems to repair');
+                return;
+            }
+            
+            // Prioritize destroyed systems (health = 0) for repair
+            const destroyedSystems = systemNames.filter(name => {
+                const system = enemyShip.systems.get(name);
+                return system.healthPercentage === 0;
+            });
+            
+            const damagedSystems = systemNames.filter(name => {
+                const system = enemyShip.systems.get(name);
+                return system.healthPercentage > 0 && system.healthPercentage < 1.0;
+            });
+            
+            let targetSystem;
+            if (destroyedSystems.length > 0) {
+                // Repair a destroyed system first
+                targetSystem = destroyedSystems[Math.floor(Math.random() * destroyedSystems.length)];
+            } else if (damagedSystems.length > 0) {
+                // Repair a damaged system
+                targetSystem = damagedSystems[Math.floor(Math.random() * damagedSystems.length)];
+            } else {
+                log('All systems are at full health');
+                return;
+            }
+            
+            const system = enemyShip.systems.get(targetSystem);
+            const wasDestroyed = system.healthPercentage === 0;
+            
+            system.repair(0.3 + Math.random() * 0.4); // 30-70% repair
+            
+            if (wasDestroyed) {
+                log(`Repaired destroyed system ${targetSystem}: ${(system.healthPercentage * 100).toFixed(1)}% health (RE-ADDED TO TARGETABLE LIST)`);
+            } else {
+                log(`Repaired ${targetSystem}: ${(system.healthPercentage * 100).toFixed(1)}% health`);
+            }
+            
+            // Update sub-targets since system health changed
+            if (targetingComputer && targetingComputer.currentTarget === enemyShip) {
+                targetingComputer.updateSubTargets();
+            }
+            
+            updateEnemySystemsDisplay();
+            updateSubTargetInfo();
+        };
+        
+
+        
+        // Update player status display
+        function updatePlayerStatus() {
+            const statusDiv = document.getElementById('player-targeting-status');
+            
+            if (!playerShip || !targetingComputer) {
+                statusDiv.innerHTML = 'No ship created';
+                return;
+            }
+            
+            const status = targetingComputer.getStatus();
+            
+            statusDiv.innerHTML = `
+                <div><strong>Targeting Computer:</strong> ${status.computerType}</div>
+                <div><strong>Level:</strong> ${targetingComputer.level}</div>
+                <div><strong>Health:</strong> ${(status.healthPercentage * 100).toFixed(1)}%</div>
+                <div><strong>Active:</strong> ${status.isActive ? 'Yes' : 'No'}</div>
+                <div><strong>Range:</strong> ${status.currentTargetingRange.toFixed(1)} km</div>
+                <div><strong>Accuracy:</strong> ${(status.currentTargetingAccuracy * 100).toFixed(1)}%</div>
+                <div><strong>Sub-targeting:</strong> ${status.hasSubTargeting ? 'Available' : 'Not Available'}</div>
+                <div class="status">Energy: ${playerShip.currentEnergy.toFixed(0)}/${playerShip.maxEnergy}</div>
+            `;
+        }
+        
+        // Update target info display
+        function updateTargetInfo() {
+            const targetDiv = document.getElementById('target-info');
+            
+            if (!targetingComputer || !targetingComputer.currentTarget) {
+                targetDiv.innerHTML = 'No target selected';
+                return;
+            }
+            
+            const target = targetingComputer.currentTarget;
+            const status = target.getStatus();
+            
+            targetDiv.innerHTML = `
+                <div><strong>Target:</strong> ${target.name || 'Unknown'}</div>
+                <div><strong>Hull:</strong> ${status.hull.current.toFixed(0)}/${status.hull.max} (${status.hull.percentage.toFixed(1)}%)</div>
+                <div><strong>Energy:</strong> ${status.energy.current.toFixed(0)}/${status.energy.max} (${status.energy.percentage.toFixed(1)}%)</div>
+                <div><strong>Systems:</strong> ${status.systemCount}</div>
+                <div><strong>Target Lock:</strong> ${targetingComputer.targetLock ? 'Locked' : 'Not Locked'}</div>
+            `;
+        }
+        
+        // Update sub-target info display
+        function updateSubTargetInfo() {
+            const subTargetDiv = document.getElementById('sub-target-info');
+            const bonusesDiv = document.getElementById('sub-target-bonuses');
+            
+            if (!targetingComputer || !targetingComputer.hasSubTargeting()) {
+                subTargetDiv.innerHTML = 'Sub-targeting not available (requires Level 3+ targeting computer)';
+                bonusesDiv.innerHTML = '';
+                return;
+            }
+            
+            if (!targetingComputer.currentTarget) {
+                subTargetDiv.innerHTML = 'No target selected';
+                bonusesDiv.innerHTML = '';
+                return;
+            }
+            
+            if (targetingComputer.availableSubTargets.length === 0) {
+                subTargetDiv.innerHTML = 'No targetable systems detected';
+                bonusesDiv.innerHTML = '';
+                return;
+            }
+            
+            const currentSubTarget = targetingComputer.currentSubTarget;
+            
+            subTargetDiv.innerHTML = `
+                <div><strong>Available Sub-targets:</strong> ${targetingComputer.availableSubTargets.length}</div>
+                <div><strong>Current Sub-target:</strong> ${currentSubTarget ? currentSubTarget.displayName : 'None'}</div>
+                <div><strong>Sub-target Health:</strong> ${currentSubTarget ? (currentSubTarget.health * 100).toFixed(1) + '%' : 'N/A'}</div>
+                <div><strong>Priority:</strong> ${currentSubTarget ? currentSubTarget.priority : 'N/A'}</div>
+            `;
+            
+            if (currentSubTarget) {
+                bonusesDiv.innerHTML = `
+                    <div class="accuracy-bonus">Accuracy Bonus: +${(targetingComputer.getSubTargetAccuracyBonus() * 100).toFixed(1)}%</div>
+                    <div class="damage-bonus">Damage Bonus: +${(targetingComputer.getSubTargetDamageBonus() * 100).toFixed(1)}%</div>
+                `;
+            } else {
+                bonusesDiv.innerHTML = '';
+            }
+        }
+        
+        // Update enemy systems display
+        function updateEnemySystemsDisplay() {
+            const systemsDiv = document.getElementById('enemy-systems');
+            
+            if (!enemyShip) {
+                systemsDiv.innerHTML = 'No enemy ship created';
+                return;
+            }
+            
+            let html = '';
+            
+            for (const [systemName, system] of enemyShip.systems) {
+                const isTargeted = targetingComputer && targetingComputer.currentTarget === enemyShip;
+                const isSubTargeted = targetingComputer && targetingComputer.currentSubTarget && 
+                                    targetingComputer.currentSubTarget.systemName === systemName;
+                
+                let cssClass = 'system-item';
+                if (system.healthPercentage === 0) {
+                    cssClass += ' destroyed';
+                } else if (isTargeted && isSubTargeted) {
+                    cssClass += ' sub-targeted';
+                } else if (isTargeted) {
+                    cssClass += ' targeted';
+                }
+                
+                const displayName = system.name || systemName.replace('_', ' ').toUpperCase();
+                const health = (system.healthPercentage * 100).toFixed(1);
+                let status;
+                let statusIcon = '';
+                if (system.healthPercentage === 0) {
+                    status = 'DESTROYED';
+                    statusIcon = '💀';
+                } else if (system.healthPercentage < 0.25) {
+                    status = 'Critical';
+                    statusIcon = '🔴';
+                } else if (system.healthPercentage < 0.5) {
+                    status = 'Heavily Damaged';
+                    statusIcon = '🟠';
+                } else if (system.healthPercentage < 0.75) {
+                    status = 'Damaged';
+                    statusIcon = '🟡';
+                } else if (system.isOperational()) {
+                    status = 'Operational';
+                    statusIcon = '🟢';
+                } else {
+                    status = 'Offline';
+                    statusIcon = '⚫';
+                }
+                
+                // Add targeting indicator
+                let targetingIndicator = '';
+                if (isSubTargeted) {
+                    targetingIndicator = ' 🎯';
+                }
+                
+
+                
+                html += `
+                    <div class="${cssClass}">
+                        <strong>${displayName}${targetingIndicator}</strong><br>
+                        Health: ${health}% ${statusIcon} | Status: ${status}<br>
+                        Level: ${system.level} | Type: ${system.systemType || 'unknown'}
+                    </div>
+                `;
+            }
+            
+            systemsDiv.innerHTML = html;
+        }
+        
+        // Initialize display
+        updatePlayerStatus();
+        updateTargetInfo();
+        updateSubTargetInfo();
+        updateEnemySystemsDisplay();
+        
+        log('Sub-targeting test interface loaded');
+        log('Instructions:');
+        log('1. Create Player Ship (Level 3 targeting computer)');
+        log('2. Create Enemy Ship');
+        log('3. Activate Targeting Computer');
+        log('4. Target Enemy Ship');
+        log('5. Use > and < buttons to cycle through sub-targets, or let system pick randomly');
+        log('6. Use "Fire at Sub-Target" to damage the selected system');
+        log('7. Use "Destroy Random Enemy System" to completely destroy a system (removes from targetable list)');
+        log('8. Use "Repair Random Enemy System" to repair systems (destroyed systems get re-added to targetable list)');
+        log('9. If no sub-target is selected, firing will pick a random target');
+        log('10. All systems can now be completely destroyed (0% health) but remain repairable');
+    </script>
+</body>
+</html> 

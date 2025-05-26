@@ -32,19 +32,39 @@ export const SHIP_CONFIGS = {
             warpDrive: 1,       // Warp drive
             shields: 1,         // Deflector shields
             weapons: 1,         // Laser weapons (default)
-            missileTubes: 0,    // Missile tubes (optional, competes with weapons)
+            missileTubes: 1,    // Missile tubes (now included for cooldown testing)
             scanner: 1,         // Long range scanner
             radio: 1,           // Subspace radio
             galacticChart: 1,   // Galactic chart
             targetComputer: 1,  // Target computer
-            // Available slots: 10 (18 total - 8 used = 10 free for future systems)
+            // Available slots: 9 (18 total - 9 used = 9 free for future systems)
         },
         
         // Default system configurations (energy consumption per second when active)
         // SIMPLIFIED: All systems take exactly 1 slot
         defaultSystems: {
+            // Core ship systems that provide base stats
+            hull_plating: {
+                level: 5, // Level 5 = 1000 hull (5 * 200)
+                slots: 1
+            },
+            energy_reactor: {
+                level: 5, // Level 5 = 5000 energy, 50/sec recharge (5 * 1000, 5 * 10)
+                slots: 1
+            },
+            shield_generator: {
+                level: 6, // Level 6 = 90 armor when active (6 * 15) - close to target 80
+                slots: 1,
+                energyConsumption: 30 // 6 * 5 energy per second when active
+            },
+            cargo_hold: {
+                level: 2, // Level 2 = 20 cargo units (2 * 10) - close to target 15
+                slots: 1
+            },
+            
+            // Operational systems
             impulse_engines: { 
-                level: 1, 
+                level: 4, // Level 4 = 60 speed (4 * 15) - close to target 50
                 slots: 1, 
                 energyConsumption: 20 // Energy per second when maneuvering
             },
@@ -59,7 +79,7 @@ export const SHIP_CONFIGS = {
                 energyConsumption: 25 // Energy per second when active
             },
             weapons: { 
-                level: 1, 
+                level: 7, // Level 7 = 84 firepower (7 * 12) - close to target 80
                 slots: 1, 
                 energyConsumption: 0 // Uses energy per shot (handled separately)
             },
@@ -79,18 +99,413 @@ export const SHIP_CONFIGS = {
                 energyConsumption: 8 // Energy per second when active
             },
             target_computer: { 
-                level: 1, 
+                level: 3, // Level 3+ enables sub-targeting functionality
                 slots: 1, 
                 energyConsumption: 8 // Energy per second when active
+            },
+            missile_tubes: {
+                level: 1, // Level 1 missile tubes for testing cooldown system
+                slots: 1,
+                energyConsumption: 0 // Uses cooldown instead of energy per shot
+            }
+        }
+    },
+    
+    scout: {
+        name: 'Scout',
+        description: 'Fast reconnaissance ship with advanced sensors',
+        
+        // Base stats - High speed, low armor, minimal cargo
+        baseSpeed: 90,         // Very High (90/100)
+        baseArmor: 30,         // Low (30/100)
+        baseFirepower: 40,     // Low-Medium (40/100)
+        baseCargoCapacity: 8,  // Very Low (8 units)
+        baseHardpoints: 4,     // Low (4 hard points)
+        
+        // Energy system - Efficient but smaller capacity
+        maxEnergy: 3500,       // Smaller energy pool
+        energyRechargeRate: 60, // Fast recharge rate
+        
+        // Hull - Light construction
+        maxHull: 500,          // Low hull hit points
+        
+        // System slots - Adequate slots for core systems plus expansion
+        systemSlots: 15,       // Increased for better expansion capability
+        
+        // System slot allocations
+        slotConfig: {
+            engines: 1,        // Impulse engines (high performance)
+            warpDrive: 1,       // Warp drive
+            shields: 1,         // Light shields
+            weapons: 1,         // Light weapons
+            scanner: 1,         // Enhanced long range scanner
+            radio: 1,           // Subspace radio
+            galacticChart: 1,   // Galactic chart
+            targetComputer: 1,  // Target computer
+            // Available slots: 7 (15 total - 8 used = 7 free)
+        },
+        
+        // Default system configurations - Scout optimized
+        defaultSystems: {
+            // Core ship systems that provide base stats
+            hull_plating: {
+                level: 3, // Level 3 = 600 hull (3 * 200) - light construction
+                slots: 1
+            },
+            energy_reactor: {
+                level: 4, // Level 4 = 4000 energy, 40/sec recharge (4 * 1000, 4 * 10)
+                slots: 1
+            },
+            shield_generator: {
+                level: 2, // Level 2 = 30 armor when active (2 * 15) - matches target 30
+                slots: 1,
+                energyConsumption: 10 // 2 * 5 energy per second when active
+            },
+            cargo_hold: {
+                level: 1, // Level 1 = 10 cargo units (1 * 10) - close to target 8
+                slots: 1
+            },
+            
+            // Operational systems
+            impulse_engines: { 
+                level: 2,       // Higher level engines for speed
+                slots: 1, 
+                energyConsumption: 15 // More efficient engines
+            },
+            warp_drive: { 
+                level: 2,       // Better warp capability
+                slots: 1, 
+                energyConsumption: 0
+            },
+            shields: { 
+                level: 1,       // Basic shields
+                slots: 1, 
+                energyConsumption: 15 // Lower energy consumption
+            },
+            weapons: { 
+                level: 1,       // Basic weapons
+                slots: 1, 
+                energyConsumption: 0
+            },
+            long_range_scanner: { 
+                level: 3,       // Enhanced scanner for reconnaissance
+                slots: 1, 
+                energyConsumption: 3 // Very efficient scanning
+            },
+            subspace_radio: { 
+                level: 2,       // Better communication range
+                slots: 1, 
+                energyConsumption: 4
+            },
+            galactic_chart: { 
+                level: 2,       // Enhanced navigation
+                slots: 1, 
+                energyConsumption: 5
+            },
+            target_computer: { 
+                level: 3,       // Level 3+ enables sub-targeting functionality
+                slots: 1, 
+                energyConsumption: 6
+            }
+        }
+    },
+    
+    light_fighter: {
+        name: 'Light Fighter',
+        description: 'Balanced combat ship for patrol and escort duties',
+        
+        // Base stats - Balanced for combat
+        baseSpeed: 70,         // High (70/100)
+        baseArmor: 50,         // Medium (50/100)
+        baseFirepower: 60,     // Medium-High (60/100)
+        baseCargoCapacity: 12, // Low (12 units)
+        baseHardpoints: 6,     // Medium-Low (6 hard points)
+        
+        // Energy system - Balanced
+        maxEnergy: 4000,       // Medium energy pool
+        energyRechargeRate: 55, // Good recharge rate
+        
+        // Hull - Medium construction
+        maxHull: 700,          // Medium hull hit points
+        
+        // System slots - Balanced allocation with good expansion
+        systemSlots: 18,       // Increased for better expansion capability
+        
+        // System slot allocations
+        slotConfig: {
+            engines: 1,        // Impulse engines
+            warpDrive: 1,       // Warp drive
+            shields: 1,         // Medium shields
+            weapons: 1,         // Combat weapons
+            scanner: 1,         // Long range scanner
+            radio: 1,           // Subspace radio
+            galacticChart: 1,   // Galactic chart
+            targetComputer: 1,  // Target computer
+            // Available slots: 10 (18 total - 8 used = 10 free)
+        },
+        
+        // Default system configurations - Combat balanced
+        defaultSystems: {
+            // Core ship systems that provide base stats
+            hull_plating: {
+                level: 4, // Level 4 = 800 hull (4 * 200) - medium construction
+                slots: 1
+            },
+            energy_reactor: {
+                level: 4, // Level 4 = 4000 energy, 40/sec recharge (4 * 1000, 4 * 10)
+                slots: 1
+            },
+            shield_generator: {
+                level: 3, // Level 3 = 45 armor when active (3 * 15) - close to target 50
+                slots: 1,
+                energyConsumption: 15 // 3 * 5 energy per second when active
+            },
+            cargo_hold: {
+                level: 1, // Level 1 = 10 cargo units (1 * 10) - close to target 12
+                slots: 1
+            },
+            
+            // Operational systems
+            impulse_engines: { 
+                level: 1, 
+                slots: 1, 
+                energyConsumption: 18
+            },
+            warp_drive: { 
+                level: 1, 
+                slots: 1, 
+                energyConsumption: 0
+            },
+            shields: { 
+                level: 2,       // Better shields than scout
+                slots: 1, 
+                energyConsumption: 20
+            },
+            weapons: { 
+                level: 2,       // Enhanced weapons
+                slots: 1, 
+                energyConsumption: 0
+            },
+            long_range_scanner: { 
+                level: 1, 
+                slots: 1, 
+                energyConsumption: 5
+            },
+            subspace_radio: { 
+                level: 1, 
+                slots: 1, 
+                energyConsumption: 6
+            },
+            galactic_chart: { 
+                level: 1, 
+                slots: 1, 
+                energyConsumption: 8
+            },
+            target_computer: { 
+                level: 3,       // Level 3+ enables sub-targeting functionality
+                slots: 1, 
+                energyConsumption: 7
+            }
+        }
+    },
+    
+    light_freighter: {
+        name: 'Light Freighter',
+        description: 'Cargo transport with basic defensive capabilities',
+        
+        // Base stats - Cargo focused
+        baseSpeed: 40,         // Low (40/100)
+        baseArmor: 60,         // Medium-High (60/100)
+        baseFirepower: 30,     // Low (30/100)
+        baseCargoCapacity: 50, // High (50 units)
+        baseHardpoints: 6,     // Medium-Low (6 hard points)
+        
+        // Energy system - Larger capacity for cargo systems
+        maxEnergy: 6000,       // Large energy pool
+        energyRechargeRate: 45, // Slower recharge rate
+        
+        // Hull - Reinforced for cargo protection
+        maxHull: 900,          // High hull hit points
+        
+        // System slots - More utility focused with expansion room
+        systemSlots: 20,       // Increased for cargo systems and expansion
+        
+        // System slot allocations
+        slotConfig: {
+            engines: 1,        // Basic impulse engines
+            warpDrive: 1,       // Warp drive
+            shields: 1,         // Defensive shields
+            weapons: 1,         // Basic defensive weapons
+            scanner: 1,         // Long range scanner
+            radio: 1,           // Subspace radio
+            galacticChart: 1,   // Galactic chart
+            targetComputer: 1,  // Basic target computer
+            // Available slots: 12 (20 total - 8 used = 12 free for cargo systems)
+        },
+        
+        // Default system configurations - Cargo optimized
+        defaultSystems: {
+            // Core ship systems that provide base stats
+            hull_plating: {
+                level: 5, // Level 5 = 1000 hull (5 * 200) - reinforced for cargo protection
+                slots: 1
+            },
+            energy_reactor: {
+                level: 6, // Level 6 = 6000 energy, 60/sec recharge (6 * 1000, 6 * 10)
+                slots: 1
+            },
+            shield_generator: {
+                level: 4, // Level 4 = 60 armor when active (4 * 15) - matches target 60
+                slots: 1,
+                energyConsumption: 20 // 4 * 5 energy per second when active
+            },
+            cargo_hold: {
+                level: 5, // Level 5 = 50 cargo units (5 * 10) - matches target 50
+                slots: 1
+            },
+            
+            // Operational systems
+            impulse_engines: { 
+                level: 1,       // Basic engines
+                slots: 1, 
+                energyConsumption: 25 // Higher consumption due to cargo mass
+            },
+            warp_drive: { 
+                level: 1, 
+                slots: 1, 
+                energyConsumption: 0
+            },
+            shields: { 
+                level: 2,       // Good defensive shields
+                slots: 1, 
+                energyConsumption: 30 // Higher consumption for cargo protection
+            },
+            weapons: { 
+                level: 1,       // Basic defensive weapons
+                slots: 1, 
+                energyConsumption: 0
+            },
+            long_range_scanner: { 
+                level: 2,       // Good scanner for trade routes
+                slots: 1, 
+                energyConsumption: 4
+            },
+            subspace_radio: { 
+                level: 2,       // Good communication for trade
+                slots: 1, 
+                energyConsumption: 5
+            },
+            galactic_chart: { 
+                level: 2,       // Enhanced navigation for trade routes
+                slots: 1, 
+                energyConsumption: 7
+            },
+            target_computer: { 
+                level: 3,       // Level 3+ enables sub-targeting functionality
+                slots: 1, 
+                energyConsumption: 8
+            }
+        }
+    },
+    
+    heavy_freighter: {
+        name: 'Heavy Freighter',
+        description: 'Maximum cargo capacity with minimal combat capability',
+        
+        // Base stats - Maximum cargo focus
+        baseSpeed: 25,         // Very Low (25/100)
+        baseArmor: 70,         // High (70/100)
+        baseFirepower: 20,     // Very Low (20/100)
+        baseCargoCapacity: 100, // Maximum (100 units)
+        baseHardpoints: 4,     // Low (4 hard points)
+        
+        // Energy system - Massive capacity for cargo operations
+        maxEnergy: 8000,       // Very large energy pool
+        energyRechargeRate: 40, // Slow recharge rate
+        
+        // Hull - Heavily reinforced
+        maxHull: 1200,         // Very high hull hit points
+        
+        // System slots - Maximum utility focus with extensive expansion
+        systemSlots: 25,       // Maximum system slots for cargo operations and expansion
+        
+        // System slot allocations
+        slotConfig: {
+            engines: 1,        // Heavy impulse engines
+            warpDrive: 1,       // Warp drive
+            shields: 1,         // Heavy shields
+            weapons: 1,         // Minimal weapons
+            scanner: 1,         // Long range scanner
+            radio: 1,           // Subspace radio
+            galacticChart: 1,   // Galactic chart
+            targetComputer: 1,  // Basic target computer
+            // Available slots: 17 (25 total - 8 used = 17 free for cargo systems)
+        },
+        
+        // Default system configurations - Heavy cargo optimized
+        defaultSystems: {
+            // Core ship systems that provide base stats
+            hull_plating: {
+                level: 6, // Level 6 = 1200 hull (6 * 200) - heavily reinforced
+                slots: 1
+            },
+            energy_reactor: {
+                level: 8, // Level 8 = 8000 energy, 80/sec recharge (8 * 1000, 8 * 10)
+                slots: 1
+            },
+            shield_generator: {
+                level: 5, // Level 5 = 75 armor when active (5 * 15) - close to target 70
+                slots: 1,
+                energyConsumption: 25 // 5 * 5 energy per second when active
+            },
+            cargo_hold: {
+                level: 10, // Level 10 = 100 cargo units (10 * 10) - matches target 100
+                slots: 1
+            },
+            
+            // Operational systems
+            impulse_engines: { 
+                level: 1,       // Heavy but slow engines
+                slots: 1, 
+                energyConsumption: 35 // High consumption due to massive cargo
+            },
+            warp_drive: { 
+                level: 1, 
+                slots: 1, 
+                energyConsumption: 0
+            },
+            shields: { 
+                level: 3,       // Heavy defensive shields
+                slots: 1, 
+                energyConsumption: 40 // High consumption for maximum protection
+            },
+            weapons: { 
+                level: 1,       // Minimal weapons
+                slots: 1, 
+                energyConsumption: 0
+            },
+            long_range_scanner: { 
+                level: 2,       // Good scanner for trade routes
+                slots: 1, 
+                energyConsumption: 6
+            },
+            subspace_radio: { 
+                level: 2,       // Good communication for trade
+                slots: 1, 
+                energyConsumption: 7
+            },
+            galactic_chart: { 
+                level: 2,       // Enhanced navigation for trade routes
+                slots: 1, 
+                energyConsumption: 9
+            },
+            target_computer: { 
+                level: 3,       // Level 3+ enables sub-targeting functionality
+                slots: 1, 
+                energyConsumption: 10
             }
         }
     }
-    
-    // Future ship types can be added here for post-MVP
-    // scout: { ... },
-    // light_fighter: { ... },
-    // light_freighter: { ... },
-    // heavy_freighter: { ... }
 };
 
 /**

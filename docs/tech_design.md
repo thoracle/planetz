@@ -380,21 +380,26 @@ backend/
 
 ### Ship Systems Architecture
 
-#### Ship Class Diagram
+#### Ship Class Diagram (MVP - Simplified)
 ```mermaid
 classDiagram
     class Ship {
-        +String shipClass
+        +String shipType
         +float baseSpeed
         +float baseArmor
         +float baseFirepower
         +int baseCargoCapacity
-        +int baseHardpoints
+        +int totalSlots
+        +int usedSlots
         +Map~String, System~ systems
-        +Map~String, Upgrade~ upgrades
+        +float maxEnergy
+        +float currentEnergy
         +calculateTotalStats()
         +applyDamage()
         +repairSystem()
+        +addSystem()
+        +removeSystem()
+        +consumeEnergy()
     }
 
     class System {
@@ -403,20 +408,14 @@ classDiagram
         +float health
         +float maxHealth
         +int level
+        +int slotCost
+        +float energyConsumptionRate
+        +boolean isActive
         +float getEffectiveness()
         +void takeDamage()
         +void repair()
-    }
-
-    class Upgrade {
-        +String name
-        +int level
-        +Map~String, float~ stats
-        +int powerCost
-        +int slotCost
-        +boolean isInstalled
-        +void install()
-        +void uninstall()
+        +void activate()
+        +void deactivate()
     }
 
     class ImpulseEngines {
@@ -424,6 +423,7 @@ classDiagram
         +float maneuverability
         +float getCurrentSpeed()
         +float getCurrentManeuverability()
+        +float getEnergyConsumption()
     }
 
     class WarpDrive {
@@ -438,51 +438,178 @@ classDiagram
         +float rechargeRate
         +float getCurrentCapacity()
         +float getCurrentRechargeRate()
+        +float absorbDamage()
     }
 
     class Weapons {
         +float damage
         +float fireRate
+        +float energyPerShot
         +float getCurrentDamage()
         +float getCurrentFireRate()
+        +boolean fire()
+    }
+
+    class LongRangeScanner {
+        +float scanRange
+        +float accuracy
+        +float getCurrentRange()
+        +boolean scan()
+    }
+
+    class SubspaceRadio {
+        +float transmissionRange
+        +float chartAccuracy
+        +boolean transmit()
+    }
+
+    class TargetComputer {
+        +float accuracy
+        +float lockSpeed
+        +float getAccuracyBonus()
+        +boolean lockTarget()
     }
 
     Ship "1" *-- "many" System
-    Ship "1" *-- "many" Upgrade
     System <|.. ImpulseEngines
     System <|.. WarpDrive
     System <|.. Shields
     System <|.. Weapons
+    System <|.. LongRangeScanner
+    System <|.. SubspaceRadio
+    System <|.. TargetComputer
+
+    note for Ship "SIMPLIFIED: Universal slot system\nAll systems take 1 slot\nEnergy-only power management"
+    note for System "SIMPLIFIED: No power cost\nOnly energy consumption when active"
 ```
 
-**Design Notes:**
+#### Post-MVP: NFT/Card System Extension
+```mermaid
+classDiagram
+    class Ship {
+        +String shipType
+        +int totalHardpoints
+        +Map~String, Hardpoint~ hardpoints
+        +CardInventory inventory
+        +validateBuild()
+        +installCard()
+        +removeCard()
+    }
+
+    class CardInventory {
+        +Map~String, CardStack~ cardStacks
+        +boolean isDiscovered()
+        +void addCard()
+        +void removeCard()
+        +CardStack getStack()
+    }
+
+    class CardStack {
+        +String cardType
+        +int quantity
+        +boolean isLocked
+        +boolean isMystery
+        +Card getCard()
+    }
+
+    class Card {
+        +String name
+        +int level
+        +Rarity rarity
+        +Map~String, Ability~ abilities
+        +Requirements prerequisites
+        +boolean canInstall()
+    }
+
+    class Hardpoint {
+        +String type
+        +Card installedCard
+        +boolean isEmpty()
+        +boolean isCompatible()
+    }
+
+    class Ability {
+        <<interface>>
+        +String type
+        +void apply()
+        +void remove()
+    }
+
+    class PassiveAbility {
+        +Map~String, float~ statModifiers
+        +void applyBonus()
+    }
+
+    class ActiveAbility {
+        +float energyCost
+        +float cooldown
+        +boolean activate()
+    }
+
+    Ship "1" *-- "1" CardInventory
+    Ship "1" *-- "many" Hardpoint
+    CardInventory "1" *-- "many" CardStack
+    CardStack "1" *-- "many" Card
+    Hardpoint "1" o-- "0..1" Card
+    Card "1" *-- "many" Ability
+    Ability <|.. PassiveAbility
+    Ability <|.. ActiveAbility
+
+    note for Ship "POST-MVP: Specialized hardpoints\nCard-based system installation"
+    note for Card "POST-MVP: NFT integration\nCollectable and tradeable"
+```
+
+**Design Notes (MVP - Simplified):**
 1. **Ship Class**
    - Core container for all ship-related functionality
-   - Maintains base stats that are modified by systems and upgrades
-   - Uses composition over inheritance for systems and upgrades
+   - Maintains base stats that are modified by systems only (no upgrades in MVP)
+   - Uses composition for systems with simplified slot management
+   - **SIMPLIFIED**: Universal slot system - all systems take 1 slot
+   - **SIMPLIFIED**: Energy-only power management (no separate power grid)
    - Implements observer pattern for system state changes
-   - Handles power management and slot allocation
 
 2. **System Interface**
    - Defines common interface for all ship systems
    - Enforces consistent health/damage tracking
    - Provides standardized effectiveness calculation
-   - Supports level-based progression
+   - Supports level-based progression (1-5 levels)
+   - **SIMPLIFIED**: Energy consumption per second when active
+   - **SIMPLIFIED**: Activation/deactivation methods for energy management
    - Implements state pattern for operational states
 
-3. **Upgrade System**
-   - Manages upgrade installation and removal
-   - Tracks power consumption and slot usage
-   - Handles upgrade compatibility checks
-   - Supports upgrade stacking with diminishing returns
-   - Maintains upgrade history for repair costs
+3. **Simplified Inventory (MVP)**
+   - **DEFERRED**: NFT/Card system moved to post-MVP
+   - Direct system installation/removal via level progression
+   - Basic build validation (e.g., must have engines)
+   - Slot availability checking
+   - **SIMPLIFIED**: No drag-and-drop interface in MVP
 
 4. **Concrete Systems**
    - Each system implements specific behavior
    - Systems can affect other systems (e.g., damaged engines affect shield recharge)
    - Systems maintain their own state and effectiveness calculations
    - Systems can be temporarily disabled or permanently destroyed
-   - Systems support both automatic and manual control modes
+   - **SIMPLIFIED**: Systems consume energy when active, not continuously
+   - Support both automatic and manual control modes
+
+**Post-MVP Design Notes (NFT/Card System):**
+1. **Card Inventory System**
+   - Stacking inventory with Pokédex-style discovery
+   - Mystery cards revealed when first found
+   - External NFT marketplace integration
+   - Drag-and-drop card management interface
+
+2. **Hardpoint Specialization**
+   - Weapon, utility, engine, and defensive hardpoints
+   - Card compatibility checking
+   - Advanced build validation with performance warnings
+   - Specialized hardpoint bonuses
+
+3. **Card Collection Mechanics**
+   - Loot drops from missions and combat
+   - Card trading via external marketplaces (OpenSea)
+   - Multiple card requirements for upgrades
+   - Card rarity system with special abilities
 
 #### Ship Damage State Diagram
 ```mermaid

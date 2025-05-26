@@ -108,6 +108,22 @@ export default class Weapons extends System {
                 energyPerShot: 30, // Level 5 lasers take 30 energy to fire
                 maxBurstShots: 5, // Penta shot
                 weaponType: 'Level 5 Plasma Cannons'
+            },
+            6: { 
+                effectiveness: 2.0,
+                damage: baseDamage * 3.0, // 200% more damage
+                fireRate: baseFireRate * 1.5, // 50% faster fire rate
+                energyPerShot: 40, // Level 6 lasers take 40 energy to fire
+                maxBurstShots: 6, // Hexa shot
+                weaponType: 'Level 6 Heavy Plasma Cannons'
+            },
+            7: { 
+                effectiveness: 2.2,
+                damage: baseDamage * 3.5, // 250% more damage
+                fireRate: baseFireRate * 1.6, // 60% faster fire rate
+                energyPerShot: 50, // Level 7 lasers take 50 energy to fire
+                maxBurstShots: 7, // Hepta shot
+                weaponType: 'Level 7 Antimatter Cannons'
             }
         };
     }
@@ -307,7 +323,21 @@ export default class Weapons extends System {
     }
     
     /**
-     * Get firepower bonus for ship stats calculation
+     * Get base firepower provided by this weapon system
+     * @returns {number} Base firepower rating provided by weapons
+     */
+    getBaseFirepower() {
+        if (!this.isOperational()) return 0;
+        
+        // Base firepower per level
+        const firepowerPerLevel = 12; // Base firepower units per level
+        const baseFirepower = firepowerPerLevel * this.level;
+        
+        return baseFirepower * this.getEffectiveness();
+    }
+    
+    /**
+     * Get firepower bonus for ship stats calculation (legacy method for compatibility)
      * @returns {number} Firepower multiplier based on weapon damage
      */
     getFirepowerBonus() {

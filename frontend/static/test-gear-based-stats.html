@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gear-Based Stats Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #000;
+            color: #00ff00;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .ship-stats {
+            background-color: #001100;
+            border: 2px solid #00ff00;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 5px;
+            background-color: #002200;
+        }
+        .stat-label {
+            font-weight: bold;
+            color: #00ffff;
+        }
+        .stat-value {
+            color: #ffff00;
+        }
+        .system-list {
+            background-color: #001100;
+            border: 1px solid #00ff00;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        .system-item {
+            margin: 5px 0;
+            padding: 5px;
+            background-color: #002200;
+            border-left: 3px solid #00ff00;
+            padding-left: 10px;
+        }
+        .system-name {
+            color: #00ffff;
+            font-weight: bold;
+        }
+        .system-stats {
+            color: #ffff00;
+            font-size: 0.9em;
+        }
+        .test-controls {
+            background-color: #001100;
+            border: 2px solid #00ff00;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #003300;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        button:hover {
+            background-color: #005500;
+        }
+        .error {
+            color: #ff0000;
+            background-color: #330000;
+            padding: 10px;
+            border: 1px solid #ff0000;
+            border-radius: 3px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #00ff00;
+            background-color: #003300;
+            padding: 10px;
+            border: 1px solid #00ff00;
+            border-radius: 3px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gear-Based Ship Stats Test</h1>
+        <p>Testing the new gear-based stats system where all ship stats are derived from installed equipment.</p>
+        
+        <div class="test-controls">
+            <h3>Test Controls</h3>
+            <button onclick="createTestShip()">Create Heavy Fighter</button>
+            <button onclick="damageRandomSystem()">Damage Random System</button>
+            <button onclick="repairAllSystems()">Repair All Systems</button>
+            <button onclick="removeRandomSystem()">Remove Random System</button>
+            <button onclick="addRandomSystem()">Add Random System</button>
+        </div>
+        
+        <div id="ship-display"></div>
+        <div id="systems-display"></div>
+        <div id="messages"></div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/lib/three.min.js"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import Ship from '/js/ship/Ship.js';
+        import { getShipConfig } from '/js/ship/ShipConfigs.js';
+
+        let testShip = null;
+
+        window.createTestShip = async function() {
+            try {
+                addMessage('Creating Heavy Fighter with gear-based stats...', 'success');
+                testShip = new Ship('heavy_fighter');
+                
+                // Wait for async initialization to complete
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                updateDisplay();
+                addMessage('Heavy Fighter created successfully!', 'success');
+            } catch (error) {
+                addMessage(`Error creating ship: ${error.message}`, 'error');
+                console.error('Ship creation error:', error);
+            }
+        };
+
+        window.damageRandomSystem = function() {
+            if (!testShip) {
+                addMessage('No ship created yet!', 'error');
+                return;
+            }
+
+            const systemNames = Array.from(testShip.systems.keys());
+            if (systemNames.length === 0) {
+                addMessage('No systems to damage!', 'error');
+                return;
+            }
+
+            const randomSystem = systemNames[Math.floor(Math.random() * systemNames.length)];
+            const system = testShip.systems.get(randomSystem);
+            const damage = 20 + Math.random() * 30; // 20-50 damage
+            
+            system.takeDamage(damage);
+            testShip.calculateTotalStats();
+            updateDisplay();
+            addMessage(`Damaged ${randomSystem} for ${damage.toFixed(1)} damage`, 'success');
+        };
+
+        window.repairAllSystems = function() {
+            if (!testShip) {
+                addMessage('No ship created yet!', 'error');
+                return;
+            }
+
+            for (const [systemName, system] of testShip.systems) {
+                system.repair(1.0); // Full repair
+            }
+            testShip.calculateTotalStats();
+            updateDisplay();
+            addMessage('All systems fully repaired', 'success');
+        };
+
+        window.removeRandomSystem = function() {
+            if (!testShip) {
+                addMessage('No ship created yet!', 'error');
+                return;
+            }
+
+            const systemNames = Array.from(testShip.systems.keys());
+            const removableSystems = systemNames.filter(name => 
+                !['impulse_engines', 'warp_drive'].includes(name) // Keep essential systems
+            );
+            
+            if (removableSystems.length === 0) {
+                addMessage('No removable systems available!', 'error');
+                return;
+            }
+
+            const randomSystem = removableSystems[Math.floor(Math.random() * removableSystems.length)];
+            testShip.removeSystem(randomSystem);
+            testShip.calculateTotalStats();
+            updateDisplay();
+            addMessage(`Removed ${randomSystem}`, 'success');
+        };
+
+        window.addRandomSystem = function() {
+            if (!testShip) {
+                addMessage('No ship created yet!', 'error');
+                return;
+            }
+
+            // This is a simplified version - in a real implementation you'd have a system shop
+            addMessage('Add system functionality would require a system shop interface', 'error');
+        };
+
+        function updateDisplay() {
+            if (!testShip) return;
+
+            const stats = testShip.calculateTotalStats();
+            const status = testShip.getStatus();
+
+            // Update ship stats display
+            const shipDisplay = document.getElementById('ship-display');
+            shipDisplay.innerHTML = `
+                <div class="ship-stats">
+                    <h3>Ship Stats (Gear-Based)</h3>
+                    <div class="stat-row">
+                        <span class="stat-label">Speed:</span>
+                        <span class="stat-value">${stats.speed.toFixed(0)}/100</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Armor:</span>
+                        <span class="stat-value">${stats.armor.toFixed(0)}/100</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Firepower:</span>
+                        <span class="stat-value">${stats.firepower.toFixed(0)}/100</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Cargo:</span>
+                        <span class="stat-value">${stats.cargo.toFixed(0)} units</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Max Energy:</span>
+                        <span class="stat-value">${stats.maxEnergy.toFixed(0)}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Energy Recharge:</span>
+                        <span class="stat-value">${stats.energyRechargeRate.toFixed(0)}/sec</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Max Hull:</span>
+                        <span class="stat-value">${stats.maxHull.toFixed(0)}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Current Hull:</span>
+                        <span class="stat-value">${status.hull.current.toFixed(0)}/${status.hull.max.toFixed(0)} (${status.hull.percentage.toFixed(1)}%)</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Current Energy:</span>
+                        <span class="stat-value">${status.energy.current.toFixed(0)}/${status.energy.max.toFixed(0)} (${status.energy.percentage.toFixed(1)}%)</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">System Slots:</span>
+                        <span class="stat-value">${status.slots.used}/${status.slots.total} (${status.slots.available} free)</span>
+                    </div>
+                </div>
+            `;
+
+            // Update systems display
+            const systemsDisplay = document.getElementById('systems-display');
+            let systemsHtml = '<div class="system-list"><h3>Installed Systems</h3>';
+            
+            for (const [systemName, systemInfo] of Object.entries(status.systems)) {
+                const system = testShip.systems.get(systemName);
+                let systemStats = '';
+                
+                if (system) {
+                    if (system.getBaseSpeed) {
+                        systemStats += `Speed: +${system.getBaseSpeed().toFixed(0)} `;
+                    }
+                    if (system.getArmorBonus) {
+                        systemStats += `Armor: +${system.getArmorBonus().toFixed(0)} `;
+                    }
+                    if (system.getBaseFirepower) {
+                        systemStats += `Firepower: +${system.getBaseFirepower().toFixed(0)} `;
+                    }
+                    if (system.getCargoCapacity) {
+                        systemStats += `Cargo: +${system.getCargoCapacity().toFixed(0)} `;
+                    }
+                    if (system.getEnergyCapacity) {
+                        systemStats += `Energy: +${system.getEnergyCapacity().toFixed(0)} `;
+                    }
+                    if (system.getEnergyRechargeRate) {
+                        systemStats += `Recharge: +${system.getEnergyRechargeRate().toFixed(0)}/sec `;
+                    }
+                    if (system.getHullCapacity) {
+                        systemStats += `Hull: +${system.getHullCapacity().toFixed(0)} `;
+                    }
+                }
+                
+                systemsHtml += `
+                    <div class="system-item">
+                        <div class="system-name">${systemName} (Level ${systemInfo.level}) - ${systemInfo.health.toFixed(1)}% Health</div>
+                        <div class="system-stats">${systemStats || 'No stat bonuses'}</div>
+                    </div>
+                `;
+            }
+            
+            systemsHtml += '</div>';
+            systemsDisplay.innerHTML = systemsHtml;
+        }
+
+        function addMessage(message, type = 'success') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            messagesDiv.appendChild(messageDiv);
+            
+            // Keep only last 10 messages
+            while (messagesDiv.children.length > 10) {
+                messagesDiv.removeChild(messagesDiv.firstChild);
+            }
+        }
+
+        // Initialize
+        addMessage('Gear-based stats test ready. Click "Create Heavy Fighter" to begin.', 'success');
+    </script>
+</body>
+</html> 

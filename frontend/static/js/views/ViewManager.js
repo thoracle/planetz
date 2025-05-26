@@ -10,7 +10,7 @@ import Weapons from '../ship/systems/Weapons.js';
 import LongRangeScannerSystem from '../ship/systems/LongRangeScanner.js';
 import GalacticChartSystem from '../ship/systems/GalacticChartSystem.js';
 import SubspaceRadioSystem from '../ship/systems/SubspaceRadioSystem.js';
-import DamageControlInterface from '../ui/DamageControlInterface.js';
+// import DamageControlInterface from '../ui/DamageControlInterface.js'; // DISABLED - using SimplifiedDamageControl instead
 import SubspaceRadio from '../ui/SubspaceRadio.js';
 
 export const VIEW_TYPES = {
@@ -71,15 +71,17 @@ export class ViewManager {
         // Create long range scanner and ensure it's hidden
         this.longRangeScanner = new LongRangeScanner(this);
         
-        // Initialize damage control interface
-        this.damageControl = new DamageControlInterface();
-        this.damageControl.setShip(this.ship);
+        // Initialize damage control interface - DISABLED (using SimplifiedDamageControl instead)
+        // The old DamageControlInterface has been replaced with SimplifiedDamageControl
+        // which is managed by StarfieldManager to avoid conflicts
+        // this.damageControl = new DamageControlInterface();
+        // this.damageControl.setShip(this.ship);
         
         // Initialize subspace radio
         this.subspaceRadio = new SubspaceRadio(this.ship);
         
-        // Expose damage control globally for HTML event handlers
-        window.damageControl = this.damageControl;
+        // Expose damage control globally for HTML event handlers - DISABLED
+        // window.damageControl = this.damageControl;
         
         // Set initial view state - this will also set this.currentView
         this.setView(VIEW_TYPES.FORE);
@@ -415,18 +417,14 @@ export class ViewManager {
                     console.log('No weapons system found on ship');
                 }
             } else if (key === 'd') {
-                // Damage Control Interface toggle
+                // Damage Control Interface toggle - DISABLED (now handled by StarfieldManager)
+                // The new SimplifiedDamageControl interface is handled by StarfieldManager
+                // to avoid conflicts and ensure only one damage control interface is active
                 event.preventDefault();
                 event.stopPropagation();
                 
-                // Play command sound like other command keys
-                if (this.starfieldManager && this.starfieldManager.playCommandSound) {
-                    this.starfieldManager.playCommandSound();
-                }
-                
-                // Update docking status and toggle interface
-                this.damageControl.setDockingStatus(isDocked);
-                this.damageControl.toggle();
+                // Let StarfieldManager handle damage control interface
+                console.log('Damage control key pressed - handled by StarfieldManager');
             } else if (!isDocked && key === 'f' && (this.currentView === VIEW_TYPES.AFT || isGalacticChartVisible || isLongRangeScannerVisible)) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -853,12 +851,12 @@ export class ViewManager {
                 
                 console.log(`Applied ${(damageAmount * 100).toFixed(1)}% damage to ${systemName}: ${(beforeHealth * 100).toFixed(1)}% → ${(afterHealth * 100).toFixed(1)}%`);
                 
-                // Add to damage control log if available
-                if (this.damageControl) {
-                    this.damageControl.addLogEntry('damage', 
-                        `${this.damageControl.formatSystemName(systemName)} damaged: ${(beforeHealth * 100).toFixed(1)}% → ${(afterHealth * 100).toFixed(1)}%`
-                    );
-                }
+                // Add to damage control log if available (old interface disabled)
+                // if (this.damageControl) {
+                //     this.damageControl.addLogEntry('damage', 
+                //         `${this.damageControl.formatSystemName(systemName)} damaged: ${(beforeHealth * 100).toFixed(1)}% → ${(afterHealth * 100).toFixed(1)}%`
+                //     );
+                // }
             }
         }
         
@@ -867,11 +865,14 @@ export class ViewManager {
     }
     
     /**
-     * Get damage control interface
-     * @returns {DamageControlInterface} The damage control interface instance
+     * Get damage control interface - DISABLED
+     * The old DamageControlInterface has been replaced with SimplifiedDamageControl
+     * which is managed by StarfieldManager. Use StarfieldManager.damageControlInterface instead.
+     * @returns {null} Always returns null as old interface is disabled
      */
     getDamageControl() {
-        return this.damageControl;
+        console.warn('getDamageControl() is deprecated - use StarfieldManager.damageControlInterface instead');
+        return null;
     }
 }
 

@@ -37,6 +37,13 @@ export default class TargetComputer extends System {
         this.lastScanTime = 0; // When last target scan was performed
         this.scanInterval = 1000; // Target scan interval in milliseconds
         
+        // Sub-targeting system (Level 3+)
+        this.currentSubTarget = null; // Currently selected sub-target system
+        this.availableSubTargets = []; // List of targetable enemy systems
+        this.subTargetIndex = 0; // Current index in sub-target list
+        this.subTargetAccuracyBonus = 0.2; // 20% accuracy bonus for sub-targeted systems
+        this.subTargetDamageBonus = 0.3; // 30% damage bonus for sub-targeted systems
+        
         // Override default active state - target computer is only active when targeting
         this.isActive = false;
         
@@ -235,7 +242,13 @@ export default class TargetComputer extends System {
             }
         }
         
+        // Update sub-targets for new target
+        this.updateSubTargets();
+        
         console.log(`Target set: ${target ? target.name || 'Unknown' : 'None'}`);
+        if (this.hasSubTargeting() && this.availableSubTargets.length > 0) {
+            console.log(`Sub-targeting available: ${this.availableSubTargets.length} systems detected`);
+        }
         return true;
     }
     
@@ -267,6 +280,201 @@ export default class TargetComputer extends System {
     clearTarget() {
         this.currentTarget = null;
         this.targetLock = false;
+        this.clearSubTarget();
+    }
+    
+    /**
+     * Check if sub-targeting is available (Level 3+)
+     * @returns {boolean} True if sub-targeting is available
+     */
+    hasSubTargeting() {
+        return this.level >= 3 && this.isOperational();
+    }
+    
+    /**
+     * Detect targetable systems on enemy ship
+     * @param {Ship} enemyShip - Enemy ship to scan for targetable systems
+     * @returns {Array} Array of targetable systems
+     */
+    detectTargetableSystems(enemyShip) {
+        if (!this.hasSubTargeting() || !enemyShip || !enemyShip.systems) {
+            return [];
+        }
+        
+        const targetableSystems = [];
+        const detectionRange = this.getCurrentTargetingRange();
+        
+        // Scan enemy ship systems
+        for (const [systemName, system] of enemyShip.systems) {
+            // Only target systems that are not completely destroyed (health > 0)
+            // Systems with 0% health are destroyed and cannot be targeted
+            if (system.healthPercentage > 0) {
+                targetableSystems.push({
+                    systemName: systemName,
+                    system: system,
+                    displayName: system.name || systemName.replace('_', ' ').toUpperCase(),
+                    health: system.healthPercentage,
+                    priority: this.getSystemTargetPriority(systemName)
+                });
+            }
+        }
+        
+        // Sort by priority (higher priority first)
+        targetableSystems.sort((a, b) => b.priority - a.priority);
+        
+        return targetableSystems;
+    }
+    
+    /**
+     * Get targeting priority for different system types
+     * @param {string} systemName - Name of the system
+     * @returns {number} Priority value (higher = more important)
+     */
+    getSystemTargetPriority(systemName) {
+        const priorities = {
+            'weapons': 10,
+            'shields': 9,
+            'impulse_engines': 8,
+            'warp_drive': 7,
+            'target_computer': 6,
+            'long_range_scanner': 5,
+            'energy_reactor': 4,
+            'hull_plating': 3,
+            'subspace_radio': 2,
+            'galactic_chart': 1
+        };
+        
+        return priorities[systemName] || 0;
+    }
+    
+    /**
+     * Cycle to next sub-target
+     * @returns {boolean} True if sub-target was changed
+     */
+    cycleSubTargetNext() {
+        if (!this.hasSubTargeting() || !this.currentTarget || this.availableSubTargets.length === 0) {
+            return false;
+        }
+        
+        this.subTargetIndex = (this.subTargetIndex + 1) % this.availableSubTargets.length;
+        this.currentSubTarget = this.availableSubTargets[this.subTargetIndex];
+        
+        console.log(`Sub-target: ${this.currentSubTarget.displayName} (${(this.currentSubTarget.health * 100).toFixed(1)}% health)`);
+        return true;
+    }
+    
+    /**
+     * Cycle to previous sub-target
+     * @returns {boolean} True if sub-target was changed
+     */
+    cycleSubTargetPrevious() {
+        if (!this.hasSubTargeting() || !this.currentTarget || this.availableSubTargets.length === 0) {
+            return false;
+        }
+        
+        this.subTargetIndex = (this.subTargetIndex - 1 + this.availableSubTargets.length) % this.availableSubTargets.length;
+        this.currentSubTarget = this.availableSubTargets[this.subTargetIndex];
+        
+        console.log(`Sub-target: ${this.currentSubTarget.displayName} (${(this.currentSubTarget.health * 100).toFixed(1)}% health)`);
+        return true;
+    }
+    
+    /**
+     * Clear current sub-target
+     */
+    clearSubTarget() {
+        this.currentSubTarget = null;
+        this.availableSubTargets = [];
+        this.subTargetIndex = 0;
+    }
+    
+    /**
+     * Select a random sub-target from available targets
+     * @returns {boolean} True if a sub-target was selected
+     */
+    selectRandomSubTarget() {
+        if (!this.hasSubTargeting() || !this.currentTarget || this.availableSubTargets.length === 0) {
+            return false;
+        }
+        
+        this.subTargetIndex = Math.floor(Math.random() * this.availableSubTargets.length);
+        this.currentSubTarget = this.availableSubTargets[this.subTargetIndex];
+        
+        console.log(`Random sub-target selected: ${this.currentSubTarget.displayName} (${(this.currentSubTarget.health * 100).toFixed(1)}% health)`);
+        return true;
+    }
+    
+    /**
+     * Update available sub-targets for current target
+     */
+    updateSubTargets() {
+        if (!this.hasSubTargeting() || !this.currentTarget) {
+            this.clearSubTarget();
+            return;
+        }
+        
+        // Rebuild the sub-targets list
+        this.availableSubTargets = this.detectTargetableSystems(this.currentTarget);
+        
+        // If we don't have a current sub-target and there are available targets, select one randomly
+        if (!this.currentSubTarget && this.availableSubTargets.length > 0) {
+            this.selectRandomSubTarget();
+        } else if (this.currentSubTarget) {
+            // Check if current sub-target is still valid
+            const currentSystemName = this.currentSubTarget.systemName;
+            const foundIndex = this.availableSubTargets.findIndex(
+                target => target.systemName === currentSystemName
+            );
+            
+            if (foundIndex !== -1) {
+                // Current sub-target is still valid, update to latest info
+                this.subTargetIndex = foundIndex;
+                this.currentSubTarget = this.availableSubTargets[this.subTargetIndex];
+            } else {
+                // Current sub-target is no longer valid, select a new random one
+                if (this.availableSubTargets.length > 0) {
+                    this.selectRandomSubTarget();
+                } else {
+                    this.currentSubTarget = null;
+                }
+            }
+        }
+    }
+    
+    /**
+     * Get accuracy bonus for current sub-target
+     * @returns {number} Accuracy bonus (0-1)
+     */
+    getSubTargetAccuracyBonus() {
+        if (!this.hasSubTargeting() || !this.currentSubTarget) {
+            return 0;
+        }
+        
+        // Base sub-targeting bonus scales with targeting computer performance
+        const currentAccuracy = this.getCurrentTargetingAccuracy();
+        const baseBonus = this.subTargetAccuracyBonus; // 0.2 (20%)
+        
+        // Scale bonus based on targeting computer accuracy
+        // Perfect accuracy (1.0) = full bonus, lower accuracy = reduced bonus
+        return baseBonus * currentAccuracy;
+    }
+    
+    /**
+     * Get damage bonus for current sub-target
+     * @returns {number} Damage bonus (0-1)
+     */
+    getSubTargetDamageBonus() {
+        if (!this.hasSubTargeting() || !this.currentSubTarget) {
+            return 0;
+        }
+        
+        // Base sub-targeting damage bonus scales with targeting computer performance
+        const currentAccuracy = this.getCurrentTargetingAccuracy();
+        const baseBonus = this.subTargetDamageBonus; // 0.3 (30%)
+        
+        // Scale bonus based on targeting computer accuracy
+        // Perfect accuracy (1.0) = full bonus, lower accuracy = reduced bonus
+        return baseBonus * currentAccuracy;
     }
     
     /**
@@ -336,6 +544,12 @@ export default class TargetComputer extends System {
         // Update tracked targets if active
         if (this.isActive && this.isOperational()) {
             this.updateTrackedTargets(deltaTime);
+            
+            // Update sub-targets periodically (every 2 seconds)
+            if (this.hasSubTargeting() && this.currentTarget && (Date.now() - this.lastScanTime) > 2000) {
+                this.updateSubTargets();
+                this.lastScanTime = Date.now();
+            }
         }
     }
     
@@ -398,7 +612,13 @@ export default class TargetComputer extends System {
             maxTargets: this.getMaxTargets(),
             trackedTargetsCount: this.trackedTargets.size,
             computerType: levelStats ? levelStats.computerType : 'Basic Targeting Computer',
-            energyConsumptionRate: this.getEnergyConsumptionRate()
+            energyConsumptionRate: this.getEnergyConsumptionRate(),
+            // Sub-targeting information
+            hasSubTargeting: this.hasSubTargeting(),
+            currentSubTarget: this.currentSubTarget ? this.currentSubTarget.displayName : null,
+            availableSubTargets: this.availableSubTargets.length,
+            subTargetAccuracyBonus: this.getSubTargetAccuracyBonus(),
+            subTargetDamageBonus: this.getSubTargetDamageBonus()
         };
     }
     

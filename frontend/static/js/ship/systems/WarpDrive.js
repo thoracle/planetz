@@ -141,9 +141,9 @@ export default class WarpDrive extends System {
      * @returns {number} Maximum travel distance in sectors (Manhattan distance)
      */
     getMaxTravelDistance() {
-        // Always maintain emergency capability (minimum 1 sector)
+        // Destroyed warp drive cannot travel
         if (!this.isOperational()) {
-            return 1;
+            return 0;
         }
         
         const effectiveness = this.getEffectiveness();
@@ -362,8 +362,8 @@ export default class WarpDrive extends System {
     }
     
     /**
-     * Apply damage to the warp drive with special protection
-     * Warp drive can never be completely disabled to prevent stranding
+     * Apply damage to the warp drive
+     * Warp drive can be completely destroyed but remains repairable
      * @param {number} damage Amount of damage to apply
      */
     takeDamage(damage) {
@@ -372,26 +372,24 @@ export default class WarpDrive extends System {
         this.currentHealth = Math.max(0, this.currentHealth - damage);
         this.healthPercentage = this.currentHealth / this.maxHealth;
         
-        // SPECIAL PROTECTION: Warp drive can never go below 15% health
-        // This ensures it can always be repaired and provide emergency warp capability
-        if (this.healthPercentage < 0.15) {
-            this.currentHealth = this.maxHealth * 0.15;
-            this.healthPercentage = 0.15;
-            console.log(`${this.name} protected from complete failure - minimum 15% health maintained`);
-        }
-        
         // Update system state based on health
         this.updateSystemState();
         
         console.log(`${this.name} took ${damage.toFixed(1)} damage. Health: ${this.healthPercentage.toFixed(2)}`);
+        
+        if (this.healthPercentage === 0) {
+            console.log(`${this.name} has been completely destroyed but can still be repaired`);
+        }
     }
+    
+
 
     /**
-     * Check if system is operational - warp drive is always minimally operational
+     * Check if system is operational
      * @returns {boolean} True if system can function
      */
     isOperational() {
-        // Warp drive is always operational at some level (never completely disabled)
+        // Warp drive can be completely destroyed (0% health) but is still repairable
         return this.healthPercentage > 0;
     }
 
@@ -414,19 +412,18 @@ export default class WarpDrive extends System {
                 }
                 break;
             case SYSTEM_STATES.DISABLED:
-                // Warp drive can never be completely disabled due to special protection
-                // Instead, it operates at minimal capacity (emergency warp only)
+                // Warp drive is completely destroyed and cannot function
                 if (this.isWarping) {
-                    console.log('Severe warp drive damage - emergency warp termination!');
+                    console.log('Warp drive destroyed - emergency warp termination!');
                     this.isWarping = false;
-                    this.isActive = false; // Set inactive on emergency stop
-                    this.cooldownTime = this.getEffectiveCooldownTime() * 3; // Triple cooldown for emergency stop
+                    this.isActive = false; // Set inactive on destruction
+                    this.cooldownTime = 0; // No cooldown when destroyed
                     
                     if (this.onWarpEnd) {
                         this.onWarpEnd();
                     }
                 }
-                console.log('Warp drive severely damaged - limited to emergency warp capability only');
+                console.log('Warp drive completely destroyed - requires repair before use');
                 break;
         }
     }
