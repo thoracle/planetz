@@ -369,13 +369,19 @@
     - [X] Add repair time estimates
     - [X] Create priority setting controls
 
-- [ ] **SIMPLIFIED**: Basic Station Interface (MVP)
-  - [ ] Create repair service interface
+- [X] **SIMPLIFIED**: Basic Station Interface (MVP)
+  - [X] Create repair service interface
+  - [X] Add hull repair service
+  - [X] Add individual system repair options
+  - [X] Implement repair cost calculations
+  - [X] Add repair time estimates
+  - [X] Implement credit balance display
+  - [X] Add faction-based pricing
+  - [X] Add ship class pricing multipliers
+  - [X] Add emergency repair options (instant, higher cost)
+  - [X] Create comprehensive test interface
   - [ ] **DEFERRED**: System shop moved to post-MVP (no card system)
-  - [ ] Add hull repair service
   - [ ] **DEFERRED**: Upgrade preview moved to post-MVP
-  - [ ] Add service menu navigation
-  - [ ] Implement credit balance display
   - [ ] **DEFERRED**: Compatibility indicators moved to post-MVP
 
 ### Backend Integration

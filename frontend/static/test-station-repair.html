@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Station Repair Interface Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff41;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #00ff41;
+            padding-bottom: 20px;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+        }
+        
+        .test-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .test-button {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .test-button:hover {
+            background: rgba(0, 255, 65, 0.2);
+            transform: scale(1.02);
+        }
+        
+        .test-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .status-display {
+            background: rgba(0, 255, 65, 0.1);
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        
+        .status-value {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        
+        .status-good { color: #44ff44; }
+        .status-fair { color: #ffaa00; }
+        .status-poor { color: #ff8800; }
+        .status-critical { color: #ff4444; }
+        
+        .instructions {
+            background: rgba(0, 255, 65, 0.2);
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .console-output {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff41;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        
+        .error { color: #ff4444; }
+        .success { color: #44ff44; }
+        .info { color: #00aaff; }
+        .warn { color: #ffaa00; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Station Repair Interface Test</h1>
+            <p>Testing comprehensive station repair services</p>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 Instructions:</h3>
+            <ul>
+                <li><strong>Initialize Ship:</strong> Create a ship with systems for testing</li>
+                <li><strong>Apply Damage:</strong> Damage hull and systems to test repair functionality</li>
+                <li><strong>Show Repair Interface:</strong> Open the station repair interface</li>
+                <li><strong>Test Repairs:</strong> Try different repair options and pricing</li>
+                <li><strong>Test Credits:</strong> Verify credit management and insufficient funds handling</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h2>Ship Status</h2>
+            <div class="status-display" id="ship-status">
+                Ship not initialized
+            </div>
+            <div class="test-controls">
+                <button class="test-button" onclick="initializeShip()">Initialize Ship</button>
+                <button class="test-button" onclick="damageHull(25)">Damage Hull (25%)</button>
+                <button class="test-button" onclick="damageRandomSystems(3)">Damage 3 Random Systems</button>
+                <button class="test-button" onclick="repairAllSystems()">Repair All Systems</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Station Services</h2>
+            <div class="status-display" id="station-status">
+                Station: Kepler Station (Friendly) | Credits: 5,000
+            </div>
+            <div class="test-controls">
+                <button class="test-button" onclick="showRepairInterface()">Show Repair Interface</button>
+                <button class="test-button" onclick="setCredits(10000)">Set Credits: 10,000</button>
+                <button class="test-button" onclick="setCredits(500)">Set Credits: 500</button>
+                <button class="test-button" onclick="setCredits(0)">Set Credits: 0</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Repair Pricing Test</h2>
+            <div class="status-display" id="pricing-display">
+                Pricing calculations will appear here
+            </div>
+            <div class="test-controls">
+                <button class="test-button" onclick="testPricingCalculations()">Test Pricing Calculations</button>
+                <button class="test-button" onclick="testFactionPricing()">Test Faction Pricing</button>
+                <button class="test-button" onclick="testShipClassPricing()">Test Ship Class Pricing</button>
+                <button class="test-button" onclick="testEmergencyPricing()">Test Emergency Pricing</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Console Output</h2>
+            <div class="console-output" id="console-output"></div>
+            <div class="test-controls">
+                <button class="test-button" onclick="clearConsole()">Clear Console</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Ship } from './js/ship/Ship.js';
+        import { StationRepairInterface } from './js/ui/StationRepairInterface.js';
+        
+        let ship = null;
+        let stationRepairInterface = null;
+        let mockStarfieldManager = null;
+        
+        // Mock starfield manager for testing
+        function createMockStarfieldManager() {
+            return {
+                ship: ship,
+                solarSystemManager: {
+                    getCelestialBodyInfo: (location) => ({
+                        name: 'Kepler Station',
+                        type: 'station',
+                        diplomacy: 'friendly'
+                    })
+                },
+                dockingInterface: {
+                    show: (location) => {
+                        appendToConsole('Returned to docking interface', 'info');
+                    }
+                }
+            };
+        }
+        
+        // Initialize ship for testing
+        window.initializeShip = function() {
+            try {
+                ship = new Ship('heavy_fighter');
+                mockStarfieldManager = createMockStarfieldManager();
+                stationRepairInterface = new StationRepairInterface(mockStarfieldManager);
+                
+                // Set some initial damage for testing
+                ship.currentHull = ship.maxHull * 0.8; // 20% hull damage
+                
+                updateShipStatus();
+                appendToConsole('Ship initialized successfully', 'success');
+            } catch (error) {
+                appendToConsole(`Error initializing ship: ${error.message}`, 'error');
+            }
+        };
+        
+        // Damage hull by percentage
+        window.damageHull = function(percentage) {
+            if (!ship) {
+                appendToConsole('Ship not initialized', 'error');
+                return;
+            }
+            
+            ship.currentHull = ship.maxHull * (1 - percentage / 100);
+            updateShipStatus();
+            appendToConsole(`Hull damaged by ${percentage}%`, 'warn');
+        };
+        
+        // Damage random systems
+        window.damageRandomSystems = function(count) {
+            if (!ship) {
+                appendToConsole('Ship not initialized', 'error');
+                return;
+            }
+            
+            const systemNames = Array.from(ship.systems.keys());
+            const damagedSystems = [];
+            
+            for (let i = 0; i < count && i < systemNames.length; i++) {
+                const randomIndex = Math.floor(Math.random() * systemNames.length);
+                const systemName = systemNames[randomIndex];
+                const system = ship.getSystem(systemName);
+                
+                if (system && system.healthPercentage > 0.1) {
+                    const damage = 0.3 + Math.random() * 0.5; // 30-80% damage
+                    system.currentHealth = system.maxHealth * (1 - damage);
+                    damagedSystems.push(`${systemName} (${(damage * 100).toFixed(1)}% damage)`);
+                }
+            }
+            
+            updateShipStatus();
+            appendToConsole(`Damaged systems: ${damagedSystems.join(', ')}`, 'warn');
+        };
+        
+        // Repair all systems
+        window.repairAllSystems = function() {
+            if (!ship) {
+                appendToConsole('Ship not initialized', 'error');
+                return;
+            }
+            
+            ship.currentHull = ship.maxHull;
+            
+            for (const [name, system] of ship.systems) {
+                system.repair(1.0);
+            }
+            
+            updateShipStatus();
+            appendToConsole('All systems repaired to full health', 'success');
+        };
+        
+        // Show repair interface
+        window.showRepairInterface = function() {
+            if (!ship || !stationRepairInterface) {
+                appendToConsole('Ship or repair interface not initialized', 'error');
+                return;
+            }
+            
+            const mockLocation = { id: 'kepler_station', name: 'Kepler Station' };
+            stationRepairInterface.show(ship, mockLocation);
+            appendToConsole('Station repair interface opened', 'info');
+        };
+        
+        // Set player credits
+        window.setCredits = function(amount) {
+            if (!stationRepairInterface) {
+                appendToConsole('Repair interface not initialized', 'error');
+                return;
+            }
+            
+            stationRepairInterface.playerCredits = amount;
+            updateStationStatus();
+            appendToConsole(`Credits set to ${amount.toLocaleString()}`, 'info');
+        };
+        
+        // Test pricing calculations
+        window.testPricingCalculations = function() {
+            if (!ship || !stationRepairInterface) {
+                appendToConsole('Ship or repair interface not initialized', 'error');
+                return;
+            }
+            
+            let pricingInfo = 'Pricing Calculations:\\n';
+            
+            // Hull repair cost
+            const hullPercentage = (ship.currentHull / ship.maxHull) * 100;
+            const hullDamage = 100 - hullPercentage;
+            if (hullDamage > 0) {
+                const hullCost = stationRepairInterface.calculateHullRepairCost(hullDamage);
+                const hullTime = stationRepairInterface.calculateHullRepairTime(hullDamage);
+                pricingInfo += `Hull Repair (${hullDamage.toFixed(1)}% damage): ${hullCost.toLocaleString()} credits, ${hullTime}s\\n`;
+            }
+            
+            // System repair costs
+            for (const [systemName, system] of ship.systems) {
+                if (system.healthPercentage < 1.0) {
+                    const cost = stationRepairInterface.calculateSystemRepairCost(systemName, system);
+                    const time = stationRepairInterface.calculateSystemRepairTime(systemName, system);
+                    const damage = (1 - system.healthPercentage) * 100;
+                    pricingInfo += `${systemName} (${damage.toFixed(1)}% damage): ${cost.toLocaleString()} credits, ${time}s\\n`;
+                }
+            }
+            
+            document.getElementById('pricing-display').textContent = pricingInfo;
+            appendToConsole('Pricing calculations updated', 'info');
+        };
+        
+        // Test faction pricing
+        window.testFactionPricing = function() {
+            if (!stationRepairInterface) {
+                appendToConsole('Repair interface not initialized', 'error');
+                return;
+            }
+            
+            const factions = ['friendly', 'neutral', 'hostile'];
+            let factionInfo = 'Faction Pricing Multipliers:\\n';
+            
+            factions.forEach(faction => {
+                const originalGetFactionMultiplier = stationRepairInterface.getFactionMultiplier;
+                stationRepairInterface.getFactionMultiplier = () => stationRepairInterface.repairPricing.factionDiscounts[faction];
+                
+                const multiplier = stationRepairInterface.getFactionMultiplier();
+                factionInfo += `${faction.toUpperCase()}: ${multiplier}x cost\\n`;
+                
+                stationRepairInterface.getFactionMultiplier = originalGetFactionMultiplier;
+            });
+            
+            document.getElementById('pricing-display').textContent = factionInfo;
+            appendToConsole('Faction pricing test completed', 'info');
+        };
+        
+        // Test ship class pricing
+        window.testShipClassPricing = function() {
+            if (!stationRepairInterface) {
+                appendToConsole('Repair interface not initialized', 'error');
+                return;
+            }
+            
+            const shipClasses = ['scout', 'light_fighter', 'heavy_fighter', 'light_freighter', 'heavy_freighter'];
+            let classInfo = 'Ship Class Pricing Multipliers:\\n';
+            
+            shipClasses.forEach(shipClass => {
+                const multiplier = stationRepairInterface.repairPricing.shipClassMultipliers[shipClass] || 1.0;
+                classInfo += `${shipClass.toUpperCase()}: ${multiplier}x cost\\n`;
+            });
+            
+            document.getElementById('pricing-display').textContent = classInfo;
+            appendToConsole('Ship class pricing test completed', 'info');
+        };
+        
+        // Test emergency pricing
+        window.testEmergencyPricing = function() {
+            if (!ship || !stationRepairInterface) {
+                appendToConsole('Ship or repair interface not initialized', 'error');
+                return;
+            }
+            
+            let emergencyInfo = 'Emergency Repair Pricing:\\n';
+            const emergencyMultiplier = stationRepairInterface.repairPricing.baseCosts.emergency;
+            
+            // Hull emergency pricing
+            const hullPercentage = (ship.currentHull / ship.maxHull) * 100;
+            const hullDamage = 100 - hullPercentage;
+            if (hullDamage > 0) {
+                const normalCost = stationRepairInterface.calculateHullRepairCost(hullDamage);
+                const emergencyCost = Math.floor(normalCost * emergencyMultiplier);
+                emergencyInfo += `Hull Repair: ${normalCost.toLocaleString()} → ${emergencyCost.toLocaleString()} credits (${emergencyMultiplier}x)\\n`;
+            }
+            
+            // System emergency pricing
+            for (const [systemName, system] of ship.systems) {
+                if (system.healthPercentage < 1.0) {
+                    const normalCost = stationRepairInterface.calculateSystemRepairCost(systemName, system);
+                    const emergencyCost = Math.floor(normalCost * emergencyMultiplier);
+                    emergencyInfo += `${systemName}: ${normalCost.toLocaleString()} → ${emergencyCost.toLocaleString()} credits\\n`;
+                    break; // Just show one example
+                }
+            }
+            
+            document.getElementById('pricing-display').textContent = emergencyInfo;
+            appendToConsole('Emergency pricing test completed', 'info');
+        };
+        
+        // Update ship status display
+        function updateShipStatus() {
+            if (!ship) {
+                document.getElementById('ship-status').textContent = 'Ship not initialized';
+                return;
+            }
+            
+            const hullPercentage = (ship.currentHull / ship.maxHull) * 100;
+            const energyPercentage = (ship.currentEnergy / ship.maxEnergy) * 100;
+            
+            let statusHtml = `
+                <div class="status-value">
+                    <span>Ship Type:</span>
+                    <span>${ship.shipType}</span>
+                </div>
+                <div class="status-value">
+                    <span>Hull Integrity:</span>
+                    <span class="${getHealthClass(hullPercentage)}">${hullPercentage.toFixed(1)}%</span>
+                </div>
+                <div class="status-value">
+                    <span>Energy:</span>
+                    <span class="${getHealthClass(energyPercentage)}">${energyPercentage.toFixed(1)}%</span>
+                </div>
+            `;
+            
+            // System status
+            const damagedSystems = [];
+            for (const [name, system] of ship.systems) {
+                const health = system.healthPercentage * 100;
+                if (health < 100) {
+                    damagedSystems.push(`${name}: ${health.toFixed(1)}%`);
+                }
+            }
+            
+            if (damagedSystems.length > 0) {
+                statusHtml += `
+                    <div class="status-value">
+                        <span>Damaged Systems:</span>
+                        <span class="status-poor">${damagedSystems.length}</span>
+                    </div>
+                `;
+            } else {
+                statusHtml += `
+                    <div class="status-value">
+                        <span>All Systems:</span>
+                        <span class="status-good">Operational</span>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('ship-status').innerHTML = statusHtml;
+        }
+        
+        // Update station status display
+        function updateStationStatus() {
+            const credits = stationRepairInterface ? stationRepairInterface.playerCredits : 5000;
+            document.getElementById('station-status').textContent = 
+                `Station: Kepler Station (Friendly) | Credits: ${credits.toLocaleString()}`;
+        }
+        
+        // Get health class for color coding
+        function getHealthClass(percentage) {
+            if (percentage >= 75) return 'status-good';
+            if (percentage >= 50) return 'status-fair';
+            if (percentage >= 25) return 'status-poor';
+            return 'status-critical';
+        }
+        
+        // Append message to console
+        function appendToConsole(message, type = 'info') {
+            const console = document.getElementById('console-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const line = `[${timestamp}] ${message}\\n`;
+            
+            const span = document.createElement('span');
+            span.className = type;
+            span.textContent = line;
+            
+            console.appendChild(span);
+            console.scrollTop = console.scrollHeight;
+        }
+        
+        // Clear console
+        window.clearConsole = function() {
+            document.getElementById('console-output').innerHTML = '';
+        };
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            appendToConsole('Station Repair Interface Test initialized', 'success');
+            appendToConsole('Click "Initialize Ship" to begin testing', 'info');
+        });
+    </script>
+</body>
+</html> 

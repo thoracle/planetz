@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repair Interface Debug Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #00ff41;
+            font-family: "Courier New", monospace;
+        }
+        .test-controls {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+        }
+        .test-button {
+            background: rgba(0, 255, 65, 0.2);
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: "Courier New", monospace;
+        }
+        .test-button:hover {
+            background: rgba(0, 255, 65, 0.3);
+        }
+        .log-output {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ffaa00;
+            background: rgba(255, 170, 0, 0.1);
+            color: #ffaa00;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Repair Interface Debug Test</h1>
+    
+    <div class="test-controls">
+        <h3>Test Controls</h3>
+        <button class="test-button" onclick="testRepairInterface()">Show Repair Interface</button>
+        <button class="test-button" onclick="testDockingInterface()">Show Docking Interface</button>
+        <button class="test-button" onclick="clearLog()">Clear Log</button>
+        <button class="test-button" onclick="damageShip()">Damage Ship Systems</button>
+    </div>
+    
+    <div class="log-output" id="log-output">
+        <div>Debug log will appear here...</div>
+    </div>
+
+    <script type="module">
+        import { Ship } from './js/ship/Ship.js';
+        import { StarfieldManager } from './js/views/StarfieldManager.js';
+        import { DockingInterface } from './js/ui/DockingInterface.js';
+        import { StationRepairInterface } from './js/ui/StationRepairInterface.js';
+
+        let ship, starfieldManager, dockingInterface, repairInterface;
+        
+        // Mock solar system manager
+        const mockSolarSystemManager = {
+            getCelestialBodyInfo: (location) => ({
+                name: "Test Station Alpha",
+                type: "station",
+                diplomacy: "friendly"
+            })
+        };
+
+        function log(message) {
+            const logOutput = document.getElementById('log-output');
+            const timestamp = new Date().toLocaleTimeString();
+            logOutput.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logOutput.scrollTop = logOutput.scrollHeight;
+            console.log(message);
+        }
+
+        function initializeTest() {
+            log("Initializing test environment...");
+            
+            try {
+                // Create ship
+                ship = new Ship('heavy_fighter');
+                log(`Ship created: ${ship.shipType}`);
+                
+                // Create mock starfield manager
+                starfieldManager = {
+                    ship: ship,
+                    solarSystemManager: mockSolarSystemManager,
+                    playCommandSound: () => log("Command sound played"),
+                    undock: () => log("Undocking...")
+                };
+                log("Mock StarfieldManager created");
+                
+                // Create docking interface
+                dockingInterface = new DockingInterface(starfieldManager);
+                starfieldManager.dockingInterface = dockingInterface;
+                log("DockingInterface created");
+                
+                // Create repair interface
+                repairInterface = new StationRepairInterface(starfieldManager);
+                log("StationRepairInterface created");
+                
+                log("Test environment initialized successfully!");
+                
+            } catch (error) {
+                log(`ERROR during initialization: ${error.message}`);
+                console.error(error);
+            }
+        }
+
+        window.testRepairInterface = function() {
+            log("Testing repair interface...");
+            
+            if (!repairInterface || !ship) {
+                log("ERROR: Repair interface or ship not initialized");
+                return;
+            }
+            
+            try {
+                const mockLocation = { name: "Test Station Alpha", type: "station" };
+                log("Calling repairInterface.show()...");
+                repairInterface.show(ship, mockLocation);
+                log("Repair interface show() called successfully");
+            } catch (error) {
+                log(`ERROR showing repair interface: ${error.message}`);
+                console.error(error);
+            }
+        };
+
+        window.testDockingInterface = function() {
+            log("Testing docking interface...");
+            
+            if (!dockingInterface) {
+                log("ERROR: Docking interface not initialized");
+                return;
+            }
+            
+            try {
+                const mockLocation = { name: "Test Station Alpha", type: "station" };
+                log("Calling dockingInterface.show()...");
+                dockingInterface.show(mockLocation);
+                log("Docking interface show() called successfully");
+            } catch (error) {
+                log(`ERROR showing docking interface: ${error.message}`);
+                console.error(error);
+            }
+        };
+
+        window.damageShip = function() {
+            log("Damaging ship systems...");
+            
+            if (!ship) {
+                log("ERROR: Ship not initialized");
+                return;
+            }
+            
+            try {
+                // Damage hull
+                ship.currentHull = Math.floor(ship.maxHull * 0.6); // 60% hull
+                log(`Hull damaged to ${((ship.currentHull / ship.maxHull) * 100).toFixed(1)}%`);
+                
+                // Damage some systems
+                const systems = ship.getAllSystems();
+                let damagedCount = 0;
+                
+                for (const [systemName, system] of Object.entries(systems)) {
+                    if (Math.random() < 0.4) { // 40% chance to damage each system
+                        const damage = Math.random() * 50 + 10; // 10-60% damage
+                        system.takeDamage(damage);
+                        log(`${systemName} damaged: ${(system.health * 100).toFixed(1)}% health`);
+                        damagedCount++;
+                    }
+                }
+                
+                log(`Damaged ${damagedCount} systems`);
+                
+            } catch (error) {
+                log(`ERROR damaging ship: ${error.message}`);
+                console.error(error);
+            }
+        };
+
+        window.clearLog = function() {
+            document.getElementById('log-output').innerHTML = '<div>Debug log cleared...</div>';
+        };
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeTest);
+    </script>
+</body>
+</html> 

@@ -7,6 +7,7 @@
 export default class SubspaceRadio {
     constructor(ship) {
         this.ship = ship;
+        this.starfieldManager = null; // Will be set by ViewManager
         this.isVisible = false;
         this.isEnabled = false;
         this.currentMessage = '';
@@ -81,6 +82,10 @@ export default class SubspaceRadio {
         this.bindEvents();
         
         console.log('SubspaceRadio initialized');
+    }
+    
+    setStarfieldManager(manager) {
+        this.starfieldManager = manager;
     }
     
     createUI() {
@@ -159,6 +164,11 @@ export default class SubspaceRadio {
         if (!subspaceRadio) {
             console.warn('No subspace radio system found on ship');
             return;
+        }
+        
+        // Play command sound for the toggle action
+        if (this.starfieldManager && this.starfieldManager.playCommandSound) {
+            this.starfieldManager.playCommandSound();
         }
         
         if (this.isVisible) {

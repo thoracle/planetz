@@ -1,5 +1,6 @@
 // THREE is handled dynamically in constructor
 import { DockingInterface } from '../ui/DockingInterface.js';
+import { HelpInterface } from '../ui/HelpInterface.js';
 import DockingSystemManager from '../ship/DockingSystemManager.js';
 import { getSystemDisplayName } from '../ship/System.js';
 // SimplifiedDamageControl removed - damage control integrated into ship systems HUD
@@ -112,6 +113,9 @@ export class StarfieldManager {
         // Create docking interface and system manager
         this.dockingInterface = new DockingInterface(this);
         this.dockingSystemManager = new DockingSystemManager();
+        
+        // Create help interface
+        this.helpInterface = new HelpInterface(this);
         
         // Damage control is now integrated into ship systems HUD
         // No separate interface needed
@@ -1099,6 +1103,35 @@ export class StarfieldManager {
         };
 
         document.addEventListener('keydown', (event) => {
+    
+            
+            // Debug commands for testing damage (only in development)
+            if (event.ctrlKey && event.shiftKey) {
+                const key = event.key.toLowerCase();
+                switch (key) {
+                    case 'v':
+                        // Damage random systems for testing
+                        this.debugDamageRandomSystems();
+                        event.preventDefault();
+                        return;
+                    case 'm':
+                        // Damage hull for testing
+                        this.debugDamageHull();
+                        event.preventDefault();
+                        return;
+                    case 'n':
+                        // Drain energy for testing
+                        this.debugDrainEnergy();
+                        event.preventDefault();
+                        return;
+                    case 'b':
+                        // Repair all systems for testing
+                        this.debugRepairAllSystems();
+                        event.preventDefault();
+                        return;
+                }
+            }
+            
             if (this.keys.hasOwnProperty(event.key)) {
                 this.keys[event.key] = true;
             }
@@ -1213,7 +1246,6 @@ export class StarfieldManager {
                         if (targetComputer && targetComputer.hasSubTargeting()) {
                             if (targetComputer.cycleSubTargetPrevious()) {
                                 this.playCommandSound();
-                                console.log('Cycled to previous sub-target');
                                 this.updateTargetDisplay(); // Update HUD display
                             }
                         }
@@ -1228,7 +1260,6 @@ export class StarfieldManager {
                         if (targetComputer && targetComputer.hasSubTargeting()) {
                             if (targetComputer.cycleSubTargetNext()) {
                                 this.playCommandSound();
-                                console.log('Cycled to next sub-target');
                                 this.updateTargetDisplay(); // Update HUD display
                             }
                         }
@@ -1242,12 +1273,17 @@ export class StarfieldManager {
                 this.toggleDamageControl();
             }
 
+            // Help key (H) - toggle help interface
+            if (commandKey === 'h') {
+                this.playCommandSound();
+                this.toggleHelp();
+            }
+
             // Spawn target dummy ships (X key)
             if (commandKey === 'x') {
                 if (!this.isDocked) {
                     this.playCommandSound();
                     this.createTargetDummyShips(3);
-                    console.log('Target dummy ships spawned for sub-targeting practice');
                 }
             }
         });
@@ -1286,11 +1322,7 @@ export class StarfieldManager {
             }
         }
         
-        console.log('Target computer toggled:', {
-            enabled: this.targetComputerEnabled,
-            systemActive: targetComputer.isActive,
-            hasTargets: this.targetObjects.length > 0
-        });
+
         
         if (!this.targetComputerEnabled) {
             this.targetHUD.style.display = 'none';
@@ -1304,6 +1336,9 @@ export class StarfieldManager {
                 this.targetWireframe = null;
             }
         } else {
+            // Show the HUD immediately when target computer is enabled
+            this.targetHUD.style.display = 'block';
+            
             this.updateTargetList();
             // Only reset target index if we don't have a current target
             if (!this.currentTarget) {
@@ -1323,21 +1358,34 @@ export class StarfieldManager {
             // Store the previous view before switching to damage control
             this.previousView = this.view;
             this.view = 'DAMAGE';
-            this.shipSystemsHUD.style.display = 'block';
+            
+            if (this.shipSystemsHUD) {
+                this.shipSystemsHUD.style.display = 'block';
+            }
+            
             this.updateShipSystemsDisplay(); // Refresh the display
             this.updateSpeedIndicator(); // Update the view indicator
-            console.log('Damage control view enabled');
         } else {
             // Restore the previous view when closing damage control
             this.view = this.previousView || 'FORE';
-            this.shipSystemsHUD.style.display = 'none';
+            
+            if (this.shipSystemsHUD) {
+                this.shipSystemsHUD.style.display = 'none';
+            }
+            
             this.updateSpeedIndicator(); // Update the view indicator
-            console.log('Damage control view disabled');
+        }
+    }
+
+    toggleHelp() {
+        if (this.helpInterface.isVisible) {
+            this.helpInterface.hide();
+        } else {
+            this.helpInterface.show();
         }
     }
 
     updateTargetList() {
-        console.log('Updating target list...');
         
         let allTargets = [];
         
@@ -1980,7 +2028,10 @@ export class StarfieldManager {
             currentTargetIndex: this.targetIndex
         });
 
-        if (!this.targetComputerEnabled || this.targetObjects.length === 0) return;
+        if (!this.targetComputerEnabled || this.targetObjects.length === 0) {
+            console.log('Cannot cycle target - computer disabled or no targets available');
+            return;
+        }
 
         // Hide reticle until new target is set
         if (this.targetReticle) {
@@ -2062,32 +2113,41 @@ export class StarfieldManager {
                     }
                 }
                 
-                let wireframeGeometry;
-                if (info) {
-                    // Create different shapes based on object type
-                    if (info.type === 'enemy_ship') {
-                        // Use a distinctive shape for enemy ships
-                        wireframeGeometry = new this.THREE.BoxGeometry(radius, radius * 0.5, radius * 2);
-                    } else if (info.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
-                        wireframeGeometry = new this.THREE.DodecahedronGeometry(radius, 0);
-                    } else if (currentTargetData?.isMoon) {
-                        wireframeGeometry = new this.THREE.OctahedronGeometry(radius, 0);
-                    } else {
-                        wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
-                    }
-                } else {
-                    wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 1);
-                }
-
                 const wireframeMaterial = new this.THREE.LineBasicMaterial({ 
                     color: wireframeColor,
                     linewidth: 1,
                     transparent: true,
                     opacity: 0.8
                 });
-                
-                const edgesGeometry = new this.THREE.EdgesGeometry(wireframeGeometry);
-                this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
+
+                if (info && (info.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name))) {
+                    // For stars, use the custom star geometry directly (it's already a line geometry)
+                    const starGeometry = this.createStarGeometry(radius);
+                    this.targetWireframe = new this.THREE.LineSegments(starGeometry, wireframeMaterial);
+                } else {
+                    // For other objects, create standard wireframes using EdgesGeometry
+                    let wireframeGeometry;
+                    if (info) {
+                        // Create different shapes based on object type
+                        if (info.type === 'enemy_ship') {
+                            // Use a distinctive shape for enemy ships
+                            wireframeGeometry = new this.THREE.BoxGeometry(radius, radius * 0.5, radius * 2);
+                        } else if (currentTargetData?.isMoon) {
+                            wireframeGeometry = new this.THREE.OctahedronGeometry(radius, 0);
+                        } else {
+                            wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
+                        }
+                    } else {
+                        wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 1);
+                    }
+                    
+                    const edgesGeometry = new this.THREE.EdgesGeometry(wireframeGeometry);
+                    this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
+                    
+                    // Clean up the temporary geometries
+                    wireframeGeometry.dispose();
+                    edgesGeometry.dispose();
+                }
                 
                 // Add sub-target visual indicators only for enemy ships
                 const targetData = this.getCurrentTargetData();
@@ -2098,10 +2158,6 @@ export class StarfieldManager {
                     // Clear sub-target indicators for celestial bodies
                     this.createSubTargetIndicators(0, 0); // This will clear existing indicators
                 }
-                
-                // Clean up the temporary geometries
-                wireframeGeometry.dispose();
-                edgesGeometry.dispose();
                 
                 this.targetWireframe.position.set(0, 0, 0);
                 this.wireframeScene.add(this.targetWireframe);
@@ -2421,6 +2477,128 @@ export class StarfieldManager {
         return sector;
     }
 
+    // Debug methods for testing damage and repair functionality
+    debugDamageRandomSystems() {
+        const ship = this.viewManager?.getShip();
+        if (!ship) {
+            console.log('No ship available for damage testing');
+            return;
+        }
+
+        const systemNames = Array.from(ship.systems.keys());
+        
+        // Damage 2-4 random systems
+        const numToDamage = Math.floor(Math.random() * 3) + 2;
+        const systemsToDamage = [];
+        
+        for (let i = 0; i < numToDamage && i < systemNames.length; i++) {
+            const randomIndex = Math.floor(Math.random() * systemNames.length);
+            const systemName = systemNames[randomIndex];
+            if (!systemsToDamage.includes(systemName)) {
+                systemsToDamage.push(systemName);
+            }
+        }
+        
+        // Apply damage to selected systems
+        for (const systemName of systemsToDamage) {
+            const system = ship.getSystem(systemName);
+            if (system && system.takeDamage) {
+                const damageAmount = (0.3 + Math.random() * 0.5) * system.maxHealth; // 30-80% damage
+                system.takeDamage(damageAmount);
+                console.log(`DEBUG: Damaged ${systemName} by ${((damageAmount / system.maxHealth) * 100).toFixed(1)}%`);
+            }
+        }
+        
+        console.log(`DEBUG: Damaged ${systemsToDamage.length} systems for repair testing`);
+        console.log('Use Ctrl+Shift+M to damage hull, Ctrl+Shift+N to drain energy, Ctrl+Shift+B to repair all');
+        
+
+        
+        // Update the damage control display if it's currently visible
+        if (this.damageControlVisible) {
+            console.log('Updating damage control display...');
+            this.updateShipSystemsDisplay();
+        } else {
+            console.log('Damage control not visible, display not updated');
+        }
+    }
+
+    debugDamageHull() {
+        const ship = this.viewManager?.getShip();
+        if (!ship) {
+            console.log('No ship available for hull damage testing');
+            return;
+        }
+
+        // Damage hull to 30-70%
+        const damagePercent = Math.random() * 0.4 + 0.3; // 30-70%
+        const newHull = Math.floor(ship.maxHull * (1 - damagePercent));
+        ship.currentHull = Math.max(1, newHull); // Ensure at least 1 hull
+        
+        console.log(`DEBUG: Damaged hull to ${ship.currentHull}/${ship.maxHull} (${Math.floor(ship.currentHull/ship.maxHull*100)}%)`);
+        
+        // Update the damage control display if it's currently visible
+        if (this.damageControlVisible) {
+            this.updateShipSystemsDisplay();
+        }
+    }
+
+    debugDrainEnergy() {
+        const ship = this.viewManager?.getShip();
+        if (!ship) {
+            console.log('No ship available for energy drain testing');
+            return;
+        }
+        
+        const drainAmount = 0.3 + Math.random() * 0.5; // 30-80% energy drain
+        const originalEnergy = ship.currentEnergy;
+        ship.currentEnergy = Math.max(0, ship.currentEnergy - (ship.maxEnergy * drainAmount));
+        
+        const actualDrain = originalEnergy - ship.currentEnergy;
+        const drainPercentage = (actualDrain / ship.maxEnergy) * 100;
+        
+        console.log(`DEBUG: Drained ${drainPercentage.toFixed(1)}% energy`);
+        console.log(`Energy: ${ship.currentEnergy}/${ship.maxEnergy} (${((ship.currentEnergy/ship.maxEnergy)*100).toFixed(1)}%)`);
+        
+        // Update the damage control display if it's currently visible
+        if (this.damageControlVisible) {
+            this.updateShipSystemsDisplay();
+        }
+    }
+
+    debugRepairAllSystems() {
+        const ship = this.viewManager?.getShip();
+        if (!ship) {
+            console.log('No ship available for repair testing');
+            return;
+        }
+
+        // Repair hull to full
+        ship.currentHull = ship.maxHull;
+        
+        // Repair all systems to full health
+        const systemNames = Array.from(ship.systems.keys());
+        let repairedCount = 0;
+        
+        for (const systemName of systemNames) {
+            const system = ship.getSystem(systemName);
+            if (system && system.repair) {
+                system.repair(1.0); // Full repair
+                repairedCount++;
+            }
+        }
+        
+        // Recharge energy
+        ship.currentEnergy = ship.maxEnergy;
+        
+        console.log(`DEBUG: Repaired hull, ${repairedCount} systems, and recharged energy`);
+        
+        // Update the damage control display if it's currently visible
+        if (this.damageControlVisible) {
+            this.updateShipSystemsDisplay();
+        }
+    }
+
     dispose() {
         // Clean up UI elements
         if (this.speedBox && this.speedBox.parentNode) {
@@ -2496,6 +2674,11 @@ export class StarfieldManager {
         if (this.dockingInterface) {
             this.dockingInterface.dispose();
         }
+
+        // Clean up help interface
+        if (this.helpInterface) {
+            this.helpInterface.dispose();
+        }
     }
 
     // Add this method to create the star sprite texture
@@ -2516,6 +2699,68 @@ export class StarfieldManager {
         ctx.fillRect(0, 0, 32, 32);
         
         return canvas;
+    }
+
+    /**
+     * Create a star-shaped geometry for wireframe display
+     * @param {number} radius - The radius of the star
+     * @returns {THREE.BufferGeometry} - The star geometry
+     */
+    createStarGeometry(radius) {
+        const geometry = new this.THREE.BufferGeometry();
+        const vertices = [];
+        
+        // Create a simpler 3D star with radiating lines from center
+        const numPoints = 8; // Number of star points
+        const center = [0, 0, 0];
+        
+        // Create star points radiating outward in multiple directions
+        const directions = [
+            // Primary axes
+            [1, 0, 0], [-1, 0, 0],    // X axis
+            [0, 1, 0], [0, -1, 0],    // Y axis  
+            [0, 0, 1], [0, 0, -1],    // Z axis
+            
+            // Diagonal directions for more star-like appearance
+            [0.707, 0.707, 0], [-0.707, -0.707, 0],     // XY diagonal
+            [0.707, 0, 0.707], [-0.707, 0, -0.707],     // XZ diagonal
+            [0, 0.707, 0.707], [0, -0.707, -0.707],     // YZ diagonal
+            
+            // Additional points for fuller star shape
+            [0.577, 0.577, 0.577], [-0.577, -0.577, -0.577],  // 3D diagonals
+            [0.577, -0.577, 0.577], [-0.577, 0.577, -0.577],
+        ];
+        
+        // Create lines from center to each star point
+        directions.forEach(direction => {
+            // Line from center to outer point
+            vertices.push(center[0], center[1], center[2]);
+            vertices.push(
+                direction[0] * radius,
+                direction[1] * radius, 
+                direction[2] * radius
+            );
+        });
+        
+        // Create some connecting lines between points for more complex star pattern
+        const outerPoints = directions.map(dir => [
+            dir[0] * radius,
+            dir[1] * radius,
+            dir[2] * radius
+        ]);
+        
+        // Connect some outer points to create star pattern
+        for (let i = 0; i < 6; i += 2) {
+            // Connect opposite primary axis points
+            vertices.push(outerPoints[i][0], outerPoints[i][1], outerPoints[i][2]);
+            vertices.push(outerPoints[i + 1][0], outerPoints[i + 1][1], outerPoints[i + 1][2]);
+        }
+        
+        // Convert vertices array to Float32Array and set as position attribute
+        const vertexArray = new Float32Array(vertices);
+        geometry.setAttribute('position', new this.THREE.BufferAttribute(vertexArray, 3));
+        
+        return geometry;
     }
 
     /**
@@ -3072,6 +3317,12 @@ export class StarfieldManager {
                 console.log('Long range scanner closed during docking');
             }
             
+            // Hide subspace radio UI during docking
+            if (this.viewManager.subspaceRadio && this.viewManager.subspaceRadio.isVisible) {
+                this.viewManager.subspaceRadio.hide();
+                console.log('Subspace radio UI hidden during docking');
+            }
+            
             // Restore view to FORE if in modal view
             if (this.viewManager.currentView === 'GALACTIC' || this.viewManager.currentView === 'SCANNER') {
                 this.viewManager.restorePreviousView();
@@ -3193,6 +3444,20 @@ export class StarfieldManager {
             
             // Restore all ship systems to their pre-docking state
             this.restoreAllSystems();
+            
+            // Restore subspace radio UI if it was active before docking
+            if (this.viewManager.subspaceRadio && this.preDockingSystemStates) {
+                const radioState = this.preDockingSystemStates.get('subspace_radio');
+                if (radioState && radioState.isRadioActive) {
+                    // Check if the system can be activated
+                    const ship = this.viewManager.getShip();
+                    const radioSystem = ship.getSystem('subspace_radio');
+                    if (radioSystem && radioSystem.isActive) {
+                        this.viewManager.subspaceRadio.show();
+                        console.log('Subspace radio UI restored after undocking');
+                    }
+                }
+            }
             
             // Remind player about shields after undocking
             console.log('Launch successful! Consider raising shields (S) for protection in open space');
@@ -3347,7 +3612,10 @@ export class StarfieldManager {
                 ...(systemName === 'shields' && system.isShieldsUp ? { isShieldsUp: true } : {}),
                 ...(systemName === 'long_range_scanner' && system.isScanning ? { isScanning: true } : {}),
                 ...(systemName === 'target_computer' && system.isTargeting ? { isTargeting: true } : {}),
-                ...(systemName === 'subspace_radio' && system.isChartActive ? { isChartActive: true } : {}),
+                ...(systemName === 'subspace_radio' ? { 
+                    isChartActive: system.isChartActive || false,
+                    isRadioActive: system.isRadioActive || false
+                } : {}),
                 ...(systemName === 'impulse_engines' && system.currentImpulseSpeed > 0 ? { 
                     currentImpulseSpeed: system.currentImpulseSpeed,
                     isMovingForward: system.isMovingForward 
@@ -3364,9 +3632,16 @@ export class StarfieldManager {
             } else if (systemName === 'target_computer' && system.isTargeting) {
                 system.deactivate();
                 console.log(`  - Target Computer powered down (was targeting)`);
-            } else if (systemName === 'subspace_radio' && system.isChartActive) {
-                system.deactivateChart();
-                console.log(`  - Galactic Chart powered down (was active)`);
+            } else if (systemName === 'subspace_radio') {
+                // Handle both radio and chart functionalities
+                if (system.isRadioActive) {
+                    system.deactivateRadio();
+                    console.log(`  - Subspace Radio powered down (was active)`);
+                }
+                if (system.isChartActive) {
+                    system.deactivateChart();
+                    console.log(`  - Galactic Chart powered down (was active)`);
+                }
             } else if (systemName === 'impulse_engines') {
                 // Impulse engines are already stopped when docked, but ensure they're not active
                 system.setImpulseSpeed(0);
@@ -3416,9 +3691,16 @@ export class StarfieldManager {
                     system.activate(ship);
                     this.targetComputerEnabled = true; // Also restore UI state
                     console.log(`  - Target Computer restored (targeting resumed)`);
-                } else if (systemName === 'subspace_radio' && previousState.isChartActive) {
-                    system.activateChart(ship);
-                    console.log(`  - Galactic Chart restored (chart reactivated)`);
+                } else if (systemName === 'subspace_radio') {
+                    // Handle both radio and chart functionalities
+                    if (previousState.isRadioActive && system.canActivate(ship)) {
+                        system.activateRadio(ship);
+                        console.log(`  - Subspace Radio restored (radio reactivated)`);
+                    }
+                    if (previousState.isChartActive && system.canActivate(ship)) {
+                        system.activateChart(ship);
+                        console.log(`  - Galactic Chart restored (chart reactivated)`);
+                    }
                 } else if (systemName === 'impulse_engines' && previousState.currentImpulseSpeed > 0) {
                     system.setImpulseSpeed(previousState.currentImpulseSpeed);
                     system.setMovingForward(previousState.isMovingForward);
@@ -3647,4 +3929,6 @@ export class StarfieldManager {
     getTargetDummyShip(mesh) {
         return mesh.userData?.ship || null;
     }
+
+
 } 

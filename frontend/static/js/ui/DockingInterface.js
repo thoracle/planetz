@@ -1,11 +1,17 @@
 /**
  * DockingInterface - UI for services available while docked at planets/moons
  */
+
+import { StationRepairInterface } from './StationRepairInterface.js';
+
 export class DockingInterface {
     constructor(starfieldManager) {
         this.starfieldManager = starfieldManager;
         this.isVisible = false;
         this.dockedLocation = null;
+        
+        // Initialize station services
+        this.stationRepairInterface = new StationRepairInterface(starfieldManager);
         
         this.createDockingUI();
     }
@@ -19,48 +25,62 @@ export class DockingInterface {
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 500px;
-            min-height: 300px;
-            background: rgba(0, 0, 0, 0.95);
+            background: rgba(0, 0, 0, 0.9);
             border: 2px solid #00ff41;
             color: #00ff41;
-            font-family: "Courier New", monospace;
+            font-family: 'VT323', monospace;
             padding: 20px;
             display: none;
-            z-index: 2000;
-            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+            z-index: 1000;
+            flex-direction: column;
+            max-height: 90vh;
+            min-width: 600px;
+            max-width: 800px;
         `;
+
+
 
         // Create header section
         this.header = document.createElement('div');
         this.header.className = 'docking-header';
         this.header.style.cssText = `
-            text-align: center;
-            border-bottom: 1px solid #00ff41;
+            border-bottom: 2px solid #00ff41;
             padding-bottom: 15px;
             margin-bottom: 20px;
+            text-align: center;
         `;
+        this.container.appendChild(this.header);
 
-        // Create services section
+        // Create content wrapper (consistent with other UIs)
+        this.contentWrapper = document.createElement('div');
+        this.contentWrapper.className = 'content-wrapper';
+        this.contentWrapper.style.cssText = `
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        `;
+        this.container.appendChild(this.contentWrapper);
+
+        // Create services container
         this.servicesContainer = document.createElement('div');
         this.servicesContainer.className = 'docking-services';
         this.servicesContainer.style.cssText = `
-            display: flex;
-            flex-direction: column;
+            display: grid;
             gap: 15px;
+            grid-template-columns: 1fr;
         `;
+        this.contentWrapper.appendChild(this.servicesContainer);
 
         // Create action buttons
         this.createActionButtons();
-
-        // Assemble the interface
-        this.container.appendChild(this.header);
-        this.container.appendChild(this.servicesContainer);
-
+        
+        // Add event listeners
+        // (Close button removed - use Launch button to exit)
+        
         // Add to document
         document.body.appendChild(this.container);
-
-        // Add CSS styles
+        
+        // Add styles
         this.addStyles();
     }
 
@@ -99,38 +119,37 @@ export class DockingInterface {
         const buttonContainer = document.createElement('div');
         buttonContainer.className = `service-button ${className}`;
         buttonContainer.style.cssText = `
-            background: rgba(0, 255, 65, 0.1);
+            background: rgba(0, 0, 0, 0.5);
             border: 1px solid #00ff41;
-            padding: 15px;
+            padding: 20px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            border-radius: 3px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            font-family: 'VT323', monospace;
         `;
 
         buttonContainer.innerHTML = `
-            <div class="service-title" style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">
+            <div class="service-title" style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">
                 ${title}
             </div>
-            <div class="service-description" style="font-size: 12px; opacity: 0.8;">
+            <div class="service-description" style="font-size: 16px; opacity: 0.8; line-height: 1.4;">
                 ${description}
             </div>
         `;
 
-        // Add click handler
-        buttonContainer.addEventListener('click', clickHandler);
-
-        // Add hover effects
+        // Add hover effects (consistent with other UI buttons)
         buttonContainer.addEventListener('mouseenter', () => {
             buttonContainer.style.background = 'rgba(0, 255, 65, 0.2)';
-            buttonContainer.style.transform = 'scale(1.02)';
-            buttonContainer.style.boxShadow = '0 0 10px rgba(0, 255, 65, 0.3)';
+            buttonContainer.style.borderColor = '#44ff44';
         });
 
         buttonContainer.addEventListener('mouseleave', () => {
-            buttonContainer.style.background = 'rgba(0, 255, 65, 0.1)';
-            buttonContainer.style.transform = 'scale(1)';
-            buttonContainer.style.boxShadow = 'none';
+            buttonContainer.style.background = 'rgba(0, 0, 0, 0.5)';
+            buttonContainer.style.borderColor = '#00ff41';
         });
+
+        buttonContainer.addEventListener('click', clickHandler);
 
         return buttonContainer;
     }
@@ -146,7 +165,7 @@ export class DockingInterface {
         this.updateButtonStates();
         
         // Show the interface
-        this.container.style.display = 'block';
+        this.container.style.display = 'flex';
         
         console.log('Docking interface shown for:', dockedLocation);
     }
@@ -165,9 +184,9 @@ export class DockingInterface {
         const info = this.starfieldManager.solarSystemManager.getCelestialBodyInfo(this.dockedLocation);
         
         this.header.innerHTML = `
-            <div style="font-size: 20px; margin-bottom: 8px;">DOCKED AT</div>
-            <div style="font-size: 24px; font-weight: bold; color: #ffffff;">${info?.name || 'Unknown Location'}</div>
-            <div style="font-size: 14px; margin-top: 5px; opacity: 0.8;">
+            <div style="font-size: 16px; margin-bottom: 8px; opacity: 0.8; letter-spacing: 1px; font-family: 'VT323', monospace;">DOCKED AT</div>
+            <div style="font-size: 28px; font-weight: bold; color: #00ff41; margin-bottom: 8px; font-family: 'VT323', monospace;">${info?.name || 'UNKNOWN LOCATION'}</div>
+            <div style="font-size: 16px; opacity: 0.9; font-family: 'VT323', monospace;">
                 ${info?.type?.toUpperCase() || 'UNKNOWN'} • ${info?.diplomacy?.toUpperCase() || 'NEUTRAL'}
             </div>
         `;
@@ -204,15 +223,35 @@ export class DockingInterface {
 
     handleRepair() {
         console.log('Repair service requested');
+        console.log('StarfieldManager:', this.starfieldManager);
+        
+        // Get ship from ViewManager
+        const ship = this.starfieldManager.viewManager?.getShip();
+        console.log('Ship:', ship);
+        console.log('Docked location:', this.dockedLocation);
+        console.log('Station repair interface:', this.stationRepairInterface);
         
         // Play command sound
         if (this.starfieldManager.playCommandSound) {
             this.starfieldManager.playCommandSound();
         }
         
-        // TODO: Implement repair functionality
-        // For now, show a placeholder message
-        console.log('Repair services coming soon! Hull and system repairs will be available here.');
+        // Store the docked location BEFORE hiding the interface
+        const dockedLocation = this.dockedLocation;
+        
+        // Hide docking interface
+        this.hide();
+        
+        // Show repair interface with stored location
+        if (ship && dockedLocation) {
+            console.log('Attempting to show repair interface...');
+            this.stationRepairInterface.show(ship, dockedLocation);
+            console.log('Repair interface show() called');
+        } else {
+            console.error('Cannot access repair services: ship or location data unavailable');
+            console.error('Ship exists:', !!ship);
+            console.error('Docked location exists:', !!dockedLocation);
+        }
     }
 
     handleShop() {
@@ -232,36 +271,88 @@ export class DockingInterface {
         // Add CSS for additional styling
         const style = document.createElement('style');
         style.textContent = `
+            @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+            
+            .docking-interface.visible {
+                display: flex;
+            }
+            
+            .docking-interface .content-wrapper {
+                scrollbar-width: thin;
+                scrollbar-color: #00ff41 rgba(0, 255, 65, 0.1);
+            }
+            
+            .docking-interface .content-wrapper::-webkit-scrollbar {
+                width: 8px;
+            }
+            
+            .docking-interface .content-wrapper::-webkit-scrollbar-track {
+                background: rgba(0, 255, 65, 0.1);
+                border-radius: 4px;
+            }
+            
+            .docking-interface .content-wrapper::-webkit-scrollbar-thumb {
+                background-color: #00ff41;
+                border-radius: 4px;
+                border: 2px solid transparent;
+                background-clip: content-box;
+            }
+            
             .docking-interface .service-button.launch-button {
-                border-color: #00aa41;
+                border-color: #00ff41;
+            }
+            
+            .docking-interface .service-button.launch-button .service-title,
+            .docking-interface .service-button.launch-button .service-description {
+                color: #00ff41;
             }
             
             .docking-interface .service-button.launch-button:hover {
-                border-color: #00ff41;
-                background: rgba(0, 170, 65, 0.2) !important;
+                border-color: #44ff44;
+                background: rgba(0, 255, 65, 0.2) !important;
             }
             
             .docking-interface .service-button.repair-button {
                 border-color: #ffaa00;
+            }
+            
+            .docking-interface .service-button.repair-button .service-title,
+            .docking-interface .service-button.repair-button .service-description {
                 color: #ffaa00;
             }
             
             .docking-interface .service-button.repair-button:hover {
-                border-color: #ffcc00;
-                background: rgba(255, 170, 0, 0.1) !important;
+                border-color: #ffcc44;
+                background: rgba(255, 170, 0, 0.2) !important;
             }
             
             .docking-interface .service-button.shop-button {
                 border-color: #0099ff;
+            }
+            
+            .docking-interface .service-button.shop-button .service-title,
+            .docking-interface .service-button.shop-button .service-description {
                 color: #0099ff;
             }
             
             .docking-interface .service-button.shop-button:hover {
-                border-color: #00bbff;
-                background: rgba(0, 153, 255, 0.1) !important;
+                border-color: #44bbff;
+                background: rgba(0, 153, 255, 0.2) !important;
+            }
+            
+            .docking-interface .close-button {
+                font-family: 'VT323', monospace;
+            }
+            
+            .docking-interface .close-button:hover {
+                background: rgba(0, 255, 65, 0.2) !important;
             }
         `;
-        document.head.appendChild(style);
+        
+        if (!document.head.querySelector('style[data-docking-interface]')) {
+            style.setAttribute('data-docking-interface', 'true');
+            document.head.appendChild(style);
+        }
     }
 
     dispose() {

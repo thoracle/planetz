@@ -94,6 +94,11 @@ export class ViewManager {
 
     setStarfieldManager(manager) {
         this.starfieldManager = manager;
+        
+        // Pass starfieldManager to SubspaceRadio for command sound
+        if (this.subspaceRadio) {
+            this.subspaceRadio.setStarfieldManager(manager);
+        }
     }
 
     // Add method to set SolarSystemManager
