@@ -47,7 +47,9 @@ def create_app(config_name):
     # Register blueprints
     from backend.routes.main import bp as main_blueprint
     from backend.routes.universe import universe_bp
+    from backend.routes.api import api_bp
     app.register_blueprint(main_blueprint)
     app.register_blueprint(universe_bp, url_prefix='/api')
+    app.register_blueprint(api_bp)
     
     return app 

@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intel System Test</title>
+    <link rel="stylesheet" href="css/views.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #00ff41;
+            font-family: "Courier New", monospace;
+            overflow: hidden;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 2000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            max-width: 300px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group h3 {
+            margin: 0 0 10px 0;
+            color: #00ff41;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #003300;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 8px 12px;
+            margin: 2px;
+            cursor: pointer;
+            font-family: "Courier New", monospace;
+            font-size: 12px;
+        }
+        
+        button:hover {
+            background: #004400;
+        }
+        
+        button:disabled {
+            background: #222;
+            color: #666;
+            cursor: not-allowed;
+        }
+        
+        #status {
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #00ff41;
+            padding: 10px;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .status-line {
+            margin: 2px 0;
+        }
+        
+        .success { color: #00ff41; }
+        .warning { color: #ffaa00; }
+        .error { color: #ff4444; }
+        .info { color: #4488ff; }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="controls">
+            <div class="control-group">
+                <h3>Intel System Test</h3>
+                <button onclick="initializeTest()">Initialize Test</button>
+                <button onclick="enableTargetComputer()">Enable Target Computer</button>
+                <button onclick="disableTargetComputer()">Disable Target Computer</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>Target Control</h3>
+                <button onclick="targetPlanet()">Target Planet</button>
+                <button onclick="targetMoon()">Target Moon</button>
+                <button onclick="targetStar()">Target Star</button>
+                <button onclick="clearTarget()">Clear Target</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>Intel Control</h3>
+                <button onclick="toggleIntel()">Toggle Intel (I)</button>
+                <button onclick="moveInRange()">Move In Range</button>
+                <button onclick="moveOutOfRange()">Move Out of Range</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>Status</h3>
+                <div id="status"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    
+    <script type="module">
+        import * as THREE from 'three';
+        import { StarfieldManager } from '/js/views/StarfieldManager.js';
+        import { SolarSystemManager } from '/js/SolarSystemManager.js';
+
+        let scene, camera, renderer, starfieldManager, solarSystemManager, viewManager;
+        let testPlanet, testMoon, testStar;
+
+        window.initializeTest = async function() {
+            log('Initializing intel system test...', 'info');
+            
+            try {
+                // Create Three.js scene
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100000);
+                renderer = new THREE.WebGLRenderer();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setClearColor(0x000000);
+                document.getElementById('container').appendChild(renderer.domElement);
+                
+                // Create comprehensive view manager mock
+                viewManager = {
+                    getShip: () => ({
+                        // Ship energy properties
+                        currentEnergy: 1000,
+                        maxEnergy: 1000,
+                        
+                        getSystem: (name) => {
+                            // Create mock systems with all required methods
+                            const mockSystem = {
+                                isOperational: () => true,
+                                level: 3,
+                                getImpulseSpeed: () => 5, // For impulse engines
+                                isActive: () => true,
+                                getEffectiveness: () => 1.0,
+                                health: 100,
+                                maxHealth: 100
+                            };
+                            return mockSystem;
+                        },
+                        systems: {
+                            impulse_engines: {
+                                isOperational: () => true,
+                                level: 3,
+                                getImpulseSpeed: () => 5,
+                                isActive: () => true,
+                                getEffectiveness: () => 1.0,
+                                health: 100,
+                                maxHealth: 100
+                            },
+                            target_computer: {
+                                isOperational: () => true,
+                                level: 3,
+                                isActive: () => true,
+                                getEffectiveness: () => 1.0,
+                                health: 100,
+                                maxHealth: 100
+                            },
+                            long_range_scanner: {
+                                isOperational: () => true,
+                                level: 3,
+                                isActive: () => true,
+                                getEffectiveness: () => 1.0,
+                                health: 100,
+                                maxHealth: 100
+                            }
+                        }
+                    }),
+                    currentView: 'FORE',
+                    getShipEnergy: () => 1000,
+                    updateShipEnergy: () => {},
+                    showNotification: (message) => console.log('Notification:', message)
+                };
+                
+                // Create solar system manager
+                solarSystemManager = new SolarSystemManager(scene, camera);
+                
+                // Create starfield manager
+                starfieldManager = new StarfieldManager(scene, camera, viewManager, THREE);
+                starfieldManager.setSolarSystemManager(solarSystemManager);
+                
+                // Generate a test star system
+                await solarSystemManager.generateStarSystem(12345);
+                
+                // Create test objects
+                createTestObjects();
+                
+                // Position camera
+                camera.position.set(0, 0, 50);
+                
+                // Start render loop
+                animate();
+                
+                log('Intel system test initialized successfully', 'success');
+                updateStatus();
+                
+            } catch (error) {
+                log(`Initialization failed: ${error.message}`, 'error');
+                console.error('Initialization error:', error);
+            }
+        };
+
+        function createTestObjects() {
+            // Create test planet
+            const planetGeometry = new THREE.SphereGeometry(5, 32, 32);
+            const planetMaterial = new THREE.MeshBasicMaterial({ color: 0x4488ff });
+            testPlanet = new THREE.Mesh(planetGeometry, planetMaterial);
+            testPlanet.position.set(20, 0, 0);
+            testPlanet.name = "Test Planet Alpha";
+            scene.add(testPlanet);
+            
+            // Create test moon
+            const moonGeometry = new THREE.SphereGeometry(2, 16, 16);
+            const moonMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
+            testMoon = new THREE.Mesh(moonGeometry, moonMaterial);
+            testMoon.position.set(30, 5, 0);
+            testMoon.name = "Test Moon Beta";
+            scene.add(testMoon);
+            
+            // Create test star
+            const starGeometry = new THREE.SphereGeometry(8, 32, 32);
+            const starMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            testStar = new THREE.Mesh(starGeometry, starMaterial);
+            testStar.position.set(-30, 0, 0);
+            testStar.name = "Test Star Gamma";
+            scene.add(testStar);
+            
+            log('Test objects created', 'info');
+        }
+
+        window.enableTargetComputer = function() {
+            if (!starfieldManager) {
+                log('StarfieldManager not initialized', 'error');
+                return;
+            }
+            
+            starfieldManager.targetComputerEnabled = true;
+            starfieldManager.targetHUD.style.display = 'block';
+            log('Target computer enabled', 'success');
+            updateStatus();
+        };
+
+        window.disableTargetComputer = function() {
+            if (!starfieldManager) {
+                log('StarfieldManager not initialized', 'error');
+                return;
+            }
+            
+            starfieldManager.targetComputerEnabled = false;
+            starfieldManager.clearTargetComputer();
+            log('Target computer disabled', 'warning');
+            updateStatus();
+        };
+
+        window.targetPlanet = function() {
+            if (!starfieldManager || !testPlanet) {
+                log('StarfieldManager or test planet not available', 'error');
+                return;
+            }
+            
+            starfieldManager.currentTarget = testPlanet;
+            starfieldManager.updateTargetDisplay();
+            log('Targeted test planet', 'info');
+            updateStatus();
+        };
+
+        window.targetMoon = function() {
+            if (!starfieldManager || !testMoon) {
+                log('StarfieldManager or test moon not available', 'error');
+                return;
+            }
+            
+            starfieldManager.currentTarget = testMoon;
+            starfieldManager.updateTargetDisplay();
+            log('Targeted test moon', 'info');
+            updateStatus();
+        };
+
+        window.targetStar = function() {
+            if (!starfieldManager || !testStar) {
+                log('StarfieldManager or test star not available', 'error');
+                return;
+            }
+            
+            starfieldManager.currentTarget = testStar;
+            starfieldManager.updateTargetDisplay();
+            log('Targeted test star', 'info');
+            updateStatus();
+        };
+
+        window.clearTarget = function() {
+            if (!starfieldManager) {
+                log('StarfieldManager not initialized', 'error');
+                return;
+            }
+            
+            starfieldManager.currentTarget = null;
+            starfieldManager.updateTargetDisplay();
+            log('Target cleared', 'info');
+            updateStatus();
+        };
+
+        window.toggleIntel = function() {
+            if (!starfieldManager) {
+                log('StarfieldManager not initialized', 'error');
+                return;
+            }
+            
+            starfieldManager.toggleIntel();
+            log(`Intel ${starfieldManager.intelVisible ? 'shown' : 'hidden'}`, 'info');
+            updateStatus();
+        };
+
+        window.moveInRange = function() {
+            if (!starfieldManager || !starfieldManager.currentTarget) {
+                log('No target selected', 'error');
+                return;
+            }
+            
+            // Move camera close to target (within intel range)
+            const target = starfieldManager.currentTarget;
+            camera.position.copy(target.position);
+            camera.position.z += 30; // 30km away (within 50km intel range)
+            
+            starfieldManager.updateTargetDisplay();
+            log('Moved within intel range (30km)', 'success');
+            updateStatus();
+        };
+
+        window.moveOutOfRange = function() {
+            if (!starfieldManager || !starfieldManager.currentTarget) {
+                log('No target selected', 'error');
+                return;
+            }
+            
+            // Move camera far from target (outside intel range)
+            const target = starfieldManager.currentTarget;
+            camera.position.copy(target.position);
+            camera.position.z += 60; // 60km away (outside 50km intel range)
+            
+            starfieldManager.updateTargetDisplay();
+            log('Moved outside intel range (60km)', 'warning');
+            updateStatus();
+        };
+
+        function updateStatus() {
+            if (!starfieldManager) return;
+            
+            const status = [];
+            status.push(`Target Computer: ${starfieldManager.targetComputerEnabled ? 'ENABLED' : 'DISABLED'}`);
+            status.push(`Current Target: ${starfieldManager.currentTarget ? starfieldManager.currentTarget.name : 'NONE'}`);
+            status.push(`Intel Available: ${starfieldManager.intelAvailable ? 'YES' : 'NO'}`);
+            status.push(`Intel Visible: ${starfieldManager.intelVisible ? 'YES' : 'NO'}`);
+            
+            if (starfieldManager.currentTarget) {
+                const distance = camera.position.distanceTo(starfieldManager.currentTarget.position);
+                status.push(`Distance: ${distance.toFixed(2)}km`);
+                status.push(`In Range: ${distance <= starfieldManager.intelRange ? 'YES' : 'NO'} (${starfieldManager.intelRange}km)`);
+            }
+            
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = status.map(s => `<div class="status-line">${s}</div>`).join('');
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (starfieldManager) {
+                starfieldManager.update(16); // 60fps
+                updateStatus();
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            console.log(`[${timestamp}] ${message}`);
+            
+            const statusDiv = document.getElementById('status');
+            const logLine = document.createElement('div');
+            logLine.className = `status-line ${type}`;
+            logLine.textContent = `[${timestamp}] ${message}`;
+            statusDiv.appendChild(logLine);
+            statusDiv.scrollTop = statusDiv.scrollHeight;
+        }
+
+        // Bind keyboard events
+        document.addEventListener('keydown', (event) => {
+            if (event.key.toLowerCase() === 'i') {
+                toggleIntel();
+            }
+        });
+
+        // Auto-initialize on load
+        window.addEventListener('load', () => {
+            setTimeout(initializeTest, 500);
+        });
+    </script>
+</body>
+</html> 

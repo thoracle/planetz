@@ -587,7 +587,9 @@ export class SolarSystemManager {
             return {
                 name: this.starSystem.star_name || 'Unknown Star',
                 type: 'star',
-                classification: this.starSystem.star_type || 'Unknown'
+                classification: this.starSystem.star_type || 'Unknown',
+                description: this.starSystem.description || 'No description available.',
+                intel_brief: this.starSystem.intel_brief || 'No intelligence data available.'
             };
         }
 
@@ -608,7 +610,9 @@ export class SolarSystemManager {
                 government: planet.government || 'Unknown',
                 economy: planet.economy || 'Unknown',
                 technology: planet.technology || 'Unknown',
-                population: planet.population
+                population: planet.population,
+                description: planet.description || 'No description available.',
+                intel_brief: planet.intel_brief || 'No intelligence data available.'
             };
         } else if (type === 'moon') {
             const moon = planet.moons[parseInt(moonIndex)];
@@ -624,7 +628,9 @@ export class SolarSystemManager {
                 government: moon.government || 'Unknown',
                 economy: moon.economy || 'Unknown',
                 technology: moon.technology || 'Unknown',
-                population: moon.population
+                population: moon.population,
+                description: moon.description || 'No description available.',
+                intel_brief: moon.intel_brief || 'No intelligence data available.'
             };
         }
 

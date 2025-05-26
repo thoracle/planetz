@@ -25,7 +25,7 @@ export default class SubspaceRadio {
             trade: '#ffff00',         // Yellow - commerce/trade
             military: '#ff6600',      // Orange - military/security
             emergency: '#ff4444',     // Bright Red - emergency/distress
-            system: '#00ffff',        // Cyan - system status
+            system: '#00ffff',        // Cyan - system status/intel
             general: '#ffffff'        // White - general messages
         };
         
@@ -278,10 +278,161 @@ export default class SubspaceRadio {
         // Add some context-aware message selection based on game state
         let availableMessages = [...this.messagePool];
         
+        // Try to get intel-based messages from current star system
+        const intelMessages = this.generateIntelMessages();
+        if (intelMessages.length > 0) {
+            availableMessages = [...availableMessages, ...intelMessages];
+        }
+        
         // Filter messages based on ship status or location if needed
-        // For now, just return random message
+        // For now, just return random message from expanded pool
         const randomIndex = Math.floor(Math.random() * availableMessages.length);
         return availableMessages[randomIndex];
+    }
+    
+    generateIntelMessages() {
+        const intelMessages = [];
+        
+        // Get current star system data from starfield manager
+        if (!this.starfieldManager || !this.starfieldManager.solarSystemManager) {
+            return intelMessages;
+        }
+        
+        const solarSystemManager = this.starfieldManager.solarSystemManager;
+        const starSystem = solarSystemManager.starSystem;
+        
+        if (!starSystem) {
+            return intelMessages;
+        }
+        
+        const currentSector = solarSystemManager.getCurrentSector();
+        
+        // Generate star-based intel messages
+        if (starSystem.star_name && starSystem.intel_brief) {
+            intelMessages.push({
+                text: `Intel Report - ${currentSector}: ${starSystem.intel_brief}`,
+                type: 'system'
+            });
+            
+            // Add star description as navigation info
+            if (starSystem.description) {
+                intelMessages.push({
+                    text: `Navigation Advisory - ${starSystem.star_name}: ${starSystem.description}`,
+                    type: 'navigation'
+                });
+            }
+        }
+        
+        // Generate planet-based intel messages
+        if (starSystem.planets && Array.isArray(starSystem.planets)) {
+            starSystem.planets.forEach((planet, index) => {
+                if (planet.intel_brief) {
+                    // Determine message type based on diplomacy status
+                    let messageType = 'general';
+                    if (planet.diplomacy === 'enemy') {
+                        messageType = 'military';
+                    } else if (planet.diplomacy === 'friendly') {
+                        messageType = 'trade';
+                    } else if (planet.diplomacy === 'unknown') {
+                        messageType = 'navigation';
+                    }
+                    
+                    intelMessages.push({
+                        text: `Planetary Intel - ${planet.planet_name || `Planet ${index + 1}`}: ${planet.intel_brief}`,
+                        type: messageType
+                    });
+                }
+                
+                // Add planet descriptions as general information
+                if (planet.description) {
+                    intelMessages.push({
+                        text: `Survey Data - ${planet.planet_name || `Planet ${index + 1}`}: ${planet.description}`,
+                        type: 'general'
+                    });
+                }
+                
+                // Generate moon-based intel messages
+                if (planet.moons && Array.isArray(planet.moons)) {
+                    planet.moons.forEach((moon, moonIndex) => {
+                        if (moon.intel_brief) {
+                            let moonMessageType = 'general';
+                            if (moon.diplomacy === 'enemy') {
+                                moonMessageType = 'military';
+                            } else if (moon.diplomacy === 'friendly') {
+                                moonMessageType = 'trade';
+                            }
+                            
+                            intelMessages.push({
+                                text: `Lunar Intel - ${moon.moon_name || `Moon ${moonIndex + 1}`}: ${moon.intel_brief}`,
+                                type: moonMessageType
+                            });
+                        }
+                        
+                        // Add moon descriptions
+                        if (moon.description) {
+                            intelMessages.push({
+                                text: `Lunar Survey - ${moon.moon_name || `Moon ${moonIndex + 1}`}: ${moon.description}`,
+                                type: 'general'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Generate strategic intelligence based on system composition
+        if (starSystem.planets && starSystem.planets.length > 0) {
+            const friendlyPlanets = starSystem.planets.filter(p => p.diplomacy === 'friendly').length;
+            const enemyPlanets = starSystem.planets.filter(p => p.diplomacy === 'enemy').length;
+            const neutralPlanets = starSystem.planets.filter(p => p.diplomacy === 'neutral').length;
+            const unknownPlanets = starSystem.planets.filter(p => p.diplomacy === 'unknown').length;
+            
+            // Generate strategic overview messages
+            if (enemyPlanets > friendlyPlanets) {
+                intelMessages.push({
+                    text: `Strategic Alert - ${currentSector}: Hostile territory detected. ${enemyPlanets} enemy installations identified. Recommend enhanced defensive posture.`,
+                    type: 'military'
+                });
+            } else if (friendlyPlanets > 0) {
+                intelMessages.push({
+                    text: `Trade Opportunity - ${currentSector}: ${friendlyPlanets} allied worlds available for commerce. Favorable trade conditions expected.`,
+                    type: 'trade'
+                });
+            }
+            
+            if (unknownPlanets > 2) {
+                intelMessages.push({
+                    text: `Exploration Notice - ${currentSector}: ${unknownPlanets} uncharted worlds detected. First contact protocols recommended.`,
+                    type: 'navigation'
+                });
+            }
+            
+            // Technology level analysis
+            const advancedWorlds = starSystem.planets.filter(p => 
+                p.technology === 'Intergalactic' || p.technology === 'Interstellar'
+            ).length;
+            
+            if (advancedWorlds > 0) {
+                intelMessages.push({
+                    text: `Technology Report - ${currentSector}: ${advancedWorlds} advanced civilizations detected. Potential for technology exchange opportunities.`,
+                    type: 'system'
+                });
+            }
+            
+            // Economic analysis
+            const industrialWorlds = starSystem.planets.filter(p => 
+                p.economy === 'Industrial' || p.economy === 'Technological'
+            ).length;
+            
+            if (industrialWorlds > 0) {
+                intelMessages.push({
+                    text: `Economic Analysis - ${currentSector}: ${industrialWorlds} industrial centers identified. Repair and upgrade services likely available.`,
+                    type: 'trade'
+                });
+            }
+        }
+        
+        return intelMessages;
     }
     
     displayMessage(message) {
@@ -302,8 +453,51 @@ export default class SubspaceRadio {
         
         this.currentMessage = message;
         
+        // Enhanced formatting for intel-based messages
+        let displayText = message.text;
+        if (typeof message === 'object' && message.text && message.text.includes('Intel Report') || 
+            message.text.includes('Planetary Intel') || 
+            message.text.includes('Lunar Intel') ||
+            message.text.includes('Strategic Alert') ||
+            message.text.includes('Trade Opportunity') ||
+            message.text.includes('Exploration Notice') ||
+            message.text.includes('Technology Report') ||
+            message.text.includes('Economic Analysis') ||
+            message.text.includes('Navigation Advisory') ||
+            message.text.includes('Survey Data') ||
+            message.text.includes('Lunar Survey')) {
+            
+            // Add timestamp for intel messages
+            const timestamp = new Date().toLocaleTimeString('en-US', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            // Add priority indicator based on message type
+            let priorityIndicator = '';
+            switch (message.type) {
+                case 'military':
+                    priorityIndicator = '[PRIORITY]';
+                    break;
+                case 'system':
+                    priorityIndicator = '[INTEL]';
+                    break;
+                case 'trade':
+                    priorityIndicator = '[COMMERCE]';
+                    break;
+                case 'navigation':
+                    priorityIndicator = '[NAV]';
+                    break;
+                default:
+                    priorityIndicator = '[INFO]';
+            }
+            
+            displayText = `${timestamp} ${priorityIndicator} ${message.text}`;
+        }
+        
         // Set text content and color
-        this.textContainer.textContent = message.text;
+        this.textContainer.textContent = displayText;
         this.textContainer.style.color = this.messageTypes[message.type] || this.messageTypes.general;
         
         // Reset scroll position

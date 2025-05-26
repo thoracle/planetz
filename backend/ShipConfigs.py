@@ -1,0 +1,189 @@
+"""
+Ship configurations for backend API
+Based on frontend/static/js/ship/ShipConfigs.js
+"""
+
+SHIP_CONFIGS = {
+    'heavy_fighter': {
+        'name': 'Heavy Fighter',
+        'description': 'Durable combat ship for prolonged engagements',
+        'baseSpeed': 50,
+        'baseArmor': 80,
+        'baseFirepower': 80,
+        'baseCargoCapacity': 15,
+        'baseHardpoints': 8,
+        'maxEnergy': 5000,
+        'energyRechargeRate': 50,
+        'maxHull': 1000,
+        'systemSlots': 18,
+        'defaultSystems': {
+            'hull_plating': {'level': 5, 'slots': 1},
+            'energy_reactor': {'level': 5, 'slots': 1},
+            'shield_generator': {'level': 6, 'slots': 1, 'energyConsumption': 30},
+            'cargo_hold': {'level': 2, 'slots': 1},
+            'impulse_engines': {'level': 4, 'slots': 1, 'energyConsumption': 20},
+            'warp_drive': {'level': 1, 'slots': 1, 'energyConsumption': 0},
+            'shields': {'level': 1, 'slots': 1, 'energyConsumption': 25},
+            'laser_cannon': {'level': 7, 'slots': 1, 'energyConsumption': 0},
+            'long_range_scanner': {'level': 1, 'slots': 1, 'energyConsumption': 5},
+            'subspace_radio': {'level': 1, 'slots': 1, 'energyConsumption': 6},
+            'galactic_chart': {'level': 1, 'slots': 1, 'energyConsumption': 8},
+            'target_computer': {'level': 3, 'slots': 1, 'energyConsumption': 8},
+            'missile_tubes': {'level': 1, 'slots': 1, 'energyConsumption': 0}
+        }
+    },
+    'scout': {
+        'name': 'Scout',
+        'description': 'Fast reconnaissance ship with advanced sensors',
+        'baseSpeed': 90,
+        'baseArmor': 30,
+        'baseFirepower': 40,
+        'baseCargoCapacity': 8,
+        'baseHardpoints': 4,
+        'maxEnergy': 3500,
+        'energyRechargeRate': 60,
+        'maxHull': 500,
+        'systemSlots': 15,
+        'defaultSystems': {
+            'hull_plating': {'level': 3, 'slots': 1},
+            'energy_reactor': {'level': 4, 'slots': 1},
+            'shield_generator': {'level': 2, 'slots': 1, 'energyConsumption': 10},
+            'cargo_hold': {'level': 1, 'slots': 1},
+            'impulse_engines': {'level': 2, 'slots': 1, 'energyConsumption': 15},
+            'warp_drive': {'level': 2, 'slots': 1, 'energyConsumption': 0},
+            'shields': {'level': 1, 'slots': 1, 'energyConsumption': 15},
+            'pulse_cannon': {'level': 1, 'slots': 1, 'energyConsumption': 0},
+            'long_range_scanner': {'level': 3, 'slots': 1, 'energyConsumption': 3},
+            'subspace_radio': {'level': 2, 'slots': 1, 'energyConsumption': 4},
+            'galactic_chart': {'level': 2, 'slots': 1, 'energyConsumption': 6},
+            'target_computer': {'level': 2, 'slots': 1, 'energyConsumption': 6}
+        }
+    },
+    'light_fighter': {
+        'name': 'Light Fighter',
+        'description': 'Balanced combat vessel for dogfights and skirmishes',
+        'baseSpeed': 70,
+        'baseArmor': 40,
+        'baseFirepower': 60,
+        'baseCargoCapacity': 20,
+        'baseHardpoints': 5,
+        'maxEnergy': 4000,
+        'energyRechargeRate': 45,
+        'maxHull': 700,
+        'systemSlots': 16,
+        'defaultSystems': {
+            'hull_plating': {'level': 4, 'slots': 1},
+            'energy_reactor': {'level': 4, 'slots': 1},
+            'shield_generator': {'level': 3, 'slots': 1, 'energyConsumption': 15},
+            'cargo_hold': {'level': 2, 'slots': 1},
+            'impulse_engines': {'level': 3, 'slots': 1, 'energyConsumption': 18},
+            'warp_drive': {'level': 1, 'slots': 1, 'energyConsumption': 0},
+            'shields': {'level': 1, 'slots': 1, 'energyConsumption': 20},
+            'laser_cannon': {'level': 3, 'slots': 1, 'energyConsumption': 0},
+            'long_range_scanner': {'level': 1, 'slots': 1, 'energyConsumption': 5},
+            'subspace_radio': {'level': 1, 'slots': 1, 'energyConsumption': 6},
+            'galactic_chart': {'level': 1, 'slots': 1, 'energyConsumption': 8},
+            'target_computer': {'level': 2, 'slots': 1, 'energyConsumption': 7}
+        }
+    },
+    'light_freighter': {
+        'name': 'Light Freighter',
+        'description': 'Versatile trading vessel with moderate combat capability',
+        'baseSpeed': 60,
+        'baseArmor': 50,
+        'baseFirepower': 40,
+        'baseCargoCapacity': 80,
+        'baseHardpoints': 6,
+        'maxEnergy': 4500,
+        'energyRechargeRate': 40,
+        'maxHull': 800,
+        'systemSlots': 17,
+        'defaultSystems': {
+            'hull_plating': {'level': 4, 'slots': 1},
+            'energy_reactor': {'level': 5, 'slots': 1},
+            'shield_generator': {'level': 4, 'slots': 1, 'energyConsumption': 20},
+            'cargo_hold': {'level': 8, 'slots': 1},
+            'impulse_engines': {'level': 3, 'slots': 1, 'energyConsumption': 22},
+            'warp_drive': {'level': 1, 'slots': 1, 'energyConsumption': 0},
+            'shields': {'level': 1, 'slots': 1, 'energyConsumption': 25},
+            'laser_cannon': {'level': 2, 'slots': 1, 'energyConsumption': 0},
+            'long_range_scanner': {'level': 2, 'slots': 1, 'energyConsumption': 4},
+            'subspace_radio': {'level': 1, 'slots': 1, 'energyConsumption': 6},
+            'galactic_chart': {'level': 1, 'slots': 1, 'energyConsumption': 8},
+            'target_computer': {'level': 1, 'slots': 1, 'energyConsumption': 8}
+        }
+    },
+    'heavy_freighter': {
+        'name': 'Heavy Freighter',
+        'description': 'High-capacity trading vessel for bulk cargo',
+        'baseSpeed': 30,
+        'baseArmor': 70,
+        'baseFirepower': 20,
+        'baseCargoCapacity': 150,
+        'baseHardpoints': 10,
+        'maxEnergy': 6000,
+        'energyRechargeRate': 35,
+        'maxHull': 1200,
+        'systemSlots': 20,
+        'defaultSystems': {
+            'hull_plating': {'level': 6, 'slots': 1},
+            'energy_reactor': {'level': 6, 'slots': 1},
+            'shield_generator': {'level': 5, 'slots': 1, 'energyConsumption': 25},
+            'cargo_hold': {'level': 15, 'slots': 1},
+            'impulse_engines': {'level': 2, 'slots': 1, 'energyConsumption': 30},
+            'warp_drive': {'level': 1, 'slots': 1, 'energyConsumption': 0},
+            'shields': {'level': 1, 'slots': 1, 'energyConsumption': 30},
+            'laser_cannon': {'level': 1, 'slots': 1, 'energyConsumption': 0},
+            'long_range_scanner': {'level': 1, 'slots': 1, 'energyConsumption': 5},
+            'subspace_radio': {'level': 1, 'slots': 1, 'energyConsumption': 6},
+            'galactic_chart': {'level': 1, 'slots': 1, 'energyConsumption': 8},
+            'target_computer': {'level': 1, 'slots': 1, 'energyConsumption': 8}
+        }
+    }
+}
+
+# Repair pricing configuration
+REPAIR_PRICING = {
+    'baseCosts': {
+        'hull': 50,           # Credits per % hull damage
+        'system': 100,        # Base cost per system
+        'critical': 1.5,      # Multiplier for critical systems
+        'emergency': 2.0      # Multiplier for emergency repairs
+    },
+    'shipClassMultipliers': {
+        'scout': 0.8,
+        'light_fighter': 1.0,
+        'heavy_fighter': 1.2,
+        'light_freighter': 1.5,
+        'heavy_freighter': 2.0
+    },
+    'factionDiscounts': {
+        'friendly': 0.8,
+        'neutral': 1.0,
+        'hostile': 1.5
+    },
+    'repairTimes': {
+        'hull': 2,            # Seconds per % hull damage
+        'system': 30,         # Base seconds per system
+        'emergency': 0.5      # Multiplier for instant repair
+    }
+}
+
+# Critical systems that cost more to repair
+CRITICAL_SYSTEMS = ['hull_plating', 'energy_reactor', 'impulse_engines', 'life_support']
+
+def get_ship_config(ship_type):
+    """Get ship configuration by type."""
+    return SHIP_CONFIGS.get(ship_type)
+
+def get_available_ship_types():
+    """Get list of available ship types."""
+    return list(SHIP_CONFIGS.keys())
+
+def validate_ship_config(config):
+    """Validate ship configuration."""
+    if not config:
+        return False
+    
+    required_fields = ['name', 'description', 'maxEnergy', 'maxHull', 'systemSlots', 'defaultSystems']
+    return all(field in config for field in required_fields) 

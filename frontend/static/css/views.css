@@ -1056,4 +1056,90 @@ body.warp-control-mode .crosshair {
 
 .target-button.targeted:hover {
     background: #00cc35;
-} 
+}
+
+/* Description and Intel Brief sections */
+.detail-section {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.detail-row.description,
+.detail-row.intel-brief {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.detail-row.description .label,
+.detail-row.intel-brief .label {
+    color: #00ff41;
+    font-weight: bold;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.description-text,
+.intel-text {
+    color: #b3b3b3 !important;
+    font-size: 0.85em;
+    line-height: 1.4;
+    text-align: left;
+    font-style: italic;
+    padding: 5px 0;
+    border-left: 2px solid rgba(0, 255, 65, 0.3);
+    padding-left: 10px;
+    margin-left: 5px;
+}
+
+.intel-text {
+    color: #ffcc00 !important;
+    border-left-color: rgba(255, 204, 0, 0.3);
+}
+
+/* Intel icon pulse animation */
+@keyframes pulse {
+    0% {
+        opacity: 0.8;
+        transform: scale(1);
+        box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+        box-shadow: 0 0 12px rgba(0, 255, 65, 0.8);
+    }
+    100% {
+        opacity: 0.8;
+        transform: scale(1);
+        box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
+    }
+}
+
+/* Intel HUD scrollbar styling with dynamic faction colors */
+.intel-hud,
+.intel-hud * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb-color, #00ff41) var(--scrollbar-track-color, rgba(0, 255, 65, 0.1));
+}
+
+.intel-hud::-webkit-scrollbar,
+.intel-hud *::-webkit-scrollbar {
+    width: 8px;
+}
+
+.intel-hud::-webkit-scrollbar-track,
+.intel-hud *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track-color, rgba(0, 255, 65, 0.1));
+    border-radius: 4px;
+}
+
+.intel-hud::-webkit-scrollbar-thumb,
+.intel-hud *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-color, #00ff41);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}

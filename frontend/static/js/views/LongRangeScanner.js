@@ -614,6 +614,20 @@ export class LongRangeScanner {
                     <span class="value">${bodyInfo.population}</span>
                 </div>
                 ` : ''}
+                
+                <div class="detail-section">
+                    <div class="detail-row description">
+                        <span class="label">Description:</span>
+                        <span class="value description-text">${bodyInfo.description || 'No description available.'}</span>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-row intel-brief">
+                        <span class="label">Intel Brief:</span>
+                        <span class="value intel-text">${bodyInfo.intel_brief || 'No intelligence data available.'}</span>
+                    </div>
+                </div>
             </div>`;
 
         this.detailsPanel.innerHTML = detailsHTML;

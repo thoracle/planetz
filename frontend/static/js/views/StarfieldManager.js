@@ -86,6 +86,12 @@ export class StarfieldManager {
         // Add button state logging throttling
         this.lastButtonStateLog = null;
         
+        // Smooth rotation state
+        this.rotationVelocity = { x: 0, y: 0 };
+        this.rotationAcceleration = 0.0008; // How quickly rotation speeds up
+        this.rotationDeceleration = 0.0012; // How quickly rotation slows down
+        this.maxRotationSpeed = 0.025; // Maximum rotation speed
+        
         // Create starfield with quintuple density
         this.starCount = 40000;  // Increased from 8000 to 40000
         this.starfield = this.createStarfield();
@@ -105,7 +111,8 @@ export class StarfieldManager {
         // Add intel state
         this.intelVisible = false;
         this.intelAvailable = false;
-        this.intelRange = 10; // Changed from 5km to 10km
+        this.intelRange = 50; // Extended range to 50km for better visibility
+        this.previousTarget = null; // Track previous target for intel dismissal
         
         // Create intel HUD
         this.createIntelHUD();
@@ -954,9 +961,24 @@ export class StarfieldManager {
         this.economyIcon = createIcon('⬢', 'Economy');      // Filled hexagon for economy/resources
         this.technologyIcon = createIcon('⬨', 'Technology'); // Diamond with dot for technology/advancement
 
+        // Create intel icon (initially hidden)
+        this.intelIcon = createIcon('ⓘ', 'Intel Available - Press I');
+        this.intelIcon.style.display = 'none';
+        this.intelIcon.style.cursor = 'pointer';
+        this.intelIcon.style.animation = 'pulse 2s infinite';
+        
+        // Add click handler for intel icon
+        this.intelIcon.addEventListener('click', () => {
+            if (this.intelAvailable && this.targetComputerEnabled && this.currentTarget) {
+                this.playCommandSound();
+                this.toggleIntel();
+            }
+        });
+
         this.statusIconsContainer.appendChild(this.governmentIcon);
         this.statusIconsContainer.appendChild(this.economyIcon);
         this.statusIconsContainer.appendChild(this.technologyIcon);
+        this.statusIconsContainer.appendChild(this.intelIcon);
 
         // Create action buttons container
         this.actionButtonsContainer = document.createElement('div');
@@ -1044,11 +1066,13 @@ export class StarfieldManager {
     createIntelHUD() {
         // Create intel HUD container
         this.intelHUD = document.createElement('div');
+        this.intelHUD.className = 'intel-hud';
         this.intelHUD.style.cssText = `
             position: fixed;
-            bottom: 280px;
-            left: 20px;
+            bottom: 450px;
+            left: 10px;
             width: 200px;
+            max-height: 400px;
             border: 2px solid #00ff41;
             background: rgba(0, 0, 0, 0.7);
             color: #00ff41;
@@ -1058,9 +1082,10 @@ export class StarfieldManager {
             display: none;
             pointer-events: auto;
             z-index: 1000;
+            overflow-y: auto;
         `;
         
-        // Add CSS for dock button
+        // Add CSS for dock button and intel scrollbar
         const style = document.createElement('style');
         style.textContent = `
             .dock-button {
@@ -1086,6 +1111,23 @@ export class StarfieldManager {
             }
             .dock-button.launch:hover {
                 background: #cc4f00;
+            }
+            
+            /* Custom scrollbar for intel HUD */
+            div[style*="overflow-y: auto"]::-webkit-scrollbar {
+                width: 8px;
+            }
+            div[style*="overflow-y: auto"]::-webkit-scrollbar-track {
+                background: rgba(0, 0, 0, 0.3);
+                border-radius: 4px;
+            }
+            div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
+                background: #00ff41;
+                border-radius: 4px;
+                border: 1px solid rgba(0, 255, 65, 0.3);
+            }
+            div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb:hover {
+                background: #00aa41;
             }
         `;
         document.head.appendChild(style);
@@ -1328,6 +1370,13 @@ export class StarfieldManager {
             this.targetHUD.style.display = 'none';
             this.targetReticle.style.display = 'none';
             
+            // Hide intel when target computer is disabled
+            if (this.intelVisible) {
+                this.intelVisible = false;
+                this.intelHUD.style.display = 'none';
+            }
+            this.updateIntelIconDisplay();
+            
             // Clear wireframe if it exists
             if (this.targetWireframe) {
                 this.wireframeScene.remove(this.targetWireframe);
@@ -1551,6 +1600,12 @@ export class StarfieldManager {
                 hasScanButton: false,
                 hasTradeButton: false
             };
+            // Hide intel when no target
+            if (this.intelVisible) {
+                this.intelVisible = false;
+                this.intelHUD.style.display = 'none';
+            }
+            this.updateIntelIconDisplay();
             return;
         }
 
@@ -1572,8 +1627,20 @@ export class StarfieldManager {
             return;
         }
 
+        // Check if target has changed and dismiss intel if so
+        if (this.previousTarget !== this.currentTarget) {
+            if (this.intelVisible) {
+                this.intelVisible = false;
+                this.intelHUD.style.display = 'none';
+            }
+            this.previousTarget = this.currentTarget;
+        }
+
         // Calculate distance to target
         const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
+        
+        // Check intel availability based on scan range and long range scanner
+        this.updateIntelAvailability(distance);
         
         // Get target info for diplomacy status and actions
         let info = null;
@@ -1703,6 +1770,9 @@ export class StarfieldManager {
                 icon.style.boxShadow = `0 0 4px ${diplomacyColor.replace(')', ', 0.4)')}`;
             }
         });
+
+        // Update intel icon display
+        this.updateIntelIconDisplay();
 
         // Update tooltips with current info
         if (info?.government) {
@@ -2184,6 +2254,89 @@ export class StarfieldManager {
         });
     }
 
+    updateSmoothRotation(deltaTime) {
+        // Determine target rotation velocities based on key states
+        let targetRotationX = 0;
+        let targetRotationY = 0;
+        
+        if (this.keys.ArrowLeft) {
+            targetRotationY = this.maxRotationSpeed;
+        }
+        if (this.keys.ArrowRight) {
+            targetRotationY = -this.maxRotationSpeed;
+        }
+        if (this.keys.ArrowUp) {
+            targetRotationX = this.maxRotationSpeed;
+        }
+        if (this.keys.ArrowDown) {
+            targetRotationX = -this.maxRotationSpeed;
+        }
+        
+        // Smooth acceleration/deceleration for Y rotation (left/right)
+        if (Math.abs(targetRotationY) > 0) {
+            // Accelerate towards target rotation speed
+            if (Math.abs(this.rotationVelocity.y) < Math.abs(targetRotationY)) {
+                const direction = Math.sign(targetRotationY);
+                this.rotationVelocity.y += direction * this.rotationAcceleration * deltaTime * 60;
+                // Clamp to target speed
+                if (Math.abs(this.rotationVelocity.y) > Math.abs(targetRotationY)) {
+                    this.rotationVelocity.y = targetRotationY;
+                }
+            }
+        } else {
+            // Decelerate to zero
+            if (Math.abs(this.rotationVelocity.y) > 0) {
+                const direction = -Math.sign(this.rotationVelocity.y);
+                this.rotationVelocity.y += direction * this.rotationDeceleration * deltaTime * 60;
+                // Stop if we've crossed zero
+                if (Math.sign(this.rotationVelocity.y) !== Math.sign(this.rotationVelocity.y + direction * this.rotationDeceleration * deltaTime * 60)) {
+                    this.rotationVelocity.y = 0;
+                }
+            }
+        }
+        
+        // Smooth acceleration/deceleration for X rotation (up/down)
+        if (Math.abs(targetRotationX) > 0) {
+            // Accelerate towards target rotation speed
+            if (Math.abs(this.rotationVelocity.x) < Math.abs(targetRotationX)) {
+                const direction = Math.sign(targetRotationX);
+                this.rotationVelocity.x += direction * this.rotationAcceleration * deltaTime * 60;
+                // Clamp to target speed
+                if (Math.abs(this.rotationVelocity.x) > Math.abs(targetRotationX)) {
+                    this.rotationVelocity.x = targetRotationX;
+                }
+            }
+        } else {
+            // Decelerate to zero
+            if (Math.abs(this.rotationVelocity.x) > 0) {
+                const direction = -Math.sign(this.rotationVelocity.x);
+                this.rotationVelocity.x += direction * this.rotationDeceleration * deltaTime * 60;
+                // Stop if we've crossed zero
+                if (Math.sign(this.rotationVelocity.x) !== Math.sign(this.rotationVelocity.x + direction * this.rotationDeceleration * deltaTime * 60)) {
+                    this.rotationVelocity.x = 0;
+                }
+            }
+        }
+        
+        // Apply rotation to camera
+        if (Math.abs(this.rotationVelocity.y) > 0.0001) {
+            this.camera.rotateY(this.rotationVelocity.y * deltaTime * 60);
+        }
+        if (Math.abs(this.rotationVelocity.x) > 0.0001) {
+            this.camera.rotateX(this.rotationVelocity.x * deltaTime * 60);
+        }
+        
+        // Update impulse engines rotation state for energy consumption
+        const ship = this.viewManager?.getShip();
+        if (ship) {
+            const impulseEngines = ship.getSystem('impulse_engines');
+            if (impulseEngines) {
+                const isRotating = Math.abs(this.rotationVelocity.x) > 0.0001 || Math.abs(this.rotationVelocity.y) > 0.0001;
+                impulseEngines.setRotating(isRotating);
+            }
+        }
+    }
+
     update(deltaTime) {
         if (!deltaTime) deltaTime = 1/60;
 
@@ -2194,22 +2347,8 @@ export class StarfieldManager {
             return;
         }
 
-        // Handle rotation from arrow keys (instead of movement)
-        const rotationSpeed = 0.015;
-        
-        // Rotate camera based on arrow keys
-        if (this.keys.ArrowLeft) {
-            this.camera.rotateY(rotationSpeed);
-        }
-        if (this.keys.ArrowRight) {
-            this.camera.rotateY(-rotationSpeed);
-        }
-        if (this.keys.ArrowUp) {
-            this.camera.rotateX(rotationSpeed);
-        }
-        if (this.keys.ArrowDown) {
-            this.camera.rotateX(-rotationSpeed);
-        }
+        // Handle smooth rotation from arrow keys
+        this.updateSmoothRotation(deltaTime);
 
         // Handle speed changes with acceleration/deceleration
         if (this.decelerating) {
@@ -2961,8 +3100,16 @@ export class StarfieldManager {
     clearTargetComputer() {
         // Reset target state
         this.currentTarget = null;
+        this.previousTarget = null; // Reset previous target tracking
         this.targetIndex = -1;
         this.targetObjects = [];
+        
+        // Hide intel when target computer is cleared
+        if (this.intelVisible) {
+            this.intelVisible = false;
+            this.intelHUD.style.display = 'none';
+        }
+        this.updateIntelIconDisplay();
         
         // Hide HUD elements
         if (this.targetHUD) {
@@ -3095,12 +3242,9 @@ export class StarfieldManager {
     toggleIntel() {
         this.intelVisible = !this.intelVisible;
         
-        // Toggle HUD and icon visibility
-        this.intelHUD.style.display = this.intelVisible ? 'block' : 'none';
-        // Only show icon when intel HUD is hidden AND we're in range
-        this.intelIcon.style.display = (!this.intelVisible && this.intelAvailable) ? 'block' : 'none';
-        
+        // Update intel display and icon visibility
         this.updateIntelDisplay();
+        this.updateIntelIconDisplay();
     }
 
     updateIntelDisplay() {
@@ -3121,46 +3265,118 @@ export class StarfieldManager {
             return;
         }
 
+        // Determine faction color using same logic as target HUD
+        let isEnemyShip = false;
+        let diplomacyColor = '#D0D0D0'; // Default gray
+        
+        // Check if this is an enemy ship
+        if (currentTargetData.isShip && currentTargetData.ship) {
+            isEnemyShip = true;
+            diplomacyColor = '#ff0000'; // Enemy ships are red
+        } else if (info?.type === 'star') {
+            diplomacyColor = '#ffff00'; // Stars are neutral yellow
+        } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
+            diplomacyColor = '#ff0000';
+        } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
+            diplomacyColor = '#ffff00';
+        } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
+            diplomacyColor = '#00ff41';
+        }
+        
+        // Update intel HUD border color to match faction
+        this.intelHUD.style.borderColor = diplomacyColor;
+        
+        // Update scrollbar colors to match faction
+        // Convert hex color to RGB for rgba usage
+        const hexToRgb = (hex) => {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        };
+        
+        const rgb = hexToRgb(diplomacyColor);
+        if (rgb) {
+            // Set CSS custom properties for scrollbar colors on the intel HUD and all child elements
+            this.intelHUD.style.setProperty('--scrollbar-thumb-color', diplomacyColor);
+            this.intelHUD.style.setProperty('--scrollbar-track-color', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
+            
+            // Also create a dynamic style element to ensure scrollbar colors are applied
+            const styleId = 'intel-scrollbar-style';
+            let existingStyle = document.getElementById(styleId);
+            if (existingStyle) {
+                existingStyle.remove();
+            }
+            
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `
+                .intel-hud::-webkit-scrollbar-thumb,
+                .intel-hud *::-webkit-scrollbar-thumb,
+                .intel-hud div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
+                    background-color: ${diplomacyColor} !important;
+                }
+                .intel-hud::-webkit-scrollbar-track,
+                .intel-hud *::-webkit-scrollbar-track,
+                .intel-hud div[style*="overflow-y: auto"]::-webkit-scrollbar-track {
+                    background: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1) !important;
+                }
+                .intel-hud,
+                .intel-hud *,
+                .intel-hud div[style*="overflow-y: auto"] {
+                    scrollbar-color: ${diplomacyColor} rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1) !important;
+                }
+                .intel-hud div[style*="overflow-y: auto"]::-webkit-scrollbar {
+                    width: 8px !important;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
         // Format the intel information
         let intelHTML = `
-            <div style="text-align: center; border-bottom: 1px solid #00ff41; padding-bottom: 5px; margin-bottom: 10px;">
+            <div style="text-align: center; border-bottom: 1px solid ${diplomacyColor}; padding-bottom: 5px; margin-bottom: 10px; color: ${diplomacyColor};">
                 INTEL: ${currentTargetData.name}
             </div>
         `;
 
-        // Add distance info if it's a planet or moon
-        if (info.type === 'planet' || info.type === 'moon') {
-            const distance = this.camera.position.distanceTo(this.currentTarget.position);
+        // Add description section if available
+        if (info.description && info.description.trim() !== '') {
+            // Convert diplomacy color to rgba for border
+            const borderColor = diplomacyColor.replace('#', '').match(/.{2}/g);
+            const rgbaColor = `rgba(${parseInt(borderColor[0], 16)}, ${parseInt(borderColor[1], 16)}, ${parseInt(borderColor[2], 16)}, 0.3)`;
+            
             intelHTML += `
-                <div style="margin-bottom: 8px;">
-                    <span style="color: #00aa41;">Distance:</span> ${distance.toFixed(2)} km
+                <div style="margin-bottom: 12px; padding: 8px; border: 1px solid ${rgbaColor}; border-radius: 4px;">
+                    <div style="color: ${diplomacyColor}; font-weight: bold; margin-bottom: 6px;">DESCRIPTION:</div>
+                    <div style="color: ${diplomacyColor}; font-style: italic; line-height: 1.4; font-size: 13px;">
+                        ${info.description}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Add intel brief section if available
+        if (info.intel_brief && info.intel_brief.trim() !== '') {
+            // Convert diplomacy color to rgba for border
+            const borderColor = diplomacyColor.replace('#', '').match(/.{2}/g);
+            const rgbaColor = `rgba(${parseInt(borderColor[0], 16)}, ${parseInt(borderColor[1], 16)}, ${parseInt(borderColor[2], 16)}, 0.3)`;
+            
+            intelHTML += `
+                <div style="margin-bottom: 12px; padding: 8px; border: 1px solid ${rgbaColor}; border-radius: 4px;">
+                    <div style="color: ${diplomacyColor}; font-weight: bold; margin-bottom: 6px;">INTEL BRIEF:</div>
+                    <div style="color: ${diplomacyColor}; font-style: italic; line-height: 1.4; font-size: 13px; max-height: 150px; overflow-y: auto; padding-right: 5px;">
+                        ${info.intel_brief}
+                    </div>
                 </div>
             `;
         }
 
         // Check if it's a planet or moon by checking if diplomacy info exists
         if (info.diplomacy !== undefined) {
-            // For planets and moons, show civilization data
-            const diplomacyClass = info.diplomacy?.toLowerCase() === 'enemy' ? 'diplomacy-hostile' : 
-                                 info.diplomacy?.toLowerCase() === 'friendly' ? 'diplomacy-friendly' :
-                                 info.diplomacy?.toLowerCase() === 'neutral' ? 'diplomacy-neutral' :
-                                 'diplomacy-unknown';
-            
-            intelHTML += `
-                <div style="margin-bottom: 8px;">
-                    <span style="color: #00aa41;">Diplomacy:</span> <span class="${diplomacyClass}">${info.diplomacy || 'Unknown'}</span>
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <span style="color: #00aa41;">Government:</span> ${info.government || 'Unknown'}
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <span style="color: #00aa41;">Economy:</span> ${info.economy || 'Unknown'}
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <span style="color: #00aa41;">Technology:</span> ${info.technology || 'Unknown'}
-                </div>
-            `;
-
+            // For planets and moons, only show population (diplomacy, government, economy, technology already shown in target computer)
             if (info.population) {
                 intelHTML += `
                     <div style="margin-top: 12px; font-size: 0.9em; opacity: 0.8;">
@@ -3171,15 +3387,124 @@ export class StarfieldManager {
         } else {
             // For other celestial bodies (stars, asteroids, etc.)
             intelHTML += `
-                <div style="margin-bottom: 5px;">Type: ${info.type || 'Unknown'}</div>
-                <div style="margin-bottom: 5px;">Mass: ${info.mass || 'Unknown'}</div>
-                <div style="margin-bottom: 5px;">Atmosphere: ${info.atmosphere || 'Unknown'}</div>
-                <div style="margin-bottom: 5px;">Resources: ${info.resources || 'Unknown'}</div>
+                <div style="margin-bottom: 5px; color: ${diplomacyColor};">Type: ${info.type || 'Unknown'}</div>
+                <div style="margin-bottom: 5px; color: ${diplomacyColor};">Mass: ${info.mass || 'Unknown'}</div>
+                <div style="margin-bottom: 5px; color: ${diplomacyColor};">Atmosphere: ${info.atmosphere || 'Unknown'}</div>
+                <div style="margin-bottom: 5px; color: ${diplomacyColor};">Resources: ${info.resources || 'Unknown'}</div>
             `;
         }
 
         this.intelHUD.innerHTML = intelHTML;
         this.intelHUD.style.display = 'block';
+    }
+
+    /**
+     * Update intel availability based on distance and scanner status
+     * @param {number} distance - Distance to current target
+     */
+    updateIntelAvailability(distance) {
+        // Reset intel availability
+        this.intelAvailable = false;
+        
+        // Check if we have a current target
+        if (!this.currentTarget) {
+            return;
+        }
+        
+        // Check if target computer is enabled
+        if (!this.targetComputerEnabled) {
+            return;
+        }
+        
+        // Get target info to check if it's a celestial body (not enemy ship)
+        const currentTargetData = this.getCurrentTargetData();
+        const isEnemyShip = currentTargetData?.isShip && currentTargetData?.ship;
+        
+        // Intel is only available for celestial bodies, not enemy ships
+        if (isEnemyShip) {
+            return;
+        }
+        
+        // Get celestial body info to check if it has intel data
+        const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+        if (!info) {
+            return;
+        }
+        
+        // Intel is available for all celestial bodies (the display will handle showing what data exists)
+        
+        // Check if long range scanner is operational and get its scan range
+        const ship = this.viewManager?.getShip();
+        if (!ship) {
+            return;
+        }
+        
+        const longRangeScanner = ship.getSystem('long_range_scanner');
+        let effectiveScanRange = this.intelRange; // Default 50km
+        
+        if (longRangeScanner && longRangeScanner.isOperational()) {
+            // Use scanner's current range, but scale it down for intel detection
+            // Scanner range is much larger (1000km base), so use a fraction for intel
+            const scannerRange = longRangeScanner.getCurrentScanRange();
+            effectiveScanRange = Math.max(this.intelRange, scannerRange * 0.02); // 2% of scanner range, minimum 10km
+        }
+        
+        // Intel is available if we're within scan range
+        this.intelAvailable = distance <= effectiveScanRange;
+    }
+
+    /**
+     * Update intel icon display based on availability and current state
+     */
+    updateIntelIconDisplay() {
+        if (!this.intelIcon) {
+            return;
+        }
+        
+        // Show intel icon if intel is available and intel HUD is not currently visible
+        const shouldShowIcon = this.intelAvailable && !this.intelVisible && this.targetComputerEnabled && this.currentTarget;
+        
+        this.intelIcon.style.display = shouldShowIcon ? 'flex' : 'none';
+        
+        // Update icon color based on current target diplomacy if visible
+        if (shouldShowIcon && this.currentTarget) {
+            // Use the same faction color logic as the target HUD
+            const currentTargetData = this.getCurrentTargetData();
+            let info = null;
+            let isEnemyShip = false;
+            
+            // Check if this is an enemy ship
+            if (currentTargetData && currentTargetData.isShip && currentTargetData.ship) {
+                isEnemyShip = true;
+                info = {
+                    type: 'enemy_ship',
+                    diplomacy: currentTargetData.ship.diplomacy || 'enemy',
+                    name: currentTargetData.ship.shipName,
+                    shipType: currentTargetData.ship.shipType
+                };
+            } else {
+                // Get celestial body info
+                info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+            }
+            
+            // Determine diplomacy color using same logic as target HUD
+            let diplomacyColor = '#D0D0D0'; // Default gray
+            if (isEnemyShip) {
+                diplomacyColor = '#ff0000'; // Enemy ships are red
+            } else if (info?.type === 'star') {
+                diplomacyColor = '#ffff00'; // Stars are neutral yellow
+            } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
+                diplomacyColor = '#ff0000';
+            } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
+                diplomacyColor = '#ffff00';
+            } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
+                diplomacyColor = '#00ff41';
+            }
+            
+            this.intelIcon.style.borderColor = diplomacyColor;
+            this.intelIcon.style.color = diplomacyColor;
+            this.intelIcon.style.textShadow = `0 0 4px ${diplomacyColor}`;
+        }
     }
 
     // Add new docking methods
