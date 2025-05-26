@@ -1,34 +1,60 @@
 # Planetz
 
-A 3d web game of intergalactic exploration, trading and combat. Includes features for generating and customizing 3D spherical planets using procedural generation with real-time visual feedback in a Three.js scene. The project combines design elements from Doug Neubauer's Star Raiders, Sebastian Lague's Tiny Planet demos and technical optimizations from Daniel Esteban's softxels to name a few.
+A 3D web-based spaceship simulation game featuring intergalactic exploration, trading, and combat. The game combines classic space simulation elements inspired by Elite, Privateer, and Star Raiders with modern web technologies and procedural universe generation.
 
 ## Features
 
-- Interactive 3D planet generation using Marching Cubes algorithm
-- Real-time parameter customization with sliders and color pickers
-- Procedural terrain generation using WebAssembly-optimized noise functions
-- Efficient chunk-based rendering for optimal performance
-- Height-based terrain coloring with custom shaders
+### Core Spaceship Systems
+- **Five Ship Classes**: Scout, Light Fighter, Heavy Fighter, Light Freighter, Heavy Freighter
+- **Modular Ship Systems**: Engines, weapons, shields, scanners, and support systems
+- **Damage & Repair System**: Real-time system damage with repair mechanics
+- **Energy Management**: Simplified energy pool system with per-system consumption
+- **Gear-Based Progression**: Ship stats derived from installed equipment
+
+### Navigation & Exploration
+- **Multiple View Modes**: Front view, aft view, galactic chart, long-range scanner
+- **Warp Drive System**: Energy-based faster-than-light travel between sectors
+- **Target Computer**: Advanced targeting with sub-system targeting capabilities
+- **Docking System**: Station interaction and orbital mechanics
+
+### Interactive 3D Universe
+- **Procedural Star Systems**: Generated solar systems with planets, moons, and stations
+- **Real-time 3D Rendering**: Three.js-powered space environment
+- **Dynamic Starfield**: High-density star rendering with parallax effects
+- **Atmospheric Effects**: Planet atmospheres and visual effects
+
+### Advanced Combat Features
+- **Weapon Systems**: Laser weapons and missile tubes with cooldown mechanics
+- **Shield Management**: Deflector shields with energy consumption
+- **Sub-System Targeting**: Target specific enemy ship components (Level 3+ targeting computer)
+- **Damage Control Interface**: Real-time system status and repair management
 
 ## Technical Stack
 
-### Backend
-- Python3/Flask for static file serving and future API endpoints
-
 ### Frontend
-- Three.js for 3D rendering
-- WebAssembly (WASM) for performance-critical computations
-- JavaScript/ES6+ for UI and scene management
+- **Three.js** for 3D rendering and scene management
+- **JavaScript/ES6+** with modular architecture
+- **WebAssembly (WASM)** for performance-critical computations (planet generation)
+- **HTML5/CSS3** for UI components
+
+### Backend
+- **Python3/Flask** for API server and static file serving
+- **Procedural Generation** algorithms for universe creation
+- **RESTful API** design for client-server communication
 
 ## Getting Started
+
+### Prerequisites
+- Python 3.x
+- Modern web browser with WebGL support
+- Node.js (for development tools)
 
 ### Backend Setup
 
 1. Create and activate a virtual environment:
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
 2. Install dependencies:
@@ -36,148 +62,162 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-3. Create a `.env` file in the backend directory:
-```
-FLASK_APP=app.py
-FLASK_ENV=development
-FLASK_DEBUG=1
-```
-
-4. Start the development server:
+3. Start the development server:
 ```bash
-./run-server.sh
+python run.py
 ```
 
-The server will start at http://localhost:5000
+The server will start at http://localhost:5001
 
 ### Frontend Setup
 
-(Coming soon)
+The frontend is served as static files by the Flask backend. Simply navigate to http://localhost:5001 after starting the backend server.
+
+For development with live reload:
+```bash
+python3 -m http.server 8080 --directory frontend/static
+```
+
+## Game Controls
+
+### Ship Movement
+- **0-9 Keys**: Set impulse engine speed (0 = stop, 9 = maximum)
+- **Arrow Keys**: Rotate ship (pitch and yaw)
+
+### View Controls
+- **F Key**: Switch to Front View (forward-facing camera with + crosshair)
+- **A Key**: Switch to Aft View (rear-facing camera with -- crosshair)
+- **G Key**: Open Galactic Chart (2D galaxy map for navigation)
+- **L Key**: Open Long Range Scanner (tactical system view)
+
+### System Controls
+- **S Key**: Toggle shields on/off (blue screen tint when active)
+- **D Key**: Toggle Damage Control interface
+- **T Key**: Toggle target computer
+- **Space Bar**: Fire weapons
+- **Tab**: Cycle through targets
+- **< / > Keys**: Cycle through sub-targets (Level 3+ targeting computer)
+
+### Special Modes
+- **Ctrl+E** (or **Cmd+E** on Mac): Toggle Edit Mode for planet terraforming
+- **Ctrl+D** (or **Cmd+D** on Mac): Toggle FPS Display
+
+### Docking
+- **Dock Button**: Dock with nearby stations (when in range)
+- **Undock Button**: Leave station and resume flight
+
+## Ship Systems
+
+### Core Systems
+1. **Impulse Engines**: Sublight propulsion and maneuvering
+2. **Warp Drive**: Faster-than-light travel between star systems
+3. **Deflector Shields**: Energy-based damage protection
+4. **Weapons**: Laser cannons and missile tubes
+5. **Long Range Scanner**: System-wide object detection
+6. **Subspace Radio**: Galactic chart updates and communications
+7. **Target Computer**: Enemy detection and sub-system targeting
+8. **Hull Plating**: Physical damage resistance
+9. **Energy Reactor**: Power generation and storage
+10. **Cargo Hold**: Storage capacity for trading
+
+### Damage & Repair
+- **System Health**: 0-100% effectiveness based on damage
+- **Repair Kits**: Consumable items for in-space repairs
+- **Station Repairs**: Full restoration available at docked stations
+- **Critical Damage**: Systems become inoperable at 100% damage
+
+### Energy Management
+- **Simplified Energy Pool**: All systems draw from central energy supply
+- **Active Consumption**: Systems consume energy only when in use
+- **Energy Efficiency**: Higher-level systems are more energy efficient
+
+## Ship Classes
+
+### Scout
+- **Role**: Fast reconnaissance and exploration
+- **Strengths**: High speed, advanced sensors, energy efficiency
+- **Weaknesses**: Light armor, minimal cargo, limited firepower
+
+### Light Fighter
+- **Role**: Agile combat vessel for dogfighting
+- **Strengths**: Balanced speed and firepower, good maneuverability
+- **Weaknesses**: Moderate armor, limited cargo capacity
+
+### Heavy Fighter
+- **Role**: Durable combat ship for sustained engagements
+- **Strengths**: Heavy armor, high firepower, robust systems
+- **Weaknesses**: Lower speed, limited cargo space
+
+### Light Freighter
+- **Role**: Versatile trading vessel with defensive capability
+- **Strengths**: Good cargo capacity, balanced systems
+- **Weaknesses**: Moderate combat effectiveness
+
+### Heavy Freighter
+- **Role**: Maximum cargo capacity for bulk trading
+- **Strengths**: Massive cargo hold, heavy armor
+- **Weaknesses**: Slow speed, minimal combat capability
 
 ## Architecture
 
-### Core Components
+### Frontend Components
+1. **Ship System**: Modular ship class with configurable systems
+2. **View Manager**: Handles different camera perspectives and UI modes
+3. **Starfield Manager**: Manages 3D space environment and effects
+4. **System Managers**: Individual managers for warp, docking, targeting
+5. **UI Components**: Damage control, targeting, navigation interfaces
 
-1. **Density Field Generation**
-   - Formula: `density(position) = ||position - center|| - planet_radius + noise(position)`
-   - 3D grid (64x64x64 or 128x128x128)
-   - WASM-optimized noise functions
+### Backend Components
+1. **Universe Generation**: Procedural star system and galaxy creation
+2. **API Endpoints**: RESTful services for game state and universe data
+3. **Configuration System**: Ship types, system specifications, game balance
 
-2. **Mesh Generation**
-   - Marching Cubes algorithm implemented in WebAssembly
-   - Chunk-based processing (16x16x16 chunks)
-   - Web Worker offloading for smooth performance
+## Development
 
-3. **Rendering**
-   - Three.js scene with orbit controls
-   - Directional and ambient lighting
-   - Custom shaders for height-based coloring
+### Project Structure
+```
+planetz/
+├── frontend/
+│   └── static/
+│       ├── js/
+│       │   ├── ship/          # Ship systems and configuration
+│       │   ├── views/         # View managers and UI
+│       │   ├── ui/            # Interface components
+│       │   └── workers/       # Web workers for performance
+│       ├── css/               # Stylesheets
+│       ├── audio/             # Sound effects
+│       └── lib/               # Third-party libraries
+├── backend/
+│   ├── routes/                # API endpoints
+│   ├── config.py              # Configuration management
+│   └── verse.py               # Universe generation
+└── docs/                      # Documentation
+```
 
-4. **User Interface**
-   - Interactive parameter sliders (noise scale, octaves, persistence)
-   - Terrain height controls
-   - Color gradient pickers
-   - Real-time updates with performance optimization
-   - Galactic Chart that shows all of the solar systems on a grid
-
-## Impulse Engines
-   - Press 0-9 keys to change Velocity
-Key	Velocity (metros per second)
-0	   0
-1	   0.25
-2	   0.50
-3	   1
-4	   3
-5	   6
-6	   12
-7	   25
-8	   37
-9	   43
-
-Your current Velocity in shown on the Control Panel Display (V represents velocity or metrons per seconds). Your ship always moves forward based on your velocity. The best cruising speed is key 6 (V = 12). The Zylon warships have a maximum speed of approximately 7 (V = 25). 
-
-## UI Views
-The app features multiple perspectives, each rendered using Three.js:
-
-1. **Front View**
-   - Main combat view showing space ahead of the starship.
-   - Displays stars, planets, moons, enemy ships, meteors, and starbases in 3D.
-   - Default view during gameplay.
-   - Press F key (except in Edit-Mode) to switch to Front view
-   - Indicated by a + cross hair
-
-2. **Aft View**
-   - Shows space behind the starship.
-   - Similar rendering to Front View but oriented backward.
-   - Press A key (except in Edit-Mode) to switch to Front view
-   - Indicated by a -- -- cross hair
-
-3. **Galactic Chart**
-   - A 2D overlay map of the galaxy, divided into solar systems.
-   - Shown as a 2d grid with cells labeled 0-9 on the horizonal and A-Z on the vertical
-   - Includes a vertical scroll bar if needed
-   - Activated via G key (except in Edit-Mode) modal that takes over the screen for navigation.
-   - Dismissed with A, F, G keys or X button in upper right corner of modal.
-
-4. **Long Range Scanner**
-   - A top-down tactical view of the current solar system.
-   - Shows all celestial bodies (star, planets, moons) with their orbits.
-   - Color-coded based on diplomacy status:
-     - Red: Enemy/Hostile
-     - Yellow: Neutral
-     - Green: Friendly
-   - Click on any celestial body to view detailed information.
-   - Draggable map for easy navigation.
-   - Activated via L key (except in Edit-Mode).
-   - Dismissed with L key or X button in upper right corner.
-
-### Prerequisites
-- Python 3.x
-- Modern web browser with WebAssembly support
+### Testing
+The project includes extensive test files for individual systems:
+- Ship system integration tests
+- Individual component tests (weapons, shields, engines)
+- UI component tests
+- Damage control system tests
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Submit a pull request
+3. Follow the existing code style and architecture
+4. Add tests for new features
+5. Submit a pull request
 
 ## Credits
 
 This project draws inspiration from:
-- [Sebastian Lague's Terraforming](https://github.com/SebLague/Terraforming) - For procedural terrain generation concepts
-- [DanielEsteban's softxels](https://github.com/danielesteban/softxels) - For WebAssembly and chunk-based rendering optimizations
+- **Elite** series - Trading and exploration mechanics
+- **Wing Commander: Privateer** - Ship customization and universe design
+- **Star Raiders** - Combat and navigation systems
+- [Sebastian Lague's Terraforming](https://github.com/SebLague/Terraforming) - Procedural terrain generation
+- [DanielEsteban's softxels](https://github.com/danielesteban/softxels) - WebAssembly optimization techniques
 
 ## License
 
-
-## Controls
-
-### Edit Mode
-- **Ctrl+E** (or **Cmd+E** on Mac): Toggle Edit Mode
-- **Ctrl+D** (or **Cmd+D** on Mac): Toggle FPS Display
-
-### Terraforming (in Edit Mode)
-- **Click + Drag**: Raise terrain
-- **Shift + Click + Drag**: Lower terrain
-
-### Camera Controls (in Edit Mode)
-- Hold **Option** (⌥) or **Command** (⌘) key, then:
-  - **Hold Control + Drag**: Rotate camera
-  - **Hold Option + Drag**: Orbit camera
-  - **Hold Command + Drag**: Pan camera
-  - Two-finger drag: Zoom camera
-
-
-### GUI Controls
-- Planet Type: Select different planet presets
-- Terrain Height: Adjust overall terrain elevation
-- Noise Scale: Change the scale of terrain features
-- Noise Octaves: Control terrain detail levels
-- Noise Persistence: Adjust feature prominence
-- Noise Lacunarity: Control feature frequency
-- New Seed: Generate new random terrain
-
-### Terraforming Brush Settings
-- Brush Size: Adjust the area of effect
-- Brush Strength: Control the intensity of changes
-- Brush Falloff: Adjust how the effect fades at edges 
+[License information to be added] 

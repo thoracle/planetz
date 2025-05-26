@@ -213,7 +213,7 @@
     - [X] Modify Ship class to derive all stats from installed gear
     - [X] Update all ship configurations to use gear-based stats
     - [X] Create test interface for gear-based stats system
-  - [ ] Implement ship type selection interface
+  - [X] Implement ship type selection interface
   - [ ] **DEFERRED**: Ship purchasing system moved to post-MVP
   - [ ] **DEFERRED**: Cross-ship system transfer moved to post-MVP
 
@@ -315,9 +315,18 @@
       - [X] Implement damage bonus calculations for targeted systems
       - [X] Add system priority targeting (weapons > shields > engines, etc.)
       - [X] Create test interface for sub-targeting functionality
-      - [ ] Add < and > key bindings to iterate through targetable enemy systems ⬅️ **NEXT MVP TASK**
-      - [ ] Extend targeting HUD UI to show selected sub-target
-      - [ ] Add visual indicators for targetable systems
+                  - [X] Add < and > key bindings to iterate through targetable enemy systems
+            - [X] Extend targeting HUD UI to show selected sub-target
+            - [X] Add visual indicators for targetable systems
+            - [X] Create simplified enemy ship configurations with only essential combat systems
+            - [X] Implement EnemyShip class for target dummy ships with minimal systems
+            - [X] Fix universe generation endpoint 400 error (seed handling issue)
+            - [X] Create test page for enemy ship functionality verification
+            - [X] Remove sub-targeting functionality from celestial bodies (planets, moons, stars)
+            - [X] Ensure sub-targeting only works for enemy ships
+            - [X] Fix test page method name error (waitForSystemsInitialized vs waitForSystemsInitialization)
+            - [X] Standardize enemy ship configurations to have exactly 7 essential systems
+            - [X] Fix system name inconsistencies (shields vs shield_generator)
     - [X] Level-specific targeting capabilities
       - [X] Level 1-2: Basic targeting (existing functionality)
       - [X] Level 3+: Sub-targeting of specific enemy systems

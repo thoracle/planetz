@@ -508,6 +508,198 @@ export const SHIP_CONFIGS = {
     }
 };
 
+// Enemy ship configurations - simplified with only essential combat systems
+export const ENEMY_SHIP_CONFIGS = {
+    enemy_fighter: {
+        name: 'Enemy Fighter',
+        description: 'Basic enemy combat vessel',
+        
+        // Base stats
+        baseSpeed: 60,
+        baseArmor: 50,
+        baseFirepower: 60,
+        baseCargoCapacity: 5,
+        baseHardpoints: 4,
+        
+        // Energy system
+        maxEnergy: 2000,
+        energyRechargeRate: 30,
+        
+        // Hull
+        maxHull: 600,
+        
+        // System slots
+        systemSlots: 8,
+        
+        // Simplified systems - only essential combat systems
+        defaultSystems: {
+            // Core systems
+            hull_plating: {
+                level: 3, // 600 hull
+                slots: 1
+            },
+            energy_reactor: {
+                level: 2, // 2000 energy, 20/sec recharge
+                slots: 1
+            },
+            
+            // Combat systems only
+            impulse_engines: { 
+                level: 3, // 45 speed
+                slots: 1, 
+                energyConsumption: 15
+            },
+            shield_generator: { 
+                level: 2, // Basic shields
+                slots: 1, 
+                energyConsumption: 20
+            },
+            weapons: { 
+                level: 4, // 48 firepower
+                slots: 1, 
+                energyConsumption: 0
+            },
+            target_computer: { 
+                level: 2, // Basic targeting (no sub-targeting)
+                slots: 1, 
+                energyConsumption: 5
+            },
+            subspace_radio: { 
+                level: 1, // Basic communications
+                slots: 1, 
+                energyConsumption: 3
+            }
+            // No warp drive, long range scanner, galactic chart, or missile tubes
+        }
+    },
+    
+    enemy_interceptor: {
+        name: 'Enemy Interceptor',
+        description: 'Fast enemy attack craft',
+        
+        // Base stats - fast and agile
+        baseSpeed: 80,
+        baseArmor: 30,
+        baseFirepower: 45,
+        baseCargoCapacity: 3,
+        baseHardpoints: 3,
+        
+        // Energy system
+        maxEnergy: 1500,
+        energyRechargeRate: 40,
+        
+        // Hull
+        maxHull: 400,
+        
+        // System slots
+        systemSlots: 8,
+        
+        // Minimal systems for speed
+        defaultSystems: {
+            // Core systems
+            hull_plating: {
+                level: 2, // 400 hull
+                slots: 1
+            },
+            energy_reactor: {
+                level: 2, // 2000 energy, 20/sec recharge
+                slots: 1
+            },
+            
+            // Speed-focused systems
+            impulse_engines: { 
+                level: 4, // 60 speed
+                slots: 1, 
+                energyConsumption: 12
+            },
+            shield_generator: { 
+                level: 1, // Minimal shields
+                slots: 1, 
+                energyConsumption: 15
+            },
+            weapons: { 
+                level: 3, // 36 firepower
+                slots: 1, 
+                energyConsumption: 0
+            },
+            target_computer: { 
+                level: 1, // Basic targeting
+                slots: 1, 
+                energyConsumption: 3
+            },
+            subspace_radio: { 
+                level: 1, // Basic communications
+                slots: 1, 
+                energyConsumption: 2
+            }
+            // Minimal systems for speed
+        }
+    },
+    
+    enemy_gunship: {
+        name: 'Enemy Gunship',
+        description: 'Heavy enemy combat vessel',
+        
+        // Base stats - slow but heavily armed
+        baseSpeed: 40,
+        baseArmor: 80,
+        baseFirepower: 90,
+        baseCargoCapacity: 10,
+        baseHardpoints: 6,
+        
+        // Energy system
+        maxEnergy: 3000,
+        energyRechargeRate: 25,
+        
+        // Hull
+        maxHull: 1000,
+        
+        // System slots
+        systemSlots: 8,
+        
+        // Combat-focused systems - same 7 essential systems as other enemy ships
+        defaultSystems: {
+            // Core systems
+            hull_plating: {
+                level: 5, // 1000 hull
+                slots: 1
+            },
+            energy_reactor: {
+                level: 3, // 3000 energy, 30/sec recharge
+                slots: 1
+            },
+            
+            // Heavy combat systems
+            impulse_engines: { 
+                level: 2, // 30 speed (slow)
+                slots: 1, 
+                energyConsumption: 20
+            },
+            shield_generator: { 
+                level: 3, // Strong shields (renamed from shields for consistency)
+                slots: 1, 
+                energyConsumption: 30
+            },
+            weapons: { 
+                level: 6, // 72 firepower
+                slots: 1, 
+                energyConsumption: 0
+            },
+            target_computer: { 
+                level: 3, // Advanced targeting with sub-targeting
+                slots: 1, 
+                energyConsumption: 8
+            },
+            subspace_radio: { 
+                level: 1, // Basic communications
+                slots: 1, 
+                energyConsumption: 4
+            }
+            // Only essential 7 systems for consistency
+        }
+    }
+};
+
 /**
  * Get ship configuration by type
  * @param {string} shipType - Type of ship
@@ -515,6 +707,15 @@ export const SHIP_CONFIGS = {
  */
 export function getShipConfig(shipType) {
     return SHIP_CONFIGS[shipType] || SHIP_CONFIGS.heavy_fighter;
+}
+
+/**
+ * Get enemy ship configuration by type
+ * @param {string} shipType - Type of enemy ship
+ * @returns {Object} - Enemy ship configuration
+ */
+export function getEnemyShipConfig(shipType) {
+    return ENEMY_SHIP_CONFIGS[shipType] || ENEMY_SHIP_CONFIGS.enemy_fighter;
 }
 
 /**

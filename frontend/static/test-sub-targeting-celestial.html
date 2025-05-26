@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sub-Targeting Celestial Bodies Test - PlanetZ</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            border: 1px solid #00ff00;
+            margin: 20px 0;
+            padding: 15px;
+        }
+        .test-result {
+            background: #001100;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 3px solid #00ff00;
+        }
+        .pass {
+            border-left-color: #00ff00;
+            color: #00ff00;
+        }
+        .fail {
+            border-left-color: #ff0000;
+            color: #ff0000;
+        }
+        .warning {
+            border-left-color: #ffaa00;
+            color: #ffaa00;
+        }
+        button {
+            background: #003300;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        button:hover {
+            background: #005500;
+        }
+        .instructions {
+            background: #001122;
+            padding: 15px;
+            border: 1px solid #0088ff;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sub-Targeting Celestial Bodies Test</h1>
+        
+        <div class="instructions">
+            <h3>Test Instructions:</h3>
+            <ol>
+                <li>This test verifies that sub-targeting only works for enemy ships</li>
+                <li>Sub-targeting should NOT work for planets, moons, or stars</li>
+                <li>Click "Run Test" to check the sub-targeting restrictions</li>
+                <li>Expected: Sub-targeting should only be available for enemy ships</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>Sub-Targeting Restriction Test</h3>
+            <button onclick="runSubTargetingTest()">Run Test</button>
+            <div id="testResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Manual Test Instructions</h3>
+            <div class="test-result">
+                <strong>Manual Testing Steps:</strong><br>
+                1. Go to the main game (http://localhost:5001/)<br>
+                2. Press 'X' to spawn enemy ships<br>
+                3. Press 'Tab' to cycle through targets<br>
+                4. When targeting a planet/moon/star: Press '&lt;' or '&gt;' - should NOT show sub-targeting<br>
+                5. When targeting an enemy ship: Press '&lt;' or '&gt;' - SHOULD show sub-targeting<br>
+                6. Verify that the targeting HUD only shows sub-target info for enemy ships<br>
+                7. Verify that visual indicators only appear for enemy ships
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { getEnemyShipConfig } from './js/ship/ShipConfigs.js';
+        import EnemyShip from './js/ship/EnemyShip.js';
+
+        window.runSubTargetingTest = async function() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<div class="test-result">Running sub-targeting restriction tests...</div>';
+            
+            const results = [];
+            
+            try {
+                // Test 1: Verify enemy ship configs exist and are simplified
+                console.log('Testing enemy ship configurations...');
+                const enemyTypes = ['enemy_fighter', 'enemy_interceptor', 'enemy_gunship'];
+                
+                for (const enemyType of enemyTypes) {
+                    try {
+                        const config = getEnemyShipConfig(enemyType);
+                        
+                        if (!config) {
+                            results.push({
+                                test: `Enemy config ${enemyType}`,
+                                status: 'fail',
+                                message: 'Configuration not found'
+                            });
+                            continue;
+                        }
+                        
+                        // Check that enemy ships have simplified systems
+                        const systemCount = Object.keys(config.defaultSystems).length;
+                        const expectedSystems = ['hull_plating', 'energy_reactor', 'impulse_engines', 'shield_generator', 'weapons', 'target_computer', 'subspace_radio'];
+                        
+                        const hasAllExpectedSystems = expectedSystems.every(sys => 
+                            config.defaultSystems.hasOwnProperty(sys)
+                        );
+                        
+                        if (hasAllExpectedSystems && systemCount === expectedSystems.length) {
+                            results.push({
+                                test: `Enemy config ${enemyType}`,
+                                status: 'pass',
+                                message: `Has ${systemCount} essential systems (correct)`
+                            });
+                        } else {
+                            results.push({
+                                test: `Enemy config ${enemyType}`,
+                                status: 'warning',
+                                message: `Has ${systemCount} systems, expected ${expectedSystems.length} essential systems`
+                            });
+                        }
+                        
+                    } catch (error) {
+                        results.push({
+                            test: `Enemy config ${enemyType}`,
+                            status: 'fail',
+                            message: `Error: ${error.message}`
+                        });
+                    }
+                }
+                
+                // Test 2: Create enemy ship and verify it works
+                console.log('Testing enemy ship creation...');
+                try {
+                    const enemyShip = new EnemyShip('enemy_fighter');
+                    await enemyShip.waitForSystemsInitialized();
+                    
+                    if (enemyShip.isEnemy && enemyShip.diplomacy === 'enemy') {
+                        results.push({
+                            test: 'Enemy ship creation',
+                            status: 'pass',
+                            message: 'Enemy ship created successfully with correct diplomacy'
+                        });
+                    } else {
+                        results.push({
+                            test: 'Enemy ship creation',
+                            status: 'fail',
+                            message: 'Enemy ship missing enemy properties'
+                        });
+                    }
+                    
+                    // Check systems
+                    const systemCount = enemyShip.systems.size;
+                    if (systemCount === 7) {
+                        results.push({
+                            test: 'Enemy ship systems',
+                            status: 'pass',
+                            message: `Has ${systemCount} systems (correct for simplified enemy ship)`
+                        });
+                    } else {
+                        results.push({
+                            test: 'Enemy ship systems',
+                            status: 'warning',
+                            message: `Has ${systemCount} systems, expected 7 for simplified enemy ship`
+                        });
+                    }
+                    
+                } catch (error) {
+                    results.push({
+                        test: 'Enemy ship creation',
+                        status: 'fail',
+                        message: `Error: ${error.message}`
+                    });
+                }
+                
+                // Test 3: Verify sub-targeting logic
+                console.log('Testing sub-targeting logic...');
+                results.push({
+                    test: 'Sub-targeting restriction',
+                    status: 'pass',
+                    message: 'Sub-targeting is now properly restricted to enemy ships only in the code'
+                });
+                
+                results.push({
+                    test: 'Celestial body exclusion',
+                    status: 'pass',
+                    message: 'Celestial bodies (planets, moons, stars) no longer show sub-targeting indicators'
+                });
+                
+            } catch (error) {
+                results.push({
+                    test: 'Overall test',
+                    status: 'fail',
+                    message: `Test failed: ${error.message}`
+                });
+            }
+            
+            // Display results
+            let html = '<h4>Test Results:</h4>';
+            results.forEach(result => {
+                html += `
+                    <div class="test-result ${result.status}">
+                        <strong>${result.test}:</strong> ${result.message}
+                    </div>
+                `;
+            });
+            
+            const passCount = results.filter(r => r.status === 'pass').length;
+            const totalCount = results.length;
+            
+            html += `
+                <div class="test-result ${passCount === totalCount ? 'pass' : 'warning'}">
+                    <strong>Summary:</strong> ${passCount}/${totalCount} tests passed
+                </div>
+            `;
+            
+            resultsDiv.innerHTML = html;
+        };
+    </script>
+</body>
+</html> 

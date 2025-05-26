@@ -259,6 +259,10 @@ export class StarfieldManager {
             hasScanButton: false,
             hasTradeButton: false
         };
+        
+        // Target dummy ships for sub-targeting practice
+        this.targetDummyShips = [];
+        this.dummyShipMeshes = [];
     }
 
     ensureAudioContextRunning() {
@@ -1210,10 +1214,52 @@ export class StarfieldManager {
                 }
             }
 
+            // Sub-targeting key bindings (< and > keys)
+            if (event.key === '<' || event.key === ',') {
+                // Previous sub-target
+                if (!this.isDocked && this.targetComputerEnabled && this.currentTarget) {
+                    const ship = this.viewManager?.getShip();
+                    if (ship) {
+                        const targetComputer = ship.getSystem('target_computer');
+                        if (targetComputer && targetComputer.hasSubTargeting()) {
+                            if (targetComputer.cycleSubTargetPrevious()) {
+                                this.playCommandSound();
+                                console.log('Cycled to previous sub-target');
+                                this.updateTargetDisplay(); // Update HUD display
+                            }
+                        }
+                    }
+                }
+            } else if (event.key === '>' || event.key === '.') {
+                // Next sub-target
+                if (!this.isDocked && this.targetComputerEnabled && this.currentTarget) {
+                    const ship = this.viewManager?.getShip();
+                    if (ship) {
+                        const targetComputer = ship.getSystem('target_computer');
+                        if (targetComputer && targetComputer.hasSubTargeting()) {
+                            if (targetComputer.cycleSubTargetNext()) {
+                                this.playCommandSound();
+                                console.log('Cycled to next sub-target');
+                                this.updateTargetDisplay(); // Update HUD display
+                            }
+                        }
+                    }
+                }
+            }
+
             // Damage control key (D) - toggle damage control view
             if (commandKey === 'd') {
                 this.playCommandSound();
                 this.toggleDamageControl();
+            }
+
+            // Spawn target dummy ships (X key)
+            if (commandKey === 'x') {
+                if (!this.isDocked) {
+                    this.playCommandSound();
+                    this.createTargetDummyShips(3);
+                    console.log('Target dummy ships spawned for sub-targeting practice');
+                }
             }
         });
 
@@ -1303,49 +1349,70 @@ export class StarfieldManager {
 
     updateTargetList() {
         console.log('Updating target list...');
-        if (!this.solarSystemManager) {
-            console.error('No solarSystemManager reference available');
-            return;
-        }
-
+        
+        let allTargets = [];
+        
         // Get celestial bodies from SolarSystemManager
-        const bodies = this.solarSystemManager.getCelestialBodies();
-        console.log('Retrieved celestial bodies:', bodies.size);
+        if (this.solarSystemManager) {
+            const bodies = this.solarSystemManager.getCelestialBodies();
+            console.log('Retrieved celestial bodies:', bodies.size);
+            
+            const celestialBodies = Array.from(bodies.entries())
+                .map(([key, body]) => {
+                    const info = this.solarSystemManager.getCelestialBodyInfo(body);
+                    console.log('Processing celestial body:', key, info);
+                    
+                    // Validate body position
+                    if (!body.position || 
+                        isNaN(body.position.x) || 
+                        isNaN(body.position.y) || 
+                        isNaN(body.position.z)) {
+                        console.warn('Invalid position detected for celestial body:', info.name);
+                        return null;
+                    }
+                    
+                    return {
+                        name: info.name,
+                        type: info.type,
+                        position: body.position.toArray(),
+                        isMoon: key.startsWith('moon_'),
+                        object: body,  // Store the actual THREE.js object
+                        isShip: false
+                    };
+                })
+                .filter(body => body !== null); // Remove any invalid bodies
+            
+            allTargets = allTargets.concat(celestialBodies);
+            console.log('Processed celestial bodies:', celestialBodies.length);
+        }
         
-        const celestialBodies = Array.from(bodies.entries())
-            .map(([key, body]) => {
-                const info = this.solarSystemManager.getCelestialBodyInfo(body);
-                console.log('Processing celestial body:', key, info);
-                
-                // Validate body position
-                if (!body.position || 
-                    isNaN(body.position.x) || 
-                    isNaN(body.position.y) || 
-                    isNaN(body.position.z)) {
-                    console.warn('Invalid position detected for celestial body:', info.name);
-                    return null;
-                }
-                
-                return {
-                    name: info.name,
-                    type: info.type,
-                    position: body.position.toArray(),
-                    isMoon: key.startsWith('moon_'),
-                    object: body  // Store the actual THREE.js object
-                };
-            })
-            .filter(body => body !== null); // Remove any invalid bodies
+        // Add target dummy ships
+        const dummyShipTargets = this.dummyShipMeshes.map(mesh => {
+            const ship = mesh.userData.ship;
+            return {
+                name: ship.shipName,
+                type: 'enemy_ship',
+                position: mesh.position.toArray(),
+                isMoon: false,
+                object: mesh,  // Store the mesh as the target object
+                isShip: true,
+                ship: ship     // Store the ship instance for sub-targeting
+            };
+        });
         
-        console.log('Processed celestial bodies:', celestialBodies.length);
+        allTargets = allTargets.concat(dummyShipTargets);
+        console.log('Added target dummy ships:', dummyShipTargets.length);
         
         // Update target list
-        this.targetObjects = celestialBodies;
+        this.targetObjects = allTargets;
         
         // Sort targets by distance
         this.sortTargetsByDistance();
         
         // Update target display
         this.updateTargetDisplay();
+        
+        console.log('Total targets available:', this.targetObjects.length);
     }
 
     sortTargetsByDistance() {
@@ -1472,11 +1539,28 @@ export class StarfieldManager {
         const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
         
         // Get target info for diplomacy status and actions
-        const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+        let info = null;
+        let isEnemyShip = false;
+        
+        // Check if this is an enemy ship
+        if (currentTargetData.isShip && currentTargetData.ship) {
+            isEnemyShip = true;
+            info = {
+                type: 'enemy_ship',
+                diplomacy: currentTargetData.ship.diplomacy || 'enemy',
+                name: currentTargetData.ship.shipName,
+                shipType: currentTargetData.ship.shipType
+            };
+        } else {
+            // Get celestial body info
+            info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+        }
         
         // Update HUD border color based on diplomacy
         let diplomacyColor = '#D0D0D0'; // Default gray
-        if (info?.type === 'star') {
+        if (isEnemyShip) {
+            diplomacyColor = '#ff0000'; // Enemy ships are red
+        } else if (info?.type === 'star') {
             diplomacyColor = '#ffff00'; // Stars are neutral
         } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
             diplomacyColor = '#ff0000';
@@ -1492,14 +1576,80 @@ export class StarfieldManager {
             this.wireframeContainer.style.borderColor = diplomacyColor;
         }
 
-        // Update target information display with colored text
+        // Get sub-target information from targeting computer
+        const ship = this.viewManager?.getShip();
+        const targetComputer = ship?.getSystem('target_computer');
+        let subTargetHTML = '';
+        
+        // Add sub-target information if available
+        if (targetComputer && targetComputer.hasSubTargeting()) {
+            // For enemy ships, use actual sub-targeting
+            if (isEnemyShip && currentTargetData.ship) {
+                // Set the enemy ship as the current target for the targeting computer
+                targetComputer.currentTarget = currentTargetData.ship;
+                targetComputer.updateSubTargets();
+                
+                if (targetComputer.currentSubTarget) {
+                    const subTarget = targetComputer.currentSubTarget;
+                    const healthPercent = Math.round(subTarget.health * 100);
+                    let healthColor = '#00ff41'; // Green for healthy
+                    if (healthPercent < 75) healthColor = '#ffaa00'; // Orange for damaged
+                    if (healthPercent < 25) healthColor = '#ff4400'; // Red for critical
+                    
+                    // Get accuracy and damage bonuses
+                    const accuracyBonus = Math.round(targetComputer.getSubTargetAccuracyBonus() * 100);
+                    const damageBonus = Math.round(targetComputer.getSubTargetDamageBonus() * 100);
+                    
+                    subTargetHTML = `
+                        <div style="border-top: 1px solid ${diplomacyColor}; margin-top: 8px; padding-top: 6px;">
+                            <div style="font-size: 12px; color: ${diplomacyColor}; margin-bottom: 2px;">SUB-TARGET:</div>
+                            <div style="font-size: 14px; color: ${diplomacyColor}; margin-bottom: 2px;">${subTarget.displayName}</div>
+                            <div style="font-size: 11px; margin-bottom: 2px;">
+                                <span style="color: #888;">Health:</span> <span style="color: ${healthColor}; font-weight: bold;">${healthPercent}%</span>
+                            </div>
+                            <div style="font-size: 10px; opacity: 0.8;">
+                                <span style="color: #888;">Acc:</span> <span style="color: #00ff41;">+${accuracyBonus}%</span> • 
+                                <span style="color: #888;">Dmg:</span> <span style="color: #ff8800;">+${damageBonus}%</span>
+                            </div>
+                            <div style="font-size: 9px; opacity: 0.6; margin-top: 2px; color: #888;">
+                                &lt; &gt; to cycle sub-targets
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Show available sub-targets count
+                    const availableTargets = targetComputer.availableSubTargets.length;
+                    if (availableTargets > 0) {
+                        subTargetHTML = `
+                            <div style="border-top: 1px solid ${diplomacyColor}; margin-top: 8px; padding-top: 6px;">
+                                <div style="font-size: 12px; color: ${diplomacyColor}; margin-bottom: 2px;">SUB-TARGETING:</div>
+                                <div style="font-size: 11px; opacity: 0.8;">
+                                    ${availableTargets} targetable systems detected
+                                </div>
+                                <div style="font-size: 9px; opacity: 0.6; margin-top: 2px; color: #888;">
+                                    &lt; &gt; to cycle sub-targets
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+        }
+
+        // Update target information display with colored text and sub-target info
+        let typeDisplay = info?.type || 'Unknown';
+        if (isEnemyShip) {
+            typeDisplay = `${info.shipType} (Enemy Ship)`;
+        }
+        
         this.targetInfoDisplay.innerHTML = `
             <div style="font-size: 16px; margin-bottom: 4px; color: ${diplomacyColor};">${currentTargetData.name}</div>
             <div style="font-size: 12px; opacity: 0.8;">
                 <span style="color: ${diplomacyColor}">${this.formatDistance(distance)}</span> • 
-                <span style="color: ${diplomacyColor}">${info?.type || 'Unknown'}</span>
+                <span style="color: ${diplomacyColor}">${typeDisplay}</span>
             </div>
             ${info?.diplomacy ? `<div style="font-size: 12px; margin-top: 4px; color: ${diplomacyColor};">${info.diplomacy}</div>` : ''}
+            ${subTargetHTML}
         `;
 
         // Update status icons with diplomacy color
@@ -1889,30 +2039,49 @@ export class StarfieldManager {
         // Create new wireframe in the HUD
         if (this.currentTarget) {
             try {
-                const radius = this.currentTarget.geometry.boundingSphere?.radius || 1;
-                let wireframeGeometry;
-                
-                // Get celestial body info
-                const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-                
-                // Determine wireframe color based on diplomacy
+                // Get current target data to determine if it's a ship or celestial body
+                const currentTargetData = this.getCurrentTargetData();
+                let radius = 1;
                 let wireframeColor = 0x808080; // Default gray for unknown
+                let info = null;
                 
-                if (info?.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
-                    wireframeColor = 0xffff00; // Stars are always yellow
-                } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-                    wireframeColor = 0xff0000;
-                } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-                    wireframeColor = 0xffff00;
-                } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-                    wireframeColor = 0x00ff41;
+                // Handle enemy ships differently from celestial bodies
+                if (currentTargetData?.isShip) {
+                    // For enemy ships, use a fixed radius and get info from ship data
+                    radius = 2; // Fixed radius for ship wireframes
+                    wireframeColor = 0xff0000; // Enemy ships are red
+                    info = { type: 'enemy_ship' };
+                } else {
+                    // For celestial bodies, get radius from geometry
+                    if (this.currentTarget.geometry?.boundingSphere) {
+                        this.currentTarget.geometry.computeBoundingSphere();
+                        radius = this.currentTarget.geometry.boundingSphere.radius || 1;
+                    }
+                    
+                    // Get celestial body info
+                    info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+                    
+                    // Determine wireframe color based on diplomacy
+                    if (info?.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
+                        wireframeColor = 0xffff00; // Stars are always yellow
+                    } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
+                        wireframeColor = 0xff0000;
+                    } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
+                        wireframeColor = 0xffff00;
+                    } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
+                        wireframeColor = 0x00ff41;
+                    }
                 }
                 
+                let wireframeGeometry;
                 if (info) {
-                    // Create different shapes based on celestial body type
-                    if (info.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
+                    // Create different shapes based on object type
+                    if (info.type === 'enemy_ship') {
+                        // Use a distinctive shape for enemy ships
+                        wireframeGeometry = new this.THREE.BoxGeometry(radius, radius * 0.5, radius * 2);
+                    } else if (info.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
                         wireframeGeometry = new this.THREE.DodecahedronGeometry(radius, 0);
-                    } else if (targetData.isMoon) {
+                    } else if (currentTargetData?.isMoon) {
                         wireframeGeometry = new this.THREE.OctahedronGeometry(radius, 0);
                     } else {
                         wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
@@ -1930,6 +2099,16 @@ export class StarfieldManager {
                 
                 const edgesGeometry = new this.THREE.EdgesGeometry(wireframeGeometry);
                 this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
+                
+                // Add sub-target visual indicators only for enemy ships
+                const targetData = this.getCurrentTargetData();
+                const isEnemyShip = targetData?.isShip && targetData?.ship;
+                if (isEnemyShip) {
+                    this.createSubTargetIndicators(radius, wireframeColor);
+                } else {
+                    // Clear sub-target indicators for celestial bodies
+                    this.createSubTargetIndicators(0, 0); // This will clear existing indicators
+                }
                 
                 // Clean up the temporary geometries
                 wireframeGeometry.dispose();
@@ -2118,6 +2297,15 @@ export class StarfieldManager {
             const targetData = this.getCurrentTargetData();
             if (targetData && targetData.object === this.currentTarget) {
                 this.updateTargetDisplay();
+                
+                // Update sub-targets for targeting computer if it has sub-targeting capability
+                const ship = this.viewManager?.getShip();
+                const targetComputer = ship?.getSystem('target_computer');
+                if (targetComputer && targetComputer.hasSubTargeting()) {
+                    // Update sub-targets periodically (this is handled in TargetComputer.update)
+                    // but we need to refresh the display when sub-targets change
+                    targetComputer.updateSubTargets();
+                }
             } else {
                 // Target mismatch, hide reticle
                 this.targetReticle.style.display = 'none';
@@ -2135,6 +2323,9 @@ export class StarfieldManager {
                     this.targetWireframe.rotation.y += deltaTime * 0.5; // Increased rotation speed
                     this.targetWireframe.rotation.x = 0.5 + Math.sin(Date.now() * 0.001) * 0.2; // Increased oscillation
                 }
+                
+                // Update sub-target visual indicators
+                this.updateSubTargetIndicators();
                 
                 // Render the wireframe scene
                 this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
@@ -2336,6 +2527,116 @@ export class StarfieldManager {
         ctx.fillRect(0, 0, 32, 32);
         
         return canvas;
+    }
+
+    /**
+     * Create visual indicators for sub-targeting on the wireframe
+     * @param {number} radius - The radius of the target object
+     * @param {number} baseColor - The base color of the wireframe
+     */
+    createSubTargetIndicators(radius, baseColor) {
+        // Check if sub-targeting is available
+        const ship = this.viewManager?.getShip();
+        const targetComputer = ship?.getSystem('target_computer');
+        
+        // Always clear existing indicators first
+        if (this.subTargetIndicators) {
+            this.subTargetIndicators.forEach(indicator => {
+                this.wireframeScene.remove(indicator);
+                if (indicator.geometry) indicator.geometry.dispose();
+                if (indicator.material) indicator.material.dispose();
+            });
+        }
+        this.subTargetIndicators = [];
+        
+        // Only create new indicators if sub-targeting is available
+        if (!targetComputer || !targetComputer.hasSubTargeting()) {
+            return;
+        }
+
+        // Create targetable area indicators (simulating different systems/areas)
+        const targetableAreas = [
+            { name: 'Command Center', position: [0, radius * 0.7, 0], color: 0xff4444 },
+            { name: 'Power Core', position: [0, 0, 0], color: 0x44ff44 },
+            { name: 'Communications', position: [radius * 0.6, 0, 0], color: 0x4444ff },
+            { name: 'Defense Grid', position: [-radius * 0.6, 0, 0], color: 0xffff44 },
+            { name: 'Sensor Array', position: [0, -radius * 0.7, 0], color: 0xff44ff },
+            { name: 'Docking Bay', position: [0, 0, radius * 0.8], color: 0x44ffff }
+        ];
+
+        // Create indicators for each targetable area
+        targetableAreas.forEach((area, index) => {
+            // Create a small sphere to represent the targetable area
+            const indicatorGeometry = new this.THREE.SphereGeometry(radius * 0.15, 8, 6);
+            const indicatorMaterial = new this.THREE.MeshBasicMaterial({
+                color: area.color,
+                transparent: true,
+                opacity: 0.6,
+                wireframe: true
+            });
+            
+            const indicator = new this.THREE.Mesh(indicatorGeometry, indicatorMaterial);
+            indicator.position.set(area.position[0], area.position[1], area.position[2]);
+            
+            // Store area information for sub-targeting
+            indicator.userData = {
+                areaName: area.name,
+                areaIndex: index,
+                isTargetable: true
+            };
+            
+            this.wireframeScene.add(indicator);
+            this.subTargetIndicators.push(indicator);
+        });
+
+        // Store targetable areas for sub-targeting simulation
+        this.targetableAreas = targetableAreas;
+    }
+
+    /**
+     * Update sub-target visual indicators based on current selection
+     */
+    updateSubTargetIndicators() {
+        if (!this.subTargetIndicators || !this.targetableAreas) {
+            return;
+        }
+
+        const ship = this.viewManager?.getShip();
+        const targetComputer = ship?.getSystem('target_computer');
+        
+        if (!targetComputer || !targetComputer.hasSubTargeting()) {
+            return;
+        }
+
+        // Get current sub-target index (simulate based on available areas)
+        const currentSubTargetIndex = targetComputer.subTargetIndex || 0;
+        const hasSubTarget = targetComputer.currentSubTarget !== null;
+
+        // Update each indicator based on selection state
+        this.subTargetIndicators.forEach((indicator, index) => {
+            const isSelected = hasSubTarget && (index === currentSubTargetIndex % this.targetableAreas.length);
+            
+            if (isSelected) {
+                // Highlight the selected sub-target
+                indicator.scale.setScalar(1.3); // Make it larger
+                
+                // Add pulsing effect
+                const time = Date.now() * 0.005;
+                const pulse = 0.8 + Math.sin(time) * 0.2;
+                indicator.material.opacity = pulse;
+                
+                // Make it brighter by setting color to white
+                indicator.material.color.setHex(0xffffff);
+            } else {
+                // Normal state for non-selected indicators
+                indicator.material.opacity = 0.6;
+                indicator.scale.setScalar(1.0);
+                
+                // Restore original color from targetable areas
+                const originalColor = this.targetableAreas[index]?.color || 0xffffff;
+                indicator.material.color.setHex(originalColor);
+            }
+        });
     }
 
     // Update the setView method to handle view changes
@@ -3146,5 +3447,215 @@ export class StarfieldManager {
         
         console.log('All ship systems restored to pre-docking state.');
         console.log('Ship is ready for space operations.');
+    }
+
+    /**
+     * Create target dummy ships for sub-targeting practice
+     * @param {number} count - Number of dummy ships to create
+     */
+    async createTargetDummyShips(count = 3) {
+        console.log(`Creating ${count} target dummy ships for sub-targeting practice...`);
+        
+        // Import EnemyShip class
+        const { default: EnemyShip } = await import('../ship/EnemyShip.js');
+        
+        // Clear existing dummy ships
+        this.clearTargetDummyShips();
+        
+        const enemyShipTypes = ['enemy_fighter', 'enemy_interceptor', 'enemy_gunship'];
+        
+        for (let i = 0; i < count; i++) {
+            try {
+                // Create enemy ship with simplified systems
+                const enemyShipType = enemyShipTypes[i % enemyShipTypes.length];
+                const dummyShip = new EnemyShip(enemyShipType);
+                
+                // Wait for systems to initialize
+                await dummyShip.waitForSystemsInitialized();
+                
+                // Set ship name
+                dummyShip.shipName = `Target Dummy ${i + 1}`;
+                
+                // Add some random damage to systems for testing
+                this.addRandomDamageToShip(dummyShip);
+                
+                // Create 3D mesh for the dummy ship
+                const shipMesh = this.createDummyShipMesh(i);
+                
+                // Position the ship relative to player
+                const angle = (i / count) * Math.PI * 2;
+                const distance = 15 + i * 5; // 15-25 km away
+                const height = (Math.random() - 0.5) * 10; // Random height variation
+                
+                shipMesh.position.set(
+                    this.camera.position.x + Math.cos(angle) * distance,
+                    this.camera.position.y + height,
+                    this.camera.position.z + Math.sin(angle) * distance
+                );
+                
+                // Store ship data in mesh
+                shipMesh.userData = {
+                    ship: dummyShip,
+                    shipType: enemyShipType,
+                    isTargetDummy: true,
+                    name: dummyShip.shipName
+                };
+                
+                // Add to scene and tracking arrays
+                this.scene.add(shipMesh);
+                this.targetDummyShips.push(dummyShip);
+                this.dummyShipMeshes.push(shipMesh);
+                
+                console.log(`Created target dummy: ${dummyShip.shipName} (${enemyShipType})`);
+                
+            } catch (error) {
+                console.error(`Failed to create target dummy ${i + 1}:`, error);
+            }
+        }
+        
+        // Update target list to include dummy ships
+        this.updateTargetList();
+        
+        console.log(`Successfully created ${this.targetDummyShips.length} target dummy ships`);
+    }
+
+    /**
+     * Create a 3D mesh for a dummy ship
+     * @param {number} index - Ship index for variation
+     * @returns {THREE.Object3D} Ship mesh
+     */
+    createDummyShipMesh(index) {
+        const group = new this.THREE.Group();
+        
+        // Create main hull (elongated box)
+        const hullGeometry = new this.THREE.BoxGeometry(0.8, 0.3, 2.0);
+        const hullMaterial = new this.THREE.MeshBasicMaterial({ 
+            color: 0x666666,
+            wireframe: false
+        });
+        const hull = new this.THREE.Mesh(hullGeometry, hullMaterial);
+        group.add(hull);
+        
+        // Create engine nacelles
+        const nacellGeometry = new this.THREE.CylinderGeometry(0.1, 0.1, 0.8);
+        const nacellMaterial = new this.THREE.MeshBasicMaterial({ color: 0x444444 });
+        
+        const leftNacell = new this.THREE.Mesh(nacellGeometry, nacellMaterial);
+        leftNacell.position.set(-0.5, 0, -0.5);
+        leftNacell.rotation.z = Math.PI / 2;
+        group.add(leftNacell);
+        
+        const rightNacell = new this.THREE.Mesh(nacellGeometry, nacellMaterial);
+        rightNacell.position.set(0.5, 0, -0.5);
+        rightNacell.rotation.z = Math.PI / 2;
+        group.add(rightNacell);
+        
+        // Create weapon hardpoints
+        const weaponGeometry = new this.THREE.SphereGeometry(0.08, 8, 6);
+        const weaponMaterial = new this.THREE.MeshBasicMaterial({ color: 0xff4444 });
+        
+        const weapon1 = new this.THREE.Mesh(weaponGeometry, weaponMaterial);
+        weapon1.position.set(-0.3, 0, 0.8);
+        group.add(weapon1);
+        
+        const weapon2 = new this.THREE.Mesh(weaponGeometry, weaponMaterial);
+        weapon2.position.set(0.3, 0, 0.8);
+        group.add(weapon2);
+        
+        // Create shield emitters
+        const shieldGeometry = new this.THREE.SphereGeometry(0.06, 6, 4);
+        const shieldMaterial = new this.THREE.MeshBasicMaterial({ color: 0x4444ff });
+        
+        const shield1 = new this.THREE.Mesh(shieldGeometry, shieldMaterial);
+        shield1.position.set(0, 0.2, 0);
+        group.add(shield1);
+        
+        const shield2 = new this.THREE.Mesh(shieldGeometry, shieldMaterial);
+        shield2.position.set(0, -0.2, 0);
+        group.add(shield2);
+        
+        // Add some variation based on index
+        const hue = (index * 0.3) % 1;
+        hull.material.color.setHSL(hue, 0.3, 0.4);
+        
+        // Scale the ship
+        group.scale.setScalar(2.0);
+        
+        return group;
+    }
+
+    /**
+     * Add random damage to ship systems for testing
+     * @param {EnemyShip} ship - Enemy ship to damage
+     */
+    addRandomDamageToShip(ship) {
+        const systemNames = Array.from(ship.systems.keys());
+        // Filter out core systems that shouldn't be damaged for testing
+        const damageableSystemNames = systemNames.filter(name => 
+            !['hull_plating', 'energy_reactor'].includes(name)
+        );
+        
+        const numSystemsToDamage = Math.floor(Math.random() * 2) + 1; // 1-2 systems
+        
+        for (let i = 0; i < numSystemsToDamage; i++) {
+            if (damageableSystemNames.length === 0) break;
+            
+            const randomSystem = damageableSystemNames[Math.floor(Math.random() * damageableSystemNames.length)];
+            const system = ship.getSystem(randomSystem);
+            
+            if (system) {
+                // Apply 10-50% damage (less than player ships for testing)
+                const damagePercent = 0.1 + Math.random() * 0.4;
+                const damage = system.maxHealth * damagePercent;
+                system.takeDamage(damage);
+                
+                console.log(`  - Damaged ${randomSystem}: ${Math.round((1 - system.healthPercentage) * 100)}% damage`);
+                
+                // Remove from list to avoid damaging the same system twice
+                const index = damageableSystemNames.indexOf(randomSystem);
+                if (index > -1) {
+                    damageableSystemNames.splice(index, 1);
+                }
+            }
+        }
+    }
+
+    /**
+     * Clear all target dummy ships
+     */
+    clearTargetDummyShips() {
+        // Remove meshes from scene
+        this.dummyShipMeshes.forEach(mesh => {
+            this.scene.remove(mesh);
+            
+            // Dispose of geometries and materials
+            mesh.traverse((child) => {
+                if (child.geometry) {
+                    child.geometry.dispose();
+                }
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(material => material.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            });
+        });
+        
+        // Clear arrays
+        this.targetDummyShips = [];
+        this.dummyShipMeshes = [];
+        
+        console.log('Target dummy ships cleared');
+    }
+
+    /**
+     * Get target dummy ship by mesh
+     * @param {THREE.Object3D} mesh - Ship mesh
+     * @returns {Ship|null} Ship instance or null
+     */
+    getTargetDummyShip(mesh) {
+        return mesh.userData?.ship || null;
     }
 } 
