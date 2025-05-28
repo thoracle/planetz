@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFT Card ReferenceError Fix Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            font-family: 'Orbitron', monospace;
+            color: #00ffff;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid #00ffff;
+        }
+        
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .success {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+        }
+        
+        .error {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #ff0000;
+            color: #ff0000;
+        }
+        
+        .info {
+            background: rgba(0, 255, 255, 0.2);
+            border: 1px solid #00ffff;
+            color: #00ffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>NFT Card ReferenceError Fix Test</h1>
+        <p>Testing if the ReferenceError: Cannot access uninitialized variable has been fixed.</p>
+        
+        <div id="test-results">
+            <div class="test-result info">Running tests...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        const resultsContainer = document.getElementById('test-results');
+        
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = message;
+            resultsContainer.appendChild(div);
+        }
+        
+        function clearResults() {
+            resultsContainer.innerHTML = '';
+        }
+        
+        async function runTests() {
+            clearResults();
+            
+            try {
+                addResult('1. Testing NFTCard imports...', 'info');
+                
+                // Test importing NFTCard and constants
+                const { default: NFTCard, CARD_TYPES, CARD_RARITY, RARITY_CARD_POOLS, CARD_ICONS } = await import('./js/ship/NFTCard.js');
+                addResult('✓ NFTCard imports successful', 'success');
+                
+                // Test CARD_TYPES is defined
+                if (CARD_TYPES && typeof CARD_TYPES === 'object') {
+                    addResult(`✓ CARD_TYPES defined with ${Object.keys(CARD_TYPES).length} card types`, 'success');
+                } else {
+                    addResult('✗ CARD_TYPES not properly defined', 'error');
+                }
+                
+                // Test RARITY_CARD_POOLS is defined
+                if (RARITY_CARD_POOLS && typeof RARITY_CARD_POOLS === 'object') {
+                    addResult(`✓ RARITY_CARD_POOLS defined with ${Object.keys(RARITY_CARD_POOLS).length} rarity levels`, 'success');
+                } else {
+                    addResult('✗ RARITY_CARD_POOLS not properly defined', 'error');
+                }
+                
+                // Test CARD_ICONS is defined
+                if (CARD_ICONS && typeof CARD_ICONS === 'object') {
+                    addResult(`✓ CARD_ICONS defined with ${Object.keys(CARD_ICONS).length} icons`, 'success');
+                } else {
+                    addResult('✗ CARD_ICONS not properly defined', 'error');
+                }
+                
+                // Test creating an NFTCard instance
+                const testCard = new NFTCard(CARD_TYPES.LASER_CANNON, CARD_RARITY.COMMON);
+                addResult(`✓ NFTCard instance created: ${testCard.getDisplayName()}`, 'success');
+                
+                // Test CardInventory import
+                addResult('2. Testing CardInventory imports...', 'info');
+                const { default: CardInventory } = await import('./js/ship/CardInventory.js');
+                addResult('✓ CardInventory imports successful', 'success');
+                
+                // Test creating CardInventory instance
+                const inventory = new CardInventory();
+                addResult('✓ CardInventory instance created', 'success');
+                
+                // Test generating random card
+                const randomCard = inventory.generateRandomCard();
+                addResult(`✓ Random card generated: ${randomCard.getDisplayName()} (${randomCard.rarity})`, 'success');
+                
+                addResult('🎉 All tests passed! ReferenceError has been fixed.', 'success');
+                
+            } catch (error) {
+                addResult(`✗ Test failed: ${error.message}`, 'error');
+                console.error('Test error:', error);
+            }
+        }
+        
+        // Run tests when page loads
+        runTests();
+    </script>
+</body>
+</html> 

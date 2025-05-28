@@ -31,7 +31,7 @@ export const SYSTEM_DISPLAY_NAMES = {
     // Operational systems
     'impulse_engines': 'Impulse Engines',
     'warp_drive': 'Warp Drive',
-    'shields': 'Deflector Shields',
+    'shields': 'Deflector Shield Generator',
     'laser_cannon': 'Laser Cannon',
     'plasma_cannon': 'Plasma Cannon',
     'pulse_cannon': 'Pulse Cannon',
@@ -45,7 +45,7 @@ export const SYSTEM_DISPLAY_NAMES = {
     'weapons': 'Laser Cannon',
     
     // Sensor and communication systems
-    'long_range_scanner': 'Long Range Scanner',
+    'long_range_scanner': 'Long Range Sensors',
     'subspace_radio': 'Subspace Radio',
     'galactic_chart': 'Galactic Chart',
     'target_computer': 'Target Computer',

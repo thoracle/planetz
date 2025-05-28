@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simplified Slot Names Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            font-family: 'Orbitron', monospace;
+            color: #00ffff;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid #00ffff;
+        }
+        
+        .ship-type-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            background: rgba(0, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+        
+        .ship-type-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #00ff88;
+            text-transform: uppercase;
+        }
+        
+        .slot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .slot-item {
+            padding: 8px 12px;
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            border-radius: 5px;
+            font-size: 0.9em;
+            text-align: center;
+        }
+        
+        .slot-engine { border-color: #ff6b35; background: rgba(255, 107, 53, 0.1); }
+        .slot-weapon { border-color: #ff3535; background: rgba(255, 53, 53, 0.1); }
+        .slot-utility { border-color: #35ff35; background: rgba(53, 255, 53, 0.1); }
+        .slot-power { border-color: #ffff35; background: rgba(255, 255, 53, 0.1); }
+        
+        .slot-icon {
+            font-size: 1.2em;
+            margin-right: 5px;
+        }
+        
+        .summary {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+        
+        .summary-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #00ff88;
+        }
+        
+        .summary-item {
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🚀 Simplified Slot Names Test</h1>
+        <p>Testing the new simplified slot naming format: Engine #, Utility #, Weapon #, Power #</p>
+        
+        <div id="ship-configurations"></div>
+        
+        <div class="summary">
+            <div class="summary-title">📊 Summary</div>
+            <div id="summary-content"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import CardInventoryUI from './js/ui/CardInventoryUI.js';
+        
+        // Create a temporary CardInventoryUI instance to access ship configurations
+        const tempUI = new CardInventoryUI('temp');
+        
+        const shipTypes = ['heavy_fighter', 'scout', 'light_fighter', 'light_freighter', 'heavy_freighter'];
+        const shipNames = {
+            'heavy_fighter': 'Heavy Fighter',
+            'scout': 'Scout',
+            'light_fighter': 'Light Fighter', 
+            'light_freighter': 'Light Freighter',
+            'heavy_freighter': 'Heavy Freighter'
+        };
+        
+        function testSlotNaming() {
+            const configurationsDiv = document.getElementById('ship-configurations');
+            const summaryDiv = document.getElementById('summary-content');
+            
+            let totalSlots = 0;
+            let slotTypeCounts = { engine: 0, weapon: 0, utility: 0, power: 0 };
+            let namingIssues = [];
+            
+            shipTypes.forEach(shipType => {
+                // Set the ship type and get configuration
+                tempUI.currentShipType = shipType;
+                const config = tempUI.getShipSlotConfiguration();
+                
+                // Create ship section
+                const shipSection = document.createElement('div');
+                shipSection.className = 'ship-type-section';
+                
+                const title = document.createElement('div');
+                title.className = 'ship-type-title';
+                title.textContent = `${shipNames[shipType]} (${config.length} slots)`;
+                shipSection.appendChild(title);
+                
+                const slotGrid = document.createElement('div');
+                slotGrid.className = 'slot-grid';
+                
+                // Track slot numbers by type for this ship
+                const slotNumbers = { engine: [], weapon: [], utility: [], power: [] };
+                
+                config.forEach(slot => {
+                    const slotDiv = document.createElement('div');
+                    slotDiv.className = `slot-item slot-${slot.slotType}`;
+                    
+                    slotDiv.innerHTML = `
+                        <span class="slot-icon">${slot.icon}</span>
+                        ${slot.name}
+                    `;
+                    
+                    slotGrid.appendChild(slotDiv);
+                    
+                    // Count slots and track numbers
+                    totalSlots++;
+                    slotTypeCounts[slot.slotType]++;
+                    
+                    // Extract number from slot name
+                    const match = slot.name.match(/(\w+)\s+(\d+)/);
+                    if (match) {
+                        const [, type, number] = match;
+                        slotNumbers[slot.slotType].push(parseInt(number));
+                        
+                        // Check if the type matches the slot type
+                        const expectedType = slot.slotType.charAt(0).toUpperCase() + slot.slotType.slice(1);
+                        if (type !== expectedType) {
+                            namingIssues.push(`${shipNames[shipType]}: ${slot.name} should be ${expectedType} ${number}`);
+                        }
+                    } else {
+                        namingIssues.push(`${shipNames[shipType]}: ${slot.name} doesn't follow naming pattern`);
+                    }
+                });
+                
+                // Check for sequential numbering
+                Object.keys(slotNumbers).forEach(type => {
+                    const numbers = slotNumbers[type].sort((a, b) => a - b);
+                    if (numbers.length > 0) {
+                        for (let i = 0; i < numbers.length; i++) {
+                            if (numbers[i] !== i + 1) {
+                                namingIssues.push(`${shipNames[shipType]}: ${type} slots not sequential (expected ${i + 1}, got ${numbers[i]})`);
+                                break;
+                            }
+                        }
+                    }
+                });
+                
+                shipSection.appendChild(slotGrid);
+                configurationsDiv.appendChild(shipSection);
+            });
+            
+            // Generate summary
+            let summaryHTML = `
+                <div class="summary-item">📊 Total Slots: ${totalSlots}</div>
+                <div class="summary-item">🚀 Engine Slots: ${slotTypeCounts.engine}</div>
+                <div class="summary-item">⚔️ Weapon Slots: ${slotTypeCounts.weapon}</div>
+                <div class="summary-item">🔧 Utility Slots: ${slotTypeCounts.utility}</div>
+                <div class="summary-item">⚡ Power Slots: ${slotTypeCounts.power}</div>
+            `;
+            
+            if (namingIssues.length === 0) {
+                summaryHTML += `<div class="summary-item" style="color: #00ff88;">✅ All slot names follow the simplified format correctly!</div>`;
+            } else {
+                summaryHTML += `<div class="summary-item" style="color: #ff6b35;">⚠️ Found ${namingIssues.length} naming issues:</div>`;
+                namingIssues.forEach(issue => {
+                    summaryHTML += `<div class="summary-item" style="color: #ff6b35; margin-left: 20px;">• ${issue}</div>`;
+                });
+            }
+            
+            summaryDiv.innerHTML = summaryHTML;
+        }
+        
+        // Run the test
+        testSlotNaming();
+    </script>
+</body>
+</html> 

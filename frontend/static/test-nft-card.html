@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFTCard Class Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background-color: #2a2a2a;
+        }
+        .card-display {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px;
+            border: 2px solid;
+            border-radius: 8px;
+            background-color: #333;
+            min-width: 200px;
+        }
+        .card-header {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        .card-details {
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        .test-results {
+            background-color: #0a3d0a;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background-color: #3d0a0a;
+            color: #ff6666;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>NFTCard Class Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Basic Card Creation</h2>
+        <button onclick="testBasicCardCreation()">Run Test</button>
+        <div id="test1-results"></div>
+        <div id="test1-cards"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Card Rarity System</h2>
+        <button onclick="testCardRarities()">Run Test</button>
+        <div id="test2-results"></div>
+        <div id="test2-cards"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Card Discovery System</h2>
+        <button onclick="testDiscoverySystem()">Run Test</button>
+        <div id="test3-results"></div>
+        <div id="test3-cards"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 4: Upgrade Requirements</h2>
+        <button onclick="testUpgradeRequirements()">Run Test</button>
+        <div id="test4-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 5: JSON Serialization</h2>
+        <button onclick="testJSONSerialization()">Run Test</button>
+        <div id="test5-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 6: Card Categories</h2>
+        <button onclick="testCardCategories()">Run Test</button>
+        <div id="test6-results"></div>
+    </div>
+
+    <script type="module">
+        import NFTCard, { 
+            CARD_RARITY, 
+            CARD_TYPES, 
+            CARD_DISPLAY_NAMES,
+            DROP_RATES,
+            UPGRADE_REQUIREMENTS
+        } from './js/ship/NFTCard.js';
+
+        // Make classes available globally for testing
+        window.NFTCard = NFTCard;
+        window.CARD_RARITY = CARD_RARITY;
+        window.CARD_TYPES = CARD_TYPES;
+        window.CARD_DISPLAY_NAMES = CARD_DISPLAY_NAMES;
+        window.DROP_RATES = DROP_RATES;
+        window.UPGRADE_REQUIREMENTS = UPGRADE_REQUIREMENTS;
+
+        // Test functions
+        window.testBasicCardCreation = function() {
+            const resultsDiv = document.getElementById('test1-results');
+            const cardsDiv = document.getElementById('test1-cards');
+            
+            try {
+                // Create basic cards
+                const laserCard = new NFTCard(CARD_TYPES.LASER_CANNON);
+                const shieldCard = new NFTCard(CARD_TYPES.SHIELDS, CARD_RARITY.RARE);
+                const reactorCard = new NFTCard(CARD_TYPES.ENERGY_REACTOR, CARD_RARITY.EPIC);
+                
+                // Display results
+                resultsDiv.innerHTML = '<div class="test-results">✅ Basic card creation successful!</div>';
+                
+                // Display cards
+                cardsDiv.innerHTML = '';
+                [laserCard, shieldCard, reactorCard].forEach(card => {
+                    cardsDiv.appendChild(createCardDisplay(card));
+                });
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="test-results error">❌ Error: ${error.message}</div>`;
+            }
+        };
+
+        window.testCardRarities = function() {
+            const resultsDiv = document.getElementById('test2-results');
+            const cardsDiv = document.getElementById('test2-cards');
+            
+            try {
+                const rarities = Object.values(CARD_RARITY);
+                const cards = [];
+                
+                // Create one card of each rarity
+                rarities.forEach(rarity => {
+                    const card = new NFTCard(CARD_TYPES.LASER_CANNON, rarity);
+                    cards.push(card);
+                });
+                
+                // Verify drop rates sum to 100%
+                const totalDropRate = Object.values(DROP_RATES).reduce((sum, rate) => sum + rate, 0);
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-results">
+                        ✅ Created cards with all rarities!<br>
+                        ✅ Drop rates sum to ${totalDropRate}% (should be 100%)
+                    </div>
+                `;
+                
+                // Display cards
+                cardsDiv.innerHTML = '';
+                cards.forEach(card => {
+                    cardsDiv.appendChild(createCardDisplay(card));
+                });
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="test-results error">❌ Error: ${error.message}</div>`;
+            }
+        };
+
+        window.testDiscoverySystem = function() {
+            const resultsDiv = document.getElementById('test3-results');
+            const cardsDiv = document.getElementById('test3-cards');
+            
+            try {
+                const card = new NFTCard(CARD_TYPES.PHASER_ARRAY, CARD_RARITY.LEGENDARY);
+                
+                // Test initial state
+                const initialDiscovered = card.isDiscovered();
+                
+                // Discover the card
+                card.discover();
+                const afterDiscovery = card.isDiscovered();
+                
+                // Try to discover again (should not change)
+                card.discover();
+                const afterSecondDiscovery = card.isDiscovered();
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-results">
+                        ✅ Initial discovered state: ${initialDiscovered} (should be false)<br>
+                        ✅ After discovery: ${afterDiscovery} (should be true)<br>
+                        ✅ After second discovery: ${afterSecondDiscovery} (should still be true)
+                    </div>
+                `;
+                
+                cardsDiv.innerHTML = '';
+                cardsDiv.appendChild(createCardDisplay(card));
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="test-results error">❌ Error: ${error.message}</div>`;
+            }
+        };
+
+        window.testUpgradeRequirements = function() {
+            const resultsDiv = document.getElementById('test4-results');
+            
+            try {
+                const requirements = [];
+                for (let level = 1; level <= 5; level++) {
+                    const required = NFTCard.getUpgradeRequirement(level);
+                    requirements.push(`Level ${level}: ${required} cards`);
+                }
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-results">
+                        ✅ Upgrade requirements:<br>
+                        ${requirements.join('<br>')}
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="test-results error">❌ Error: ${error.message}</div>`;
+            }
+        };
+
+        window.testJSONSerialization = function() {
+            const resultsDiv = document.getElementById('test4-results');
+            
+            try {
+                // Create a card
+                const originalCard = new NFTCard(CARD_TYPES.MISSILE_TUBES, CARD_RARITY.EPIC);
+                originalCard.discover();
+                
+                // Convert to JSON
+                const jsonData = originalCard.toJSON();
+                
+                // Create from JSON
+                const restoredCard = NFTCard.fromJSON(jsonData);
+                
+                // Verify properties match
+                const matches = {
+                    cardType: originalCard.cardType === restoredCard.cardType,
+                    rarity: originalCard.rarity === restoredCard.rarity,
+                    discovered: originalCard.discovered === restoredCard.discovered,
+                    name: originalCard.metadata.name === restoredCard.metadata.name
+                };
+                
+                const allMatch = Object.values(matches).every(match => match);
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-results">
+                        ✅ JSON serialization test: ${allMatch ? 'PASSED' : 'FAILED'}<br>
+                        Card Type Match: ${matches.cardType}<br>
+                        Rarity Match: ${matches.rarity}<br>
+                        Discovered Match: ${matches.discovered}<br>
+                        Name Match: ${matches.name}
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="test-results error">❌ Error: ${error.message}</div>`;
+            }
+        };
+
+        window.testCardCategories = function() {
+            const resultsDiv = document.getElementById('test6-results');
+            
+            try {
+                const categories = {};
+                
+                // Test all card types
+                Object.values(CARD_TYPES).forEach(cardType => {
+                    const card = new NFTCard(cardType);
+                    const category = card.getSystemCategory();
+                    
+                    if (!categories[category]) {
+                        categories[category] = [];
+                    }
+                    categories[category].push(CARD_DISPLAY_NAMES[cardType]);
+                });
+                
+                let categoryDisplay = '';
+                Object.entries(categories).forEach(([category, cards]) => {
+                    categoryDisplay += `<strong>${category}:</strong> ${cards.join(', ')}<br>`;
+                });
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-results">
+                        ✅ Card categories:<br>
+                        ${categoryDisplay}
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="test-results error">❌ Error: ${error.message}</div>`;
+            }
+        };
+
+        // Helper function to create card display
+        function createCardDisplay(card) {
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'card-display';
+            cardDiv.style.borderColor = card.getRarityColor();
+            
+            cardDiv.innerHTML = `
+                <div class="card-header" style="color: ${card.getRarityColor()}">
+                    ${card.getDisplayName()}
+                </div>
+                <div class="card-details">
+                    <strong>Rarity:</strong> ${card.rarity}<br>
+                    <strong>Token ID:</strong> ${card.tokenId}<br>
+                    <strong>Category:</strong> ${card.getSystemCategory()}<br>
+                    <strong>Discovered:</strong> ${card.isDiscovered()}<br>
+                    <strong>Description:</strong> ${card.metadata.description}
+                </div>
+            `;
+            
+            return cardDiv;
+        }
+
+        console.log('NFTCard test page loaded successfully!');
+    </script>
+</body>
+</html> 

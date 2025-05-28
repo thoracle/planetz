@@ -1,0 +1,1126 @@
+/**
+ * Card Inventory UI Styles
+ * Improved Retro Green Screen Terminal Theme - Better Readability
+ */
+
+.card-inventory-interface {
+    background: #0a0a0a; /* Slightly lighter than pure black */
+    color: #00dd88; /* Softer, more readable green */
+    font-family: 'Courier New', 'Monaco', monospace;
+    padding: 20px;
+    border: 2px solid #00cc77;
+    border-radius: 0;
+    box-shadow: 
+        0 0 20px rgba(0, 204, 119, 0.3),
+        inset 0 0 20px rgba(0, 204, 119, 0.1);
+    max-width: 1400px;
+    margin: 0 auto;
+    position: relative;
+}
+
+.card-inventory-interface::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 2px,
+            rgba(0, 204, 119, 0.02) 2px,
+            rgba(0, 204, 119, 0.02) 4px
+        );
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Header Styles */
+.inventory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #00cc77;
+    position: relative;
+    z-index: 2;
+}
+
+.inventory-header h2 {
+    color: #00ff99; /* Brighter green for headers */
+    text-shadow: 0 0 8px rgba(0, 255, 153, 0.6);
+    margin: 0;
+    font-family: 'Courier New', 'Monaco', monospace;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-size: 24px; /* Larger header */
+}
+
+/* Header Stats Layout */
+.header-stats {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+.credits-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #111111; /* Subtle background */
+    color: #00ff99;
+    padding: 10px 16px; /* Larger padding */
+    border: 2px solid #00cc77;
+    font-weight: bold;
+    font-size: 18px; /* Larger font */
+    box-shadow: 0 0 10px rgba(0, 204, 119, 0.4);
+    font-family: 'Courier New', 'Monaco', monospace;
+}
+
+.credits-icon {
+    font-size: 20px; /* Larger icon */
+    filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.5));
+}
+
+.credits-amount {
+    font-family: 'Orbitron', monospace;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.collection-stats {
+    display: flex;
+    gap: 20px;
+    font-size: 16px; /* Larger font */
+}
+
+.collection-stats span {
+    background: rgba(0, 204, 119, 0.15); /* More visible background */
+    padding: 6px 12px; /* Larger padding */
+    border: 1px solid #00cc77;
+    color: #00dd88;
+    font-family: 'Courier New', 'Monaco', monospace;
+    font-size: 14px; /* Larger font */
+}
+
+/* Main Layout */
+.inventory-main {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 30px;
+    margin-bottom: 20px;
+    height: 70vh; /* Set fixed height for the main container */
+    min-height: 600px;
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 2;
+}
+
+/* Ship Slots Panel */
+.ship-slots-panel {
+    background: rgba(17, 17, 17, 0.8); /* More visible background */
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 187, 221, 0.3); /* More visible border */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.ship-slots-panel h3 {
+    color: #00bbdd; /* Softer cyan */
+    margin-top: 0;
+    margin-bottom: 15px;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 18px; /* Larger font */
+    text-shadow: 0 0 6px rgba(0, 187, 221, 0.4);
+}
+
+/* Ship Type Selection */
+.ship-type-selection {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: rgba(0, 255, 255, 0.05);
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    border-radius: 5px;
+    flex-shrink: 0;
+}
+
+.ship-type-selection label {
+    color: #00ffff;
+    font-weight: bold;
+    font-size: 14px;
+    min-width: 80px;
+}
+
+.ship-type-selection select {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.5);
+    color: #ffffff;
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    border-radius: 5px;
+    padding: 8px 12px;
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.ship-type-selection select:focus {
+    outline: none;
+    border-color: #00ffff;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+.ship-type-selection select option {
+    background: #1a1a2e;
+    color: #ffffff;
+    padding: 8px;
+}
+
+.ship-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 5px;
+}
+
+/* Ship slots scrollbar styling */
+.ship-slots-grid::-webkit-scrollbar {
+    width: 8px;
+}
+
+.ship-slots-grid::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
+.ship-slots-grid::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 255, 0.5);
+    border-radius: 4px;
+}
+
+.ship-slots-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 255, 0.7);
+}
+
+.ship-slot {
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 120px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.ship-slot:hover {
+    border-color: rgba(0, 255, 255, 0.5);
+    background: rgba(0, 255, 255, 0.05);
+}
+
+.ship-slot.valid-drop {
+    border-color: #00ff00;
+    background: rgba(0, 255, 0, 0.1);
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+}
+
+.ship-slot.invalid-drop {
+    border-color: #ff0000;
+    background: rgba(255, 0, 0, 0.1);
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+}
+
+.slot-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.slot-icon {
+    font-size: 18px;
+}
+
+.slot-content {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-slot {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+    text-align: center;
+    font-style: italic;
+}
+
+.installed-card {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 200, 255, 0.1));
+    border: 1px solid rgba(0, 255, 255, 0.4);
+    border-radius: 5px;
+    padding: 8px;
+    width: 100%;
+    position: relative;
+    text-align: center;
+}
+
+.installed-card .card-name {
+    font-weight: bold;
+    font-size: 12px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.installed-card .card-level {
+    font-size: 10px;
+    color: #ffff00;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.installed-card .card-rarity {
+    font-size: 9px;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.remove-card-btn {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remove-card-btn:hover {
+    background: #ff6666;
+}
+
+.card-stats {
+    display: flex;
+    gap: 8px;
+    margin: 5px 0;
+    font-size: 11px;
+}
+
+.stat-power,
+.stat-mass {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+.stat-power {
+    color: #fbbf24;
+}
+
+.stat-mass {
+    color: #94a3b8;
+}
+
+/* Ship Stats */
+.ship-stats {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    flex-shrink: 0;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.stat-label {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.stat-value {
+    color: #00ffff;
+    font-weight: bold;
+}
+
+.stat-value.valid {
+    color: #00ff00;
+}
+
+.stat-value.invalid {
+    color: #ff0000;
+}
+
+/* Inventory Panel */
+.inventory-panel {
+    background: rgba(17, 17, 17, 0.8); /* More visible background */
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 204, 119, 0.3); /* More visible border */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    min-width: 0; /* Prevent flex item from overflowing */
+}
+
+.inventory-panel h3 {
+    color: #00dd88; /* Softer green to match theme */
+    margin-top: 0;
+    margin-bottom: 15px;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 18px; /* Larger font */
+    text-shadow: 0 0 6px rgba(0, 221, 136, 0.4);
+}
+
+.inventory-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-shrink: 0;
+}
+
+.inventory-filters select {
+    background: rgba(0, 0, 0, 0.5);
+    color: #ffffff;
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    border-radius: 5px;
+    padding: 8px;
+    font-family: inherit;
+    flex: 1;
+}
+
+.inventory-filters select:focus {
+    outline: none;
+    border-color: #00ffff;
+    box-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+}
+
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 15px;
+    padding-right: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    justify-content: start;
+    align-content: start;
+}
+
+.inventory-grid::-webkit-scrollbar {
+    width: 8px;
+}
+
+.inventory-grid::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
+.inventory-grid::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+.inventory-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 255, 0.5);
+}
+
+/* Card Stack Styles */
+.card-stack {
+    background: #111111; /* Subtle background instead of pure black */
+    border: 2px solid;
+    border-radius: 8px; /* Rounded corners */
+    padding: 10px; /* More padding */
+    cursor: grab;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    max-width: 200px;
+    height: auto;
+    min-height: 130px; /* Slightly taller */
+    max-height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-sizing: border-box;
+    font-family: 'Courier New', 'Monaco', monospace;
+    font-size: 13px; /* Larger base font */
+}
+
+.card-stack:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 15px rgba(0, 204, 119, 0.5);
+    background: #151515; /* Slightly lighter on hover */
+}
+
+.card-stack.dragging {
+    opacity: 0.7;
+    transform: rotate(2deg);
+    cursor: grabbing;
+}
+
+.card-stack.common {
+    border-color: #888888; /* Neutral gray */
+    box-shadow: 0 0 5px rgba(136, 136, 136, 0.3);
+}
+
+.card-stack.rare {
+    border-color: #4488ff; /* Bright blue */
+    box-shadow: 0 0 5px rgba(68, 136, 255, 0.4);
+}
+
+.card-stack.epic {
+    border-color: #aa44ff; /* Vibrant purple */
+    box-shadow: 0 0 5px rgba(170, 68, 255, 0.4);
+}
+
+.card-stack.legendary {
+    border-color: #ffaa00; /* Rich gold */
+    box-shadow: 0 0 8px rgba(255, 170, 0, 0.5);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px; /* More spacing */
+    font-size: 13px; /* Larger font */
+    font-weight: bold;
+    color: #00ff99; /* Brighter green for headers */
+}
+
+.card-icon {
+    font-size: 14px; /* Larger icon */
+    margin-right: 6px; /* More spacing */
+    flex-shrink: 0;
+    color: #00ff99;
+}
+
+.card-name {
+    font-weight: bold;
+    font-size: 12px; /* Larger font */
+    flex-grow: 1;
+    text-align: left;
+    color: #00ff99; /* Brighter for better visibility */
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.card-count {
+    background: rgba(0, 204, 119, 0.25); /* More visible background */
+    padding: 2px 6px; /* More padding */
+    font-size: 11px; /* Larger font */
+    font-weight: bold;
+    color: #00ff99; /* Brighter text */
+    border: 1px solid #00cc77;
+    border-radius: 4px; /* Rounded corners */
+}
+
+.card-level-rarity {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    gap: 8px;
+}
+
+.card-level {
+    color: #00dd88; /* Softer green for secondary text */
+    font-size: 12px; /* Larger font */
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.card-rarity {
+    font-size: 11px; /* Larger font */
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #00dd88; /* Softer green for secondary text */
+    margin: 0;
+}
+
+.upgrade-progress-compact {
+    margin-bottom: 8px; /* More spacing */
+    background: rgba(0, 204, 119, 0.15); /* More visible background */
+    padding: 6px; /* More padding */
+    border: 1px solid #00cc77;
+    border-radius: 4px; /* Rounded corners */
+    font-family: 'Courier New', 'Monaco', monospace;
+}
+
+
+
+.progress-bar-compact {
+    background: #0a0a0a; /* Slightly lighter background */
+    height: 16px; /* Taller to accommodate text */
+    overflow: hidden;
+    border: 1px solid #00cc77;
+    border-radius: 3px; /* Rounded corners */
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.progress-fill-compact {
+    background: #00cc77; /* Softer green */
+    height: 100%;
+    transition: width 0.3s ease;
+    position: relative;
+    box-shadow: 0 0 4px rgba(0, 204, 119, 0.6);
+}
+
+.progress-fill-compact::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+    animation: terminal-scan 2s infinite;
+}
+
+.progress-count-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px; /* Larger font */
+    font-weight: bold;
+    color: #ffffff; /* White text for maximum contrast */
+    background: rgba(0, 0, 0, 0.8); /* Dark semi-transparent background */
+    padding: 2px 6px; /* Padding around text */
+    border-radius: 3px; /* Rounded corners */
+    border: 1px solid #00ff99; /* Green border */
+    text-shadow: 0 0 4px rgba(0, 255, 153, 0.8); /* Green glow effect */
+    box-shadow: 0 0 8px rgba(0, 255, 153, 0.4); /* Outer glow */
+    z-index: 3; /* Higher z-index to ensure it's on top */
+    font-family: 'Courier New', 'Monaco', monospace;
+    letter-spacing: 0.5px;
+    min-width: 24px; /* Minimum width for consistency */
+    text-align: center;
+}
+
+@keyframes terminal-scan {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.upgrade-btn {
+    border: 1px solid #00cc77; /* Thinner border */
+    background: #0a0a0a; /* Slightly lighter background */
+    color: #00dd88;
+    padding: 3px 6px; /* Smaller padding */
+    font-weight: bold;
+    font-size: 9px; /* Smaller font */
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s ease;
+    font-family: 'Courier New', 'Monaco', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.3px; /* Reduced letter spacing */
+    border-radius: 3px; /* Small rounded corners for button */
+}
+
+/* Ready to upgrade - bright green */
+.upgrade-btn.ready {
+    background: #0a0a0a;
+    color: #00ff99; /* Brighter for ready state */
+    border-color: #00ff99;
+    box-shadow: 0 0 8px rgba(0, 255, 153, 0.4);
+}
+
+.upgrade-btn.ready:hover {
+    background: rgba(0, 255, 153, 0.1);
+    box-shadow: 0 0 12px rgba(0, 255, 153, 0.6);
+    transform: translateY(-1px);
+    color: #00ffaa; /* Even brighter on hover */
+}
+
+/* Insufficient cards - yellow */
+.upgrade-btn.insufficient-cards {
+    background: #000000;
+    color: #ffff00;
+    border-color: #ffff00;
+    box-shadow: 0 0 5px rgba(255, 255, 0, 0.3);
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+/* Insufficient credits - orange */
+.upgrade-btn.insufficient-credits {
+    background: #000000;
+    color: #ff8800;
+    border-color: #ff8800;
+    box-shadow: 0 0 5px rgba(255, 136, 0, 0.3);
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+/* Max level - green but dimmed */
+.upgrade-btn.max-level {
+    background: #000000;
+    color: #00ff00;
+    border-color: #00ff00;
+    box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Upgrade Notification */
+.upgrade-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #00ff00, #00cc00);
+    color: #000000;
+    border-radius: 10px;
+    padding: 15px 20px;
+    z-index: 1001;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+    border: 2px solid rgba(255, 215, 0, 0.8);
+    font-family: 'Orbitron', monospace;
+}
+
+.upgrade-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.upgrade-icon {
+    font-size: 24px;
+    filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
+}
+
+.upgrade-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.upgrade-card-name {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.upgrade-level {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.8);
+}
+
+.upgrade-cost {
+    font-size: 11px;
+    color: rgba(0, 0, 0, 0.7);
+    font-weight: bold;
+}
+
+/* Action Buttons */
+.inventory-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    padding-top: 20px;
+    border-top: 1px solid rgba(0, 255, 255, 0.2);
+}
+
+.action-btn {
+    background: linear-gradient(135deg, #0066cc, #004499);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 255, 255, 0.3);
+}
+
+.action-btn:hover {
+    background: linear-gradient(135deg, #0088ff, #0066cc);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 136, 255, 0.3);
+}
+
+.action-btn.danger {
+    background: linear-gradient(135deg, #cc0000, #990000);
+    border-color: rgba(255, 0, 0, 0.3);
+}
+
+.action-btn.danger:hover {
+    background: linear-gradient(135deg, #ff0000, #cc0000);
+    box-shadow: 0 5px 15px rgba(255, 0, 0, 0.3);
+}
+
+/* Pack Results Notification */
+.pack-results-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 2px solid #00ffff;
+    border-radius: 15px;
+    padding: 30px;
+    z-index: 1000;
+    box-shadow: 0 0 50px rgba(0, 255, 255, 0.5);
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.pack-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.pack-results-notification h3 {
+    color: #00ffff;
+    margin: 0 0 10px 0;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+.pack-summary {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.pack-count {
+    background: rgba(0, 255, 255, 0.2);
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    color: #00ffff;
+}
+
+.new-discoveries {
+    background: linear-gradient(135deg, #ffaa00, #ff8800);
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    color: #000;
+    font-weight: bold;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.pack-stats {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.rarity-breakdown {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.category-breakdown {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.rarity-stat {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: bold;
+    border: 1px solid;
+}
+
+.rarity-stat.common { 
+    background: rgba(136, 136, 136, 0.2); 
+    border-color: #888888; 
+    color: #cccccc;
+}
+
+.rarity-stat.rare { 
+    background: rgba(68, 136, 255, 0.2); 
+    border-color: #4488ff; 
+    color: #4488ff;
+}
+
+.rarity-stat.epic { 
+    background: rgba(170, 68, 255, 0.2); 
+    border-color: #aa44ff; 
+    color: #aa44ff;
+}
+
+.rarity-stat.legendary { 
+    background: rgba(255, 170, 0, 0.2); 
+    border-color: #ffaa00; 
+    color: #ffaa00;
+}
+
+.category-stat {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #cccccc;
+}
+
+.new-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.new-card {
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.new-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.new-card.new-discovery {
+    border-width: 3px;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    animation: newDiscoveryGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes newDiscoveryGlow {
+    0% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+    100% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.8); }
+}
+
+.card-header-info {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 5px;
+}
+
+.discovery-badge {
+    background: linear-gradient(135deg, #ffaa00, #ff8800);
+    color: #000;
+    font-size: 8px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 8px;
+    animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+.new-card .card-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+
+.new-card.common { border-color: #888888; }
+.new-card.rare { border-color: #4488ff; }
+.new-card.epic { border-color: #aa44ff; }
+.new-card.legendary { border-color: #ffaa00; }
+
+.new-card .card-name {
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 3px;
+    line-height: 1.2;
+    color: #ffffff;
+}
+
+.new-card .card-category {
+    font-size: 10px;
+    color: #aaa;
+    margin-bottom: 3px;
+}
+
+.new-card .card-rarity {
+    font-size: 10px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.card-stats-mini {
+    font-size: 10px;
+    color: #ccc;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 3px;
+}
+
+.card-count-info {
+    font-size: 9px;
+    color: #888;
+    font-style: italic;
+}
+
+.pack-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.close-btn, .open-another-btn {
+    border: none;
+    border-radius: 5px;
+    padding: 10px 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.close-btn {
+    background: #666;
+    color: #fff;
+}
+
+.close-btn:hover {
+    background: #777;
+}
+
+.open-another-btn {
+    background: #00ffff;
+    color: #000;
+}
+
+.open-another-btn:hover {
+    background: #00cccc;
+    transform: translateY(-1px);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .inventory-main {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        height: auto;
+        min-height: 80vh;
+    }
+    
+    .ship-slots-panel {
+        max-height: 50vh;
+    }
+    
+    .inventory-panel {
+        max-height: 50vh;
+    }
+    
+    .ship-slots-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .inventory-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        padding: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .card-inventory-interface {
+        padding: 15px;
+    }
+    
+    .inventory-header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .inventory-main {
+        height: auto;
+        min-height: 70vh;
+    }
+    
+    .ship-slots-panel {
+        max-height: 40vh;
+    }
+    
+    .inventory-panel {
+        max-height: 40vh;
+    }
+    
+    .ship-slots-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .inventory-grid {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    .card-stack {
+        min-height: 160px;
+        max-height: 200px;
+        padding: 12px;
+    }
+    
+    .inventory-actions {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .action-btn {
+        flex: 1;
+        min-width: 120px;
+    }
+} 

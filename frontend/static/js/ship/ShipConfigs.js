@@ -30,7 +30,7 @@ export const SHIP_CONFIGS = {
         slotConfig: {
             engines: 1,        // Impulse engines
             warpDrive: 1,       // Warp drive
-            shields: 1,         // Deflector shields
+            shields: 1,         // Deflector shield generator
             weapons: 1,         // Laser weapons (default)
             missileTubes: 1,    // Missile tubes (now included for cooldown testing)
             scanner: 1,         // Long range scanner

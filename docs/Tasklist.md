@@ -27,7 +27,7 @@
 - **Faction Colors**: ✅ Complete faction color integration - icon, HUD frame, scrollbar (with enhanced CSS targeting for nested elements), headers, content text, and star information all match target faction colors
 
 ### 📋 **IMPLEMENTATION PRIORITY ORDER**
-1. **NFTCard and CardInventory classes** (Core data structures)
+1. **NFTCard and CardInventory classes** (Core data structures) ⬅️ **NEXT TASK**
 2. **Card discovery and drop system** (Loot mechanics)
 3. **Card collection UI** (Grid display with silhouettes)
 4. **Drag-and-drop interface** (Card installation)
@@ -106,7 +106,7 @@
   - [X] Mirror Front View rendering for backward orientation
   - [X] Implement -- -- crosshair display
   - [X] Add A key binding (disabled in Edit-Mode)
-- [ ] Implement Galactic Chart
+- [X] Implement Galactic Chart
   - [X] Create 2D overlay map system
   - [X] Implement grid layout (0-9 horizontal, A-Z vertical)
   - [X] Add vertical scroll functionality
@@ -166,7 +166,7 @@
   - [X] Set up worker communication
   - [X] Offload mesh generation
   - [X] Handle worker lifecycle
-- [ ] Optimize chunk rendering
+- [X] Optimize chunk rendering
   - [X] Implement chunk culling
   - [X] Add level of detail system
   - [X] Optimize memory usage
@@ -337,7 +337,7 @@
     - [X] Convert existing WarpDrive to use Ship's WarpDrive system
   - [X] HUD Integration
     - [X] Add damage control interface (Press 'D' to toggle Damage Control View)
-    - [ ] Create station repair interface
+    - [X] Create station repair interface
     - [ ] **DEFERRED**: System shop interface moved to post-MVP (no card system)
   - [X] Station Integration
     - [X] Add docking system checks
@@ -397,19 +397,19 @@
       - [X] Implement damage bonus calculations for targeted systems
       - [X] Add system priority targeting (weapons > shields > engines, etc.)
       - [X] Create test interface for sub-targeting functionality
-                  - [X] Add < and > key bindings to iterate through targetable enemy systems
-            - [X] Extend targeting HUD UI to show selected sub-target
-            - [X] Add visual indicators for targetable systems
-            - [X] Create simplified enemy ship configurations with only essential combat systems
-            - [X] Implement EnemyShip class for target dummy ships with minimal systems
-            - [X] Fix universe generation endpoint 400 error (seed handling issue)
-            - [X] Create test page for enemy ship functionality verification
-            - [X] Remove sub-targeting functionality from celestial bodies (planets, moons, stars)
-            - [X] Ensure sub-targeting only works for enemy ships
-            - [X] Fix test page method name error (waitForSystemsInitialized vs waitForSystemsInitialization)
-            - [X] Standardize enemy ship configurations to have exactly 7 essential systems
-            - [X] Fix system name inconsistencies (shields vs shield_generator)
-            - [X] Verify all sub-targeting restrictions work correctly through comprehensive testing
+      - [X] Add < and > key bindings to iterate through targetable enemy systems
+      - [X] Extend targeting HUD UI to show selected sub-target
+      - [X] Add visual indicators for targetable systems
+      - [X] Create simplified enemy ship configurations with only essential combat systems
+      - [X] Implement EnemyShip class for target dummy ships with minimal systems
+      - [X] Fix universe generation endpoint 400 error (seed handling issue)
+      - [X] Create test page for enemy ship functionality verification
+      - [X] Remove sub-targeting functionality from celestial bodies (planets, moons, stars)
+      - [X] Ensure sub-targeting only works for enemy ships
+      - [X] Fix test page method name error (waitForSystemsInitialized vs waitForSystemsInitialization)
+      - [X] Standardize enemy ship configurations to have exactly 7 essential systems
+      - [X] Fix system name inconsistencies (shields vs shield_generator)
+      - [X] Verify all sub-targeting restrictions work correctly through comprehensive testing
     - [X] Level-specific targeting capabilities
       - [X] Level 1-2: Basic targeting (existing functionality)
       - [X] Level 3+: Sub-targeting of specific enemy systems
@@ -420,14 +420,14 @@
 - [X] Extend Ship Systems HUD
   - [X] Add notification messages when systems are repaired/damaged/destroyed
   - [X] **SIMPLIFIED**: Show energy consumption rate for active systems
-          - [X] **NEW**: Enhanced Targeting HUD (Level 3+ Target Computer)
-            - [X] Add sub-target selection display
-            - [X] Show targetable enemy systems list
-            - [X] Add visual indicators for selected sub-target
-            - [X] Implement sub-target cycling UI feedback
-            - [X] Add accuracy bonus indicators for sub-targeted systems
-            - [X] Standardize system display names across all UI components
-            - [X] Replace generic "weapons" system with specific weapon types (Laser Cannon, Plasma Cannon, etc.)
+  - [X] **NEW**: Enhanced Targeting HUD (Level 3+ Target Computer)
+    - [X] Add sub-target selection display
+    - [X] Show targetable enemy systems list
+    - [X] Add visual indicators for selected sub-target
+    - [X] Implement sub-target cycling UI feedback
+    - [X] Add accuracy bonus indicators for sub-targeted systems
+    - [X] Standardize system display names across all UI components
+    - [X] Replace generic "weapons" system with specific weapon types (Laser Cannon, Plasma Cannon, etc.)
 
 - [X] Damage Control Interface
   - [X] Create system status display
@@ -489,22 +489,23 @@
     - [X] Component diagrams for UI architecture
     - [X] Activity diagrams for user interaction flows
     - [X] Data flow diagrams showing system integration
-  - [ ] **IMPLEMENTATION PHASE**: Implement Pseudo-NFT card system
-    - [ ] Create NFTCard class with token ID and metadata
-    - [ ] Add card rarity system (Common, Rare, Epic, Legendary)
-    - [ ] Implement card discovery system with silhouettes
-    - [ ] Add card type definitions for all ship systems
-  - [ ] Create Clash Royale-style stacking inventory system
-    - [ ] Implement card stack management (all same type cards stack)
-    - [ ] Add upgrade requirements (3x, 6x, 12x, 24x cards per level)
-    - [ ] Create card collection tracking and progress display
-    - [ ] Add Pokédex-style discovery system with silhouettes
-  - [ ] Implement drag-and-drop interface
-    - [ ] Create card inventory UI with grid layout
-    - [ ] Add ship slot interface for card installation
-    - [ ] Implement card transfer system between inventory and slots
-    - [ ] Add visual feedback for valid drops and build validation
-  - [ ] Create ship collection management
+  - [X] **IMPLEMENTATION PHASE**: Implement Pseudo-NFT card system ⬅️ **COMPLETED**
+    - [X] Create NFTCard class with token ID and metadata
+    - [X] Add card rarity system (Common, Rare, Epic, Legendary)
+    - [X] Implement card discovery system with silhouettes
+    - [X] Add card type definitions for all ship systems
+  - [X] Create Clash Royale-style stacking inventory system
+    - [X] Implement card stack management (all same type cards stack)
+    - [X] Add upgrade requirements (3x, 6x, 12x, 24x cards per level)
+    - [X] Create card collection tracking and progress display
+    - [X] Add Pokédex-style discovery system with silhouettes
+  - [X] Implement drag-and-drop interface ⬅️ **COMPLETED & DEBUGGED**
+    - [X] Create card inventory UI with grid layout
+    - [X] Add ship slot interface for card installation
+    - [X] Implement card transfer system between inventory and slots
+    - [X] Add visual feedback for valid drops and build validation
+    - [X] Fix slot element null reference errors
+  - [ ] Create ship collection management ⬅️ **NEXT TASK**
     - [ ] Allow multiple ship ownership
     - [ ] Add ship selection interface (station-only)
     - [ ] Implement ship configuration persistence

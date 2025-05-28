@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rarity Debug Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            font-family: 'Orbitron', monospace;
+            color: #00ffff;
+        }
+        
+        .debug-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid #00ffff;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        
+        .test-button {
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+        }
+        
+        .test-button:hover {
+            background: linear-gradient(45deg, #0080ff, #00ffff);
+        }
+        
+        .results {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        
+        .rarity-common { color: #ffffff; }
+        .rarity-rare { color: #00ff00; }
+        .rarity-epic { color: #ff00ff; }
+        .rarity-legendary { color: #ffaa00; }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>🔍 Rarity Generation Debug</h1>
+        
+        <div class="test-section">
+            <h2>Test 1: Check Constants</h2>
+            <button class="test-button" onclick="testConstants()">Check DROP_RATES & RARITY_CARD_POOLS</button>
+            <div id="constants-results" class="results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 2: Generate Single Cards</h2>
+            <button class="test-button" onclick="generateSingleCard()">Generate 1 Card</button>
+            <button class="test-button" onclick="generateMultipleCards(10)">Generate 10 Cards</button>
+            <button class="test-button" onclick="generateMultipleCards(100)">Generate 100 Cards</button>
+            <div id="single-card-results" class="results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 3: Rarity Distribution Test</h2>
+            <button class="test-button" onclick="testRarityDistribution(1000)">Test 1000 Cards</button>
+            <div id="distribution-results" class="results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 4: Manual Rarity Creation</h2>
+            <button class="test-button" onclick="testManualRarity()">Create Cards with Specific Rarities</button>
+            <div id="manual-rarity-results" class="results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 5: Card Inventory Integration</h2>
+            <button class="test-button" onclick="testCardInventory()">Test CardInventory.generateRandomCard()</button>
+            <div id="inventory-results" class="results"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import NFTCard, { CARD_TYPES, CARD_RARITY, DROP_RATES, RARITY_CARD_POOLS } from './js/ship/NFTCard.js';
+        import CardInventory from './js/ship/CardInventory.js';
+
+        // Make functions global for onclick handlers
+        window.NFTCard = NFTCard;
+        window.CARD_TYPES = CARD_TYPES;
+        window.CARD_RARITY = CARD_RARITY;
+        window.DROP_RATES = DROP_RATES;
+        window.RARITY_CARD_POOLS = RARITY_CARD_POOLS;
+        window.CardInventory = CardInventory;
+
+        window.testConstants = function() {
+            const results = document.getElementById('constants-results');
+            let output = '';
+            
+            output += 'CARD_RARITY:\n';
+            output += JSON.stringify(CARD_RARITY, null, 2) + '\n\n';
+            
+            output += 'DROP_RATES:\n';
+            output += JSON.stringify(DROP_RATES, null, 2) + '\n\n';
+            
+            output += 'RARITY_CARD_POOLS (lengths):\n';
+            for (const [rarity, cards] of Object.entries(RARITY_CARD_POOLS)) {
+                output += `${rarity}: ${cards.length} cards\n`;
+            }
+            
+            // Check if drop rates sum to 100
+            const totalRate = Object.values(DROP_RATES).reduce((sum, rate) => sum + rate, 0);
+            output += `\nTotal drop rate: ${totalRate}% (should be 100%)\n`;
+            
+            results.textContent = output;
+        };
+
+        window.generateSingleCard = function() {
+            const results = document.getElementById('single-card-results');
+            
+            try {
+                const card = new NFTCard(CARD_TYPES.LASER_CANNON);
+                let output = `Default card (LASER_CANNON):\n`;
+                output += `Type: ${card.cardType}\n`;
+                output += `Rarity: ${card.rarity}\n`;
+                output += `Name: ${card.metadata.name}\n\n`;
+                
+                results.textContent = output;
+            } catch (error) {
+                results.textContent = `Error: ${error.message}\n${error.stack}`;
+            }
+        };
+
+        window.generateMultipleCards = function(count) {
+            const results = document.getElementById('single-card-results');
+            let output = `Generating ${count} random cards:\n\n`;
+            
+            try {
+                for (let i = 0; i < count; i++) {
+                    // Test the random generation logic manually
+                    const random = Math.random() * 100;
+                    let cumulativeRate = 0;
+                    let selectedRarity = CARD_RARITY.COMMON;
+
+                    for (const [rarity, rate] of Object.entries(DROP_RATES)) {
+                        cumulativeRate += rate;
+                        if (random <= cumulativeRate) {
+                            selectedRarity = rarity;
+                            break;
+                        }
+                    }
+
+                    const availableCardTypes = RARITY_CARD_POOLS[selectedRarity] || Object.values(CARD_TYPES);
+                    const randomCardType = availableCardTypes[Math.floor(Math.random() * availableCardTypes.length)];
+                    const card = new NFTCard(randomCardType, selectedRarity);
+                    
+                    const rarityClass = `rarity-${selectedRarity.toLowerCase()}`;
+                    output += `${i + 1}. ${card.metadata.name} (${selectedRarity}) - Random: ${random.toFixed(2)}\n`;
+                }
+                
+                results.innerHTML = `<pre>${output}</pre>`;
+            } catch (error) {
+                results.textContent = `Error: ${error.message}\n${error.stack}`;
+            }
+        };
+
+        window.testRarityDistribution = function(count) {
+            const results = document.getElementById('distribution-results');
+            const distribution = {};
+            
+            // Initialize counters
+            Object.values(CARD_RARITY).forEach(rarity => {
+                distribution[rarity] = 0;
+            });
+            
+            try {
+                for (let i = 0; i < count; i++) {
+                    const random = Math.random() * 100;
+                    let cumulativeRate = 0;
+                    let selectedRarity = CARD_RARITY.COMMON;
+
+                    for (const [rarity, rate] of Object.entries(DROP_RATES)) {
+                        cumulativeRate += rate;
+                        if (random <= cumulativeRate) {
+                            selectedRarity = rarity;
+                            break;
+                        }
+                    }
+                    
+                    distribution[selectedRarity]++;
+                }
+                
+                let output = `Distribution of ${count} cards:\n\n`;
+                for (const [rarity, count] of Object.entries(distribution)) {
+                    const percentage = ((count / 1000) * 100).toFixed(1);
+                    const expected = DROP_RATES[rarity] || 0;
+                    output += `${rarity}: ${count} (${percentage}%) - Expected: ${expected}%\n`;
+                }
+                
+                results.textContent = output;
+            } catch (error) {
+                results.textContent = `Error: ${error.message}\n${error.stack}`;
+            }
+        };
+
+        window.testManualRarity = function() {
+            const results = document.getElementById('manual-rarity-results');
+            let output = 'Creating cards with specific rarities:\n\n';
+            
+            try {
+                const rarities = Object.values(CARD_RARITY);
+                
+                for (const rarity of rarities) {
+                    const card = new NFTCard(CARD_TYPES.LASER_CANNON, rarity);
+                    output += `${rarity}: ${card.metadata.name} - Actual rarity: ${card.rarity}\n`;
+                }
+                
+                results.textContent = output;
+            } catch (error) {
+                results.textContent = `Error: ${error.message}\n${error.stack}`;
+            }
+        };
+
+        window.testCardInventory = function() {
+            const results = document.getElementById('inventory-results');
+            let output = 'Testing CardInventory.generateRandomCard():\n\n';
+            
+            try {
+                const inventory = new CardInventory();
+                
+                for (let i = 0; i < 20; i++) {
+                    const card = inventory.generateRandomCard();
+                    output += `${i + 1}. ${card.metadata.name} (${card.rarity})\n`;
+                }
+                
+                results.textContent = output;
+            } catch (error) {
+                results.textContent = `Error: ${error.message}\n${error.stack}`;
+            }
+        };
+    </script>
+</body>
+</html> 
