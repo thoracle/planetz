@@ -649,4 +649,258 @@ sequenceDiagram
     end
 ```
 
+## Damage Control System
+
+### Sequence Diagram - Damage Control and Auto-Repair Flow
+
+```mermaid
+sequenceDiagram
+    participant Player
+    participant StarfieldManager as StarfieldManager
+    participant DamageControl as SimplifiedDamageControl
+    participant AutoRepair as AutoRepairSystem
+    participant Ship as Ship
+    participant System as System
+    participant UI as DamageControlUI
+
+    %% Opening Damage Control Interface
+    Player->>StarfieldManager: Press 'D' key
+    StarfieldManager->>DamageControl: show(ship, isDocked)
+    DamageControl->>DamageControl: createInterface()
+    DamageControl->>Ship: getStatus()
+    Ship->>Ship: Calculate system status
+    Ship-->>DamageControl: {systems: {...}, hull: {...}}
+    DamageControl->>UI: Render systems grid
+    DamageControl->>AutoRepair: getStatus()
+    AutoRepair-->>DamageControl: {isActive, currentTarget, queue}
+    DamageControl->>UI: Update interface display
+
+    %% Setting System Priorities
+    Player->>UI: Adjust priority slider
+    UI->>DamageControl: setPriority(systemName, priority)
+    DamageControl->>AutoRepair: setSystemPriority(systemName, priority)
+    AutoRepair->>AutoRepair: updateRepairQueue()
+    
+    loop For each damaged system
+        AutoRepair->>Ship: getSystem(systemName)
+        Ship-->>AutoRepair: System instance
+        AutoRepair->>System: healthPercentage
+        System-->>AutoRepair: health value
+    end
+    
+    AutoRepair->>AutoRepair: Sort queue by priority & health
+    AutoRepair->>AutoRepair: Set currentTarget
+
+    %% Activating Auto-Repair
+    Player->>UI: Click "ACTIVATE" button
+    UI->>DamageControl: toggleAutoRepair()
+    DamageControl->>AutoRepair: toggle()
+    AutoRepair->>AutoRepair: start()
+    AutoRepair->>AutoRepair: updateRepairQueue()
+
+    %% Auto-Repair Processing Loop
+    loop Game Update Loop
+        Ship->>AutoRepair: update(deltaTime)
+        
+        alt Auto-repair is active and has target
+            AutoRepair->>Ship: getSystem(currentTarget)
+            Ship-->>AutoRepair: System instance
+            AutoRepair->>System: healthPercentage
+            System-->>AutoRepair: current health
+            
+            alt System needs repair
+                AutoRepair->>System: repair(repairAmount)
+                System->>System: currentHealth += repairAmount
+                System->>System: updateSystemState()
+                System->>System: calculateEffectiveness()
+                
+                alt Health milestone reached
+                    System->>AutoRepair: Log repair progress
+                end
+                
+                alt System restored to functionality
+                    System->>AutoRepair: Log restoration
+                    System->>Ship: Notify system operational
+                end
+            else System fully repaired
+                AutoRepair->>AutoRepair: updateRepairQueue()
+                AutoRepair->>AutoRepair: Set next target
+            end
+        end
+        
+        %% Update UI periodically
+        alt UI refresh interval
+            DamageControl->>Ship: getStatus()
+            Ship-->>DamageControl: Updated system status
+            DamageControl->>AutoRepair: getStatus()
+            AutoRepair-->>DamageControl: Updated repair status
+            DamageControl->>UI: Update display
+            UI->>UI: Refresh health bars
+            UI->>UI: Update repair queue
+            UI->>UI: Update current target
+        end
+    end
+
+    %% Damage Infliction Flow
+    rect rgb(255, 200, 200)
+        Note over Player, System: System Damage Scenario
+        Player->>Ship: applyDamage(amount, type)
+        Ship->>Ship: Calculate hull damage
+        Ship->>Ship: applySystemDamage()
+        
+        loop Random system damage
+            Ship->>System: takeDamage(damageAmount)
+            System->>System: currentHealth -= damage
+            System->>System: updateSystemState()
+            
+            alt System becomes critical/disabled
+                System->>System: handleStateEffects()
+                System->>Ship: Notify state change
+            end
+        end
+        
+        Ship->>Ship: calculateTotalStats()
+        Ship->>DamageControl: Trigger status update
+    end
+
+    %% Manual Repair Priority Changes
+    rect rgb(200, 255, 200)
+        Note over Player, AutoRepair: Priority Management
+        Player->>UI: Adjust multiple priorities
+        
+        loop For each priority change
+            UI->>DamageControl: setPriority(system, value)
+            DamageControl->>AutoRepair: setSystemPriority(system, value)
+        end
+        
+        AutoRepair->>AutoRepair: updateRepairQueue()
+        AutoRepair->>AutoRepair: Reorder by priority
+        AutoRepair->>DamageControl: Current target changed
+        DamageControl->>UI: Update repair queue display
+    end
+
+    %% Closing Interface
+    Player->>UI: Press 'D' or 'ESC'
+    UI->>DamageControl: handleKeyPress()
+    DamageControl->>DamageControl: hide()
+    DamageControl->>DamageControl: Clear refresh timer
+    DamageControl->>DamageControl: Remove event listeners
+```
+
+### Class Diagram - Damage Control Architecture
+
+```mermaid
+classDiagram
+    class SimplifiedDamageControl {
+        +Boolean isVisible
+        +Ship ship
+        +Boolean isDocked
+        +Number refreshInterval
+        +show(ship, isDocked) Boolean
+        +hide() Boolean
+        +toggle(ship, isDocked) Boolean
+        +createInterface() void
+        +updateInterface() void
+        +setPriority(systemName, priority) void
+        +toggleAutoRepair() void
+        +formatSystemName(systemName) String
+    }
+
+    class AutoRepairSystem {
+        +Ship ship
+        +Array repairQueue
+        +Number repairRate
+        +Boolean isActive
+        +String currentTarget
+        +Object priorities
+        +start() void
+        +stop() void
+        +toggle() Boolean
+        +update(deltaTime) void
+        +setSystemPriority(systemName, priority) void
+        +updateRepairQueue() void
+        +getStatus() Object
+        +getEstimatedRepairTime() Number
+    }
+
+    class Ship {
+        +Number currentHull
+        +Number maxHull
+        +Number currentEnergy
+        +Number maxEnergy
+        +Map systems
+        +AutoRepairSystem autoRepairSystem
+        +getStatus() Object
+        +getSystem(systemName) System
+        +applyDamage(amount, type) void
+        +calculateTotalStats() Object
+        +update(deltaTime) void
+    }
+
+    class System {
+        +String name
+        +Number level
+        +Number currentHealth
+        +Number maxHealth
+        +Number healthPercentage
+        +String state
+        +Boolean isActive
+        +takeDamage(amount) void
+        +repair(amount) void
+        +updateSystemState() void
+        +getEffectiveness() Number
+        +isOperational() Boolean
+    }
+
+    class DamageControlUI {
+        +Element container
+        +Map sliders
+        +Element statusDisplay
+        +Element queueDisplay
+        +renderSystemsGrid() void
+        +updateHealthBars() void
+        +updateRepairQueue() void
+        +addSliderEventListeners() void
+    }
+
+    SimplifiedDamageControl --> Ship : manages
+    SimplifiedDamageControl --> AutoRepairSystem : controls
+    SimplifiedDamageControl --> DamageControlUI : renders
+    AutoRepairSystem --> Ship : repairs_systems_of
+    Ship o-- System : contains_many
+    Ship --> AutoRepairSystem : has_one
+    AutoRepairSystem --> System : repairs
+    DamageControlUI --> SimplifiedDamageControl : callbacks_to
+```
+
+### State Diagram - Auto-Repair System States
+
+```mermaid
+stateDiagram-v2
+    [*] --> Inactive
+    
+    Inactive --> Active : toggle() / start()
+    Active --> Inactive : toggle() / stop()
+    
+    state Active {
+        [*] --> ScanningQueue
+        ScanningQueue --> RepairingSystem : target_found
+        ScanningQueue --> Idle : no_targets
+        
+        RepairingSystem --> ScanningQueue : system_repaired
+        RepairingSystem --> ScanningQueue : priority_changed
+        RepairingSystem --> RepairingSystem : repair_progress
+        
+        Idle --> ScanningQueue : new_damage / priority_change
+    }
+    
+    state RepairingSystem {
+        [*] --> CalculatingRepair
+        CalculatingRepair --> ApplyingRepair : repair_amount_calculated
+        ApplyingRepair --> CheckingProgress : repair_applied
+        CheckingProgress --> CalculatingRepair : continue_repair
+        CheckingProgress --> [*] : repair_complete
+    }
+```
+
 This architecture documentation provides a comprehensive view of the NFT card collection system, showing how all components interact to create a cohesive gameplay experience while maintaining flexibility for future blockchain integration. 

@@ -228,7 +228,15 @@ export class StationRepairInterface {
         
         if (!hullStatusElement || !hullOptionsElement || !this.ship) return;
         
-        const hullPercentage = (this.ship.currentHull / this.ship.maxHull) * 100;
+        // Add null checks and fallbacks for hull values
+        const currentHull = this.ship.currentHull || 0;
+        const maxHull = this.ship.maxHull || 1; // Prevent division by zero
+        
+        // Calculate hull percentage with proper fallbacks
+        let hullPercentage = 0;
+        if (maxHull > 0) {
+            hullPercentage = (currentHull / maxHull) * 100;
+        }
         const hullDamage = 100 - hullPercentage;
         
         // Hull status display
@@ -242,6 +250,18 @@ export class StationRepairInterface {
                 <span>${hullDamage.toFixed(1)}%</span>
             </div>
         `;
+        
+        // Check if hull values are actually available
+        if (maxHull <= 1 || (currentHull === 0 && maxHull === 1)) {
+            // Ship has no hull system installed or initialized
+            hullOptionsElement.innerHTML = `
+                <div class="no-repair-needed">
+                    <div class="status-warning">⚠️ No hull plating system detected</div>
+                    <div class="status-info">Install hull plating cards to enable hull integrity monitoring</div>
+                </div>
+            `;
+            return;
+        }
         
         // Hull repair options
         if (hullDamage > 0) {
@@ -572,7 +592,21 @@ export class StationRepairInterface {
     repairHull(emergency = false) {
         if (!this.ship) return;
         
-        const hullPercentage = (this.ship.currentHull / this.ship.maxHull) * 100;
+        // Add null checks and fallbacks for hull values
+        const currentHull = this.ship.currentHull || 0;
+        const maxHull = this.ship.maxHull || 1; // Prevent division by zero
+        
+        // Check if hull values are actually available
+        if (maxHull <= 1 || (currentHull === 0 && maxHull === 1)) {
+            console.log('No hull plating system detected - cannot repair hull');
+            return;
+        }
+        
+        // Calculate hull percentage with proper fallbacks
+        let hullPercentage = 0;
+        if (maxHull > 0) {
+            hullPercentage = (currentHull / maxHull) * 100;
+        }
         const hullDamage = 100 - hullPercentage;
         
         if (hullDamage <= 0) {

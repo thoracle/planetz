@@ -511,20 +511,21 @@ export class ViewManager {
                     this.starfieldManager.playCommandSound();
                 }
                 
-                // Check if ship has weapon cards installed FIRST
+                // Check if weapon cards are installed
                 let hasWeaponCards = false;
+                
                 if (this.ship && this.ship.hasSystemCardsSync) {
                     try {
                         const cardCheck = this.ship.hasSystemCardsSync('weapons');
-                        if (typeof cardCheck === 'boolean') {
-                            hasWeaponCards = cardCheck;
-                        } else if (cardCheck && typeof cardCheck === 'object') {
-                            hasWeaponCards = cardCheck.hasCards;
-                        }
+                        hasWeaponCards = Boolean(cardCheck);
+                        console.log(`🔫 WEAPON CHECK: hasWeaponCards = ${hasWeaponCards}`);
+                        
                     } catch (error) {
                         console.warn('Weapon card check failed:', error);
                         hasWeaponCards = false;
                     }
+                } else {
+                    console.log(`🔫 ERROR: Ship or hasSystemCardsSync method not available`);
                 }
                 
                 if (!hasWeaponCards) {

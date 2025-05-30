@@ -8,13 +8,8 @@ import System, { SYSTEM_STATES } from '../System.js';
 
 export default class Weapons extends System {
     constructor(level = 1, config = {}) {
-        // Initialize base weapon properties BEFORE calling super()
-        // so they're available when initializeLevelStats() is called
-        
-        // Weapon mechanics - moved before super() call
-        const baseDamage = 50; // Base damage per shot (will be modified by level)
-        const baseFireRate = 2.0; // Shots per second (will be modified by level)
-        const energyPerShot = 15; // Energy consumed per shot (will be modified by level)
+        // Extract weapon type from config (passed from CardSystemIntegration)
+        const weaponCardType = config.weaponCardType || 'laser_cannon'; // Default to laser cannon
         
         // Base configuration for weapons
         const baseConfig = {
@@ -27,10 +22,14 @@ export default class Weapons extends System {
         
         super('Weapons', level, baseConfig);
         
-        // Store the base properties as instance variables
-        this.baseDamage = baseDamage;
-        this.baseFireRate = baseFireRate;
-        this.energyPerShot = energyPerShot;
+        // Store weapon type AFTER super() call
+        this.weaponCardType = weaponCardType;
+        
+        // Get weapon mechanics AFTER super() call when 'this' is available
+        const weaponStats = this.getBaseWeaponStats();
+        this.baseDamage = weaponStats.damage;
+        this.baseFireRate = weaponStats.fireRate;
+        this.energyPerShot = weaponStats.energyPerShot;
         
         // Weapon state
         this.isCharging = false; // Whether weapon is charging for next shot
@@ -61,69 +60,128 @@ export default class Weapons extends System {
     }
     
     /**
+     * Get base weapon statistics based on card type
+     */
+    getBaseWeaponStats() {
+        const weaponStats = {
+            'laser_cannon': {
+                damage: 50,
+                fireRate: 2.0,
+                energyPerShot: 15,
+                accuracy: 0.95,
+                range: 120,
+                name: 'Laser Cannon'
+            },
+            'plasma_cannon': {
+                damage: 65,
+                fireRate: 1.5,
+                energyPerShot: 25,
+                accuracy: 0.85,
+                range: 100,
+                name: 'Plasma Cannon'
+            },
+            'pulse_cannon': {
+                damage: 35,
+                fireRate: 3.0,
+                energyPerShot: 10,
+                accuracy: 0.90,
+                range: 80,
+                name: 'Pulse Cannon'
+            },
+            'phaser_array': {
+                damage: 55,
+                fireRate: 1.8,
+                energyPerShot: 20,
+                accuracy: 0.92,
+                range: 150,
+                name: 'Phaser Array'
+            },
+            'disruptor_cannon': {
+                damage: 75,
+                fireRate: 1.2,
+                energyPerShot: 30,
+                accuracy: 0.80,
+                range: 90,
+                name: 'Disruptor Cannon'
+            },
+            'particle_beam': {
+                damage: 85,
+                fireRate: 1.0,
+                energyPerShot: 35,
+                accuracy: 0.88,
+                range: 200,
+                name: 'Particle Beam'
+            }
+        };
+        
+        return weaponStats[this.weaponCardType] || weaponStats['laser_cannon'];
+    }
+    
+    /**
      * Initialize level-specific stats for weapons
      * @returns {Object} Level stats configuration
      */
     initializeLevelStats() {
         const baseDamage = this.baseDamage;
         const baseFireRate = this.baseFireRate;
+        const weaponName = this.getBaseWeaponStats().name;
         
         return {
             1: { 
                 effectiveness: 1.0,
                 damage: baseDamage,
                 fireRate: baseFireRate,
-                energyPerShot: 5, // Level 1 lasers take 5 energy to fire
+                energyPerShot: this.energyPerShot,
                 maxBurstShots: 1, // Single shot
-                weaponType: 'Level 1 Lasers'
+                weaponType: `Level 1 ${weaponName}`
             },
             2: { 
                 effectiveness: 1.2,
                 damage: baseDamage * 1.3, // 30% more damage
                 fireRate: baseFireRate * 1.1, // 10% faster fire rate
-                energyPerShot: 8, // Level 2 lasers take 8 energy to fire
+                energyPerShot: this.energyPerShot * 1.2,
                 maxBurstShots: 2, // Dual shot
-                weaponType: 'Level 2 Laser Cannons'
+                weaponType: `Level 2 ${weaponName}s`
             },
             3: { 
                 effectiveness: 1.4,
                 damage: baseDamage * 1.6, // 60% more damage
                 fireRate: baseFireRate * 1.2, // 20% faster fire rate
-                energyPerShot: 15, // Level 3 lasers take 15 energy to fire
+                energyPerShot: this.energyPerShot * 1.5,
                 maxBurstShots: 3, // Triple shot
-                weaponType: 'Level 3 Laser Turrets'
+                weaponType: `Level 3 ${weaponName} Array`
             },
             4: { 
                 effectiveness: 1.6,
                 damage: baseDamage * 2.0, // 100% more damage
                 fireRate: baseFireRate * 1.3, // 30% faster fire rate
-                energyPerShot: 22, // Level 4 lasers take 22 energy to fire
+                energyPerShot: this.energyPerShot * 1.8,
                 maxBurstShots: 4, // Quad shot
-                weaponType: 'Level 4 Pulse Lasers'
+                weaponType: `Level 4 Heavy ${weaponName}s`
             },
             5: { 
                 effectiveness: 1.8,
                 damage: baseDamage * 2.5, // 150% more damage
                 fireRate: baseFireRate * 1.4, // 40% faster fire rate
-                energyPerShot: 30, // Level 5 lasers take 30 energy to fire
+                energyPerShot: this.energyPerShot * 2.0,
                 maxBurstShots: 5, // Penta shot
-                weaponType: 'Level 5 Plasma Cannons'
+                weaponType: `Level 5 Enhanced ${weaponName} Battery`
             },
             6: { 
                 effectiveness: 2.0,
                 damage: baseDamage * 3.0, // 200% more damage
                 fireRate: baseFireRate * 1.5, // 50% faster fire rate
-                energyPerShot: 40, // Level 6 lasers take 40 energy to fire
+                energyPerShot: this.energyPerShot * 2.2,
                 maxBurstShots: 6, // Hexa shot
-                weaponType: 'Level 6 Heavy Plasma Cannons'
+                weaponType: `Level 6 Military ${weaponName} Array`
             },
             7: { 
                 effectiveness: 2.2,
                 damage: baseDamage * 3.5, // 250% more damage
                 fireRate: baseFireRate * 1.6, // 60% faster fire rate
-                energyPerShot: 50, // Level 7 lasers take 50 energy to fire
+                energyPerShot: this.energyPerShot * 2.5,
                 maxBurstShots: 7, // Hepta shot
-                weaponType: 'Level 7 Antimatter Cannons'
+                weaponType: `Level 7 Elite ${weaponName} System`
             }
         };
     }

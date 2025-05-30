@@ -65,4 +65,84 @@ export default class CargoHold extends System {
         super.update(deltaTime, ship);
         // Cargo hold is passive - no active updates needed
     }
+}
+
+/**
+ * Reinforced Cargo Hold System - Damage-resistant cargo storage
+ * Based on docs/spaceships_spec.md
+ */
+export class ReinforcedCargoHold extends CargoHold {
+    constructor(level = 1) {
+        super(level);
+        
+        this.systemType = 'reinforced_cargo_hold';
+        this.description = 'Reinforced cargo hold with enhanced damage resistance';
+        
+        // Reinforced cargo holds have same capacity but higher durability
+        this.cargoCapacityPerLevel = 10; // Same as regular cargo hold
+        this.maxHealth = this.maxHealth * 1.5; // 50% more health
+        this.currentHealth = this.maxHealth;
+        
+        this.updateStats();
+    }
+    
+    /**
+     * Take damage - reinforced cargo holds are more resistant
+     */
+    takeDamage(damage) {
+        // Reinforced cargo holds take 25% less damage
+        const reducedDamage = damage * 0.75;
+        super.takeDamage(reducedDamage);
+        
+        if (reducedDamage > 0) {
+            console.log(`${this.name} reinforced plating absorbed ${damage - reducedDamage} damage`);
+        }
+    }
+    
+    getSystemInfo() {
+        const baseInfo = super.getSystemInfo();
+        return {
+            ...baseInfo,
+            description: `Provides ${this.getCargoCapacity().toFixed(0)} cargo units (damage-resistant)`
+        };
+    }
+}
+
+/**
+ * Shielded Cargo Hold System - Scan-resistant cargo storage
+ * Based on docs/spaceships_spec.md
+ */
+export class ShieldedCargoHold extends CargoHold {
+    constructor(level = 1) {
+        super(level);
+        
+        this.systemType = 'shielded_cargo_hold';
+        this.description = 'Shielded cargo hold with scan-resistant properties';
+        
+        // Shielded cargo holds have slightly less capacity but scan protection
+        this.cargoCapacityPerLevel = 8; // 20% less capacity than regular
+        this.scanResistance = 0.75; // 75% chance to resist scans
+        
+        this.updateStats();
+    }
+    
+    /**
+     * Check if cargo can resist scanning
+     */
+    resistsScan() {
+        if (!this.isOperational()) return false;
+        return Math.random() < this.scanResistance * this.getEffectiveness();
+    }
+    
+    getSystemInfo() {
+        const baseInfo = super.getSystemInfo();
+        return {
+            ...baseInfo,
+            stats: {
+                ...baseInfo.stats,
+                scanResistance: (this.scanResistance * 100).toFixed(0) + '%'
+            },
+            description: `Provides ${this.getCargoCapacity().toFixed(0)} cargo units (scan-resistant)`
+        };
+    }
 } 

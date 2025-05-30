@@ -370,6 +370,17 @@ export default class SimplifiedDamageControl {
      * @returns {string} Formatted name
      */
     formatSystemName(systemName) {
+        // Special handling for weapons - get the actual weapon type
+        if (systemName === 'weapons' && this.ship) {
+            const weaponsSystem = this.ship.getSystem('weapons');
+            if (weaponsSystem && weaponsSystem.levelStats && weaponsSystem.level) {
+                const levelStats = weaponsSystem.levelStats[weaponsSystem.level];
+                if (levelStats && levelStats.weaponType) {
+                    return levelStats.weaponType;
+                }
+            }
+        }
+        
         return getSystemDisplayName(systemName);
     }
     
@@ -763,5 +774,14 @@ export default class SimplifiedDamageControl {
         `;
         
         document.head.appendChild(style);
+    }
+    
+    /**
+     * Force immediate interface refresh (called externally when ship changes)
+     */
+    forceRefresh() {
+        if (this.isVisible) {
+            this.updateInterface();
+        }
     }
 } 

@@ -875,6 +875,17 @@ export class StarfieldManager {
     }
 
     formatSystemName(systemName) {
+        // Special handling for weapons - get the actual weapon type
+        if (systemName === 'weapons' && this.ship) {
+            const weaponsSystem = this.ship.getSystem('weapons');
+            if (weaponsSystem && weaponsSystem.levelStats && weaponsSystem.level) {
+                const levelStats = weaponsSystem.levelStats[weaponsSystem.level];
+                if (levelStats && levelStats.weaponType) {
+                    return levelStats.weaponType.toUpperCase();
+                }
+            }
+        }
+        
         // Use the standardized display name function
         return getSystemDisplayName(systemName).toUpperCase();
     }

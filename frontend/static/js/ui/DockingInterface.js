@@ -115,14 +115,6 @@ export class DockingInterface {
             () => this.handleLaunch()
         );
 
-        // Inventory button
-        this.inventoryButton = this.createServiceButton(
-            'SHIP INVENTORY',
-            'Manage ship configuration and card inventory',
-            'inventory-button',
-            () => this.handleInventory()
-        );
-
         // Repair button
         this.repairButton = this.createServiceButton(
             'REPAIR SHIP',
@@ -141,7 +133,6 @@ export class DockingInterface {
 
         // Add buttons to services container
         this.servicesContainer.appendChild(this.launchButton);
-        this.servicesContainer.appendChild(this.inventoryButton);
         this.servicesContainer.appendChild(this.repairButton);
         this.servicesContainer.appendChild(this.shopButton);
     }
@@ -230,7 +221,7 @@ export class DockingInterface {
         // Hostile planets won't allow docking in the first place
         
         // All services are always available when docked
-        [this.launchButton, this.inventoryButton, this.repairButton, this.shopButton].forEach(button => {
+        [this.launchButton, this.repairButton, this.shopButton].forEach(button => {
             button.style.opacity = '1';
             button.style.pointerEvents = 'auto';
             button.title = ''; // Clear any disabled tooltips
@@ -250,29 +241,6 @@ export class DockingInterface {
         
         // Trigger undocking
         this.starfieldManager.undock();
-    }
-
-    handleInventory() {
-        console.log('Ship inventory requested');
-        
-        // Play command sound
-        if (this.starfieldManager.playCommandSound) {
-            this.starfieldManager.playCommandSound();
-        }
-        
-        // Store the docked location BEFORE hiding the interface
-        const dockedLocation = this.dockedLocation;
-        
-        // Hide docking interface
-        this.hide();
-        
-        // Show card inventory in normal mode (not shop mode)
-        if (dockedLocation) {
-            console.log('Opening ship inventory...');
-            this.cardInventoryUI.showAsInventory(dockedLocation, this);
-        } else {
-            console.error('Cannot access inventory: location data unavailable');
-        }
     }
 
     handleRepair() {

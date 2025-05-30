@@ -31,26 +31,21 @@ export default class CardSystemIntegration {
      * Load cards from the card inventory UI
      */
     async loadCards() {
-        console.log(`🔧 LOADING CARDS for ${this.ship.shipType}...`);
-        
         // Clear existing cards to avoid duplicates
         this.installedCards.clear();
         
         if (this.cardInventoryUI && this.cardInventoryUI.shipSlots) {
             // Load from cardInventoryUI if available
-            console.log(`📦 Loading from cardInventoryUI (${this.cardInventoryUI.shipSlots.size} slots)`);
             for (const [slotId, card] of this.cardInventoryUI.shipSlots.entries()) {
                 if (card && card.cardType) {
                     this.installedCards.set(slotId, {
                         cardType: card.cardType,
                         level: card.level || 1
                     });
-                    console.log(`  ✅ Loaded ${card.cardType} (L${card.level}) from slot ${slotId}`);
                 }
             }
         } else {
             // Load from PlayerData as fallback
-            console.log(`💾 Loading from PlayerData fallback...`);
             try {
                 const { default: CardInventoryUI } = await import('../ui/CardInventoryUI.js');
                 const playerData = CardInventoryUI.getPlayerData();
@@ -58,18 +53,14 @@ export default class CardSystemIntegration {
                 
                 const shipConfig = playerData.getShipConfiguration(this.ship.shipType);
                 if (shipConfig && shipConfig.size > 0) {
-                    console.log(`📋 Found ship config in PlayerData (${shipConfig.size} entries)`);
                     for (const [slotId, cardData] of shipConfig.entries()) {
                         if (cardData && cardData.cardType) {
                             this.installedCards.set(slotId, {
                                 cardType: cardData.cardType,
                                 level: cardData.level || 1
                             });
-                            console.log(`  ✅ Loaded ${cardData.cardType} (L${cardData.level}) from PlayerData slot ${slotId}`);
                         }
                     }
-                } else {
-                    console.log(`❌ No ship config found in PlayerData for ${this.ship.shipType}`);
                 }
             } catch (error) {
                 console.error('Error loading cards from PlayerData:', error);
@@ -356,12 +347,10 @@ export default class CardSystemIntegration {
     }
 
     /**
-     * Create missing systems based on installed cards
+     * Create ship systems based on installed cards
      * This ensures that if a card is installed, the corresponding system exists
      */
     async createSystemsFromCards() {
-        console.log(`🔧 Creating systems from installed cards...`);
-        
         const cardToSystemMap = {
             'subspace_radio': 'SubspaceRadioSystem',
             'long_range_scanner': 'LongRangeScanner', 
@@ -370,11 +359,17 @@ export default class CardSystemIntegration {
             'hull_plating': 'HullPlating',
             'shield_generator': 'Shields',  // Map shield_generator card to Shields class
             'cargo_hold': 'CargoHold',
+            'reinforced_cargo_hold': 'ReinforcedCargoHold',
+            'shielded_cargo_hold': 'ShieldedCargoHold',
             'warp_drive': 'WarpDrive',
             'laser_cannon': 'Weapons',
             'plasma_cannon': 'Weapons',
             'pulse_cannon': 'Weapons',
-            'missile_tubes': 'MissileTubes'
+            'phaser_array': 'Weapons',
+            'disruptor_cannon': 'Weapons',
+            'particle_beam': 'Weapons',
+            'missile_tubes': 'MissileTubes',
+            'torpedo_launcher': 'MissileTubes'  // Map torpedo launcher to missile system
         };
         
         const systemPathMap = {
@@ -385,6 +380,8 @@ export default class CardSystemIntegration {
             'HullPlating': './systems/HullPlating.js',
             'ShieldGenerator': './systems/ShieldGenerator.js',
             'CargoHold': './systems/CargoHold.js',
+            'ReinforcedCargoHold': './systems/CargoHold.js',
+            'ShieldedCargoHold': './systems/CargoHold.js',
             'WarpDrive': './systems/WarpDrive.js',
             'Weapons': './systems/Weapons.js',
             'MissileTubes': './systems/MissileTubes.js'
@@ -397,41 +394,79 @@ export default class CardSystemIntegration {
             const systemClass = cardToSystemMap[cardData.cardType];
             const systemName = this.getSystemNameForCard(cardData.cardType);
             
-            // Skip if system already exists
+            // Special handling for weapons: check if weapon type has changed
+            if (systemName === 'weapons') {
+                const existingWeaponsSystem = this.ship.getSystem(systemName);
+                if (existingWeaponsSystem && existingWeaponsSystem.weaponCardType !== cardData.cardType) {
+                    // Weapon type changed - remove old system so new one can be created
+                    console.log(`🔄 WEAPON TYPE CHANGED: ${existingWeaponsSystem.weaponCardType} → ${cardData.cardType}`);
+                    this.ship.removeSystem(systemName);
+                }
+            }
+            
+            // Skip if system already exists (except for weapons which we handled above)
             if (this.ship.getSystem(systemName)) {
                 continue;
             }
             
-            // Skip if we don't know how to create this system
+            // Skip if we don't know how to create this system (weapons will fail here)
             if (!systemClass || !systemPathMap[systemClass]) {
-                console.log(`  ⚠️ Unknown system type for card: ${cardData.cardType}`);
+                console.log(`❌ SYSTEM CREATION FAILED: ${cardData.cardType} → Unknown system type`);
                 continue;
             }
             
             try {
                 // Import and create the system
                 const modulePath = systemPathMap[systemClass];
-                const { default: SystemClass } = await import(modulePath);
-                const system = new SystemClass(cardData.level);
+                
+                // Handle both default and named exports
+                let SystemClass;
+                if (systemClass === 'ReinforcedCargoHold' || systemClass === 'ShieldedCargoHold') {
+                    // Named exports for cargo variants
+                    const module = await import(modulePath);
+                    SystemClass = module[systemClass];
+                } else {
+                    // Default exports for most systems
+                    const { default: DefaultSystemClass } = await import(modulePath);
+                    SystemClass = DefaultSystemClass;
+                }
+                
+                // Create system with appropriate configuration
+                let system;
+                if (systemClass === 'Weapons') {
+                    // Pass weapon card type to Weapons system
+                    system = new SystemClass(cardData.level, { weaponCardType: cardData.cardType });
+                } else {
+                    // Standard system creation
+                    system = new SystemClass(cardData.level);
+                }
                 
                 // Add the system to the ship
                 if (this.ship.addSystem(systemName, system)) {
                     systemsCreated++;
-                    console.log(`  ✅ Created ${systemName} (Level ${cardData.level}) from ${cardData.cardType} card`);
                 } else {
-                    console.log(`  ❌ Failed to add ${systemName} to ship (no slots?)`);
+                    console.log(`❌ FAILED TO ADD: ${systemName} (no slots?)`);
                 }
                 
             } catch (error) {
-                console.error(`  ❌ Failed to create system ${systemName} for card ${cardData.cardType}:`, error);
+                console.error(`❌ SYSTEM ERROR: ${cardData.cardType} →`, error.message);
             }
         }
         
-        console.log(`🎯 SYSTEMS CREATED: ${systemsCreated} new systems from cards`);
-        
-        // Recalculate ship stats after adding systems
         if (systemsCreated > 0) {
+            console.log(`✅ Created ${systemsCreated} systems from cards`);
+            // Recalculate ship stats after adding systems
             this.ship.calculateTotalStats();
+            
+            // Trigger damage control interface refresh if it's open
+            if (window.simplifiedDamageControl) {
+                window.simplifiedDamageControl.forceRefresh();
+            }
+            
+            // Also trigger StarfieldManager damage control refresh if visible
+            if (window.starfieldManager && window.starfieldManager.damageControlVisible) {
+                window.starfieldManager.updateShipSystemsDisplay();
+            }
         }
     }
     
@@ -447,11 +482,17 @@ export default class CardSystemIntegration {
             'hull_plating': 'hull_plating',
             'shield_generator': 'shields',  // Map shield_generator card to shields system
             'cargo_hold': 'cargo_hold',
+            'reinforced_cargo_hold': 'reinforced_cargo_hold',
+            'shielded_cargo_hold': 'shielded_cargo_hold',
             'warp_drive': 'warp_drive',
             'laser_cannon': 'weapons',
             'plasma_cannon': 'weapons', 
             'pulse_cannon': 'weapons',
-            'missile_tubes': 'missile_tubes'
+            'phaser_array': 'weapons',
+            'disruptor_cannon': 'weapons',
+            'particle_beam': 'weapons',
+            'missile_tubes': 'missile_tubes',
+            'torpedo_launcher': 'missile_tubes'  // Map torpedo launcher to missile system
         };
         
         return cardToSystemNameMap[cardType] || cardType;
