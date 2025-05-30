@@ -911,21 +911,28 @@ This architecture documentation provides a comprehensive view of the NFT card co
 
 ```mermaid
 classDiagram
-    class WeaponSystem {
+    class WeaponSystemCore {
+        +Ship ship
         +Array weaponSlots
         +Number activeSlotIndex
+        +Number maxWeaponSlots
         +Boolean isAutofireOn
         +Boolean targetLockRequired
         +Object lockedTarget
+        +WeaponHUD weaponHUD
         +selectPreviousWeapon() Boolean
         +selectNextWeapon() Boolean
         +fireActiveWeapon() Boolean
         +toggleAutofire() Boolean
         +updateAutofire(deltaTime) void
         +getActiveWeapon() WeaponSlot
-        +equipWeapon(slotIndex, weaponCard) Boolean
-        +unequipWeapon(slotIndex) Boolean
+        +installWeapon(slotIndex, weaponCard) Boolean
+        +removeWeapon(slotIndex) Boolean
         +validateTargetLock() Boolean
+        +setLockedTarget(target) void
+        +setWeaponHUD(weaponHUD) void
+        +updateWeaponDisplay() void
+        +showWeaponSelectFeedback() void
     }
 
     class WeaponSlot {
@@ -933,13 +940,15 @@ classDiagram
         +WeaponCard equippedWeapon
         +Number cooldownTimer
         +Boolean isEmpty
-        +fire() Boolean
+        +fire(ship, target) Boolean
         +canFire() Boolean
         +isInCooldown() Boolean
         +getCooldownPercentage() Number
         +equipWeapon(weaponCard) Boolean
         +unequipWeapon() void
         +updateCooldown(deltaTime) void
+        +getCooldownTimeRemaining() Number
+        +getEquippedWeaponName() String
     }
 
     class WeaponCard {
@@ -955,20 +964,22 @@ classDiagram
         +Number blastRadius
         +Boolean homingCapability
         +Boolean targetLockRequired
+        +Number flightRange
+        +Number turnRate
         +Object specialProperties
         +constructor(weaponData) void
-        +createProjectile(origin, target) Projectile
-        +calculateDamage(distance) Number
+        +fire(origin, target) Object
         +isValidTarget(target, distance) Boolean
+        +getDisplayName() String
     }
 
     class ScanHitWeapon {
         +Number accuracy
         +Number energyCost
-        +Boolean penetration
-        +fire(origin, target) Boolean
+        +fire(origin, target) Object
         +calculateHitChance(distance) Number
-        +applyInstantDamage(target) void
+        +applyInstantDamage(target) Number
+        +validateEnergyConsumption(ship) Boolean
     }
 
     class SplashDamageWeapon {
@@ -978,31 +989,40 @@ classDiagram
         +Number turnRate
         +fire(origin, target) Projectile
         +createProjectile(origin, target) Projectile
+        +validateTargetLock(target) Boolean
         +calculateSplashDamage(distance) Number
     }
 
     class Projectile {
-        +Vector3 position
-        +Vector3 velocity
-        +Vector3 target
+        +Object position
+        +Object velocity
+        +Object target
         +Number damage
         +Number blastRadius
         +Number flightRange
         +Boolean isHoming
         +Number turnRate
         +Boolean hasDetonated
+        +Number distanceTraveled
+        +Number launchTime
+        +String weaponName
+        +calculateInitialVelocity() void
         +update(deltaTime) void
         +updateHoming(target, deltaTime) void
         +checkCollision() Boolean
         +detonate() void
-        +calculateDamageAtDistance(distance) Number
+        +calculateTrajectory() Object
+        +isInRange() Boolean
     }
 
     class WeaponHUD {
+        +Element container
         +Element weaponSlotsDisplay
         +Element cooldownBars
         +Element autofireIndicator
         +Element targetLockIndicator
+        +initializeWeaponSlots(slotCount) void
+        +updateWeaponSlotsDisplay(weaponSlots, activeSlotIndex) void
         +updateActiveWeaponHighlight(slotIndex) void
         +updateCooldownDisplay(weaponSlots) void
         +updateAutofireStatus(isOn) void
@@ -1010,15 +1030,49 @@ classDiagram
         +showWeaponSelectFeedback(weaponName) void
         +showCooldownMessage(weaponName, timeRemaining) void
         +showTargetLockRequiredMessage() void
+        +showMessage(message) void
     }
 
-    WeaponSystem o-- WeaponSlot : contains_many
+    class WeaponDefinitions {
+        +getAllWeaponDefinitions() Object
+        +createLaserCannon() WeaponCard
+        +createPlasmaCannon() WeaponCard
+        +createPulseCannon() WeaponCard
+        +createPhaserArray() WeaponCard
+        +createStandardMissile() WeaponCard
+        +createHomingMissile() WeaponCard
+        +createHeavyTorpedo() WeaponCard
+        +createProximityMine() WeaponCard
+    }
+
+    class Ship {
+        +WeaponSystemCore weaponSystem
+        +initializeWeaponSystem() Promise
+        +getWeaponSystem() WeaponSystemCore
+        +consumeEnergy(amount) Boolean
+        +hasEnergy(amount) Boolean
+    }
+
+    class StarfieldManager {
+        +WeaponHUD weaponHUD
+        +createWeaponHUD() void
+        +connectWeaponHUDToSystem() void
+        +bindKeyEvents() void
+        +update(deltaTime) void
+        +cycleTarget() void
+    }
+
+    WeaponSystemCore o-- WeaponSlot : manages_4_slots
     WeaponSlot --> WeaponCard : equipped_with
     WeaponCard <|-- ScanHitWeapon : extends
     WeaponCard <|-- SplashDamageWeapon : extends
     SplashDamageWeapon --> Projectile : creates
-    WeaponSystem --> WeaponHUD : updates
-    WeaponHUD --> WeaponSystem : callbacks_to
+    WeaponSystemCore --> WeaponHUD : updates
+    WeaponHUD --> WeaponSystemCore : displays_status
+    WeaponDefinitions --> WeaponCard : creates
+    Ship --> WeaponSystemCore : contains
+    StarfieldManager --> WeaponHUD : manages
+    StarfieldManager --> Ship : accesses_weapon_system
 ```
 
 ### Sequence Diagram - Manual Weapon Firing
@@ -1026,53 +1080,67 @@ classDiagram
 ```mermaid
 sequenceDiagram
     participant Player
-    participant KeyHandler as Key_Handler
-    participant WeaponSystem as Weapon_System
+    participant StarfieldManager as Starfield_Manager
+    participant WeaponSystemCore as Weapon_System_Core
     participant WeaponSlot as Active_Weapon_Slot
     participant WeaponCard as Weapon_Card
+    participant Ship
     participant TargetComputer as Target_Computer
-    participant HUD as Weapon_HUD
+    participant WeaponHUD as Weapon_HUD
 
-    Player->>KeyHandler: Press '[' key (previous weapon)
-    KeyHandler->>WeaponSystem: selectPreviousWeapon()
-    WeaponSystem->>WeaponSystem: findPreviousEquippedSlot()
-    WeaponSystem->>HUD: updateActiveWeaponHighlight(newSlotIndex)
-    HUD->>Player: Show new active weapon
+    Player->>StarfieldManager: Press '[' key (previous weapon)
+    StarfieldManager->>Ship: getWeaponSystem()
+    Ship-->>StarfieldManager: Return weaponSystem
+    StarfieldManager->>WeaponSystemCore: selectPreviousWeapon()
+    WeaponSystemCore->>WeaponSystemCore: findPreviousEquippedSlot()
+    WeaponSystemCore->>WeaponHUD: showWeaponSelectFeedback(weaponName)
+    WeaponHUD->>Player: Show weapon selection feedback
+    StarfieldManager->>StarfieldManager: playCommandSound()
 
-    Player->>KeyHandler: Press 'Enter' key (fire weapon)
-    KeyHandler->>WeaponSystem: fireActiveWeapon()
-    WeaponSystem->>WeaponSlot: getActiveWeapon()
-    WeaponSlot-->>WeaponSystem: Return active weapon slot
+    Player->>StarfieldManager: Press 'Enter' key (fire weapon)
+    StarfieldManager->>Ship: getWeaponSystem()
+    Ship-->>StarfieldManager: Return weaponSystem
+    StarfieldManager->>WeaponSystemCore: fireActiveWeapon()
+    WeaponSystemCore->>WeaponSlot: getActiveWeapon()
+    WeaponSlot-->>WeaponSystemCore: Return active weapon slot
 
     alt Weapon slot is empty
-        WeaponSystem->>HUD: showMessage("No weapons equipped")
-        HUD->>Player: Display message
+        WeaponSystemCore->>WeaponHUD: showMessage("No weapons equipped")
+        WeaponHUD->>Player: Display message
+        StarfieldManager->>StarfieldManager: playCommandFailedSound()
     else Weapon is in cooldown
         WeaponSlot->>WeaponSlot: isInCooldown()
-        WeaponSlot-->>WeaponSystem: true
-        WeaponSystem->>HUD: showCooldownMessage(weaponName, timeRemaining)
-        HUD->>Player: Display cooldown message
+        WeaponSlot-->>WeaponSystemCore: true
+        WeaponSystemCore->>WeaponHUD: showCooldownMessage(weaponName, timeRemaining)
+        WeaponHUD->>Player: Display cooldown message
+        StarfieldManager->>StarfieldManager: playCommandFailedSound()
     else Weapon requires target lock
         WeaponCard->>WeaponCard: targetLockRequired == true
-        WeaponSystem->>TargetComputer: validateTargetLock()
-        TargetComputer-->>WeaponSystem: false (no target locked)
-        WeaponSystem->>HUD: showTargetLockRequiredMessage()
-        HUD->>Player: Display target lock required message
+        WeaponSystemCore->>WeaponSystemCore: validateTargetLock()
+        WeaponSystemCore-->>WeaponSystemCore: false (no target locked)
+        WeaponSystemCore->>WeaponHUD: showTargetLockRequiredMessage()
+        WeaponHUD->>Player: Display target lock required message
+        StarfieldManager->>StarfieldManager: playCommandFailedSound()
     else Valid fire conditions
-        WeaponSystem->>WeaponSlot: fire()
+        WeaponSystemCore->>WeaponSlot: fire(ship, lockedTarget)
         WeaponSlot->>WeaponCard: fire(origin, target)
         
         alt Scan-Hit Weapon
+            WeaponCard->>Ship: consumeEnergy(energyCost)
+            Ship-->>WeaponCard: energy_consumed
             WeaponCard->>WeaponCard: calculateHitChance(distance)
             WeaponCard->>WeaponCard: applyInstantDamage(target)
         else Splash-Damage Weapon
+            WeaponCard->>Ship: consumeEnergy(energyCost)
+            Ship-->>WeaponCard: energy_consumed
             WeaponCard->>WeaponCard: createProjectile(origin, target)
             WeaponCard-->>WeaponSlot: Return projectile
         end
         
         WeaponSlot->>WeaponSlot: setCooldownTimer(weaponCooldown)
-        WeaponSlot->>HUD: updateCooldownDisplay()
-        HUD->>Player: Show weapon fired + cooldown bar
+        WeaponSlot->>WeaponHUD: updateCooldownDisplay()
+        WeaponHUD->>Player: Show weapon fired + cooldown bar
+        StarfieldManager->>StarfieldManager: playCommandSound()
     end
 ```
 
@@ -1081,43 +1149,88 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Player
-    participant KeyHandler as Key_Handler
-    participant WeaponSystem as Weapon_System
+    participant StarfieldManager as Starfield_Manager
+    participant WeaponSystemCore as Weapon_System_Core
     participant GameLoop as Game_Loop
     participant WeaponSlot as Weapon_Slot
     participant TargetComputer as Target_Computer
-    participant HUD as Weapon_HUD
+    participant WeaponHUD as Weapon_HUD
+    participant Ship
 
-    Player->>KeyHandler: Press '\' key (toggle autofire)
-    KeyHandler->>WeaponSystem: toggleAutofire()
-    WeaponSystem->>WeaponSystem: isAutofireOn = !isAutofireOn
-    WeaponSystem->>HUD: updateAutofireStatus(isAutofireOn)
-    HUD->>Player: Show "Autofire: ON/OFF"
+    Player->>StarfieldManager: Press '\' key (toggle autofire)
+    StarfieldManager->>Ship: getWeaponSystem()
+    Ship-->>StarfieldManager: Return weaponSystem
+    StarfieldManager->>WeaponSystemCore: toggleAutofire()
+    WeaponSystemCore->>WeaponSystemCore: isAutofireOn = !isAutofireOn
+    WeaponSystemCore->>WeaponHUD: updateAutofireStatus(isAutofireOn)
+    WeaponHUD->>Player: Show "Autofire: ON/OFF"
+    StarfieldManager->>StarfieldManager: playCommandSound()
 
     loop Game Update Loop (when autofire ON)
-        GameLoop->>WeaponSystem: updateAutofire(deltaTime)
-        WeaponSystem->>TargetComputer: getCurrentTarget()
-        TargetComputer-->>WeaponSystem: Return locked target
+        GameLoop->>StarfieldManager: update(deltaTime)
+        StarfieldManager->>Ship: getWeaponSystem()
+        Ship-->>StarfieldManager: Return weaponSystem
+        StarfieldManager->>WeaponSystemCore: updateAutofire(deltaTime)
 
         loop For each weapon slot
-            WeaponSystem->>WeaponSlot: getEquippedWeapon()
-            WeaponSlot-->>WeaponSystem: Return weapon card
+            WeaponSystemCore->>WeaponSlot: getEquippedWeapon()
+            WeaponSlot-->>WeaponSystemCore: Return weapon card
 
-            alt Weapon supports autofire
-                WeaponSystem->>WeaponSlot: canFire()
+            alt Weapon supports autofire and ready
+                WeaponSystemCore->>WeaponSlot: canFire()
+                WeaponSlot-->>WeaponSystemCore: true
+                WeaponSystemCore->>WeaponSystemCore: validateTargetLock()
                 
-                alt Weapon ready and target valid
-                    WeaponSlot->>WeaponSlot: fire()
+                alt Target lock valid or not required
+                    WeaponSlot->>WeaponSlot: fire(ship, lockedTarget)
                     WeaponSlot->>WeaponSlot: setCooldownTimer()
-                    WeaponSystem->>HUD: updateCooldownDisplay()
-                else Weapon in cooldown
-                    WeaponSlot->>WeaponSlot: updateCooldown(deltaTime)
-                else No valid target
-                    Note over WeaponSystem: Skip this weapon
+                    WeaponSystemCore->>WeaponHUD: updateCooldownDisplay()
+                else Target lock required but not available
+                    Note over WeaponSystemCore: Skip this weapon
                 end
+            else Weapon in cooldown
+                WeaponSlot->>WeaponSlot: updateCooldown(deltaTime)
             end
         end
+        
+        StarfieldManager->>WeaponHUD: updateCooldownDisplay(weaponSlots)
     end
+```
+
+### Sequence Diagram - Ship Integration and Initialization
+
+```mermaid
+sequenceDiagram
+    participant Ship
+    participant CardSystemIntegration as Card_System
+    participant WeaponSystemCore as Weapon_System_Core
+    participant StarfieldManager as Starfield_Manager
+    participant WeaponHUD as Weapon_HUD
+    participant TargetComputer as Target_Computer
+
+    Ship->>Ship: constructor()
+    Ship->>CardSystemIntegration: initializeCardData()
+    CardSystemIntegration->>CardSystemIntegration: createSystemsFromCards()
+    CardSystemIntegration->>Ship: initializeWeaponSystem()
+    
+    Ship->>Ship: import WeaponSystemCore
+    Ship->>WeaponSystemCore: new WeaponSystemCore(ship, 4)
+    WeaponSystemCore->>WeaponSystemCore: Initialize 4 weapon slots
+    WeaponSystemCore->>Ship: weaponSystem = weaponSystemCore
+    
+    Ship->>TargetComputer: getSystem('target_computer')
+    TargetComputer-->>Ship: Return target computer
+    Ship->>WeaponSystemCore: setLockedTarget(targetComputer.currentTarget)
+    
+    StarfieldManager->>StarfieldManager: createWeaponHUD()
+    StarfieldManager->>WeaponHUD: new WeaponHUD(document.body)
+    StarfieldManager->>WeaponHUD: initializeWeaponSlots(4)
+    StarfieldManager->>StarfieldManager: connectWeaponHUDToSystem()
+    
+    StarfieldManager->>Ship: getWeaponSystem()
+    Ship-->>StarfieldManager: Return weaponSystem
+    StarfieldManager->>WeaponSystemCore: setWeaponHUD(weaponHUD)
+    StarfieldManager->>WeaponHUD: updateWeaponSlotsDisplay(weaponSlots, activeSlotIndex)
 ```
 
 ### State Diagram - Weapon Slot States
@@ -1126,8 +1239,8 @@ sequenceDiagram
 stateDiagram-v2
     [*] --> Empty
     
-    Empty --> Equipped : equipWeapon()
-    Equipped --> Empty : unequipWeapon()
+    Empty --> Equipped : installWeapon()
+    Equipped --> Empty : removeWeapon()
     
     state Equipped {
         [*] --> Ready
@@ -1136,39 +1249,48 @@ stateDiagram-v2
         Cooldown --> Ready : cooldown_expired
         
         state Firing {
-            [*] --> ValidatingTarget
-            ValidatingTarget --> CheckingCooldown : target_valid
-            ValidatingTarget --> [*] : target_invalid
+            [*] --> ValidatingEnergy
+            ValidatingEnergy --> ValidatingTarget : energy_available
+            ValidatingEnergy --> [*] : insufficient_energy
+            ValidatingTarget --> CheckingCooldown : target_valid_or_not_required
+            ValidatingTarget --> [*] : target_invalid_and_required
             CheckingCooldown --> ExecutingFire : not_in_cooldown
             CheckingCooldown --> [*] : in_cooldown
             ExecutingFire --> [*] : fire_complete
         }
+        
+        state Cooldown {
+            [*] --> CoolingDown
+            CoolingDown --> CoolingDown : updateCooldown(deltaTime)
+            CoolingDown --> [*] : cooldownTimer <= 0
+        }
     }
 ```
 
-### Activity Diagram - Weapon Card Installation Flow
+### Activity Diagram - Target Lock Integration Flow
 
 ```mermaid
 flowchart TD
-    Start([Player Drags Weapon Card]) --> CheckSlot{Slot Available?}
-    CheckSlot -->|No| ShowError[Show Error: Slot Occupied]
-    CheckSlot -->|Yes| ValidateCard{Valid Weapon Card?}
+    Start([Player Cycles Target]) --> GetTargetComputer{Target Computer Available?}
+    GetTargetComputer -->|No| End([No Weapon Target Updates])
+    GetTargetComputer -->|Yes| CycleTarget[Cycle to Next Target]
     
-    ValidateCard -->|No| ShowCardError[Show Error: Invalid Card]
-    ValidateCard -->|Yes| InstallWeapon[Install Weapon in Slot]
+    CycleTarget --> UpdateTargetComputer[Update Target Computer]
+    UpdateTargetComputer --> GetShip{Ship Available?}
+    GetShip -->|No| End
+    GetShip -->|Yes| GetWeaponSystem{Weapon System Available?}
     
-    InstallWeapon --> UpdateSlots[Update Weapon Slots Array]
-    UpdateSlots --> RecalculateActive[Recalculate Active Weapon]
-    RecalculateActive --> UpdateHUD[Update Weapon HUD Display]
-    UpdateHUD --> ShowSuccess[Show Installation Success]
+    GetWeaponSystem -->|No| End
+    GetWeaponSystem -->|Yes| SetLockedTarget[Set Locked Target in Weapon System]
+    SetLockedTarget --> ValidateWeapons[Validate Weapons for Autofire]
     
-    ShowSuccess --> CheckAutofire{Weapon Supports Autofire?}
-    CheckAutofire -->|Yes| ShowAutofireNote[Show Autofire Capability Note]
-    CheckAutofire -->|No| End([Complete Installation])
-    ShowAutofireNote --> End
+    ValidateWeapons --> CheckSplashWeapons{Splash-Damage Weapons Equipped?}
+    CheckSplashWeapons -->|Yes| EnableTargetLock[Enable Target Lock Requirements]
+    CheckSplashWeapons -->|No| DisableTargetLock[No Target Lock Requirements]
     
-    ShowError --> End
-    ShowCardError --> End
+    EnableTargetLock --> UpdateHUD[Update Weapon HUD Target Status]
+    DisableTargetLock --> UpdateHUD
+    UpdateHUD --> End
 ```
 
 ### Component Diagram - Weapons System Integration
@@ -1176,25 +1298,28 @@ flowchart TD
 ```mermaid
 graph TB
     subgraph "Weapons System Core"
-        WeaponSystem[Weapon System]
-        WeaponSlots[Weapon Slots Array]
+        WeaponSystemCore[Weapon System Core]
+        WeaponSlots[4 Weapon Slots Array]
         WeaponCards[Weapon Cards]
+        WeaponDefinitions[Weapon Definitions]
     end
     
     subgraph "UI Components"
         WeaponHUD[Weapon HUD]
-        CardInventory[Card Inventory UI]
+        CardInventoryUI[Card Inventory UI]
         DragDropHandler[Drag & Drop Handler]
     end
     
     subgraph "Input System"
-        KeyHandler[Key Handler]
+        StarfieldManager[Starfield Manager]
+        KeyHandler[Key Handler - bindKeyEvents()]
         WeaponControls[Weapon Controls]
     end
     
     subgraph "Game Systems"
+        Ship[Ship Class]
         TargetComputer[Target Computer]
-        Ship[Ship Systems]
+        EnergySystem[Ship Energy System]
         ProjectileManager[Projectile Manager]
     end
     
@@ -1202,25 +1327,33 @@ graph TB
         ScanHitProjectile[Scan-Hit Projectiles]
         SplashProjectile[Splash-Damage Projectiles]
         HomingMissile[Homing Missiles]
+        Projectile[Projectile Physics]
     end
     
-    WeaponSystem --> WeaponSlots
+    WeaponSystemCore --> WeaponSlots
     WeaponSlots --> WeaponCards
-    WeaponSystem --> WeaponHUD
-    WeaponSystem --> ProjectileManager
+    WeaponSystemCore --> WeaponHUD
+    WeaponSystemCore --> ProjectileManager
+    WeaponDefinitions --> WeaponCards
     
-    CardInventory --> DragDropHandler
-    DragDropHandler --> WeaponSystem
+    CardInventoryUI --> DragDropHandler
+    DragDropHandler --> WeaponSystemCore
     
+    StarfieldManager --> KeyHandler
     KeyHandler --> WeaponControls
-    WeaponControls --> WeaponSystem
+    WeaponControls --> WeaponSystemCore
     
-    WeaponSystem --> TargetComputer
-    WeaponSystem --> Ship
+    Ship --> WeaponSystemCore
+    WeaponSystemCore --> TargetComputer
+    WeaponSystemCore --> EnergySystem
     
     ProjectileManager --> ScanHitProjectile
     ProjectileManager --> SplashProjectile
     ProjectileManager --> HomingMissile
+    ProjectileManager --> Projectile
+    
+    StarfieldManager --> WeaponHUD
+    StarfieldManager --> Ship
 ```
 
 ### Data Flow Diagram - Weapon Firing Process
@@ -1229,6 +1362,7 @@ graph TB
 flowchart LR
     subgraph "Input Processing"
         PlayerInput[Player Input]
+        StarfieldManager[Starfield Manager]
         KeyMapping[Key Mapping]
     end
     
@@ -1240,6 +1374,7 @@ flowchart LR
     
     subgraph "Fire Control"
         FireCommand[Fire Command]
+        EnergyCheck[Energy Check]
         CooldownCheck[Cooldown Check]
         TargetValidation[Target Validation]
     end
@@ -1263,14 +1398,16 @@ flowchart LR
         VisualEffects[Visual Effects]
     end
     
-    PlayerInput --> KeyMapping
+    PlayerInput --> StarfieldManager
+    StarfieldManager --> KeyMapping
     KeyMapping --> WeaponCycling
     KeyMapping --> FireCommand
     
     WeaponCycling --> ActiveWeapon
     ActiveWeapon --> SlotValidation
     
-    FireCommand --> CooldownCheck
+    FireCommand --> EnergyCheck
+    EnergyCheck --> CooldownCheck
     CooldownCheck --> TargetValidation
     TargetValidation --> WeaponType
     

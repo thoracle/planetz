@@ -117,6 +117,12 @@ export class StarfieldManager {
         // Create intel HUD
         this.createIntelHUD();
         
+        // Create weapon HUD
+        this.createWeaponHUD();
+        
+        // Weapon HUD connection state
+        this.weaponHUDConnected = false;
+        
         // Create docking interface and system manager
         this.dockingInterface = new DockingInterface(this);
         this.dockingSystemManager = new DockingSystemManager();
@@ -1242,6 +1248,43 @@ export class StarfieldManager {
         document.body.appendChild(this.intelHUD);
     }
 
+    createWeaponHUD() {
+        // Import and initialize WeaponHUD
+        import('../ui/WeaponHUD.js').then(({ WeaponHUD }) => {
+            this.weaponHUD = new WeaponHUD(document.body);
+            
+            // Initialize weapon slots display
+            this.weaponHUD.initializeWeaponSlots(4);
+            
+            // Connect to weapon system if available
+            this.connectWeaponHUDToSystem();
+            
+            console.log('WeaponHUD initialized');
+        }).catch(error => {
+            console.error('Failed to initialize WeaponHUD:', error);
+        });
+    }
+    
+    /**
+     * Connect WeaponHUD to WeaponSystemCore
+     */
+    connectWeaponHUDToSystem() {
+        const ship = this.viewManager?.getShip();
+        if (ship && ship.weaponSystem && this.weaponHUD) {
+            // Set HUD reference in weapon system
+            ship.weaponSystem.setWeaponHUD(this.weaponHUD);
+            
+            // Update weapon slots display
+            this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
+            
+            console.log('WeaponHUD connected to WeaponSystemCore');
+            this.weaponHUDConnected = true;
+        } else {
+            console.log('WeaponHUD connection attempted but not ready - ship:', !!ship, 'weaponSystem:', !!(ship && ship.weaponSystem), 'weaponHUD:', !!this.weaponHUD);
+            this.weaponHUDConnected = false;
+        }
+    }
+
     bindKeyEvents() {
         // Track key presses for speed control
         this.keys = {
@@ -1719,6 +1762,51 @@ export class StarfieldManager {
                 }
             }
 
+            // Weapon key bindings
+            if (event.key === '[') {
+                // Previous weapon selection
+                if (!this.isDocked) {
+                    const ship = this.viewManager?.getShip();
+                    if (ship && ship.weaponSystem) {
+                        if (ship.weaponSystem.selectPreviousWeapon()) {
+                            this.playCommandSound();
+                        }
+                    }
+                }
+            } else if (event.key === ']') {
+                // Next weapon selection
+                if (!this.isDocked) {
+                    const ship = this.viewManager?.getShip();
+                    if (ship && ship.weaponSystem) {
+                        if (ship.weaponSystem.selectNextWeapon()) {
+                            this.playCommandSound();
+                        }
+                    }
+                }
+            } else if (event.key === 'Enter') {
+                // Fire active weapon
+                if (!this.isDocked) {
+                    const ship = this.viewManager?.getShip();
+                    if (ship && ship.weaponSystem) {
+                        if (ship.weaponSystem.fireActiveWeapon()) {
+                            this.playCommandSound();
+                        } else {
+                            this.playCommandFailedSound();
+                        }
+                    }
+                }
+            } else if (event.key === '\\') {
+                // Toggle autofire
+                if (!this.isDocked) {
+                    const ship = this.viewManager?.getShip();
+                    if (ship && ship.weaponSystem) {
+                        const autofireState = ship.weaponSystem.toggleAutofire();
+                        this.playCommandSound();
+                        console.log(`Autofire ${autofireState ? 'ON' : 'OFF'}`);
+                    }
+                }
+            }
+
             // Damage control key (D) - toggle damage control view
             if (commandKey === 'd') {
                 this.playCommandSound();
@@ -2071,6 +2159,12 @@ export class StarfieldManager {
             }
         }
 
+        // Update weapon system target
+        const ship = this.viewManager?.getShip();
+        if (ship && ship.weaponSystem) {
+            ship.weaponSystem.setLockedTarget(this.currentTarget);
+        }
+
         // Update display after cycling target
         this.updateTargetDisplay();
     }
@@ -2358,6 +2452,22 @@ export class StarfieldManager {
             Object.values(this.directionArrows).forEach(arrow => {
                 arrow.style.display = 'none';
             });
+        }
+        
+        // Update weapon system
+        const ship = this.viewManager?.getShip();
+        if (ship && ship.weaponSystem) {
+            // Ensure WeaponHUD is connected (retry if needed)
+            if (this.weaponHUD && !this.weaponHUDConnected) {
+                this.connectWeaponHUDToSystem();
+            }
+            
+            ship.weaponSystem.updateAutofire(deltaTime);
+            
+            // Update weapon HUD if available
+            if (this.weaponHUD) {
+                this.weaponHUD.updateCooldownDisplay(ship.weaponSystem.weaponSlots);
+            }
         }
     }
 

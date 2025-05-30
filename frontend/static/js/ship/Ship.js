@@ -48,6 +48,9 @@ export default class Ship {
         this.maxHull = 0;           // Hull capacity comes from hull plating
         this.currentHull = 0;
         
+        // Initialize weapons system
+        this.weaponSystem = null; // Will be initialized after systems are available
+        
         // Initialize default systems
         this.initializeDefaultSystems();
         
@@ -58,6 +61,10 @@ export default class Ship {
         this.cardSystemIntegration.initializeCardData().then(async () => {
             // Create additional systems based on installed cards
             await this.cardSystemIntegration.createSystemsFromCards();
+            
+            // Initialize weapons system after all systems are loaded
+            await this.initializeWeaponSystem();
+            
             console.log(`Ship ${this.shipType} fully initialized with card-based systems`);
         }).catch(error => {
             console.error('Failed to initialize card data or create systems:', error);
@@ -796,5 +803,38 @@ export default class Ship {
      */
     getWarpDrive() {
         return this.getSystem('warp_drive');
+    }
+    
+    /**
+     * Initialize the weapon system after all systems are loaded
+     * @returns {Promise} Promise that resolves when weapon system is initialized
+     */
+    async initializeWeaponSystem() {
+        try {
+            // Import WeaponSystemCore
+            const { WeaponSystemCore } = await import('./systems/WeaponSystemCore.js');
+            
+            // Initialize weapon system with 4 weapon slots
+            this.weaponSystem = new WeaponSystemCore(this, 4);
+            
+            // Connect with target computer for target lock functionality
+            const targetComputer = this.getSystem('target_computer');
+            if (targetComputer) {
+                // Set up target lock integration
+                this.weaponSystem.setLockedTarget(targetComputer.currentTarget);
+            }
+            
+            console.log('WeaponSystemCore initialized with 4 weapon slots');
+        } catch (error) {
+            console.error('Failed to initialize weapon system:', error);
+        }
+    }
+    
+    /**
+     * Get the weapon system
+     * @returns {WeaponSystemCore|null} The weapon system or null if not available
+     */
+    getWeaponSystem() {
+        return this.weaponSystem;
     }
 } 
