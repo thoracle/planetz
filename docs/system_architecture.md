@@ -903,4 +903,387 @@ stateDiagram-v2
     }
 ```
 
-This architecture documentation provides a comprehensive view of the NFT card collection system, showing how all components interact to create a cohesive gameplay experience while maintaining flexibility for future blockchain integration. 
+This architecture documentation provides a comprehensive view of the NFT card collection system, showing how all components interact to create a cohesive gameplay experience while maintaining flexibility for future blockchain integration.
+
+## Weapons System Architecture
+
+### Class Diagram - Weapons System Core
+
+```mermaid
+classDiagram
+    class WeaponSystem {
+        +Array weaponSlots
+        +Number activeSlotIndex
+        +Boolean isAutofireOn
+        +Boolean targetLockRequired
+        +Object lockedTarget
+        +selectPreviousWeapon() Boolean
+        +selectNextWeapon() Boolean
+        +fireActiveWeapon() Boolean
+        +toggleAutofire() Boolean
+        +updateAutofire(deltaTime) void
+        +getActiveWeapon() WeaponSlot
+        +equipWeapon(slotIndex, weaponCard) Boolean
+        +unequipWeapon(slotIndex) Boolean
+        +validateTargetLock() Boolean
+    }
+
+    class WeaponSlot {
+        +Number slotIndex
+        +WeaponCard equippedWeapon
+        +Number cooldownTimer
+        +Boolean isEmpty
+        +fire() Boolean
+        +canFire() Boolean
+        +isInCooldown() Boolean
+        +getCooldownPercentage() Number
+        +equipWeapon(weaponCard) Boolean
+        +unequipWeapon() void
+        +updateCooldown(deltaTime) void
+    }
+
+    class WeaponCard {
+        +String weaponId
+        +String name
+        +String weaponType
+        +Number damage
+        +Number cooldownTime
+        +Number range
+        +Boolean autofireEnabled
+        +Number accuracy
+        +Number energyCost
+        +Number blastRadius
+        +Boolean homingCapability
+        +Boolean targetLockRequired
+        +Object specialProperties
+        +constructor(weaponData) void
+        +createProjectile(origin, target) Projectile
+        +calculateDamage(distance) Number
+        +isValidTarget(target, distance) Boolean
+    }
+
+    class ScanHitWeapon {
+        +Number accuracy
+        +Number energyCost
+        +Boolean penetration
+        +fire(origin, target) Boolean
+        +calculateHitChance(distance) Number
+        +applyInstantDamage(target) void
+    }
+
+    class SplashDamageWeapon {
+        +Number blastRadius
+        +Boolean homingCapability
+        +Number flightRange
+        +Number turnRate
+        +fire(origin, target) Projectile
+        +createProjectile(origin, target) Projectile
+        +calculateSplashDamage(distance) Number
+    }
+
+    class Projectile {
+        +Vector3 position
+        +Vector3 velocity
+        +Vector3 target
+        +Number damage
+        +Number blastRadius
+        +Number flightRange
+        +Boolean isHoming
+        +Number turnRate
+        +Boolean hasDetonated
+        +update(deltaTime) void
+        +updateHoming(target, deltaTime) void
+        +checkCollision() Boolean
+        +detonate() void
+        +calculateDamageAtDistance(distance) Number
+    }
+
+    class WeaponHUD {
+        +Element weaponSlotsDisplay
+        +Element cooldownBars
+        +Element autofireIndicator
+        +Element targetLockIndicator
+        +updateActiveWeaponHighlight(slotIndex) void
+        +updateCooldownDisplay(weaponSlots) void
+        +updateAutofireStatus(isOn) void
+        +updateTargetLockStatus(hasLock) void
+        +showWeaponSelectFeedback(weaponName) void
+        +showCooldownMessage(weaponName, timeRemaining) void
+        +showTargetLockRequiredMessage() void
+    }
+
+    WeaponSystem o-- WeaponSlot : contains_many
+    WeaponSlot --> WeaponCard : equipped_with
+    WeaponCard <|-- ScanHitWeapon : extends
+    WeaponCard <|-- SplashDamageWeapon : extends
+    SplashDamageWeapon --> Projectile : creates
+    WeaponSystem --> WeaponHUD : updates
+    WeaponHUD --> WeaponSystem : callbacks_to
+```
+
+### Sequence Diagram - Manual Weapon Firing
+
+```mermaid
+sequenceDiagram
+    participant Player
+    participant KeyHandler as Key_Handler
+    participant WeaponSystem as Weapon_System
+    participant WeaponSlot as Active_Weapon_Slot
+    participant WeaponCard as Weapon_Card
+    participant TargetComputer as Target_Computer
+    participant HUD as Weapon_HUD
+
+    Player->>KeyHandler: Press '[' key (previous weapon)
+    KeyHandler->>WeaponSystem: selectPreviousWeapon()
+    WeaponSystem->>WeaponSystem: findPreviousEquippedSlot()
+    WeaponSystem->>HUD: updateActiveWeaponHighlight(newSlotIndex)
+    HUD->>Player: Show new active weapon
+
+    Player->>KeyHandler: Press 'Enter' key (fire weapon)
+    KeyHandler->>WeaponSystem: fireActiveWeapon()
+    WeaponSystem->>WeaponSlot: getActiveWeapon()
+    WeaponSlot-->>WeaponSystem: Return active weapon slot
+
+    alt Weapon slot is empty
+        WeaponSystem->>HUD: showMessage("No weapons equipped")
+        HUD->>Player: Display message
+    else Weapon is in cooldown
+        WeaponSlot->>WeaponSlot: isInCooldown()
+        WeaponSlot-->>WeaponSystem: true
+        WeaponSystem->>HUD: showCooldownMessage(weaponName, timeRemaining)
+        HUD->>Player: Display cooldown message
+    else Weapon requires target lock
+        WeaponCard->>WeaponCard: targetLockRequired == true
+        WeaponSystem->>TargetComputer: validateTargetLock()
+        TargetComputer-->>WeaponSystem: false (no target locked)
+        WeaponSystem->>HUD: showTargetLockRequiredMessage()
+        HUD->>Player: Display target lock required message
+    else Valid fire conditions
+        WeaponSystem->>WeaponSlot: fire()
+        WeaponSlot->>WeaponCard: fire(origin, target)
+        
+        alt Scan-Hit Weapon
+            WeaponCard->>WeaponCard: calculateHitChance(distance)
+            WeaponCard->>WeaponCard: applyInstantDamage(target)
+        else Splash-Damage Weapon
+            WeaponCard->>WeaponCard: createProjectile(origin, target)
+            WeaponCard-->>WeaponSlot: Return projectile
+        end
+        
+        WeaponSlot->>WeaponSlot: setCooldownTimer(weaponCooldown)
+        WeaponSlot->>HUD: updateCooldownDisplay()
+        HUD->>Player: Show weapon fired + cooldown bar
+    end
+```
+
+### Sequence Diagram - Autofire Mode Operation
+
+```mermaid
+sequenceDiagram
+    participant Player
+    participant KeyHandler as Key_Handler
+    participant WeaponSystem as Weapon_System
+    participant GameLoop as Game_Loop
+    participant WeaponSlot as Weapon_Slot
+    participant TargetComputer as Target_Computer
+    participant HUD as Weapon_HUD
+
+    Player->>KeyHandler: Press '\' key (toggle autofire)
+    KeyHandler->>WeaponSystem: toggleAutofire()
+    WeaponSystem->>WeaponSystem: isAutofireOn = !isAutofireOn
+    WeaponSystem->>HUD: updateAutofireStatus(isAutofireOn)
+    HUD->>Player: Show "Autofire: ON/OFF"
+
+    loop Game Update Loop (when autofire ON)
+        GameLoop->>WeaponSystem: updateAutofire(deltaTime)
+        WeaponSystem->>TargetComputer: getCurrentTarget()
+        TargetComputer-->>WeaponSystem: Return locked target
+
+        loop For each weapon slot
+            WeaponSystem->>WeaponSlot: getEquippedWeapon()
+            WeaponSlot-->>WeaponSystem: Return weapon card
+
+            alt Weapon supports autofire
+                WeaponSystem->>WeaponSlot: canFire()
+                
+                alt Weapon ready and target valid
+                    WeaponSlot->>WeaponSlot: fire()
+                    WeaponSlot->>WeaponSlot: setCooldownTimer()
+                    WeaponSystem->>HUD: updateCooldownDisplay()
+                else Weapon in cooldown
+                    WeaponSlot->>WeaponSlot: updateCooldown(deltaTime)
+                else No valid target
+                    Note over WeaponSystem: Skip this weapon
+                end
+            end
+        end
+    end
+```
+
+### State Diagram - Weapon Slot States
+
+```mermaid
+stateDiagram-v2
+    [*] --> Empty
+    
+    Empty --> Equipped : equipWeapon()
+    Equipped --> Empty : unequipWeapon()
+    
+    state Equipped {
+        [*] --> Ready
+        Ready --> Firing : fire()
+        Firing --> Cooldown : weapon_fired
+        Cooldown --> Ready : cooldown_expired
+        
+        state Firing {
+            [*] --> ValidatingTarget
+            ValidatingTarget --> CheckingCooldown : target_valid
+            ValidatingTarget --> [*] : target_invalid
+            CheckingCooldown --> ExecutingFire : not_in_cooldown
+            CheckingCooldown --> [*] : in_cooldown
+            ExecutingFire --> [*] : fire_complete
+        }
+    }
+```
+
+### Activity Diagram - Weapon Card Installation Flow
+
+```mermaid
+flowchart TD
+    Start([Player Drags Weapon Card]) --> CheckSlot{Slot Available?}
+    CheckSlot -->|No| ShowError[Show Error: Slot Occupied]
+    CheckSlot -->|Yes| ValidateCard{Valid Weapon Card?}
+    
+    ValidateCard -->|No| ShowCardError[Show Error: Invalid Card]
+    ValidateCard -->|Yes| InstallWeapon[Install Weapon in Slot]
+    
+    InstallWeapon --> UpdateSlots[Update Weapon Slots Array]
+    UpdateSlots --> RecalculateActive[Recalculate Active Weapon]
+    RecalculateActive --> UpdateHUD[Update Weapon HUD Display]
+    UpdateHUD --> ShowSuccess[Show Installation Success]
+    
+    ShowSuccess --> CheckAutofire{Weapon Supports Autofire?}
+    CheckAutofire -->|Yes| ShowAutofireNote[Show Autofire Capability Note]
+    CheckAutofire -->|No| End([Complete Installation])
+    ShowAutofireNote --> End
+    
+    ShowError --> End
+    ShowCardError --> End
+```
+
+### Component Diagram - Weapons System Integration
+
+```mermaid
+graph TB
+    subgraph "Weapons System Core"
+        WeaponSystem[Weapon System]
+        WeaponSlots[Weapon Slots Array]
+        WeaponCards[Weapon Cards]
+    end
+    
+    subgraph "UI Components"
+        WeaponHUD[Weapon HUD]
+        CardInventory[Card Inventory UI]
+        DragDropHandler[Drag & Drop Handler]
+    end
+    
+    subgraph "Input System"
+        KeyHandler[Key Handler]
+        WeaponControls[Weapon Controls]
+    end
+    
+    subgraph "Game Systems"
+        TargetComputer[Target Computer]
+        Ship[Ship Systems]
+        ProjectileManager[Projectile Manager]
+    end
+    
+    subgraph "Projectile Types"
+        ScanHitProjectile[Scan-Hit Projectiles]
+        SplashProjectile[Splash-Damage Projectiles]
+        HomingMissile[Homing Missiles]
+    end
+    
+    WeaponSystem --> WeaponSlots
+    WeaponSlots --> WeaponCards
+    WeaponSystem --> WeaponHUD
+    WeaponSystem --> ProjectileManager
+    
+    CardInventory --> DragDropHandler
+    DragDropHandler --> WeaponSystem
+    
+    KeyHandler --> WeaponControls
+    WeaponControls --> WeaponSystem
+    
+    WeaponSystem --> TargetComputer
+    WeaponSystem --> Ship
+    
+    ProjectileManager --> ScanHitProjectile
+    ProjectileManager --> SplashProjectile
+    ProjectileManager --> HomingMissile
+```
+
+### Data Flow Diagram - Weapon Firing Process
+
+```mermaid
+flowchart LR
+    subgraph "Input Processing"
+        PlayerInput[Player Input]
+        KeyMapping[Key Mapping]
+    end
+    
+    subgraph "Weapon Selection"
+        WeaponCycling[Weapon Cycling]
+        ActiveWeapon[Active Weapon]
+        SlotValidation[Slot Validation]
+    end
+    
+    subgraph "Fire Control"
+        FireCommand[Fire Command]
+        CooldownCheck[Cooldown Check]
+        TargetValidation[Target Validation]
+    end
+    
+    subgraph "Weapon Execution"
+        WeaponType[Weapon Type Check]
+        ScanHit[Scan-Hit Execution]
+        SplashDamage[Splash-Damage Execution]
+    end
+    
+    subgraph "Projectile Management"
+        ProjectileSpawn[Projectile Spawn]
+        ProjectileUpdate[Projectile Update]
+        CollisionDetection[Collision Detection]
+        DamageApplication[Damage Application]
+    end
+    
+    subgraph "Feedback Systems"
+        HUDUpdate[HUD Update]
+        AudioFeedback[Audio Feedback]
+        VisualEffects[Visual Effects]
+    end
+    
+    PlayerInput --> KeyMapping
+    KeyMapping --> WeaponCycling
+    KeyMapping --> FireCommand
+    
+    WeaponCycling --> ActiveWeapon
+    ActiveWeapon --> SlotValidation
+    
+    FireCommand --> CooldownCheck
+    CooldownCheck --> TargetValidation
+    TargetValidation --> WeaponType
+    
+    WeaponType --> ScanHit
+    WeaponType --> SplashDamage
+    
+    SplashDamage --> ProjectileSpawn
+    ProjectileSpawn --> ProjectileUpdate
+    ProjectileUpdate --> CollisionDetection
+    CollisionDetection --> DamageApplication
+    
+    ScanHit --> DamageApplication
+    DamageApplication --> HUDUpdate
+    DamageApplication --> AudioFeedback
+    DamageApplication --> VisualEffects
+``` 

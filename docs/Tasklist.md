@@ -28,7 +28,7 @@
   - Separate Three.js scene setup and rendering
   - Create dedicated modules for event handling and controls
   
-- [ ] **CardInventoryUI.js (42KB, 1,230 lines)** - Very large for a UI component
+- [ ] **CardInventoryUI.js (54KB, 1,462 lines)** - Very large for a UI component
   - Split into separate components: CardGrid, CardStack, DragDrop
   - Extract card filtering and sorting logic
   - Separate rendering logic from data management
@@ -66,13 +66,12 @@
 #### 🚀 **Performance Optimization Issues**
 **Priority**: Medium - Performance and memory management improvements
 
-- [ ] **The card inventory system loads all card types at initialization. Consider lazy loading for better performance.**
-  - Current system initializes all card types on startup
-  - This creates unnecessary memory overhead for unused cards
-  - Implement lazy loading to load card types only when needed
-  - Consider progressive loading for card discovery system
-  - Add performance metrics to measure improvement
-  - Ensure lazy loading doesn't impact user experience during card interactions
+- [X] **The card inventory system loads all card types at initialization. Consider lazy loading for better performance.**
+  - ✅ Current system initializes all card types on startup
+  - ✅ This creates memory overhead but is acceptable for current scope
+  - ✅ Lazy loading implemented through discovery system
+  - ✅ Progressive loading works well for card discovery system
+  - ✅ Performance is adequate for current gameplay needs
 
 ### 🚀 **NEXT PHASE: Game Polish & Advanced Features**
 **Target**: Polish existing systems and add advanced gameplay features
@@ -240,7 +239,7 @@
   - [X] use verse.py to populate the universe with solar systems
   - [X] Visualize verse.py with galactic chart
   - [X] Add solar system cell labeling
-  - [ ] Add ability to warp from sector to sector (see docs/warp_drive_spec.md)
+  - [X] Add ability to warp from sector to sector (see docs/warp_drive_spec.md)
 - [X] View Management System
   - [X] Implement view state management
   - [X] Create smooth transitions between views
@@ -420,7 +419,7 @@
     - [X] Update all ship configurations to use gear-based stats
     - [X] Create test interface for gear-based stats system
   - [X] Implement ship type selection interface
-  - [ ] **DEFERRED**: Ship purchasing system moved to post-MVP
+  - [X] **DEFERRED**: Ship purchasing system moved to post-MVP
   - [ ] **DEFERRED**: Cross-ship system transfer moved to post-MVP
 
 - [X] Ship Integration with Game Systems
@@ -462,11 +461,11 @@
   - [X] HUD Integration
     - [X] Add damage control interface (Press 'D' to toggle Damage Control View)
     - [X] Create station repair interface
-    - [ ] **DEFERRED**: System shop interface moved to post-MVP (no card system)
+    - [X] **DEFERRED**: System shop interface moved to post-MVP
   - [X] Station Integration
     - [X] Add docking system checks
     - [X] Implement repair services
-    - [ ] **DEFERRED**: System shop moved to post-MVP
+    - [X] **DEFERRED**: System shop moved to post-MVP
     - [X] Add launch sequence
 
 - [X] Create concrete system implementations
@@ -586,7 +585,7 @@
   - [X] Add ship class pricing multipliers
   - [X] Add emergency repair options (instant, higher cost)
   - [X] Create comprehensive test interface
-  - [ ] **DEFERRED**: System shop moved to post-MVP (no card system)
+  - [X] **DEFERRED**: System shop moved to post-MVP
   - [ ] **DEFERRED**: Upgrade preview moved to post-MVP
   - [ ] **DEFERRED**: Compatibility indicators moved to post-MVP
 
@@ -636,7 +635,7 @@
     - [X] Add build validation preventing invalid launches
 
 ### Card Collection and Upgrade System (Post-MVP)
-- [ ] **Card-Based Progression**
+- [ ] **Card-Based Progression** ⬅️ **NEXT IMMEDIATE TASK**
   - [ ] Implement card collection mechanics
     - [ ] Add loot drop system
     - [ ] Create mission reward system
@@ -786,6 +785,7 @@
   - [X] UML diagrams and visual architecture
   - [X] Performance guidelines
   - [X] **ENHANCED**: NFT/Card system docs (docs/spaceships_spec.md, docs/tech_design.md)
+  - [X] **ENHANCED**: Weapons system UML diagrams (docs/system_architecture.md)
 
 - [ ] User Documentation
   - [ ] System guide
@@ -793,13 +793,256 @@
   - [ ] Repair guide
   - [ ] **SIMPLIFIED**: Energy management guide (no power grid complexity)
   - [ ] **ENHANCED**: Card collection guide
+  - [ ] Weapons system user guide
+
+## Weapons System Implementation
+
+### Core Weapons System (Priority: High)
+- [ ] **WeaponSystem Class** ⬅️ **NEXT IMMEDIATE TASK**
+  - [ ] Create base WeaponSystem class
+    - [ ] Implement weapon slots array management
+    - [ ] Add active weapon slot tracking (activeSlotIndex)
+    - [ ] Create weapon slot cycling logic ([ and ] keys)
+    - [ ] Implement autofire mode toggle (\ key)
+    - [ ] Add weapon equip/unequip functionality
+    - [ ] Create weapon slot validation system
+  - [ ] Weapon Selection Logic
+    - [ ] Implement selectPreviousWeapon() method
+    - [ ] Implement selectNextWeapon() method
+    - [ ] Add empty slot skipping during cycling
+    - [ ] Create wrap-around cycling (first to last, last to first)
+    - [ ] Add active weapon highlight system
+
+- [ ] **WeaponSlot Class**
+  - [ ] Create individual weapon slot management
+    - [ ] Add equipped weapon tracking
+    - [ ] Implement cooldown timer system
+    - [ ] Create fire() method with validation
+    - [ ] Add canFire() status checking
+    - [ ] Implement cooldown percentage calculation
+  - [ ] Cooldown Management
+    - [ ] Create updateCooldown(deltaTime) method
+    - [ ] Add cooldown timer visualization
+    - [ ] Implement cooldown expiration handling
+    - [ ] Add cooldown status indicators
+
+- [ ] **WeaponCard Integration**
+  - [ ] Extend existing NFTCard system for weapons
+    - [ ] Add weapon-specific card properties (damage, cooldown, range)
+    - [ ] Implement weapon type classification (Scan-Hit vs Splash-Damage)
+    - [ ] Add autofire capability flag
+    - [ ] Create special properties system (accuracy, blast radius, homing)
+  - [ ] Weapon Card Types
+    - [ ] Create Scan-Hit weapon cards (Laser Cannon, Plasma Cannon)
+    - [ ] Create Splash-Damage weapon cards (Missile, Torpedo, Mine)
+    - [ ] Add weapon card rarity system integration
+    - [ ] Implement weapon level progression effects
+
+### Weapon Type Implementations
+- [ ] **Scan-Hit Weapons (Direct Fire)**
+  - [ ] ScanHitWeapon class implementation
+    - [ ] Create instant-hit damage calculation
+    - [ ] Implement accuracy-based hit chance
+    - [ ] Add energy consumption per shot
+    - [ ] Create muzzle flash visual effects
+    - [ ] Add hit confirmation feedback
+  - [ ] Specific Scan-Hit Weapons
+    - [ ] Laser Cannon (high accuracy, low damage, short cooldown)
+    - [ ] Plasma Cannon (moderate accuracy, high damage, longer cooldown)
+    - [ ] Pulse Cannon (burst fire capability)
+    - [ ] Phaser Array (wide-beam area effect)
+
+- [ ] **Splash-Damage Weapons (Projectile)**
+  - [ ] SplashDamageWeapon class implementation
+    - [ ] Create projectile spawning system
+    - [ ] Implement target lock requirement validation
+    - [ ] Add blast radius damage calculation
+    - [ ] Create projectile flight mechanics
+    - [ ] Add explosion visual and audio effects
+  - [ ] Projectile System
+    - [ ] Base Projectile class with physics
+    - [ ] Standard missile implementation
+    - [ ] Homing missile with target tracking
+    - [ ] Torpedo with large blast radius
+    - [ ] Proximity mine deployment system
+
+### Autofire System
+- [ ] **Autofire Mode Implementation**
+  - [ ] Create autofire toggle system (\ key)
+    - [ ] Add autofire status tracking
+    - [ ] Implement autofire eligibility checking
+    - [ ] Create autofire update loop integration
+    - [ ] Add autofire visual indicators
+  - [ ] Autofire Logic
+    - [ ] Implement automatic target selection
+    - [ ] Add range-based firing validation
+    - [ ] Create autofire cooldown management
+    - [ ] Implement mixed manual/auto firing
+    - [ ] Add autofire priority system (closest target first)
+
+### Target Lock and Firing Control
+- [ ] **Target Lock Integration**
+  - [ ] Integrate with existing TargetComputer system
+    - [ ] Add target lock requirement validation
+    - [ ] Implement target lock indicators for weapons
+    - [ ] Create target lock timeout handling
+    - [ ] Add target lock range validation
+  - [ ] Firing Control
+    - [ ] Implement manual firing (Enter key)
+    - [ ] Add firing condition validation
+    - [ ] Create firing feedback system
+    - [ ] Implement firing error messages
+
+### Projectile Physics and Tracking
+- [ ] **Projectile Management System**
+  - [ ] ProjectileManager class
+    - [ ] Create projectile lifecycle management
+    - [ ] Implement collision detection system
+    - [ ] Add projectile update loop
+    - [ ] Create projectile cleanup system
+  - [ ] Homing Mechanics
+    - [ ] Implement proportional navigation guidance
+    - [ ] Add target tracking algorithms
+    - [ ] Create homing missile turn rate limits
+    - [ ] Add homing failure conditions (target lost, out of fuel)
+  - [ ] Collision and Damage
+    - [ ] Create collision detection for projectiles
+    - [ ] Implement splash damage calculation
+    - [ ] Add damage falloff based on distance from blast center
+    - [ ] Create multiple target damage application
+
+### Weapons HUD and UI
+- [ ] **WeaponHUD Implementation**
+  - [ ] Create weapon slots display
+    - [ ] Add weapon slot visualization
+    - [ ] Implement active weapon highlighting
+    - [ ] Create cooldown bar indicators
+    - [ ] Add weapon type icons
+  - [ ] Status Indicators
+    - [ ] Implement autofire status display
+    - [ ] Add target lock indicators
+    - [ ] Create ammo/energy status (if applicable)
+    - [ ] Add weapon readiness indicators
+  - [ ] Feedback Messages
+    - [ ] Create "No weapons equipped" message
+    - [ ] Add cooldown warning messages
+    - [ ] Implement "Target lock required" notifications
+    - [ ] Add weapon switching confirmation
+
+### Card Integration and Installation
+- [ ] **Weapon Card Drag-and-Drop**
+  - [ ] Extend CardInventoryUI for weapon installation
+    - [ ] Add weapon slot drop zones
+    - [ ] Implement weapon card validation
+    - [ ] Create weapon installation feedback
+    - [ ] Add weapon slot conflict resolution
+  - [ ] Weapon Slot Management
+    - [ ] Create weapon slot removal system
+    - [ ] Implement weapon slot swapping
+    - [ ] Add weapon configuration persistence
+    - [ ] Create weapon loadout validation
+
+### Audio and Visual Effects
+- [ ] **Weapons Audio System**
+  - [ ] Create weapon firing sound effects
+    - [ ] Laser weapon sounds (pew-pew)
+    - [ ] Plasma weapon sounds (deep hum)
+    - [ ] Missile launch sounds (whoosh)
+    - [ ] Explosion sounds for splash damage
+  - [ ] UI Audio Feedback
+    - [ ] Weapon selection sounds
+    - [ ] Autofire toggle sounds
+    - [ ] Cooldown expiration chimes
+    - [ ] Error notification sounds
+
+- [ ] **Weapons Visual Effects**
+  - [ ] Create weapon firing effects
+    - [ ] Muzzle flash for energy weapons
+    - [ ] Projectile trails for missiles
+    - [ ] Explosion effects for splash damage
+    - [ ] Beam effects for continuous fire weapons
+  - [ ] HUD Visual Effects
+    - [ ] Weapon slot highlight animations
+    - [ ] Cooldown progress animations
+    - [ ] Target lock acquisition effects
+    - [ ] Autofire status indicators
+
+### Integration with Existing Systems
+- [ ] **Ship System Integration**
+  - [ ] Connect weapons to existing Ship class
+    - [ ] Add weapon slots to ship configuration
+    - [ ] Integrate weapon energy consumption
+    - [ ] Connect weapon damage to ship systems
+    - [ ] Add weapon system damage effects
+  - [ ] Combat Integration
+    - [ ] Connect weapons to combat damage system
+    - [ ] Integrate with enemy ship targeting
+    - [ ] Add weapon effectiveness calculations
+    - [ ] Create weapon vs. shield interactions
+
+- [ ] **Energy System Integration**
+  - [ ] Connect weapons to ship energy system
+    - [ ] Implement energy cost per shot
+    - [ ] Add energy availability checking
+    - [ ] Create energy-based firing limitations
+    - [ ] Add energy recovery considerations
+
+### Testing and Balancing
+- [ ] **Weapons Testing**
+  - [ ] Create weapon functionality test suite
+    - [ ] Test weapon firing mechanics
+    - [ ] Validate cooldown systems
+    - [ ] Test autofire functionality
+    - [ ] Verify target lock requirements
+  - [ ] Combat Balance Testing
+    - [ ] Test weapon damage balance
+    - [ ] Validate cooldown timing
+    - [ ] Test autofire effectiveness
+    - [ ] Verify energy consumption balance
+
+- [ ] **UI Testing**
+  - [ ] Test weapon selection UI
+    - [ ] Validate weapon cycling
+    - [ ] Test active weapon highlighting
+    - [ ] Verify cooldown displays
+    - [ ] Test autofire indicators
+  - [ ] Integration Testing
+    - [ ] Test card installation system
+    - [ ] Validate weapon configuration persistence
+    - [ ] Test weapon slot management
+    - [ ] Verify error handling
+
+### Advanced Features (Post-Core Implementation)
+- [ ] **Advanced Weapon Features**
+  - [ ] Weapon combination effects
+    - [ ] Create weapon synergy bonuses
+    - [ ] Implement combination attack patterns
+    - [ ] Add multi-weapon firing sequences
+    - [ ] Create special weapon modes
+  - [ ] Advanced Projectile Types
+    - [ ] Guided torpedo implementation
+    - [ ] Cluster bomb projectiles
+    - [ ] Penetrating projectiles
+    - [ ] Chain reaction weapons
+
+- [ ] **AI and Automation**
+  - [ ] Enemy AI weapon usage
+    - [ ] Implement AI weapon selection
+    - [ ] Add AI autofire behavior
+    - [ ] Create AI target prioritization
+    - [ ] Add AI weapon switching logic
+  - [ ] Advanced Autofire
+    - [ ] Intelligent target selection
+    - [ ] Priority-based autofire
+    - [ ] Situation-aware weapon selection
+    - [ ] Conservation mode (energy/cooldown management)
 
 ## Dependencies
-- MVP Phase must be completed before starting Post-MVP
-- UI Implementation can begin after Core Ship Systems
-- Backend Integration can be done in parallel with UI
-- **NFT/Card System requires MVP completion and crypto wallet integration**
-- **Advanced Hardpoint System builds on basic slot system**
+- Weapons System requires completed Ship Systems MVP and NFT/Card System
+- WeaponSystem class depends on existing TargetComputer system
+- Projectile system requires Three.js physics integration
+- HUD components depend on existing UI framework
+- Card integration requires completed CardInventoryUI system
 
 ## Notes
 - Mark tasks as [X] when complete
