@@ -1,17 +1,14 @@
 /**
- * NFTCard class - Represents a pseudo-NFT card for ship systems
- * Based on docs/tech_design.md and docs/system_architecture.md
+ * NFTCard class - Represents a ship system card with NFT-like properties
+ * Based on docs/spaceships_spec.md and docs/tech_design.md
  * 
  * Features:
- * - Unique token ID and metadata
- * - Rarity system (Common, Rare, Epic, Legendary)
- * - Discovery system with silhouettes
- * - Card type definitions for all ship systems
+ * - Unique token ID for each card instance
+ * - Rarity-based stats progression (Common to Legendary)
+ * - Metadata generation for crypto wallet compatibility  
  * - Never consumed or destroyed during upgrades
  * - Accumulate in crypto wallet simulation
  */
-
-import { DebugLogger, DEBUG_CATEGORIES } from '../utils/DebugConfig.js';
 
 // Card rarity definitions with drop rates
 export const CARD_RARITY = {
@@ -59,6 +56,11 @@ export const CARD_TYPES = {
     SUBSPACE_RADIO: 'subspace_radio',
     GALACTIC_CHART: 'galactic_chart',
     TARGET_COMPUTER: 'target_computer',
+    
+    // Advanced Intel Systems (Level 3+ Target Computers)
+    TACTICAL_COMPUTER: 'tactical_computer',        // Level 3 - Basic intel
+    COMBAT_COMPUTER: 'combat_computer',            // Level 4 - Enhanced intel
+    STRATEGIC_COMPUTER: 'strategic_computer',      // Level 5 - Advanced intel
     
     // Exotic Core Systems
     QUANTUM_REACTOR: 'quantum_reactor',
@@ -443,8 +445,6 @@ export default class NFTCard {
         
         // Creation timestamp
         this.createdAt = Date.now();
-        
-        DebugLogger.debug(DEBUG_CATEGORIES.CARD_CREATION, `NFTCard created: ${this.metadata.name} (${rarity}) - Token ID: ${this.tokenId}`);
     }
     
     /**
@@ -621,7 +621,6 @@ export default class NFTCard {
     discover() {
         if (!this.discovered) {
             this.discovered = true;
-            DebugLogger.info(DEBUG_CATEGORIES.CARD_DISCOVERY, `Card discovered: ${this.metadata.name} (${this.rarity})`);
         }
     }
     

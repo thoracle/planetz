@@ -257,13 +257,25 @@ export class SolarSystemManager {
             });
             const planet = new THREE.Mesh(planetGeometry, planetMaterial);
             
-            // Calculate orbit radius between 1000km and 5000km with exponential spacing
-            const minRadius = 1000;
-            const maxRadius = 5000;
+            // Check if this is the starter system for more compact layout
+            const isStarterSystem = this.starSystem?.star_name === 'Sol';
+            
+            // Calculate orbit radius - more compact for starter system
+            let minRadius, maxRadius;
+            if (isStarterSystem) {
+                // Much closer orbits for starter system - easier to navigate
+                minRadius = 15;  // Very close to star
+                maxRadius = 35;  // Still close but room for multiple bodies
+            } else {
+                // Regular system spacing
+                minRadius = 1000;
+                maxRadius = 5000;
+            }
+            
             const totalPlanets = Math.max(1, this.starSystem.planets.length);
             
             // Use exponential spacing to create more realistic orbital distances
-            const base = 1.8; // Base for exponential spacing
+            const base = isStarterSystem ? 1.5 : 1.8; // Smaller base for more compact starter system
             const normalizedIndex = index / (totalPlanets - 1 || 1);
             const orbitRadius = minRadius + (maxRadius - minRadius) * (Math.pow(base, normalizedIndex) - 1) / (base - 1);
             
@@ -337,8 +349,12 @@ export class SolarSystemManager {
                 return;
             }
             
-            // Calculate initial position relative to planet
-            const moonOrbitRadius = Math.max(1, (moonIndex + 1) * 2);
+            // Check if this is the starter system for more compact moon layout
+            const isStarterSystem = this.starSystem?.star_name === 'Sol';
+            
+            // Calculate initial position relative to planet - closer for starter system
+            const baseMoonOrbitRadius = isStarterSystem ? 2.5 : 4.0; // Closer moons in starter system
+            const moonOrbitRadius = Math.max(1, (moonIndex + 1) * baseMoonOrbitRadius);
             const angle = (Math.random() * Math.PI * 2) || 0;
             const verticalVariation = Math.sin(angle * 0.5) * moonOrbitRadius * 0.2;
             

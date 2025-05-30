@@ -163,15 +163,28 @@ export default class SubspaceRadio {
         const subspaceRadio = this.ship.getSystem('subspace_radio');
         if (!subspaceRadio) {
             console.warn('No subspace radio system found on ship');
+            // Add HUD error message for missing system
+            console.log('🔍 SubspaceRadio toggle: starfieldManager available?', !!this.starfieldManager);
+            if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                this.starfieldManager.showHUDError(
+                    'SUBSPACE RADIO UNAVAILABLE',
+                    'System not installed on this ship'
+                );
+            } else {
+                console.warn('StarfieldManager not available for HUD error display');
+            }
+            if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+                this.starfieldManager.playCommandFailedSound();
+            }
             return;
         }
-        
-        // Play command sound for the toggle action
-        if (this.starfieldManager && this.starfieldManager.playCommandSound) {
-            this.starfieldManager.playCommandSound();
-        }
-        
+
         if (this.isVisible) {
+            // Deactivating - always play command sound
+            if (this.starfieldManager && this.starfieldManager.playCommandSound) {
+                this.starfieldManager.playCommandSound();
+            }
+            
             this.hide();
             // Deactivate the system - this is a manual deactivation
             if (subspaceRadio.isActive) {
@@ -179,14 +192,45 @@ export default class SubspaceRadio {
                 subspaceRadio.deactivateRadio();
             }
         } else {
-            // Check if system can be activated
+            // Activating - check if system can be activated
             if (!subspaceRadio.canActivate(this.ship)) {
+                // System can't be activated - play command failed sound
+                if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+                    this.starfieldManager.playCommandFailedSound();
+                }
+                
+                // Show specific error message in HUD
                 if (!subspaceRadio.isOperational()) {
                     console.warn('Cannot activate Subspace Radio: System damaged or offline');
+                    if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                        this.starfieldManager.showHUDError(
+                            'SUBSPACE RADIO OFFLINE',
+                            'System damaged or offline - repair required'
+                        );
+                    }
+                } else if (!this.ship.hasSystemCardsSync('subspace_radio')) {
+                    console.warn('Cannot activate Subspace Radio: No subspace radio card installed');
+                    if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                        this.starfieldManager.showHUDError(
+                            'SUBSPACE RADIO UNAVAILABLE',
+                            'No Subspace Radio card installed in ship slots'
+                        );
+                    }
                 } else {
                     console.warn('Cannot activate Subspace Radio: Insufficient energy');
+                    if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                        this.starfieldManager.showHUDError(
+                            'SUBSPACE RADIO ACTIVATION FAILED',
+                            'Insufficient energy - need 15 energy units'
+                        );
+                    }
                 }
                 return;
+            }
+            
+            // System can be activated - play command sound
+            if (this.starfieldManager && this.starfieldManager.playCommandSound) {
+                this.starfieldManager.playCommandSound();
             }
             
             // Activate the system - clear manual deactivation flag

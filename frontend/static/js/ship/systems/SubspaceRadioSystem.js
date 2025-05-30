@@ -89,22 +89,54 @@ export default class SubspaceRadioSystem extends System {
 
     // Check if radio can be activated
     canActivate(ship) {
+        // Basic system operational check
         if (!this.isOperational()) {
             return false;
         }
-        
-        // Check cooldown
-        const currentTime = Date.now();
-        if (currentTime - this.lastActivationTime < this.activationCooldown) {
+
+        // Card requirement check - radio requires subspace radio cards
+        if (ship && ship.hasSystemCardsSync) {
+            const cardCheck = ship.hasSystemCardsSync('subspace_radio');
+            // Handle both boolean and object returns
+            let cardCheckPassed = false;
+            if (typeof cardCheck === 'boolean') {
+                cardCheckPassed = cardCheck;
+            } else if (cardCheck && typeof cardCheck === 'object') {
+                cardCheckPassed = cardCheck.hasCards;
+            } else {
+                cardCheckPassed = false;
+            }
+            
+            if (!cardCheckPassed) {
+                return false;
+            }
+        }
+
+        // Cooldown check
+        if (this.isInCooldown()) {
             return false;
         }
-        
-        // Check energy for initial activation (requires 15 energy to start)
-        if (!ship || ship.currentEnergy < 15) {
+
+        // Energy check (use correct property name)
+        const energyRequired = 15; // Energy required for activation
+        if (ship && ship.currentEnergy < energyRequired) {
             return false;
         }
-        
+
         return true;
+    }
+
+    /**
+     * Check if system is in cooldown period
+     * @returns {boolean} True if system is in cooldown
+     */
+    isInCooldown() {
+        if (!this.lastActivationTime || !this.activationCooldown) {
+            return false;
+        }
+        
+        const currentTime = Date.now();
+        return (currentTime - this.lastActivationTime) < this.activationCooldown;
     }
 
     // Activate subspace radio

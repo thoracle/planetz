@@ -181,20 +181,37 @@ export default class TargetComputer extends System {
     }
     
     /**
-     * Activate targeting computer
-     * @param {Ship} ship - Ship instance for energy consumption
-     * @returns {boolean} True if activation successful
+     * Check if target computer can be activated
+     * @param {Ship} ship - Ship instance to check energy and card requirements
+     * @returns {boolean} True if target computer can be activated
      */
-    activate(ship) {
+    canActivate(ship) {
         if (!this.isOperational()) {
-            console.warn('Cannot activate Target Computer: system not operational');
+            return false;
+        }
+        
+        // Check if required cards are installed
+        if (ship && !ship.hasSystemCardsSync('target_computer')) {
             return false;
         }
         
         // Check energy availability for sustained operation
         const energyRequired = this.getEnergyConsumptionRate();
-        if (!ship.hasEnergy(energyRequired)) {
-            console.warn('Cannot activate Target Computer: Insufficient energy');
+        if (!ship || ship.currentEnergy < energyRequired) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Activate targeting computer
+     * @param {Ship} ship - Ship instance for energy consumption
+     * @returns {boolean} True if activation successful
+     */
+    activate(ship) {
+        if (!this.canActivate(ship)) {
+            console.warn('Cannot activate Target Computer: system requirements not met');
             return false;
         }
         
@@ -288,6 +305,15 @@ export default class TargetComputer extends System {
      * @returns {boolean} True if sub-targeting is available
      */
     hasSubTargeting() {
+        return this.level >= 3 && this.isOperational();
+    }
+    
+    /**
+     * Check if intel capabilities are available (Level 3+)
+     * Intel capabilities include detailed scanning and intelligence gathering
+     * @returns {boolean} True if intel capabilities are available
+     */
+    hasIntelCapabilities() {
         return this.level >= 3 && this.isOperational();
     }
     
@@ -613,6 +639,7 @@ export default class TargetComputer extends System {
             trackedTargetsCount: this.trackedTargets.size,
             computerType: levelStats ? levelStats.computerType : 'Basic Targeting Computer',
             energyConsumptionRate: this.getEnergyConsumptionRate(),
+            canActivate: this.canActivate({ currentEnergy: 1000 }), // Test with high energy
             // Sub-targeting information
             hasSubTargeting: this.hasSubTargeting(),
             currentSubTarget: this.currentSubTarget ? this.currentSubTarget.displayName : null,

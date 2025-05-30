@@ -32,9 +32,9 @@ export class ViewManager {
         this.solarSystemManager = null;  // Initialize solarSystemManager
         
         // Initialize Ship instance (replacing simple shipEnergy)
-        this.ship = new Ship('heavy_fighter');
+        this.ship = new Ship('starter_ship');
         // Maintain backward compatibility by setting ship energy to existing value
-        this.ship.currentEnergy = 9999;
+        this.ship.currentEnergy = 1000; // Reduced for starter ship
         
         // Initialize default ship systems
         this.initializeShipSystems();
@@ -281,28 +281,90 @@ export class ViewManager {
                     // Check if chart system is operational
                     if (!chartSystem) {
                         console.warn('No Galactic Chart system found on ship');
-                        return;
-                    }
-                    
-                    if (!chartSystem.canActivate(this.ship)) {
-                        if (!chartSystem.isOperational()) {
-                            console.warn('Cannot activate Galactic Chart: System damaged or offline');
+                        // Show HUD error message instead of just console warning
+                        console.log('🔍 ViewManager G key: starfieldManager available?', !!this.starfieldManager);
+                        if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                            this.starfieldManager.showHUDError(
+                                'GALACTIC CHART UNAVAILABLE',
+                                'System not installed on this ship'
+                            );
                         } else {
-                            console.warn('Cannot activate Galactic Chart: Insufficient energy');
+                            console.warn('StarfieldManager not available for HUD error display');
+                        }
+                        if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+                            this.starfieldManager.playCommandFailedSound();
                         }
                         return;
                     }
                     
-                    // Play command sound like other command keys
+                    // Check basic operability and cards FIRST (required for any chart usage)
+                    if (!chartSystem.isOperational()) {
+                        console.warn('Cannot use Galactic Chart: System damaged or offline');
+                        if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                            this.starfieldManager.showHUDError(
+                                'GALACTIC CHART DAMAGED',
+                                'Repair system to enable navigation'
+                            );
+                        }
+                        if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+                            this.starfieldManager.playCommandFailedSound();
+                        }
+                        return;
+                    }
+                    
+                    // Check if chart cards are installed (required for basic viewing)
+                    let hasChartCards = false;
+                    try {
+                        const cardCheck = this.ship.hasSystemCardsSync('galactic_chart');
+                        console.log(`🗺️ ViewManager G key: Raw card check result:`, cardCheck);
+                        console.log(`🗺️ ViewManager G key: Card check type:`, typeof cardCheck);
+                        
+                        if (typeof cardCheck === 'boolean') {
+                            hasChartCards = cardCheck;
+                            console.log(`🗺️ ViewManager G key: Boolean result:`, hasChartCards);
+                        } else if (cardCheck && typeof cardCheck === 'object') {
+                            hasChartCards = cardCheck.hasCards;
+                            console.log(`🗺️ ViewManager G key: Object result - hasCards:`, cardCheck.hasCards, 'missingCards:', cardCheck.missingCards);
+                        } else {
+                            hasChartCards = false;
+                            console.log(`🗺️ ViewManager G key: Unknown result type, defaulting to false`);
+                        }
+                    } catch (error) {
+                        console.warn('Chart card check failed:', error);
+                        hasChartCards = false;
+                    }
+                    
+                    console.log(`🗺️ ViewManager G key: Final hasChartCards result:`, hasChartCards);
+                    
+                    if (!hasChartCards) {
+                        console.warn('Cannot use Galactic Chart: No chart cards installed');
+                        if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                            this.starfieldManager.showHUDError(
+                                'GALACTIC CHART CARDS MISSING',
+                                'Install galactic chart cards to enable navigation'
+                            );
+                        }
+                        if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+                            this.starfieldManager.playCommandFailedSound();
+                        }
+                        return;
+                    }
+                    
+                    // Play command sound for successful chart access
                     if (this.starfieldManager && this.starfieldManager.playCommandSound) {
                         this.starfieldManager.playCommandSound();
                     }
                     
-                    // Activate chart system
-                    const chartActivated = chartSystem.activateChart(this.ship);
-                    if (!chartActivated) {
-                        console.warn('Failed to activate Galactic Chart');
-                        return;
+                    // Try to activate chart system for enhanced functionality (scanning)
+                    // but allow basic viewing even if activation fails due to cooldown/energy
+                    let chartFullyActivated = false;
+                    if (chartSystem.canActivate(this.ship)) {
+                        chartFullyActivated = chartSystem.activateChart(this.ship);
+                        if (chartFullyActivated) {
+                            console.log('Galactic Chart fully activated with scanning capabilities');
+                        }
+                    } else {
+                        console.log('Galactic Chart opened in navigation-only mode (scanning on cooldown or insufficient energy)');
                     }
                     
                     // If scanner is visible, hide it first and deactivate the system
@@ -340,14 +402,44 @@ export class ViewManager {
                     // Check if scanner system is operational
                     if (!scannerSystem) {
                         console.warn('No Long Range Scanner system found on ship');
+                        // Show HUD error message instead of just console warning
+                        console.log('🔍 ViewManager L key: starfieldManager available?', !!this.starfieldManager);
+                        if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                            this.starfieldManager.showHUDError(
+                                'LONG RANGE SCANNER UNAVAILABLE',
+                                'System not installed on this ship'
+                            );
+                        } else {
+                            console.warn('StarfieldManager not available for HUD error display');
+                        }
+                        if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+                            this.starfieldManager.playCommandFailedSound();
+                        }
                         return;
                     }
                     
                     if (!scannerSystem.canActivate(this.ship)) {
                         if (!scannerSystem.isOperational()) {
                             console.warn('Cannot activate Long Range Scanner: System damaged or offline');
+                            // Show HUD error message
+                            if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                                this.starfieldManager.showHUDError(
+                                    'LONG RANGE SCANNER DAMAGED',
+                                    'Repair system to enable scanner operations'
+                                );
+                            }
                         } else {
                             console.warn('Cannot activate Long Range Scanner: Insufficient energy');
+                            // Show HUD error message
+                            if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                                this.starfieldManager.showHUDError(
+                                    'INSUFFICIENT ENERGY',
+                                    'Need 20 energy units to activate scanner'
+                                );
+                            }
+                        }
+                        if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+                            this.starfieldManager.playCommandFailedSound();
                         }
                         return;
                     }
@@ -377,18 +469,24 @@ export class ViewManager {
                     this.setView(VIEW_TYPES.SCANNER);
                 }
             } else if (key === 's' && !isDocked) {
-                // Shield toggle - only when not docked
+                // Shield toggle - DISABLED (now handled by StarfieldManager)
+                // The shield toggle is now handled by StarfieldManager to avoid conflicts
+                // and ensure only one shield handler is active
                 event.preventDefault();
                 event.stopPropagation();
                 
-                // Play command sound like other command keys
-                if (this.starfieldManager && this.starfieldManager.playCommandSound) {
-                    this.starfieldManager.playCommandSound();
-                }
+                // Let StarfieldManager handle shield toggles
+                console.log('Shield key pressed - handled by StarfieldManager');
                 
+                /* DISABLED - avoid double shield toggle
                 // Get shields system from ship
                 const shieldsSystem = this.ship.systems.get('shields');
                 if (shieldsSystem) {
+                    // Play command sound only if shields exist
+                    if (this.starfieldManager && this.starfieldManager.playCommandSound) {
+                        this.starfieldManager.playCommandSound();
+                    }
+                    
                     const newState = shieldsSystem.toggleShields();
                     console.log(`Shields ${newState ? 'UP' : 'DOWN'} - Energy consumption: ${shieldsSystem.getEnergyConsumptionRate().toFixed(2)}/sec`);
                     
@@ -396,8 +494,13 @@ export class ViewManager {
                     const status = shieldsSystem.getStatus();
                     console.log(`Shield strength: ${status.currentShieldStrength.toFixed(2)}/${status.maxShieldStrength.toFixed(2)} - Damage absorption: ${(status.damageAbsorption * 100).toFixed(1)}%`);
                 } else {
-                    console.log('No shields system found on ship');
+                    // Play fail sound if shields don't exist
+                    if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+                        this.starfieldManager.playCommandFailedSound();
+                    }
+                    console.log('No shields system found on ship - install shield cards');
                 }
+                */
             } else if (key === ' ' && !isDocked) {
                 // Weapon firing - only when not docked
                 event.preventDefault();
@@ -408,6 +511,37 @@ export class ViewManager {
                     this.starfieldManager.playCommandSound();
                 }
                 
+                // Check if ship has weapon cards installed FIRST
+                let hasWeaponCards = false;
+                if (this.ship && this.ship.hasSystemCardsSync) {
+                    try {
+                        const cardCheck = this.ship.hasSystemCardsSync('weapons');
+                        if (typeof cardCheck === 'boolean') {
+                            hasWeaponCards = cardCheck;
+                        } else if (cardCheck && typeof cardCheck === 'object') {
+                            hasWeaponCards = cardCheck.hasCards;
+                        }
+                    } catch (error) {
+                        console.warn('Weapon card check failed:', error);
+                        hasWeaponCards = false;
+                    }
+                }
+                
+                if (!hasWeaponCards) {
+                    // No weapon cards installed - show error and play failed sound
+                    if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                        this.starfieldManager.showHUDError(
+                            'NO WEAPONS EQUIPPED',
+                            'Install weapon cards to enable combat'
+                        );
+                    }
+                    if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+                        this.starfieldManager.playCommandFailedSound();
+                    }
+                    console.log('Cannot fire weapons - no weapon cards installed');
+                    return;
+                }
+                
                 // Get weapons system from ship
                 const weaponsSystem = this.ship.systems.get('weapons');
                 if (weaponsSystem) {
@@ -416,9 +550,48 @@ export class ViewManager {
                         console.log(`Weapons fired: ${fireResult.damage.toFixed(1)} damage, ${fireResult.energyConsumed.toFixed(1)} energy consumed`);
                         console.log(`${fireResult.weaponType} - ${fireResult.hit ? 'HIT' : 'MISS'} at ${fireResult.distance.toFixed(1)} range`);
                     } else {
+                        // Weapon fire failed - provide specific error message
+                        if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                            if (!weaponsSystem.isOperational()) {
+                                this.starfieldManager.showHUDError(
+                                    'WEAPONS DAMAGED',
+                                    'Repair weapon systems to enable firing'
+                                );
+                            } else if (!weaponsSystem.canFire()) {
+                                this.starfieldManager.showHUDError(
+                                    'WEAPONS COOLING DOWN',
+                                    'Wait for weapon systems to recharge'
+                                );
+                            } else if (!this.ship.hasEnergy(weaponsSystem.getEnergyPerShot())) {
+                                this.starfieldManager.showHUDError(
+                                    'INSUFFICIENT ENERGY',
+                                    `Need ${weaponsSystem.getEnergyPerShot().toFixed(1)} energy units to fire`
+                                );
+                            } else {
+                                this.starfieldManager.showHUDError(
+                                    'WEAPONS ERROR',
+                                    'Cannot fire weapons - check system status'
+                                );
+                            }
+                        }
+                        // Play command failed sound
+                        if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+                            this.starfieldManager.playCommandFailedSound();
+                        }
                         console.log('Cannot fire weapons - check energy or cooldown');
                     }
                 } else {
+                    // No weapons system found - show HUD error message
+                    if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                        this.starfieldManager.showHUDError(
+                            'WEAPONS UNAVAILABLE',
+                            'No weapons system installed on this ship'
+                        );
+                    }
+                    // Play command failed sound
+                    if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+                        this.starfieldManager.playCommandFailedSound();
+                    }
                     console.log('No weapons system found on ship');
                 }
             } else if (key === 'd') {

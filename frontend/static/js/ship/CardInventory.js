@@ -1,16 +1,16 @@
 /**
- * CardInventory class - Manages a Clash Royale-style stacking inventory system
+ * CardInventory class - Manages card collection and stacking mechanics
  * Based on docs/tech_design.md and docs/system_architecture.md
  * 
  * Features:
- * - Card stack management (all same type cards stack)
- * - Upgrade requirements (3x, 6x, 12x, 24x cards per level)
+ * - Clash Royale-style card stacking (all same type cards stack)
+ * - Card level progression system (1-10)
+ * - Upgrade requirements (2, 3, 5, 8, 12, 20, 32, 50, 80 cards per level)
  * - Card collection tracking and progress display
  * - Pokédex-style discovery system with silhouettes
  */
 
 import NFTCard, { CARD_TYPES, CARD_RARITY, DROP_RATES, RARITY_CARD_POOLS } from './NFTCard.js';
-import { DebugLogger, DEBUG_CATEGORIES } from '../utils/DebugConfig.js';
 
 // Upgrade requirements for each level (cards needed to upgrade TO that level)
 export const UPGRADE_REQUIREMENTS = {
@@ -47,10 +47,6 @@ export default class CardInventory {
      * Initialize card stacks for all card types
      */
     initializeCardStacks() {
-        DebugLogger.debug(DEBUG_CATEGORIES.INVENTORY, '🔧 Initializing card stacks...');
-        DebugLogger.debug(DEBUG_CATEGORIES.INVENTORY, '📋 Available CARD_TYPES:', Object.keys(CARD_TYPES).length, 'types');
-        DebugLogger.verbose(DEBUG_CATEGORIES.INVENTORY, '🎯 CARD_TYPES values:', Object.values(CARD_TYPES));
-        
         // Check if hull_plating is in CARD_TYPES
         console.log('🔍 CARD_TYPES.HULL_PLATING:', CARD_TYPES.HULL_PLATING);
         console.log('🔍 hull_plating in Object.values(CARD_TYPES):', Object.values(CARD_TYPES).includes('hull_plating'));
@@ -67,11 +63,10 @@ export default class CardInventory {
             if (cardType === 'hull_plating') {
                 console.log('✅ Found and initialized hull_plating at index:', index);
             }
-            DebugLogger.verbose(DEBUG_CATEGORIES.INVENTORY, '✅ Initialized stack for:', cardType);
         });
         
-        DebugLogger.debug(DEBUG_CATEGORIES.INVENTORY, '🗂️ Total card stacks initialized:', this.cardStacks.size);
-        DebugLogger.debug(DEBUG_CATEGORIES.INVENTORY, '🔍 Has hull_plating after init:', this.cardStacks.has('hull_plating'));
+        console.log('🗂️ Total card stacks initialized:', this.cardStacks.size);
+        console.log('🔍 Has hull_plating after init:', this.cardStacks.has('hull_plating'));
         
         // Additional debugging - list all initialized card types
         console.log('🗂️ All initialized card types:', Array.from(this.cardStacks.keys()));
@@ -347,9 +342,6 @@ export default class CardInventory {
 
         const card = new NFTCard(randomCardType, selectedRarity);
         
-        // Debug logging
-        DebugLogger.debug(DEBUG_CATEGORIES.CARD_GENERATION, `Generated card: ${card.metadata.name} (${selectedRarity}) - Random: ${random.toFixed(2)}, Pool size: ${availableCardTypes.length}`);
-        
         return card;
     }
 
@@ -361,9 +353,6 @@ export default class CardInventory {
      */
     generateSpecificCard(cardType, rarity) {
         const card = new NFTCard(cardType, rarity);
-        
-        // Debug logging
-        DebugLogger.debug(DEBUG_CATEGORIES.CARD_GENERATION, `Generated specific card: ${card.metadata.name} (${rarity})`);
         
         return card;
     }

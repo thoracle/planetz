@@ -159,15 +159,71 @@ export default class Shields extends System {
     }
     
     /**
+     * Check if shields can be activated
+     * @param {Ship} ship - The ship instance
+     * @returns {boolean} - True if shields can be activated
+     */
+    canActivate(ship) {
+        console.log(`🛡️ Shields.canActivate() called:`, {
+            isOperational: this.isOperational(),
+            hasShip: !!ship,
+            shipEnergy: ship?.currentEnergy
+        });
+        
+        if (!this.isOperational()) {
+            console.log(`🛡️ Shields: Cannot activate - system not operational`);
+            return false;
+        }
+        
+        // Check if ship has required cards
+        if (ship && ship.hasSystemCardsSync) {
+            const cardCheck = ship.hasSystemCardsSync('shields');
+            console.log(`🛡️ Shields: Card check result:`, cardCheck, typeof cardCheck);
+            
+            // Handle both boolean and object returns
+            let cardCheckPassed = false;
+            if (typeof cardCheck === 'boolean') {
+                cardCheckPassed = cardCheck;
+            } else if (cardCheck && typeof cardCheck === 'object') {
+                cardCheckPassed = cardCheck.hasCards;
+            } else {
+                cardCheckPassed = false;
+            }
+            
+            if (!cardCheckPassed) {
+                const missingCards = (cardCheck && cardCheck.missingCards) ? cardCheck.missingCards : ['shields'];
+                console.log(`🛡️ Shields: Cannot activate - missing cards:`, missingCards);
+                return false;
+            }
+            console.log(`🛡️ Shields: Card check PASSED`);
+        }
+        
+        // Check energy requirements
+        const energyRequired = this.getEnergyConsumptionRate();
+        if (ship && ship.currentEnergy < energyRequired) {
+            console.log(`🛡️ Shields: Cannot activate - insufficient energy: ${ship.currentEnergy}/${energyRequired}`);
+            return false;
+        }
+        
+        console.log(`🛡️ Shields: Can activate - all checks passed`);
+        return true;
+    }
+    
+    /**
      * Apply blue screen tint when shields are active
      */
     applyScreenTint() {
-        if (this.isScreenTinted) return;
+        console.log('🛡️ Applying shield screen tint...');
+        if (this.isScreenTinted) {
+            console.log('🛡️ Screen already tinted, skipping');
+            return;
+        }
         
         // Create or get existing shield overlay
         let shieldOverlay = document.getElementById('shield-overlay');
         
         if (!shieldOverlay) {
+            console.log('🛡️ Creating new shield overlay element');
             shieldOverlay = document.createElement('div');
             shieldOverlay.id = 'shield-overlay';
             shieldOverlay.style.cssText = `
@@ -187,34 +243,48 @@ export default class Shields extends System {
                 transition: opacity 0.3s ease-in-out;
             `;
             document.body.appendChild(shieldOverlay);
+            console.log('🛡️ Shield overlay created and added to DOM');
+        } else {
+            console.log('🛡️ Using existing shield overlay element');
         }
         
         // Fade in the overlay
         setTimeout(() => {
+            console.log('🛡️ Fading in shield overlay to opacity 1');
             shieldOverlay.style.opacity = '1';
         }, 10);
         
         this.isScreenTinted = true;
+        console.log('🛡️ Shield screen tint applied successfully');
     }
     
     /**
      * Remove blue screen tint when shields are deactivated
      */
     removeScreenTint() {
-        if (!this.isScreenTinted) return;
+        console.log('🛡️ Removing shield screen tint...');
+        if (!this.isScreenTinted) {
+            console.log('🛡️ Screen not tinted, skipping');
+            return;
+        }
         
         const shieldOverlay = document.getElementById('shield-overlay');
         if (shieldOverlay) {
+            console.log('🛡️ Fading out shield overlay');
             shieldOverlay.style.opacity = '0';
             // Remove element after transition
             setTimeout(() => {
                 if (shieldOverlay.parentNode) {
+                    console.log('🛡️ Removing shield overlay from DOM');
                     shieldOverlay.parentNode.removeChild(shieldOverlay);
                 }
             }, 300);
+        } else {
+            console.log('🛡️ Shield overlay element not found');
         }
         
         this.isScreenTinted = false;
+        console.log('🛡️ Shield screen tint removed successfully');
     }
     
     /**

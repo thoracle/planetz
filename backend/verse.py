@@ -386,6 +386,9 @@ def generate_star_system(random_seed=None):
     try:
         # Convert string sector coordinates to numeric seeds
         if isinstance(random_seed, str):
+            # Check for special starter system
+            if random_seed == 'A0':
+                return generate_starter_system()
             random_seed = sector_to_seed(random_seed)
         elif not isinstance(random_seed, (int, type(None))):
             random_seed = hash(str(random_seed)) & 0xFFFFFFFF
@@ -427,6 +430,73 @@ def generate_star_system(random_seed=None):
 
     # Restore the original RNG state
     restore_rng_state(original_state)
+    return star_system
+
+def generate_starter_system():
+    """Generate a special compact starter system for sector A0"""
+    star_system = {}
+    
+    # Fixed starter system configuration for consistency
+    star_system['star_type'] = 'yellow dwarf'
+    star_system['star_name'] = 'Sol'
+    star_system['star_size'] = 2.0
+    
+    # Custom descriptions for the starter system
+    star_system['description'] = "A stable yellow dwarf star providing optimal conditions for new space explorers to learn navigation and basic starship operations."
+    star_system['intel_brief'] = "Training zone designated for new starship captains. Minimal hostile activity expected. Ideal for learning basic ship systems and space navigation."
+    
+    # Create exactly one planet with a few moons for simplicity
+    starter_planet = {
+        'planet_name': 'Terra Prime',
+        'planet_type': 'Class-M',
+        'planet_size': 1.2,
+        'has_atmosphere': True,
+        'has_clouds': True,
+        'diplomacy': 'friendly',
+        'government': 'Democracy',
+        'economy': 'Training',
+        'technology': 'Starfaring',
+        'description': "A beautiful Earth-like training world with diverse biomes and friendly inhabitants. Perfect for new explorers to practice planetary scanning and basic diplomacy.",
+        'intel_brief': "Primary training facility for Starfleet Academy graduates. All services available. Excellent repair facilities and equipment suppliers for new captains.",
+        'params': {
+            'noise_scale': 0.02,
+            'octaves': 4,
+            'persistence': 0.5,
+            'lacunarity': 2.0,
+            'terrain_height': 0.3,
+            'seed': 12345
+        },
+        'moons': []
+    }
+    
+    # Add exactly 2 moons for practice navigation
+    moon1 = {
+        'moon_name': 'Luna',
+        'moon_type': 'rocky',
+        'moon_size': 0.3,
+        'diplomacy': 'friendly',
+        'government': 'Democracy', 
+        'economy': 'Mining',
+        'technology': 'Starfaring',
+        'description': "A barren but mineral-rich moon serving as a training ground for mining operations and surface exploration.",
+        'intel_brief': "Training mining facility. Safe environment for learning resource extraction and EVA procedures."
+    }
+    
+    moon2 = {
+        'moon_name': 'Europa',
+        'moon_type': 'ice',
+        'moon_size': 0.25,
+        'diplomacy': 'friendly',
+        'government': 'Democracy',
+        'economy': 'Research',
+        'technology': 'Starfaring', 
+        'description': "An ice-covered moon with subsurface oceans, used for training in extreme environment operations.",
+        'intel_brief': "Research station specializing in exobiology and extreme environment training. Ice mining facilities available."
+    }
+    
+    starter_planet['moons'] = [moon1, moon2]
+    star_system['planets'] = [starter_planet]
+    
     return star_system
 
 # Generate a planet
@@ -542,12 +612,16 @@ def generate_universe(num_star_systems, seed=None):
         # Create sector coordinate (e.g. 'A0', 'B1', etc.)
         sector = chr(ord('A') + row) + str(col)
         
-        # Create a unique but deterministic seed for this sector
-        # Combine the universe seed with the sector coordinate
-        sector_seed = (universe_seed + sector_to_seed(sector)) & 0xFFFFFFFF
-        
-        # Generate the star system using the combined seed
-        star_system = generate_star_system(random_seed=sector_seed)
+        # Special case for starter system
+        if sector == 'A0':
+            star_system = generate_starter_system()
+        else:
+            # Create a unique but deterministic seed for this sector
+            # Combine the universe seed with the sector coordinate
+            sector_seed = (universe_seed + sector_to_seed(sector)) & 0xFFFFFFFF
+            
+            # Generate the star system using the combined seed
+            star_system = generate_star_system(random_seed=sector_seed)
         
         # Add sector information to the star system
         star_system['sector'] = sector

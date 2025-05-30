@@ -147,8 +147,10 @@ export class StarfieldManager {
         this.audioLoader = new this.THREE.AudioLoader();
         this.engineSound = new this.THREE.Audio(this.listener);
         this.commandSound = new this.THREE.Audio(this.listener);
+        this.commandFailedSound = new this.THREE.Audio(this.listener);
         this.soundLoaded = false;
         this.commandSoundLoaded = false;
+        this.commandFailedSoundLoaded = false;
         this.engineState = 'stopped'; // 'stopped', 'starting', 'running', 'stopping'
 
         // Add visibility change listener
@@ -216,6 +218,29 @@ export class StarfieldManager {
             },
             (error) => {
                 console.error('Error loading command sound:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack
+                });
+            }
+        );
+
+        // Load command failed sound
+        console.log('Loading command failed sound...');
+        this.audioLoader.load(
+            '/audio/command_failed.mp3',
+            (buffer) => {
+                console.log('Command failed sound loaded successfully');
+                this.commandFailedSound.setBuffer(buffer);
+                this.commandFailedSound.setVolume(0.6); // Slightly louder than success sound
+                this.commandFailedSoundLoaded = true;
+                console.log('Command failed sound initialization complete');
+            },
+            (progress) => {
+                console.log(`Loading command failed sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
+            },
+            (error) => {
+                console.error('Error loading command failed sound:', error);
                 console.error('Error details:', {
                     message: error.message,
                     stack: error.stack
@@ -642,8 +667,19 @@ export class StarfieldManager {
             'Auto-repair: Standby';
         this.systemsList.appendChild(statusDiv);
 
-        // Priority sliders for each system
-        for (const [systemName, systemInfo] of Object.entries(shipStatus.systems)) {
+        // Get card-filtered ship status (only systems with required cards)
+        const cardFilteredStatus = this.ship.getCardFilteredStatus();
+        
+        // Add info about filtering
+        const filterInfo = document.createElement('div');
+        filterInfo.style.cssText = `font-size: 12px; color: #00aa41; margin-bottom: 12px; text-align: center; font-style: italic;`;
+        const totalSystems = this.ship.systems.size;
+        const visibleSystems = Object.keys(cardFilteredStatus.systems).length;
+        filterInfo.textContent = `Showing ${visibleSystems}/${totalSystems} systems (card-enabled only)`;
+        this.systemsList.appendChild(filterInfo);
+
+        // Priority sliders for each card-enabled system
+        for (const [systemName, systemInfo] of Object.entries(cardFilteredStatus.systems)) {
             const systemDiv = document.createElement('div');
             systemDiv.style.cssText = `
                 margin-bottom: 10px;
@@ -675,6 +711,9 @@ export class StarfieldManager {
                 background-color: ${systemInfo.isActive ? '#00ff41' : '#666666'};
             `;
             
+            // Debug logging for status dot
+            // console.log(`🔍 DAMAGE UI: ${systemName} - isActive: ${systemInfo.isActive}, dot color: ${systemInfo.isActive ? '#00ff41' : '#666666'}`);
+            
             const health = Math.round(systemInfo.health * 100);
             let healthColor = '#00ff41';
             if (health < 75) healthColor = '#ffaa00';
@@ -690,6 +729,19 @@ export class StarfieldManager {
             nameWithDot.appendChild(healthSpan);
             
             nameWithDot.appendChild(document.createTextNode(')'));
+
+            // Add card indicator
+            const cardIndicator = document.createElement('span');
+            cardIndicator.style.cssText = `
+                margin-left: 8px;
+                font-size: 12px;
+                color: #00ff41;
+                background: rgba(0, 255, 65, 0.2);
+                padding: 2px 6px;
+                border-radius: 3px;
+            `;
+            cardIndicator.textContent = '🃏 CARD';
+            nameWithDot.appendChild(cardIndicator);
 
             nameDiv.appendChild(nameWithDot);
 
@@ -775,7 +827,51 @@ export class StarfieldManager {
             this.systemsList.appendChild(systemDiv);
         }
 
-
+        // Add note about missing systems
+        const missingSystems = totalSystems - visibleSystems;
+        if (missingSystems > 0) {
+            // Debug: Find which systems are hidden
+            const allSystems = Array.from(this.ship.systems.keys());
+            const visibleSystemNames = Object.keys(cardFilteredStatus.systems);
+            const hiddenSystems = allSystems.filter(systemName => !visibleSystemNames.includes(systemName));
+            
+            // Reduced debug output - only show summary
+            if (missingSystems > 0) {
+                // REMOVED: console.log spam about hidden systems
+                // Information is still shown in the UI note below
+            }
+            
+            /* DISABLED - too verbose for normal use
+            console.log(`🔍 DAMAGE UI DEBUG:`);
+            console.log(`  📊 Total systems: ${totalSystems}`);
+            console.log(`  ✅ Visible systems: ${visibleSystems} - [${visibleSystemNames.join(', ')}]`);
+            console.log(`  ❌ Hidden systems: ${missingSystems} - [${hiddenSystems.join(', ')}]`);
+            console.log(`  🔍 Hidden systems details:`);
+            
+            hiddenSystems.forEach(systemName => {
+                const system = this.ship.getSystem(systemName);
+                const cardCheck = this.ship.hasSystemCardsSync(systemName);
+                console.log(`    - ${systemName}: hasCards=${cardCheck.hasCards}, missingCards=[${cardCheck.missingCards.join(', ')}], operational=${system?.isOperational()}`);
+            });
+            */
+            
+            const noteDiv = document.createElement('div');
+            noteDiv.style.cssText = `
+                font-size: 12px;
+                color: #ffaa00;
+                margin-top: 15px;
+                padding: 8px;
+                border: 1px solid #ffaa00;
+                border-radius: 4px;
+                background: rgba(255, 170, 0, 0.1);
+                text-align: center;
+            `;
+            noteDiv.innerHTML = `
+                ⚠️ ${missingSystems} system${missingSystems > 1 ? 's' : ''} hidden: ${hiddenSystems.join(', ')}<br>
+                <span style="font-size: 11px;">Install required cards to enable damage control</span>
+            `;
+            this.systemsList.appendChild(noteDiv);
+        }
     }
 
     formatSystemName(systemName) {
@@ -1250,32 +1346,335 @@ export class StarfieldManager {
 
             // Always allow galactic, scanner and target computer toggles
             if (commandKey === 'g') {
+                // DISABLED - handled by ViewManager to avoid conflicts
+                // ViewManager properly activates/deactivates galactic chart system
+                console.log('Galactic chart key pressed - handled by ViewManager');
+                
+                /* DISABLED - avoid duplicate handler conflicts
                 // Block galactic chart when docked
                 if (!this.isDocked) {
-                    this.playCommandSound();
-                    this.setView('GALACTIC');
+                    // Check if galactic chart system can be activated
+                    const ship = this.viewManager?.getShip();
+                    if (ship) {
+                        const galacticChart = ship.getSystem('galactic_chart');
+                        console.log(`🗺️ GALACTIC CHART: System exists=${!!galacticChart}, Can activate=${galacticChart ? galacticChart.canActivate(ship) : false}`);
+                        
+                        if (galacticChart && galacticChart.canActivate(ship)) {
+                            this.playCommandSound();
+                            this.setView('GALACTIC');
+                        } else {
+                            // System can't be activated - provide specific error message
+                            if (!galacticChart) {
+                                this.showHUDError(
+                                    'GALACTIC CHART UNAVAILABLE',
+                                    'System not installed on this ship'
+                                );
+                            } else if (!galacticChart.isOperational()) {
+                                this.showHUDError(
+                                    'GALACTIC CHART DAMAGED',
+                                    'Repair system to enable navigation'
+                                );
+                            } else if (!ship.hasSystemCardsSync('galactic_chart')) {
+                                this.showHUDError(
+                                    'GALACTIC CHART MISSING',
+                                    'Install galactic chart card to enable navigation'
+                                );
+                            } else if (!ship.hasEnergy(15)) {
+                                this.showHUDError(
+                                    'INSUFFICIENT ENERGY',
+                                    'Need 15 energy units to activate galactic chart'
+                                );
+                            } else {
+                                this.showHUDError(
+                                    'GALACTIC CHART ERROR',
+                                    'System cannot be activated'
+                                );
+                            }
+                            this.playCommandFailedSound();
+                        }
+                    }
                 }
+                */
             } else if (commandKey === 'l') {
+                // DISABLED - handled by ViewManager to avoid conflicts  
+                // ViewManager properly activates/deactivates long range scanner system
+                console.log('Long range scanner key pressed - handled by ViewManager');
+                
+                /* DISABLED - avoid duplicate handler conflicts
                 // Block long range scanner when docked
                 if (!this.isDocked) {
-                    this.playCommandSound();
-                    this.setView('SCANNER');
+                    // Check if long range scanner system can be activated
+                    const ship = this.viewManager?.getShip();
+                    if (ship) {
+                        const scanner = ship.getSystem('long_range_scanner');
+                        if (scanner && scanner.canActivate(ship)) {
+                            this.playCommandSound();
+                            this.setView('SCANNER');
+                        } else {
+                            // System can't be activated - provide specific error message
+                            if (!scanner) {
+                                this.showHUDError(
+                                    'LONG RANGE SCANNER UNAVAILABLE',
+                                    'No Long Range Scanner card installed in ship slots'
+                                );
+                            } else if (!scanner.isOperational()) {
+                                this.showHUDError(
+                                    'LONG RANGE SCANNER OFFLINE',
+                                    'System damaged or offline - repair required'
+                                );
+                            } else if (!ship.hasSystemCardsSync('long_range_scanner')) {
+                                this.showHUDError(
+                                    'LONG RANGE SCANNER UNAVAILABLE',
+                                    'No Long Range Scanner card installed in ship slots'
+                                );
+                            } else {
+                                this.showHUDError(
+                                    'LONG RANGE SCANNER ACTIVATION FAILED',
+                                    'Insufficient energy for scanning operations'
+                                );
+                            }
+                            console.log('Long Range Scanner activation failed - system not available');
+                        }
+                    } else {
+                        this.playCommandFailedSound();
+                    }
+                } else {
+                    this.showHUDError(
+                        'LONG RANGE SCANNER UNAVAILABLE',
+                        'Scanner systems offline while docked'
+                    );
                 }
+                */
             } else if (commandKey === 't') {
                 // Block target computer when docked
                 if (!this.isDocked) {
-                    this.playCommandSound();
-                    this.toggleTargetComputer();
+                    // Check if target computer system can be activated
+                    const ship = this.viewManager?.getShip();
+                    if (ship) {
+                        const targetComputer = ship.getSystem('target_computer');
+                        if (targetComputer && targetComputer.canActivate(ship)) {
+                            this.playCommandSound();
+                            this.toggleTargetComputer();
+                        } else {
+                            // System can't be activated - provide specific error message
+                            if (!targetComputer) {
+                                this.showHUDError(
+                                    'TARGET COMPUTER UNAVAILABLE',
+                                    'No Target Computer card installed in ship slots'
+                                );
+                            } else if (!targetComputer.isOperational()) {
+                                this.showHUDError(
+                                    'TARGET COMPUTER OFFLINE',
+                                    'System damaged or offline - repair required'
+                                );
+                            } else if (!ship.hasSystemCardsSync('target_computer')) {
+                                this.showHUDError(
+                                    'TARGET COMPUTER UNAVAILABLE',
+                                    'No Target Computer card installed in ship slots'
+                                );
+                            } else {
+                                this.showHUDError(
+                                    'TARGET COMPUTER ACTIVATION FAILED',
+                                    'Insufficient energy for targeting systems'
+                                );
+                            }
+                            console.log('Target Computer activation failed - system not available');
+                        }
+                    } else {
+                        this.playCommandFailedSound();
+                    }
+                } else {
+                    this.showHUDError(
+                        'TARGET COMPUTER UNAVAILABLE',
+                        'Targeting systems offline while docked'
+                    );
                 }
             }
 
             // Add Intel key binding
             if (commandKey === 'i') {
                 // Block intel when docked or if conditions aren't met
-                if (!this.isDocked && this.intelAvailable && this.targetComputerEnabled && this.currentTarget) {
-                    this.playCommandSound();
-                    this.toggleIntel();
+                if (!this.isDocked) {
+                    // Check if intel can be activated (requires level 3+ target computer with intel capabilities and scanner)
+                    const ship = this.viewManager?.getShip();
+                    if (ship && this.currentTarget) {
+                        const targetComputer = ship.getSystem('target_computer');
+                        const scanner = ship.getSystem('long_range_scanner');
+                        
+                        if (targetComputer && targetComputer.canActivate(ship) && targetComputer.hasIntelCapabilities() &&
+                            scanner && scanner.canActivate(ship) && 
+                            this.intelAvailable && this.targetComputerEnabled) {
+                            this.playCommandSound();
+                            this.toggleIntel();
+                        } else {
+                            // Intel can't be activated - provide specific error messages
+                            this.playCommandFailedSound();
+                            
+                            if (!targetComputer) {
+                                this.showHUDError(
+                                    'INTEL UNAVAILABLE',
+                                    'No Target Computer system installed'
+                                );
+                            } else if (!targetComputer.hasIntelCapabilities()) {
+                                this.showHUDError(
+                                    'INTEL UNAVAILABLE',
+                                    'Requires Level 3+ Target Computer with intel capabilities'
+                                );
+                            } else if (!scanner) {
+                                this.showHUDError(
+                                    'INTEL UNAVAILABLE',
+                                    'Requires Long Range Scanner system for detailed analysis'
+                                );
+                            } else if (!scanner.canActivate(ship)) {
+                                this.showHUDError(
+                                    'SCANNER OFFLINE',
+                                    'Long Range Scanner system damaged or insufficient energy'
+                                );
+                            } else if (!this.currentTarget) {
+                                this.showHUDError(
+                                    'INTEL UNAVAILABLE',
+                                    'No target selected - activate Target Computer first'
+                                );
+                            } else if (!this.targetComputerEnabled) {
+                                this.showHUDError(
+                                    'TARGET COMPUTER OFFLINE',
+                                    'Activate Target Computer (T key) to enable intel functions'
+                                );
+                            } else if (!this.intelAvailable) {
+                                this.showHUDError(
+                                    'INTEL UNAVAILABLE',
+                                    'Target out of scanner range or intel data not available'
+                                );
+                            } else {
+                                this.showHUDError(
+                                    'INTEL ACTIVATION FAILED',
+                                    'System requirements not met or insufficient energy'
+                                );
+                            }
+                        }
+                    } else {
+                        this.playCommandFailedSound();
+                        if (!ship) {
+                            this.showHUDError(
+                                'INTEL UNAVAILABLE',
+                                'No ship systems available'
+                            );
+                        } else {
+                            this.showHUDError(
+                                'INTEL UNAVAILABLE',
+                                'No target selected - activate Target Computer first'
+                            );
+                        }
+                    }
+                } else {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'INTEL UNAVAILABLE',
+                        'Intelligence systems offline while docked'
+                    );
                 }
+            }
+
+            // Add Shields key binding (S)
+            if (commandKey === 's') {
+                // Block shields when docked
+                if (!this.isDocked) {
+                    // Check if shields system can be activated
+                    const ship = this.viewManager?.getShip();
+                    if (ship) {
+                        const shields = ship.getSystem('shields');
+                        console.log(`🛡️ SHIELDS: System exists=${!!shields}, Can activate=${shields ? shields.canActivate(ship) : false}`);
+                        
+                        if (shields && shields.canActivate(ship)) {
+                            this.playCommandSound();
+                            shields.toggleShields();
+                            console.log('Shields toggled');
+                        } else {
+                            // System can't be activated - provide specific error message
+                            if (!shields) {
+                                this.showHUDError(
+                                    'SHIELDS UNAVAILABLE',
+                                    'System not installed on this ship'
+                                );
+                            } else if (!shields.isOperational()) {
+                                this.showHUDError(
+                                    'SHIELDS DAMAGED',
+                                    'Repair system to enable shield protection'
+                                );
+                            } else if (!ship.hasSystemCardsSync('shields', true)) {
+                                this.showHUDError(
+                                    'SHIELDS MISSING',
+                                    'Install shield card to enable protection'
+                                );
+                            } else if (!ship.hasEnergy(25)) {
+                                this.showHUDError(
+                                    'INSUFFICIENT ENERGY',
+                                    'Need 25 energy units to activate shields'
+                                );
+                            } else {
+                                this.showHUDError(
+                                    'SHIELDS ERROR',
+                                    'System cannot be activated'
+                                );
+                            }
+                            this.playCommandFailedSound();
+                        }
+                    }
+                }
+            }
+
+            // Add Subspace Radio key binding (R) - Note: SubspaceRadio has its own R key handler
+            // This is a fallback for when the system doesn't exist
+            if (commandKey === 'r') {
+                // DISABLED - handled by SubspaceRadio UI class to avoid conflicts
+                // SubspaceRadio class properly handles R key activation and UI
+                console.log('Subspace radio key pressed - handled by SubspaceRadio UI');
+                
+                /* DISABLED - avoid duplicate handler conflicts
+                // Block subspace radio when docked
+                if (!this.isDocked) {
+                    // Check if subspace radio system exists and can be activated
+                    const ship = this.viewManager?.getShip();
+                    if (ship) {
+                        const radio = ship.getSystem('subspace_radio');
+                        console.log(`📻 SUBSPACE RADIO: System exists=${!!radio}, Can activate=${radio ? radio.canActivate(ship) : false}`);
+                        
+                        if (!radio) {
+                            // System doesn't exist (starter ship case)
+                            this.showHUDError(
+                                'SUBSPACE RADIO UNAVAILABLE',
+                                'Install subspace radio card to enable communications'
+                            );
+                            this.playCommandFailedSound();
+                        } else if (!radio.canActivate(ship)) {
+                            // System exists but can't activate
+                            if (!radio.isOperational()) {
+                                this.showHUDError(
+                                    'SUBSPACE RADIO DAMAGED',
+                                    'Repair system to enable communications'
+                                );
+                            } else if (!ship.hasSystemCardsSync('subspace_radio')) {
+                                this.showHUDError(
+                                    'SUBSPACE RADIO MISSING',
+                                    'Install subspace radio card to enable communications'
+                                );
+                            } else if (!ship.hasEnergy(15)) {
+                                this.showHUDError(
+                                    'INSUFFICIENT ENERGY',
+                                    'Need 15 energy units to activate radio'
+                                );
+                            } else {
+                                this.showHUDError(
+                                    'SUBSPACE RADIO ERROR',
+                                    'System cannot be activated'
+                                );
+                            }
+                            this.playCommandFailedSound();
+                        }
+                        // If system exists and can activate, let the SubspaceRadio UI handle it
+                    }
+                }
+                */
             }
 
             // Sub-targeting key bindings (< and > keys)
@@ -1499,584 +1898,6 @@ export class StarfieldManager {
         this.updateTargetDisplay();
         
         console.log('Total targets available:', this.targetObjects.length);
-    }
-
-    sortTargetsByDistance() {
-        const cameraPosition = this.camera.position;
-        
-        this.targetObjects.sort((a, b) => {
-            const distA = Math.sqrt(
-                Math.pow(a.position[0] - cameraPosition.x, 2) +
-                Math.pow(a.position[1] - cameraPosition.y, 2) +
-                Math.pow(a.position[2] - cameraPosition.z, 2)
-            );
-            const distB = Math.sqrt(
-                Math.pow(b.position[0] - cameraPosition.x, 2) +
-                Math.pow(b.position[1] - cameraPosition.y, 2) +
-                Math.pow(b.position[2] - cameraPosition.z, 2)
-            );
-            return distA - distB;
-        });
-        
-        // Add distance to each target
-        this.targetObjects = this.targetObjects.map(target => {
-            const distance = Math.sqrt(
-                Math.pow(target.position[0] - cameraPosition.x, 2) +
-                Math.pow(target.position[1] - cameraPosition.y, 2) +
-                Math.pow(target.position[2] - cameraPosition.z, 2)
-            );
-            return {
-                ...target,
-                distance: this.formatDistance(distance)
-            };
-        });
-    }
-
-    formatDistance(distanceInKm) {
-        // Helper function to add commas to numbers
-        const addCommas = (num) => {
-            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        };
-
-        if (distanceInKm >= 1e15) {
-            // Convert to exameters (1 Em = 1e15 km)
-            const distanceInEm = distanceInKm / 1e15;
-            return `${addCommas(distanceInEm.toFixed(2))} Em`;
-        } else if (distanceInKm >= 1e12) {
-            // Convert to petameters (1 Pm = 1e12 km)
-            const distanceInPm = distanceInKm / 1e12;
-            return `${addCommas(distanceInPm.toFixed(2))} Pm`;
-        } else if (distanceInKm >= 1e9) {
-            // Convert to terameters (1 Tm = 1e9 km)
-            const distanceInTm = distanceInKm / 1e9;
-            return `${addCommas(distanceInTm.toFixed(2))} Tm`;
-        } else if (distanceInKm >= 1e6) {
-            // Convert to gigameters (1 Gm = 1e6 km)
-            const distanceInGm = distanceInKm / 1e6;
-            return `${addCommas(distanceInGm.toFixed(2))} Gm`;
-        } else if (distanceInKm >= 1e3) {
-            // Convert to megameters (1 Mm = 1e3 km)
-            const distanceInMm = distanceInKm / 1e3;
-            return `${addCommas(distanceInMm.toFixed(2))} Mm`;
-        } else {
-            return `${addCommas(distanceInKm.toFixed(2))} Km`;
-        }
-    }
-
-    updateTargetDisplay() {
-        // Don't show anything if targeting is completely disabled
-        if (!this.targetComputerEnabled) {
-            this.targetHUD.style.display = 'none';
-            this.targetReticle.style.display = 'none';
-            this.currentButtonState = {
-                hasDockButton: false,
-                isDocked: false,
-                hasScanButton: false,
-                hasTradeButton: false
-            };
-            return;
-        }
-
-        // Handle galactic view
-        if (this.viewManager.currentView === 'galactic') {
-            this.targetHUD.style.display = 'none';
-            return;
-        }
-
-        // Keep target HUD visible as long as targeting is enabled
-        this.targetHUD.style.display = 'block';
-
-        // Handle case where there's no current target
-        if (!this.currentTarget) {
-            this.targetReticle.style.display = 'none';
-            // Clear any existing action buttons to prevent stale dock buttons
-            if (this.actionButtonsContainer) {
-                this.actionButtonsContainer.innerHTML = '';
-            }
-            // Reset button state
-            this.currentButtonState = {
-                hasDockButton: false,
-                isDocked: false,
-                hasScanButton: false,
-                hasTradeButton: false
-            };
-            // Hide intel when no target
-            if (this.intelVisible) {
-                this.intelVisible = false;
-                this.intelHUD.style.display = 'none';
-            }
-            this.updateIntelIconDisplay();
-            return;
-        }
-
-        // Get the current target data
-        const currentTargetData = this.getCurrentTargetData();
-        if (!currentTargetData) {
-            this.targetReticle.style.display = 'none';
-            // Clear any existing action buttons to prevent stale dock buttons
-            if (this.actionButtonsContainer) {
-                this.actionButtonsContainer.innerHTML = '';
-            }
-            // Reset button state
-            this.currentButtonState = {
-                hasDockButton: false,
-                isDocked: false,
-                hasScanButton: false,
-                hasTradeButton: false
-            };
-            return;
-        }
-
-        // Check if target has changed and dismiss intel if so
-        if (this.previousTarget !== this.currentTarget) {
-            if (this.intelVisible) {
-                this.intelVisible = false;
-                this.intelHUD.style.display = 'none';
-            }
-            this.previousTarget = this.currentTarget;
-        }
-
-        // Calculate distance to target
-        const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
-        
-        // Check intel availability based on scan range and long range scanner
-        this.updateIntelAvailability(distance);
-        
-        // Get target info for diplomacy status and actions
-        let info = null;
-        let isEnemyShip = false;
-        
-        // Check if this is an enemy ship
-        if (currentTargetData.isShip && currentTargetData.ship) {
-            isEnemyShip = true;
-            info = {
-                type: 'enemy_ship',
-                diplomacy: currentTargetData.ship.diplomacy || 'enemy',
-                name: currentTargetData.ship.shipName,
-                shipType: currentTargetData.ship.shipType
-            };
-        } else {
-            // Get celestial body info
-            info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-        }
-        
-        // Update HUD border color based on diplomacy
-        let diplomacyColor = '#D0D0D0'; // Default gray
-        if (isEnemyShip) {
-            diplomacyColor = '#ff0000'; // Enemy ships are red
-        } else if (info?.type === 'star') {
-            diplomacyColor = '#ffff00'; // Stars are neutral
-        } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-            diplomacyColor = '#ff0000';
-        } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-            diplomacyColor = '#ffff00';
-        } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-            diplomacyColor = '#00ff41';
-        }
-        this.targetHUD.style.borderColor = diplomacyColor;
-        
-        // Update wireframe container border color to match
-        if (this.wireframeContainer) {
-            this.wireframeContainer.style.borderColor = diplomacyColor;
-        }
-
-        // Get sub-target information from targeting computer
-        const ship = this.viewManager?.getShip();
-        const targetComputer = ship?.getSystem('target_computer');
-        let subTargetHTML = '';
-        
-        // Add sub-target information if available
-        if (targetComputer && targetComputer.hasSubTargeting()) {
-            // For enemy ships, use actual sub-targeting
-            if (isEnemyShip && currentTargetData.ship) {
-                // Set the enemy ship as the current target for the targeting computer
-                targetComputer.currentTarget = currentTargetData.ship;
-                targetComputer.updateSubTargets();
-                
-                if (targetComputer.currentSubTarget) {
-                    const subTarget = targetComputer.currentSubTarget;
-                    const healthPercent = Math.round(subTarget.health * 100);
-                    let healthColor = '#00ff41'; // Green for healthy
-                    if (healthPercent < 75) healthColor = '#ffaa00'; // Orange for damaged
-                    if (healthPercent < 25) healthColor = '#ff4400'; // Red for critical
-                    
-                    // Get accuracy and damage bonuses
-                    const accuracyBonus = Math.round(targetComputer.getSubTargetAccuracyBonus() * 100);
-                    const damageBonus = Math.round(targetComputer.getSubTargetDamageBonus() * 100);
-                    
-                    subTargetHTML = `
-                        <div style="border-top: 1px solid ${diplomacyColor}; margin-top: 8px; padding-top: 6px;">
-                            <div style="font-size: 12px; color: ${diplomacyColor}; margin-bottom: 2px;">SUB-TARGET:</div>
-                            <div style="font-size: 14px; color: ${diplomacyColor}; margin-bottom: 2px;">${subTarget.displayName}</div>
-                            <div style="font-size: 11px; margin-bottom: 2px;">
-                                <span style="color: #888;">Health:</span> <span style="color: ${healthColor}; font-weight: bold;">${healthPercent}%</span>
-                            </div>
-                            <div style="font-size: 10px; opacity: 0.8;">
-                                <span style="color: #888;">Acc:</span> <span style="color: #00ff41;">+${accuracyBonus}%</span> • 
-                                <span style="color: #888;">Dmg:</span> <span style="color: #ff8800;">+${damageBonus}%</span>
-                            </div>
-                            <div style="font-size: 9px; opacity: 0.6; margin-top: 2px; color: #888;">
-                                &lt; &gt; to cycle sub-targets
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    // Show available sub-targets count
-                    const availableTargets = targetComputer.availableSubTargets.length;
-                    if (availableTargets > 0) {
-                        subTargetHTML = `
-                            <div style="border-top: 1px solid ${diplomacyColor}; margin-top: 8px; padding-top: 6px;">
-                                <div style="font-size: 12px; color: ${diplomacyColor}; margin-bottom: 2px;">SUB-TARGETING:</div>
-                                <div style="font-size: 11px; opacity: 0.8;">
-                                    ${availableTargets} targetable systems detected
-                                </div>
-                                <div style="font-size: 9px; opacity: 0.6; margin-top: 2px; color: #888;">
-                                    &lt; &gt; to cycle sub-targets
-                                </div>
-                            </div>
-                        `;
-                    }
-                }
-            }
-        }
-
-        // Update target information display with colored text and sub-target info
-        let typeDisplay = info?.type || 'Unknown';
-        if (isEnemyShip) {
-            typeDisplay = `${info.shipType} (Enemy Ship)`;
-        }
-        
-        this.targetInfoDisplay.innerHTML = `
-            <div style="font-size: 16px; margin-bottom: 4px; color: ${diplomacyColor};">${currentTargetData.name}</div>
-            <div style="font-size: 12px; opacity: 0.8;">
-                <span style="color: ${diplomacyColor}">${this.formatDistance(distance)}</span> • 
-                <span style="color: ${diplomacyColor}">${typeDisplay}</span>
-            </div>
-            ${info?.diplomacy ? `<div style="font-size: 12px; margin-top: 4px; color: ${diplomacyColor};">${info.diplomacy}</div>` : ''}
-            ${subTargetHTML}
-        `;
-
-        // Update status icons with diplomacy color
-        this.governmentIcon.style.display = info?.government ? 'block' : 'none';
-        this.economyIcon.style.display = info?.economy ? 'block' : 'none';
-        this.technologyIcon.style.display = info?.technology ? 'block' : 'none';
-
-        // Update icon colors and borders to match diplomacy
-        [this.governmentIcon, this.economyIcon, this.technologyIcon].forEach(icon => {
-            if (icon.style.display !== 'none') {
-                icon.style.borderColor = diplomacyColor;
-                icon.style.color = diplomacyColor;
-                icon.style.textShadow = `0 0 4px ${diplomacyColor}`;
-                icon.style.boxShadow = `0 0 4px ${diplomacyColor.replace(')', ', 0.4)')}`;
-            }
-        });
-
-        // Update intel icon display
-        this.updateIntelIconDisplay();
-
-        // Update tooltips with current info
-        if (info?.government) {
-            this.governmentIcon.title = `Government: ${info.government}`;
-        }
-        if (info?.economy) {
-            this.economyIcon.title = `Economy: ${info.economy}`;
-        }
-        if (info?.technology) {
-            this.technologyIcon.title = `Technology: ${info.technology}`;
-        }
-
-        // Calculate docking range based on body size
-        let dockingRange = this.dockingRange; // Default 1.5 for moons
-        if (info?.type === 'planet') {
-            // For planets, use a fixed 4.0KM range
-            dockingRange = 4.0;
-        }
-
-        // Calculate button state for docking (show dock button, but launch is handled by docking interface)
-        const canDock = this.canDock(this.currentTarget);
-        const isDocked = this.isDocked && this.dockedTo === this.currentTarget;
-        const isHostile = info?.diplomacy?.toLowerCase() === 'enemy';
-
-        // Add a small buffer to button display: only show button if distance is comfortably within range
-        let showButton = false;
-        if ((info?.type === 'planet' || info?.type === 'moon') && canDock && !isDocked && !isHostile) {
-            // Add 0.3km buffer - only show button if we're well within docking range
-            const currentDistance = this.camera.position.distanceTo(this.currentTarget.position);
-            let buttonRange = this.dockingRange - 0.3; // Default 1.2 for moons
-            if (info?.type === 'planet') {
-                buttonRange = 3.7; // 3.7km for planets (was 4.0km)
-            }
-            showButton = currentDistance <= buttonRange;
-        }
-
-        // Debug hostile detection
-        if (info?.diplomacy) {
-            // console.log(`Target ${currentTargetData.name}: diplomacy="${info.diplomacy}", isHostile=${isHostile}`);
-        }
-
-        // Show dock button when in range and not docked, but launch is handled by docking interface
-        const newButtonState = {
-            hasDockButton: showButton,
-            isDocked: this.isDocked,
-            hasScanButton: false,
-            hasTradeButton: false
-        };
-
-        // Only recreate buttons if state has changed
-        const stateChanged = JSON.stringify(this.currentButtonState) !== JSON.stringify(newButtonState);
-        
-        // Debug button state for stars and other issues
-        if (info?.type === 'star' && showButton) {
-            console.log('ERROR: Dock button showing for star!', {
-                targetName: currentTargetData.name,
-                targetType: info?.type,
-                showButton: showButton,
-                canDock: canDock,
-                isDocked: isDocked,
-                isHostile: isHostile
-            });
-        }
-        
-        if (stateChanged) {
-            // Throttle button state change logging to prevent spam
-            const now = Date.now();
-            if (!this.lastButtonStateLog || now - this.lastButtonStateLog > 2000) { // Log at most every 2 seconds
-                console.log('Button state changed, recreating buttons', {
-                    targetName: currentTargetData.name,
-                    targetType: info?.type,
-                    oldState: this.currentButtonState,
-                    newState: newButtonState
-                });
-                this.lastButtonStateLog = now;
-            }
-            this.currentButtonState = newButtonState;
-            
-            // Clear existing buttons
-            this.actionButtonsContainer.innerHTML = '';
-
-            // Add dock button if applicable (launch button is in docking interface)
-            if (newButtonState.hasDockButton) {
-                const dockButton = document.createElement('button');
-                dockButton.className = 'dock-button';
-                dockButton.textContent = 'DOCK';
-                dockButton.addEventListener('click', () => this.handleDockButtonClick(false, currentTargetData.name));
-                this.actionButtonsContainer.appendChild(dockButton);
-            }
-        }
-
-        // Update reticle colors
-        const corners = this.targetReticle.getElementsByClassName('reticle-corner');
-        Array.from(corners).forEach(corner => {
-            corner.style.borderColor = diplomacyColor;
-            corner.style.boxShadow = `0 0 2px ${diplomacyColor}`;
-        });
-
-        // Update reticle position
-        this.updateReticlePosition();
-    }
-
-    updateReticlePosition() {
-        if (!this.currentTarget || !this.targetComputerEnabled) {
-            this.targetReticle.style.display = 'none';
-            return;
-        }
-
-        // Calculate target's screen position
-        const screenPosition = this.currentTarget.position.clone().project(this.camera);
-        const isOnScreen = Math.abs(screenPosition.x) <= 1 && Math.abs(screenPosition.y) <= 1;
-
-        if (isOnScreen) {
-            const x = (screenPosition.x + 1) * window.innerWidth / 2;
-            const y = (-screenPosition.y + 1) * window.innerHeight / 2;
-            
-            const cameraForward = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-            const relativePos = this.currentTarget.position.clone().sub(this.camera.position);
-            const isBehindCamera = relativePos.dot(cameraForward) < 0;
-            
-            this.targetReticle.style.display = isBehindCamera ? 'none' : 'block';
-            this.targetReticle.style.left = `${x}px`;
-            this.targetReticle.style.top = `${y}px`;
-        } else {
-            this.targetReticle.style.display = 'none';
-        }
-    }
-
-    getCurrentTargetData() {
-        if (!this.currentTarget || !this.targetObjects || this.targetIndex === -1) {
-            return null;
-        }
-        return this.targetObjects[this.targetIndex];
-    }
-
-    calculateDistance(point1, point2) {
-        // Calculate raw distance in world units
-        const rawDistance = Math.sqrt(
-            Math.pow(point2.x - point1.x, 2) +
-            Math.pow(point2.y - point1.y, 2) +
-            Math.pow(point2.z - point1.z, 2)
-        );
-        
-        // Convert to kilometers (1 unit = 1 kilometer)
-        return rawDistance;
-    }
-
-    getParentPlanetName(moon) {
-        // Get all celestial bodies
-        const bodies = this.solarSystemManager.getCelestialBodies();
-        
-        // Find the parent planet by checking which planet's position is closest to the moon
-        let closestPlanet = null;
-        let minDistance = Infinity;
-        
-        for (const [key, body] of bodies.entries()) {
-            if (!key.startsWith('moon_')) {
-                const distance = body.position.distanceTo(moon.position);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestPlanet = body;
-                }
-            }
-        }
-        
-        if (closestPlanet) {
-            const info = this.solarSystemManager.getCelestialBodyInfo(closestPlanet);
-            return info.name;
-        }
-        
-        return 'Unknown';
-    }
-
-    updateDirectionArrow() {
-        // Only proceed if we have a target and the target computer is enabled
-        if (!this.currentTarget || !this.targetComputerEnabled || !this.directionArrows) {
-            // Hide all arrows
-            Object.values(this.directionArrows).forEach(arrow => {
-                arrow.style.display = 'none';
-            });
-            return;
-        }
-
-        // Get target's world position relative to camera
-        const targetPosition = this.currentTarget.position.clone();
-        const screenPosition = targetPosition.clone().project(this.camera);
-        
-        // Check if target is off screen
-        const isOffScreen = Math.abs(screenPosition.x) > 1 || Math.abs(screenPosition.y) > 1;
-
-        if (isOffScreen) {
-            // Get camera's view direction and relative position
-            const cameraDirection = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-            const relativePosition = targetPosition.clone().sub(this.camera.position);
-            
-            // Get camera's right and up vectors
-            const cameraRight = new this.THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
-            const cameraUp = new this.THREE.Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion);
-            
-            // Project relative position onto camera's right and up vectors
-            const rightComponent = relativePosition.dot(cameraRight);
-            const upComponent = relativePosition.dot(cameraUp);
-
-            // Get target info for color
-            const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-            let arrowColor = '#D0D0D0'; // Default gray
-            if (info?.type === 'star') {
-                arrowColor = '#ffff00'; // Stars are neutral
-            } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-                arrowColor = '#ff0000';
-            } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-                arrowColor = '#ffff00';
-            } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-                arrowColor = '#00ff41';
-            }
-
-            // Hide all arrows first
-            Object.values(this.directionArrows).forEach(arrow => {
-                arrow.style.display = 'none';
-            });
-
-            // Get HUD position
-            const hudRect = this.targetHUD.getBoundingClientRect();
-
-            // Show and position the appropriate arrow
-            if (Math.abs(rightComponent) > Math.abs(upComponent)) {
-                if (rightComponent > 0) {
-                    // Right arrow
-                    const arrow = this.directionArrows.right;
-                    arrow.style.cssText = `
-                        position: fixed;
-                        left: ${hudRect.right + 5}px;
-                        top: ${hudRect.top + hudRect.height / 2}px;
-                        width: 0;
-                        height: 0;
-                        border-top: 8px solid transparent;
-                        border-bottom: 8px solid transparent;
-                        border-left: 12px solid ${arrowColor};
-                        transform: translateY(-50%);
-                        display: block;
-                        pointer-events: none;
-                        z-index: 1000;
-                    `;
-                } else {
-                    // Left arrow
-                    const arrow = this.directionArrows.left;
-                    arrow.style.cssText = `
-                        position: fixed;
-                        left: ${hudRect.left - 17}px;
-                        top: ${hudRect.top + hudRect.height / 2}px;
-                        width: 0;
-                        height: 0;
-                        border-top: 8px solid transparent;
-                        border-bottom: 8px solid transparent;
-                        border-right: 12px solid ${arrowColor};
-                        transform: translateY(-50%);
-                        display: block;
-                        pointer-events: none;
-                        z-index: 1000;
-                    `;
-                }
-            } else {
-                if (upComponent > 0) {
-                    // Top arrow
-                    const arrow = this.directionArrows.top;
-                    arrow.style.cssText = `
-                        position: fixed;
-                        left: ${hudRect.left + hudRect.width / 2}px;
-                        top: ${hudRect.top - 17}px;
-                        width: 0;
-                        height: 0;
-                        border-left: 8px solid transparent;
-                        border-right: 8px solid transparent;
-                        border-bottom: 12px solid ${arrowColor};
-                        transform: translateX(-50%);
-                        display: block;
-                        pointer-events: none;
-                        z-index: 1000;
-                    `;
-                } else {
-                    // Bottom arrow
-                    const arrow = this.directionArrows.bottom;
-                    arrow.style.cssText = `
-                        position: fixed;
-                        left: ${hudRect.left + hudRect.width / 2}px;
-                        top: ${hudRect.bottom + 5}px;
-                        width: 0;
-                        height: 0;
-                        border-left: 8px solid transparent;
-                        border-right: 8px solid transparent;
-                        border-top: 12px solid ${arrowColor};
-                        transform: translateX(-50%);
-                        display: block;
-                        pointer-events: none;
-                        z-index: 1000;
-                    `;
-                }
-            }
-        } else {
-            // Hide all arrows when target is on screen
-            Object.values(this.directionArrows).forEach(arrow => {
-                arrow.style.display = 'none';
-            });
-        }
     }
 
     cycleTarget() {
@@ -3207,6 +3028,100 @@ export class StarfieldManager {
             // Ensure AudioContext is running before playing sounds
             this.ensureAudioContextRunning();
             this.commandSound.play();
+            console.log('Playing command success sound (command.wav)');
+        } else if (!this.commandSoundLoaded) {
+            // Fallback: generate a success beep using Web Audio API
+            console.log('Command success sound not loaded, using fallback beep');
+            this.generateCommandSuccessBeep();
+        }
+    }
+
+    generateCommandSuccessBeep() {
+        try {
+            // Ensure AudioContext is running
+            this.ensureAudioContextRunning();
+            
+            if (!this.listener || !this.listener.context) {
+                console.warn('No audio context available for command success beep');
+                return;
+            }
+            
+            const audioContext = this.listener.context;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            // Connect oscillator to gain to destination
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Configure the beep - higher frequency for success
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // High frequency
+            oscillator.type = 'sine'; // Smooth sine wave for pleasant sound
+            
+            // Configure volume envelope - quick attack, moderate decay
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.01); // Quick attack
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15); // Moderate decay
+            
+            // Play the beep for 0.15 seconds
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.15);
+            
+            console.log('Generated command success beep (fallback)');
+            
+        } catch (error) {
+            console.error('Failed to generate command success beep:', error);
+        }
+    }
+
+    playCommandFailedSound() {
+        if (this.commandFailedSoundLoaded && !this.commandFailedSound.isPlaying) {
+            // Ensure AudioContext is running before playing sounds
+            this.ensureAudioContextRunning();
+            this.commandFailedSound.play();
+            console.log('Playing command failed sound (command_failed.mp3)');
+        } else if (!this.commandFailedSoundLoaded) {
+            // Fallback: generate a low-pitched beep using Web Audio API
+            console.log('Command failed sound not loaded, using fallback beep');
+            this.generateCommandFailedBeep();
+        }
+    }
+
+    generateCommandFailedBeep() {
+        try {
+            // Ensure AudioContext is running
+            this.ensureAudioContextRunning();
+            
+            if (!this.listener || !this.listener.context) {
+                console.warn('No audio context available for command failed beep');
+                return;
+            }
+            
+            const audioContext = this.listener.context;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            // Connect oscillator to gain to destination
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Configure the beep - lower frequency than success sound
+            oscillator.frequency.setValueAtTime(200, audioContext.currentTime); // Low frequency
+            oscillator.type = 'square'; // Harsh square wave for error sound
+            
+            // Configure volume envelope - quick attack, quick decay
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01); // Quick attack
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2); // Quick decay
+            
+            // Play the beep for 0.2 seconds
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+            
+            console.log('Generated command failed beep (fallback)');
+            
+        } catch (error) {
+            console.error('Failed to generate command failed beep:', error);
         }
     }
 
@@ -3431,14 +3346,19 @@ export class StarfieldManager {
             return;
         }
         
-        // Intel is available for all celestial bodies (the display will handle showing what data exists)
-        
-        // Check if long range scanner is operational and get its scan range
+        // Check if ship has required systems for intel
         const ship = this.viewManager?.getShip();
         if (!ship) {
             return;
         }
         
+        // Intel requires a level 3+ target computer with intel capabilities
+        const targetComputer = ship.getSystem('target_computer');
+        if (!targetComputer || !targetComputer.hasIntelCapabilities()) {
+            return;
+        }
+        
+        // Check if long range scanner is operational and get its scan range
         const longRangeScanner = ship.getSystem('long_range_scanner');
         let effectiveScanRange = this.intelRange; // Default 50km
         
@@ -3446,7 +3366,7 @@ export class StarfieldManager {
             // Use scanner's current range, but scale it down for intel detection
             // Scanner range is much larger (1000km base), so use a fraction for intel
             const scannerRange = longRangeScanner.getCurrentScanRange();
-            effectiveScanRange = Math.max(this.intelRange, scannerRange * 0.02); // 2% of scanner range, minimum 10km
+            effectiveScanRange = Math.max(this.intelRange, scannerRange * 0.02); // 2% of scanner range, minimum 50km
         }
         
         // Intel is available if we're within scan range
@@ -3986,63 +3906,53 @@ export class StarfieldManager {
     /**
      * Restore all ship systems to their pre-docking state when undocking
      */
-    restoreAllSystems() {
+    async restoreAllSystems() {
         const ship = this.viewManager?.getShip();
         if (!ship) {
             console.warn('No ship available for system power management');
             return;
         }
         
-        if (!this.preDockingSystemStates) {
-            console.log('No pre-docking system states found. Systems will remain in default state.');
-            return;
+        console.log(`🚀 UNDOCKING: Initializing systems for ${ship.shipType}...`);
+        
+        // CRITICAL FIX: Initialize card system integration FIRST before restoring systems
+        if (ship && ship.cardSystemIntegration) {
+            console.log(`🔧 Initializing card system integration...`);
+            await ship.cardSystemIntegration.initializeCardData();
+            console.log(`✅ Card system integration ready`);
+            
+            // NEW: Create missing systems based on installed cards
+            console.log(`🏗️ Creating systems from installed cards...`);
+            await ship.cardSystemIntegration.createSystemsFromCards();
+            console.log(`✅ Systems created from cards`);
         }
         
-        console.log('Restoring ship systems to pre-docking state...');
+        console.log('🔋 Powering up systems...');
         
-        // Restore each system to its previous state
-        for (const [systemName, system] of ship.systems) {
-            const previousState = this.preDockingSystemStates.get(systemName);
+        // Power up all systems that were active before docking
+        let poweredUpCount = 0;
+        for (let [systemName, system] of ship.systems) {
+            // Skip systems that require manual activation (user-controlled systems)
+            const manualActivationSystems = ['galactic_chart', 'long_range_scanner', 'subspace_radio', 'target_computer', 'shields', 'impulse_engines', 'energy_reactor'];
+            if (manualActivationSystems.includes(systemName)) {
+                console.log(`  ⚡ ${systemName} ready for manual activation`);
+                continue;
+            }
             
-            if (previousState) {
-                // Restore system-specific states
-                if (systemName === 'shields' && previousState.isShieldsUp) {
-                    system.activateShields();
-                    console.log(`  - Shields restored (reactivated)`);
-                } else if (systemName === 'long_range_scanner' && previousState.isScanning) {
-                    system.startScan(ship);
-                    console.log(`  - Long Range Scanner restored (scanning resumed)`);
-                } else if (systemName === 'target_computer' && previousState.isTargeting) {
-                    system.activate(ship);
-                    this.targetComputerEnabled = true; // Also restore UI state
-                    console.log(`  - Target Computer restored (targeting resumed)`);
-                } else if (systemName === 'subspace_radio') {
-                    // Handle both radio and chart functionalities
-                    if (previousState.isRadioActive && system.canActivate(ship)) {
-                        system.activateRadio(ship);
-                        console.log(`  - Subspace Radio restored (radio reactivated)`);
-                    }
-                    if (previousState.isChartActive && system.canActivate(ship)) {
-                        system.activateChart(ship);
-                        console.log(`  - Galactic Chart restored (chart reactivated)`);
-                    }
-                } else if (systemName === 'impulse_engines' && previousState.currentImpulseSpeed > 0) {
-                    system.setImpulseSpeed(previousState.currentImpulseSpeed);
-                    system.setMovingForward(previousState.isMovingForward);
-                    console.log(`  - Impulse Engines restored (speed: ${previousState.currentImpulseSpeed})`);
-                } else if (previousState.isActive && system.isOperational()) {
-                    // For other systems, restore their active state
-                    system.activate(ship);
-                    console.log(`  - ${system.name} restored (reactivated)`);
+            if (system.canActivate && system.canActivate(ship)) {
+                try {
+                    system.powerUp();
+                    poweredUpCount++;
+                    console.log(`  ✅ ${systemName} powered up`);
+                } catch (error) {
+                    console.warn(`  ❌ Failed to power up ${systemName}:`, error);
                 }
+            } else {
+                console.log(`  ⏸️ ${systemName} cannot be activated (missing cards or damaged)`);
             }
         }
         
-        // Clear the stored states
-        this.preDockingSystemStates = null;
-        
-        console.log('All ship systems restored to pre-docking state.');
-        console.log('Ship is ready for space operations.');
+        console.log(`🚀 UNDOCKING COMPLETE: ${poweredUpCount}/${ship.systems.size} systems operational, ${ship.systems.size - poweredUpCount} systems ready for manual activation`);
     }
 
     /**
@@ -4255,5 +4165,685 @@ export class StarfieldManager {
         return mesh.userData?.ship || null;
     }
 
+    /**
+     * Show a temporary error message in the HUD
+     * @param {string} title - Error title
+     * @param {string} message - Error message
+     * @param {number} duration - Duration in milliseconds (default 3000)
+     */
+    showHUDError(title, message, duration = 3000) {
+        // Create error message element if it doesn't exist
+        if (!this.hudErrorElement) {
+            this.hudErrorElement = document.createElement('div');
+            this.hudErrorElement.style.cssText = `
+                position: fixed;
+                top: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, rgba(40, 40, 40, 0.95), rgba(20, 20, 20, 0.95));
+                color: #ffffff;
+                padding: 16px 24px;
+                border: 2px solid #ff6600;
+                border-radius: 12px;
+                font-family: "Courier New", monospace;
+                font-size: 14px;
+                font-weight: bold;
+                text-align: center;
+                z-index: 10000;
+                box-shadow: 0 4px 20px rgba(255, 102, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(8px);
+                min-width: 300px;
+                max-width: 500px;
+                display: none;
+                animation: slideInFromTop 0.3s ease-out;
+            `;
+            
+            // Add animation keyframes
+            if (!document.getElementById('hud-error-animations')) {
+                const style = document.createElement('style');
+                style.id = 'hud-error-animations';
+                style.textContent = `
+                    @keyframes slideInFromTop {
+                        0% {
+                            opacity: 0;
+                            transform: translateX(-50%) translateY(-20px);
+                        }
+                        100% {
+                            opacity: 1;
+                            transform: translateX(-50%) translateY(0);
+                        }
+                    }
+                    
+                    @keyframes slideOutToTop {
+                        0% {
+                            opacity: 1;
+                            transform: translateX(-50%) translateY(0);
+                        }
+                        100% {
+                            opacity: 0;
+                            transform: translateX(-50%) translateY(-20px);
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            document.body.appendChild(this.hudErrorElement);
+        }
+        
+        // Set error content with improved styling
+        this.hudErrorElement.innerHTML = `
+            <div style="
+                font-size: 16px; 
+                margin-bottom: 8px; 
+                color: #ffaa00;
+                text-shadow: 0 0 4px rgba(255, 170, 0, 0.5);
+                letter-spacing: 1px;
+            ">⚠ ${title}</div>
+            <div style="
+                color: #e0e0e0;
+                font-size: 13px;
+                line-height: 1.4;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            ">${message}</div>
+        `;
+        
+        // Show the error with animation
+        this.hudErrorElement.style.display = 'block';
+        this.hudErrorElement.style.animation = 'slideInFromTop 0.3s ease-out';
+        
+        // Hide after duration with animation
+        setTimeout(() => {
+            if (this.hudErrorElement) {
+                this.hudErrorElement.style.animation = 'slideOutToTop 0.3s ease-in';
+                setTimeout(() => {
+                    if (this.hudErrorElement) {
+                        this.hudErrorElement.style.display = 'none';
+                    }
+                }, 300);
+            }
+        }, duration);
+        
+        // Play error sound
+        this.playCommandFailedSound();
+    }
+
+    sortTargetsByDistance() {
+        const cameraPosition = this.camera.position;
+        
+        this.targetObjects.sort((a, b) => {
+            const distA = Math.sqrt(
+                Math.pow(a.position[0] - cameraPosition.x, 2) +
+                Math.pow(a.position[1] - cameraPosition.y, 2) +
+                Math.pow(a.position[2] - cameraPosition.z, 2)
+            );
+            const distB = Math.sqrt(
+                Math.pow(b.position[0] - cameraPosition.x, 2) +
+                Math.pow(b.position[1] - cameraPosition.y, 2) +
+                Math.pow(b.position[2] - cameraPosition.z, 2)
+            );
+            return distA - distB;
+        });
+        
+        // Add distance to each target
+        this.targetObjects = this.targetObjects.map(target => {
+            const distance = Math.sqrt(
+                Math.pow(target.position[0] - cameraPosition.x, 2) +
+                Math.pow(target.position[1] - cameraPosition.y, 2) +
+                Math.pow(target.position[2] - cameraPosition.z, 2)
+            );
+            return {
+                ...target,
+                distance: this.formatDistance(distance)
+            };
+        });
+    }
+
+    formatDistance(distanceInKm) {
+        // Helper function to add commas to numbers
+        const addCommas = (num) => {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        };
+
+        if (distanceInKm >= 1e15) {
+            // Convert to exameters (1 Em = 1e15 km)
+            const distanceInEm = distanceInKm / 1e15;
+            return `${addCommas(distanceInEm.toFixed(2))} Em`;
+        } else if (distanceInKm >= 1e12) {
+            // Convert to petameters (1 Pm = 1e12 km)
+            const distanceInPm = distanceInKm / 1e12;
+            return `${addCommas(distanceInPm.toFixed(2))} Pm`;
+        } else if (distanceInKm >= 1e9) {
+            // Convert to terameters (1 Tm = 1e9 km)
+            const distanceInTm = distanceInKm / 1e9;
+            return `${addCommas(distanceInTm.toFixed(2))} Tm`;
+        } else if (distanceInKm >= 1e6) {
+            // Convert to gigameters (1 Gm = 1e6 km)
+            const distanceInGm = distanceInKm / 1e6;
+            return `${addCommas(distanceInGm.toFixed(2))} Gm`;
+        } else if (distanceInKm >= 1e3) {
+            // Convert to megameters (1 Mm = 1e3 km)
+            const distanceInMm = distanceInKm / 1e3;
+            return `${addCommas(distanceInMm.toFixed(2))} Mm`;
+        } else {
+            return `${addCommas(distanceInKm.toFixed(2))} Km`;
+        }
+    }
+
+    updateTargetDisplay() {
+        // Don't show anything if targeting is completely disabled
+        if (!this.targetComputerEnabled) {
+            this.targetHUD.style.display = 'none';
+            this.targetReticle.style.display = 'none';
+            this.currentButtonState = {
+                hasDockButton: false,
+                isDocked: false,
+                hasScanButton: false,
+                hasTradeButton: false
+            };
+            return;
+        }
+
+        // Handle galactic view
+        if (this.viewManager.currentView === 'galactic') {
+            this.targetHUD.style.display = 'none';
+            return;
+        }
+
+        // Keep target HUD visible as long as targeting is enabled
+        this.targetHUD.style.display = 'block';
+
+        // Handle case where there's no current target
+        if (!this.currentTarget) {
+            this.targetReticle.style.display = 'none';
+            // Clear any existing action buttons to prevent stale dock buttons
+            if (this.actionButtonsContainer) {
+                this.actionButtonsContainer.innerHTML = '';
+            }
+            // Reset button state
+            this.currentButtonState = {
+                hasDockButton: false,
+                isDocked: false,
+                hasScanButton: false,
+                hasTradeButton: false
+            };
+            // Hide intel when no target
+            if (this.intelVisible) {
+                this.intelVisible = false;
+                this.intelHUD.style.display = 'none';
+            }
+            this.updateIntelIconDisplay();
+            return;
+        }
+
+        // Get the current target data
+        const currentTargetData = this.getCurrentTargetData();
+        if (!currentTargetData) {
+            this.targetReticle.style.display = 'none';
+            // Clear any existing action buttons to prevent stale dock buttons
+            if (this.actionButtonsContainer) {
+                this.actionButtonsContainer.innerHTML = '';
+            }
+            // Reset button state
+            this.currentButtonState = {
+                hasDockButton: false,
+                isDocked: false,
+                hasScanButton: false,
+                hasTradeButton: false
+            };
+            return;
+        }
+
+        // Check if target has changed and dismiss intel if so
+        if (this.previousTarget !== this.currentTarget) {
+            if (this.intelVisible) {
+                this.intelVisible = false;
+                this.intelHUD.style.display = 'none';
+            }
+            this.previousTarget = this.currentTarget;
+        }
+
+        // Calculate distance to target
+        const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
+        
+        // Check intel availability based on scan range and long range scanner
+        this.updateIntelAvailability(distance);
+        
+        // Get target info for diplomacy status and actions
+        let info = null;
+        let isEnemyShip = false;
+        
+        // Check if this is an enemy ship
+        if (currentTargetData.isShip && currentTargetData.ship) {
+            isEnemyShip = true;
+            info = {
+                type: 'enemy_ship',
+                diplomacy: currentTargetData.ship.diplomacy || 'enemy',
+                name: currentTargetData.ship.shipName,
+                shipType: currentTargetData.ship.shipType
+            };
+        } else {
+            // Get celestial body info
+            info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+        }
+        
+        // Update HUD border color based on diplomacy
+        let diplomacyColor = '#D0D0D0'; // Default gray
+        if (isEnemyShip) {
+            diplomacyColor = '#ff0000'; // Enemy ships are red
+        } else if (info?.type === 'star') {
+            diplomacyColor = '#ffff00'; // Stars are neutral
+        } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
+            diplomacyColor = '#ff0000';
+        } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
+            diplomacyColor = '#ffff00';
+        } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
+            diplomacyColor = '#00ff41';
+        }
+        this.targetHUD.style.borderColor = diplomacyColor;
+        
+        // Update wireframe container border color to match
+        if (this.wireframeContainer) {
+            this.wireframeContainer.style.borderColor = diplomacyColor;
+        }
+
+        // Get sub-target information from targeting computer
+        const ship = this.viewManager?.getShip();
+        const targetComputer = ship?.getSystem('target_computer');
+        let subTargetHTML = '';
+        
+        // Add sub-target information if available
+        if (targetComputer && targetComputer.hasSubTargeting()) {
+            // For enemy ships, use actual sub-targeting
+            if (isEnemyShip && currentTargetData.ship) {
+                // Set the enemy ship as the current target for the targeting computer
+                targetComputer.currentTarget = currentTargetData.ship;
+                targetComputer.updateSubTargets();
+                
+                if (targetComputer.currentSubTarget) {
+                    const subTarget = targetComputer.currentSubTarget;
+                    const healthPercent = Math.round(subTarget.health * 100);
+                    let healthColor = '#00ff41'; // Green for healthy
+                    if (healthPercent < 75) healthColor = '#ffaa00'; // Orange for damaged
+                    if (healthPercent < 25) healthColor = '#ff4400'; // Red for critical
+                    
+                    // Get accuracy and damage bonuses
+                    const accuracyBonus = Math.round(targetComputer.getSubTargetAccuracyBonus() * 100);
+                    const damageBonus = Math.round(targetComputer.getSubTargetDamageBonus() * 100);
+                    
+                    subTargetHTML = `
+                        <div style="border-top: 1px solid ${diplomacyColor}; margin-top: 8px; padding-top: 6px;">
+                            <div style="font-size: 12px; color: ${diplomacyColor}; margin-bottom: 2px;">SUB-TARGET:</div>
+                            <div style="font-size: 14px; color: ${diplomacyColor}; margin-bottom: 2px;">${subTarget.displayName}</div>
+                            <div style="font-size: 11px; margin-bottom: 2px;">
+                                <span style="color: #888;">Health:</span> <span style="color: ${healthColor}; font-weight: bold;">${healthPercent}%</span>
+                            </div>
+                            <div style="font-size: 10px; opacity: 0.8;">
+                                <span style="color: #888;">Acc:</span> <span style="color: #00ff41;">+${accuracyBonus}%</span> • 
+                                <span style="color: #888;">Dmg:</span> <span style="color: #ff8800;">+${damageBonus}%</span>
+                            </div>
+                            <div style="font-size: 9px; opacity: 0.6; margin-top: 2px; color: #888;">
+                                &lt; &gt; to cycle sub-targets
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Show available sub-targets count
+                    const availableTargets = targetComputer.availableSubTargets.length;
+                    if (availableTargets > 0) {
+                        subTargetHTML = `
+                            <div style="border-top: 1px solid ${diplomacyColor}; margin-top: 8px; padding-top: 6px;">
+                                <div style="font-size: 12px; color: ${diplomacyColor}; margin-bottom: 2px;">SUB-TARGETING:</div>
+                                <div style="font-size: 11px; opacity: 0.8;">
+                                    ${availableTargets} targetable systems detected
+                                </div>
+                                <div style="font-size: 9px; opacity: 0.6; margin-top: 2px; color: #888;">
+                                    &lt; &gt; to cycle sub-targets
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+        }
+
+        // Update target information display with colored text and sub-target info
+        let typeDisplay = info?.type || 'Unknown';
+        if (isEnemyShip) {
+            typeDisplay = `${info.shipType} (Enemy Ship)`;
+        }
+        
+        this.targetInfoDisplay.innerHTML = `
+            <div style="font-size: 16px; margin-bottom: 4px; color: ${diplomacyColor};">${currentTargetData.name}</div>
+            <div style="font-size: 12px; opacity: 0.8;">
+                <span style="color: ${diplomacyColor}">${this.formatDistance(distance)}</span> • 
+                <span style="color: ${diplomacyColor}">${typeDisplay}</span>
+            </div>
+            ${info?.diplomacy ? `<div style="font-size: 12px; margin-top: 4px; color: ${diplomacyColor};">${info.diplomacy}</div>` : ''}
+            ${subTargetHTML}
+        `;
+
+        // Update status icons with diplomacy color
+        this.governmentIcon.style.display = info?.government ? 'block' : 'none';
+        this.economyIcon.style.display = info?.economy ? 'block' : 'none';
+        this.technologyIcon.style.display = info?.technology ? 'block' : 'none';
+
+        // Update icon colors and borders to match diplomacy
+        [this.governmentIcon, this.economyIcon, this.technologyIcon].forEach(icon => {
+            if (icon.style.display !== 'none') {
+                icon.style.borderColor = diplomacyColor;
+                icon.style.color = diplomacyColor;
+                icon.style.textShadow = `0 0 4px ${diplomacyColor}`;
+                icon.style.boxShadow = `0 0 4px ${diplomacyColor.replace(')', ', 0.4)')}`;
+            }
+        });
+
+        // Update intel icon display
+        this.updateIntelIconDisplay();
+
+        // Update tooltips with current info
+        if (info?.government) {
+            this.governmentIcon.title = `Government: ${info.government}`;
+        }
+        if (info?.economy) {
+            this.economyIcon.title = `Economy: ${info.economy}`;
+        }
+        if (info?.technology) {
+            this.technologyIcon.title = `Technology: ${info.technology}`;
+        }
+
+        // Calculate docking range based on body size
+        let dockingRange = this.dockingRange; // Default 1.5 for moons
+        if (info?.type === 'planet') {
+            // For planets, use a fixed 4.0KM range
+            dockingRange = 4.0;
+        }
+
+        // Calculate button state for docking (show dock button, but launch is handled by docking interface)
+        const canDock = this.canDock(this.currentTarget);
+        const isDocked = this.isDocked && this.dockedTo === this.currentTarget;
+        const isHostile = info?.diplomacy?.toLowerCase() === 'enemy';
+
+        // Add a small buffer to button display: only show button if distance is comfortably within range
+        let showButton = false;
+        if ((info?.type === 'planet' || info?.type === 'moon') && canDock && !isDocked && !isHostile) {
+            // Add 0.3km buffer - only show button if we're well within docking range
+            const currentDistance = this.camera.position.distanceTo(this.currentTarget.position);
+            let buttonRange = this.dockingRange - 0.3; // Default 1.2 for moons
+            if (info?.type === 'planet') {
+                buttonRange = 3.7; // 3.7km for planets (was 4.0km)
+            }
+            showButton = currentDistance <= buttonRange;
+        }
+
+        // Debug hostile detection
+        if (info?.diplomacy) {
+            // console.log(`Target ${currentTargetData.name}: diplomacy="${info.diplomacy}", isHostile=${isHostile}`);
+        }
+
+        // Show dock button when in range and not docked, but launch is handled by docking interface
+        const newButtonState = {
+            hasDockButton: showButton,
+            isDocked: this.isDocked,
+            hasScanButton: false,
+            hasTradeButton: false
+        };
+
+        // Only recreate buttons if state has changed
+        const stateChanged = JSON.stringify(this.currentButtonState) !== JSON.stringify(newButtonState);
+        
+        // Debug button state for stars and other issues
+        if (info?.type === 'star' && showButton) {
+            console.log('ERROR: Dock button showing for star!', {
+                targetName: currentTargetData.name,
+                targetType: info?.type,
+                showButton: showButton,
+                canDock: canDock,
+                isDocked: isDocked,
+                isHostile: isHostile
+            });
+        }
+        
+        if (stateChanged) {
+            // Throttle button state change logging to prevent spam
+            const now = Date.now();
+            if (!this.lastButtonStateLog || now - this.lastButtonStateLog > 2000) { // Log at most every 2 seconds
+                console.log('Button state changed, recreating buttons', {
+                    targetName: currentTargetData.name,
+                    targetType: info?.type,
+                    oldState: this.currentButtonState,
+                    newState: newButtonState
+                });
+                this.lastButtonStateLog = now;
+            }
+            this.currentButtonState = newButtonState;
+            
+            // Clear existing buttons
+            this.actionButtonsContainer.innerHTML = '';
+
+            // Add dock button if applicable (launch button is in docking interface)
+            if (newButtonState.hasDockButton) {
+                const dockButton = document.createElement('button');
+                dockButton.className = 'dock-button';
+                dockButton.textContent = 'DOCK';
+                dockButton.addEventListener('click', () => this.handleDockButtonClick(false, currentTargetData.name));
+                this.actionButtonsContainer.appendChild(dockButton);
+            }
+        }
+
+        // Update reticle colors
+        const corners = this.targetReticle.getElementsByClassName('reticle-corner');
+        Array.from(corners).forEach(corner => {
+            corner.style.borderColor = diplomacyColor;
+            corner.style.boxShadow = `0 0 2px ${diplomacyColor}`;
+        });
+
+        // Update reticle position
+        this.updateReticlePosition();
+    }
+
+    updateReticlePosition() {
+        if (!this.currentTarget || !this.targetComputerEnabled) {
+            this.targetReticle.style.display = 'none';
+            return;
+        }
+
+        // Calculate target's screen position
+        const screenPosition = this.currentTarget.position.clone().project(this.camera);
+        const isOnScreen = Math.abs(screenPosition.x) <= 1 && Math.abs(screenPosition.y) <= 1;
+
+        if (isOnScreen) {
+            const x = (screenPosition.x + 1) * window.innerWidth / 2;
+            const y = (-screenPosition.y + 1) * window.innerHeight / 2;
+            
+            const cameraForward = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+            const relativePos = this.currentTarget.position.clone().sub(this.camera.position);
+            const isBehindCamera = relativePos.dot(cameraForward) < 0;
+            
+            this.targetReticle.style.display = isBehindCamera ? 'none' : 'block';
+            this.targetReticle.style.left = `${x}px`;
+            this.targetReticle.style.top = `${y}px`;
+        } else {
+            this.targetReticle.style.display = 'none';
+        }
+    }
+
+    getCurrentTargetData() {
+        if (!this.currentTarget || !this.targetObjects || this.targetIndex === -1) {
+            return null;
+        }
+        return this.targetObjects[this.targetIndex];
+    }
+
+    calculateDistance(point1, point2) {
+        // Calculate raw distance in world units
+        const rawDistance = Math.sqrt(
+            Math.pow(point2.x - point1.x, 2) +
+            Math.pow(point2.y - point1.y, 2) +
+            Math.pow(point2.z - point1.z, 2)
+        );
+        
+        // Convert to kilometers (1 unit = 1 kilometer)
+        return rawDistance;
+    }
+
+    getParentPlanetName(moon) {
+        // Get all celestial bodies
+        const bodies = this.solarSystemManager.getCelestialBodies();
+        
+        // Find the parent planet by checking which planet's position is closest to the moon
+        let closestPlanet = null;
+        let minDistance = Infinity;
+        
+        for (const [key, body] of bodies.entries()) {
+            if (!key.startsWith('moon_')) {
+                const distance = body.position.distanceTo(moon.position);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestPlanet = body;
+                }
+            }
+        }
+        
+        if (closestPlanet) {
+            const info = this.solarSystemManager.getCelestialBodyInfo(closestPlanet);
+            return info.name;
+        }
+        
+        return 'Unknown';
+    }
+
+    updateDirectionArrow() {
+        // Only proceed if we have a target and the target computer is enabled
+        if (!this.currentTarget || !this.targetComputerEnabled || !this.directionArrows) {
+            // Hide all arrows
+            Object.values(this.directionArrows).forEach(arrow => {
+                arrow.style.display = 'none';
+            });
+            return;
+        }
+
+        // Get target's world position relative to camera
+        const targetPosition = this.currentTarget.position.clone();
+        const screenPosition = targetPosition.clone().project(this.camera);
+        
+        // Check if target is off screen
+        const isOffScreen = Math.abs(screenPosition.x) > 1 || Math.abs(screenPosition.y) > 1;
+
+        if (isOffScreen) {
+            // Get camera's view direction and relative position
+            const cameraDirection = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+            const relativePosition = targetPosition.clone().sub(this.camera.position);
+            
+            // Get camera's right and up vectors
+            const cameraRight = new this.THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
+            const cameraUp = new this.THREE.Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion);
+            
+            // Project relative position onto camera's right and up vectors
+            const rightComponent = relativePosition.dot(cameraRight);
+            const upComponent = relativePosition.dot(cameraUp);
+
+            // Get target info for color
+            const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+            let arrowColor = '#D0D0D0'; // Default gray
+            if (info?.type === 'star') {
+                arrowColor = '#ffff00'; // Stars are neutral
+            } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
+                arrowColor = '#ff0000';
+            } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
+                arrowColor = '#ffff00';
+            } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
+                arrowColor = '#00ff41';
+            }
+
+            // Hide all arrows first
+            Object.values(this.directionArrows).forEach(arrow => {
+                arrow.style.display = 'none';
+            });
+
+            // Get HUD position
+            const hudRect = this.targetHUD.getBoundingClientRect();
+
+            // Show and position the appropriate arrow
+            if (Math.abs(rightComponent) > Math.abs(upComponent)) {
+                if (rightComponent > 0) {
+                    // Right arrow
+                    const arrow = this.directionArrows.right;
+                    arrow.style.cssText = `
+                        position: fixed;
+                        left: ${hudRect.right + 5}px;
+                        top: ${hudRect.top + hudRect.height / 2}px;
+                        width: 0;
+                        height: 0;
+                        border-top: 8px solid transparent;
+                        border-bottom: 8px solid transparent;
+                        border-left: 12px solid ${arrowColor};
+                        transform: translateY(-50%);
+                        display: block;
+                        pointer-events: none;
+                        z-index: 1000;
+                    `;
+                } else {
+                    // Left arrow
+                    const arrow = this.directionArrows.left;
+                    arrow.style.cssText = `
+                        position: fixed;
+                        left: ${hudRect.left - 17}px;
+                        top: ${hudRect.top + hudRect.height / 2}px;
+                        width: 0;
+                        height: 0;
+                        border-top: 8px solid transparent;
+                        border-bottom: 8px solid transparent;
+                        border-right: 12px solid ${arrowColor};
+                        transform: translateY(-50%);
+                        display: block;
+                        pointer-events: none;
+                        z-index: 1000;
+                    `;
+                }
+            } else {
+                if (upComponent > 0) {
+                    // Top arrow
+                    const arrow = this.directionArrows.top;
+                    arrow.style.cssText = `
+                        position: fixed;
+                        left: ${hudRect.left + hudRect.width / 2}px;
+                        top: ${hudRect.top - 17}px;
+                        width: 0;
+                        height: 0;
+                        border-left: 8px solid transparent;
+                        border-right: 8px solid transparent;
+                        border-bottom: 12px solid ${arrowColor};
+                        transform: translateX(-50%);
+                        display: block;
+                        pointer-events: none;
+                        z-index: 1000;
+                    `;
+                } else {
+                    // Bottom arrow
+                    const arrow = this.directionArrows.bottom;
+                    arrow.style.cssText = `
+                        position: fixed;
+                        left: ${hudRect.left + hudRect.width / 2}px;
+                        top: ${hudRect.bottom + 5}px;
+                        width: 0;
+                        height: 0;
+                        border-left: 8px solid transparent;
+                        border-right: 8px solid transparent;
+                        border-top: 12px solid ${arrowColor};
+                        transform: translateX(-50%);
+                        display: block;
+                        pointer-events: none;
+                        z-index: 1000;
+                    `;
+                }
+            }
+        } else {
+            // Hide all arrows when target is on screen
+            Object.values(this.directionArrows).forEach(arrow => {
+                arrow.style.display = 'none';
+            });
+        }
+    }
 
 } 

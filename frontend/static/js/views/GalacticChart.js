@@ -473,8 +473,11 @@ export class GalacticChart {
 
         if (warpButton && !isCurrentSector) {
             warpButton.addEventListener('click', () => {
+                console.log(`🚀 WARP BUTTON CLICKED: Starting warp validation...`);
+                
                 // Check if ship is docked
                 if (this.viewManager.starfieldManager.isDocked) {
+                    console.log(`🚀 WARP BLOCKED: Ship is docked`);
                     this.viewManager.warpFeedback.showWarning(
                         'Cannot Warp While Docked',
                         'You must launch from the planet or moon before engaging warp drive.',
@@ -486,10 +489,93 @@ export class GalacticChart {
                     return;
                 }
 
+                // Check if ship has a warp drive system installed
+                const ship = this.viewManager.getShip();
+                const warpDriveSystem = ship ? ship.systems.get('warp_drive') : null;
+                
+                console.log(`🚀 WARP DEBUG: Ship exists: ${!!ship}, WarpDrive system exists: ${!!warpDriveSystem}`);
+                
+                if (!warpDriveSystem) {
+                    console.log(`🚀 WARP BLOCKED: No warp drive system found`);
+                    this.viewManager.warpFeedback.showWarning(
+                        'Warp Drive Not Installed',
+                        'This ship requires a warp drive system to travel between star systems. Install a warp drive card to enable interstellar travel.',
+                        () => {
+                            // Keep the galactic chart visible after warning is closed
+                            this.show();
+                        }
+                    );
+                    return;
+                }
+                
+                if (!warpDriveSystem.isOperational()) {
+                    console.log(`🚀 WARP BLOCKED: Warp drive system not operational`);
+                    this.viewManager.warpFeedback.showWarning(
+                        'Warp Drive Damaged',
+                        'The warp drive system is damaged and requires repair before interstellar travel is possible.',
+                        () => {
+                            // Keep the galactic chart visible after warning is closed
+                            this.show();
+                        }
+                    );
+                    return;
+                }
+                
+                // Check if ship has warp drive cards installed
+                if (ship && ship.hasSystemCardsSync) {
+                    let hasWarpCards = false;
+                    try {
+                        // Add debug logging for warp drive validation
+                        console.log(`🚀 WARP DEBUG: Checking warp drive cards for system...`);
+                        
+                        // Check what cards are actually installed
+                        if (ship.cardSystemIntegration && ship.cardSystemIntegration.installedCards) {
+                            const installedCards = Array.from(ship.cardSystemIntegration.installedCards.values());
+                            console.log(`🚀 WARP DEBUG: Installed cards:`, installedCards.map(card => `${card.cardType} (L${card.level})`));
+                            
+                            // Check specifically for warp drive cards
+                            const warpCards = installedCards.filter(card => card.cardType === 'warp_drive');
+                            console.log(`🚀 WARP DEBUG: Warp drive cards found:`, warpCards.length, warpCards);
+                        }
+                        
+                        if (ship.debugSystemCards) {
+                            ship.debugSystemCards('warp_drive');
+                        }
+                        
+                        const cardCheck = ship.hasSystemCardsSync('warp_drive');
+                        if (typeof cardCheck === 'boolean') {
+                            hasWarpCards = cardCheck;
+                        } else if (cardCheck && typeof cardCheck === 'object') {
+                            hasWarpCards = cardCheck.hasCards;
+                        }
+                        
+                        console.log(`🚀 WARP DEBUG: Card check result: hasWarpCards=${hasWarpCards}, cardCheck=`, cardCheck);
+                    } catch (error) {
+                        console.warn('Warp drive card check failed:', error);
+                        hasWarpCards = false;
+                    }
+                    
+                    if (!hasWarpCards) {
+                        console.log(`🚀 WARP BLOCKED: No warp drive cards found`);
+                        this.viewManager.warpFeedback.showWarning(
+                            'Warp Drive Cards Missing',
+                            'Warp drive cards are required for interstellar travel. Install warp drive cards in your ship to enable this functionality.',
+                            () => {
+                                // Keep the galactic chart visible after warning is closed
+                                this.show();
+                            }
+                        );
+                        return;
+                    }
+                }
+
                 const currentEnergy = this.viewManager.getShipEnergy();
                 const requiredEnergy = warpEnergy;
                 
+                console.log(`🚀 WARP DEBUG: Energy check - Required: ${requiredEnergy}, Available: ${currentEnergy}`);
+                
                 if (requiredEnergy > currentEnergy) {
+                    console.log(`🚀 WARP BLOCKED: Insufficient energy`);
                     this.viewManager.warpFeedback.showWarning(
                         'Insufficient Energy',
                         `Required: ${requiredEnergy.toFixed(2)} energy units\n\nAvailable: ${currentEnergy.toFixed(2)} energy units`,
@@ -499,6 +585,7 @@ export class GalacticChart {
                         }
                     );
                 } else {
+                    console.log(`🚀 WARP SUCCESS: All validations passed, initiating warp to:`, coordinates);
                     console.log('Warp initiated to system:', coordinates);
                     // Hide the galactic chart
                     this.hide();

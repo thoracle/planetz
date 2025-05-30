@@ -364,4 +364,28 @@ export default class ImpulseEngines extends System {
         this.isMovingForward = false;
         console.log('Emergency stop engaged - all stop!');
     }
+    
+    /**
+     * Check if impulse engines can be activated
+     * @param {Ship} ship - The ship instance
+     * @returns {boolean} - True if impulse engines can be activated
+     */
+    canActivate(ship) {
+        if (!this.isOperational()) {
+            return false;
+        }
+        
+        // Check if ship has required cards
+        if (ship && ship.hasSystemCardsSync) {
+            const cardCheck = ship.hasSystemCardsSync('impulse_engines');
+            if (cardCheck && typeof cardCheck === 'object' && !cardCheck.hasCards) {
+                return false;
+            } else if (typeof cardCheck === 'boolean' && !cardCheck) {
+                return false;
+            }
+        }
+        
+        // Impulse engines have no additional requirements
+        return true;
+    }
 } 

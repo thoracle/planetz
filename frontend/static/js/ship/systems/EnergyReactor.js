@@ -53,6 +53,30 @@ export default class EnergyReactor extends System {
     }
     
     /**
+     * Check if energy reactor can be activated
+     * @param {Ship} ship - The ship instance
+     * @returns {boolean} - True if energy reactor can be activated
+     */
+    canActivate(ship) {
+        if (!this.isOperational()) {
+            return false;
+        }
+        
+        // Check if ship has required cards
+        if (ship && ship.hasSystemCardsSync) {
+            const cardCheck = ship.hasSystemCardsSync('energy_reactor');
+            if (cardCheck && typeof cardCheck === 'object' && !cardCheck.hasCards) {
+                return false;
+            } else if (typeof cardCheck === 'boolean' && !cardCheck) {
+                return false;
+            }
+        }
+        
+        // Energy reactor has no additional requirements
+        return true;
+    }
+    
+    /**
      * Get system information for UI display
      */
     getSystemInfo() {

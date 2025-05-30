@@ -3,6 +3,7 @@
  */
 
 import { StationRepairInterface } from './StationRepairInterface.js';
+import CardInventoryUI from './CardInventoryUI.js';
 
 export class DockingInterface {
     constructor(starfieldManager) {
@@ -12,6 +13,27 @@ export class DockingInterface {
         
         // Initialize station services
         this.stationRepairInterface = new StationRepairInterface(starfieldManager);
+        this.cardInventoryUI = new CardInventoryUI(null);
+        
+        // Properly initialize the CardInventoryUI for ship integration
+        this.cardInventoryUI.init(); // This will load test data since no container
+        
+        // Load the current ship configuration into CardInventoryUI for system integration
+        if (starfieldManager.ship && starfieldManager.ship.shipType) {
+            // Initialize the CardInventoryUI with the ship's configuration
+            this.cardInventoryUI.currentShipType = starfieldManager.ship.shipType;
+            this.cardInventoryUI.currentShipConfig = starfieldManager.ship.shipConfig;
+            
+            // Load the ship configuration into CardInventoryUI.shipSlots for CardSystemIntegration
+            this.cardInventoryUI.loadShipConfiguration(starfieldManager.ship.shipType);
+            
+            console.log(`🔧 DockingInterface: Loaded ${this.cardInventoryUI.shipSlots.size} cards for ship integration`);
+        }
+        
+        // Set card inventory UI reference on the ship for system integration
+        if (starfieldManager.ship) {
+            starfieldManager.ship.setCardInventoryUI(this.cardInventoryUI);
+        }
         
         this.createDockingUI();
     }
@@ -93,6 +115,14 @@ export class DockingInterface {
             () => this.handleLaunch()
         );
 
+        // Inventory button
+        this.inventoryButton = this.createServiceButton(
+            'SHIP INVENTORY',
+            'Manage ship configuration and card inventory',
+            'inventory-button',
+            () => this.handleInventory()
+        );
+
         // Repair button
         this.repairButton = this.createServiceButton(
             'REPAIR SHIP',
@@ -103,14 +133,15 @@ export class DockingInterface {
 
         // Shop button
         this.shopButton = this.createServiceButton(
-            'SYSTEM SHOP',
-            'Purchase and upgrade ship systems',
+            'UPGRADE SHIP',
+            'Purchase and upgrade ship component cards',
             'shop-button',
             () => this.handleShop()
         );
 
         // Add buttons to services container
         this.servicesContainer.appendChild(this.launchButton);
+        this.servicesContainer.appendChild(this.inventoryButton);
         this.servicesContainer.appendChild(this.repairButton);
         this.servicesContainer.appendChild(this.shopButton);
     }
@@ -199,7 +230,7 @@ export class DockingInterface {
         // Hostile planets won't allow docking in the first place
         
         // All services are always available when docked
-        [this.launchButton, this.repairButton, this.shopButton].forEach(button => {
+        [this.launchButton, this.inventoryButton, this.repairButton, this.shopButton].forEach(button => {
             button.style.opacity = '1';
             button.style.pointerEvents = 'auto';
             button.title = ''; // Clear any disabled tooltips
@@ -219,6 +250,29 @@ export class DockingInterface {
         
         // Trigger undocking
         this.starfieldManager.undock();
+    }
+
+    handleInventory() {
+        console.log('Ship inventory requested');
+        
+        // Play command sound
+        if (this.starfieldManager.playCommandSound) {
+            this.starfieldManager.playCommandSound();
+        }
+        
+        // Store the docked location BEFORE hiding the interface
+        const dockedLocation = this.dockedLocation;
+        
+        // Hide docking interface
+        this.hide();
+        
+        // Show card inventory in normal mode (not shop mode)
+        if (dockedLocation) {
+            console.log('Opening ship inventory...');
+            this.cardInventoryUI.showAsInventory(dockedLocation, this);
+        } else {
+            console.error('Cannot access inventory: location data unavailable');
+        }
     }
 
     handleRepair() {
@@ -255,16 +309,26 @@ export class DockingInterface {
     }
 
     handleShop() {
-        console.log('System shop requested');
+        console.log('Card shop requested');
         
         // Play command sound
         if (this.starfieldManager.playCommandSound) {
             this.starfieldManager.playCommandSound();
         }
         
-        // TODO: Implement shop functionality
-        // For now, show a placeholder message
-        console.log('System shop coming soon! Upgrade and purchase ship systems here.');
+        // Store the docked location BEFORE hiding the interface
+        const dockedLocation = this.dockedLocation;
+        
+        // Hide docking interface
+        this.hide();
+        
+        // Show card inventory shop
+        if (dockedLocation) {
+            console.log('Opening card shop...');
+            this.cardInventoryUI.showAsShop(dockedLocation, this);
+        } else {
+            console.error('Cannot access card shop: location data unavailable');
+        }
     }
 
     addStyles() {
@@ -338,6 +402,20 @@ export class DockingInterface {
             .docking-interface .service-button.shop-button:hover {
                 border-color: #44bbff;
                 background: rgba(0, 153, 255, 0.2) !important;
+            }
+            
+            .docking-interface .service-button.inventory-button {
+                border-color: #00ff99;
+            }
+            
+            .docking-interface .service-button.inventory-button .service-title,
+            .docking-interface .service-button.inventory-button .service-description {
+                color: #00ff99;
+            }
+            
+            .docking-interface .service-button.inventory-button:hover {
+                border-color: #44ffaa;
+                background: rgba(0, 255, 153, 0.2) !important;
             }
             
             .docking-interface .close-button {

@@ -66,4 +66,29 @@ def serve_static(path):
 @bp.route('/health')
 def health_check():
     """Health check endpoint."""
-    return jsonify({"status": "healthy"}) 
+    return jsonify({"status": "healthy"})
+
+@bp.route('/test/<path:filename>')
+def serve_test_files(filename):
+    """Serve test files from the test directory."""
+    try:
+        test_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'test'))
+        logger.info(f"Serving test file: {filename} from {test_dir}")
+        
+        mime_type = get_mime_type(filename)
+        response = send_from_directory(
+            test_dir,
+            filename,
+            mimetype=mime_type
+        )
+        
+        # Add no-cache headers for test files
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        logger.info(f"Successfully served test file: {filename}")
+        return response
+    except Exception as e:
+        logger.error(f"Error serving test file {filename}: {str(e)}")
+        return f"Error serving test file: {filename}", 404 

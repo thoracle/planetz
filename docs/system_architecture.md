@@ -26,8 +26,8 @@ classDiagram
     }
 
     class CardInventory {
-        +Map~String, NFTCard[]~ cards
-        +Set~String~ discoveredTypes
+        +Map cards
+        +Set discoveredTypes
         +addCard(nftCard) void
         +getCardCount(cardType) Number
         +canUpgrade(cardType, currentLevel) Boolean
@@ -39,8 +39,8 @@ classDiagram
 
     class CardCollection {
         +CardInventory inventory
-        +Map~String, Number~ cardCounts
-        +Array~String~ discoveredCards
+        +Map cardCounts
+        +Array discoveredCards
         +discoverCard(cardType) void
         +addCards(cardType, quantity) void
         +getStackCount(cardType) Number
@@ -49,18 +49,18 @@ classDiagram
     }
 
     class DropSystem {
-        +Map~String, Number~ dropRates
-        +Map~String, Number~ systemInventory
+        +Map dropRates
+        +Map systemInventory
         +generateDrop() NFTCard
         +updateInventory(cardType, quantity) void
         +getAvailableCards() Array
         +isCardAvailable(cardType) Boolean
     }
 
-    CardInventory ||--o{ NFTCard : contains
-    CardCollection ||--|| CardInventory : manages
-    DropSystem ..> NFTCard : creates
-    CardCollection <-- DropSystem : receives drops
+    CardInventory o-- NFTCard : contains_many
+    CardCollection --> CardInventory : manages
+    DropSystem --> NFTCard : creates
+    DropSystem --> CardCollection : provides_drops
 ```
 
 ### Sequence Diagram - Card Discovery and Upgrade
@@ -68,7 +68,7 @@ classDiagram
 ```mermaid
 sequenceDiagram
     participant Player
-    participant UI as Card UI
+    participant CardUI as Card_UI
     participant Collection as CardCollection
     participant Inventory as CardInventory
     participant Drop as DropSystem
@@ -81,21 +81,21 @@ sequenceDiagram
     
     alt Card not discovered
         Inventory->>Inventory: discoverCard(cardType)
-        Inventory->>UI: Show discovery animation
+        Inventory->>CardUI: Show discovery animation
     end
     
-    UI->>UI: Update card stack display
+    CardUI->>CardUI: Update card stack display
     
-    Player->>UI: Attempt upgrade
-    UI->>Collection: canUpgradeSystem(cardType, level)
+    Player->>CardUI: Attempt upgrade
+    CardUI->>Collection: canUpgradeSystem(cardType, level)
     Collection->>Inventory: getCardCount(cardType)
     
     alt Sufficient cards
         Collection->>Ship: upgradeSystem(cardType, newLevel)
         Ship->>Ship: updateSystemStats()
-        UI->>UI: Show upgrade success
+        CardUI->>CardUI: Show upgrade success
     else Insufficient cards
-        UI->>UI: Show requirement message
+        CardUI->>CardUI: Show requirement message
     end
 ```
 
@@ -112,8 +112,8 @@ classDiagram
         +Number maxEnergy
         +Number energyRechargeRate
         +Number maxHull
-        +Map~String, SystemSlot~ slots
-        +Map~String, System~ systems
+        +Map slots
+        +Map systems
         +Number currentEnergy
         +Number currentHull
         +constructor(shipType, config)
@@ -151,7 +151,7 @@ classDiagram
     }
 
     class ShipCollection {
-        +Array~Ship~ ownedShips
+        +Array ownedShips
         +Ship activeShip
         +addShip(shipType, name) Ship
         +selectShip(shipId) Boolean
@@ -168,11 +168,11 @@ classDiagram
         +getValidationErrors(ship) Array
     }
 
-    Ship ||--o{ SystemSlot : contains
-    SystemSlot ||--o| System : holds
-    ShipCollection ||--o{ Ship : manages
-    BuildValidator ..> Ship : validates
-    Ship ..> BuildValidator : uses
+    Ship o-- SystemSlot : contains_many
+    SystemSlot --> System : holds_one
+    ShipCollection o-- Ship : manages_many
+    BuildValidator --> Ship : validates
+    Ship --> BuildValidator : uses
 ```
 
 ### State Diagram - Ship Configuration States
@@ -289,10 +289,13 @@ flowchart TD
     DragOver -->|No| ShowInvalid[Show Invalid Drop Indicator]
     DragOver -->|Yes| ShowValid[Show Valid Drop Indicator]
     
-    ShowInvalid --> DragOver
+    ShowInvalid --> DragContinue{Continue Dragging?}
+    DragContinue -->|Yes| DragOver
+    DragContinue -->|No| CancelDrag[Cancel Drag Operation]
+    
     ShowValid --> Drop{Player Drops Card?}
     
-    Drop -->|No| CancelDrag[Cancel Drag Operation]
+    Drop -->|No| CancelDrag
     Drop -->|Yes| ValidateInstall{Can Install System?}
     
     ValidateInstall -->|No| ShowInstallError[Show Installation Error]
@@ -304,8 +307,9 @@ flowchart TD
     ValidateBuild --> ShowBuildStatus[Show Build Status]
     ShowBuildStatus --> WaitAction[Wait for Next Action]
     
-    WaitAction --> SelectCard
-    WaitAction --> AttemptLaunch{Player Attempts Launch?}
+    WaitAction --> NextAction{Next Action?}
+    NextAction -->|Select Card| SelectCard
+    NextAction -->|Attempt Launch| AttemptLaunch{Player Attempts Launch?}
     
     AttemptLaunch -->|Yes| FinalValidation{Build Valid?}
     FinalValidation -->|No| ShowLaunchError[Show Launch Error]
@@ -361,7 +365,7 @@ flowchart LR
     
     Missions --> DropGen
     Loot --> DropGen
-    Trading -.-> CardCollection
+    Trading --> CardCollection
     
     DropGen --> RarityCalc
     RarityCalc --> Inventory
@@ -380,9 +384,9 @@ flowchart LR
     BuildValidator --> LaunchCheck
     LaunchCheck --> StationUI
     
-    CardUI <--> CardCollection
-    ShipUI <--> ActiveShip
-    StationUI <--> ShipCollection
+    CardCollection --> CardUI
+    ActiveShip --> ShipUI
+    ShipCollection --> StationUI
 ```
 
 ## System Integration
@@ -436,6 +440,213 @@ graph TB
     
     LocalStorage -.-> FutureBlockchain
     SessionData -.-> FutureBlockchain
+```
+
+### Sequence Diagram - Card Purchase and Installation
+
+```mermaid
+sequenceDiagram
+    participant Player
+    participant StationUI as Station_Interface
+    participant CardShop as Card_Shop
+    participant CardInventory as Card_Inventory
+    participant Ship as Ship_Configuration
+    participant SlotManager as Slot_Manager
+    participant SystemRegistry as System_Registry
+
+    Player->>StationUI: Dock at station
+    StationUI->>StationUI: Show docking interface
+    Player->>StationUI: Click "CARD SHOP"
+    StationUI->>CardShop: Open card shop interface
+    
+    CardShop->>CardInventory: Load available cards
+    CardInventory->>CardShop: Display card grid
+    
+    Player->>CardShop: Purchase subspace_radio card
+    CardShop->>CardInventory: Add card to inventory
+    CardInventory->>CardShop: Confirm purchase
+    
+    Player->>CardShop: Purchase long_range_scanner card
+    CardShop->>CardInventory: Add card to inventory
+    CardInventory->>CardShop: Confirm purchase
+    
+    Player->>CardShop: Switch to ship configuration view
+    CardShop->>Ship: Load current ship configuration
+    Ship->>SlotManager: Get available slots
+    SlotManager->>CardShop: Display slot grid
+    
+    Player->>CardShop: Drag subspace_radio to slot
+    CardShop->>SlotManager: Validate card compatibility
+    SlotManager->>Ship: Install system(subspace_radio)
+    Ship->>SystemRegistry: Register system instance
+    SystemRegistry->>Ship: Confirm registration
+    Ship->>CardShop: Update slot display
+    
+    Player->>CardShop: Drag long_range_scanner to slot
+    CardShop->>SlotManager: Validate card compatibility
+    SlotManager->>Ship: Install system(long_range_scanner)
+    Ship->>SystemRegistry: Register system instance
+    SystemRegistry->>Ship: Confirm registration
+    Ship->>CardShop: Update slot display
+    
+    Player->>CardShop: Close card shop
+    CardShop->>Ship: Save ship configuration
+    Ship->>StationUI: Return to docking interface
+```
+
+### Sequence Diagram - Ship Launch and System Recognition
+
+```mermaid
+sequenceDiagram
+    participant Player
+    participant StationUI as Station_Interface
+    participant Ship as Ship_Configuration
+    participant SystemRegistry as System_Registry
+    participant GameState as Game_State
+    participant HUD as HUD_Manager
+    participant KeyHandler as Key_Handler
+
+    Player->>StationUI: Click "UNDOCK" button
+    StationUI->>Ship: Validate ship configuration
+    Ship->>SystemRegistry: Verify installed systems
+    SystemRegistry->>Ship: Return system manifest
+    
+    alt Valid ship configuration
+        Ship->>GameState: Initialize ship in space
+        GameState->>SystemRegistry: Load active systems
+        SystemRegistry->>GameState: Register system handlers
+        
+        loop For each installed system
+            SystemRegistry->>KeyHandler: Register system key bindings
+            KeyHandler->>SystemRegistry: Confirm key registration
+        end
+        
+        GameState->>HUD: Update system status display
+        HUD->>Player: Show space view with active systems
+        StationUI->>GameState: Complete undocking sequence
+    else Invalid configuration
+        Ship->>StationUI: Show validation errors
+        StationUI->>Player: Display error message
+    end
+```
+
+### Sequence Diagram - System Activation (Success Path)
+
+```mermaid
+sequenceDiagram
+    participant Player
+    participant KeyHandler as Key_Handler
+    participant SystemRegistry as System_Registry
+    participant SubspaceRadio as Subspace_Radio_System
+    participant AudioManager as Audio_Manager
+    participant UI as UI_Manager
+
+    Note over Player, UI: Player has subspace_radio card installed
+    
+    Player->>KeyHandler: Press 'R' key
+    KeyHandler->>SystemRegistry: Check system availability(subspace_radio)
+    SystemRegistry->>SubspaceRadio: Verify system operational
+    
+    alt System available and operational
+        SubspaceRadio->>SystemRegistry: Return system ready
+        SystemRegistry->>KeyHandler: Confirm activation possible
+        KeyHandler->>SubspaceRadio: Activate system
+        SubspaceRadio->>AudioManager: Play activation sound
+        SubspaceRadio->>UI: Show subspace radio interface
+        UI->>Player: Display galactic chart overlay
+        AudioManager->>Player: Play success sound
+    else System damaged
+        SubspaceRadio->>SystemRegistry: Return system damaged
+        SystemRegistry->>AudioManager: Play error sound
+        SystemRegistry->>UI: Show damage message
+        UI->>Player: Display "Subspace Radio damaged"
+        AudioManager->>Player: Play error sound
+    end
+```
+
+### Sequence Diagram - System Activation (Failure Path)
+
+```mermaid
+sequenceDiagram
+    participant Player
+    participant KeyHandler as Key_Handler
+    participant SystemRegistry as System_Registry
+    participant AudioManager as Audio_Manager
+    participant UI as UI_Manager
+    participant ErrorHandler as Error_Handler
+
+    Note over Player, ErrorHandler: Player has NO galactic_chart card installed
+    
+    Player->>KeyHandler: Press 'G' key
+    KeyHandler->>SystemRegistry: Check system availability(galactic_chart)
+    SystemRegistry->>SystemRegistry: Search installed systems
+    
+    alt System not found
+        SystemRegistry->>ErrorHandler: System not installed
+        ErrorHandler->>AudioManager: Play command fail sound
+        ErrorHandler->>UI: Show error message
+        UI->>Player: Display "Galactic Chart not available"
+        AudioManager->>Player: Play error sound effect
+        
+        Note over ErrorHandler, UI: Optional: Show card requirement hint
+        ErrorHandler->>UI: Show card installation hint
+        UI->>Player: Display "Install Galactic Chart card at station"
+    else System found but no card
+        SystemRegistry->>ErrorHandler: System exists but no card backing
+        ErrorHandler->>AudioManager: Play different error sound
+        ErrorHandler->>UI: Show specific error
+        UI->>Player: Display "Galactic Chart card required"
+        AudioManager->>Player: Play card-missing sound
+    end
+```
+
+### Sequence Diagram - System State Synchronization Issues
+
+```mermaid
+sequenceDiagram
+    participant CardSystem as Card_System
+    participant ShipConfig as Ship_Configuration
+    participant SystemRegistry as System_Registry
+    participant KeyBindings as Key_Bindings
+    participant ActiveSystems as Active_Systems
+
+    Note over CardSystem, ActiveSystems: Common bug scenarios and synchronization points
+    
+    rect rgb(255, 200, 200)
+        Note over CardSystem, ActiveSystems: BUG SCENARIO 1: Card installed but system not recognized
+        CardSystem->>ShipConfig: Install card in slot
+        ShipConfig->>ShipConfig: Update configuration
+        Note over SystemRegistry: SystemRegistry not notified!
+        KeyBindings->>SystemRegistry: Try to activate system
+        SystemRegistry->>KeyBindings: System not found (ERROR)
+    end
+    
+    rect rgb(255, 255, 200)
+        Note over CardSystem, ActiveSystems: SOLUTION: Proper synchronization
+        CardSystem->>ShipConfig: Install card in slot
+        ShipConfig->>SystemRegistry: Register system instance
+        SystemRegistry->>KeyBindings: Update key bindings
+        KeyBindings->>ActiveSystems: Register activation handler
+        ActiveSystems->>SystemRegistry: Confirm registration
+    end
+    
+    rect rgb(255, 200, 200)
+        Note over CardSystem, ActiveSystems: BUG SCENARIO 2: Ship launch doesn't load card systems
+        ShipConfig->>SystemRegistry: Load ship configuration
+        Note over SystemRegistry: Card systems skipped!
+        KeyBindings->>SystemRegistry: Try to activate
+        SystemRegistry->>KeyBindings: System exists but not active (ERROR)
+    end
+    
+    rect rgb(200, 255, 200)
+        Note over CardSystem, ActiveSystems: SOLUTION: Complete system initialization
+        ShipConfig->>SystemRegistry: Load all installed cards
+        loop For each card
+            SystemRegistry->>ActiveSystems: Create system instance
+            ActiveSystems->>KeyBindings: Register key handler
+        end
+        SystemRegistry->>ShipConfig: Confirm all systems loaded
+    end
 ```
 
 This architecture documentation provides a comprehensive view of the NFT card collection system, showing how all components interact to create a cohesive gameplay experience while maintaining flexibility for future blockchain integration. 

@@ -5,6 +5,75 @@
  */
 
 export const SHIP_CONFIGS = {
+    starter_ship: {
+        name: 'Starter Ship',
+        description: 'Basic training vessel with essential systems',
+        
+        // Base stats - Very basic
+        baseSpeed: 30,         // Low (30/100)
+        baseArmor: 20,         // Very Low (20/100)
+        baseFirepower: 20,     // Very Low (20/100)
+        baseCargoCapacity: 5,  // Minimal (5 units)
+        baseHardpoints: 3,     // Minimal (3 hard points)
+        
+        // Energy system - Basic
+        maxEnergy: 1000,       // Small energy pool
+        energyRechargeRate: 20, // Slow recharge rate
+        
+        // Hull - Light construction
+        maxHull: 300,          // Very low hull hit points
+        
+        // System slots - Minimal but expandable
+        systemSlots: 6,        // Reduced slots for starter systems
+        
+        // System slot allocations
+        slotConfig: {
+            engines: 1,        // Basic impulse engines
+            reactor: 1,         // Basic energy reactor
+            weapons: 1,         // Basic weapon slot
+            utility: 3,         // Basic utility slots
+            // Total slots: 6 (1 engine + 1 reactor + 1 weapon + 3 utility = 6)
+        },
+        
+        // Default system configurations - Starter optimized
+        defaultSystems: {
+            // Essential operational systems only (systems that have corresponding cards)
+            energy_reactor: {
+                level: 1, // Level 1 = 1000 energy, 10/sec recharge (1 * 1000, 1 * 10)
+                slots: 1
+            },
+            impulse_engines: { 
+                level: 1, // Level 1 = 15 speed (1 * 15) - basic engines
+                slots: 1, 
+                energyConsumption: 8 // Low consumption for starter ship
+            },
+            target_computer: { 
+                level: 1, // Level 1 = basic targeting (no sub-targeting)
+                slots: 1, 
+                energyConsumption: 3 // Minimal consumption
+            },
+            laser_cannon: { 
+                level: 1, // Level 1 = 12 firepower (1 * 12) - basic weapon
+                slots: 1, 
+                energyConsumption: 0 // Uses energy per shot (handled separately)
+            }
+            // Removed galactic_chart - player must acquire cards to add this system
+            // Removed subspace_radio - player must acquire cards to add this system
+            // No hull_plating - causes "hidden system" since no corresponding card exists
+            // No shields - player must acquire cards to add these systems
+        },
+        
+        // Pre-installed starter cards
+        starterCards: {
+            utility_1: { cardType: 'target_computer', level: 1 },
+            engine_1: { cardType: 'impulse_engines', level: 1 },
+            power_1: { cardType: 'energy_reactor', level: 1 },
+            weapon_1: { cardType: 'laser_cannon', level: 1 }
+            // Removed galactic_chart card - player must acquire from shop
+            // Removed radio_1 - player must acquire subspace radio cards from the shop
+        }
+    },
+    
     heavy_fighter: {
         name: 'Heavy Fighter',
         description: 'Durable combat ship for prolonged engagements',

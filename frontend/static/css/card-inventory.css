@@ -112,9 +112,10 @@
     grid-template-columns: 1fr 2fr;
     gap: 30px;
     margin-bottom: 20px;
-    height: 70vh; /* Set fixed height for the main container */
     min-height: 600px;
-    overflow: hidden;
+    height: auto;
+    max-height: 80vh;
+    overflow: visible;
     width: 100%;
     box-sizing: border-box;
     position: relative;
@@ -189,14 +190,19 @@
 }
 
 .ship-slots-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    flex-wrap: wrap;
     gap: 15px;
-    margin-bottom: 20px;
-    flex: 1;
+    justify-content: flex-start;
+    align-items: flex-start;
     overflow-y: auto;
-    overflow-x: hidden;
+    padding: 10px;
     padding-right: 5px;
+    /* Ensure minimum height for visibility */
+    min-height: 400px;
+    /* Allow grid to expand as needed */
+    height: auto;
+    max-height: 60vh;
 }
 
 /* Ship slots scrollbar styling */
@@ -222,10 +228,17 @@
     background: rgba(0, 0, 0, 0.5);
     border: 2px dashed rgba(255, 255, 255, 0.3);
     border-radius: 8px;
-    padding: 10px;
-    min-height: 120px;
+    padding: 8px;
+    min-height: 140px; /* Match card stack height */
+    max-height: 140px;
+    width: 120px; /* Match card stack width */
     transition: all 0.3s ease;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
 }
 
 .ship-slot:hover {
@@ -237,12 +250,46 @@
     border-color: #00ff00;
     background: rgba(0, 255, 0, 0.1);
     box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+    animation: pulse-green 1s infinite;
 }
 
 .ship-slot.invalid-drop {
     border-color: #ff0000;
     background: rgba(255, 0, 0, 0.1);
     box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+    animation: pulse-red 1s infinite;
+}
+
+/* Drag and drop animations */
+@keyframes pulse-green {
+    0%, 100% { 
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 0 25px rgba(0, 255, 0, 0.6);
+        transform: scale(1.02);
+    }
+}
+
+@keyframes pulse-red {
+    0%, 100% { 
+        box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 0 25px rgba(255, 0, 0, 0.6);
+        transform: scale(1.02);
+    }
+}
+
+/* Card being dragged */
+.card-stack.dragging {
+    opacity: 0.6;
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0, 255, 255, 0.5);
+    z-index: 1000;
+    cursor: grabbing;
 }
 
 .slot-header {
@@ -267,30 +314,75 @@
 
 .empty-slot {
     color: rgba(255, 255, 255, 0.5);
-    font-size: 12px;
+    font-size: 11px;
     text-align: center;
     font-style: italic;
+    width: 100%;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2px;
+}
+
+.slot-type-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+    opacity: 0.7;
+}
+
+.slot-type-label {
+    font-size: 10px;
+    font-weight: bold;
+    color: rgba(0, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.slot-number {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 2px;
 }
 
 .installed-card {
     background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 200, 255, 0.1));
-    border: 1px solid rgba(0, 255, 255, 0.4);
-    border-radius: 5px;
-    padding: 8px;
-    width: 100%;
+    border: 2px solid rgba(0, 255, 255, 0.4);
+    border-radius: 8px;
+    padding: 6px;
+    width: 120px; /* Match card-stack width */
+    height: 140px; /* Match card-stack height */
+    max-width: 120px; /* Match card-stack max-width */
+    max-height: 140px; /* Match card-stack max-height */
+    min-height: 140px; /* Match card-stack min-height */
     position: relative;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    cursor: grab;
+    transition: all 0.2s ease;
+    overflow: hidden;
+}
+
+.installed-card .card-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
 }
 
 .installed-card .card-name {
     font-weight: bold;
-    font-size: 12px;
+    font-size: 10px;
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
+    line-height: 1.1;
 }
 
 .installed-card .card-level {
-    font-size: 10px;
+    font-size: 9px;
     color: #ffff00;
     display: block;
     margin-bottom: 2px;
@@ -427,7 +519,7 @@
 
 .inventory-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(120px, 120px));
     gap: 15px;
     flex: 1;
     overflow-y: auto;
@@ -438,6 +530,8 @@
     border-radius: 5px;
     justify-content: start;
     align-content: start;
+    width: 100%;
+    min-width: 0;
 }
 
 .inventory-grid::-webkit-scrollbar {
@@ -463,34 +557,26 @@
     background: #111111; /* Subtle background instead of pure black */
     border: 2px solid;
     border-radius: 8px; /* Rounded corners */
-    padding: 10px; /* More padding */
+    padding: 6px; /* Reduced padding to fit better in grid */
     cursor: grab;
     transition: all 0.2s ease;
     position: relative;
     overflow: hidden;
-    width: 100%;
-    max-width: 200px;
-    height: auto;
-    min-height: 130px; /* Slightly taller */
-    max-height: 150px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+    min-height: 140px; /* Match ship slot height */
+    max-height: 140px; /* Match ship slot height */
+    width: 120px; /* Match ship slot width */
+    max-width: 120px; /* Match ship slot width */
     box-sizing: border-box;
-    font-family: 'Courier New', 'Monaco', monospace;
-    font-size: 13px; /* Larger base font */
 }
 
 .card-stack:hover {
     transform: translateY(-1px);
     box-shadow: 0 0 15px rgba(0, 204, 119, 0.5);
     background: #151515; /* Slightly lighter on hover */
-}
-
-.card-stack.dragging {
-    opacity: 0.7;
-    transform: rotate(2deg);
-    cursor: grabbing;
 }
 
 .card-stack.common {
@@ -581,8 +667,6 @@
     border-radius: 4px; /* Rounded corners */
     font-family: 'Courier New', 'Monaco', monospace;
 }
-
-
 
 .progress-bar-compact {
     background: #0a0a0a; /* Slightly lighter background */
@@ -1055,72 +1139,187 @@
     }
     
     .ship-slots-panel {
-        max-height: 50vh;
+        height: auto;
+        min-height: 400px;
+        overflow: visible;
     }
     
     .inventory-panel {
-        max-height: 50vh;
+        height: auto;
+        min-height: 400px;
+        overflow: visible;
     }
     
     .ship-slots-grid {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(3, 1fr);
+        min-height: 300px;
+        height: auto;
     }
     
     .inventory-grid {
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
         gap: 12px;
         padding: 12px;
+        height: auto;
+        min-height: 300px;
+    }
+    
+    .card-stack {
+        max-width: 140px;
+        min-height: 110px;
     }
 }
 
 @media (max-width: 768px) {
-    .card-inventory-interface {
-        padding: 15px;
-    }
-    
-    .inventory-header {
-        flex-direction: column;
-        gap: 10px;
-        text-align: center;
-    }
-    
     .inventory-main {
-        height: auto;
-        min-height: 70vh;
-    }
-    
-    .ship-slots-panel {
-        max-height: 40vh;
-    }
-    
-    .inventory-panel {
-        max-height: 40vh;
-    }
-    
-    .ship-slots-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
+        padding: 10px;
     }
     
     .inventory-grid {
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 10px;
         padding: 10px;
     }
     
     .card-stack {
-        min-height: 160px;
-        max-height: 200px;
-        padding: 12px;
+        max-width: 150px;
+        min-height: 100px;
+        padding: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .inventory-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 8px;
+        padding: 8px;
     }
     
-    .inventory-actions {
-        flex-wrap: wrap;
+    .card-stack {
+        max-width: 140px;
+        min-height: 90px;
+        padding: 4px;
+    }
+}
+
+/* Shop Mode Styles */
+.card-shop-interface {
+    background: rgba(0, 0, 0, 0.95);
+    color: #00dd88;
+    font-family: 'Courier New', 'Monaco', monospace;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1000;
+    display: block;
+    overflow-y: auto;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* Ensure proper grid layout in shop mode */
+.card-shop-interface .inventory-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    max-width: none;
+    width: 100%;
+}
+
+.card-shop-interface .inventory-main {
+    max-width: none;
+    width: 100%;
+}
+
+.card-shop-interface .inventory-panel {
+    width: 100%;
+    max-width: none;
+}
+
+.card-shop-interface .card-stack {
+    max-width: 160px;
+}
+
+.shop-header-buttons {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.shop-back-btn {
+    background: rgba(0, 20, 0, 0.5);
+    border: 2px solid #00ff41;
+    color: #00ff41;
+    font-family: 'Courier New', 'Monaco', monospace;
+    font-size: 14px;
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: bold;
+}
+
+.shop-back-btn:hover {
+    background: rgba(0, 255, 65, 0.15);
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
+    transform: translateY(-1px);
+}
+
+.action-btn.shop-btn {
+    background: rgba(0, 153, 255, 0.1);
+    border-color: #0099ff;
+    color: #0099ff;
+}
+
+.action-btn.shop-btn:hover {
+    background: rgba(0, 153, 255, 0.2);
+    border-color: #44bbff;
+    color: #44bbff;
+    box-shadow: 0 0 15px rgba(0, 153, 255, 0.4);
+}
+
+.shop-message-overlay {
+    animation: shopMessageAppear 0.3s ease;
+}
+
+@keyframes shopMessageAppear {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+.shop-message-overlay button:hover {
+    background: rgba(0, 255, 65, 0.15) !important;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Specific breakpoints for shop mode */
+@media (max-width: 1200px) {
+    .card-shop-interface .inventory-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+    }
+    
+    .card-shop-interface .card-stack {
+        max-width: 140px;
+    }
+}
+
+@media (max-width: 768px) {
+    .card-shop-interface .inventory-grid {
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
         gap: 10px;
     }
     
-    .action-btn {
-        flex: 1;
-        min-width: 120px;
+    .card-shop-interface .card-stack {
+        max-width: 120px;
     }
 } 

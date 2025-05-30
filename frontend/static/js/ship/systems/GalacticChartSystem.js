@@ -88,23 +88,83 @@ export default class GalacticChartSystem extends System {
         return baseConsumption * damageMultiplier;
     }
 
-    // Check if chart can be activated
-    canActivate(ship) {
-        if (!this.isOperational()) {
+    // Check if system is operational - requires cards to function
+    isOperational() {
+        // First check basic system health
+        if (!super.isOperational()) {
             return false;
         }
         
-        // Check cooldown
+        // Galactic Chart system requires cards to be operational
+        // This prevents the system from working even if it exists in defaultSystems
+        // but no cards are installed
+        return true; // For now, let canActivate handle the card check
+    }
+
+    // Check if chart can be activated
+    canActivate(ship) {
+        console.log(`🗺️ GalacticChart.canActivate() called:`, {
+            isOperational: super.isOperational(), // Use super to check basic operability
+            hasShip: !!ship,
+            shipEnergy: ship?.currentEnergy,
+            cooldownRemaining: Math.max(0, this.activationCooldown - (Date.now() - this.lastActivationTime))
+        });
+        
+        if (!super.isOperational()) {
+            console.log(`🗺️ GalacticChart: Cannot activate - system not operational`);
+            return false;
+        }
+        
+        // Check cooldown FIRST before card checking to avoid confusing error messages
         const currentTime = Date.now();
         if (currentTime - this.lastActivationTime < this.activationCooldown) {
+            console.log(`🗺️ GalacticChart: Cannot activate - cooldown remaining: ${this.activationCooldown - (currentTime - this.lastActivationTime)}ms`);
+            return false;
+        }
+        
+        // STRICT CARD CHECK - This is the key fix
+        // Check if required cards are installed - REQUIRED for any galactic chart functionality
+        if (ship) {
+            try {
+                const hasCards = ship.hasSystemCardsSync('galactic_chart');
+                console.log(`🗺️ GalacticChart: Card check result:`, hasCards, typeof hasCards);
+                
+                // Handle both boolean and object returns
+                let cardCheckPassed = false;
+                if (typeof hasCards === 'boolean') {
+                    cardCheckPassed = hasCards;
+                } else if (hasCards && typeof hasCards === 'object') {
+                    cardCheckPassed = hasCards.hasCards;
+                } else {
+                    cardCheckPassed = false;
+                }
+                
+                if (!cardCheckPassed) {
+                    const missingCards = (hasCards && hasCards.missingCards) ? hasCards.missingCards : ['galactic_chart'];
+                    console.warn('🗺️ GalacticChart: Cannot activate - No galactic chart card installed:', missingCards);
+                    return false;
+                }
+                console.log(`🗺️ GalacticChart: Card check PASSED`);
+            } catch (error) {
+                console.warn('🗺️ GalacticChart: Card check error:', error.message || error);
+                // If card check fails due to error, don't allow activation
+                console.warn('🗺️ GalacticChart: Cannot activate - card validation failed');
+                return false;
+            }
+        } else {
+            console.warn('🗺️ GalacticChart: Cannot activate - no ship provided');
             return false;
         }
         
         // Check energy for initial activation (requires 20 energy to start)
-        if (!ship || ship.currentEnergy < 20) {
+        const requiredEnergy = 20;
+        const currentEnergy = ship?.currentEnergy || 0;
+        if (!ship || currentEnergy < requiredEnergy) {
+            console.log(`🗺️ GalacticChart: Cannot activate - insufficient energy: ${currentEnergy}/${requiredEnergy}`);
             return false;
         }
         
+        console.log(`🗺️ GalacticChart: Can activate - all checks passed`);
         return true;
     }
 

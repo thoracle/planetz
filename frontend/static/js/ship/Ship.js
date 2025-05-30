@@ -1,4 +1,5 @@
 import { getShipConfig, validateShipConfig } from './ShipConfigs.js';
+import CardSystemIntegration from './CardSystemIntegration.js';
 
 /**
  * Ship class - data-driven spaceship implementation
@@ -49,6 +50,23 @@ export default class Ship {
         
         // Initialize default systems
         this.initializeDefaultSystems();
+        
+        // Initialize card system integration
+        this.cardSystemIntegration = new CardSystemIntegration(this);
+        
+        // Initialize card data and create systems from cards asynchronously
+        this.cardSystemIntegration.initializeCardData().then(async () => {
+            // Create additional systems based on installed cards
+            await this.cardSystemIntegration.createSystemsFromCards();
+            console.log(`Ship ${this.shipType} fully initialized with card-based systems`);
+        }).catch(error => {
+            console.error('Failed to initialize card data or create systems:', error);
+        });
+        
+        // Install starter cards if this is a starter ship
+        if (this.shipConfig.starterCards) {
+            this.installStarterCards();
+        }
         
         // Initialize auto-repair system
         this.autoRepairSystem = null; // Will be initialized after systems are loaded
@@ -172,16 +190,11 @@ export default class Ship {
             }
             
             // Missile tubes are optional and compete with laser weapons for slots
-            console.log('Checking for missile_tubes in defaultSystems:', !!defaultSystems.missile_tubes);
-            console.log('defaultSystems.missile_tubes config:', defaultSystems.missile_tubes);
             if (defaultSystems.missile_tubes) {
-                console.log('Initializing missile tubes...');
                 const missileTubes = new MissileTubes(defaultSystems.missile_tubes.level);
                 // Override slot cost from ship configuration
                 missileTubes.slotCost = defaultSystems.missile_tubes.slots;
                 this.addSystem('missile_tubes', missileTubes);
-            } else {
-                console.log('No missile_tubes found in defaultSystems');
             }
             
             // Add new gear systems that provide base ship stats
@@ -436,6 +449,9 @@ export default class Ship {
         this.usedSlots += systemSlotCost;
         this.availableSlots = this.totalSlots - this.usedSlots;
         
+        // Recalculate ship stats after adding system
+        this.calculateTotalStats();
+        
         console.log(`Added system: ${systemName} (${this.usedSlots}/${this.totalSlots} slots used)`);
         return true;
     }
@@ -451,6 +467,9 @@ export default class Ship {
             this.usedSlots -= system.slotCost || 1;
             this.availableSlots = this.totalSlots - this.usedSlots;
             
+            // Recalculate ship stats after removing system
+            this.calculateTotalStats();
+            
             console.log(`Removed system: ${systemName} (${this.usedSlots}/${this.totalSlots} slots used)`);
             return true;
         }
@@ -459,11 +478,17 @@ export default class Ship {
     
     /**
      * Get current ship status
+     * @param {boolean} filterByCards - If true, only include systems with required cards
      */
-    getStatus() {
+    getStatus(filterByCards = false) {
         // Build systems status information
         const systemsStatus = {};
         for (const [systemName, system] of this.systems) {
+            // If filtering by cards, check if system has required cards
+            if (filterByCards && !this.hasSystemCardsSync(systemName)) {
+                continue; // Skip systems without required cards
+            }
+            
             systemsStatus[systemName] = {
                 health: system.healthPercentage,
                 isActive: system.isActive,
@@ -492,8 +517,16 @@ export default class Ship {
             },
             stats: this.calculateTotalStats(),
             systems: systemsStatus,
-            systemCount: this.systems.size
+            systemCount: Object.keys(systemsStatus).length // Count filtered systems
         };
+    }
+    
+    /**
+     * Get ship status with only card-enabled systems
+     * @returns {Object} - Ship status with only systems that have required cards
+     */
+    getCardFilteredStatus() {
+        return this.getStatus(true);
     }
     
     /**
@@ -567,6 +600,194 @@ export default class Ship {
      */
     getSystem(systemName) {
         return this.systems.get(systemName) || null;
+    }
+
+    /**
+     * Install starter cards for new players
+     */
+    async installStarterCards() {
+        if (!this.cardSystemIntegration || !this.shipConfig.starterCards) {
+            return;
+        }
+        
+        console.log('Installing starter cards for new player...');
+        
+        // Wait a bit for card system to be ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        try {
+            // Import CardInventoryUI to create cards
+            const { default: CardInventoryUI } = await import('../ui/CardInventoryUI.js');
+            
+            // Create a temporary card inventory to generate cards
+            const tempInventory = new CardInventoryUI(null);
+            
+            // Install each starter card
+            for (const [slotId, cardData] of Object.entries(this.shipConfig.starterCards)) {
+                try {
+                    // Generate the card
+                    const card = tempInventory.inventory.generateSpecificCard(cardData.cardType, 'common');
+                    card.level = cardData.level;
+                    
+                    // Install to ship slot (we'll create a simple slot system for starter ships)
+                    if (!this.starterCardSlots) {
+                        this.starterCardSlots = new Map();
+                    }
+                    
+                    this.starterCardSlots.set(slotId, card);
+                    console.log(`Installed starter card: ${card.name} (Level ${card.level}) to slot ${slotId}`);
+                    
+                } catch (error) {
+                    console.error(`Failed to install starter card ${cardData.cardType}:`, error);
+                }
+            }
+            
+            // Update card system integration
+            if (this.cardSystemIntegration) {
+                await this.cardSystemIntegration.initializeCardData();
+            }
+            
+            console.log('Starter cards installation complete');
+            
+        } catch (error) {
+            console.error('Failed to install starter cards:', error);
+        }
+    }
+
+    /**
+     * Check if system has required cards (enhanced for starter ships)
+     */
+    async hasSystemCards(systemName) {
+        // For starter ships, check both regular card system and starter cards
+        if (this.starterCardSlots && this.starterCardSlots.size > 0) {
+            // Check if any starter card enables this system
+            for (const [slotId, card] of this.starterCardSlots) {
+                if (this.cardEnablesSystem(card, systemName)) {
+                    return true;
+                }
+            }
+        }
+        
+        // Check regular card system
+        if (this.cardSystemIntegration) {
+            try {
+                return await this.cardSystemIntegration.hasSystemCards(systemName);
+            } catch (error) {
+                console.error(`Error checking system cards for ${systemName}:`, error);
+            }
+        }
+        
+        // For non-card ships, assume all systems are available
+        return true;
+    }
+    
+    /**
+     * Synchronous check if system has required cards (uses cached data)
+     * @param {string} systemName - Name of the system
+     * @param {boolean} enableLogging - Whether to log debug information
+     * @returns {boolean} - True if system has required cards
+     */
+    hasSystemCardsSync(systemName, enableLogging = false) {
+        if (!this.cardSystemIntegration) {
+            // No card system integration, assume all systems are available (fallback)
+            return true;
+        }
+        
+        // Check if this system is enabled by starter cards first
+        if (this.shipConfig?.starterCards) {
+            for (const card of Object.values(this.shipConfig.starterCards)) {
+                if (this.cardEnablesSystem(card, systemName)) {
+                    return true;
+                }
+            }
+        }
+        
+        // Use the card integration system for card-based checks
+        const result = this.cardSystemIntegration.hasSystemCardsSync(systemName);
+        
+        // Optional logging when explicitly requested
+        if (enableLogging && !result.hasCards && result.missingCards.length > 0) {
+            console.log(`🔴 CARD CHECK FAILED: ${systemName} missing [${result.missingCards.join(', ')}]`);
+        }
+        
+        return result.hasCards;
+    }
+    
+    /**
+     * Debug method to check and log card status for a system
+     * @param {string} systemName - Name of the system to check
+     * @returns {Object} - Detailed card check result
+     */
+    debugSystemCards(systemName) {
+        if (!this.cardSystemIntegration) {
+            console.log(`🔍 DEBUG CARD CHECK [${systemName}]: No card integration system`);
+            return { hasCards: true, reason: 'no_card_system' };
+        }
+        
+        // Check starter cards first
+        if (this.shipConfig?.starterCards) {
+            for (const card of Object.values(this.shipConfig.starterCards)) {
+                if (this.cardEnablesSystem(card, systemName)) {
+                    console.log(`🔍 DEBUG CARD CHECK [${systemName}]: ✅ Enabled by starter card [${card.cardType}]`);
+                    return { hasCards: true, reason: 'starter_card', card: card.cardType };
+                }
+            }
+        }
+        
+        // Check installed cards
+        const result = this.cardSystemIntegration.hasSystemCardsSync(systemName);
+        if (result.hasCards) {
+            console.log(`🔍 DEBUG CARD CHECK [${systemName}]: ✅ Has required cards`);
+        } else {
+            console.log(`🔍 DEBUG CARD CHECK [${systemName}]: ❌ Missing cards [${result.missingCards.join(', ')}]`);
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Check if a card enables a specific system
+     */
+    cardEnablesSystem(card, systemName) {
+        if (!card || !card.cardType) return false;
+        
+        // Map card types to system names
+        const cardToSystemMap = {
+            'target_computer': 'target_computer',
+            'impulse_engines': 'impulse_engines',
+            'energy_reactor': 'energy_reactor',
+            'subspace_radio': 'subspace_radio',
+            'long_range_scanner': 'long_range_scanner',
+            'galactic_chart': 'galactic_chart'
+        };
+        
+        return cardToSystemMap[card.cardType] === systemName;
+    }
+
+    /**
+     * Get system effectiveness based on installed cards
+     * @param {string} systemName - Name of the system
+     * @returns {number} - Effectiveness multiplier (0.0 to 3.0)
+     */
+    getSystemCardEffectiveness(systemName) {
+        return this.cardSystemIntegration.getSystemEffectiveness(systemName);
+    }
+
+    /**
+     * Get detailed card status for a system
+     * @param {string} systemName - Name of the system
+     * @returns {Object} - Detailed system card status
+     */
+    getSystemCardStatus(systemName) {
+        return this.cardSystemIntegration.getSystemStatus(systemName);
+    }
+
+    /**
+     * Set the card inventory UI reference for integration
+     * @param {CardInventoryUI} cardInventoryUI - Reference to the card inventory UI
+     */
+    setCardInventoryUI(cardInventoryUI) {
+        this.cardSystemIntegration.setCardInventoryUI(cardInventoryUI);
     }
     
     /**

@@ -200,6 +200,12 @@ export default class LongRangeScannerSystem extends System {
             return false;
         }
         
+        // Check if required cards are installed
+        if (ship && !ship.hasSystemCardsSync('long_range_scanner')) {
+            console.warn('Cannot activate Long Range Scanner: No scanner card installed');
+            return false;
+        }
+        
         const energyRequired = this.getEnergyConsumptionRate();
         return ship.hasEnergy(energyRequired);
     }

@@ -1,5 +1,3 @@
-console.log('Loading chunk.js...');
-
 import * as THREE from 'three';
 
 // Message types

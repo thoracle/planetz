@@ -4,6 +4,32 @@ Based on frontend/static/js/ship/ShipConfigs.js
 """
 
 SHIP_CONFIGS = {
+    'starter_ship': {
+        'name': 'Starter Ship',
+        'description': 'Basic training vessel with essential systems',
+        'baseSpeed': 30,
+        'baseArmor': 20,
+        'baseFirepower': 20,
+        'baseCargoCapacity': 5,
+        'baseHardpoints': 3,
+        'maxEnergy': 1000,
+        'energyRechargeRate': 20,
+        'maxHull': 300,
+        'systemSlots': 6,
+        'defaultSystems': {
+            'hull_plating': {'level': 1, 'slots': 1},
+            'energy_reactor': {'level': 1, 'slots': 1},
+            'impulse_engines': {'level': 1, 'slots': 1, 'energyConsumption': 8},
+            'target_computer': {'level': 1, 'slots': 1, 'energyConsumption': 3},
+            'laser_cannon': {'level': 1, 'slots': 1, 'energyConsumption': 0}
+        },
+        'starterCards': {
+            'utility_1': {'cardType': 'target_computer', 'level': 1},
+            'utility_2': {'cardType': 'impulse_engines', 'level': 1},
+            'utility_3': {'cardType': 'energy_reactor', 'level': 1},
+            'weapon_1': {'cardType': 'laser_cannon', 'level': 1}
+        }
+    },
     'heavy_fighter': {
         'name': 'Heavy Fighter',
         'description': 'Durable combat ship for prolonged engagements',
