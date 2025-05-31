@@ -1339,6 +1339,16 @@ export class StarfieldManager {
                 if (ship) {
                     const impulseEngines = ship.getSystem('impulse_engines');
                     if (impulseEngines) {
+                        // Check if the requested speed exceeds the engine's maximum capability
+                        const maxSpeed = impulseEngines.getMaxImpulseSpeed();
+                        
+                        if (requestedSpeed > maxSpeed) {
+                            // Requested speed exceeds engine capability - play command failed sound and abort
+                            console.log(`Impulse speed ${requestedSpeed} exceeds engine capability (max: ${maxSpeed})`);
+                            this.playCommandFailedSound();
+                            return; // Abort without changing speed
+                        }
+                        
                         impulseEngines.setImpulseSpeed(requestedSpeed);
                         // Get the actual clamped speed from the impulse engines
                         actualSpeed = impulseEngines.getImpulseSpeed();

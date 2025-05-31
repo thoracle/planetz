@@ -408,7 +408,31 @@ export default class CardInventoryUI {
             this.inventory.addCard(card);
         });
         
-        console.log('Test data loaded with projectile weapons');
+        // Add MANY more impulse engines to allow upgrading to higher levels
+        // Level 5 engine (max impulse 9) needs 20 cards total
+        // So we'll add 25 cards to allow for some experimentation
+        console.log('Adding 25 impulse engine cards for high-level upgrades...');
+        for (let i = 0; i < 25; i++) {
+            const impulseEngine = this.inventory.generateSpecificCard('impulse_engines', 'common');
+            this.inventory.addCard(impulseEngine);
+        }
+        
+        // Also add multiple energy reactors for upgrading
+        for (let i = 0; i < 15; i++) {
+            const reactor = this.inventory.generateSpecificCard('energy_reactor', 'common');
+            this.inventory.addCard(reactor);
+        }
+        
+        // Add multiple weapon cards for upgrading  
+        for (let i = 0; i < 10; i++) {
+            const laser = this.inventory.generateSpecificCard('laser_cannon', 'common');
+            this.inventory.addCard(laser);
+            
+            const plasma = this.inventory.generateSpecificCard('plasma_cannon', 'common');
+            this.inventory.addCard(plasma);
+        }
+        
+        console.log('Test data loaded with high-level upgrade capabilities');
     }
 
     /**
@@ -747,7 +771,6 @@ export default class CardInventoryUI {
         
         // Check if slot is empty
         const isEmpty = slot.querySelector('.empty-slot') !== null;
-        
         if (!isEmpty) {
             slot.classList.add('invalid-drop');
             return;
@@ -755,7 +778,8 @@ export default class CardInventoryUI {
         
         // Use stored drag data (dataTransfer.getData() doesn't work reliably in dragenter)
         if (this.currentDragData) {
-            const isCompatible = this.isCardCompatibleWithSlot(this.currentDragData.cardType, slotType);
+            const dragCardType = this.currentDragData.cardType;
+            const isCompatible = this.isCardCompatibleWithSlot(dragCardType, slotType);
             
             if (isCompatible) {
                 slot.classList.add('valid-drop');
@@ -795,11 +819,10 @@ export default class CardInventoryUI {
         // Clean up drag feedback immediately
         slot.classList.remove('valid-drop', 'invalid-drop');
         
-        // Check if slot is empty
+        // Check if slot is occupied
         const isEmpty = slot.querySelector('.empty-slot') !== null;
-        
         if (!isEmpty) {
-            console.log('❌ Cannot drop card - slot is occupied');
+            console.log(`❌ Cannot drop card - slot ${slotId} is already occupied`);
             return false;
         }
         
@@ -813,12 +836,14 @@ export default class CardInventoryUI {
                 return false;
             }
             
-            // Create card instance
+            // Create and install the card
             const card = this.inventory.generateSpecificCard(dragData.cardType, dragData.rarity);
             card.level = dragData.level;
             
             // Install card in slot
             this.shipSlots.set(slotId, card);
+            
+            console.log(`✅ Installed ${card.cardType} in ${slotType} slot ${slotId}`);
             
             // Save the configuration to ensure changes persist
             this.saveCurrentShipConfiguration();
@@ -826,10 +851,6 @@ export default class CardInventoryUI {
             // Update the slot display
             this.renderShipSlots();
             
-            // Remove card from inventory (optional - for now just decrease count)
-            // This would require more complex inventory management
-            
-            console.log(`✅ Installed ${card.cardType} in ${slotType} slot ${slotId}`);
             console.log(`Configuration saved with ${this.shipSlots.size} total cards`);
             
         } catch (error) {
