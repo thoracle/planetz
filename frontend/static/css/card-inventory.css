@@ -554,29 +554,25 @@
 
 /* Card Stack Styles */
 .card-stack {
-    background: #111111; /* Subtle background instead of pure black */
-    border: 2px solid;
-    border-radius: 8px; /* Rounded corners */
-    padding: 6px; /* Reduced padding to fit better in grid */
-    cursor: grab;
-    transition: all 0.2s ease;
     position: relative;
-    overflow: hidden;
+    background: rgba(0, 20, 0, 0.8);
+    border: 2px solid #00ff41;
+    border-radius: 8px;
+    padding: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-height: 140px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
-    min-height: 140px; /* Match ship slot height */
-    max-height: 140px; /* Match ship slot height */
-    width: 120px; /* Match ship slot width */
-    max-width: 120px; /* Match ship slot width */
-    box-sizing: border-box;
+    justify-content: space-between;
+    backdrop-filter: blur(5px);
 }
 
 .card-stack:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 0 15px rgba(0, 204, 119, 0.5);
-    background: #151515; /* Slightly lighter on hover */
+    border-color: #44ff88;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+    transform: translateY(-2px);
 }
 
 .card-stack.common {
@@ -599,41 +595,45 @@
     box-shadow: 0 0 8px rgba(255, 170, 0, 0.5);
 }
 
-.card-header {
+.card-icon {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    font-size: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #00ff41;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 6px; /* More spacing */
-    font-size: 15px; /* Increased from 13px */
-    font-weight: bold;
-    color: #00ff99; /* Brighter green for headers */
-}
-
-.card-icon {
-    font-size: 16px; /* Increased from 14px */
-    margin-right: 6px; /* More spacing */
-    flex-shrink: 0;
-    color: #00ff99;
+    justify-content: center;
+    z-index: 2;
 }
 
 .card-name {
+    font-size: 14px;
     font-weight: bold;
-    font-size: 14px; /* Increased from 12px */
-    flex-grow: 1;
-    text-align: left;
-    color: #00ff99; /* Brighter for better visibility */
+    margin: 28px 4px 4px 4px;
+    color: #00ff41;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .card-count {
-    background: rgba(0, 204, 119, 0.25); /* More visible background */
-    padding: 2px 6px; /* More padding */
-    font-size: 13px; /* Increased from 11px */
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(0, 255, 65, 0.9);
+    color: #000;
     font-weight: bold;
-    color: #00ff99; /* Brighter text */
-    border: 1px solid #00cc77;
-    border-radius: 4px; /* Rounded corners */
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 20px;
+    z-index: 2;
 }
 
 .card-level-rarity {
@@ -724,20 +724,54 @@
     100% { transform: translateX(100%); }
 }
 
+/* Upgrade Button Styles for Inventory Cards */
 .upgrade-btn {
-    border: 1px solid #00cc77; /* Thinner border */
-    background: #0a0a0a; /* Slightly lighter background */
-    color: #00dd88;
-    padding: 3px 6px; /* Smaller padding */
-    font-weight: bold;
-    font-size: 9px; /* Smaller font */
+    background: rgba(0, 40, 0, 0.8);
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    padding: 6px 8px;
+    margin-top: 4px;
+    border-radius: 4px;
+    font-size: 11px;
     cursor: pointer;
-    width: 100%;
     transition: all 0.2s ease;
-    font-family: 'Courier New', 'Monaco', monospace;
+    width: 100%;
+    font-family: 'VT323', monospace;
     text-transform: uppercase;
-    letter-spacing: 0.3px; /* Reduced letter spacing */
-    border-radius: 3px; /* Small rounded corners for button */
+}
+
+.upgrade-btn.upgrade-available {
+    border-color: #00ff41;
+    color: #00ff41;
+}
+
+.upgrade-btn.upgrade-available:hover {
+    background: rgba(0, 255, 65, 0.2);
+    box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+}
+
+.upgrade-btn.upgrade-unavailable {
+    border-color: #ff4444;
+    color: #ff4444;
+    background: rgba(40, 0, 0, 0.8);
+}
+
+.upgrade-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.max-level-indicator {
+    background: rgba(255, 170, 0, 0.1);
+    border: 1px solid #ffaa00;
+    color: #ffaa00;
+    padding: 6px 8px;
+    margin-top: 4px;
+    border-radius: 4px;
+    font-size: 11px;
+    text-align: center;
+    font-family: 'VT323', monospace;
+    text-transform: uppercase;
 }
 
 /* Ready to upgrade - bright green */
@@ -1322,4 +1356,54 @@
     .card-shop-interface .card-stack {
         max-width: 120px;
     }
+}
+
+/* Tooltip styling */
+[title] {
+    position: relative;
+    cursor: help;
+}
+
+/* Custom tooltip styling for better visibility */
+.upgrade-btn[title]:hover::after,
+.max-level-indicator[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: #00ff41;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+    border: 1px solid #00ff41;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+    margin-bottom: 5px;
+    font-family: 'VT323', monospace;
+    letter-spacing: 0.5px;
+}
+
+/* Tooltip arrow */
+.upgrade-btn[title]:hover::before,
+.max-level-indicator[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #00ff41;
+    z-index: 1001;
+}
+
+/* Ensure tooltips don't get cut off */
+.card-stack {
+    overflow: visible !important;
+}
+
+.inventory-grid {
+    overflow: visible !important;
 } 

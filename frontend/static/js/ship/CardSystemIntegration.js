@@ -356,6 +356,9 @@ export default class CardSystemIntegration {
      */
     async createSystemsFromCards() {
         const cardToSystemMap = {
+            'impulse_engines': 'ImpulseEngines',
+            'target_computer': 'TargetComputer',
+            'energy_reactor': 'EnergyReactor',
             'subspace_radio': 'SubspaceRadioSystem',
             'long_range_scanner': 'LongRangeScanner', 
             'galactic_chart': 'GalacticChartSystem',
@@ -377,6 +380,9 @@ export default class CardSystemIntegration {
         };
         
         const systemPathMap = {
+            'ImpulseEngines': './systems/ImpulseEngines.js',
+            'TargetComputer': './systems/TargetComputer.js',
+            'EnergyReactor': './systems/EnergyReactor.js',
             'SubspaceRadioSystem': './systems/SubspaceRadioSystem.js',
             'LongRangeScanner': './systems/LongRangeScanner.js',
             'GalacticChartSystem': './systems/GalacticChartSystem.js',
@@ -398,22 +404,37 @@ export default class CardSystemIntegration {
             const systemClass = cardToSystemMap[cardData.cardType];
             const systemName = this.getSystemNameForCard(cardData.cardType);
             
-            // Special handling for weapons: check if weapon type has changed
-            if (systemName === 'weapons') {
-                const existingWeaponsSystem = this.ship.getSystem(systemName);
-                if (existingWeaponsSystem && existingWeaponsSystem.weaponCardType !== cardData.cardType) {
-                    // Weapon type changed - remove old system so new one can be created
-                    console.log(`🔄 WEAPON TYPE CHANGED: ${existingWeaponsSystem.weaponCardType} → ${cardData.cardType}`);
+            // Check if we need to replace an existing system
+            const existingSystem = this.ship.getSystem(systemName);
+            if (existingSystem) {
+                // Check if existing system is different level or type
+                let shouldReplace = false;
+                
+                if (systemName === 'weapons') {
+                    // For weapons, replace if weapon type has changed
+                    if (existingSystem.weaponCardType !== cardData.cardType) {
+                        console.log(`🔄 WEAPON TYPE CHANGED: ${existingSystem.weaponCardType} → ${cardData.cardType}`);
+                        shouldReplace = true;
+                    }
+                } else {
+                    // For other systems, replace if level has changed
+                    if (existingSystem.level !== cardData.level) {
+                        console.log(`🔄 SYSTEM LEVEL CHANGED: ${systemName} Level ${existingSystem.level} → Level ${cardData.level}`);
+                        shouldReplace = true;
+                    }
+                }
+                
+                if (shouldReplace) {
+                    // Remove the old system so new one can be created
                     this.ship.removeSystem(systemName);
+                    console.log(`🗑️ Removed old ${systemName} system for replacement`);
+                } else {
+                    // System is up to date, skip creating new one
+                    continue;
                 }
             }
             
-            // Skip if system already exists (except for weapons which we handled above)
-            if (this.ship.getSystem(systemName)) {
-                continue;
-            }
-            
-            // Skip if we don't know how to create this system (weapons will fail here)
+            // Skip if we don't know how to create this system
             if (!systemClass || !systemPathMap[systemClass]) {
                 console.log(`❌ SYSTEM CREATION FAILED: ${cardData.cardType} → Unknown system type`);
                 continue;
@@ -448,6 +469,7 @@ export default class CardSystemIntegration {
                 // Add the system to the ship
                 if (this.ship.addSystem(systemName, system)) {
                     systemsCreated++;
+                    console.log(`✅ CREATED: ${systemName} (Level ${cardData.level}) from card`);
                 } else {
                     console.log(`❌ FAILED TO ADD: ${systemName} (no slots?)`);
                 }
@@ -479,6 +501,9 @@ export default class CardSystemIntegration {
      */
     getSystemNameForCard(cardType) {
         const cardToSystemNameMap = {
+            'impulse_engines': 'impulse_engines',
+            'target_computer': 'target_computer',
+            'energy_reactor': 'energy_reactor',
             'subspace_radio': 'subspace_radio',
             'long_range_scanner': 'long_range_scanner',
             'galactic_chart': 'galactic_chart', 

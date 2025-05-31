@@ -139,12 +139,7 @@ export default class Ship {
             const defaultSystems = this.shipConfig.defaultSystems;
             
             // Create and add default systems
-            if (defaultSystems.impulse_engines) {
-                const engines = new ImpulseEngines(defaultSystems.impulse_engines.level);
-                // Override slot cost from ship configuration
-                engines.slotCost = defaultSystems.impulse_engines.slots;
-                this.addSystem('impulse_engines', engines);
-            }
+            // NOTE: impulse_engines, target_computer, and energy_reactor are now created from cards
             
             if (defaultSystems.warp_drive) {
                 const warpDrive = new WarpDrive(defaultSystems.warp_drive.level);
@@ -188,24 +183,11 @@ export default class Ship {
                 this.addSystem('galactic_chart', galacticChart);
             }
             
-            if (defaultSystems.target_computer) {
-                const targetComputer = new TargetComputer(defaultSystems.target_computer.level);
-                // Override slot cost from ship configuration
-                targetComputer.slotCost = defaultSystems.target_computer.slots;
-                this.addSystem('target_computer', targetComputer);
-            }
-            
             // Add new gear systems that provide base ship stats
             if (defaultSystems.hull_plating) {
                 const hullPlating = new HullPlating(defaultSystems.hull_plating.level);
                 hullPlating.slotCost = defaultSystems.hull_plating.slots;
                 this.addSystem('hull_plating', hullPlating);
-            }
-            
-            if (defaultSystems.energy_reactor) {
-                const energyReactor = new EnergyReactor(defaultSystems.energy_reactor.level);
-                energyReactor.slotCost = defaultSystems.energy_reactor.slots;
-                this.addSystem('energy_reactor', energyReactor);
             }
             
             if (defaultSystems.shield_generator) {

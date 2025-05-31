@@ -136,6 +136,9 @@ export default class CardInventoryUI {
         this.dockedLocation = null;
         this.dockingInterface = null;
         
+        // Audio setup for upgrade sounds
+        this.initializeAudio();
+        
         // Set global reference for button onclick handlers
         window.cardInventoryUI = this;
         
@@ -148,6 +151,134 @@ export default class CardInventoryUI {
         // Only initialize UI if we have a container or if containerId is null (shop mode)
         if (this.container || containerId === null) {
             this.init();
+        }
+    }
+
+    /**
+     * Initialize audio components for upgrade sounds
+     */
+    initializeAudio() {
+        console.log('🔊 Initializing upgrade audio...');
+        
+        try {
+            // Initialize THREE.js audio context if not already available
+            if (typeof window.THREE !== 'undefined' && window.THREE.AudioListener) {
+                console.log('✅ THREE.js audio available');
+                this.audioListener = new window.THREE.AudioListener();
+                this.upgradeSound = new window.THREE.Audio(this.audioListener);
+                this.upgradeSoundLoaded = false;
+                
+                // Load upgrade sound
+                const audioLoader = new window.THREE.AudioLoader();
+                console.log('🎵 Loading upgrade sound...');
+                
+                audioLoader.load(
+                    'audio/blurb.mp3', // Simplified path
+                    (buffer) => {
+                        console.log('✅ Upgrade sound loaded successfully');
+                        this.upgradeSound.setBuffer(buffer);
+                        this.upgradeSound.setVolume(0.7); // Set reasonable volume
+                        this.upgradeSoundLoaded = true;
+                        console.log('🎵 Upgrade sound initialization complete');
+                    },
+                    (progress) => {
+                        console.log(`🎵 Loading upgrade sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
+                    },
+                    (error) => {
+                        console.error('❌ Error loading upgrade sound:', error);
+                        this.upgradeSoundLoaded = false;
+                        // Try fallback HTML5 audio
+                        this.initializeFallbackAudio();
+                    }
+                );
+            } else {
+                console.warn('⚠️ THREE.js not available for audio initialization, using fallback');
+                this.upgradeSoundLoaded = false;
+                // Use fallback HTML5 audio
+                this.initializeFallbackAudio();
+            }
+        } catch (error) {
+            console.error('❌ Error initializing upgrade audio:', error);
+            this.upgradeSoundLoaded = false;
+            // Use fallback HTML5 audio
+            this.initializeFallbackAudio();
+        }
+    }
+
+    /**
+     * Initialize fallback HTML5 audio
+     */
+    initializeFallbackAudio() {
+        console.log('🔄 Initializing fallback HTML5 audio...');
+        try {
+            this.fallbackAudio = new Audio('audio/blurb.mp3');
+            this.fallbackAudio.volume = 0.7;
+            this.fallbackAudio.preload = 'auto';
+            
+            this.fallbackAudio.addEventListener('canplaythrough', () => {
+                console.log('✅ Fallback audio loaded successfully');
+                this.fallbackAudioLoaded = true;
+            });
+            
+            this.fallbackAudio.addEventListener('error', (e) => {
+                console.error('❌ Fallback audio loading failed:', e);
+                this.fallbackAudioLoaded = false;
+            });
+            
+        } catch (error) {
+            console.error('❌ Error initializing fallback audio:', error);
+            this.fallbackAudioLoaded = false;
+        }
+    }
+
+    /**
+     * Play upgrade success sound
+     */
+    playUpgradeSound() {
+        console.log('🎵 Attempting to play upgrade sound...');
+        
+        try {
+            // Try THREE.js audio first
+            if (this.upgradeSoundLoaded && this.upgradeSound && !this.upgradeSound.isPlaying) {
+                console.log('🎵 Playing THREE.js upgrade sound');
+                
+                // Ensure AudioContext is running before playing sounds
+                if (this.audioListener.context.state === 'suspended') {
+                    this.audioListener.context.resume();
+                }
+                
+                this.upgradeSound.play();
+                console.log('✅ Playing upgrade success sound (blurb.mp3) via THREE.js');
+                return;
+            }
+            
+            // Try fallback HTML5 audio
+            if (this.fallbackAudioLoaded && this.fallbackAudio) {
+                console.log('🎵 Playing fallback HTML5 upgrade sound');
+                
+                // Reset audio to beginning
+                this.fallbackAudio.currentTime = 0;
+                
+                const playPromise = this.fallbackAudio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        console.log('✅ Playing upgrade success sound (blurb.mp3) via HTML5 audio');
+                    }).catch((error) => {
+                        console.error('❌ HTML5 audio play failed:', error);
+                    });
+                }
+                return;
+            }
+            
+            // If neither audio method worked
+            if (!this.upgradeSoundLoaded && !this.fallbackAudioLoaded) {
+                console.log('⚠️ Upgrade sound not loaded, trying to reload...');
+                // Try to reinitialize audio
+                this.initializeAudio();
+            }
+            
+        } catch (error) {
+            console.error('❌ Error playing upgrade sound:', error);
         }
     }
 
@@ -300,6 +431,12 @@ export default class CardInventoryUI {
         if (this.shopContainer && this.shopContainer.parentNode) {
             this.shopContainer.parentNode.removeChild(this.shopContainer);
             this.shopContainer = null;
+        }
+        
+        // Clean up credits display
+        const creditsDisplay = document.getElementById('credits-display');
+        if (creditsDisplay && creditsDisplay.parentNode) {
+            creditsDisplay.parentNode.removeChild(creditsDisplay);
         }
         
         this.isShopMode = false;
@@ -973,6 +1110,42 @@ export default class CardInventoryUI {
         const card = stack.sampleCard;
         const rarityColor = card.getRarityColor();
         
+        // Calculate upgrade requirements
+        const currentLevel = stack.level;
+        const nextLevel = currentLevel + 1;
+        const maxLevel = 5;
+        const canUpgrade = nextLevel <= maxLevel;
+        
+        // Upgrade cost calculation based on spec
+        const upgradeCosts = {
+            2: { cards: 3, credits: 1000 },
+            3: { cards: 6, credits: 5000 },
+            4: { cards: 12, credits: 15000 },
+            5: { cards: 24, credits: 50000 }
+        };
+        
+        const upgradeCost = upgradeCosts[nextLevel];
+        const hasEnoughCards = canUpgrade && stack.count >= upgradeCost?.cards;
+        const hasEnoughCredits = canUpgrade && this.credits >= (upgradeCost?.credits || 0);
+        const canAffordUpgrade = hasEnoughCards && hasEnoughCredits;
+        
+        // Create tooltip text for upgrade requirements
+        const tooltipText = canUpgrade ? 
+            `Upgrade to Level ${nextLevel}: ${upgradeCost.cards}x cards + ${upgradeCost.credits.toLocaleString()} credits` : 
+            'Maximum level reached';
+        
+        // Upgrade button HTML
+        const upgradeButton = canUpgrade ? `
+            <button class="upgrade-btn ${canAffordUpgrade ? 'upgrade-available' : 'upgrade-unavailable'}" 
+                    onclick="cardInventoryUI.upgradeCard('${card.cardType}')"
+                    title="${tooltipText}"
+                    ${!canAffordUpgrade ? 'disabled' : ''}>
+                ${canAffordUpgrade ? '⬆️' : '❌'} Upgrade to Lv.${nextLevel}
+            </button>
+        ` : `
+            <div class="max-level-indicator" title="${tooltipText}">🏆 MAX LEVEL</div>
+        `;
+        
         return `
             <div class="card-stack" 
                  style="border-color: ${rarityColor}" 
@@ -985,6 +1158,7 @@ export default class CardInventoryUI {
                 <div class="card-count">x${stack.count}</div>
                 <div class="card-level">Lv.${stack.level}</div>
                 <div class="card-rarity" style="color: ${rarityColor}">${card.rarity.toUpperCase()}</div>
+                ${upgradeButton}
             </div>
         `;
     }
@@ -1012,8 +1186,32 @@ export default class CardInventoryUI {
      * Update credits display
      */
     updateCreditsDisplay() {
-        // Credits display is handled elsewhere in shop mode
-        console.log(`Credits: ${this.credits}`);
+        if (this.isShopMode) {
+            // Create or update credits display in shop mode
+            let creditsDisplay = document.getElementById('credits-display');
+            if (!creditsDisplay) {
+                creditsDisplay = document.createElement('div');
+                creditsDisplay.id = 'credits-display';
+                creditsDisplay.style.cssText = `
+                    position: fixed;
+                    top: 80px;
+                    right: 20px;
+                    background: rgba(0, 0, 0, 0.8);
+                    border: 2px solid #00ff41;
+                    padding: 15px 20px;
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: #00ff41;
+                    border-radius: 5px;
+                    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+                    z-index: 1001;
+                `;
+                document.body.appendChild(creditsDisplay);
+            }
+            creditsDisplay.innerHTML = `💰 Credits: ${this.credits.toLocaleString()}`;
+        }
+        
+        console.log(`💰 Credits: ${this.credits.toLocaleString()}`);
     }
 
     /**
@@ -1574,6 +1772,99 @@ export default class CardInventoryUI {
             'quantum_torpedo', 'singularity_launcher', 'void_ripper'
         ];
         return weaponCards.includes(cardType);
+    }
+
+    /**
+     * Upgrade a card stack to the next level
+     * @param {string} cardType - Type of card to upgrade
+     */
+    upgradeCard(cardType) {
+        console.log(`🔧 UPGRADE CLICKED: Attempting to upgrade ${cardType}`);
+        console.log(`💰 Current credits: ${this.credits}`);
+        
+        // Get the card stack directly from inventory to ensure we're modifying the source data
+        const cardStack = this.inventory.cardStacks.get(cardType);
+        
+        if (!cardStack) {
+            console.error(`❌ Card stack not found: ${cardType}`);
+            return;
+        }
+        
+        if (!cardStack.discovered) {
+            console.error(`❌ Cannot upgrade undiscovered card: ${cardType}`);
+            return;
+        }
+        
+        const currentLevel = cardStack.level;
+        const nextLevel = currentLevel + 1;
+        const maxLevel = 5;
+        
+        console.log(`📊 Card ${cardType} - Current Level: ${currentLevel}, Next Level: ${nextLevel}, Count: ${cardStack.count}`);
+        
+        // Check if upgrade is possible
+        if (nextLevel > maxLevel) {
+            console.error(`❌ Card ${cardType} is already at maximum level ${maxLevel}`);
+            return;
+        }
+        
+        // Define upgrade costs (cards + credits)
+        const upgradeCosts = {
+            2: { cards: 3, credits: 1000 },
+            3: { cards: 6, credits: 5000 },
+            4: { cards: 12, credits: 15000 },
+            5: { cards: 24, credits: 50000 }
+        };
+        
+        const upgradeCost = upgradeCosts[nextLevel];
+        console.log(`💎 Upgrade to level ${nextLevel} requires: ${upgradeCost.cards} cards + ${upgradeCost.credits} credits`);
+        
+        // Validate requirements
+        if (cardStack.count < upgradeCost.cards) {
+            console.error(`❌ Not enough cards for upgrade. Have ${cardStack.count}, need ${upgradeCost.cards}`);
+            return;
+        }
+        
+        if (this.credits < upgradeCost.credits) {
+            console.error(`❌ Not enough credits for upgrade. Have ${this.credits}, need ${upgradeCost.credits}`);
+            return;
+        }
+        
+        console.log(`✅ Requirements met! Proceeding with upgrade...`);
+        
+        // Perform the upgrade directly on the cardStack source data
+        try {
+            // Consume cards from the source card stack
+            cardStack.count -= upgradeCost.cards;
+            console.log(`📦 Cards consumed: ${upgradeCost.cards}, remaining: ${cardStack.count}`);
+            
+            // Consume credits
+            this.credits -= upgradeCost.credits;
+            console.log(`💰 Credits consumed: ${upgradeCost.credits}, remaining: ${this.credits}`);
+            
+            // Increase level in the source card stack
+            cardStack.level = nextLevel;
+            
+            console.log(`✅ Successfully upgraded ${cardType} to level ${nextLevel}`);
+            console.log(`💳 Consumed ${upgradeCost.cards} cards and ${upgradeCost.credits} credits`);
+            console.log(`📦 Remaining cards: ${cardStack.count}, Credits: ${this.credits}`);
+            
+            // If we consumed all cards in the stack, mark as undiscovered but keep the level progress
+            if (cardStack.count <= 0) {
+                console.log(`📦 Card stack ${cardType} depleted (Level ${cardStack.level} progress retained)`);
+                // Don't remove from inventory, just set count to 0 - level progress is preserved
+            }
+            
+            // Re-render the inventory to reflect changes
+            console.log(`🔄 Re-rendering inventory...`);
+            this.render();
+            
+            // Play upgrade success sound
+            console.log(`🎵 Playing upgrade sound...`);
+            this.playUpgradeSound();
+            
+        } catch (error) {
+            console.error(`❌ Error during upgrade:`, error);
+        }
     }
 }
 
