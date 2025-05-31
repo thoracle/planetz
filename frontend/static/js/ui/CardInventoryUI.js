@@ -319,9 +319,10 @@ export default class CardInventoryUI {
         const audio = this.audioPool[index];
         const useCount = this.audioElementUseCount[index];
         
-        // Check if element has been used too many times
-        if (useCount >= this.maxUsesPerElement) {
-            console.log(`🔄 Audio element ${index} reached max uses (${useCount}), recreating...`);
+        // More aggressive corruption detection - recreate after fewer uses
+        const maxUsesThreshold = Math.max(2, this.maxUsesPerElement / 2); // Use half the max, minimum 2
+        if (useCount >= maxUsesThreshold) {
+            console.log(`🔄 Audio element ${index} reached threshold (${useCount}/${maxUsesThreshold}), recreating...`);
             this.recreateAudioElement(index);
             return false; // Don't use this element this time
         }
@@ -333,7 +334,46 @@ export default class CardInventoryUI {
             return false;
         }
         
+        // Check for silent corruption - element exists but may not actually play sound
+        if (this.detectSilentCorruption(audio, index)) {
+            console.warn(`🔇 Audio element ${index} appears silently corrupted, recreating...`);
+            this.recreateAudioElement(index);
+            return false;
+        }
+        
         return true;
+    }
+
+    /**
+     * Detect silent audio corruption where the element reports success but produces no sound
+     */
+    detectSilentCorruption(audio, index) {
+        // Check if audio duration is invalid (common corruption sign)
+        if (isNaN(audio.duration) || audio.duration === 0) {
+            console.warn(`⚠️ Audio ${index} has invalid duration: ${audio.duration}`);
+            return true;
+        }
+        
+        // Check if audio source is missing or corrupted
+        if (!audio.src || audio.src === '') {
+            console.warn(`⚠️ Audio ${index} missing source`);
+            return true;
+        }
+        
+        // Check readyState - if it's dropped below HAVE_ENOUGH_DATA, it may be corrupted
+        if (audio.readyState < 2) {
+            console.warn(`⚠️ Audio ${index} readyState dropped to ${audio.readyState}`);
+            return true;
+        }
+        
+        // Check if volume has been mysteriously set to 0 (corruption symptom)
+        if (audio.volume === 0) {
+            console.warn(`⚠️ Audio ${index} volume is 0 (possible corruption)`);
+            audio.volume = 0.7; // Try to restore volume
+            return true; // Still recreate to be safe
+        }
+        
+        return false;
     }
 
     /**
@@ -426,6 +466,15 @@ export default class CardInventoryUI {
                         continue;
                     }
                     
+                    // Perform final health check before playing
+                    if (this.detectSilentCorruption(audioToPlay, currentPoolIndex)) {
+                        console.warn(`🔇 Last-minute corruption detected for audio ${currentPoolIndex}, skipping...`);
+                        this.recreateAudioElement(currentPoolIndex);
+                        currentPoolIndex = (currentPoolIndex + 1) % this.audioPool.length;
+                        attemptsRemaining--;
+                        continue;
+                    }
+                    
                     if (audioToPlay.readyState >= 2) { // HAVE_ENOUGH_DATA
                         // Reset audio to beginning and ensure it's not already playing
                         if (!audioToPlay.paused) {
@@ -433,10 +482,25 @@ export default class CardInventoryUI {
                         }
                         audioToPlay.currentTime = 0;
                         
+                        // Double-check volume before playing
+                        if (audioToPlay.volume !== 0.7) {
+                            console.log(`🔧 Resetting audio ${currentPoolIndex} volume from ${audioToPlay.volume} to 0.7`);
+                            audioToPlay.volume = 0.7;
+                        }
+                        
                         const playPromise = audioToPlay.play();
                         if (playPromise !== undefined) {
                             playPromise.then(() => {
                                 console.log(`✅ Playing upgrade success sound via HTML5 audio (pool ${currentPoolIndex})`);
+                                
+                                // Set up a corruption detection timeout
+                                setTimeout(() => {
+                                    if (audioToPlay.paused && audioToPlay.currentTime === 0) {
+                                        console.warn(`🔇 Audio ${currentPoolIndex} may have failed silently - recreating for next use`);
+                                        this.recreateAudioElement(currentPoolIndex);
+                                    }
+                                }, 100); // Check after 100ms
+                                
                             }).catch((error) => {
                                 console.error(`❌ HTML5 audio play failed for pool ${currentPoolIndex}:`, error);
                                 console.error('Error details:', {
@@ -854,6 +918,9 @@ export default class CardInventoryUI {
             'long_range_scanner',       // Required for L key functionality  
             'subspace_radio',           // Required for R key functionality
             'target_computer',          // Required for T key functionality
+            
+            // Advanced Intel Systems (for Intel I key functionality)
+            'tactical_computer',        // Level 3+ target computer with basic intel capabilities
             
             // Core power and utility systems
             'energy_reactor',

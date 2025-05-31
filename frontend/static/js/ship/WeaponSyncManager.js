@@ -226,6 +226,10 @@ export default class WeaponSyncManager {
                     if (this.weaponSystem.equipWeapon(slotIndex, weaponCard)) {
                         this.weapons.set(slotIndex, weaponCard);
                         console.log(`🔫 Equipped ${weaponCard.name} (Level ${weaponCard.level}) to slot ${slotIndex}`);
+                        
+                        // ALSO create individual weapon system for damage control
+                        await this.createIndividualWeaponSystem(weaponConfig.type, weaponConfig.level);
+                        
                         slotIndex++;
                     } else {
                         console.error(`🔫 Failed to equip ${weaponCard.name} to slot ${slotIndex}`);
@@ -239,6 +243,37 @@ export default class WeaponSyncManager {
         } catch (error) {
             console.error('🔫 Failed to equip weapons:', error);
             throw error;
+        }
+    }
+    
+    /**
+     * Create individual weapon system for damage control interface
+     * @param {string} weaponType - Type of weapon (laser_cannon, pulse_cannon, etc.)
+     * @param {number} level - Weapon level
+     */
+    async createIndividualWeaponSystem(weaponType, level) {
+        try {
+            // Check if we already have this individual weapon system to avoid duplicates
+            if (this.ship.systems.has(weaponType)) {
+                console.log(`🔫 Individual weapon system ${weaponType} already exists, skipping creation`);
+                return;
+            }
+            
+            // Import the Weapons system class
+            const { default: Weapons } = await import('./systems/Weapons.js');
+            
+            // Create individual weapon system with specific weapon type
+            const weaponSystem = new Weapons(level, { weaponCardType: weaponType });
+            
+            // Add to ship systems with individual name
+            if (this.ship.addSystem(weaponType, weaponSystem)) {
+                console.log(`🔫 Created individual weapon system: ${weaponType} (Level ${level})`);
+            } else {
+                console.warn(`🔫 Failed to add individual weapon system: ${weaponType}`);
+            }
+            
+        } catch (error) {
+            console.error(`🔫 Failed to create individual weapon system ${weaponType}:`, error);
         }
     }
     

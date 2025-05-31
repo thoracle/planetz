@@ -371,4 +371,33 @@ export default class System {
     canUpgrade() {
         return this.level < this.maxLevel && this.isOperational();
     }
+
+    /**
+     * Set the StarfieldManager reference for HUD error display
+     * @param {StarfieldManager} starfieldManager The StarfieldManager instance
+     */
+    setStarfieldManager(starfieldManager) {
+        this.starfieldManager = starfieldManager;
+    }
+
+    /**
+     * Show HUD error message if StarfieldManager is available
+     * @param {string} title Error title
+     * @param {string} message Error message
+     * @param {number} duration Duration in milliseconds (default 3000)
+     */
+    showHUDError(title, message, duration = 3000) {
+        if (this.starfieldManager && this.starfieldManager.showHUDError) {
+            this.starfieldManager.showHUDError(title, message, duration);
+        }
+    }
+
+    /**
+     * Play command failed sound if StarfieldManager is available
+     */
+    playCommandFailedSound() {
+        if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+            this.starfieldManager.playCommandFailedSound();
+        }
+    }
 } 

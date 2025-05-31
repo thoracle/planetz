@@ -180,7 +180,12 @@ export const CARD_DISPLAY_NAMES = {
     [CARD_TYPES.PROBABILITY_DRIVE]: 'Probability Drive',
     [CARD_TYPES.CHAOS_FIELD_GEN]: 'Chaos Field Generator',
     [CARD_TYPES.REALITY_ANCHOR]: 'Reality Anchor',
-    [CARD_TYPES.ENTROPY_REVERSER]: 'Entropy Reverser'
+    [CARD_TYPES.ENTROPY_REVERSER]: 'Entropy Reverser',
+    
+    // Advanced Intel Systems (Level 3+ Target Computers)
+    [CARD_TYPES.TACTICAL_COMPUTER]: 'Tactical Computer',
+    [CARD_TYPES.COMBAT_COMPUTER]: 'Combat Computer',
+    [CARD_TYPES.STRATEGIC_COMPUTER]: 'Strategic Computer'
 };
 
 // Card icons for slot identification (matches ship configuration icons exactly)
@@ -259,7 +264,12 @@ export const CARD_ICONS = {
     [CARD_TYPES.PROBABILITY_DRIVE]: '🔧',       // Utility slot icon (probability targeting goes in utility)
     [CARD_TYPES.CHAOS_FIELD_GEN]: '🔧',         // Utility slot icon (chaos targeting goes in utility)
     [CARD_TYPES.REALITY_ANCHOR]: '🔧',          // Utility slot icon (reality targeting goes in utility)
-    [CARD_TYPES.ENTROPY_REVERSER]: '🔧'         // Utility slot icon (entropy targeting goes in utility)
+    [CARD_TYPES.ENTROPY_REVERSER]: '🔧',         // Utility slot icon (entropy targeting goes in utility)
+    
+    // Advanced Intel Systems - use Utility slot icon (they go in utility slots)
+    [CARD_TYPES.TACTICAL_COMPUTER]: '🔧',   // Utility slot icon (advanced targeting goes in utility)
+    [CARD_TYPES.COMBAT_COMPUTER]: '🔧',     // Utility slot icon (advanced targeting goes in utility)
+    [CARD_TYPES.STRATEGIC_COMPUTER]: '🔧'  // Utility slot icon (advanced targeting goes in utility)
 };
 
 // Card availability by rarity - more exotic cards only appear in higher rarities
@@ -308,7 +318,8 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.QUANTUM_REACTOR,
         CARD_TYPES.CRYSTALLINE_MATRIX,
         // Advanced cargo systems
-        CARD_TYPES.REINFORCED_CARGO_HOLD
+        CARD_TYPES.REINFORCED_CARGO_HOLD,
+        CARD_TYPES.TACTICAL_COMPUTER
     ],
     [CARD_RARITY.EPIC]: [
         // All rare cards plus exotic systems
@@ -349,7 +360,10 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.NEURAL_INTERFACE,
         // Advanced cargo systems
         CARD_TYPES.REINFORCED_CARGO_HOLD,
-        CARD_TYPES.SHIELDED_CARGO_HOLD
+        CARD_TYPES.SHIELDED_CARGO_HOLD,
+        // Advanced Intel Systems
+        CARD_TYPES.TACTICAL_COMPUTER,
+        CARD_TYPES.COMBAT_COMPUTER
     ],
     [CARD_RARITY.LEGENDARY]: [
         // All epic cards plus the most exotic systems
@@ -407,7 +421,11 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.ENTROPY_REVERSER,
         // Advanced cargo systems
         CARD_TYPES.REINFORCED_CARGO_HOLD,
-        CARD_TYPES.SHIELDED_CARGO_HOLD
+        CARD_TYPES.SHIELDED_CARGO_HOLD,
+        // Advanced Intel Systems
+        CARD_TYPES.TACTICAL_COMPUTER,
+        CARD_TYPES.COMBAT_COMPUTER,
+        CARD_TYPES.STRATEGIC_COMPUTER
     ]
 };
 

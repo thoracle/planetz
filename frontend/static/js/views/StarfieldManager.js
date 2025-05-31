@@ -3,6 +3,7 @@ import { DockingInterface } from '../ui/DockingInterface.js';
 import { HelpInterface } from '../ui/HelpInterface.js';
 import DockingSystemManager from '../ship/DockingSystemManager.js';
 import { getSystemDisplayName } from '../ship/System.js';
+import DamageControlHUD from '../ui/DamageControlHUD.js';
 // SimplifiedDamageControl removed - damage control integrated into ship systems HUD
 
 export class StarfieldManager {
@@ -30,14 +31,13 @@ export class StarfieldManager {
             throw new Error('THREE.js not available. Please ensure THREE.js is loaded either as a module or globally.');
         }
         
-        console.log('StarfieldManager initialized with THREE.js:', {
-            source: threeModule ? 'module parameter' : 'window.THREE',
-            version: this.THREE.REVISION,
-            timestamp: new Date().toISOString()
-        });
-        
         // Get Ship instance from ViewManager for direct access to ship systems
         this.ship = this.viewManager.getShip();
+        
+        // Set StarfieldManager reference on ship for HUD error display
+        if (this.ship && typeof this.ship.setStarfieldManager === 'function') {
+            this.ship.setStarfieldManager(this);
+        }
         
         this.targetSpeed = 0;
         this.currentSpeed = 0;
@@ -104,6 +104,8 @@ export class StarfieldManager {
         this.createShipSystemsHUD();
         this.shipSystemsHUD.style.display = 'none'; // Hide by default
         this.damageControlVisible = false; // Track damage control visibility
+        this.isDamageControlOpen = false; // Track if damage control is currently open
+        this.shouldUpdateDamageControl = false; // Flag to control when to update
         
         // Create target computer HUD
         this.createTargetComputerHUD();
@@ -130,8 +132,10 @@ export class StarfieldManager {
         // Create help interface
         this.helpInterface = new HelpInterface(this);
         
-        // Damage control is now integrated into ship systems HUD
-        // No separate interface needed
+        // Create clean damage control HUD
+        this.damageControlContainer = document.createElement('div');
+        document.body.appendChild(this.damageControlContainer);
+        this.damageControlHUD = new DamageControlHUD(this.ship, this.damageControlContainer);
         
         // Bind keyboard events
         this.bindKeyEvents();
@@ -144,7 +148,6 @@ export class StarfieldManager {
             console.error('No camera available for audio listener');
             return;
         }
-        console.log('Adding audio listener to camera');
         this.camera.add(this.listener);
 
         // Ensure AudioContext is running
@@ -167,17 +170,14 @@ export class StarfieldManager {
         });
 
         // Load engine sound
-        console.log('Loading engine sound...');
         this.audioLoader.load(
             '/audio/engines.wav',
             (buffer) => {
-                console.log('Engine sound loaded successfully');
                 this.engineSound.setBuffer(buffer);
                 this.engineSound.setLoop(true);
                 
                 // Set loop points for the middle portion of the sound
                 const duration = buffer.duration;
-                console.log('Engine sound duration:', duration);
                 const startupTime = duration * 0.25; // Increased from 15% to 25% to ensure we're at full volume
                 const shutdownTime = duration * 0.70; // Keep at 70% to avoid end tapering
                 
@@ -194,10 +194,8 @@ export class StarfieldManager {
                 
                 this.engineSound.setVolume(0.0);
                 this.soundLoaded = true;
-                console.log('Engine sound initialization complete');
             },
             (progress) => {
-                console.log(`Loading engine sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
             },
             (error) => {
                 console.error('Error loading engine sound:', error);
@@ -209,18 +207,14 @@ export class StarfieldManager {
         );
 
         // Load command sound
-        console.log('Loading command sound...');
         this.audioLoader.load(
             '/audio/command.wav',
             (buffer) => {
-                console.log('Command sound loaded successfully');
                 this.commandSound.setBuffer(buffer);
                 this.commandSound.setVolume(0.5); // Set a reasonable volume
                 this.commandSoundLoaded = true;
-                console.log('Command sound initialization complete');
             },
             (progress) => {
-                console.log(`Loading command sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
             },
             (error) => {
                 console.error('Error loading command sound:', error);
@@ -232,18 +226,14 @@ export class StarfieldManager {
         );
 
         // Load command failed sound
-        console.log('Loading command failed sound...');
         this.audioLoader.load(
             '/audio/command_failed.mp3',
             (buffer) => {
-                console.log('Command failed sound loaded successfully');
                 this.commandFailedSound.setBuffer(buffer);
                 this.commandFailedSound.setVolume(0.6); // Slightly louder than success sound
                 this.commandFailedSoundLoaded = true;
-                console.log('Command failed sound initialization complete');
             },
             (progress) => {
-                console.log(`Loading command failed sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
             },
             (error) => {
                 console.error('Error loading command failed sound:', error);
@@ -311,7 +301,6 @@ export class StarfieldManager {
     ensureAudioContextRunning() {
         if (this.listener && this.listener.context) {
             if (this.listener.context.state === 'suspended') {
-                console.log('Resuming suspended AudioContext');
                 this.listener.context.resume().catch(error => {
                     console.error('Failed to resume AudioContext:', error);
                 });
@@ -330,7 +319,6 @@ export class StarfieldManager {
             // Ensure minimum and maximum values for star count
             const validStarCount = Math.max(5000, Math.min(500000, Math.floor(this.starCount)));
             if (validStarCount !== this.starCount) {
-                console.log('Adjusted star count from', this.starCount, 'to', validStarCount);
                 this.starCount = validStarCount;
             }
 
@@ -450,7 +438,6 @@ export class StarfieldManager {
     }
 
     createFallbackStarfield() {
-        console.log('Creating fallback starfield');
         const geometry = new this.THREE.BufferGeometry();
         const positions = new Float32Array(5000 * 3);
         const colors = new Float32Array(5000 * 3);
@@ -538,7 +525,7 @@ export class StarfieldManager {
             border: 2px solid #00ff41;
             padding: 12px 16px;
             background: rgba(0, 0, 0, 0.85);
-            width: 600px;
+            width: 540px;
             max-height: 70vh;
             overflow-y: auto;
             scrollbar-width: thin;
@@ -623,261 +610,386 @@ export class StarfieldManager {
      * Update ship systems display
      */
     updateShipSystemsDisplay() {
-        if (!this.ship || !this.systemsList) {
-            return;
-        }
-
-        // Clear existing system displays
+        // Get ship status using card filtering (only show systems for installed cards)
+        const shipStatus = this.ship.getCardFilteredStatus();
+        
+        // Clear existing display
         this.systemsList.innerHTML = '';
-
-        // Get ship status
-        const shipStatus = this.ship.getStatus();
         
         // Only show damage control view now (no more original systems view)
         this.updateDamageControlDisplay(shipStatus);
     }
 
     /**
-     * Update damage control display
+     * Legacy damage control display - DEPRECATED
+     * This method is kept for compatibility but the new DamageControlHUD is preferred
      */
     updateDamageControlDisplay(shipStatus) {
-        // Create header
-        const header = document.createElement('div');
-        header.style.cssText = `
-            font-weight: bold;
-            font-size: 18px;
-            margin-bottom: 12px;
-            border-bottom: 2px solid #00ff41;
-            padding-bottom: 4px;
-            text-align: center;
-        `;
-        header.textContent = 'DAMAGE CONTROL';
-        this.systemsList.appendChild(header);
+        // This method is now deprecated in favor of the new DamageControlHUD
+        // Keeping it for backward compatibility but it's no longer used
+        console.warn('updateDamageControlDisplay is deprecated - using new DamageControlHUD');
+        return;
+    }
 
-        // Get auto-repair system
-        const autoRepair = this.ship.autoRepairSystem;
-        if (!autoRepair) {
-            const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = `color: #ff4400; font-size: 14px;`;
-            errorDiv.textContent = 'Auto-repair system not available';
-            this.systemsList.appendChild(errorDiv);
+    /**
+     * Update manual repair system progress
+     */
+    updateManualRepairSystem() {
+        if (!this.manualRepairSystem || !this.manualRepairSystem.isRepairing) {
             return;
         }
 
-        // Current repair status
-        const statusDiv = document.createElement('div');
-        statusDiv.style.cssText = `font-size: 14px; color: #00aa41; margin-bottom: 12px; text-align: center;`;
-        const currentTarget = autoRepair.getCurrentRepairTarget();
-        statusDiv.textContent = currentTarget ? 
-            `Repairing: ${this.formatSystemName(currentTarget)}` : 
-            'Auto-repair: Standby';
-        this.systemsList.appendChild(statusDiv);
-
-        // Get card-filtered ship status (only systems with required cards)
-        const cardFilteredStatus = this.ship.getCardFilteredStatus();
+        const elapsed = Date.now() - this.manualRepairSystem.repairStartTime;
+        const progress = Math.min(elapsed / this.manualRepairSystem.repairDuration, 1.0);
         
-        // Add info about filtering
-        const filterInfo = document.createElement('div');
-        filterInfo.style.cssText = `font-size: 12px; color: #00aa41; margin-bottom: 12px; text-align: center; font-style: italic;`;
-        const totalSystems = this.ship.systems.size;
-        const visibleSystems = Object.keys(cardFilteredStatus.systems).length;
-        filterInfo.textContent = `Showing ${visibleSystems}/${totalSystems} systems (card-enabled only)`;
-        this.systemsList.appendChild(filterInfo);
+        // Update progress bar
+        if (this.manualRepairSystem.cooldownElement) {
+            this.manualRepairSystem.cooldownElement.progress.style.width = `${progress * 100}%`;
+        }
 
-        // Priority sliders for each card-enabled system
-        for (const [systemName, systemInfo] of Object.entries(cardFilteredStatus.systems)) {
-            const systemDiv = document.createElement('div');
-            systemDiv.style.cssText = `
-                margin-bottom: 10px;
-                font-size: 14px;
-                padding: 8px;
-                border: 1px solid #333;
-                border-radius: 4px;
-                background: rgba(0, 0, 0, 0.3);
-            `;
+        // Check if repair is complete
+        if (progress >= 1.0) {
+            this.completeManualRepair();
+        }
+    }
 
-            // System name with status dot and health
-            const nameDiv = document.createElement('div');
-            nameDiv.style.cssText = `
-                display: flex;
-                align-items: center;
-                margin-bottom: 6px;
-            `;
+    /**
+     * Start manual repair for a system
+     * @param {string} systemName - Name of the system to repair
+     */
+    startManualRepair(systemName) {
+        console.log(`🔧 startManualRepair called for: ${systemName}`);
+        
+        if (this.manualRepairSystem.isRepairing) {
+            console.log(`🔧 Manual repair system already repairing: ${this.manualRepairSystem.repairTarget}`);
+            return;
+        }
 
-            const nameWithDot = document.createElement('span');
-            nameWithDot.style.cssText = `display: flex; align-items: center; font-size: 15px;`;
-            
-            const statusDot = document.createElement('span');
-            statusDot.style.cssText = `
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                display: inline-block;
-                margin-right: 8px;
-                background-color: ${systemInfo.isActive ? '#00ff41' : '#666666'};
-            `;
-            
-            // Debug logging for status dot
-            // console.log(`🔍 DAMAGE UI: ${systemName} - isActive: ${systemInfo.isActive}, dot color: ${systemInfo.isActive ? '#00ff41' : '#666666'}`);
-            
-            const health = Math.round(systemInfo.health * 100);
-            let healthColor = '#00ff41';
-            if (health < 75) healthColor = '#ffaa00';
-            if (health < 25) healthColor = '#ff4400';
-            
-            nameWithDot.appendChild(statusDot);
-            nameWithDot.appendChild(document.createTextNode(`${this.formatSystemName(systemName)} (`));
-            
-            const healthSpan = document.createElement('span');
-            healthSpan.style.color = healthColor;
-            healthSpan.style.fontWeight = 'bold';
-            healthSpan.textContent = `${health}%`;
-            nameWithDot.appendChild(healthSpan);
-            
-            nameWithDot.appendChild(document.createTextNode(')'));
+        // Check if system exists and is damaged
+        const system = this.ship.getSystem(systemName);
+        if (!system) {
+            console.error('🚫 REPAIR: System not found:', systemName);
+            return;
+        }
 
-            // Add card indicator
-            const cardIndicator = document.createElement('span');
-            cardIndicator.style.cssText = `
-                margin-left: 8px;
-                font-size: 12px;
-                color: #00ff41;
-                background: rgba(0, 255, 65, 0.2);
-                padding: 2px 6px;
-                border-radius: 3px;
-            `;
-            cardIndicator.textContent = '🃏 CARD';
-            nameWithDot.appendChild(cardIndicator);
+        console.log(`🔧 System found: ${systemName}, health: ${system.currentHealth}/${system.maxHealth}, healthPercentage: ${system.healthPercentage}`);
 
-            nameDiv.appendChild(nameWithDot);
+        if (system.healthPercentage >= 100) {
+            console.log(`🔧 System ${systemName} is already fully repaired (${system.healthPercentage}%)`);
+            return;
+        }
 
-            // Priority slider
-            const sliderDiv = document.createElement('div');
-            sliderDiv.style.cssText = `
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                pointer-events: auto;
-            `;
+        console.log(`🔧 Starting repair for ${systemName} (${system.healthPercentage}% health)`);
+        
+        this.manualRepairSystem.isRepairing = true;
+        this.manualRepairSystem.repairTarget = systemName;
+        this.manualRepairSystem.repairStartTime = Date.now();
 
-            const slider = document.createElement('input');
-            slider.type = 'range';
-            slider.min = '0';
-            slider.max = '10';
-            slider.value = autoRepair.getPriority(systemName).toString();
-            slider.style.cssText = `
-                flex: 1;
-                height: 6px;
-                background: #333;
-                outline: none;
-                -webkit-appearance: none;
-                appearance: none;
-                border-radius: 3px;
-            `;
+        // Update cooldown display
+        if (this.manualRepairSystem.cooldownElement) {
+            this.manualRepairSystem.cooldownElement.label.textContent = `Repairing ${systemName}...`;
+            this.manualRepairSystem.cooldownElement.progress.style.backgroundColor = '#00aa00';
+        }
 
-            const valueSpan = document.createElement('span');
-            valueSpan.style.cssText = `
-                min-width: 30px;
-                text-align: right;
-                color: #00ff41;
-                font-weight: bold;
-                font-size: 14px;
-            `;
-            valueSpan.textContent = slider.value;
+        // Disable all repair buttons without recreating the entire display
+        this.updateRepairButtonStates();
+    }
 
-            // Update priority when slider changes with zero-sum behavior
-            slider.addEventListener('input', (e) => {
-                const newPriority = parseInt(e.target.value);
-                const oldPriority = autoRepair.getPriority(systemName);
-                const difference = newPriority - oldPriority;
+    /**
+     * Complete manual repair
+     */
+    completeManualRepair() {
+        if (!this.manualRepairSystem.isRepairing) {
+            return;
+        }
+
+        const systemName = this.manualRepairSystem.repairTarget;
+        const system = this.ship.getSystem(systemName);
+        
+        if (system) {
+            // Repair the system to full health
+            system.currentHealth = system.maxHealth;
+        }
+
+        // Reset repair system state
+        this.manualRepairSystem.isRepairing = false;
+        this.manualRepairSystem.repairTarget = null;
+        this.manualRepairSystem.repairStartTime = 0;
+
+        // Update cooldown display
+        if (this.manualRepairSystem.cooldownElement) {
+            this.manualRepairSystem.cooldownElement.label.textContent = 'Manual Repair System';
+            this.manualRepairSystem.cooldownElement.progress.style.backgroundColor = '#555';
+            this.manualRepairSystem.cooldownElement.progress.style.width = '0%';
+        }
+
+        // Re-enable repair buttons for damaged systems without recreating entire display
+        this.updateRepairButtonStates();
+
+        // Only refresh display if damage control is visible to show updated health
+        if (this.damageControlVisible) {
+            this.shouldUpdateDamageControl = true; // Mark for update instead of immediate update
+        }
+    }
+
+    /**
+     * Update repair button states (enable/disable based on repair status)
+     */
+    updateRepairButtonStates() {
+        const repairButtons = this.systemsList.querySelectorAll('.repair-button');
+        const isRepairing = this.manualRepairSystem.isRepairing;
+        
+        repairButtons.forEach(button => {
+            button.disabled = isRepairing;
+            button.style.opacity = isRepairing ? '0.5' : '1';
+            button.style.cursor = isRepairing ? 'not-allowed' : 'pointer';
+        });
+    }
+
+    /**
+     * Display individual weapons from the weapons system
+     * @param {Object} weaponsSystemData - The weapons system data
+     * @param {Object} autoRepair - Auto-repair system
+     * @returns {number} Number of weapons displayed
+     */
+    displayIndividualWeapons(weaponsSystemData, autoRepair) {
+        let weaponsShown = 0;
+        
+        if (!this.ship.weaponSystem || !this.ship.weaponSystem.weaponSlots) {
+            return this.displayRegularSystem('weapons', weaponsSystemData, autoRepair);
+        }
+
+        // Display each equipped weapon individually
+        for (const weaponSlot of this.ship.weaponSystem.weaponSlots) {
+            if (!weaponSlot.isEmpty && weaponSlot.equippedWeapon) {
+                const weapon = weaponSlot.equippedWeapon;
                 
-                if (difference > 0) {
-                    // Increasing priority - need to reduce others to maintain 100 total
-                    const currentTotal = autoRepair.getTotalPriority();
-                    const maxTotal = 100;
-                    
-                    if (currentTotal + difference > maxTotal) {
-                        // Get all other systems and their current priorities
-                        const otherSystems = Object.entries(autoRepair.priorities)
-                            .filter(([name, priority]) => name !== systemName && priority > 0);
-                        
-                        if (otherSystems.length > 0) {
-                            const excessPoints = (currentTotal + difference) - maxTotal;
-                            const totalOtherPriority = otherSystems.reduce((sum, [name, priority]) => sum + priority, 0);
-                            
-                            // Reduce other systems proportionally
-                            if (totalOtherPriority > 0) {
-                                for (const [otherSystemName, otherPriority] of otherSystems) {
-                                    const proportion = otherPriority / totalOtherPriority;
-                                    const reduction = Math.min(otherPriority, Math.ceil(excessPoints * proportion));
-                                    autoRepair.setPriority(otherSystemName, otherPriority - reduction);
-                                }
-                            }
-                        }
-                    }
+                const weaponDiv = document.createElement('div');
+                weaponDiv.setAttribute('data-system', `weapon_slot_${weaponSlot.slotIndex}`);
+                weaponDiv.style.cssText = `
+                    margin-bottom: 8px;
+                    padding: 8px;
+                    border: 1px solid #444;
+                    border-radius: 4px;
+                    background-color: rgba(0, 0, 0, 0.3);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                `;
+
+                // Left side - weapon info
+                const weaponInfo = document.createElement('div');
+                weaponInfo.style.cssText = `
+                    flex: 1;
+                `;
+
+                // Weapon name and status
+                const nameDiv = document.createElement('div');
+                nameDiv.style.cssText = `
+                    font-weight: bold;
+                    margin-bottom: 4px;
+                `;
+                
+                const displayName = weapon.name || `Slot ${weaponSlot.slotIndex + 1} Weapon`;
+                // Convert decimal health (0.0-1.0) to percentage (0-100)
+                const healthPercentage = Math.round(weaponsSystemData.health * 100);
+                const isOperational = weaponsSystemData.canBeActivated && !weaponSlot.isInCooldown();
+                const isDamaged = healthPercentage < 100;
+                const statusColor = isDamaged ? '#ff6b6b' : 
+                                   isOperational ? '#00ff41' : '#ffaa00';
+                
+                nameDiv.innerHTML = `<span style="color: ${statusColor}">${displayName}</span>`;
+                weaponInfo.appendChild(nameDiv);
+
+                // Weapon details
+                const detailsDiv = document.createElement('div');
+                detailsDiv.style.cssText = `
+                    font-size: 12px;
+                    color: #aaa;
+                    margin-bottom: 4px;
+                `;
+                
+                let statusText = isOperational ? 'OPERATIONAL' : 'OFFLINE';
+                if (isDamaged) statusText = 'DAMAGED';
+                
+                detailsDiv.innerHTML = `
+                    Status: <span style="color: ${statusColor}">${statusText}</span><br>
+                    Health: ${healthPercentage}%<br>
+                    Type: ${weapon.weaponType || 'Unknown'}
+                `;
+                weaponInfo.appendChild(detailsDiv);
+
+                // Auto-repair progress if weapons system is damaged
+                if (isDamaged && autoRepair.repairQueue.some(repair => repair.systemName === 'weapons')) {
+                    const repair = autoRepair.repairQueue.find(repair => repair.systemName === 'weapons');
+                    const progressDiv = document.createElement('div');
+                    progressDiv.style.cssText = `
+                        font-size: 11px;
+                        color: #00aa00;
+                        margin-top: 4px;
+                    `;
+                    const progress = Math.round((repair.timeElapsed / repair.repairTime) * 100);
+                    progressDiv.textContent = `Auto-repair: ${progress}% complete`;
+                    weaponInfo.appendChild(progressDiv);
                 }
-                
-                // Set the new priority for this system
-                autoRepair.setPriority(systemName, newPriority);
-                valueSpan.textContent = newPriority.toString();
-                
-                // Update display to show all changes
-                setTimeout(() => this.updateShipSystemsDisplay(), 50);
-            });
 
-            sliderDiv.appendChild(slider);
-            sliderDiv.appendChild(valueSpan);
+                weaponDiv.appendChild(weaponInfo);
 
-            systemDiv.appendChild(nameDiv);
-            systemDiv.appendChild(sliderDiv);
-            this.systemsList.appendChild(systemDiv);
-        }
+                // Right side - repair button for individual weapon
+                const weaponSlotName = `weapon_slot_${weaponSlot.slotIndex}`;
+                const repairButton = this.createRepairButton(weaponSlotName, isDamaged, healthPercentage);
+                weaponDiv.appendChild(repairButton);
 
-        // Add note about missing systems
-        const missingSystems = totalSystems - visibleSystems;
-        if (missingSystems > 0) {
-            // Debug: Find which systems are hidden
-            const allSystems = Array.from(this.ship.systems.keys());
-            const visibleSystemNames = Object.keys(cardFilteredStatus.systems);
-            const hiddenSystems = allSystems.filter(systemName => !visibleSystemNames.includes(systemName));
-            
-            // Reduced debug output - only show summary
-            if (missingSystems > 0) {
-                // REMOVED: console.log spam about hidden systems
-                // Information is still shown in the UI note below
+                this.systemsList.appendChild(weaponDiv);
+                weaponsShown++;
             }
-            
-            /* DISABLED - too verbose for normal use
-            console.log(`🔍 DAMAGE UI DEBUG:`);
-            console.log(`  📊 Total systems: ${totalSystems}`);
-            console.log(`  ✅ Visible systems: ${visibleSystems} - [${visibleSystemNames.join(', ')}]`);
-            console.log(`  ❌ Hidden systems: ${missingSystems} - [${hiddenSystems.join(', ')}]`);
-            console.log(`  🔍 Hidden systems details:`);
-            
-            hiddenSystems.forEach(systemName => {
-                const system = this.ship.getSystem(systemName);
-                const cardCheck = this.ship.hasSystemCardsSync(systemName);
-                console.log(`    - ${systemName}: hasCards=${cardCheck.hasCards}, missingCards=[${cardCheck.missingCards.join(', ')}], operational=${system?.isOperational()}`);
-            });
-            */
-            
-            const noteDiv = document.createElement('div');
-            noteDiv.style.cssText = `
-                font-size: 12px;
-                color: #ffaa00;
-                margin-top: 15px;
-                padding: 8px;
-                border: 1px solid #ffaa00;
-                border-radius: 4px;
-                background: rgba(255, 170, 0, 0.1);
-                text-align: center;
-            `;
-            noteDiv.innerHTML = `
-                ⚠️ ${missingSystems} system${missingSystems > 1 ? 's' : ''} hidden: ${hiddenSystems.join(', ')}<br>
-                <span style="font-size: 11px;">Install required cards to enable damage control</span>
-            `;
-            this.systemsList.appendChild(noteDiv);
         }
+
+        // If no weapons are equipped, show the unified weapons system
+        if (weaponsShown === 0) {
+            return this.displayRegularSystem('weapons', weaponsSystemData, autoRepair);
+        }
+
+        return weaponsShown;
+    }
+
+    /**
+     * Display a regular (non-weapons) system
+     * @param {string} systemName - Name of the system
+     * @param {Object} systemData - System data
+     * @param {Object} autoRepair - Auto-repair system
+     * @returns {number} Number of systems displayed (always 1)
+     */
+    displayRegularSystem(systemName, systemData, autoRepair) {
+        const systemDiv = document.createElement('div');
+        systemDiv.setAttribute('data-system', systemName);
+        systemDiv.style.cssText = `
+            margin-bottom: 8px;
+            padding: 8px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background-color: rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+
+        // Left side - system info
+        const systemInfo = document.createElement('div');
+        systemInfo.style.cssText = `
+            flex: 1;
+        `;
+
+        // System name and status
+        const nameDiv = document.createElement('div');
+        nameDiv.style.cssText = `
+            font-weight: bold;
+            margin-bottom: 4px;
+        `;
+        
+        const displayName = this.formatSystemName(systemName);
+        // Convert decimal health (0.0-1.0) to percentage (0-100)
+        const healthPercentage = Math.round(systemData.health * 100);
+        const isDamaged = healthPercentage < 100;
+        const isOperational = systemData.canBeActivated;
+        const statusColor = isDamaged ? '#ff6b6b' : 
+                           isOperational ? '#00ff41' : '#ffaa00';
+        
+        nameDiv.innerHTML = `<span style="color: ${statusColor}">${displayName}</span>`;
+        systemInfo.appendChild(nameDiv);
+
+        // System details - properly format health as percentage
+        const detailsDiv = document.createElement('div');
+        detailsDiv.style.cssText = `
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 4px;
+        `;
+        
+        let statusText = isOperational ? 'OPERATIONAL' : 'OFFLINE';
+        if (isDamaged) statusText = 'DAMAGED';
+        
+        detailsDiv.innerHTML = `
+            Status: <span style="color: ${statusColor}">${statusText}</span><br>
+            Health: ${healthPercentage}%<br>
+            Energy: ${systemData.energyConsumption || 0}/sec
+        `;
+        systemInfo.appendChild(detailsDiv);
+
+        // Auto-repair progress if system is damaged
+        if (isDamaged && autoRepair.repairQueue.some(repair => repair.systemName === systemName)) {
+            const repair = autoRepair.repairQueue.find(repair => repair.systemName === systemName);
+            const progressDiv = document.createElement('div');
+            progressDiv.style.cssText = `
+                font-size: 11px;
+                color: #00aa00;
+                margin-top: 4px;
+            `;
+            const progress = Math.round((repair.timeElapsed / repair.repairTime) * 100);
+            progressDiv.textContent = `Auto-repair: ${progress}% complete`;
+            systemInfo.appendChild(progressDiv);
+        }
+
+        systemDiv.appendChild(systemInfo);
+
+        // Right side - repair button
+        const repairButton = this.createRepairButton(systemName, isDamaged, healthPercentage);
+        systemDiv.appendChild(repairButton);
+
+        this.systemsList.appendChild(systemDiv);
+        return 1;
+    }
+
+    /**
+     * Create a repair button for a system
+     * @param {string} systemName - Name of the system (or weapon_slot_X for individual weapons)
+     * @param {boolean} isDamaged - Whether the system is damaged
+     * @param {number} health - System health percentage
+     * @returns {HTMLElement} Repair button element
+     */
+    createRepairButton(systemName, isDamaged, health) {
+        const repairButton = document.createElement('button');
+        repairButton.className = 'repair-button';
+        repairButton.setAttribute('data-system-name', systemName); // Add this for event delegation
+        repairButton.style.cssText = `
+            padding: 6px 12px;
+            border: 1px solid #555;
+            border-radius: 3px;
+            background-color: ${isDamaged ? '#2a4a2a' : '#4a4a4a'};
+            color: ${isDamaged ? '#00ff41' : '#bbb'};
+            font-size: 11px;
+            cursor: ${isDamaged ? 'pointer' : 'default'};
+            opacity: ${isDamaged ? '1' : '1'};
+            transition: all 0.2s ease;
+            min-width: 50px;
+        `;
+        
+        repairButton.textContent = isDamaged ? 'REPAIR' : 'OK';
+        repairButton.disabled = !isDamaged || this.manualRepairSystem?.isRepairing;
+        
+        // Only add hover effects for damaged, enabled buttons
+        if (isDamaged && !repairButton.disabled) {
+            repairButton.addEventListener('mouseenter', () => {
+                repairButton.style.backgroundColor = '#3a5a3a';
+                repairButton.style.borderColor = '#00ff41';
+            });
+            
+            repairButton.addEventListener('mouseleave', () => {
+                repairButton.style.backgroundColor = '#2a4a2a';
+                repairButton.style.borderColor = '#555';
+            });
+        }
+
+        // Update button state if repair system is active
+        if (this.manualRepairSystem?.isRepairing) {
+            repairButton.disabled = true;
+            repairButton.style.opacity = '0.6';
+            repairButton.style.cursor = 'not-allowed';
+            repairButton.style.backgroundColor = '#333';
+            repairButton.style.color = '#888';
+        }
+
+        return repairButton;
     }
 
     formatSystemName(systemName) {
@@ -1259,7 +1371,6 @@ export class StarfieldManager {
             // Connect to weapon system if available
             this.connectWeaponHUDToSystem();
             
-            console.log('WeaponHUD initialized');
         }).catch(error => {
             console.error('Failed to initialize WeaponHUD:', error);
         });
@@ -1277,10 +1388,8 @@ export class StarfieldManager {
             // Update weapon slots display
             this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
             
-            console.log('WeaponHUD connected to WeaponSystemCore');
             this.weaponHUDConnected = true;
         } else {
-            console.log('WeaponHUD connection attempted but not ready - ship:', !!ship, 'weaponSystem:', !!(ship && ship.weaponSystem), 'weaponHUD:', !!this.weaponHUD);
             this.weaponHUDConnected = false;
         }
     }
@@ -1344,7 +1453,6 @@ export class StarfieldManager {
                         
                         if (requestedSpeed > maxSpeed) {
                             // Requested speed exceeds engine capability - play command failed sound and abort
-                            console.log(`Impulse speed ${requestedSpeed} exceeds engine capability (max: ${maxSpeed})`);
                             this.playCommandFailedSound();
                             return; // Abort without changing speed
                         }
@@ -1382,15 +1490,91 @@ export class StarfieldManager {
             // Handle Tab key for cycling targets
             if (event.key === 'Tab') {
                 event.preventDefault(); // Prevent Tab from changing focus
-                // Only allow cycling targets if not docked and cooldown is not active
-                if (this.targetComputerEnabled && !this.isDocked) {
-                    // Check for undock cooldown
-                    if (this.undockCooldown && Date.now() < this.undockCooldown) {
-                        console.log('Target cycling disabled - undock cooldown active');
-                        return;
+                
+                // Block target cycling when docked
+                if (this.isDocked) {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'TARGET CYCLING UNAVAILABLE',
+                        'Targeting systems offline while docked'
+                    );
+                    return;
+                }
+                
+                // Check for undock cooldown
+                if (this.undockCooldown && Date.now() < this.undockCooldown) {
+                    return;
+                }
+                
+                // Check if target computer system is operational
+                const ship = this.viewManager?.getShip();
+                if (ship) {
+                    const targetComputer = ship.getSystem('target_computer');
+                    const energyReactor = ship.getSystem('energy_reactor');
+                    
+                    if (targetComputer && targetComputer.canActivate(ship) && this.targetComputerEnabled) {
+                        // Target computer is operational and activated - allow cycling
+                        this.cycleTarget();
+                        this.playCommandSound();
+                    } else {
+                        // Target computer cannot function - provide specific feedback
+                        this.playCommandFailedSound();
+                        
+                        if (!targetComputer) {
+                            this.showHUDError(
+                                'TARGET CYCLING UNAVAILABLE',
+                                'No Target Computer card installed in ship slots'
+                            );
+                        } else if (!targetComputer.isOperational()) {
+                            this.showHUDError(
+                                'TARGET CYCLING OFFLINE',
+                                `Target Computer damaged (${Math.round(targetComputer.healthPercentage * 100)}% health) - repair required`
+                            );
+                        } else if (!ship.hasSystemCardsSync('target_computer')) {
+                            this.showHUDError(
+                                'TARGET CYCLING UNAVAILABLE',
+                                'No Target Computer card installed in ship slots'
+                            );
+                        } else if (!this.targetComputerEnabled) {
+                            this.showHUDError(
+                                'TARGET CYCLING DISABLED',
+                                'Activate Target Computer (T key) first'
+                            );
+                        } else if (!energyReactor || !energyReactor.isOperational()) {
+                            // Energy reactor is the problem
+                            if (!energyReactor) {
+                                this.showHUDError(
+                                    'TARGET CYCLING FAILURE',
+                                    'No Energy Reactor installed - cannot power systems'
+                                );
+                            } else {
+                                this.showHUDError(
+                                    'TARGET CYCLING FAILURE',
+                                    `Energy Reactor disabled (${Math.round(energyReactor.healthPercentage * 100)}% health) - repair immediately`
+                                );
+                            }
+                        } else if (ship.currentEnergy < targetComputer.getEnergyConsumptionRate()) {
+                            // Insufficient energy
+                            const required = targetComputer.getEnergyConsumptionRate();
+                            const available = Math.round(ship.currentEnergy);
+                            this.showHUDError(
+                                'TARGET CYCLING FAILURE',
+                                `Insufficient energy - need ${required}/sec energy. Available: ${available} units`
+                            );
+                        } else {
+                            // Generic fallback
+                            this.showHUDError(
+                                'TARGET CYCLING FAILURE',
+                                'System requirements not met - check power and repair status'
+                            );
+                        }
                     }
-                    this.cycleTarget();
-                    this.playCommandSound(); // Play command sound when cycling targets
+                } else {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'TARGET CYCLING UNAVAILABLE',
+                        'No ship systems available'
+                    );
                 }
                 return; // Exit early to prevent further processing
             }
@@ -1412,7 +1596,6 @@ export class StarfieldManager {
             if (commandKey === 'g') {
                 // DISABLED - handled by ViewManager to avoid conflicts
                 // ViewManager properly activates/deactivates galactic chart system
-                console.log('Galactic chart key pressed - handled by ViewManager');
                 
                 /* DISABLED - avoid duplicate handler conflicts
                 // Block galactic chart when docked
@@ -1421,7 +1604,6 @@ export class StarfieldManager {
                     const ship = this.viewManager?.getShip();
                     if (ship) {
                         const galacticChart = ship.getSystem('galactic_chart');
-                        console.log(`🗺️ GALACTIC CHART: System exists=${!!galacticChart}, Can activate=${galacticChart ? galacticChart.canActivate(ship) : false}`);
                         
                         if (galacticChart && galacticChart.canActivate(ship)) {
                             this.playCommandSound();
@@ -1462,7 +1644,6 @@ export class StarfieldManager {
             } else if (commandKey === 'l') {
                 // DISABLED - handled by ViewManager to avoid conflicts  
                 // ViewManager properly activates/deactivates long range scanner system
-                console.log('Long range scanner key pressed - handled by ViewManager');
                 
                 /* DISABLED - avoid duplicate handler conflicts
                 // Block long range scanner when docked
@@ -1497,7 +1678,6 @@ export class StarfieldManager {
                                     'Insufficient energy for scanning operations'
                                 );
                             }
-                            console.log('Long Range Scanner activation failed - system not available');
                         }
                     } else {
                         this.playCommandFailedSound();
@@ -1516,11 +1696,15 @@ export class StarfieldManager {
                     const ship = this.viewManager?.getShip();
                     if (ship) {
                         const targetComputer = ship.getSystem('target_computer');
+                        const energyReactor = ship.getSystem('energy_reactor');
+                        
                         if (targetComputer && targetComputer.canActivate(ship)) {
                             this.playCommandSound();
                             this.toggleTargetComputer();
                         } else {
                             // System can't be activated - provide specific error message
+                            this.playCommandFailedSound();
+                            
                             if (!targetComputer) {
                                 this.showHUDError(
                                     'TARGET COMPUTER UNAVAILABLE',
@@ -1529,23 +1713,48 @@ export class StarfieldManager {
                             } else if (!targetComputer.isOperational()) {
                                 this.showHUDError(
                                     'TARGET COMPUTER OFFLINE',
-                                    'System damaged or offline - repair required'
+                                    `System damaged (${Math.round(targetComputer.healthPercentage * 100)}% health) - repair required`
                                 );
                             } else if (!ship.hasSystemCardsSync('target_computer')) {
                                 this.showHUDError(
                                     'TARGET COMPUTER UNAVAILABLE',
                                     'No Target Computer card installed in ship slots'
                                 );
+                            } else if (!energyReactor || !energyReactor.isOperational()) {
+                                // Energy reactor is the problem
+                                if (!energyReactor) {
+                                    this.showHUDError(
+                                        'POWER FAILURE',
+                                        'No Energy Reactor installed - cannot power systems'
+                                    );
+                                } else {
+                                    this.showHUDError(
+                                        'POWER FAILURE',
+                                        `Energy Reactor disabled (${Math.round(energyReactor.healthPercentage * 100)}% health) - repair immediately`
+                                    );
+                                }
+                            } else if (ship.currentEnergy < targetComputer.getEnergyConsumptionRate()) {
+                                // Insufficient energy
+                                const required = targetComputer.getEnergyConsumptionRate();
+                                const available = Math.round(ship.currentEnergy);
+                                this.showHUDError(
+                                    'INSUFFICIENT ENERGY',
+                                    `Need ${required}/sec energy. Available: ${available} units`
+                                );
                             } else {
+                                // Generic fallback
                                 this.showHUDError(
                                     'TARGET COMPUTER ACTIVATION FAILED',
-                                    'Insufficient energy for targeting systems'
+                                    'System requirements not met - check power and repair status'
                                 );
                             }
-                            console.log('Target Computer activation failed - system not available');
                         }
                     } else {
                         this.playCommandFailedSound();
+                        this.showHUDError(
+                            'SHIP SYSTEMS OFFLINE',
+                            'No ship systems available'
+                        );
                     }
                 } else {
                     this.showHUDError(
@@ -1557,85 +1766,121 @@ export class StarfieldManager {
 
             // Add Intel key binding
             if (commandKey === 'i') {
-                // Block intel when docked or if conditions aren't met
-                if (!this.isDocked) {
-                    // Check if intel can be activated (requires level 3+ target computer with intel capabilities and scanner)
-                    const ship = this.viewManager?.getShip();
-                    if (ship && this.currentTarget) {
-                        const targetComputer = ship.getSystem('target_computer');
-                        const scanner = ship.getSystem('long_range_scanner');
-                        
-                        if (targetComputer && targetComputer.canActivate(ship) && targetComputer.hasIntelCapabilities() &&
-                            scanner && scanner.canActivate(ship) && 
-                            this.intelAvailable && this.targetComputerEnabled) {
-                            this.playCommandSound();
-                            this.toggleIntel();
-                        } else {
-                            // Intel can't be activated - provide specific error messages
-                            this.playCommandFailedSound();
-                            
-                            if (!targetComputer) {
-                                this.showHUDError(
-                                    'INTEL UNAVAILABLE',
-                                    'No Target Computer system installed'
-                                );
-                            } else if (!targetComputer.hasIntelCapabilities()) {
-                                this.showHUDError(
-                                    'INTEL UNAVAILABLE',
-                                    'Requires Level 3+ Target Computer with intel capabilities'
-                                );
-                            } else if (!scanner) {
-                                this.showHUDError(
-                                    'INTEL UNAVAILABLE',
-                                    'Requires Long Range Scanner system for detailed analysis'
-                                );
-                            } else if (!scanner.canActivate(ship)) {
-                                this.showHUDError(
-                                    'SCANNER OFFLINE',
-                                    'Long Range Scanner system damaged or insufficient energy'
-                                );
-                            } else if (!this.currentTarget) {
-                                this.showHUDError(
-                                    'INTEL UNAVAILABLE',
-                                    'No target selected - activate Target Computer first'
-                                );
-                            } else if (!this.targetComputerEnabled) {
-                                this.showHUDError(
-                                    'TARGET COMPUTER OFFLINE',
-                                    'Activate Target Computer (T key) to enable intel functions'
-                                );
-                            } else if (!this.intelAvailable) {
-                                this.showHUDError(
-                                    'INTEL UNAVAILABLE',
-                                    'Target out of scanner range or intel data not available'
-                                );
-                            } else {
-                                this.showHUDError(
-                                    'INTEL ACTIVATION FAILED',
-                                    'System requirements not met or insufficient energy'
-                                );
-                            }
-                        }
-                    } else {
-                        this.playCommandFailedSound();
-                        if (!ship) {
-                            this.showHUDError(
-                                'INTEL UNAVAILABLE',
-                                'No ship systems available'
-                            );
-                        } else {
-                            this.showHUDError(
-                                'INTEL UNAVAILABLE',
-                                'No target selected - activate Target Computer first'
-                            );
-                        }
-                    }
-                } else {
+                // Block intel when docked
+                if (this.isDocked) {
                     this.playCommandFailedSound();
                     this.showHUDError(
                         'INTEL UNAVAILABLE',
                         'Intelligence systems offline while docked'
                     );
+                    return;
+                }
+                
+                // Check if intel can be activated (requires target computer and scanner)
+                const ship = this.viewManager?.getShip();
+                if (!ship) {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'INTEL UNAVAILABLE',
+                        'No ship systems available'
+                    );
+                    return;
+                }
+                
+                const targetComputer = ship.getSystem('target_computer');
+                const scanner = ship.getSystem('long_range_scanner');
+                const energyReactor = ship.getSystem('energy_reactor');
+                
+                // Check all requirements for Intel functionality
+                if (targetComputer && targetComputer.canActivate(ship) && targetComputer.hasIntelCapabilities() &&
+                    scanner && scanner.canActivate(ship) && 
+                    this.intelAvailable && this.targetComputerEnabled && this.currentTarget) {
+                    // All requirements met - activate Intel
+                    this.playCommandSound();
+                    this.toggleIntel();
+                } else {
+                    // Intel can't be activated - provide specific error messages
+                    this.playCommandFailedSound();
+                    
+                    // Priority order: Target Computer issues first (most critical)
+                    if (!targetComputer) {
+                        this.showHUDError(
+                            'INTEL UNAVAILABLE',
+                            'No Target Computer card installed in ship slots'
+                        );
+                    } else if (!targetComputer.isOperational()) {
+                        this.showHUDError(
+                            'INTEL UNAVAILABLE',
+                            `Target Computer damaged (${Math.round(targetComputer.healthPercentage * 100)}% health) - repair required`
+                        );
+                    } else if (!ship.hasSystemCardsSync('target_computer')) {
+                        this.showHUDError(
+                            'INTEL UNAVAILABLE',
+                            'No Target Computer card installed in ship slots'
+                        );
+                    } else if (!this.targetComputerEnabled) {
+                        this.showHUDError(
+                            'INTEL UNAVAILABLE',
+                            'Activate Target Computer (T key) first'
+                        );
+                    } else if (!energyReactor || !energyReactor.isOperational()) {
+                        // Energy reactor issues
+                        if (!energyReactor) {
+                            this.showHUDError(
+                                'INTEL UNAVAILABLE',
+                                'No Energy Reactor installed - cannot power systems'
+                            );
+                        } else {
+                            this.showHUDError(
+                                'INTEL UNAVAILABLE',
+                                `Energy Reactor disabled (${Math.round(energyReactor.healthPercentage * 100)}% health) - repair immediately`
+                            );
+                        }
+                    } else if (ship.currentEnergy < (targetComputer.getEnergyConsumptionRate() + (scanner?.getEnergyConsumptionRate() || 0))) {
+                        // Insufficient energy for both systems
+                        const required = targetComputer.getEnergyConsumptionRate() + (scanner?.getEnergyConsumptionRate() || 0);
+                        const available = Math.round(ship.currentEnergy);
+                        this.showHUDError(
+                            'INTEL UNAVAILABLE',
+                            `Insufficient energy - need ${required}/sec for intel operations. Available: ${available} units`
+                        );
+                    } else if (!targetComputer.hasIntelCapabilities()) {
+                        this.showHUDError(
+                            'INTEL UNAVAILABLE',
+                            'Requires Level 3+ Target Computer with intel capabilities'
+                        );
+                    } else if (!scanner) {
+                        this.showHUDError(
+                            'INTEL UNAVAILABLE',
+                            'No Long Range Scanner card installed - required for detailed analysis'
+                        );
+                    } else if (!scanner.isOperational()) {
+                        this.showHUDError(
+                            'INTEL UNAVAILABLE',
+                            `Long Range Scanner damaged (${Math.round(scanner.healthPercentage * 100)}% health) - repair required`
+                        );
+                    } else if (!ship.hasSystemCardsSync('long_range_scanner')) {
+                        this.showHUDError(
+                            'INTEL UNAVAILABLE',
+                            'No Long Range Scanner card installed - required for detailed analysis'
+                        );
+                    } else if (!this.currentTarget) {
+                        this.showHUDError(
+                            'INTEL UNAVAILABLE',
+                            'No target selected - activate Target Computer and select target first'
+                        );
+                    } else if (!this.intelAvailable) {
+                        this.showHUDError(
+                            'INTEL UNAVAILABLE',
+                            'Target out of scanner range or intel data not available'
+                        );
+                    } else {
+                        // Generic fallback
+                        this.showHUDError(
+                            'INTEL UNAVAILABLE',
+                            'System requirements not met - check power and repair status'
+                        );
+                    }
                 }
             }
 
@@ -1647,12 +1892,10 @@ export class StarfieldManager {
                     const ship = this.viewManager?.getShip();
                     if (ship) {
                         const shields = ship.getSystem('shields');
-                        console.log(`🛡️ SHIELDS: System exists=${!!shields}, Can activate=${shields ? shields.canActivate(ship) : false}`);
                         
                         if (shields && shields.canActivate(ship)) {
                             this.playCommandSound();
                             shields.toggleShields();
-                            console.log('Shields toggled');
                         } else {
                             // System can't be activated - provide specific error message
                             if (!shields) {
@@ -1692,7 +1935,6 @@ export class StarfieldManager {
             if (commandKey === 'r') {
                 // DISABLED - handled by SubspaceRadio UI class to avoid conflicts
                 // SubspaceRadio class properly handles R key activation and UI
-                console.log('Subspace radio key pressed - handled by SubspaceRadio UI');
                 
                 /* DISABLED - avoid duplicate handler conflicts
                 // Block subspace radio when docked
@@ -1701,7 +1943,6 @@ export class StarfieldManager {
                     const ship = this.viewManager?.getShip();
                     if (ship) {
                         const radio = ship.getSystem('subspace_radio');
-                        console.log(`📻 SUBSPACE RADIO: System exists=${!!radio}, Can activate=${radio ? radio.canActivate(ship) : false}`);
                         
                         if (!radio) {
                             // System doesn't exist (starter ship case)
@@ -1812,7 +2053,6 @@ export class StarfieldManager {
                     if (ship && ship.weaponSystem) {
                         const autofireState = ship.weaponSystem.toggleAutofire();
                         this.playCommandSound();
-                        console.log(`Autofire ${autofireState ? 'ON' : 'OFF'}`);
                     }
                 }
             }
@@ -1916,19 +2156,30 @@ export class StarfieldManager {
             this.previousView = this.view;
             this.view = 'DAMAGE';
             
-            if (this.shipSystemsHUD) {
-                this.shipSystemsHUD.style.display = 'block';
+            // CRITICAL: Force refresh ship systems before showing damage control
+            const ship = this.viewManager?.getShip();
+            if (ship && ship.cardSystemIntegration) {
+                console.log('🔧 Refreshing ship systems before showing damage control...');
+                // Force reload cards and refresh systems
+                ship.cardSystemIntegration.loadCards().then(() => {
+                    ship.cardSystemIntegration.createSystemsFromCards().then(() => {
+                        // Show the damage control HUD after systems are refreshed
+                        this.damageControlHUD.show();
+                        console.log('🔧 Damage control HUD shown with refreshed systems');
+                    });
+                });
+            } else {
+                // Fallback: show immediately if no card system integration
+                this.damageControlHUD.show();
             }
             
-            this.updateShipSystemsDisplay(); // Refresh the display
             this.updateSpeedIndicator(); // Update the view indicator
         } else {
             // Restore the previous view when closing damage control
             this.view = this.previousView || 'FORE';
             
-            if (this.shipSystemsHUD) {
-                this.shipSystemsHUD.style.display = 'none';
-            }
+            // Hide the damage control HUD
+            this.damageControlHUD.hide();
             
             this.updateSpeedIndicator(); // Update the view indicator
         }
@@ -1949,12 +2200,10 @@ export class StarfieldManager {
         // Get celestial bodies from SolarSystemManager
         if (this.solarSystemManager) {
             const bodies = this.solarSystemManager.getCelestialBodies();
-            console.log('Retrieved celestial bodies:', bodies.size);
             
             const celestialBodies = Array.from(bodies.entries())
                 .map(([key, body]) => {
                     const info = this.solarSystemManager.getCelestialBodyInfo(body);
-                    console.log('Processing celestial body:', key, info);
                     
                     // Validate body position
                     if (!body.position || 
@@ -1977,7 +2226,6 @@ export class StarfieldManager {
                 .filter(body => body !== null); // Remove any invalid bodies
             
             allTargets = allTargets.concat(celestialBodies);
-            console.log('Processed celestial bodies:', celestialBodies.length);
         }
         
         // Add target dummy ships
@@ -1995,7 +2243,6 @@ export class StarfieldManager {
         });
         
         allTargets = allTargets.concat(dummyShipTargets);
-        console.log('Added target dummy ships:', dummyShipTargets.length);
         
         // Update target list
         this.targetObjects = allTargets;
@@ -2006,30 +2253,20 @@ export class StarfieldManager {
         // Update target display
         this.updateTargetDisplay();
         
-        console.log('Total targets available:', this.targetObjects.length);
     }
 
     cycleTarget() {
         // Prevent cycling targets while docked
         if (this.isDocked) {
-            console.log('Cannot cycle targets while docked');
             return;
         }
 
         // Prevent cycling targets immediately after undocking
         if (this.undockCooldown && Date.now() < this.undockCooldown) {
-            console.log('Cannot cycle targets - undock cooldown active');
             return;
         }
 
-        console.log('Cycling target:', {
-            targetComputerEnabled: this.targetComputerEnabled,
-            targetObjectsLength: this.targetObjects.length,
-            currentTargetIndex: this.targetIndex
-        });
-
         if (!this.targetComputerEnabled || this.targetObjects.length === 0) {
-            console.log('Cannot cycle target - computer disabled or no targets available');
             return;
         }
 
@@ -2048,17 +2285,9 @@ export class StarfieldManager {
             this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
         }
 
-        console.log('New target index:', this.targetIndex);
-
         // Get the target object directly from our target list
         const targetData = this.targetObjects[this.targetIndex];
         this.currentTarget = targetData.object;
-
-        console.log('New target selected:', {
-            name: targetData.name,
-            type: targetData.type,
-            position: targetData.position
-        });
 
         // Clean up existing wireframe before creating a new one
         if (this.targetWireframe) {
@@ -2337,8 +2566,12 @@ export class StarfieldManager {
         
         this.updateSpeedIndicator();
         
-        // Update ship systems display
-        this.updateShipSystemsDisplay();
+        // Only update ship systems display when damage control is open
+        // and when systems have actually changed (not every frame)
+        if (this.isDamageControlOpen && this.shouldUpdateDamageControl) {
+            this.updateShipSystemsDisplay();
+            this.shouldUpdateDamageControl = false;
+        }
 
         // Forward/backward movement based on view
         if (this.currentSpeed > 0) {
@@ -2556,15 +2789,6 @@ export class StarfieldManager {
         
         const sector = `${rowLetter}${col}`;
         
-        console.log('Sector Calculation:', {
-            position: pos.toArray(),
-            rawGridX: x,
-            rawGridZ: z,
-            adjustedCol: col,
-            adjustedRow: row,
-            resultingSector: sector
-        });
-        
         return sector;
     }
 
@@ -2572,7 +2796,6 @@ export class StarfieldManager {
     debugDamageRandomSystems() {
         const ship = this.viewManager?.getShip();
         if (!ship) {
-            console.log('No ship available for damage testing');
             return;
         }
 
@@ -2591,33 +2814,25 @@ export class StarfieldManager {
         }
         
         // Apply damage to selected systems
-        for (const systemName of systemsToDamage) {
-            const system = ship.getSystem(systemName);
+        systemsToDamage.forEach(systemName => {
+            const system = this.ship.getSystem(systemName);
             if (system && system.takeDamage) {
                 const damageAmount = (0.3 + Math.random() * 0.5) * system.maxHealth; // 30-80% damage
                 system.takeDamage(damageAmount);
-                console.log(`DEBUG: Damaged ${systemName} by ${((damageAmount / system.maxHealth) * 100).toFixed(1)}%`);
             }
-        }
-        
-        console.log(`DEBUG: Damaged ${systemsToDamage.length} systems for repair testing`);
-        console.log('Use Ctrl+Shift+M to damage hull, Ctrl+Shift+N to drain energy, Ctrl+Shift+B to repair all');
-        
+        });
 
-        
-        // Update the damage control display if it's currently visible
-        if (this.damageControlVisible) {
-            console.log('Updating damage control display...');
-            this.updateShipSystemsDisplay();
-        } else {
-            console.log('Damage control not visible, display not updated');
+        // Notify damage control HUD to update
+        if (this.damageControlHUD) {
+            this.damageControlHUD.markForUpdate();
         }
+
+        this.updateShipSystemsDisplay();
     }
 
     debugDamageHull() {
         const ship = this.viewManager?.getShip();
         if (!ship) {
-            console.log('No ship available for hull damage testing');
             return;
         }
 
@@ -2626,7 +2841,6 @@ export class StarfieldManager {
         const newHull = Math.floor(ship.maxHull * (1 - damagePercent));
         ship.currentHull = Math.max(1, newHull); // Ensure at least 1 hull
         
-        console.log(`DEBUG: Damaged hull to ${ship.currentHull}/${ship.maxHull} (${Math.floor(ship.currentHull/ship.maxHull*100)}%)`);
         
         // Update the damage control display if it's currently visible
         if (this.damageControlVisible) {
@@ -2637,7 +2851,6 @@ export class StarfieldManager {
     debugDrainEnergy() {
         const ship = this.viewManager?.getShip();
         if (!ship) {
-            console.log('No ship available for energy drain testing');
             return;
         }
         
@@ -2648,8 +2861,6 @@ export class StarfieldManager {
         const actualDrain = originalEnergy - ship.currentEnergy;
         const drainPercentage = (actualDrain / ship.maxEnergy) * 100;
         
-        console.log(`DEBUG: Drained ${drainPercentage.toFixed(1)}% energy`);
-        console.log(`Energy: ${ship.currentEnergy}/${ship.maxEnergy} (${((ship.currentEnergy/ship.maxEnergy)*100).toFixed(1)}%)`);
         
         // Update the damage control display if it's currently visible
         if (this.damageControlVisible) {
@@ -2660,7 +2871,6 @@ export class StarfieldManager {
     debugRepairAllSystems() {
         const ship = this.viewManager?.getShip();
         if (!ship) {
-            console.log('No ship available for repair testing');
             return;
         }
 
@@ -2682,7 +2892,6 @@ export class StarfieldManager {
         // Recharge energy
         ship.currentEnergy = ship.maxEnergy;
         
-        console.log(`DEBUG: Repaired hull, ${repairedCount} systems, and recharged energy`);
         
         // Update the damage control display if it's currently visible
         if (this.damageControlVisible) {
@@ -2691,85 +2900,87 @@ export class StarfieldManager {
     }
 
     dispose() {
-        // Clean up UI elements
-        if (this.speedBox && this.speedBox.parentNode) {
-            this.speedBox.parentNode.removeChild(this.speedBox);
+        console.log('Disposing StarfieldManager...');
+        
+        // Clean up damage control HUD
+        if (this.damageControlHUD) {
+            this.damageControlHUD.dispose();
         }
-        if (this.viewBox && this.viewBox.parentNode) {
-            this.viewBox.parentNode.removeChild(this.viewBox);
-        }
-        if (this.energyBox && this.energyBox.parentNode) {
-            this.energyBox.parentNode.removeChild(this.energyBox);
-        }
-        if (this.shipSystemsHUD && this.shipSystemsHUD.parentNode) {
-            this.shipSystemsHUD.parentNode.removeChild(this.shipSystemsHUD);
-        }
-        if (this.targetHUD && this.targetHUD.parentNode) {
-            this.targetHUD.parentNode.removeChild(this.targetHUD);
-        }
-        if (this.targetReticle && this.targetReticle.parentNode) {
-            this.targetReticle.parentNode.removeChild(this.targetReticle);
-        }
-        if (this.starfield) {
-            this.scene.remove(this.starfield);
-            this.starfield.geometry.dispose();
-            this.starfield.material.dispose();
-        }
-        if (this.intelHUD && this.intelHUD.parentNode) {
-            this.intelHUD.parentNode.removeChild(this.intelHUD);
-        }
-        if (this.intelIcon && this.intelIcon.parentNode) {
-            this.intelIcon.parentNode.removeChild(this.intelIcon);
-        }
-        if (this.dockButtonContainer && this.dockButtonContainer.parentNode) {
-            this.dockButtonContainer.parentNode.removeChild(this.dockButtonContainer);
+        if (this.damageControlContainer && this.damageControlContainer.parentNode) {
+            this.damageControlContainer.parentNode.removeChild(this.damageControlContainer);
         }
 
-        // Clean up wireframe resources
+        // Clean up repair system interval
+        if (this.repairUpdateInterval) {
+            clearInterval(this.repairUpdateInterval);
+            this.repairUpdateInterval = null;
+        }
+
+        // Clean up target dummy ships
+        this.clearTargetDummyShips();
+
+        // Clean up starfield
+        if (this.starfield) {
+            this.scene.remove(this.starfield);
+            
+            // Dispose of geometry and material
+            if (this.starfield.geometry) {
+                this.starfield.geometry.dispose();
+            }
+            if (this.starfield.material) {
+                this.starfield.material.dispose();
+            }
+        }
+
+        // Clean up wireframe and renderer
         if (this.wireframeRenderer) {
             this.wireframeRenderer.dispose();
         }
-        if (this.wireframeScene) {
-            this.wireframeScene.traverse((object) => {
-                if (object.geometry) {
-                    object.geometry.dispose();
-                }
-                if (object.material) {
-                    if (Array.isArray(object.material)) {
-                        object.material.forEach(material => material.dispose());
-                    } else {
-                        object.material.dispose();
-                    }
-                }
-            });
-        }
+        
         if (this.targetWireframe) {
+            this.wireframeScene.remove(this.targetWireframe);
             if (this.targetWireframe.geometry) {
                 this.targetWireframe.geometry.dispose();
             }
             if (this.targetWireframe.material) {
-                this.targetWireframe.material.dispose();
+                if (Array.isArray(this.targetWireframe.material)) {
+                    this.targetWireframe.material.forEach(material => material.dispose());
+                } else {
+                    this.targetWireframe.material.dispose();
+                }
             }
         }
 
-        // Clean up direction arrows
-        if (this.directionArrows) {
-            Object.values(this.directionArrows).forEach(arrow => {
-                if (arrow && arrow.parentNode) {
-                    arrow.parentNode.removeChild(arrow);
-                }
-            });
+        // Clean up audio
+        if (this.engineSound) {
+            this.engineSound.stop();
+            if (this.engineSound.buffer) {
+                this.engineSound.setBuffer(null);
+            }
         }
+        
+        if (this.commandSound) {
+            this.commandSound.stop();
+            if (this.commandSound.buffer) {
+                this.commandSound.setBuffer(null);
+            }
+        }
+        
+        if (this.commandFailedSound) {
+            this.commandFailedSound.stop();
+            if (this.commandFailedSound.buffer) {
+                this.commandFailedSound.setBuffer(null);
+            }
+        }
+        
+        // Remove global reference
+        if (window.starfieldManager === this) {
+            delete window.starfieldManager;
+        }
+        
+        this.ship = null;
 
-        // Clean up docking interface
-        if (this.dockingInterface) {
-            this.dockingInterface.dispose();
-        }
-
-        // Clean up help interface
-        if (this.helpInterface) {
-            this.helpInterface.dispose();
-        }
+        this.updateShipSystemsDisplay();
     }
 
     // Add this method to create the star sprite texture
@@ -2972,7 +3183,6 @@ export class StarfieldManager {
             if (this.shipSystemsHUD) {
                 this.shipSystemsHUD.style.display = 'none';
             }
-            console.log('Damage control view auto-hidden when switching to', viewType);
         }
 
         // Store previous view when switching to special views
@@ -3159,10 +3369,8 @@ export class StarfieldManager {
             // Ensure AudioContext is running before playing sounds
             this.ensureAudioContextRunning();
             this.commandSound.play();
-            console.log('Playing command success sound (command.wav)');
         } else if (!this.commandSoundLoaded) {
             // Fallback: generate a success beep using Web Audio API
-            console.log('Command success sound not loaded, using fallback beep');
             this.generateCommandSuccessBeep();
         }
     }
@@ -3198,7 +3406,6 @@ export class StarfieldManager {
             oscillator.start(audioContext.currentTime);
             oscillator.stop(audioContext.currentTime + 0.15);
             
-            console.log('Generated command success beep (fallback)');
             
         } catch (error) {
             console.error('Failed to generate command success beep:', error);
@@ -3210,10 +3417,8 @@ export class StarfieldManager {
             // Ensure AudioContext is running before playing sounds
             this.ensureAudioContextRunning();
             this.commandFailedSound.play();
-            console.log('Playing command failed sound (command_failed.mp3)');
         } else if (!this.commandFailedSoundLoaded) {
             // Fallback: generate a low-pitched beep using Web Audio API
-            console.log('Command failed sound not loaded, using fallback beep');
             this.generateCommandFailedBeep();
         }
     }
@@ -3249,7 +3454,6 @@ export class StarfieldManager {
             oscillator.start(audioContext.currentTime);
             oscillator.stop(audioContext.currentTime + 0.2);
             
-            console.log('Generated command failed beep (fallback)');
             
         } catch (error) {
             console.error('Failed to generate command failed beep:', error);
@@ -3274,7 +3478,6 @@ export class StarfieldManager {
             this.starfield = this.createStarfield();
             if (this.starfield) {
                 this.scene.add(this.starfield);
-                console.log('Successfully recreated starfield with', this.starCount, 'stars');
             }
         } catch (error) {
             console.error('Error recreating starfield:', error);
@@ -3581,7 +3784,6 @@ export class StarfieldManager {
         }
         
         if (validation.warnings.length > 0) {
-            console.log('Docking warnings:', validation.warnings.join(', '));
         }
         
         return validation.canDock;
@@ -3601,7 +3803,6 @@ export class StarfieldManager {
                 console.warn('Docking failed: Insufficient energy for docking procedures');
                 return false;
             }
-            console.log(`Docking procedures initiated. Energy consumed: ${dockingEnergyCost}`);
         }
 
         // Store the current view before docking
@@ -3678,25 +3879,30 @@ export class StarfieldManager {
                     this.targetWireframe.material.dispose();
                     this.targetWireframe = null;
                 }
-                console.log('Target computer UI powered down during docking');
             }
             
             // Close galactic chart if open
             if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
                 this.viewManager.galacticChart.hide(false);
-                console.log('Galactic chart closed during docking');
             }
             
             // Close long range scanner if open
             if (this.viewManager.longRangeScanner && this.viewManager.longRangeScanner.isVisible()) {
                 this.viewManager.longRangeScanner.hide(false);
-                console.log('Long range scanner closed during docking');
             }
             
             // Hide subspace radio UI during docking
             if (this.viewManager.subspaceRadio && this.viewManager.subspaceRadio.isVisible) {
                 this.viewManager.subspaceRadio.hide();
-                console.log('Subspace radio UI hidden during docking');
+            }
+            
+            // Hide damage control HUD when docking since systems are powered down
+            if (this.damageControlVisible) {
+                this.damageControlVisible = false;
+                this.damageControlHUD.hide();
+                // Restore the previous view
+                this.view = this.previousView || 'FORE';
+                console.log('🚪 Damage Control HUD dismissed during docking');
             }
             
             // Restore view to FORE if in modal view
@@ -3734,7 +3940,6 @@ export class StarfieldManager {
             }
             
             if (launchValidation.warnings.length > 0) {
-                console.log('Launch warnings:', launchValidation.warnings.join(', '));
             }
             
             // Consume energy for launch procedures
@@ -3742,7 +3947,6 @@ export class StarfieldManager {
                 console.warn('Launch failed: Insufficient energy for launch procedures');
                 return;
             }
-            console.log(`Launch procedures initiated. Energy consumed: ${launchValidation.energyCost}`);
         }
 
         // Hide docking interface
@@ -3830,14 +4034,11 @@ export class StarfieldManager {
                     const radioSystem = ship.getSystem('subspace_radio');
                     if (radioSystem && radioSystem.isActive) {
                         this.viewManager.subspaceRadio.show();
-                        console.log('Subspace radio UI restored after undocking');
                     }
                 }
             }
             
             // Remind player about shields after undocking
-            console.log('Launch successful! Consider raising shields (S) for protection in open space');
-            console.log('Ship systems now available: T (Target Computer), G (Galactic Chart), L (Long Range Scanner)');
         }
         
         // Update the dock button to show "DOCK"
@@ -3892,14 +4093,12 @@ export class StarfieldManager {
     dockWithDebug(target) {
         const result = this.dock(target);
         if (!result) {
-            console.log('Docking failed - out of range or invalid target');
         }
         return result;
     }
 
     undockWithDebug() {
         if (!this.isDocked) {
-            console.log('Cannot undock - not currently docked');
             return;
         }
         this.undock();
@@ -3907,12 +4106,6 @@ export class StarfieldManager {
 
     // Add new method to handle dock button clicks (launch is handled by docking interface)
     handleDockButtonClick(isDocked, targetName) {
-        console.log('Dock button clicked:', {
-            action: 'DOCK',
-            targetName: targetName,
-            isDocked: this.isDocked
-        });
-        
         if (!this.currentTarget) {
             console.warn('No current target available for docking');
             return;
@@ -3977,7 +4170,6 @@ export class StarfieldManager {
         // Store the current state of all systems before powering them down
         this.preDockingSystemStates = new Map();
         
-        console.log('Powering down all ship systems for docking...');
         
         // Iterate through all ship systems and store their current state
         for (const [systemName, system] of ship.systems) {
@@ -4001,37 +4193,28 @@ export class StarfieldManager {
             // Power down the system based on its type
             if (systemName === 'shields' && system.isShieldsUp) {
                 system.deactivateShields();
-                console.log(`  - Shields powered down (was active)`);
             } else if (systemName === 'long_range_scanner' && system.isScanning) {
                 system.stopScan();
-                console.log(`  - Long Range Scanner powered down (was scanning)`);
             } else if (systemName === 'target_computer' && system.isTargeting) {
                 system.deactivate();
-                console.log(`  - Target Computer powered down (was targeting)`);
             } else if (systemName === 'subspace_radio') {
                 // Handle both radio and chart functionalities
                 if (system.isRadioActive) {
                     system.deactivateRadio();
-                    console.log(`  - Subspace Radio powered down (was active)`);
                 }
                 if (system.isChartActive) {
                     system.deactivateChart();
-                    console.log(`  - Galactic Chart powered down (was active)`);
                 }
             } else if (systemName === 'impulse_engines') {
                 // Impulse engines are already stopped when docked, but ensure they're not active
                 system.setImpulseSpeed(0);
                 system.setMovingForward(false);
-                console.log(`  - Impulse Engines powered down`);
             } else if (system.isActive) {
                 // For other systems, simply deactivate them
                 system.deactivate();
-                console.log(`  - ${system.name} powered down (was active)`);
             }
         }
         
-        console.log('All ship systems powered down. Energy consumption minimized for docking.');
-        console.log('Systems will be restored to their previous state when undocking.');
     }
     
     /**
@@ -4044,31 +4227,19 @@ export class StarfieldManager {
             return;
         }
         
-        console.log(`🚀 UNDOCKING: Initializing systems for ${ship.shipType}...`);
         
         // CRITICAL FIX: Initialize card system integration FIRST before restoring systems
         if (ship && ship.cardSystemIntegration) {
-            console.log(`🔧 Initializing card system integration...`);
             await ship.cardSystemIntegration.initializeCardData();
-            console.log(`✅ Card system integration ready`);
             
             // NEW: Create missing systems based on installed cards
-            console.log(`🏗️ Creating systems from installed cards...`);
             await ship.cardSystemIntegration.createSystemsFromCards();
-            console.log(`✅ Systems created from cards`);
             
             // CRITICAL: Reinitialize weapon system with new weapon cards after station changes
-            if (ship.initializeWeaponSystem) {
-                console.log(`🔫 Reinitializing weapon system with updated cards...`);
-                await ship.initializeWeaponSystem();
-                console.log(`✅ Weapon system reinitialized with current configuration`);
-                
-                // Reconnect WeaponHUD to the updated weapon system
-                this.connectWeaponHUDToSystem();
-            }
+            // This is now handled by CardSystemIntegration.refreshWeaponSystems() in createSystemsFromCards
+            // No need to call it here separately to avoid double initialization
         }
         
-        console.log('🔋 Powering up systems...');
         
         // Power up all systems that were active before docking
         let poweredUpCount = 0;
@@ -4076,7 +4247,6 @@ export class StarfieldManager {
             // Skip systems that require manual activation (user-controlled systems)
             const manualActivationSystems = ['galactic_chart', 'long_range_scanner', 'subspace_radio', 'target_computer', 'shields', 'impulse_engines', 'energy_reactor'];
             if (manualActivationSystems.includes(systemName)) {
-                console.log(`  ⚡ ${systemName} ready for manual activation`);
                 continue;
             }
             
@@ -4084,16 +4254,13 @@ export class StarfieldManager {
                 try {
                     system.powerUp();
                     poweredUpCount++;
-                    console.log(`  ✅ ${systemName} powered up`);
                 } catch (error) {
                     console.warn(`  ❌ Failed to power up ${systemName}:`, error);
                 }
             } else {
-                console.log(`  ⏸️ ${systemName} cannot be activated (missing cards or damaged)`);
             }
         }
         
-        console.log(`🚀 UNDOCKING COMPLETE: ${poweredUpCount}/${ship.systems.size} systems operational, ${ship.systems.size - poweredUpCount} systems ready for manual activation`);
     }
 
     /**
@@ -4101,7 +4268,6 @@ export class StarfieldManager {
      * @param {number} count - Number of dummy ships to create
      */
     async createTargetDummyShips(count = 3) {
-        console.log(`Creating ${count} target dummy ships for sub-targeting practice...`);
         
         // Import EnemyShip class
         const { default: EnemyShip } = await import('../ship/EnemyShip.js');
@@ -4153,7 +4319,6 @@ export class StarfieldManager {
                 this.targetDummyShips.push(dummyShip);
                 this.dummyShipMeshes.push(shipMesh);
                 
-                console.log(`Created target dummy: ${dummyShip.shipName} (${enemyShipType})`);
                 
             } catch (error) {
                 console.error(`Failed to create target dummy ${i + 1}:`, error);
@@ -4163,7 +4328,6 @@ export class StarfieldManager {
         // Update target list to include dummy ships
         this.updateTargetList();
         
-        console.log(`Successfully created ${this.targetDummyShips.length} target dummy ships`);
     }
 
     /**
@@ -4256,7 +4420,6 @@ export class StarfieldManager {
                 const damage = system.maxHealth * damagePercent;
                 system.takeDamage(damage);
                 
-                console.log(`  - Damaged ${randomSystem}: ${Math.round((1 - system.healthPercentage) * 100)}% damage`);
                 
                 // Remove from list to avoid damaging the same system twice
                 const index = damageableSystemNames.indexOf(randomSystem);
@@ -4294,7 +4457,6 @@ export class StarfieldManager {
         this.targetDummyShips = [];
         this.dummyShipMeshes = [];
         
-        console.log('Target dummy ships cleared');
     }
 
     /**
@@ -4719,7 +4881,6 @@ export class StarfieldManager {
 
         // Debug hostile detection
         if (info?.diplomacy) {
-            // console.log(`Target ${currentTargetData.name}: diplomacy="${info.diplomacy}", isHostile=${isHostile}`);
         }
 
         // Show dock button when in range and not docked, but launch is handled by docking interface
@@ -4735,26 +4896,14 @@ export class StarfieldManager {
         
         // Debug button state for stars and other issues
         if (info?.type === 'star' && showButton) {
-            console.log('ERROR: Dock button showing for star!', {
-                targetName: currentTargetData.name,
-                targetType: info?.type,
-                showButton: showButton,
-                canDock: canDock,
-                isDocked: isDocked,
-                isHostile: isHostile
-            });
+            // Debugging star button state (can be enabled if needed)
         }
         
         if (stateChanged) {
             // Throttle button state change logging to prevent spam
             const now = Date.now();
             if (!this.lastButtonStateLog || now - this.lastButtonStateLog > 2000) { // Log at most every 2 seconds
-                console.log('Button state changed, recreating buttons', {
-                    targetName: currentTargetData.name,
-                    targetType: info?.type,
-                    oldState: this.currentButtonState,
-                    newState: newButtonState
-                });
+                // Debugging button state changes (can be enabled if needed)
                 this.lastButtonStateLog = now;
             }
             this.currentButtonState = newButtonState;
@@ -4985,6 +5134,13 @@ export class StarfieldManager {
                 arrow.style.display = 'none';
             });
         }
+    }
+
+    /**
+     * Mark that damage control display needs updating
+     */
+    markDamageControlForUpdate() {
+        this.shouldUpdateDamageControl = true;
     }
 
 } 

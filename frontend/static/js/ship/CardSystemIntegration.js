@@ -85,7 +85,10 @@ export default class CardSystemIntegration {
             'subspace_radio': [CARD_TYPES.SUBSPACE_RADIO],
             'long_range_scanner': [CARD_TYPES.LONG_RANGE_SCANNER],
             'galactic_chart': [CARD_TYPES.GALACTIC_CHART],
-            'target_computer': [CARD_TYPES.TARGET_COMPUTER],
+            'target_computer': [CARD_TYPES.TARGET_COMPUTER, CARD_TYPES.TACTICAL_COMPUTER, CARD_TYPES.COMBAT_COMPUTER, CARD_TYPES.STRATEGIC_COMPUTER],
+            'tactical_computer': [CARD_TYPES.TACTICAL_COMPUTER],     // Advanced intel-enabled target computer
+            'combat_computer': [CARD_TYPES.COMBAT_COMPUTER],       // Advanced intel-enabled target computer
+            'strategic_computer': [CARD_TYPES.STRATEGIC_COMPUTER],    // Advanced intel-enabled target computer
             'impulse_engines': [CARD_TYPES.IMPULSE_ENGINES],
             'warp_drive': [CARD_TYPES.WARP_DRIVE],
             'shields': [CARD_TYPES.SHIELDS, CARD_TYPES.SHIELD_GENERATOR],
@@ -355,6 +358,9 @@ export default class CardSystemIntegration {
      * This ensures that if a card is installed, the corresponding system exists
      */
     async createSystemsFromCards() {
+        // STEP 1: Clean up orphaned systems that no longer have cards
+        await this.cleanupOrphanedSystems();
+        
         const cardToSystemMap = {
             'impulse_engines': 'ImpulseEngines',
             'target_computer': 'TargetComputer',
@@ -369,12 +375,13 @@ export default class CardSystemIntegration {
             'reinforced_cargo_hold': 'ReinforcedCargoHold',
             'shielded_cargo_hold': 'ShieldedCargoHold',
             'warp_drive': 'WarpDrive',
-            'laser_cannon': 'Weapons',
-            'plasma_cannon': 'Weapons',
-            'pulse_cannon': 'Weapons',
-            'phaser_array': 'Weapons',
-            'disruptor_cannon': 'Weapons',
-            'particle_beam': 'Weapons',
+            // SKIP WEAPON CARDS - WeaponSyncManager handles these as individual systems
+            // 'laser_cannon': 'Weapons',
+            // 'plasma_cannon': 'Weapons',
+            // 'pulse_cannon': 'Weapons',
+            // 'phaser_array': 'Weapons',
+            // 'disruptor_cannon': 'Weapons',
+            // 'particle_beam': 'Weapons',
             'missile_tubes': 'MissileTubes',
             'torpedo_launcher': 'MissileTubes'  // Map torpedo launcher to missile system
         };
@@ -403,6 +410,12 @@ export default class CardSystemIntegration {
         for (const [slotId, cardData] of this.installedCards) {
             const systemClass = cardToSystemMap[cardData.cardType];
             const systemName = this.getSystemNameForCard(cardData.cardType);
+            
+            // SKIP WEAPON CARDS - WeaponSyncManager handles individual weapon systems
+            if (this.isWeaponCard(cardData.cardType)) {
+                console.log(`🔫 SKIPPING weapon card ${cardData.cardType} - handled by WeaponSyncManager`);
+                continue;
+            }
             
             // Check if we need to replace an existing system
             const existingSystem = this.ship.getSystem(systemName);
@@ -484,6 +497,9 @@ export default class CardSystemIntegration {
             // Recalculate ship stats after adding systems
             this.ship.calculateTotalStats();
             
+            // CRITICAL: Clean up and refresh weapon systems after card changes
+            await this.refreshWeaponSystems();
+            
             // Trigger damage control interface refresh if it's open
             if (window.simplifiedDamageControl) {
                 window.simplifiedDamageControl.forceRefresh();
@@ -491,11 +507,125 @@ export default class CardSystemIntegration {
             
             // Also trigger StarfieldManager damage control refresh if visible
             if (window.starfieldManager && window.starfieldManager.damageControlVisible) {
-                window.starfieldManager.updateShipSystemsDisplay();
+                if (window.starfieldManager.damageControlHUD && window.starfieldManager.damageControlHUD.forceRefresh) {
+                    window.starfieldManager.damageControlHUD.forceRefresh();
+                } else {
+                    window.starfieldManager.updateShipSystemsDisplay();
+                }
             }
         }
     }
     
+    /**
+     * Clean up systems that no longer have corresponding cards installed
+     */
+    async cleanupOrphanedSystems() {
+        console.log('🧹 Cleaning up orphaned systems...');
+        
+        // Get list of installed card types
+        const installedCardTypes = Array.from(this.installedCards.values()).map(card => card.cardType);
+        console.log('🧹 Installed card types:', installedCardTypes);
+        
+        // List of systems that should be removed if their cards are not installed
+        const systemsToCheck = [
+            'target_computer', 'impulse_engines', 'energy_reactor', 'subspace_radio',
+            'long_range_scanner', 'galactic_chart', 'shields', 'hull_plating',
+            'cargo_hold', 'reinforced_cargo_hold', 'shielded_cargo_hold', 'warp_drive',
+            // Individual weapon systems
+            'laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array',
+            'disruptor_cannon', 'particle_beam', 'standard_missile', 'homing_missile',
+            'heavy_torpedo', 'proximity_mine', 'missile_tubes'
+        ];
+        
+        let removedCount = 0;
+        for (const systemName of systemsToCheck) {
+            if (this.ship.systems.has(systemName)) {
+                // Check if we have the corresponding card installed
+                const hasCard = this.hasCardForSystem(systemName, installedCardTypes);
+                
+                if (!hasCard) {
+                    console.log(`🗑️ Removing orphaned system: ${systemName} (no corresponding card)`);
+                    this.ship.removeSystem(systemName);
+                    removedCount++;
+                }
+            }
+        }
+        
+        console.log(`🧹 Cleanup complete: removed ${removedCount} orphaned systems`);
+    }
+    
+    /**
+     * Check if we have a card installed for a specific system
+     */
+    hasCardForSystem(systemName, installedCardTypes) {
+        // Direct mapping for most systems
+        if (installedCardTypes.includes(systemName)) {
+            return true;
+        }
+        
+        // Special cases
+        if (systemName === 'shields' && (installedCardTypes.includes('shields') || installedCardTypes.includes('shield_generator'))) {
+            return true;
+        }
+        
+        // For weapon systems, check if the specific weapon card is installed
+        const weaponSystems = ['laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array',
+                              'disruptor_cannon', 'particle_beam', 'standard_missile', 'homing_missile',
+                              'heavy_torpedo', 'proximity_mine'];
+        
+        if (weaponSystems.includes(systemName)) {
+            return installedCardTypes.includes(systemName);
+        }
+        
+        return false;
+    }
+
+    /**
+     * Clean up and refresh weapon systems to prevent duplicates and stale systems
+     * This ensures WeaponSyncManager and CardSystemIntegration stay in sync
+     */
+    async refreshWeaponSystems() {
+        try {
+            console.log('🔧 Refreshing weapon systems to prevent duplicates...');
+            
+            // Step 1: Remove consolidated "weapons" system to prevent duplicates with individual weapons
+            if (this.ship.systems.has('weapons')) {
+                this.ship.removeSystem('weapons');
+                console.log('🗑️ Removed consolidated "weapons" system to prevent duplicates');
+            }
+            
+            // Step 2: Remove all individual weapon systems to prevent duplicates
+            const weaponSystemNames = ['laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array',
+                                     'disruptor_cannon', 'particle_beam', 'standard_missile', 'homing_missile',
+                                     'heavy_torpedo', 'proximity_mine'];
+            
+            let removedCount = 0;
+            for (const weaponName of weaponSystemNames) {
+                if (this.ship.systems.has(weaponName)) {
+                    this.ship.removeSystem(weaponName);
+                    removedCount++;
+                    console.log(`🗑️ Removed old individual weapon system: ${weaponName}`);
+                }
+            }
+            
+            // Step 3: Only re-initialize WeaponSyncManager if we have weapon cards
+            const installedCardTypes = Array.from(this.installedCards.values()).map(card => card.cardType);
+            const hasWeaponCards = weaponSystemNames.some(weaponType => installedCardTypes.includes(weaponType));
+            
+            if (hasWeaponCards && this.ship.initializeWeaponSystem) {
+                console.log('🔫 Re-initializing weapon system after card changes...');
+                await this.ship.initializeWeaponSystem();
+            } else {
+                console.log('🔫 No weapon cards installed - skipping weapon system initialization');
+            }
+            
+            console.log(`🔧 Weapon systems refresh complete: removed ${removedCount + (removedCount > 0 ? 1 : 0)} old systems`);
+            
+        } catch (error) {
+            console.error('🔧 Failed to refresh weapon systems:', error);
+        }
+    }
+
     /**
      * Get the system name that corresponds to a card type
      */
@@ -521,9 +651,24 @@ export default class CardSystemIntegration {
             'disruptor_cannon': 'weapons',
             'particle_beam': 'weapons',
             'missile_tubes': 'missile_tubes',
-            'torpedo_launcher': 'missile_tubes'  // Map torpedo launcher to missile system
+            'torpedo_launcher': 'missile_tubes',  // Map torpedo launcher to missile system
+            'tactical_computer': 'target_computer',     // Advanced intel-enabled target computer
+            'combat_computer': 'target_computer',       // Advanced intel-enabled target computer
+            'strategic_computer': 'target_computer'     // Advanced intel-enabled target computer
         };
         
         return cardToSystemNameMap[cardType] || cardType;
+    }
+
+    /**
+     * Check if a card type is a weapon card
+     */
+    isWeaponCard(cardType) {
+        const weaponCardTypes = [
+            'laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array',
+            'disruptor_cannon', 'particle_beam', 'standard_missile', 'homing_missile',
+            'heavy_torpedo', 'proximity_mine'
+        ];
+        return weaponCardTypes.includes(cardType);
     }
 } 

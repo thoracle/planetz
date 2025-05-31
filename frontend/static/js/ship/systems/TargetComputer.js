@@ -217,7 +217,29 @@ export default class TargetComputer extends System {
         
         this.isActive = true;
         this.isTargeting = true;
+        
+        const energyConsumption = this.getEnergyConsumptionRate();
+        const currentEnergy = Math.round(ship.currentEnergy);
+        const energyReactor = ship.getSystem('energy_reactor');
+        
         console.log(`Target Computer activated - Range: ${this.getCurrentTargetingRange().toFixed(0)}km, Accuracy: ${(this.getCurrentTargetingAccuracy() * 100).toFixed(1)}%`);
+        
+        // Provide feedback about energy consumption and warnings
+        if (currentEnergy < energyConsumption * 10) {
+            // Less than 10 seconds of operation remaining
+            const timeRemaining = Math.floor(currentEnergy / energyConsumption);
+            this.showHUDError(
+                'LOW POWER WARNING',
+                `Target Computer active. ${timeRemaining}s operation remaining (${energyConsumption}/sec)`
+            );
+        } else if (!energyReactor || !energyReactor.isOperational()) {
+            // No power generation - will shut down when energy depletes
+            this.showHUDError(
+                'POWER GENERATION OFFLINE',
+                `Target Computer active. Energy Reactor disabled - repair soon!`
+            );
+        }
+        
         return true;
     }
     
@@ -563,8 +585,34 @@ export default class TargetComputer extends System {
         
         // If targeting computer is active but ship has insufficient energy, deactivate
         if (this.isActive && !ship.hasEnergy(this.getEnergyConsumptionRate() * deltaTime / 1000)) {
+            const energyReactor = ship.getSystem('energy_reactor');
+            const energyRequired = this.getEnergyConsumptionRate();
+            const energyAvailable = Math.round(ship.currentEnergy);
+            
             console.warn('Target Computer deactivated due to insufficient energy');
             this.deactivate();
+            
+            // Provide detailed feedback via HUD error
+            if (!energyReactor || !energyReactor.isOperational()) {
+                // Energy reactor is the problem
+                if (!energyReactor) {
+                    this.showHUDError(
+                        'TARGET COMPUTER SHUTDOWN',
+                        'Energy Reactor destroyed - no power generation'
+                    );
+                } else {
+                    this.showHUDError(
+                        'TARGET COMPUTER SHUTDOWN',
+                        `Energy Reactor disabled (${Math.round(energyReactor.healthPercentage * 100)}% health) - repair immediately`
+                    );
+                }
+            } else {
+                // Energy depletion
+                this.showHUDError(
+                    'TARGET COMPUTER SHUTDOWN',
+                    `Energy depleted (${energyAvailable} units) - need ${energyRequired}/sec for operation`
+                );
+            }
         }
         
         // Update tracked targets if active

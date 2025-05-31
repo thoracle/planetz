@@ -412,27 +412,33 @@ export default class Ship {
     }
     
     /**
-     * Add a system to the ship (simplified - only checks slots, not power)
-     * @param {string} systemName - Name of the system
-     * @param {Object} system - System instance
+     * Add a system to the ship
+     * @param {string} systemName - System identifier
+     * @param {System} system - System instance
      */
     addSystem(systemName, system) {
-        const systemSlotCost = system.slotCost || 1;
-        
-        // Check slot availability - ensure we have enough slots for this system
-        if (this.usedSlots + systemSlotCost > this.totalSlots) {
-            console.warn(`No available slots for system: ${systemName} (needs ${systemSlotCost} slots, ${this.availableSlots} available)`);
+        // Check slot capacity
+        if (this.usedSlots + system.slotCost > this.totalSlots) {
+            console.warn(`Cannot add ${systemName}: insufficient slots (${system.slotCost} needed, ${this.availableSlots} available)`);
             return false;
         }
         
+        // Add the system
         this.systems.set(systemName, system);
-        this.usedSlots += systemSlotCost;
+        
+        // Update slot usage
+        this.usedSlots += system.slotCost;
         this.availableSlots = this.totalSlots - this.usedSlots;
         
-        // Recalculate ship stats after adding system
+        // Pass StarfieldManager reference if available
+        if (this.starfieldManager && typeof system.setStarfieldManager === 'function') {
+            system.setStarfieldManager(this.starfieldManager);
+        }
+        
+        // Calculate total stats
         this.calculateTotalStats();
         
-        console.log(`Added system: ${systemName} (${this.usedSlots}/${this.totalSlots} slots used)`);
+        console.log(`Added system: ${systemName} (${system.slotCost} slots) - ${this.availableSlots} slots remaining`);
         return true;
     }
     
@@ -739,18 +745,28 @@ export default class Ship {
             'subspace_radio': 'subspace_radio',
             'long_range_scanner': 'long_range_scanner',
             'galactic_chart': 'galactic_chart',
-            // Weapon cards
-            'laser_cannon': 'weapons',
-            'plasma_cannon': 'weapons',
-            'pulse_cannon': 'weapons',
-            'phaser_array': 'weapons',
-            'standard_missile': 'weapons',
-            'homing_missile': 'weapons',
-            'heavy_torpedo': 'weapons',
-            'proximity_mine': 'weapons'
+            // Weapon cards - support both consolidated AND individual systems
+            'laser_cannon': ['weapons', 'laser_cannon'],  // Enable both consolidated and individual
+            'plasma_cannon': ['weapons', 'plasma_cannon'],
+            'pulse_cannon': ['weapons', 'pulse_cannon'],
+            'phaser_array': ['weapons', 'phaser_array'],
+            'disruptor_cannon': ['weapons', 'disruptor_cannon'],
+            'particle_beam': ['weapons', 'particle_beam'],
+            'standard_missile': ['weapons', 'standard_missile'],
+            'homing_missile': ['weapons', 'homing_missile'],
+            'heavy_torpedo': ['weapons', 'heavy_torpedo'],
+            'proximity_mine': ['weapons', 'proximity_mine']
         };
         
-        return cardToSystemMap[card.cardType] === systemName;
+        const enabledSystems = cardToSystemMap[card.cardType];
+        
+        // Handle arrays (weapon cards that enable multiple systems)
+        if (Array.isArray(enabledSystems)) {
+            return enabledSystems.includes(systemName);
+        }
+        
+        // Handle single system mapping (non-weapon cards)
+        return enabledSystems === systemName;
     }
 
     /**
@@ -826,5 +842,30 @@ export default class Ship {
      */
     getWeaponSyncManager() {
         return this.weaponSyncManager;
+    }
+
+    /**
+     * Set the StarfieldManager reference for HUD error display
+     * @param {StarfieldManager} starfieldManager The StarfieldManager instance
+     */
+    setStarfieldManager(starfieldManager) {
+        this.starfieldManager = starfieldManager;
+        
+        // Pass the reference to all existing systems
+        for (const [systemName, system] of this.systems) {
+            if (system && typeof system.setStarfieldManager === 'function') {
+                system.setStarfieldManager(starfieldManager);
+            }
+        }
+        
+        console.log('StarfieldManager reference set for ship and all systems');
+    }
+
+    /**
+     * Get the StarfieldManager reference
+     * @returns {StarfieldManager|null} The StarfieldManager instance or null
+     */
+    getStarfieldManager() {
+        return this.starfieldManager || null;
     }
 } 
