@@ -215,9 +215,23 @@ export default class CardInventoryUI {
             this.fallbackAudio.volume = 0.7;
             this.fallbackAudio.preload = 'auto';
             
+            // Create audio pool for rapid successive plays
+            this.audioPool = [];
+            this.audioPoolSize = 5; // Increase pool size for better reliability
+            this.audioPoolIndex = 0; // Round-robin index
+            this.audioElementUseCount = []; // Track usage for health monitoring
+            this.maxUsesPerElement = 10; // Regenerate elements after this many uses
+            
+            // Track user interaction for browser audio policies
+            this.userHasInteracted = false;
+            this.setupUserInteractionTracking();
+            
             this.fallbackAudio.addEventListener('canplaythrough', () => {
                 console.log('✅ Fallback audio loaded successfully');
                 this.fallbackAudioLoaded = true;
+                
+                // Pre-create audio pool for better rapid playback
+                this.createAudioPool();
             });
             
             this.fallbackAudio.addEventListener('error', (e) => {
@@ -232,10 +246,130 @@ export default class CardInventoryUI {
     }
 
     /**
-     * Play upgrade success sound
+     * Create or recreate the audio pool
+     */
+    createAudioPool() {
+        console.log('🔧 Creating audio pool...');
+        this.audioPool = [];
+        this.audioElementUseCount = [];
+        
+        for (let i = 0; i < this.audioPoolSize; i++) {
+            this.createAudioElement(i);
+        }
+        console.log(`✅ Audio pool created with ${this.audioPool.length} elements`);
+    }
+
+    /**
+     * Create a single audio element for the pool
+     */
+    createAudioElement(index) {
+        const audioClone = new Audio('audio/blurb.mp3');
+        audioClone.volume = 0.7;
+        audioClone.preload = 'auto';
+        this.audioElementUseCount[index] = 0;
+        
+        // Add event listeners for debugging and health monitoring
+        audioClone.addEventListener('play', () => {
+            console.log(`🎵 Audio ${index} started playing (use #${this.audioElementUseCount[index] + 1})`);
+        });
+        
+        audioClone.addEventListener('ended', () => {
+            console.log(`🎵 Audio ${index} finished playing`);
+        });
+        
+        audioClone.addEventListener('error', (e) => {
+            console.error(`❌ Audio ${index} error:`, e);
+            // Immediately recreate this element
+            setTimeout(() => this.recreateAudioElement(index), 100);
+        });
+        
+        // Monitor for potential corruption - if an element gets stuck
+        audioClone.addEventListener('stalled', () => {
+            console.warn(`⚠️ Audio ${index} stalled - may need recreation`);
+        });
+        
+        audioClone.addEventListener('suspend', () => {
+            console.warn(`⚠️ Audio ${index} suspended - may need recreation`);
+        });
+        
+        this.audioPool[index] = audioClone;
+        console.log(`🔧 Created audio element ${index}`);
+    }
+
+    /**
+     * Recreate a specific audio element that may be corrupted
+     */
+    recreateAudioElement(index) {
+        console.log(`🔄 Recreating potentially corrupted audio element ${index}`);
+        
+        // Clean up old element
+        if (this.audioPool[index]) {
+            this.audioPool[index].src = '';
+            this.audioPool[index].load();
+        }
+        
+        // Create new element
+        this.createAudioElement(index);
+    }
+
+    /**
+     * Check if an audio element is healthy and recreate if needed
+     */
+    checkAudioElementHealth(index) {
+        const audio = this.audioPool[index];
+        const useCount = this.audioElementUseCount[index];
+        
+        // Check if element has been used too many times
+        if (useCount >= this.maxUsesPerElement) {
+            console.log(`🔄 Audio element ${index} reached max uses (${useCount}), recreating...`);
+            this.recreateAudioElement(index);
+            return false; // Don't use this element this time
+        }
+        
+        // Check if element is in a bad state
+        if (!audio || audio.error || audio.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
+            console.warn(`⚠️ Audio element ${index} unhealthy, recreating...`);
+            this.recreateAudioElement(index);
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Set up user interaction tracking for browser audio policies
+     */
+    setupUserInteractionTracking() {
+        const trackInteraction = () => {
+            if (!this.userHasInteracted) {
+                this.userHasInteracted = true;
+                console.log('👆 User interaction detected - audio should work now');
+                
+                // Resume AudioContext if suspended
+                if (this.audioListener && this.audioListener.context && this.audioListener.context.state === 'suspended') {
+                    this.audioListener.context.resume().then(() => {
+                        console.log('🔊 AudioContext resumed after user interaction');
+                    });
+                }
+            }
+        };
+        
+        // Track various user interactions
+        ['click', 'touchstart', 'keydown'].forEach(event => {
+            document.addEventListener(event, trackInteraction, { once: false });
+        });
+    }
+
+    /**
+     * Play upgrade success sound with improved reliability
      */
     playUpgradeSound() {
         console.log('🎵 Attempting to play upgrade sound...');
+        
+        // Check user interaction for browser policies
+        if (!this.userHasInteracted) {
+            console.warn('⚠️ No user interaction detected - sound may not play due to browser policy');
+        }
         
         try {
             // Try THREE.js audio first
@@ -244,41 +378,227 @@ export default class CardInventoryUI {
                 
                 // Ensure AudioContext is running before playing sounds
                 if (this.audioListener.context.state === 'suspended') {
-                    this.audioListener.context.resume();
+                    this.audioListener.context.resume().then(() => {
+                        this.upgradeSound.play();
+                        console.log('✅ Playing upgrade success sound (blurb.mp3) via THREE.js');
+                    });
+                } else {
+                    this.upgradeSound.play();
+                    console.log('✅ Playing upgrade success sound (blurb.mp3) via THREE.js');
                 }
-                
-                this.upgradeSound.play();
-                console.log('✅ Playing upgrade success sound (blurb.mp3) via THREE.js');
                 return;
             }
             
-            // Try fallback HTML5 audio
-            if (this.fallbackAudioLoaded && this.fallbackAudio) {
+            // Try fallback HTML5 audio with improved pooling and health checking
+            if (this.fallbackAudioLoaded && this.audioPool && this.audioPool.length > 0) {
                 console.log('🎵 Playing fallback HTML5 upgrade sound');
                 
-                // Reset audio to beginning
-                this.fallbackAudio.currentTime = 0;
+                // Get current pool index BEFORE incrementing
+                const originalPoolIndex = this.audioPoolIndex;
+                let currentPoolIndex = originalPoolIndex;
+                let attemptsRemaining = this.audioPoolSize; // Try all elements if needed
                 
-                const playPromise = this.fallbackAudio.play();
-                if (playPromise !== undefined) {
-                    playPromise.then(() => {
-                        console.log('✅ Playing upgrade success sound (blurb.mp3) via HTML5 audio');
-                    }).catch((error) => {
-                        console.error('❌ HTML5 audio play failed:', error);
-                    });
+                while (attemptsRemaining > 0) {
+                    // Check if this audio element is healthy
+                    if (!this.checkAudioElementHealth(currentPoolIndex)) {
+                        console.warn(`⚠️ Audio element ${currentPoolIndex} unhealthy, trying next...`);
+                        currentPoolIndex = (currentPoolIndex + 1) % this.audioPool.length;
+                        attemptsRemaining--;
+                        continue;
+                    }
+                    
+                    const audioToPlay = this.audioPool[currentPoolIndex];
+                    
+                    // Increment use count for health monitoring
+                    this.audioElementUseCount[currentPoolIndex]++;
+                    
+                    // Update pool index for next use
+                    this.audioPoolIndex = (currentPoolIndex + 1) % this.audioPool.length;
+                    
+                    console.log(`🎵 Using audio pool slot ${currentPoolIndex} (next will be ${this.audioPoolIndex}) [use #${this.audioElementUseCount[currentPoolIndex]}]`);
+                    
+                    // Ensure audio exists and is ready
+                    if (!audioToPlay) {
+                        console.error(`❌ Audio pool slot ${currentPoolIndex} is null/undefined`);
+                        this.recreateAudioElement(currentPoolIndex);
+                        currentPoolIndex = (currentPoolIndex + 1) % this.audioPool.length;
+                        attemptsRemaining--;
+                        continue;
+                    }
+                    
+                    if (audioToPlay.readyState >= 2) { // HAVE_ENOUGH_DATA
+                        // Reset audio to beginning and ensure it's not already playing
+                        if (!audioToPlay.paused) {
+                            audioToPlay.pause();
+                        }
+                        audioToPlay.currentTime = 0;
+                        
+                        const playPromise = audioToPlay.play();
+                        if (playPromise !== undefined) {
+                            playPromise.then(() => {
+                                console.log(`✅ Playing upgrade success sound via HTML5 audio (pool ${currentPoolIndex})`);
+                            }).catch((error) => {
+                                console.error(`❌ HTML5 audio play failed for pool ${currentPoolIndex}:`, error);
+                                console.error('Error details:', {
+                                    name: error.name,
+                                    message: error.message,
+                                    code: error.code,
+                                    audioState: {
+                                        readyState: audioToPlay.readyState,
+                                        paused: audioToPlay.paused,
+                                        currentTime: audioToPlay.currentTime,
+                                        duration: audioToPlay.duration,
+                                        networkState: audioToPlay.networkState,
+                                        error: audioToPlay.error
+                                    }
+                                });
+                                
+                                // Mark this element for recreation and try next
+                                this.recreateAudioElement(currentPoolIndex);
+                                if (attemptsRemaining > 1) {
+                                    console.log(`🔄 Trying next audio element...`);
+                                    currentPoolIndex = (currentPoolIndex + 1) % this.audioPool.length;
+                                    attemptsRemaining--;
+                                    // Recursive call to try next element
+                                    setTimeout(() => this.playUpgradeSound(), 10);
+                                } else {
+                                    // All elements failed, try alternative playback
+                                    this.tryAlternativeAudioPlayback();
+                                }
+                            });
+                        }
+                        return; // Successfully attempted playback
+                    } else {
+                        console.warn(`⚠️ Audio pool ${currentPoolIndex} not ready (readyState: ${audioToPlay.readyState}), trying to load...`);
+                        audioToPlay.load();
+                        audioToPlay.addEventListener('canplaythrough', () => {
+                            audioToPlay.currentTime = 0;
+                            audioToPlay.play().then(() => {
+                                console.log(`✅ Audio pool ${currentPoolIndex} played after loading`);
+                            }).catch(err => {
+                                console.error(`❌ Audio pool ${currentPoolIndex} play failed after loading:`, err);
+                                this.recreateAudioElement(currentPoolIndex);
+                            });
+                        }, { once: true });
+                        return; // Attempted to load and play
+                    }
                 }
+                
+                // If we get here, all audio elements failed
+                console.error(`❌ All audio elements failed, recreating pool...`);
+                this.createAudioPool();
+                this.tryAlternativeAudioPlayback();
                 return;
             }
             
-            // If neither audio method worked
-            if (!this.upgradeSoundLoaded && !this.fallbackAudioLoaded) {
-                console.log('⚠️ Upgrade sound not loaded, trying to reload...');
-                // Try to reinitialize audio
-                this.initializeAudio();
+            // Fallback to original method if pool isn't available yet
+            if (this.fallbackAudioLoaded && this.fallbackAudio) {
+                console.log('🎵 Playing fallback HTML5 upgrade sound (original method)');
+                this.playOriginalFallbackAudio();
+                return;
             }
+            
+            // If no audio method worked, try creating new instance
+            this.tryAlternativeAudioPlayback();
             
         } catch (error) {
             console.error('❌ Error playing upgrade sound:', error);
+            this.tryAlternativeAudioPlayback();
+        }
+    }
+
+    /**
+     * Play original fallback audio method
+     */
+    playOriginalFallbackAudio() {
+        try {
+            this.fallbackAudio.currentTime = 0;
+            
+            const playPromise = this.fallbackAudio.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    console.log('✅ Playing upgrade success sound (blurb.mp3) via HTML5 audio (original)');
+                }).catch((error) => {
+                    console.error('❌ Original HTML5 audio play failed:', error);
+                    this.tryAlternativeAudioPlayback();
+                });
+            }
+        } catch (error) {
+            console.error('❌ Original fallback audio error:', error);
+            this.tryAlternativeAudioPlayback();
+        }
+    }
+
+    /**
+     * Try alternative audio playback methods
+     */
+    tryAlternativeAudioPlayback() {
+        console.log('🔄 Trying alternative audio playback...');
+        
+        try {
+            // Method 1: Create fresh Audio instance
+            const immediateAudio = new Audio('audio/blurb.mp3');
+            immediateAudio.volume = 0.7;
+            
+            // Add a small delay to ensure browser readiness
+            setTimeout(() => {
+                const playPromise = immediateAudio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        console.log('✅ Emergency audio playback successful');
+                    }).catch(err => {
+                        console.error('❌ Emergency audio playback failed:', err);
+                        
+                        // Method 2: Try Web Audio API if available
+                        this.tryWebAudioPlayback();
+                    });
+                }
+            }, 10);
+            
+        } catch (emergencyError) {
+            console.error('❌ Emergency audio creation failed:', emergencyError);
+            this.tryWebAudioPlayback();
+        }
+    }
+
+    /**
+     * Try Web Audio API as last resort
+     */
+    tryWebAudioPlayback() {
+        if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
+            console.log('🔊 Trying Web Audio API...');
+            
+            try {
+                const AudioCtx = AudioContext || webkitAudioContext;
+                const audioContext = new AudioCtx();
+                
+                fetch('audio/blurb.mp3')
+                    .then(response => response.arrayBuffer())
+                    .then(data => audioContext.decodeAudioData(data))
+                    .then(audioBuffer => {
+                        const source = audioContext.createBufferSource();
+                        const gainNode = audioContext.createGain();
+                        
+                        source.buffer = audioBuffer;
+                        gainNode.gain.value = 0.7;
+                        
+                        source.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        source.start();
+                        console.log('✅ Web Audio API playback successful');
+                    })
+                    .catch(err => {
+                        console.error('❌ Web Audio API failed:', err);
+                        console.warn('💔 All audio playback methods failed');
+                    });
+                    
+            } catch (webAudioError) {
+                console.error('❌ Web Audio API not supported:', webAudioError);
+                console.warn('💔 All audio playback methods failed');
+            }
+        } else {
+            console.warn('💔 All audio playback methods failed - no Web Audio API support');
         }
     }
 
@@ -1129,6 +1449,28 @@ export default class CardInventoryUI {
         const hasEnoughCredits = canUpgrade && this.credits >= (upgradeCost?.credits || 0);
         const canAffordUpgrade = hasEnoughCards && hasEnoughCredits;
         
+        // Determine the appropriate CSS class and button content
+        let buttonClass = '';
+        let buttonIcon = '';
+        let buttonText = `Upgrade to Lv.${nextLevel}`;
+        
+        if (canAffordUpgrade) {
+            buttonClass = 'upgrade-available';
+            buttonIcon = '⬆️';
+        } else if (!hasEnoughCards && !hasEnoughCredits) {
+            buttonClass = 'upgrade-unavailable';
+            buttonIcon = '⚫'; // Gray circle for unavailable
+            buttonText = `Need Cards & Credits`;
+        } else if (!hasEnoughCards) {
+            buttonClass = 'insufficient-cards';
+            buttonIcon = '⚫'; // Gray circle for insufficient
+            buttonText = `Need ${upgradeCost.cards - stack.count} More Cards`;
+        } else if (!hasEnoughCredits) {
+            buttonClass = 'insufficient-credits';
+            buttonIcon = '⚫'; // Gray circle for insufficient  
+            buttonText = `Need ${(upgradeCost.credits - this.credits).toLocaleString()} More Credits`;
+        }
+        
         // Create tooltip text for upgrade requirements
         const tooltipText = canUpgrade ? 
             `Upgrade to Level ${nextLevel}: ${upgradeCost.cards}x cards + ${upgradeCost.credits.toLocaleString()} credits` : 
@@ -1136,11 +1478,11 @@ export default class CardInventoryUI {
         
         // Upgrade button HTML
         const upgradeButton = canUpgrade ? `
-            <button class="upgrade-btn ${canAffordUpgrade ? 'upgrade-available' : 'upgrade-unavailable'}" 
+            <button class="upgrade-btn ${buttonClass}" 
                     onclick="cardInventoryUI.upgradeCard('${card.cardType}')"
                     title="${tooltipText}"
                     ${!canAffordUpgrade ? 'disabled' : ''}>
-                ${canAffordUpgrade ? '⬆️' : '❌'} Upgrade to Lv.${nextLevel}
+                ${buttonIcon} ${buttonText}
             </button>
         ` : `
             <div class="max-level-indicator" title="${tooltipText}">🏆 MAX LEVEL</div>
@@ -1843,6 +2185,22 @@ export default class CardInventoryUI {
             
             // Increase level in the source card stack
             cardStack.level = nextLevel;
+            
+            // Update any slotted cards of the same type to the new level
+            let updatedSlotCount = 0;
+            this.shipSlots.forEach((slottedCard, slotId) => {
+                if (slottedCard.cardType === cardType) {
+                    slottedCard.level = nextLevel;
+                    updatedSlotCount++;
+                    console.log(`🔧 Updated slotted ${cardType} in slot ${slotId} to level ${nextLevel}`);
+                }
+            });
+            
+            if (updatedSlotCount > 0) {
+                console.log(`🔧 Updated ${updatedSlotCount} slotted card(s) of type ${cardType} to level ${nextLevel}`);
+                // Save the configuration to persist the level changes
+                this.saveCurrentShipConfiguration();
+            }
             
             console.log(`✅ Successfully upgraded ${cardType} to level ${nextLevel}`);
             console.log(`💳 Consumed ${upgradeCost.cards} cards and ${upgradeCost.credits} credits`);

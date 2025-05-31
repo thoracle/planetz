@@ -751,9 +751,10 @@
 }
 
 .upgrade-btn.upgrade-unavailable {
-    border-color: #ff4444;
-    color: #ff4444;
-    background: rgba(40, 0, 0, 0.8);
+    border-color: #666666;
+    color: #888888;
+    background: rgba(20, 20, 20, 0.8);
+    opacity: 0.6;
 }
 
 .upgrade-btn:disabled {
@@ -789,24 +790,24 @@
     color: #00ffaa; /* Even brighter on hover */
 }
 
-/* Insufficient cards - yellow */
+/* Insufficient cards - grayed out */
 .upgrade-btn.insufficient-cards {
     background: #000000;
-    color: #ffff00;
-    border-color: #ffff00;
-    box-shadow: 0 0 5px rgba(255, 255, 0, 0.3);
+    color: #888888;
+    border-color: #666666;
+    box-shadow: 0 0 5px rgba(136, 136, 136, 0.2);
     cursor: not-allowed;
-    opacity: 0.8;
+    opacity: 0.6;
 }
 
-/* Insufficient credits - orange */
+/* Insufficient credits - grayed out */
 .upgrade-btn.insufficient-credits {
     background: #000000;
-    color: #ff8800;
-    border-color: #ff8800;
-    box-shadow: 0 0 5px rgba(255, 136, 0, 0.3);
+    color: #888888;
+    border-color: #666666;
+    box-shadow: 0 0 5px rgba(136, 136, 136, 0.2);
     cursor: not-allowed;
-    opacity: 0.8;
+    opacity: 0.6;
 }
 
 /* Max level - green but dimmed */
