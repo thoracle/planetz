@@ -84,38 +84,36 @@ export default class WeaponSyncManager {
             }
         }
         
-        // Source 2: Starter cards from ship configuration
-        if (this.ship.shipConfig?.starterCards) {
-            for (const [slotId, cardData] of Object.entries(this.ship.shipConfig.starterCards)) {
+        // PRIORITY FIX: Use current installed cards from cardSystemIntegration instead of static starterCards
+        // Source 2: Current installed cards (highest priority for station-modified configurations)
+        if (this.ship.cardSystemIntegration && this.ship.cardSystemIntegration.installedCards) {
+            console.log(`🔫 Using current installed cards (post-station configuration)`);
+            for (const [slotId, cardData] of this.ship.cardSystemIntegration.installedCards.entries()) {
                 if (this.isWeaponCard(cardData.cardType)) {
-                    sources.starterCards.push({
+                    sources.inventory.push({
                         type: cardData.cardType,
                         level: cardData.level || 1,
                         slotId: slotId,
-                        source: 'starter_card'
+                        source: 'current_config'
                     });
-                    console.log(`🔫 Found starter card weapon: ${cardData.cardType} (Level ${cardData.level || 1})`);
+                    console.log(`🔫 Found current weapon: ${cardData.cardType} (Level ${cardData.level || 1})`);
                 }
             }
-        }
-        
-        // Source 3: Card inventory (if available)
-        if (this.ship.cardSystemIntegration) {
-            try {
-                await this.ship.cardSystemIntegration.loadCards();
-                for (const [slotId, cardData] of this.ship.cardSystemIntegration.installedCards.entries()) {
+        } else {
+            // Fallback: Use starter cards only if no current configuration exists
+            console.log(`🔫 Using fallback starter cards (initial configuration)`);
+            if (this.ship.shipConfig?.starterCards) {
+                for (const [slotId, cardData] of Object.entries(this.ship.shipConfig.starterCards)) {
                     if (this.isWeaponCard(cardData.cardType)) {
-                        sources.inventory.push({
+                        sources.starterCards.push({
                             type: cardData.cardType,
                             level: cardData.level || 1,
                             slotId: slotId,
-                            source: 'inventory'
+                            source: 'starter_card'
                         });
-                        console.log(`🔫 Found inventory weapon: ${cardData.cardType} (Level ${cardData.level || 1})`);
+                        console.log(`🔫 Found starter card weapon: ${cardData.cardType} (Level ${cardData.level || 1})`);
                     }
                 }
-            } catch (error) {
-                console.warn('🔫 Could not load card inventory:', error);
             }
         }
         
@@ -124,7 +122,7 @@ export default class WeaponSyncManager {
     
     /**
      * Reconcile weapons from multiple sources into a unified configuration
-     * Priority: starter_cards > ship_systems > inventory
+     * Priority: current_config > starter_cards > ship_systems > inventory
      * @param {Object} sources - Weapons from different sources
      * @returns {Array} Array of unified weapon configurations
      */
@@ -132,8 +130,9 @@ export default class WeaponSyncManager {
         const unifiedWeapons = [];
         const usedWeapons = new Set();
         
-        // Priority 1: Starter cards (highest priority for consistent experience)
-        for (const weapon of sources.starterCards) {
+        // Priority 1: Current configuration (highest priority for station-modified setups)
+        const currentConfigWeapons = sources.inventory.filter(w => w.source === 'current_config');
+        for (const weapon of currentConfigWeapons) {
             const key = `${weapon.type}_${weapon.level}`;
             if (!usedWeapons.has(key)) {
                 unifiedWeapons.push(weapon);
@@ -141,22 +140,39 @@ export default class WeaponSyncManager {
             }
         }
         
-        // Priority 2: Ship systems (for legacy compatibility)
-        for (const weapon of sources.shipSystems) {
-            const key = `${weapon.type}_${weapon.level}`;
-            if (!usedWeapons.has(key)) {
-                unifiedWeapons.push(weapon);
-                usedWeapons.add(key);
+        // Only use fallback sources if no current configuration exists
+        if (currentConfigWeapons.length === 0) {
+            console.log(`🔫 No current config found, using fallback sources`);
+            
+            // Priority 2: Starter cards (for initial game setup)
+            for (const weapon of sources.starterCards) {
+                const key = `${weapon.type}_${weapon.level}`;
+                if (!usedWeapons.has(key)) {
+                    unifiedWeapons.push(weapon);
+                    usedWeapons.add(key);
+                }
             }
-        }
-        
-        // Priority 3: Inventory (lowest priority, fallback)
-        for (const weapon of sources.inventory) {
-            const key = `${weapon.type}_${weapon.level}`;
-            if (!usedWeapons.has(key)) {
-                unifiedWeapons.push(weapon);
-                usedWeapons.add(key);
+            
+            // Priority 3: Ship systems (for legacy compatibility)
+            for (const weapon of sources.shipSystems) {
+                const key = `${weapon.type}_${weapon.level}`;
+                if (!usedWeapons.has(key)) {
+                    unifiedWeapons.push(weapon);
+                    usedWeapons.add(key);
+                }
             }
+            
+            // Priority 4: Other inventory (lowest priority, fallback)
+            const otherInventoryWeapons = sources.inventory.filter(w => w.source !== 'current_config');
+            for (const weapon of otherInventoryWeapons) {
+                const key = `${weapon.type}_${weapon.level}`;
+                if (!usedWeapons.has(key)) {
+                    unifiedWeapons.push(weapon);
+                    usedWeapons.add(key);
+                }
+            }
+        } else {
+            console.log(`🔫 Using current configuration with ${currentConfigWeapons.length} weapons`);
         }
         
         console.log(`🔫 Reconciled ${unifiedWeapons.length} unique weapons:`, 
@@ -233,8 +249,13 @@ export default class WeaponSyncManager {
      */
     isWeaponSystem(systemName) {
         const weaponSystems = [
-            'weapons', 'laser_cannon', 'plasma_cannon', 'pulse_cannon', 
-            'phaser_array', 'disruptor_cannon', 'particle_beam'
+            // Legacy weapon system
+            'weapons',
+            // Scan-hit weapons (energy weapons)
+            'laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array',
+            'disruptor_cannon', 'particle_beam',
+            // Splash-damage weapons (projectile weapons)
+            'standard_missile', 'homing_missile', 'photon_torpedo', 'proximity_mine'
         ];
         return weaponSystems.includes(systemName);
     }
@@ -246,9 +267,11 @@ export default class WeaponSyncManager {
      */
     isWeaponCard(cardType) {
         const weaponCardTypes = [
+            // Scan-hit weapons (energy weapons)
             'laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array',
-            'disruptor_cannon', 'particle_beam', 'standard_missile', 'homing_missile',
-            'heavy_torpedo', 'proximity_mine'
+            'disruptor_cannon', 'particle_beam',
+            // Splash-damage weapons (projectile weapons)
+            'standard_missile', 'homing_missile', 'photon_torpedo', 'proximity_mine'
         ];
         return weaponCardTypes.includes(cardType);
     }

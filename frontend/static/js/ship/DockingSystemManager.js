@@ -14,7 +14,7 @@ export default class DockingSystemManager {
             maximumDockingSpeed: 3, // impulse speed
             dockingEnergyCost: 25,
             launchEnergyCost: 15,
-            dockingRange: 50 // km
+            dockingRange: 1.5 // km - default for moons, planets will be 4.0km
         };
         
         this.dockingRestrictions = {
@@ -68,9 +68,16 @@ export default class DockingSystemManager {
             starfieldManager.camera.position, 
             target.position
         );
-        if (distance > this.dockingRequirements.dockingRange) {
+        
+        // Use different docking ranges for planets vs moons (matching StarfieldManager logic)
+        let dockingRange = this.dockingRequirements.dockingRange; // Default 1.5 for moons
+        if (targetInfo?.type === 'planet') {
+            dockingRange = 4.0; // 4.0km for planets
+        }
+        
+        if (distance > dockingRange) {
             result.canDock = false;
-            result.reasons.push(`Too far from target (${distance.toFixed(1)}km > ${this.dockingRequirements.dockingRange}km)`);
+            result.reasons.push(`Too far from target (${distance.toFixed(1)}km > ${dockingRange}km)`);
         }
         
         // Speed validation

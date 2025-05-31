@@ -369,27 +369,27 @@
 }
 
 .installed-card .card-icon {
-    font-size: 20px;
+    font-size: 22px; /* Increased from 20px */
     margin-bottom: 4px;
 }
 
 .installed-card .card-name {
     font-weight: bold;
-    font-size: 10px;
+    font-size: 12px; /* Increased from 10px */
     display: block;
     margin-bottom: 2px;
     line-height: 1.1;
 }
 
 .installed-card .card-level {
-    font-size: 9px;
-    color: #ffff00;
+    font-size: 14px;
+    color: #00dd88;
     display: block;
     margin-bottom: 2px;
 }
 
 .installed-card .card-rarity {
-    font-size: 9px;
+    font-size: 13px;
     text-transform: uppercase;
     font-weight: bold;
 }
@@ -604,13 +604,13 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 6px; /* More spacing */
-    font-size: 13px; /* Larger font */
+    font-size: 15px; /* Increased from 13px */
     font-weight: bold;
     color: #00ff99; /* Brighter green for headers */
 }
 
 .card-icon {
-    font-size: 14px; /* Larger icon */
+    font-size: 16px; /* Increased from 14px */
     margin-right: 6px; /* More spacing */
     flex-shrink: 0;
     color: #00ff99;
@@ -618,7 +618,7 @@
 
 .card-name {
     font-weight: bold;
-    font-size: 12px; /* Larger font */
+    font-size: 14px; /* Increased from 12px */
     flex-grow: 1;
     text-align: left;
     color: #00ff99; /* Brighter for better visibility */
@@ -629,7 +629,7 @@
 .card-count {
     background: rgba(0, 204, 119, 0.25); /* More visible background */
     padding: 2px 6px; /* More padding */
-    font-size: 11px; /* Larger font */
+    font-size: 13px; /* Increased from 11px */
     font-weight: bold;
     color: #00ff99; /* Brighter text */
     border: 1px solid #00cc77;
@@ -646,13 +646,13 @@
 
 .card-level {
     color: #00dd88; /* Softer green for secondary text */
-    font-size: 12px; /* Larger font */
+    font-size: 14px; /* Increased from 12px */
     text-transform: uppercase;
     margin: 0;
 }
 
 .card-rarity {
-    font-size: 11px; /* Larger font */
+    font-size: 13px; /* Increased from 11px */
     font-weight: bold;
     text-transform: uppercase;
     color: #00dd88; /* Softer green for secondary text */
@@ -703,7 +703,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 12px; /* Larger font */
+    font-size: 14px; /* Increased from 12px */
     font-weight: bold;
     color: #ffffff; /* White text for maximum contrast */
     background: rgba(0, 0, 0, 0.8); /* Dark semi-transparent background */

@@ -32,7 +32,7 @@ After fixing the early return, weapons still weren't cooling down due to a **tim
 This meant cooldowns were being decremented by ~0.016 instead of ~16, making them practically never decrease!
 
 ### The Flow
-1. **Player fires weapon** with Enter key → `WeaponSlot.fire()` → cooldown timer is set via `setCooldownTimer(weapon.cooldownTime * 1000)` (e.g., 1000ms)
+1. **Player fires weapon** with Space key → `WeaponSlot.fire()` → cooldown timer is set via `setCooldownTimer(weapon.cooldownTime * 1000)` (e.g., 1000ms)
 2. **Game loop calls** `StarfieldManager.update(deltaTime)` where deltaTime ≈ 0.016 seconds
 3. **Autofire update** passes deltaTime (0.016) to `slot.updateCooldown(0.016)`
 4. **Cooldown decrements** by 0.016 instead of 16 → weapon remains in cooldown indefinitely
@@ -106,9 +106,9 @@ updateAutofire(deltaTime) {
 
 ## Expected Behavior After Fix
 
-### Manual Firing (Enter Key)
+### Manual Firing (Space Key)
 - ✅ Weapons respect their cooldown times (1.0s for Laser Cannon, 1.5s for Pulse Cannon, etc.)
-- ✅ Rapid pressing Enter key is blocked by cooldown
+- ✅ Rapid pressing Space key is blocked by cooldown
 - ✅ Player must wait for cooldown to complete before firing again
 
 ### Autofire Mode (\\ Key)
@@ -128,10 +128,10 @@ updateAutofire(deltaTime) {
 2. **Updated `test_weapon_cooldowns.html`** - Existing test that demonstrates correct cooldown behavior
 
 ### How to Test
-1. Start the game and fire weapons rapidly with Enter key
+1. Start the game and fire weapons rapidly with Space key
 2. Observe that weapons cannot fire faster than their cooldown times
 3. Check console logs for cooldown error messages when attempting to fire too quickly
-4. Toggle autofire with \\ key and verify weapons fire at proper intervals
+4. Toggle autofire with C key and verify weapons fire at proper intervals
 
 ## Technical Details
 

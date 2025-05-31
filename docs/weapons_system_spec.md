@@ -1,7 +1,7 @@
 # Weapons System Specification
 
 ## 1. Overview
-The weapons system allows players to equip weapons to their ship via a card-based drag-and-drop interface, select active weapons using `[`, `]` keys, fire them with the `Enter` key, and toggle autofire mode with the `\` key. Weapons are categorized into two types: **Scan-Hit** (direct-fire energy weapons) and **Splash-Damage** (area-effect projectiles). Each weapon has attributes like damage, cooldown, range, and special properties (e.g., autofire compatibility, homing for missiles).
+The weapons system allows players to equip weapons to their ship via a card-based drag-and-drop interface, select active weapons using `Z`, `X` keys, fire them with the `Space` key, and toggle autofire mode with the `C` key. Weapons are categorized into two types: **Scan-Hit** (direct-fire energy weapons) and **Splash-Damage** (area-effect projectiles). Each weapon has attributes like damage, cooldown, range, and special properties (e.g., autofire compatibility, homing for missiles).
 
 ## 2. Implementation Architecture
 
@@ -45,8 +45,8 @@ Each weapon card defines:
 ## 4. Weapon Selection Mechanics
 
 ### Active Weapon Selection
-- **`[` key**: Cycle to previous equipped weapon slot
-- **`]` key**: Cycle to next equipped weapon slot  
+- **`Z` key**: Cycle to previous equipped weapon slot
+- **`X` key**: Cycle to next equipped weapon slot  
 - Only one weapon slot is active at a time for manual firing
 - Visual feedback: Active slot highlighted in WeaponHUD
 - Empty slots are skipped during cycling
@@ -58,7 +58,7 @@ Each weapon card defines:
 - Audio feedback confirms weapon selection
 
 ### Firing
-- **`Enter` key**: Fire currently selected weapon
+- **`Space` key**: Fire currently selected weapon
 - Validates cooldown status before firing
 - For Splash-Damage weapons requiring target lock, validates target availability
 - Energy consumption checked before firing
@@ -67,7 +67,7 @@ Each weapon card defines:
 ## 5. Autofire Mode
 
 ### Toggle
-- **`\` key**: Toggle autofire mode on/off
+- **`C` key**: Toggle autofire mode on/off
 - HUD indicator shows "Autofire: ON/OFF" status
 - Console log confirms autofire state changes
 
@@ -78,7 +78,7 @@ When autofire is ON:
 - For Splash-Damage weapons, validates target lock and range
 - Prioritizes closest valid target within range
 - Respects individual weapon cooldown timers
-- Manual firing with `Enter` still works (mixed control)
+- Manual firing with `Space` still works (mixed control)
 
 ## 6. Weapon Types and Mechanics
 
@@ -143,16 +143,16 @@ All weapon controls are integrated into StarfieldManager's `bindKeyEvents()` met
 
 ```javascript
 // Weapon key bindings (disabled when docked)
-if (event.key === '[') {
+if (event.key === 'z' || event.key === 'Z') {
     // Previous weapon selection with audio feedback
 }
-if (event.key === ']') {
+if (event.key === 'x' || event.key === 'X') {
     // Next weapon selection with audio feedback  
 }
-if (event.key === 'Enter') {
+if (event.key === ' ') {
     // Fire active weapon with success/failure audio
 }
-if (event.key === '\\') {
+if (event.key === 'c' || event.key === 'C') {
     // Toggle autofire with status console logging
 }
 ```

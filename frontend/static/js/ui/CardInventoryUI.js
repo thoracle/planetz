@@ -380,9 +380,17 @@ export default class CardInventoryUI {
             'shield_generator',
             'hull_plating',
             
-            // Core weapon systems
+            // Core weapon systems - energy weapons
             'laser_cannon',
             'plasma_cannon',
+            'pulse_cannon',
+            'phaser_array',
+            
+            // Core weapon systems - projectile weapons
+            'standard_missile',
+            'homing_missile',
+            'photon_torpedo',
+            'proximity_mine',
             
             // Essential navigation and communication systems
             'galactic_chart',           // Required for G key functionality
@@ -400,7 +408,7 @@ export default class CardInventoryUI {
             this.inventory.addCard(card);
         });
         
-        console.log('Test data loaded');
+        console.log('Test data loaded with projectile weapons');
     }
 
     /**
@@ -862,6 +870,11 @@ export default class CardInventoryUI {
             'quantum_torpedo': ['weapons'],
             'singularity_launcher': ['weapons'],
             'void_ripper': ['weapons'],
+            // New projectile weapons
+            'standard_missile': ['weapons'],
+            'homing_missile': ['weapons'],
+            'photon_torpedo': ['weapons'],
+            'proximity_mine': ['weapons'],
             
             // Utility slot cards (most flexible)
             'hull_plating': ['utility'],
@@ -875,8 +888,6 @@ export default class CardInventoryUI {
             'subspace_radio': ['radio', 'utility'],
             'galactic_chart': ['galacticChart', 'utility'],
             'target_computer': ['targetComputer', 'utility'],
-            'missile_tubes': ['missileTubes', 'weapons', 'utility'],
-            'torpedo_launcher': ['missileTubes', 'weapons', 'utility'],
             
             // Specialized slots
             'tactical_computer': ['targetComputer', 'utility'],
@@ -1092,6 +1103,10 @@ export default class CardInventoryUI {
                         'pulse_cannon': 'weapons',
                         'plasma_cannon': 'weapons',
                         'phaser_array': 'weapons',
+                        'standard_missile': 'weapons',
+                        'homing_missile': 'weapons',
+                        'photon_torpedo': 'weapons',
+                        'proximity_mine': 'weapons',
                         'target_computer': 'utility',
                         'warp_drive': 'warpDrive',
                         'shields': 'shields',
@@ -1164,10 +1179,16 @@ export default class CardInventoryUI {
                     'pulse_cannon': 'weapons',
                     'plasma_cannon': 'weapons',
                     'phaser_array': 'weapons',
+                    'standard_missile': 'weapons',
+                    'homing_missile': 'weapons',
+                    'photon_torpedo': 'weapons',
+                    'proximity_mine': 'weapons',
                     'target_computer': 'utility',
-                    'galactic_chart': 'utility',
-                    'subspace_radio': 'utility',
-                    'long_range_scanner': 'utility'
+                    'warp_drive': 'warpDrive',
+                    'shields': 'shields',
+                    'long_range_scanner': 'scanner',
+                    'subspace_radio': 'radio',
+                    'galactic_chart': 'galacticChart'
                 };
                 
                 // Map named slots to numerical indices
@@ -1192,10 +1213,16 @@ export default class CardInventoryUI {
                         'pulse_cannon': 'weapons',
                         'plasma_cannon': 'weapons',
                         'phaser_array': 'weapons',
+                        'standard_missile': 'weapons',
+                        'homing_missile': 'weapons',
+                        'photon_torpedo': 'weapons',
+                        'proximity_mine': 'weapons',
                         'target_computer': 'utility',
-                        'galactic_chart': 'utility',
-                        'subspace_radio': 'utility',
-                        'long_range_scanner': 'utility'
+                        'warp_drive': 'warpDrive',
+                        'shields': 'shields',
+                        'long_range_scanner': 'scanner',
+                        'subspace_radio': 'radio',
+                        'galactic_chart': 'galacticChart'
                     };
                     
                     const preferredSlotType = cardToSlotMapping[cardType] || 'utility';
@@ -1411,6 +1438,10 @@ export default class CardInventoryUI {
                     'pulse_cannon': 'weapons',
                     'plasma_cannon': 'weapons',
                     'phaser_array': 'weapons',
+                    'standard_missile': 'weapons',
+                    'homing_missile': 'weapons',
+                    'photon_torpedo': 'weapons',
+                    'proximity_mine': 'weapons',
                     'target_computer': 'utility',
                     'warp_drive': 'warpDrive',
                     'shields': 'shields',
@@ -1512,7 +1543,15 @@ export default class CardInventoryUI {
      * Check if a card type is a weapon
      */
     isWeaponCard(cardType) {
-        const weaponCards = ['laser_cannon', 'pulse_cannon', 'plasma_cannon', 'phaser_array', 'disruptor_cannon', 'particle_beam', 'ion_storm_cannon', 'graviton_beam', 'quantum_torpedo', 'singularity_launcher', 'void_ripper'];
+        const weaponCards = [
+            // Scan-hit weapons (lasers)
+            'laser_cannon', 'pulse_cannon', 'plasma_cannon', 'phaser_array', 'disruptor_cannon', 
+            'particle_beam', 'ion_storm_cannon', 'graviton_beam', 
+            // Projectile weapons (missiles, torpedoes, mines)
+            'standard_missile', 'homing_missile', 'photon_torpedo', 'proximity_mine',
+            // Legacy/other weapons
+            'quantum_torpedo', 'singularity_launcher', 'void_ripper'
+        ];
         return weaponCards.includes(cardType);
     }
 }

@@ -95,9 +95,13 @@ export default class CardSystemIntegration {
                 CARD_TYPES.PULSE_CANNON,
                 CARD_TYPES.PHASER_ARRAY,
                 CARD_TYPES.DISRUPTOR_CANNON,
-                CARD_TYPES.PARTICLE_BEAM
+                CARD_TYPES.PARTICLE_BEAM,
+                // New projectile weapons
+                CARD_TYPES.STANDARD_MISSILE,
+                CARD_TYPES.HOMING_MISSILE,
+                CARD_TYPES.PHOTON_TORPEDO,
+                CARD_TYPES.PROXIMITY_MINE
             ],
-            'missile_tubes': [CARD_TYPES.MISSILE_TUBES, CARD_TYPES.TORPEDO_LAUNCHER],
             'hull_plating': [CARD_TYPES.HULL_PLATING],
             'energy_reactor': [CARD_TYPES.ENERGY_REACTOR],
             'cargo_hold': [CARD_TYPES.CARGO_HOLD, CARD_TYPES.REINFORCED_CARGO_HOLD, CARD_TYPES.SHIELDED_CARGO_HOLD]

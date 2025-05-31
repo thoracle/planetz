@@ -1014,10 +1014,10 @@
 
 ### Key Bindings Implementation
 - [X] **Weapon Key Bindings** ⬅️ **COMPLETED**
-  - [X] `[` key: Select previous weapon
-  - [X] `]` key: Select next weapon  
-  - [X] `Enter` key: Fire active weapon
-  - [X] `\` key: Toggle autofire mode
+  - [X] `Z` key: Select previous weapon
+  - [X] `X` key: Select next weapon  
+  - [X] `Space` key: Fire active weapon
+  - [X] `C` key: Toggle autofire mode
 - [X] Integrate key bindings with existing StarfieldManager
 - [X] Add weapon system initialization to Ship class
 - [X] Connect WeaponHUD to WeaponSystemCore
@@ -1031,7 +1031,7 @@
 - ✅ **WeaponCard System**: Base classes for Scan-Hit and Splash-Damage weapons
 - ✅ **WeaponDefinitions**: 8 fully-defined weapon types with complete statistics
 - ✅ **WeaponHUD**: Visual interface with weapon slot display and cooldown bars
-- ✅ **Key Bindings**: Full integration with [ ] Enter \ keys for weapon control
+- ✅ **Key Bindings**: Full integration with Z X Space C keys for weapon control
 - ✅ **Ship Integration**: WeaponSystemCore integrated into Ship class
 - ✅ **Target Integration**: Weapon system connected to TargetComputer
 

@@ -1088,7 +1088,7 @@ sequenceDiagram
     participant TargetComputer as Target_Computer
     participant WeaponHUD as Weapon_HUD
 
-    Player->>StarfieldManager: Press '[' key (previous weapon)
+    Player->>StarfieldManager: Press 'Z' key (previous weapon)
     StarfieldManager->>Ship: getWeaponSystem()
     Ship-->>StarfieldManager: Return weaponSystem
     StarfieldManager->>WeaponSystemCore: selectPreviousWeapon()
@@ -1097,7 +1097,7 @@ sequenceDiagram
     WeaponHUD->>Player: Show weapon selection feedback
     StarfieldManager->>StarfieldManager: playCommandSound()
 
-    Player->>StarfieldManager: Press 'Enter' key (fire weapon)
+    Player->>StarfieldManager: Press 'Space' key (fire weapon)
     StarfieldManager->>Ship: getWeaponSystem()
     Ship-->>StarfieldManager: Return weaponSystem
     StarfieldManager->>WeaponSystemCore: fireActiveWeapon()
@@ -1157,7 +1157,7 @@ sequenceDiagram
     participant WeaponHUD as Weapon_HUD
     participant Ship
 
-    Player->>StarfieldManager: Press '\' key (toggle autofire)
+    Player->>StarfieldManager: Press 'C' key (toggle autofire)
     StarfieldManager->>Ship: getWeaponSystem()
     Ship-->>StarfieldManager: Return weaponSystem
     StarfieldManager->>WeaponSystemCore: toggleAutofire()

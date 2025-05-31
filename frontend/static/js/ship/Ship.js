@@ -124,7 +124,6 @@ export default class Ship {
             const { default: WarpDrive } = await import('./systems/WarpDrive.js');
             const { default: Shields } = await import('./systems/Shields.js');
             const { default: Weapons } = await import('./systems/Weapons.js');
-            const { default: MissileTubes } = await import('./systems/MissileTubes.js');
             const { default: LongRangeScanner } = await import('./systems/LongRangeScanner.js');
             const { default: GalacticChartSystem } = await import('./systems/GalacticChartSystem.js');
             const { default: SubspaceRadioSystem } = await import('./systems/SubspaceRadioSystem.js');
@@ -194,14 +193,6 @@ export default class Ship {
                 // Override slot cost from ship configuration
                 targetComputer.slotCost = defaultSystems.target_computer.slots;
                 this.addSystem('target_computer', targetComputer);
-            }
-            
-            // Missile tubes are optional and compete with laser weapons for slots
-            if (defaultSystems.missile_tubes) {
-                const missileTubes = new MissileTubes(defaultSystems.missile_tubes.level);
-                // Override slot cost from ship configuration
-                missileTubes.slotCost = defaultSystems.missile_tubes.slots;
-                this.addSystem('missile_tubes', missileTubes);
             }
             
             // Add new gear systems that provide base ship stats

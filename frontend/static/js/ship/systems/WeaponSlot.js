@@ -13,6 +13,12 @@ export class WeaponSlot {
         this.cooldownTimer = 0; // milliseconds
         this.isEmpty = true;
         
+        // Throttling for warning messages to prevent spam
+        this.lastInsufficientEnergyWarning = 0;
+        this.lastTargetLockWarning = 0;
+        this.lastOutOfRangeWarning = 0;
+        this.warningThrottleTime = 5000; // 5 seconds between warnings
+        
         console.log(`WeaponSlot ${slotIndex} initialized`);
     }
     
@@ -33,7 +39,12 @@ export class WeaponSlot {
         // Check energy requirements
         if (weapon.energyCost > 0) {
             if (!ship.hasEnergy(weapon.energyCost)) {
-                console.warn(`Weapon slot ${this.slotIndex}: Insufficient energy (need ${weapon.energyCost})`);
+                // Throttle insufficient energy warnings to prevent console spam
+                const now = Date.now();
+                if (now - this.lastInsufficientEnergyWarning > this.warningThrottleTime) {
+                    console.warn(`Weapon slot ${this.slotIndex}: Insufficient energy (need ${weapon.energyCost})`);
+                    this.lastInsufficientEnergyWarning = now;
+                }
                 return false;
             }
             
@@ -43,13 +54,23 @@ export class WeaponSlot {
         
         // Check target requirements for splash-damage weapons
         if (weapon.targetLockRequired && !target) {
-            console.warn(`Weapon slot ${this.slotIndex}: Target lock required`);
+            // Throttle target lock warnings to prevent console spam
+            const now = Date.now();
+            if (now - this.lastTargetLockWarning > this.warningThrottleTime) {
+                console.warn(`Weapon slot ${this.slotIndex}: Target lock required`);
+                this.lastTargetLockWarning = now;
+            }
             return false;
         }
         
         // Validate target range
         if (target && !weapon.isValidTarget(target, this.calculateDistanceToTarget(target))) {
-            console.warn(`Weapon slot ${this.slotIndex}: Target out of range`);
+            // Throttle out of range warnings to prevent console spam
+            const now = Date.now();
+            if (now - this.lastOutOfRangeWarning > this.warningThrottleTime) {
+                console.warn(`Weapon slot ${this.slotIndex}: Target out of range`);
+                this.lastOutOfRangeWarning = now;
+            }
             return false;
         }
         

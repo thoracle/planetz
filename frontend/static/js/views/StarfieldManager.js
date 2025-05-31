@@ -1763,7 +1763,7 @@ export class StarfieldManager {
             }
 
             // Weapon key bindings
-            if (event.key === '[') {
+            if (event.key === 'z' || event.key === 'Z') {
                 // Previous weapon selection
                 if (!this.isDocked) {
                     const ship = this.viewManager?.getShip();
@@ -1773,7 +1773,7 @@ export class StarfieldManager {
                         }
                     }
                 }
-            } else if (event.key === ']') {
+            } else if (event.key === 'x' || event.key === 'X') {
                 // Next weapon selection
                 if (!this.isDocked) {
                     const ship = this.viewManager?.getShip();
@@ -1783,7 +1783,7 @@ export class StarfieldManager {
                         }
                     }
                 }
-            } else if (event.key === 'Enter') {
+            } else if (event.key === ' ') {
                 // Fire active weapon
                 if (!this.isDocked) {
                     const ship = this.viewManager?.getShip();
@@ -1795,7 +1795,7 @@ export class StarfieldManager {
                         }
                     }
                 }
-            } else if (event.key === '\\') {
+            } else if (event.key === 'c' || event.key === 'C') {
                 // Toggle autofire
                 if (!this.isDocked) {
                     const ship = this.viewManager?.getShip();
@@ -1819,13 +1819,13 @@ export class StarfieldManager {
                 this.toggleHelp();
             }
 
-            // Spawn target dummy ships (X key)
-            if (commandKey === 'x') {
-                if (!this.isDocked) {
-                    this.playCommandSound();
-                    this.createTargetDummyShips(3);
-                }
-            }
+            // Spawn target dummy ships (X key) - REMOVED since X is now weapon selection
+            // if (commandKey === 'x') {
+            //     if (!this.isDocked) {
+            //         this.playCommandSound();
+            //         this.createTargetDummyShips(3);
+            //     }
+            // }
         });
 
         document.addEventListener('keyup', (event) => {
@@ -4046,6 +4046,16 @@ export class StarfieldManager {
             console.log(`🏗️ Creating systems from installed cards...`);
             await ship.cardSystemIntegration.createSystemsFromCards();
             console.log(`✅ Systems created from cards`);
+            
+            // CRITICAL: Reinitialize weapon system with new weapon cards after station changes
+            if (ship.initializeWeaponSystem) {
+                console.log(`🔫 Reinitializing weapon system with updated cards...`);
+                await ship.initializeWeaponSystem();
+                console.log(`✅ Weapon system reinitialized with current configuration`);
+                
+                // Reconnect WeaponHUD to the updated weapon system
+                this.connectWeaponHUDToSystem();
+            }
         }
         
         console.log('🔋 Powering up systems...');

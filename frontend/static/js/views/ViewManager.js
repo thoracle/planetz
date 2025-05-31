@@ -502,20 +502,10 @@ export class ViewManager {
                 }
                 */
             } else if (key === ' ' && !isDocked) {
-                // Legacy weapon firing has been replaced by the new weapon system
-                // The new weapon system uses: [ ] to cycle weapons, Enter to fire, \ to toggle autofire
-                // This is handled by StarfieldManager, not ViewManager
+                // Space key is now the active weapon firing key - handled by StarfieldManager
+                // No longer show legacy message, just prevent default behavior
                 event.preventDefault();
                 event.stopPropagation();
-                
-                // Show informational message about new weapon controls
-                if (this.starfieldManager && this.starfieldManager.showHUDError) {
-                    this.starfieldManager.showHUDError(
-                        'USE NEW WEAPON SYSTEM',
-                        'Press [ ] to cycle weapons, Enter to fire, \\ for autofire'
-                    );
-                }
-                console.log('Legacy spacebar weapon firing disabled. Use new weapon system: [ ] to cycle, Enter to fire, \\ for autofire');
             } else if (key === 'd') {
                 // Damage Control Interface toggle - DISABLED (now handled by StarfieldManager)
                 // The new SimplifiedDamageControl interface is handled by StarfieldManager

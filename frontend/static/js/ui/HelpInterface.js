@@ -143,24 +143,20 @@ export class HelpInterface {
                                 <span class="help-desc">Next Target System</span>
                             </div>
                             <div class="help-control">
-                                <span class="help-key">[</span>
+                                <span class="help-key">Z</span>
                                 <span class="help-desc">Previous Weapon</span>
                             </div>
                             <div class="help-control">
-                                <span class="help-key">]</span>
+                                <span class="help-key">X</span>
                                 <span class="help-desc">Next Weapon</span>
                             </div>
                             <div class="help-control">
-                                <span class="help-key">Enter</span>
+                                <span class="help-key">Space</span>
                                 <span class="help-desc">Fire Active Weapon</span>
                             </div>
                             <div class="help-control">
-                                <span class="help-key">\</span>
+                                <span class="help-key">C</span>
                                 <span class="help-desc">Toggle Autofire</span>
-                            </div>
-                            <div class="help-control disabled">
-                                <span class="help-key">Space</span>
-                                <span class="help-desc">Legacy Weapon Key (Disabled)</span>
                             </div>
                         </div>
                     </div>

@@ -89,12 +89,13 @@ export class WeaponDefinitions {
             },
             
             // Splash-Damage Weapons (Projectile-Based)
+            // No ammo required - work like laser weapons with cooldowns
             standard_missile: {
                 weaponId: 'standard_missile',
                 name: 'Standard Missile',
                 weaponType: 'splash-damage',
                 damage: 200,
-                cooldownTime: 4.0, // seconds
+                cooldownTime: 3.0, // seconds
                 range: 3000, // meters
                 autofireEnabled: false,
                 accuracy: 1.0, // Missiles don't miss if fired properly
@@ -114,43 +115,43 @@ export class WeaponDefinitions {
                 weaponId: 'homing_missile',
                 name: 'Homing Missile',
                 weaponType: 'splash-damage',
-                damage: 250,
-                cooldownTime: 3.0, // seconds
+                damage: 180,
+                cooldownTime: 2.5, // seconds
                 range: 3500, // meters
-                autofireEnabled: true, // High-tier missiles can autofire
+                autofireEnabled: true, // Homing missiles can autofire
                 accuracy: 1.0,
                 energyCost: 8,
-                blastRadius: 60, // meters
+                blastRadius: 45, // meters
                 homingCapability: true,
                 targetLockRequired: true,
                 flightRange: 3500,
-                turnRate: 90, // degrees per second
+                turnRate: 120, // degrees per second - faster turning
                 specialProperties: {
-                    trackingArc: 45, // degrees
+                    trackingArc: 60, // degrees
                     explosionType: 'kinetic',
                     armorPiercing: true
                 }
             },
             
-            heavy_torpedo: {
-                weaponId: 'heavy_torpedo',
-                name: 'Heavy Torpedo',
+            photon_torpedo: {
+                weaponId: 'photon_torpedo',
+                name: 'Photon Torpedo',
                 weaponType: 'splash-damage',
-                damage: 400,
-                cooldownTime: 5.0, // seconds
-                range: 2000, // meters
+                damage: 320,
+                cooldownTime: 4.0, // seconds
+                range: 2500, // meters
                 autofireEnabled: false,
                 accuracy: 1.0,
-                energyCost: 10,
-                blastRadius: 100, // meters
+                energyCost: 12,
+                blastRadius: 80, // meters
                 homingCapability: false,
                 targetLockRequired: true,
-                flightRange: 2000,
+                flightRange: 2500,
                 turnRate: 0, // No turning
                 specialProperties: {
-                    explosionType: 'antimatter',
+                    explosionType: 'photon',
                     armorPiercing: true,
-                    shieldPiercing: true
+                    shieldPiercing: true // Photon torpedoes pierce shields
                 }
             },
             
@@ -174,51 +175,6 @@ export class WeaponDefinitions {
                     triggerRange: 50, // meters
                     timer: 10000, // 10 seconds before auto-detonation
                     explosionType: 'plasma'
-                }
-            },
-            
-            cluster_missile: {
-                weaponId: 'cluster_missile',
-                name: 'Cluster Missile',
-                weaponType: 'splash-damage',
-                damage: 180, // Per submunition
-                cooldownTime: 4.5, // seconds
-                range: 2500, // meters
-                autofireEnabled: false,
-                accuracy: 1.0,
-                energyCost: 12,
-                blastRadius: 40, // meters per cluster
-                homingCapability: false,
-                targetLockRequired: true,
-                flightRange: 2500,
-                turnRate: 0,
-                specialProperties: {
-                    clusterCount: 5, // 5 submunitions
-                    separationRange: 100, // meters before separation
-                    explosionType: 'fragmentation'
-                }
-            },
-            
-            guided_torpedo: {
-                weaponId: 'guided_torpedo',
-                name: 'Guided Torpedo',
-                weaponType: 'splash-damage',
-                damage: 350,
-                cooldownTime: 3.8, // seconds
-                range: 4000, // meters
-                autofireEnabled: true,
-                accuracy: 1.0,
-                energyCost: 15,
-                blastRadius: 75, // meters
-                homingCapability: true,
-                targetLockRequired: true,
-                flightRange: 4000,
-                turnRate: 45, // degrees per second (slower than missiles)
-                specialProperties: {
-                    trackingArc: 90, // degrees
-                    explosionType: 'antimatter',
-                    armorPiercing: true,
-                    shieldPiercing: false
                 }
             }
         };

@@ -48,8 +48,11 @@ export const CARD_TYPES = {
     PHASER_ARRAY: 'phaser_array',
     DISRUPTOR_CANNON: 'disruptor_cannon',
     PARTICLE_BEAM: 'particle_beam',
-    MISSILE_TUBES: 'missile_tubes',
-    TORPEDO_LAUNCHER: 'torpedo_launcher',
+    // Projectile weapons
+    STANDARD_MISSILE: 'standard_missile',
+    HOMING_MISSILE: 'homing_missile',
+    PHOTON_TORPEDO: 'photon_torpedo',
+    PROXIMITY_MINE: 'proximity_mine',
     
     // Sensor and communication systems
     LONG_RANGE_SCANNER: 'long_range_scanner',
@@ -125,8 +128,10 @@ export const CARD_DISPLAY_NAMES = {
     [CARD_TYPES.PHASER_ARRAY]: 'Phaser Array',
     [CARD_TYPES.DISRUPTOR_CANNON]: 'Disruptor Cannon',
     [CARD_TYPES.PARTICLE_BEAM]: 'Particle Beam',
-    [CARD_TYPES.MISSILE_TUBES]: 'Missile Tubes',
-    [CARD_TYPES.TORPEDO_LAUNCHER]: 'Torpedo Launcher',
+    [CARD_TYPES.STANDARD_MISSILE]: 'Standard Missile',
+    [CARD_TYPES.HOMING_MISSILE]: 'Homing Missile',
+    [CARD_TYPES.PHOTON_TORPEDO]: 'Photon Torpedo',
+    [CARD_TYPES.PROXIMITY_MINE]: 'Proximity Mine',
     [CARD_TYPES.LONG_RANGE_SCANNER]: 'Long Range Sensors',
     [CARD_TYPES.SUBSPACE_RADIO]: 'Subspace Radio',
     [CARD_TYPES.GALACTIC_CHART]: 'Galactic Chart',
@@ -200,8 +205,10 @@ export const CARD_ICONS = {
     [CARD_TYPES.PHASER_ARRAY]: '⚔️',        // Weapon slot icon
     [CARD_TYPES.DISRUPTOR_CANNON]: '⚔️',    // Weapon slot icon
     [CARD_TYPES.PARTICLE_BEAM]: '⚔️',       // Weapon slot icon
-    [CARD_TYPES.MISSILE_TUBES]: '⚔️',       // Weapon slot icon
-    [CARD_TYPES.TORPEDO_LAUNCHER]: '⚔️',    // Weapon slot icon
+    [CARD_TYPES.STANDARD_MISSILE]: '⚔️',    // Weapon slot icon
+    [CARD_TYPES.HOMING_MISSILE]: '⚔️',      // Weapon slot icon
+    [CARD_TYPES.PHOTON_TORPEDO]: '⚔️',      // Weapon slot icon
+    [CARD_TYPES.PROXIMITY_MINE]: '⚔️',      // Weapon slot icon
     
     // Sensor and communication systems - now use utility slot icon since they go in utility slots
     [CARD_TYPES.LONG_RANGE_SCANNER]: '🔧',  // Utility slot icon (sensors go in utility)
@@ -293,8 +300,10 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.PHASER_ARRAY,
         CARD_TYPES.DISRUPTOR_CANNON,
         CARD_TYPES.PARTICLE_BEAM,
-        CARD_TYPES.MISSILE_TUBES,
-        CARD_TYPES.TORPEDO_LAUNCHER,
+        CARD_TYPES.STANDARD_MISSILE,
+        CARD_TYPES.HOMING_MISSILE,
+        CARD_TYPES.PHOTON_TORPEDO,
+        CARD_TYPES.PROXIMITY_MINE,
         // Some exotic core systems
         CARD_TYPES.QUANTUM_REACTOR,
         CARD_TYPES.CRYSTALLINE_MATRIX,
@@ -320,8 +329,10 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.PHASER_ARRAY,
         CARD_TYPES.DISRUPTOR_CANNON,
         CARD_TYPES.PARTICLE_BEAM,
-        CARD_TYPES.MISSILE_TUBES,
-        CARD_TYPES.TORPEDO_LAUNCHER,
+        CARD_TYPES.STANDARD_MISSILE,
+        CARD_TYPES.HOMING_MISSILE,
+        CARD_TYPES.PHOTON_TORPEDO,
+        CARD_TYPES.PROXIMITY_MINE,
         CARD_TYPES.QUANTUM_REACTOR,
         CARD_TYPES.CRYSTALLINE_MATRIX,
         CARD_TYPES.DARK_MATTER_CORE,
@@ -359,8 +370,10 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.PHASER_ARRAY,
         CARD_TYPES.DISRUPTOR_CANNON,
         CARD_TYPES.PARTICLE_BEAM,
-        CARD_TYPES.MISSILE_TUBES,
-        CARD_TYPES.TORPEDO_LAUNCHER,
+        CARD_TYPES.STANDARD_MISSILE,
+        CARD_TYPES.HOMING_MISSILE,
+        CARD_TYPES.PHOTON_TORPEDO,
+        CARD_TYPES.PROXIMITY_MINE,
         CARD_TYPES.QUANTUM_REACTOR,
         CARD_TYPES.CRYSTALLINE_MATRIX,
         CARD_TYPES.DARK_MATTER_CORE,
@@ -537,8 +550,10 @@ export default class NFTCard {
             CARD_TYPES.PHASER_ARRAY,
             CARD_TYPES.DISRUPTOR_CANNON,
             CARD_TYPES.PARTICLE_BEAM,
-            CARD_TYPES.MISSILE_TUBES,
-            CARD_TYPES.TORPEDO_LAUNCHER,
+            CARD_TYPES.STANDARD_MISSILE,
+            CARD_TYPES.HOMING_MISSILE,
+            CARD_TYPES.PHOTON_TORPEDO,
+            CARD_TYPES.PROXIMITY_MINE,
             // Exotic Weapons
             CARD_TYPES.ION_STORM_CANNON,
             CARD_TYPES.GRAVITON_BEAM,
@@ -687,8 +702,10 @@ export default class NFTCard {
             [CARD_TYPES.PHASER_ARRAY]: { power: 22, mass: 11, damage: 40 },
             [CARD_TYPES.DISRUPTOR_CANNON]: { power: 20, mass: 10, damage: 38 },
             [CARD_TYPES.PARTICLE_BEAM]: { power: 24, mass: 12, damage: 42 },
-            [CARD_TYPES.MISSILE_TUBES]: { power: 16, mass: 8, damage: 50 },
-            [CARD_TYPES.TORPEDO_LAUNCHER]: { power: 18, mass: 9, damage: 55 },
+            [CARD_TYPES.STANDARD_MISSILE]: { power: 16, mass: 8, damage: 50 },
+            [CARD_TYPES.HOMING_MISSILE]: { power: 18, mass: 9, damage: 55 },
+            [CARD_TYPES.PHOTON_TORPEDO]: { power: 18, mass: 9, damage: 55 },
+            [CARD_TYPES.PROXIMITY_MINE]: { power: 18, mass: 9, damage: 55 },
             [CARD_TYPES.LONG_RANGE_SCANNER]: { power: 8, mass: 4, range: 1000 },
             [CARD_TYPES.SUBSPACE_RADIO]: { power: 6, mass: 3, range: 500 },
             [CARD_TYPES.GALACTIC_CHART]: { power: 4, mass: 2, accuracy: 1.0 },
