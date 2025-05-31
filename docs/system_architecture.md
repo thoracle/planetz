@@ -1312,7 +1312,7 @@ graph TB
     
     subgraph "Input System"
         StarfieldManager[Starfield Manager]
-        KeyHandler[Key Handler - bindKeyEvents()]
+        KeyHandler[Key Handler bindKeyEvents]
         WeaponControls[Weapon Controls]
     end
     

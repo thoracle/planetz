@@ -502,99 +502,20 @@ export class ViewManager {
                 }
                 */
             } else if (key === ' ' && !isDocked) {
-                // Weapon firing - only when not docked
+                // Legacy weapon firing has been replaced by the new weapon system
+                // The new weapon system uses: [ ] to cycle weapons, Enter to fire, \ to toggle autofire
+                // This is handled by StarfieldManager, not ViewManager
                 event.preventDefault();
                 event.stopPropagation();
                 
-                // Play command sound like other command keys
-                if (this.starfieldManager && this.starfieldManager.playCommandSound) {
-                    this.starfieldManager.playCommandSound();
+                // Show informational message about new weapon controls
+                if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                    this.starfieldManager.showHUDError(
+                        'USE NEW WEAPON SYSTEM',
+                        'Press [ ] to cycle weapons, Enter to fire, \\ for autofire'
+                    );
                 }
-                
-                // Check if weapon cards are installed
-                let hasWeaponCards = false;
-                
-                if (this.ship && this.ship.hasSystemCardsSync) {
-                    try {
-                        const cardCheck = this.ship.hasSystemCardsSync('weapons');
-                        hasWeaponCards = Boolean(cardCheck);
-                        console.log(`🔫 WEAPON CHECK: hasWeaponCards = ${hasWeaponCards}`);
-                        
-                    } catch (error) {
-                        console.warn('Weapon card check failed:', error);
-                        hasWeaponCards = false;
-                    }
-                } else {
-                    console.log(`🔫 ERROR: Ship or hasSystemCardsSync method not available`);
-                }
-                
-                if (!hasWeaponCards) {
-                    // No weapon cards installed - show error and play failed sound
-                    if (this.starfieldManager && this.starfieldManager.showHUDError) {
-                        this.starfieldManager.showHUDError(
-                            'NO WEAPONS EQUIPPED',
-                            'Install weapon cards to enable combat'
-                        );
-                    }
-                    if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
-                        this.starfieldManager.playCommandFailedSound();
-                    }
-                    console.log('Cannot fire weapons - no weapon cards installed');
-                    return;
-                }
-                
-                // Get weapons system from ship
-                const weaponsSystem = this.ship.systems.get('weapons');
-                if (weaponsSystem) {
-                    const fireResult = weaponsSystem.fire(this.ship);
-                    if (fireResult) {
-                        console.log(`Weapons fired: ${fireResult.damage.toFixed(1)} damage, ${fireResult.energyConsumed.toFixed(1)} energy consumed`);
-                        console.log(`${fireResult.weaponType} - ${fireResult.hit ? 'HIT' : 'MISS'} at ${fireResult.distance.toFixed(1)} range`);
-                    } else {
-                        // Weapon fire failed - provide specific error message
-                        if (this.starfieldManager && this.starfieldManager.showHUDError) {
-                            if (!weaponsSystem.isOperational()) {
-                                this.starfieldManager.showHUDError(
-                                    'WEAPONS DAMAGED',
-                                    'Repair weapon systems to enable firing'
-                                );
-                            } else if (!weaponsSystem.canFire()) {
-                                this.starfieldManager.showHUDError(
-                                    'WEAPONS COOLING DOWN',
-                                    'Wait for weapon systems to recharge'
-                                );
-                            } else if (!this.ship.hasEnergy(weaponsSystem.getEnergyPerShot())) {
-                                this.starfieldManager.showHUDError(
-                                    'INSUFFICIENT ENERGY',
-                                    `Need ${weaponsSystem.getEnergyPerShot().toFixed(1)} energy units to fire`
-                                );
-                            } else {
-                                this.starfieldManager.showHUDError(
-                                    'WEAPONS ERROR',
-                                    'Cannot fire weapons - check system status'
-                                );
-                            }
-                        }
-                        // Play command failed sound
-                        if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
-                            this.starfieldManager.playCommandFailedSound();
-                        }
-                        console.log('Cannot fire weapons - check energy or cooldown');
-                    }
-                } else {
-                    // No weapons system found - show HUD error message
-                    if (this.starfieldManager && this.starfieldManager.showHUDError) {
-                        this.starfieldManager.showHUDError(
-                            'WEAPONS UNAVAILABLE',
-                            'No weapons system installed on this ship'
-                        );
-                    }
-                    // Play command failed sound
-                    if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
-                        this.starfieldManager.playCommandFailedSound();
-                    }
-                    console.log('No weapons system found on ship');
-                }
+                console.log('Legacy spacebar weapon firing disabled. Use new weapon system: [ ] to cycle, Enter to fire, \\ for autofire');
             } else if (key === 'd') {
                 // Damage Control Interface toggle - DISABLED (now handled by StarfieldManager)
                 // The new SimplifiedDamageControl interface is handled by StarfieldManager

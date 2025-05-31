@@ -25,7 +25,10 @@ class PlayerData {
             ['utility_1', { cardType: 'target_computer', level: 1 }],
             ['engine_1', { cardType: 'impulse_engines', level: 1 }],
             ['power_1', { cardType: 'energy_reactor', level: 1 }],
-            ['weapon_1', { cardType: 'laser_cannon', level: 1 }]
+            ['weapon_1', { cardType: 'laser_cannon', level: 1 }],
+            ['weapon_2', { cardType: 'pulse_cannon', level: 1 }],
+            ['weapon_3', { cardType: 'plasma_cannon', level: 1 }],
+            ['weapon_4', { cardType: 'phaser_array', level: 1 }]
         ]));
     }
     
@@ -849,8 +852,8 @@ export default class CardInventoryUI {
             
             // Weapon slot cards
             'laser_cannon': ['weapons'],
-            'plasma_cannon': ['weapons'],
             'pulse_cannon': ['weapons'],
+            'plasma_cannon': ['weapons'],
             'phaser_array': ['weapons'],
             'disruptor_cannon': ['weapons'],
             'particle_beam': ['weapons'],
@@ -1078,20 +1081,30 @@ export default class CardInventoryUI {
                     const cardType = cardData.cardType;
                     const level = cardData.level || 1;
                     
+                    // Determine which slot type this card should go in
+                    let targetSlotIndex = null;
+                    
                     // Map card types to their preferred slot types
                     const cardToSlotMapping = {
                         'impulse_engines': 'engines',
-                        'energy_reactor': 'reactor', 
+                        'energy_reactor': 'reactor',
                         'laser_cannon': 'weapons',
-                        'target_computer': 'utility'
+                        'pulse_cannon': 'weapons',
+                        'plasma_cannon': 'weapons',
+                        'phaser_array': 'weapons',
+                        'target_computer': 'utility',
+                        'warp_drive': 'warpDrive',
+                        'shields': 'shields',
+                        'long_range_scanner': 'scanner',
+                        'subspace_radio': 'radio',
+                        'galactic_chart': 'galacticChart'
                     };
                     
                     const preferredSlotType = cardToSlotMapping[cardType] || 'utility';
                     
                     // Find the next available slot of the preferred type
-                    let targetSlotIndex = null;
                     if (slotTypeToIndex[preferredSlotType]) {
-                        for (const slotIndex of slotTypeToIndex[preferredSlotType]) {
+                        for (const slotIndex of slotTypeToIndex[preferredSlotType].sort((a, b) => a - b)) {
                             if (!this.shipSlots.has(slotIndex.toString())) {
                                 targetSlotIndex = slotIndex;
                                 break;
@@ -1099,9 +1112,15 @@ export default class CardInventoryUI {
                         }
                     }
                     
-                    // If no preferred slot available, find any utility slot
-                    if (targetSlotIndex === null && slotTypeToIndex['utility']) {
-                        for (const slotIndex of slotTypeToIndex['utility']) {
+                    // For weapons, only allow weapon slots - NO FALLBACK to utility
+                    if (targetSlotIndex === null && this.isWeaponCard(cardType)) {
+                        console.error(`❌ WEAPON SLOT VIOLATION: Cannot place weapon ${cardType} - no weapon slots available`);
+                        return; // Skip this weapon instead of placing it in wrong slot type
+                    }
+                    
+                    // For non-weapons, allow fallback to utility slots
+                    if (targetSlotIndex === null && !this.isWeaponCard(cardType) && slotTypeToIndex['utility']) {
+                        for (const slotIndex of slotTypeToIndex['utility'].sort((a, b) => a - b)) {
                             if (!this.shipSlots.has(slotIndex.toString())) {
                                 targetSlotIndex = slotIndex;
                                 break;
@@ -1115,7 +1134,7 @@ export default class CardInventoryUI {
                         this.shipSlots.set(targetSlotIndex.toString(), card);
                         console.log(`Loaded default starter card ${cardType} (Lv.${level}) into slot ${targetSlotIndex} (${slotTypeMapping[targetSlotIndex]})`);
                     } else {
-                        console.warn(`No available slot found for starter card ${cardType}`);
+                        console.error(`❌ FAILED: No available slot found for starter card ${cardType} - ship only has ${shipConfig.systemSlots} slots, ${this.shipSlots.size} already used`);
                     }
                 });
             }
@@ -1137,6 +1156,20 @@ export default class CardInventoryUI {
                     slotTypeToIndex[slotType].push(parseInt(slotIndex));
                 });
                 
+                // Map named slots to slot types and find appropriate numerical slot
+                const cardToSlotMapping = {
+                    'impulse_engines': 'engines',
+                    'energy_reactor': 'reactor',
+                    'laser_cannon': 'weapons',
+                    'pulse_cannon': 'weapons',
+                    'plasma_cannon': 'weapons',
+                    'phaser_array': 'weapons',
+                    'target_computer': 'utility',
+                    'galactic_chart': 'utility',
+                    'subspace_radio': 'utility',
+                    'long_range_scanner': 'utility'
+                };
+                
                 // Map named slots to numerical indices
                 config.forEach((cardData, slotId) => {
                     const cardType = cardData.cardType;
@@ -1156,6 +1189,9 @@ export default class CardInventoryUI {
                         'impulse_engines': 'engines',
                         'energy_reactor': 'reactor',
                         'laser_cannon': 'weapons',
+                        'pulse_cannon': 'weapons',
+                        'plasma_cannon': 'weapons',
+                        'phaser_array': 'weapons',
                         'target_computer': 'utility',
                         'galactic_chart': 'utility',
                         'subspace_radio': 'utility',
@@ -1167,7 +1203,7 @@ export default class CardInventoryUI {
                     // Find the next available slot of the preferred type
                     let targetSlotIndex = null;
                     if (slotTypeToIndex[preferredSlotType]) {
-                        for (const slotIndex of slotTypeToIndex[preferredSlotType]) {
+                        for (const slotIndex of slotTypeToIndex[preferredSlotType].sort((a, b) => a - b)) {
                             if (!this.shipSlots.has(slotIndex.toString())) {
                                 targetSlotIndex = slotIndex;
                                 break;
@@ -1175,9 +1211,15 @@ export default class CardInventoryUI {
                         }
                     }
                     
-                    // If no preferred slot available, find any utility slot
-                    if (targetSlotIndex === null && slotTypeToIndex['utility']) {
-                        for (const slotIndex of slotTypeToIndex['utility']) {
+                    // For weapons, only allow weapon slots - NO FALLBACK to utility
+                    if (targetSlotIndex === null && this.isWeaponCard(cardType)) {
+                        console.error(`❌ WEAPON SLOT VIOLATION: Cannot place weapon ${cardType} - no weapon slots available`);
+                        return; // Skip this weapon instead of placing it in wrong slot type
+                    }
+                    
+                    // For non-weapons, allow fallback to utility slots
+                    if (targetSlotIndex === null && !this.isWeaponCard(cardType) && slotTypeToIndex['utility']) {
+                        for (const slotIndex of slotTypeToIndex['utility'].sort((a, b) => a - b)) {
                             if (!this.shipSlots.has(slotIndex.toString())) {
                                 targetSlotIndex = slotIndex;
                                 break;
@@ -1191,7 +1233,7 @@ export default class CardInventoryUI {
                         this.shipSlots.set(targetSlotIndex.toString(), card);
                         console.log(`Loaded ${cardType} (Lv.${level}) from named slot ${slotId} to slot ${targetSlotIndex} (${slotTypeMapping[targetSlotIndex]})`);
                     } else {
-                        console.warn(`No available slot found for card ${cardType} from named slot ${slotId}`);
+                        console.error(`❌ FAILED: No available slot found for card ${cardType} from named slot ${slotId} - ship only has ${shipConfig.systemSlots} slots, ${this.shipSlots.size} already used`);
                     }
                 });
             } else {
@@ -1366,6 +1408,9 @@ export default class CardInventoryUI {
                     'impulse_engines': 'engines',
                     'energy_reactor': 'reactor',
                     'laser_cannon': 'weapons',
+                    'pulse_cannon': 'weapons',
+                    'plasma_cannon': 'weapons',
+                    'phaser_array': 'weapons',
                     'target_computer': 'utility',
                     'warp_drive': 'warpDrive',
                     'shields': 'shields',
@@ -1378,7 +1423,7 @@ export default class CardInventoryUI {
                 
                 // Find the next available slot of the preferred type
                 if (slotTypeToIndex[preferredSlotType]) {
-                    for (const slotIndex of slotTypeToIndex[preferredSlotType]) {
+                    for (const slotIndex of slotTypeToIndex[preferredSlotType].sort((a, b) => a - b)) {
                         if (!this.shipSlots.has(slotIndex.toString())) {
                             targetSlotIndex = slotIndex;
                             break;
@@ -1386,9 +1431,15 @@ export default class CardInventoryUI {
                     }
                 }
                 
-                // If no preferred slot available, find any utility slot
-                if (targetSlotIndex === null && slotTypeToIndex['utility']) {
-                    for (const slotIndex of slotTypeToIndex['utility']) {
+                // For weapons, only allow weapon slots - NO FALLBACK to utility
+                if (targetSlotIndex === null && this.isWeaponCard(cardType)) {
+                    console.error(`❌ WEAPON SLOT VIOLATION: Cannot place weapon ${cardType} - no weapon slots available`);
+                    return; // Skip this weapon instead of placing it in wrong slot type
+                }
+                
+                // For non-weapons, allow fallback to utility slots
+                if (targetSlotIndex === null && !this.isWeaponCard(cardType) && slotTypeToIndex['utility']) {
+                    for (const slotIndex of slotTypeToIndex['utility'].sort((a, b) => a - b)) {
                         if (!this.shipSlots.has(slotIndex.toString())) {
                             targetSlotIndex = slotIndex;
                             break;
@@ -1400,9 +1451,9 @@ export default class CardInventoryUI {
                     const card = this.inventory.generateSpecificCard(cardType, 'common');
                     card.level = level;
                     this.shipSlots.set(targetSlotIndex.toString(), card);
-                    console.log(`Loaded starter card ${cardType} (Lv.${level}) into slot ${targetSlotIndex} (${slotTypeMapping[targetSlotIndex]})`);
+                    console.log(`Loaded default starter card ${cardType} (Lv.${level}) into slot ${targetSlotIndex} (${slotTypeMapping[targetSlotIndex]})`);
                 } else {
-                    console.warn(`No available slot found for starter card ${cardType}`);
+                    console.error(`❌ FAILED: No available slot found for starter card ${cardType} - ship only has ${shipConfig.systemSlots} slots, ${this.shipSlots.size} already used`);
                 }
             });
         } else {
@@ -1414,10 +1465,10 @@ export default class CardInventoryUI {
                 'impulse_engines': 'impulse_engines',
                 'warp_drive': 'warp_drive',
                 'shields': 'shields',
-                'laser_cannon': 'laser_cannon',
+                'laser_cannon': 'weapons',
                 'plasma_cannon': 'plasma_cannon',
                 'pulse_cannon': 'pulse_cannon',
-                'phaser_array': 'phaser_array',
+                'phaser_array': 'weapons',
                 'disruptor_cannon': 'disruptor_cannon',
                 'particle_beam': 'particle_beam',
                 'weapons': 'laser_cannon', // Legacy weapon system maps to laser cannon
@@ -1455,6 +1506,14 @@ export default class CardInventoryUI {
         }
         
         console.log(`Loaded ${this.shipSlots.size} cards from current ship`);
+    }
+
+    /**
+     * Check if a card type is a weapon
+     */
+    isWeaponCard(cardType) {
+        const weaponCards = ['laser_cannon', 'pulse_cannon', 'plasma_cannon', 'phaser_array', 'disruptor_cannon', 'particle_beam', 'ion_storm_cannon', 'graviton_beam', 'quantum_torpedo', 'singularity_launcher', 'void_ripper'];
+        return weaponCards.includes(cardType);
     }
 }
 

@@ -765,7 +765,16 @@ export default class Ship {
             'energy_reactor': 'energy_reactor',
             'subspace_radio': 'subspace_radio',
             'long_range_scanner': 'long_range_scanner',
-            'galactic_chart': 'galactic_chart'
+            'galactic_chart': 'galactic_chart',
+            // Weapon cards
+            'laser_cannon': 'weapons',
+            'plasma_cannon': 'weapons',
+            'pulse_cannon': 'weapons',
+            'phaser_array': 'weapons',
+            'standard_missile': 'weapons',
+            'homing_missile': 'weapons',
+            'heavy_torpedo': 'weapons',
+            'proximity_mine': 'weapons'
         };
         
         return cardToSystemMap[card.cardType] === systemName;
@@ -806,27 +815,27 @@ export default class Ship {
     }
     
     /**
-     * Initialize the weapon system after all systems are loaded
+     * Initialize the weapon system using unified WeaponSyncManager approach
      * @returns {Promise} Promise that resolves when weapon system is initialized
      */
     async initializeWeaponSystem() {
         try {
-            // Import WeaponSystemCore
-            const { WeaponSystemCore } = await import('./systems/WeaponSystemCore.js');
+            // Import WeaponSyncManager
+            const { default: WeaponSyncManager } = await import('./WeaponSyncManager.js');
             
-            // Initialize weapon system with 4 weapon slots
-            this.weaponSystem = new WeaponSystemCore(this, 4);
+            // Create and use the unified weapon sync manager
+            this.weaponSyncManager = new WeaponSyncManager(this);
             
-            // Connect with target computer for target lock functionality
-            const targetComputer = this.getSystem('target_computer');
-            if (targetComputer) {
-                // Set up target lock integration
-                this.weaponSystem.setLockedTarget(targetComputer.currentTarget);
-            }
+            // Enable debug mode for testing
+            this.weaponSyncManager.setDebugMode(true);
             
-            console.log('WeaponSystemCore initialized with 4 weapon slots');
+            // Initialize weapons using unified approach
+            this.weaponSystem = await this.weaponSyncManager.initializeWeapons();
+            
+            console.log('🔫 Ship: Weapon system initialized successfully using WeaponSyncManager');
+            
         } catch (error) {
-            console.error('Failed to initialize weapon system:', error);
+            console.error('🔫 Ship: Failed to initialize weapon system:', error);
         }
     }
     
@@ -836,5 +845,13 @@ export default class Ship {
      */
     getWeaponSystem() {
         return this.weaponSystem;
+    }
+    
+    /**
+     * Get the weapon sync manager for debugging and advanced configuration
+     * @returns {WeaponSyncManager|null} The weapon sync manager or null if not available
+     */
+    getWeaponSyncManager() {
+        return this.weaponSyncManager;
     }
 } 

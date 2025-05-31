@@ -24,15 +24,15 @@ export const SHIP_CONFIGS = {
         maxHull: 300,          // Very low hull hit points
         
         // System slots - Minimal but expandable
-        systemSlots: 6,        // Reduced slots for starter systems
+        systemSlots: 9,        // Updated for 4 weapon slots testing (was 6)
         
         // System slot allocations
         slotConfig: {
             engines: 1,        // Basic impulse engines
             reactor: 1,         // Basic energy reactor
-            weapons: 1,         // Basic weapon slot
-            utility: 3,         // Basic utility slots
-            // Total slots: 6 (1 engine + 1 reactor + 1 weapon + 3 utility = 6)
+            weapons: 4,         // 4 weapon slots for testing (matches starter cards)
+            utility: 3,         // Standard utility slots
+            // Total slots: 9 (1 engine + 1 reactor + 4 weapons + 3 utility = 9)
         },
         
         // Default system configurations - Starter optimized
@@ -51,16 +51,9 @@ export const SHIP_CONFIGS = {
                 level: 1, // Level 1 = basic targeting (no sub-targeting)
                 slots: 1, 
                 energyConsumption: 3 // Minimal consumption
-            },
-            laser_cannon: { 
-                level: 1, // Level 1 = 12 firepower (1 * 12) - basic weapon
-                slots: 1, 
-                energyConsumption: 0 // Uses energy per shot (handled separately)
             }
-            // Removed galactic_chart - player must acquire cards to add this system
-            // Removed subspace_radio - player must acquire cards to add this system
-            // No hull_plating - causes "hidden system" since no corresponding card exists
-            // No shields - player must acquire cards to add these systems
+            // Removed laser_cannon - weapons now come from starterCards via WeaponSyncManager
+            // No galactic chart or subspace radio - must be acquired from shop
         },
         
         // Pre-installed starter cards
@@ -68,7 +61,11 @@ export const SHIP_CONFIGS = {
             utility_1: { cardType: 'target_computer', level: 1 },
             engine_1: { cardType: 'impulse_engines', level: 1 },
             power_1: { cardType: 'energy_reactor', level: 1 },
-            weapon_1: { cardType: 'laser_cannon', level: 1 }
+            weapon_1: { cardType: 'laser_cannon', level: 1 },
+            weapon_2: { cardType: 'pulse_cannon', level: 1 },
+            weapon_3: { cardType: 'plasma_cannon', level: 1 },
+            weapon_4: { cardType: 'phaser_array', level: 1 }
+            // Added 4 different weapons for testing the weapon system
             // Removed galactic_chart card - player must acquire from shop
             // Removed radio_1 - player must acquire subspace radio cards from the shop
         }
@@ -100,13 +97,13 @@ export const SHIP_CONFIGS = {
             engines: 1,        // Impulse engines
             warpDrive: 1,       // Warp drive
             shields: 1,         // Deflector shield generator
-            weapons: 1,         // Laser weapons (default)
+            weapons: 4,         // Maximum weapons for heavy combat role
             missileTubes: 1,    // Missile tubes (now included for cooldown testing)
             scanner: 1,         // Long range scanner
             radio: 1,           // Subspace radio
             galacticChart: 1,   // Galactic chart
             targetComputer: 1,  // Target computer
-            // Available slots: 9 (18 total - 9 used = 9 free for future systems)
+            // Available slots: 6 (18 total - 12 used = 6 free for future systems)
         },
         
         // Default system configurations (energy consumption per second when active)
@@ -206,12 +203,12 @@ export const SHIP_CONFIGS = {
             engines: 1,        // Impulse engines (high performance)
             warpDrive: 1,       // Warp drive
             shields: 1,         // Light shields
-            weapons: 1,         // Light weapons
+            weapons: 2,         // Fewer weapons - reconnaissance focused
             scanner: 1,         // Enhanced long range scanner
             radio: 1,           // Subspace radio
             galacticChart: 1,   // Galactic chart
             targetComputer: 1,  // Target computer
-            // Available slots: 7 (15 total - 8 used = 7 free)
+            // Available slots: 6 (15 total - 9 used = 6 free)
         },
         
         // Default system configurations - Scout optimized
@@ -305,12 +302,12 @@ export const SHIP_CONFIGS = {
             engines: 1,        // Impulse engines
             warpDrive: 1,       // Warp drive
             shields: 1,         // Medium shields
-            weapons: 1,         // Combat weapons
+            weapons: 3,         // Good combat capability but not maximum
             scanner: 1,         // Long range scanner
             radio: 1,           // Subspace radio
             galacticChart: 1,   // Galactic chart
             targetComputer: 1,  // Target computer
-            // Available slots: 10 (18 total - 8 used = 10 free)
+            // Available slots: 8 (18 total - 10 used = 8 free)
         },
         
         // Default system configurations - Combat balanced
@@ -404,12 +401,12 @@ export const SHIP_CONFIGS = {
             engines: 1,        // Basic impulse engines
             warpDrive: 1,       // Warp drive
             shields: 1,         // Defensive shields
-            weapons: 1,         // Basic defensive weapons
+            weapons: 2,         // Moderate defensive capability
             scanner: 1,         // Long range scanner
             radio: 1,           // Subspace radio
             galacticChart: 1,   // Galactic chart
             targetComputer: 1,  // Basic target computer
-            // Available slots: 12 (20 total - 8 used = 12 free for cargo systems)
+            // Available slots: 11 (20 total - 9 used = 11 free for cargo systems)
         },
         
         // Default system configurations - Cargo optimized
@@ -503,12 +500,12 @@ export const SHIP_CONFIGS = {
             engines: 1,        // Heavy impulse engines
             warpDrive: 1,       // Warp drive
             shields: 1,         // Heavy shields
-            weapons: 1,         // Minimal weapons
+            weapons: 1,         // Minimal weapons - cargo focused
             scanner: 1,         // Long range scanner
             radio: 1,           // Subspace radio
             galacticChart: 1,   // Galactic chart
             targetComputer: 1,  // Basic target computer
-            // Available slots: 17 (25 total - 8 used = 17 free for cargo systems)
+            // Available slots: 16 (25 total - 9 used = 16 free for cargo systems)
         },
         
         // Default system configurations - Heavy cargo optimized

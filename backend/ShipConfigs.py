@@ -1,6 +1,7 @@
 """
 Ship configurations for backend API
 Based on frontend/static/js/ship/ShipConfigs.js
+Updated to ensure all ships have exactly 4 weapon slots
 """
 
 SHIP_CONFIGS = {
@@ -15,7 +16,13 @@ SHIP_CONFIGS = {
         'maxEnergy': 1000,
         'energyRechargeRate': 20,
         'maxHull': 300,
-        'systemSlots': 6,
+        'systemSlots': 9,  # Updated to match frontend (was 6)
+        'slotConfig': {
+            'engines': 1,
+            'reactor': 1,
+            'weapons': 4,  # Fixed: exactly 4 weapon slots for testing
+            'utility': 3
+        },
         'defaultSystems': {
             'hull_plating': {'level': 1, 'slots': 1},
             'energy_reactor': {'level': 1, 'slots': 1},
@@ -27,7 +34,10 @@ SHIP_CONFIGS = {
             'utility_1': {'cardType': 'target_computer', 'level': 1},
             'utility_2': {'cardType': 'impulse_engines', 'level': 1},
             'utility_3': {'cardType': 'energy_reactor', 'level': 1},
-            'weapon_1': {'cardType': 'laser_cannon', 'level': 1}
+            'weapon_1': {'cardType': 'laser_cannon', 'level': 1},
+            'weapon_2': {'cardType': 'pulse_cannon', 'level': 1},
+            'weapon_3': {'cardType': 'plasma_cannon', 'level': 1},
+            'weapon_4': {'cardType': 'phaser_array', 'level': 1}
         }
     },
     'heavy_fighter': {
@@ -42,6 +52,13 @@ SHIP_CONFIGS = {
         'energyRechargeRate': 50,
         'maxHull': 1000,
         'systemSlots': 18,
+        'slotConfig': {
+            'engines': 1,
+            'reactor': 1,
+            'shields': 1,
+            'weapons': 4,  # Maximum weapons for heavy combat role
+            'utility': 11
+        },
         'defaultSystems': {
             'hull_plating': {'level': 5, 'slots': 1},
             'energy_reactor': {'level': 5, 'slots': 1},
@@ -70,6 +87,13 @@ SHIP_CONFIGS = {
         'energyRechargeRate': 60,
         'maxHull': 500,
         'systemSlots': 15,
+        'slotConfig': {
+            'engines': 1,
+            'reactor': 1,
+            'shields': 1,
+            'weapons': 2,  # Fewer weapons - reconnaissance focused
+            'utility': 10
+        },
         'defaultSystems': {
             'hull_plating': {'level': 3, 'slots': 1},
             'energy_reactor': {'level': 4, 'slots': 1},
@@ -97,6 +121,13 @@ SHIP_CONFIGS = {
         'energyRechargeRate': 45,
         'maxHull': 700,
         'systemSlots': 16,
+        'slotConfig': {
+            'engines': 1,
+            'reactor': 1,
+            'shields': 1,
+            'weapons': 3,  # Good combat capability but not maximum
+            'utility': 10
+        },
         'defaultSystems': {
             'hull_plating': {'level': 4, 'slots': 1},
             'energy_reactor': {'level': 4, 'slots': 1},
@@ -124,6 +155,13 @@ SHIP_CONFIGS = {
         'energyRechargeRate': 40,
         'maxHull': 800,
         'systemSlots': 17,
+        'slotConfig': {
+            'engines': 1,
+            'reactor': 1,
+            'shields': 1,
+            'weapons': 2,  # Moderate defensive capability
+            'utility': 12
+        },
         'defaultSystems': {
             'hull_plating': {'level': 4, 'slots': 1},
             'energy_reactor': {'level': 5, 'slots': 1},
@@ -151,6 +189,13 @@ SHIP_CONFIGS = {
         'energyRechargeRate': 35,
         'maxHull': 1200,
         'systemSlots': 20,
+        'slotConfig': {
+            'engines': 1,
+            'reactor': 1,
+            'shields': 1,
+            'weapons': 1,  # Minimal weapons - cargo focused
+            'utility': 16
+        },
         'defaultSystems': {
             'hull_plating': {'level': 6, 'slots': 1},
             'energy_reactor': {'level': 6, 'slots': 1},

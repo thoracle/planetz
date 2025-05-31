@@ -19,7 +19,7 @@ export class WeaponDefinitions {
                 name: 'Laser Cannon',
                 weaponType: 'scan-hit',
                 damage: 50,
-                cooldownTime: 0.5, // seconds
+                cooldownTime: 1.0, // seconds
                 range: 1000, // meters
                 autofireEnabled: true,
                 accuracy: 0.95,
@@ -37,7 +37,7 @@ export class WeaponDefinitions {
                 name: 'Plasma Cannon',
                 weaponType: 'scan-hit',
                 damage: 120,
-                cooldownTime: 1.5, // seconds
+                cooldownTime: 2.5, // seconds
                 range: 800, // meters
                 autofireEnabled: true,
                 accuracy: 0.80,
@@ -55,7 +55,7 @@ export class WeaponDefinitions {
                 name: 'Pulse Cannon',
                 weaponType: 'scan-hit',
                 damage: 75,
-                cooldownTime: 0.3, // seconds (burst fire)
+                cooldownTime: 1.5, // seconds (burst fire)
                 range: 1200, // meters
                 autofireEnabled: true,
                 accuracy: 0.90,
@@ -74,7 +74,7 @@ export class WeaponDefinitions {
                 name: 'Phaser Array',
                 weaponType: 'scan-hit',
                 damage: 90,
-                cooldownTime: 0.8, // seconds
+                cooldownTime: 2.0, // seconds
                 range: 1500, // meters
                 autofireEnabled: true,
                 accuracy: 0.88,
@@ -94,7 +94,7 @@ export class WeaponDefinitions {
                 name: 'Standard Missile',
                 weaponType: 'splash-damage',
                 damage: 200,
-                cooldownTime: 3.0, // seconds
+                cooldownTime: 4.0, // seconds
                 range: 3000, // meters
                 autofireEnabled: false,
                 accuracy: 1.0, // Missiles don't miss if fired properly
@@ -115,7 +115,7 @@ export class WeaponDefinitions {
                 name: 'Homing Missile',
                 weaponType: 'splash-damage',
                 damage: 250,
-                cooldownTime: 2.0, // seconds
+                cooldownTime: 3.0, // seconds
                 range: 3500, // meters
                 autofireEnabled: true, // High-tier missiles can autofire
                 accuracy: 1.0,
@@ -159,7 +159,7 @@ export class WeaponDefinitions {
                 name: 'Proximity Mine',
                 weaponType: 'splash-damage',
                 damage: 150,
-                cooldownTime: 4.0, // seconds
+                cooldownTime: 3.5, // seconds
                 range: 500, // deployment range
                 autofireEnabled: false,
                 accuracy: 1.0,
@@ -182,7 +182,7 @@ export class WeaponDefinitions {
                 name: 'Cluster Missile',
                 weaponType: 'splash-damage',
                 damage: 180, // Per submunition
-                cooldownTime: 4.0, // seconds
+                cooldownTime: 4.5, // seconds
                 range: 2500, // meters
                 autofireEnabled: false,
                 accuracy: 1.0,
@@ -204,7 +204,7 @@ export class WeaponDefinitions {
                 name: 'Guided Torpedo',
                 weaponType: 'splash-damage',
                 damage: 350,
-                cooldownTime: 3.5, // seconds
+                cooldownTime: 3.8, // seconds
                 range: 4000, // meters
                 autofireEnabled: true,
                 accuracy: 1.0,

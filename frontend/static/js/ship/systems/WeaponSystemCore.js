@@ -134,17 +134,21 @@ export class WeaponSystemCore {
     
     /**
      * Update autofire processing (called from game loop)
-     * @param {number} deltaTime Time elapsed since last update
+     * @param {number} deltaTime Time elapsed since last update in seconds
      */
     updateAutofire(deltaTime) {
-        if (!this.isAutofireOn) return;
+        // Convert deltaTime from seconds to milliseconds for cooldown calculations
+        const deltaTimeMs = deltaTime * 1000;
         
-        // Update all weapon cooldowns
+        // Always update weapon cooldowns regardless of autofire status
         this.weaponSlots.forEach(slot => {
             if (!slot.isEmpty) {
-                slot.updateCooldown(deltaTime);
+                slot.updateCooldown(deltaTimeMs);
             }
         });
+
+        // Only process autofire logic if autofire is enabled
+        if (!this.isAutofireOn) return;
         
         // Attempt to fire all autofire-enabled weapons
         for (const slot of this.weaponSlots) {

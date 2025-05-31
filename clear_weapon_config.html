@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Weapon Configuration</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 20px;
+            background-color: #0a0a0a;
+            color: #00ff00;
+        }
+        .container {
+            border: 1px solid #00ff00;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background-color: #111;
+        }
+        .button {
+            background-color: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 16px;
+        }
+        .success {
+            color: #44ff44;
+        }
+        .error {
+            color: #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧹 Clear Weapon Configuration</h1>
+    
+    <div class="container">
+        <h2>Reset Ship Configuration</h2>
+        <p>This will clear all stored ship configurations and force the game to use the default starter cards configuration.</p>
+        <p>After clearing, weapons should be placed correctly in weapon slots instead of utility slots.</p>
+        
+        <button class="button" onclick="clearConfiguration()">Clear All Stored Configurations</button>
+        <button class="button" onclick="clearStarterShipOnly()">Clear Starter Ship Only</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <div class="container">
+        <h2>Current Storage Status</h2>
+        <div id="status"></div>
+        <button class="button" onclick="checkStorage()">Check Storage</button>
+    </div>
+
+    <script>
+        function clearConfiguration() {
+            try {
+                // Clear all ship configurations from localStorage
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('ship_config_')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+                
+                document.getElementById('result').innerHTML = 
+                    `<p class="success">✅ Cleared ${keysToRemove.length} ship configurations</p>
+                     <p>Cleared keys: ${keysToRemove.join(', ')}</p>
+                     <p><strong>Please restart the game to see the changes.</strong></p>`;
+                
+                checkStorage();
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    `<p class="error">❌ Error clearing configurations: ${error.message}</p>`;
+            }
+        }
+
+        function clearStarterShipOnly() {
+            try {
+                const key = 'ship_config_starter_ship';
+                const existed = localStorage.getItem(key) !== null;
+                localStorage.removeItem(key);
+                
+                document.getElementById('result').innerHTML = 
+                    `<p class="success">✅ Cleared starter ship configuration${existed ? '' : ' (was already empty)'}</p>
+                     <p><strong>Please restart the game to see the changes.</strong></p>`;
+                
+                checkStorage();
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    `<p class="error">❌ Error clearing starter ship: ${error.message}</p>`;
+            }
+        }
+
+        function checkStorage() {
+            try {
+                const shipConfigs = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('ship_config_')) {
+                        const value = localStorage.getItem(key);
+                        shipConfigs.push({
+                            key: key,
+                            size: value ? value.length : 0,
+                            preview: value ? value.substring(0, 100) + '...' : 'null'
+                        });
+                    }
+                }
+                
+                if (shipConfigs.length === 0) {
+                    document.getElementById('status').innerHTML = 
+                        '<p class="success">✅ No ship configurations found in localStorage</p>';
+                } else {
+                    let html = `<p>Found ${shipConfigs.length} ship configurations:</p><ul>`;
+                    shipConfigs.forEach(config => {
+                        html += `<li><strong>${config.key}</strong> (${config.size} bytes)<br>
+                                <small>${config.preview}</small></li>`;
+                    });
+                    html += '</ul>';
+                    document.getElementById('status').innerHTML = html;
+                }
+            } catch (error) {
+                document.getElementById('status').innerHTML = 
+                    `<p class="error">❌ Error checking storage: ${error.message}</p>`;
+            }
+        }
+
+        // Check storage on page load
+        checkStorage();
+    </script>
+</body>
+</html> 
