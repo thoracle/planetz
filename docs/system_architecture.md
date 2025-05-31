@@ -1,9 +1,11 @@
-# System Architecture Documentation
+# System Architecture Documentation ✅ IMPLEMENTED
 
 ## Overview
 This document contains UML diagrams illustrating the architecture of the Planetz NFT card collection spaceship system.
 
-## NFT Card Collection System
+**✅ IMPLEMENTATION STATUS**: All core systems fully implemented and integrated into the main game.
+
+## NFT Card Collection System ✅ IMPLEMENTED
 
 ### Class Diagram - Core Card System
 
@@ -23,11 +25,17 @@ classDiagram
         +constructor(cardType, rarity, tokenId)
         +isDiscovered() Boolean
         +getMetadata() Object
+        +generateDescription() String
+        +getDisplayName() String
+        +getIcon() String
+        +getRarityColor() String
+        +getStats() Object
     }
 
     class CardInventory {
         +Map cards
         +Set discoveredTypes
+        +Number credits
         +addCard(nftCard) void
         +getCardCount(cardType) Number
         +canUpgrade(cardType, currentLevel) Boolean
@@ -35,6 +43,8 @@ classDiagram
         +getDiscoveredTypes() Array
         +getUndiscoveredTypes() Array
         +getAllCardTypes() Array
+        +generateSpecificCard(cardType, rarity) NFTCard
+        +loadTestData() void
     }
 
     class CardCollection {
@@ -63,7 +73,7 @@ classDiagram
     DropSystem --> CardCollection : provides_drops
 ```
 
-### Sequence Diagram - Card Discovery and Upgrade
+### Sequence Diagram - Card Discovery and Upgrade ✅ IMPLEMENTED
 
 ```mermaid
 sequenceDiagram
@@ -99,7 +109,7 @@ sequenceDiagram
     end
 ```
 
-## Ship Management System
+## Ship Management System ✅ IMPLEMENTED
 
 ### Class Diagram - Ship and System Architecture
 
@@ -116,6 +126,8 @@ classDiagram
         +Map systems
         +Number currentEnergy
         +Number currentHull
+        +CardSystemIntegration cardSystemIntegration
+        +WeaponSystemCore weaponSystem
         +constructor(shipType, config)
         +installSystem(slotId, cardType, level) Boolean
         +removeSystem(slotId) Boolean
@@ -123,6 +135,10 @@ classDiagram
         +canLaunch() Boolean
         +getSystemByType(systemType) System
         +getAvailableSlots() Array
+        +calculateTotalStats() Object
+        +update(deltaTime) void
+        +consumeEnergy(amount) Boolean
+        +hasSystemCards(systemName) Boolean
     }
 
     class SystemSlot {
@@ -139,7 +155,7 @@ classDiagram
         +Number level
         +Number health
         +Boolean isActive
-        +Number energyConsumption
+        +Number energyConsumptionRate
         +Object stats
         +constructor(systemType, level)
         +activate() Boolean
@@ -148,6 +164,8 @@ classDiagram
         +repair(amount) void
         +getEffectiveness() Number
         +upgrade(newLevel) void
+        +update(deltaTime, ship) void
+        +isOperational() Boolean
     }
 
     class ShipCollection {
@@ -168,14 +186,38 @@ classDiagram
         +getValidationErrors(ship) Array
     }
 
+    class CardSystemIntegration {
+        +Ship ship
+        +Map installedCards
+        +CardInventoryUI cardInventoryUI
+        +loadCards() Promise
+        +hasSystemCards(systemName) Boolean
+        +getSystemCardEffectiveness(systemName) Number
+        +createSystemsFromCards() Promise
+    }
+
+    class WeaponSystemCore {
+        +Ship ship
+        +Array weaponSlots
+        +Number activeSlotIndex
+        +Boolean isAutofireOn
+        +selectNextWeapon() void
+        +selectPreviousWeapon() void
+        +fireActiveWeapon() Boolean
+        +toggleAutofire() void
+        +update(deltaTime) void
+    }
+
     Ship o-- SystemSlot : contains_many
     SystemSlot --> System : holds_one
     ShipCollection o-- Ship : manages_many
     BuildValidator --> Ship : validates
     Ship --> BuildValidator : uses
+    Ship --> CardSystemIntegration : integrates
+    Ship --> WeaponSystemCore : manages
 ```
 
-### State Diagram - Ship Configuration States
+### State Diagram - Ship Configuration States ✅ IMPLEMENTED
 
 ```mermaid
 stateDiagram-v2
@@ -198,19 +240,7 @@ stateDiagram-v2
         [*] --> SelectingSlot
         SelectingSlot --> DraggingCard : Drag Card
         DraggingCard --> InstallingSystem : Drop on Slot
-        DraggingCard --> SelectingSlot : Cancel Drag
-        InstallingSystem --> SelectingSlot : System Installed
-        SelectingSlot --> RemovingSystem : Right Click Slot
-        RemovingSystem --> SelectingSlot : System Removed
-    }
-    
-    state ValidatingBuild {
-        [*] --> CheckingEssentials
-        CheckingEssentials --> CheckingEnergy : Has Required Systems
-        CheckingEssentials --> [*] : Missing Systems
-        CheckingEnergy --> CheckingSlots : Energy Balanced
-        CheckingEnergy --> [*] : Energy Imbalanced
-        CheckingSlots --> [*] : Valid/Invalid
+        InstallingSystem --> SelectingSlot : Installation Complete
     }
 ```
 
@@ -1293,134 +1323,41 @@ flowchart TD
     UpdateHUD --> End
 ```
 
-### Component Diagram - Weapons System Integration
+### Component Interaction Diagram ✅ IMPLEMENTED
 
 ```mermaid
-graph TB
-    subgraph "Weapons System Core"
-        WeaponSystemCore[Weapon System Core]
-        WeaponSlots[4 Weapon Slots Array]
-        WeaponCards[Weapon Cards]
-        WeaponDefinitions[Weapon Definitions]
-    end
+graph TD
+    StarfieldManager[Starfield Manager]
+    ViewManager[View Manager]
+    Ship[Ship Instance]
+    DockingInterface[Docking Interface]
+    StationServices[Station Services]
+    CardInventoryUI[Card Inventory UI]
+    CardInventory[Card Inventory]
+    PlayerData[Player Data]
+    SystemRegistry[System Registry]
+    WeaponSystem[Weapon System]
+    DamageControl[Damage Control]
+    WeaponHUD[Weapon HUD]
+    DamageHUD[Damage HUD]
+    HelpInterface[Help Interface]
     
-    subgraph "UI Components"
-        WeaponHUD[Weapon HUD]
-        CardInventoryUI[Card Inventory UI]
-        DragDropHandler[Drag & Drop Handler]
-    end
-    
-    subgraph "Input System"
-        StarfieldManager[Starfield Manager]
-        KeyHandler[Key Handler bindKeyEvents]
-        WeaponControls[Weapon Controls]
-    end
-    
-    subgraph "Game Systems"
-        Ship[Ship Class]
-        TargetComputer[Target Computer]
-        EnergySystem[Ship Energy System]
-        ProjectileManager[Projectile Manager]
-    end
-    
-    subgraph "Projectile Types"
-        ScanHitProjectile[Scan-Hit Projectiles]
-        SplashProjectile[Splash-Damage Projectiles]
-        HomingMissile[Homing Missiles]
-        Projectile[Projectile Physics]
-    end
-    
-    WeaponSystemCore --> WeaponSlots
-    WeaponSlots --> WeaponCards
-    WeaponSystemCore --> WeaponHUD
-    WeaponSystemCore --> ProjectileManager
-    WeaponDefinitions --> WeaponCards
-    
-    CardInventoryUI --> DragDropHandler
-    DragDropHandler --> WeaponSystemCore
-    
-    StarfieldManager --> KeyHandler
-    KeyHandler --> WeaponControls
-    WeaponControls --> WeaponSystemCore
-    
-    Ship --> WeaponSystemCore
-    WeaponSystemCore --> TargetComputer
-    WeaponSystemCore --> EnergySystem
-    
-    ProjectileManager --> ScanHitProjectile
-    ProjectileManager --> SplashProjectile
-    ProjectileManager --> HomingMissile
-    ProjectileManager --> Projectile
-    
-    StarfieldManager --> WeaponHUD
     StarfieldManager --> Ship
-```
-
-### Data Flow Diagram - Weapon Firing Process
-
-```mermaid
-flowchart LR
-    subgraph "Input Processing"
-        PlayerInput[Player Input]
-        StarfieldManager[Starfield Manager]
-        KeyMapping[Key Mapping]
-    end
+    ViewManager --> DockingInterface
+    DockingInterface --> CardInventoryUI
+    DockingInterface --> StationServices
     
-    subgraph "Weapon Selection"
-        WeaponCycling[Weapon Cycling]
-        ActiveWeapon[Active Weapon]
-        SlotValidation[Slot Validation]
-    end
+    CardInventoryUI --> CardInventory
+    CardInventoryUI --> PlayerData
+    CardInventoryUI --> Ship
     
-    subgraph "Fire Control"
-        FireCommand[Fire Command]
-        EnergyCheck[Energy Check]
-        CooldownCheck[Cooldown Check]
-        TargetValidation[Target Validation]
-    end
+    Ship --> SystemRegistry
+    Ship --> WeaponSystem
+    Ship --> DamageControl
     
-    subgraph "Weapon Execution"
-        WeaponType[Weapon Type Check]
-        ScanHit[Scan-Hit Execution]
-        SplashDamage[Splash-Damage Execution]
-    end
+    SystemRegistry --> WeaponHUD
+    DamageControl --> DamageHUD
     
-    subgraph "Projectile Management"
-        ProjectileSpawn[Projectile Spawn]
-        ProjectileUpdate[Projectile Update]
-        CollisionDetection[Collision Detection]
-        DamageApplication[Damage Application]
-    end
-    
-    subgraph "Feedback Systems"
-        HUDUpdate[HUD Update]
-        AudioFeedback[Audio Feedback]
-        VisualEffects[Visual Effects]
-    end
-    
-    PlayerInput --> StarfieldManager
-    StarfieldManager --> KeyMapping
-    KeyMapping --> WeaponCycling
-    KeyMapping --> FireCommand
-    
-    WeaponCycling --> ActiveWeapon
-    ActiveWeapon --> SlotValidation
-    
-    FireCommand --> EnergyCheck
-    EnergyCheck --> CooldownCheck
-    CooldownCheck --> TargetValidation
-    TargetValidation --> WeaponType
-    
-    WeaponType --> ScanHit
-    WeaponType --> SplashDamage
-    
-    SplashDamage --> ProjectileSpawn
-    ProjectileSpawn --> ProjectileUpdate
-    ProjectileUpdate --> CollisionDetection
-    CollisionDetection --> DamageApplication
-    
-    ScanHit --> DamageApplication
-    DamageApplication --> HUDUpdate
-    DamageApplication --> AudioFeedback
-    DamageApplication --> VisualEffects
+    WeaponHUD --> WeaponSystem
+    DamageHUD --> DamageControl
 ``` 
