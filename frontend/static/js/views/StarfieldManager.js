@@ -4,6 +4,8 @@ import { HelpInterface } from '../ui/HelpInterface.js';
 import DockingSystemManager from '../ship/DockingSystemManager.js';
 import { getSystemDisplayName } from '../ship/System.js';
 import DamageControlHUD from '../ui/DamageControlHUD.js';
+import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
+import { WeaponSlot } from '../ship/systems/WeaponSlot.js';
 // SimplifiedDamageControl removed - damage control integrated into ship systems HUD
 
 export class StarfieldManager {
@@ -296,6 +298,114 @@ export class StarfieldManager {
         // Target dummy ships for sub-targeting practice
         this.targetDummyShips = [];
         this.dummyShipMeshes = [];
+        
+        // WeaponEffectsManager initialization state
+        this.weaponEffectsInitialized = false;
+        this.weaponEffectsManager = null;
+        this.weaponEffectsInitFailed = false;
+        this.weaponEffectsRetryCount = 0;
+        this.maxWeaponEffectsRetries = 5; // Limit retries to prevent infinite loops
+        
+        // Try to initialize WeaponEffectsManager after a short delay
+        // This ensures THREE.js is fully loaded and available
+        setTimeout(() => {
+            this.initializeWeaponEffectsManager();
+        }, 100);
+
+        // Debug mode for weapon hit detection (independent of damage control)
+        this.debugMode = false; // Toggled with Ctrl-P
+    }
+    
+    /**
+     * Initialize WeaponEffectsManager for weapon visual and audio effects (lazy initialization)
+     */
+    initializeWeaponEffectsManager() {
+        try {
+            // Check if already failed or exceeded retry limit
+            if (this.weaponEffectsInitFailed || this.weaponEffectsRetryCount >= this.maxWeaponEffectsRetries) {
+                return false;
+            }
+            
+            // Check if THREE.js is available
+            if (!this.THREE) {
+                console.warn(`WeaponEffectsManager initialization attempt ${this.weaponEffectsRetryCount + 1}/${this.maxWeaponEffectsRetries}: THREE.js not available yet`);
+                this.weaponEffectsRetryCount++;
+                if (this.weaponEffectsRetryCount >= this.maxWeaponEffectsRetries) {
+                    console.error('WeaponEffectsManager initialization failed: THREE.js not available after maximum retries');
+                    this.weaponEffectsInitFailed = true;
+                }
+                return false;
+            }
+            
+            // Check if already initialized
+            if (this.weaponEffectsInitialized) {
+                return true;
+            }
+            
+            // Import WeaponEffectsManager if not already available
+            if (typeof WeaponEffectsManager === 'undefined') {
+                console.warn('WeaponEffectsManager class not available, deferring initialization');
+                this.weaponEffectsRetryCount++;
+                return false;
+            }
+            
+            // Get AudioContext from the existing audio listener
+            const audioContext = this.listener && this.listener.context ? this.listener.context : null;
+            
+            // Create WeaponEffectsManager instance
+            this.weaponEffectsManager = new WeaponEffectsManager(
+                this.scene,
+                this.camera,
+                audioContext
+            );
+            
+            // Connect WeaponEffectsManager to the ship
+            if (this.ship) {
+                this.ship.weaponEffectsManager = this.weaponEffectsManager;
+                
+                // Initialize ship position if not already set
+                if (!this.ship.position) {
+                    this.ship.position = new this.THREE.Vector3(0, 0, 0);
+                }
+                
+                console.log('WeaponEffectsManager connected to ship');
+            } else {
+                console.warn('Ship not available, WeaponEffectsManager connection deferred');
+            }
+            
+            this.weaponEffectsInitialized = true;
+            this.weaponEffectsRetryCount = 0; // Reset retry count on success
+            console.log('WeaponEffectsManager initialized successfully');
+            return true;
+            
+        } catch (error) {
+            console.error(`WeaponEffectsManager initialization failed (attempt ${this.weaponEffectsRetryCount + 1}):`, error);
+            this.weaponEffectsRetryCount++;
+            
+            if (this.weaponEffectsRetryCount >= this.maxWeaponEffectsRetries) {
+                console.error('WeaponEffectsManager initialization permanently failed after maximum retries');
+                this.weaponEffectsInitFailed = true;
+            }
+            
+            return false;
+        }
+    }
+    
+    /**
+     * Ensure WeaponEffectsManager is initialized (lazy initialization with retry limits)
+     */
+    ensureWeaponEffectsManager() {
+        // If permanently failed, don't retry
+        if (this.weaponEffectsInitFailed) {
+            return null;
+        }
+        
+        // If not initialized and haven't exceeded retries, try to initialize
+        if (!this.weaponEffectsInitialized && this.weaponEffectsRetryCount < this.maxWeaponEffectsRetries) {
+            this.initializeWeaponEffectsManager();
+        }
+        
+        return this.weaponEffectsManager;
     }
 
     ensureAudioContextRunning() {
@@ -1433,6 +1543,13 @@ export class StarfieldManager {
                 }
             }
             
+            // Debug mode toggle (Ctrl-P) for weapon hit detection
+            if (event.ctrlKey && event.key.toLowerCase() === 'p') {
+                event.preventDefault();
+                this.toggleDebugMode();
+                return;
+            }
+            
             if (this.keys.hasOwnProperty(event.key)) {
                 this.keys[event.key] = true;
             }
@@ -2040,7 +2157,8 @@ export class StarfieldManager {
                     const ship = this.viewManager?.getShip();
                     if (ship && ship.weaponSystem) {
                         if (ship.weaponSystem.fireActiveWeapon()) {
-                            this.playCommandSound();
+                            // Weapon fired successfully - no command sound needed, weapon plays its own audio
+                            // this.playCommandSound(); // REMOVED - weapons play their own sounds
                         } else {
                             this.playCommandFailedSound();
                         }
@@ -2067,6 +2185,21 @@ export class StarfieldManager {
             if (commandKey === 'h') {
                 this.playCommandSound();
                 this.toggleHelp();
+            }
+
+            // Spawn target dummy ships (Q key) for weapons testing
+            if (commandKey === 'q') {
+                if (!this.isDocked) {
+                    this.playCommandSound();
+                    console.log('🎯 Spawning target dummy ships for weapons testing...');
+                    this.createTargetDummyShips(3);
+                } else {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'TARGET SPAWNING UNAVAILABLE',
+                        'Cannot spawn targets while docked'
+                    );
+                }
             }
 
             // Spawn target dummy ships (X key) - REMOVED since X is now weapon selection
@@ -2155,6 +2288,7 @@ export class StarfieldManager {
             // Store the previous view before switching to damage control
             this.previousView = this.view;
             this.view = 'DAMAGE';
+            this.isDamageControlOpen = true; // Set the state flag
             
             // CRITICAL: Force refresh ship systems before showing damage control
             const ship = this.viewManager?.getShip();
@@ -2177,6 +2311,10 @@ export class StarfieldManager {
         } else {
             // Restore the previous view when closing damage control
             this.view = this.previousView || 'FORE';
+            this.isDamageControlOpen = false; // Clear the state flag
+            
+            // Clean up all debug hit spheres when damage control is turned off
+            WeaponSlot.cleanupAllDebugSpheres(this);
             
             // Hide the damage control HUD
             this.damageControlHUD.hide();
@@ -2318,7 +2456,7 @@ export class StarfieldManager {
                 if (currentTargetData?.isShip) {
                     // For enemy ships, use a fixed radius and get info from ship data
                     radius = 2; // Fixed radius for ship wireframes
-                    wireframeColor = 0xff0000; // Enemy ships are red
+                    wireframeColor = 0xff3333; // Enemy ships are darker neon red
                     info = { type: 'enemy_ship' };
                 } else {
                     // For celestial bodies, get radius from geometry
@@ -2334,7 +2472,7 @@ export class StarfieldManager {
                     if (info?.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
                         wireframeColor = 0xffff00; // Stars are always yellow
                     } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-                        wireframeColor = 0xff0000;
+                        wireframeColor = 0xff3333; // Darker neon red
                     } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
                         wireframeColor = 0xffff00;
                     } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
@@ -2572,6 +2710,15 @@ export class StarfieldManager {
             this.updateShipSystemsDisplay();
             this.shouldUpdateDamageControl = false;
         }
+        
+        // Update weapon effects manager for visual effects animation
+        const weaponEffectsManager = this.ensureWeaponEffectsManager();
+        if (weaponEffectsManager) {
+            weaponEffectsManager.update(deltaTime);
+        }
+
+        // Ensure weapon effects manager is connected to ship
+        this.ensureWeaponEffectsConnection();
 
         // Forward/backward movement based on view
         if (this.currentSpeed > 0) {
@@ -2603,6 +2750,11 @@ export class StarfieldManager {
             // Apply movement
             this.camera.position.add(forwardVector);
             this.camera.updateMatrixWorld();
+            
+            // Update ship position for weapon effects
+            if (this.ship && this.ship.position) {
+                this.ship.position.copy(this.camera.position);
+            }
         } else {
             // Update impulse engines movement state when not moving
             const ship = this.viewManager?.getShip();
@@ -3092,7 +3244,7 @@ export class StarfieldManager {
 
         // Create targetable area indicators (simulating different systems/areas)
         const targetableAreas = [
-            { name: 'Command Center', position: [0, radius * 0.7, 0], color: 0xff4444 },
+            { name: 'Command Center', position: [0, radius * 0.7, 0], color: 0xff3333 },
             { name: 'Power Core', position: [0, 0, 0], color: 0x44ff44 },
             { name: 'Communications', position: [radius * 0.6, 0, 0], color: 0x4444ff },
             { name: 'Defense Grid', position: [-radius * 0.6, 0, 0], color: 0xffff44 },
@@ -3521,11 +3673,11 @@ export class StarfieldManager {
         // Check if this is an enemy ship
         if (currentTargetData.isShip && currentTargetData.ship) {
             isEnemyShip = true;
-            diplomacyColor = '#ff0000'; // Enemy ships are red
+            diplomacyColor = '#ff8888'; // Enemy ships are brighter red for better visibility
         } else if (info?.type === 'star') {
             diplomacyColor = '#ffff00'; // Stars are neutral yellow
         } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-            diplomacyColor = '#ff0000';
+            diplomacyColor = '#ff8888'; // Brighter red for better visibility
         } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
             diplomacyColor = '#ffff00';
         } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
@@ -3744,11 +3896,11 @@ export class StarfieldManager {
             // Determine diplomacy color using same logic as target HUD
             let diplomacyColor = '#D0D0D0'; // Default gray
             if (isEnemyShip) {
-                diplomacyColor = '#ff0000'; // Enemy ships are red
+                diplomacyColor = '#ff3333'; // Enemy ships are darker neon red
             } else if (info?.type === 'star') {
                 diplomacyColor = '#ffff00'; // Stars are neutral yellow
             } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-                diplomacyColor = '#ff0000';
+                diplomacyColor = '#ff3333'; // Darker neon red
             } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
                 diplomacyColor = '#ffff00';
             } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
@@ -4319,6 +4471,10 @@ export class StarfieldManager {
                 this.targetDummyShips.push(dummyShip);
                 this.dummyShipMeshes.push(shipMesh);
                 
+                // Debug log actual distance from origin (where player should be)
+                const originPosition = new this.THREE.Vector3(0, 0, 0);
+                const actualDistance = originPosition.distanceTo(shipMesh.position);
+                console.log(`🎯 Target ${i + 1} positioned at ${(actualDistance / 1000).toFixed(1)}km (world coords: ${shipMesh.position.x}, ${shipMesh.position.y}, ${shipMesh.position.z})`);
                 
             } catch (error) {
                 console.error(`Failed to create target dummy ${i + 1}:`, error);
@@ -4363,7 +4519,7 @@ export class StarfieldManager {
         
         // Create weapon hardpoints
         const weaponGeometry = new this.THREE.SphereGeometry(0.08, 8, 6);
-        const weaponMaterial = new this.THREE.MeshBasicMaterial({ color: 0xff4444 });
+        const weaponMaterial = new this.THREE.MeshBasicMaterial({ color: 0xff3333 });
         
         const weapon1 = new this.THREE.Mesh(weaponGeometry, weaponMaterial);
         weapon1.position.set(-0.3, 0, 0.8);
@@ -4733,11 +4889,11 @@ export class StarfieldManager {
         // Update HUD border color based on diplomacy
         let diplomacyColor = '#D0D0D0'; // Default gray
         if (isEnemyShip) {
-            diplomacyColor = '#ff0000'; // Enemy ships are red
+            diplomacyColor = '#ff3333'; // Enemy ships are darker neon red
         } else if (info?.type === 'star') {
-            diplomacyColor = '#ffff00'; // Stars are neutral
+            diplomacyColor = '#ffff00'; // Stars are neutral yellow
         } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-            diplomacyColor = '#ff0000';
+            diplomacyColor = '#ff3333'; // Darker neon red
         } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
             diplomacyColor = '#ffff00';
         } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
@@ -4775,17 +4931,24 @@ export class StarfieldManager {
                     const damageBonus = Math.round(targetComputer.getSubTargetDamageBonus() * 100);
                     
                     subTargetHTML = `
-                        <div style="border-top: 1px solid ${diplomacyColor}; margin-top: 8px; padding-top: 6px;">
-                            <div style="font-size: 12px; color: ${diplomacyColor}; margin-bottom: 2px;">SUB-TARGET:</div>
-                            <div style="font-size: 14px; color: ${diplomacyColor}; margin-bottom: 2px;">${subTarget.displayName}</div>
+                        <div style="
+                            background-color: ${diplomacyColor}; 
+                            color: #000000; 
+                            padding: 6px; 
+                            border-radius: 4px; 
+                            margin-top: 4px;
+                            font-weight: bold;
+                        ">
+                            <div style="font-size: 12px; margin-bottom: 2px;">SUB-TARGET:</div>
+                            <div style="font-size: 14px; margin-bottom: 2px;">${subTarget.displayName}</div>
                             <div style="font-size: 11px; margin-bottom: 2px;">
-                                <span style="color: #888;">Health:</span> <span style="color: ${healthColor}; font-weight: bold;">${healthPercent}%</span>
+                                <span>Health:</span> <span style="font-weight: bold;">${healthPercent}%</span>
                             </div>
                             <div style="font-size: 10px; opacity: 0.8;">
-                                <span style="color: #888;">Acc:</span> <span style="color: #00ff41;">+${accuracyBonus}%</span> • 
-                                <span style="color: #888;">Dmg:</span> <span style="color: #ff8800;">+${damageBonus}%</span>
+                                <span>Acc:</span> <span>+${accuracyBonus}%</span> • 
+                                <span>Dmg:</span> <span>+${damageBonus}%</span>
                             </div>
-                            <div style="font-size: 9px; opacity: 0.6; margin-top: 2px; color: #888;">
+                            <div style="font-size: 9px; opacity: 0.6; margin-top: 2px;">
                                 &lt; &gt; to cycle sub-targets
                             </div>
                         </div>
@@ -4795,12 +4958,19 @@ export class StarfieldManager {
                     const availableTargets = targetComputer.availableSubTargets.length;
                     if (availableTargets > 0) {
                         subTargetHTML = `
-                            <div style="border-top: 1px solid ${diplomacyColor}; margin-top: 8px; padding-top: 6px;">
-                                <div style="font-size: 12px; color: ${diplomacyColor}; margin-bottom: 2px;">SUB-TARGETING:</div>
+                            <div style="
+                                background-color: ${diplomacyColor}; 
+                                color: #000000; 
+                                padding: 6px; 
+                                border-radius: 4px; 
+                                margin-top: 4px;
+                                font-weight: bold;
+                            ">
+                                <div style="font-size: 12px; margin-bottom: 2px;">SUB-TARGETING:</div>
                                 <div style="font-size: 11px; opacity: 0.8;">
                                     ${availableTargets} targetable systems detected
                                 </div>
-                                <div style="font-size: 9px; opacity: 0.6; margin-top: 2px; color: #888;">
+                                <div style="font-size: 9px; opacity: 0.6; margin-top: 2px;">
                                     &lt; &gt; to cycle sub-targets
                                 </div>
                             </div>
@@ -4810,19 +4980,28 @@ export class StarfieldManager {
             }
         }
 
-        // Update target information display with colored text and sub-target info
+        // Update target information display with colored background and black text
         let typeDisplay = info?.type || 'Unknown';
         if (isEnemyShip) {
             typeDisplay = `${info.shipType} (Enemy Ship)`;
         }
         
         this.targetInfoDisplay.innerHTML = `
-            <div style="font-size: 16px; margin-bottom: 4px; color: ${diplomacyColor};">${currentTargetData.name}</div>
-            <div style="font-size: 12px; opacity: 0.8;">
-                <span style="color: ${diplomacyColor}">${this.formatDistance(distance)}</span> • 
-                <span style="color: ${diplomacyColor}">${typeDisplay}</span>
+            <div style="
+                background-color: ${diplomacyColor}; 
+                color: #000000; 
+                padding: 8px; 
+                border-radius: 4px; 
+                margin-bottom: 4px;
+                font-weight: bold;
+            ">
+                <div style="font-size: 16px; margin-bottom: 4px;">${currentTargetData.name}</div>
+                <div style="font-size: 12px;">
+                    <span>${this.formatDistance(distance)}</span> • 
+                    <span>${typeDisplay}</span>
+                </div>
+                ${info?.diplomacy ? `<div style="font-size: 12px; margin-top: 4px;">${info.diplomacy}</div>` : ''}
             </div>
-            ${info?.diplomacy ? `<div style="font-size: 12px; margin-top: 4px; color: ${diplomacyColor};">${info.diplomacy}</div>` : ''}
             ${subTargetHTML}
         `;
 
@@ -5039,7 +5218,7 @@ export class StarfieldManager {
             if (info?.type === 'star') {
                 arrowColor = '#ffff00'; // Stars are neutral
             } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-                arrowColor = '#ff0000';
+                arrowColor = '#ff3333'; // Darker neon red
             } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
                 arrowColor = '#ffff00';
             } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
@@ -5141,6 +5320,55 @@ export class StarfieldManager {
      */
     markDamageControlForUpdate() {
         this.shouldUpdateDamageControl = true;
+    }
+
+    /**
+     * Ensure WeaponEffectsManager is connected to the ship
+     */
+    ensureWeaponEffectsConnection() {
+        // Only try to connect if we have both WeaponEffectsManager and ship
+        if (this.weaponEffectsManager && !this.weaponEffectsManager.fallbackMode) {
+            // Get current ship reference (it might have been set after WeaponEffectsManager initialization)
+            if (!this.ship) {
+                this.ship = this.viewManager?.getShip();
+            }
+            
+            if (this.ship && !this.ship.weaponEffectsManager) {
+                this.ship.weaponEffectsManager = this.weaponEffectsManager;
+                
+                // Initialize ship position if not already set
+                if (!this.ship.position) {
+                    this.ship.position = new this.THREE.Vector3(0, 0, 0);
+                }
+                
+                console.log('🎆 WeaponEffectsManager connected to ship');
+                return true;
+            }
+        }
+        return false;
+    }
+
+    toggleDebugMode() {
+        this.debugMode = !this.debugMode;
+        
+        if (this.debugMode) {
+            this.playCommandSound();
+            console.log('🐛 DEBUG MODE ENABLED - Weapon hit detection spheres will be shown');
+            this.showHUDError(
+                'DEBUG MODE ENABLED',
+                'Weapon hit detection spheres will be visible'
+            );
+        } else {
+            this.playCommandSound();
+            console.log('🐛 DEBUG MODE DISABLED - Cleaning up debug spheres');
+            this.showHUDError(
+                'DEBUG MODE DISABLED',
+                'Debug spheres cleared'
+            );
+            
+            // Clean up all existing debug spheres
+            WeaponSlot.cleanupAllDebugSpheres(this);
+        }
     }
 
 } 

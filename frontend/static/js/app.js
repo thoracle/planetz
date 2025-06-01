@@ -7,6 +7,7 @@ import { Cloud } from './Cloud.js';
 import { ViewManager } from './views/ViewManager.js';
 import { StarfieldManager } from './views/StarfieldManager.js';
 import { SolarSystemManager } from './SolarSystemManager.js';
+import { WeaponEffectsManager } from './ship/systems/WeaponEffectsManager.js';
 
 // Global variables for warp control mode
 let warpControlMode = false;
@@ -2226,3 +2227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 }); 
+
+// Make classes available globally for other modules
+window.THREE = THREE;
+window.WeaponEffectsManager = WeaponEffectsManager; 

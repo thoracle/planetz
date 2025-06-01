@@ -77,6 +77,27 @@
   - ✅ Progressive loading works well for card discovery system
   - ✅ Performance is adequate for current gameplay needs
 
+- [ ] **Pre-load weapon audio buffers during weapon system initialization instead of first fire**
+  - Current implementation loads audio buffers asynchronously when WeaponEffectsManager initializes
+  - This can cause first weapon fire to have no sound due to audio still loading
+  - Move audio buffer loading to weapon system initialization phase
+  - Ensure all weapon audio is ready before allowing weapon firing
+  - Consider adding loading indicator or preventing firing until audio is ready
+  - Files affected: WeaponEffectsManager.js, WeaponSyncManager.js, Ship.js
+  - Benefits: Guaranteed audio on first shot, better user experience, no audio warnings
+
+#### 🎨 **Code Organization Issues**
+**Priority**: Medium - Code maintainability and consistency improvements
+
+- [ ] **Centralize faction color definitions for better maintainability**
+  - Currently faction colors (`#ff6666` for hostile, `#ffff00` for neutral, `#00ff41` for friendly) are scattered throughout StarfieldManager.js
+  - Colors are defined in multiple locations: wireframe colors, intel display, target display, direction arrows, sub-target indicators
+  - Create a centralized color configuration object or constants file
+  - Refactor all color references to use the centralized definitions
+  - Benefits: Easier color updates, consistent theming, reduced duplication
+  - Files affected: StarfieldManager.js (primary), possibly WeaponEffectsManager.js
+  - Implementation: Create `FactionColors.js` or add to existing constants file
+
 ### 🚀 **NEXT PHASE: Game Polish & Advanced Features**
 **Target**: Polish existing systems and add advanced gameplay features
 - **Advanced Features**: Warp enhancements, distress calls, mission system
@@ -947,74 +968,121 @@
     - [ ] Create weapon loadout validation
 
 ### Audio and Visual Effects
-- [ ] **Weapons Audio System**
-  - [ ] Create weapon firing sound effects
-    - [ ] Laser weapon sounds (pew-pew)
-    - [ ] Plasma weapon sounds (deep hum)
-    - [ ] Missile launch sounds (whoosh)
-    - [ ] Explosion sounds for splash damage
-  - [ ] UI Audio Feedback
-    - [ ] Weapon selection sounds
-    - [ ] Autofire toggle sounds
-    - [ ] Cooldown expiration chimes
-    - [ ] Error notification sounds
+- [X] **Weapons Audio System** ⬅️ **CORE FRAMEWORK COMPLETE**
+  - [X] Create AudioManager integration for weapons
+    - [X] Load and cache all weapon sound effects
+    - [X] Implement sound effect mapping system
+    - [X] Add 3D positional audio for projectiles
+    - [X] Create volume and distance falloff controls
+  - [X] Weapon-Specific Audio Integration
+    - [X] Laser Cannon + Pulse Cannon → `lasers.wav`
+    - [X] Plasma Cannon + Phaser Array → `photons.wav`
+    - [X] Standard Missile + Homing Missile → `missiles.wav`
+    - [X] Proximity Mine → `mines.mp3`
+    - [X] Target damage (not destroyed) → `explosion.wav`
+    - [X] Target destroyed → `death.wav`
+  - [X] Audio Feedback System
+    - [X] Weapon selection sounds
+    - [X] Autofire toggle sounds
+    - [X] Cooldown expiration chimes
+    - [X] Error notification sounds
 
-- [ ] **Weapons Visual Effects**
-  - [ ] Create weapon firing effects
-    - [ ] Muzzle flash for energy weapons
-    - [ ] Projectile trails for missiles
-    - [ ] Explosion effects for splash damage
-    - [ ] Beam effects for continuous fire weapons
-  - [ ] HUD Visual Effects
-    - [ ] Weapon slot highlight animations
-    - [ ] Cooldown progress animations
-    - [ ] Target lock acquisition effects
-    - [ ] Autofire status indicators
+- [X] **Weapons Visual Effects System** ⬅️ **CORE FRAMEWORK COMPLETE**
+  - [X] **Core Visual Effects Manager**
+    - [X] Create WeaponEffectsManager class
+    - [X] Implement effect lifecycle management (create, update, destroy)
+    - [X] Add performance optimization (object pooling for effects)
+    - [X] Create effect duration synchronization with audio
+    - [X] Implement 60fps performance targets with effect culling
+  
+  - [X] **Muzzle Flash Effects**
+    - [X] Simple bright flash implementation using Three.js geometry
+    - [X] Weapon-specific muzzle flash colors and intensities
+    - [X] Brief flash duration (0.1-0.2 seconds)
+    - [X] Position muzzle flash at weapon hardpoints on ship
+    - [X] Scale muzzle flash based on weapon power/level
+  
+  - [X] **Laser Beam Effects (Scan-Hit Weapons)**
+    - [X] Thin bright beam rendering using Three.js LineGeometry
+    - [X] Brief beam trail visibility (<1 second, tunable)
+    - [X] Laser Cannon: Bright white/blue thin beams
+    - [X] Plasma Cannon: Different color (green/red) with slight glow
+    - [X] Pulse Cannon: Rapid burst beam effects
+    - [X] Phaser Array: Wide-beam area effect visualization
+    - [X] Beam fade-out animation over duration
+  
+  - [X] **Explosion Visual Effects**
+    - [X] **Impact Explosions**
+      - [X] Simple expanding sphere geometry for blast radius
+      - [X] Damage explosion: Orange/red expanding sphere (`explosion.wav`)
+      - [X] Destruction explosion: Larger white/blue sphere (`death.wav`)
+      - [X] Debris particle effects for destroyed objects
+    - [X] **Splash Damage Visualization**
+      - [X] Expanding blast radius indicator
+      - [X] Multiple target damage application effects
+      - [X] Damage falloff visualization (color intensity)
+  
+  - [X] **Target Hit Feedback Effects**
+    - [X] Hit flash on target (brief white flash)
+    - [X] Damage number display (optional)
+    - [X] Shield impact effects (if shields active)
+    - [X] System damage sparks/smoke effects
+    - [X] Screen shake for player ship hits
+
+- [X] **System Integration Complete**
+  - [X] WeaponEffectsManager integrated into StarfieldManager
+  - [X] Ship position synchronization for accurate effect placement
+  - [X] WeaponSlot triggerWeaponEffects integration
+  - [X] Audio context connection and 3D spatial audio
+  - [X] Game loop update integration for effect animation
+  - [X] Object pooling and performance optimization
+
+- [ ] **Next Phase: Testing and Refinement** ⬅️ **NEXT IMMEDIATE PRIORITY**
+  - [ ] Create test scenarios for each weapon type
+  - [ ] Verify muzzle flash and laser beam effects
+  - [ ] Test audio synchronization with visual effects
+  - [ ] Validate performance with multiple simultaneous effects
+  - [ ] Adjust effect durations and intensities
+  - [ ] Test weapon editor integration (future phase)
 
 ### Integration with Existing Systems
-- [ ] **Ship System Integration**
+- [ ] **Enhanced Ship System Integration**
   - [ ] Connect weapons to existing Ship class
-    - [ ] Add weapon slots to ship configuration
-    - [ ] Integrate weapon energy consumption
-    - [ ] Connect weapon damage to ship systems
-    - [ ] Add weapon system damage effects
-  - [ ] Combat Integration
-    - [ ] Connect weapons to combat damage system
-    - [ ] Integrate with enemy ship targeting
-    - [ ] Add weapon effectiveness calculations
-    - [ ] Create weapon vs. shield interactions
+    - [ ] Add weapon hardpoint positioning data
+    - [ ] Integrate weapon energy consumption with visual feedback
+    - [ ] Connect weapon damage to ship systems with visual effects
+    - [ ] Add weapon system damage effects (sparks, smoke)
+  - [ ] **Combat Integration**
+    - [ ] Connect weapons to enhanced damage system
+    - [ ] Integrate with enemy ship targeting and destruction
+    - [ ] Add weapon effectiveness calculations with visual feedback
+    - [ ] Create weapon vs. shield interactions with effects
+    - [ ] Implement celestial body collision damage
 
-- [ ] **Energy System Integration**
+- [ ] **Enhanced Energy System Integration**
   - [ ] Connect weapons to ship energy system
-    - [ ] Implement energy cost per shot
-    - [ ] Add energy availability checking
-    - [ ] Create energy-based firing limitations
+    - [ ] Implement energy cost per shot with visual feedback
+    - [ ] Add energy availability checking with UI warnings
+    - [ ] Create energy-based firing limitations with effects
     - [ ] Add energy recovery considerations
 
 ### Testing and Balancing
-- [ ] **Weapons Testing**
-  - [ ] Create weapon functionality test suite
-    - [ ] Test weapon firing mechanics
-    - [ ] Validate cooldown systems
-    - [ ] Test autofire functionality
-    - [ ] Verify target lock requirements
-  - [ ] Combat Balance Testing
-    - [ ] Test weapon damage balance
-    - [ ] Validate cooldown timing
-    - [ ] Test autofire effectiveness
-    - [ ] Verify energy consumption balance
-
-- [ ] **UI Testing**
-  - [ ] Test weapon selection UI
-    - [ ] Validate weapon cycling
-    - [ ] Test active weapon highlighting
-    - [ ] Verify cooldown displays
-    - [ ] Test autofire indicators
-  - [ ] Integration Testing
-    - [ ] Test card installation system
-    - [ ] Validate weapon configuration persistence
-    - [ ] Test weapon slot management
-    - [ ] Verify error handling
+- [ ] **Enhanced Weapons Testing**
+  - [ ] Create visual effects test suite
+    - [ ] Test all weapon firing effects in isolation
+    - [ ] Validate collision detection with all object types
+    - [ ] Test performance with multiple simultaneous effects
+    - [ ] Verify audio synchronization with visual effects
+  - [ ] **Combat Balance Testing**
+    - [ ] Test weapon damage balance with visual feedback
+    - [ ] Validate cooldown timing with effect duration
+    - [ ] Test autofire effectiveness with effects
+    - [ ] Verify energy consumption balance with feedback
+  - [ ] **Performance Testing**
+    - [ ] Benchmark 60fps performance with maximum effects
+    - [ ] Test effect culling and LOD systems
+    - [ ] Validate memory usage with object pooling
+    - [ ] Test collision detection performance with many objects
 
 ### Key Bindings Implementation
 - [X] **Weapon Key Bindings** ⬅️ **COMPLETED**

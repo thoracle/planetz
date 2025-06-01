@@ -1,5 +1,6 @@
 import { getShipConfig, validateShipConfig } from './ShipConfigs.js';
 import CardSystemIntegration from './CardSystemIntegration.js';
+import * as THREE from 'three';
 
 /**
  * Ship class - data-driven spaceship implementation
@@ -11,6 +12,9 @@ export default class Ship {
         // Ship identification
         this.shipType = shipType;
         this.shipConfig = getShipConfig(shipType);
+        
+        // Ship position in 3D space (for weapon effects) - initialize without THREE dependency
+        this.position = null; // Will be initialized when THREE is available
         
         // Validate configuration
         if (!validateShipConfig(this.shipConfig)) {

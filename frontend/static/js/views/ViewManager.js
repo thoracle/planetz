@@ -140,8 +140,12 @@ export class ViewManager {
             position: relative;
             display: none;
         `;
+        
+        // Store references to crosshair elements for color updates
+        this.frontCrosshairElements = [];
+        
         this.frontCrosshair.innerHTML = `
-            <div style="
+            <div class="crosshair-element" style="
                 position: absolute;
                 top: 50%;
                 left: 0;
@@ -151,7 +155,7 @@ export class ViewManager {
                 box-shadow: 0 0 4px #00ff41;
                 transform: translateY(-50%);
             "></div>
-            <div style="
+            <div class="crosshair-element" style="
                 position: absolute;
                 top: 50%;
                 right: 0;
@@ -161,7 +165,7 @@ export class ViewManager {
                 box-shadow: 0 0 4px #00ff41;
                 transform: translateY(-50%);
             "></div>
-            <div style="
+            <div class="crosshair-element" style="
                 position: absolute;
                 top: 0;
                 left: 50%;
@@ -171,7 +175,7 @@ export class ViewManager {
                 box-shadow: 0 0 4px #00ff41;
                 transform: translateX(-50%);
             "></div>
-            <div style="
+            <div class="crosshair-element" style="
                 position: absolute;
                 bottom: 0;
                 left: 50%;
@@ -180,17 +184,6 @@ export class ViewManager {
                 background: #00ff41;
                 box-shadow: 0 0 4px #00ff41;
                 transform: translateX(-50%);
-            "></div>
-            <div style="
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                width: 4px;
-                height: 4px;
-                background: #00ff41;
-                border-radius: 50%;
-                box-shadow: 0 0 4px #00ff41;
-                transform: translate(-50%, -50%);
             "></div>
         `;
         
@@ -202,8 +195,12 @@ export class ViewManager {
             position: relative;
             display: none;
         `;
+        
+        // Store references to aft crosshair elements for color updates
+        this.aftCrosshairElements = [];
+        
         this.aftCrosshair.innerHTML = `
-            <div style="
+            <div class="crosshair-element" style="
                 position: absolute;
                 top: 50%;
                 left: 0;
@@ -213,7 +210,7 @@ export class ViewManager {
                 box-shadow: 0 0 4px #00ff41;
                 transform: translateY(-50%);
             "></div>
-            <div style="
+            <div class="crosshair-element" style="
                 position: absolute;
                 top: 50%;
                 right: 0;
@@ -223,22 +220,26 @@ export class ViewManager {
                 box-shadow: 0 0 4px #00ff41;
                 transform: translateY(-50%);
             "></div>
-            <div style="
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                width: 4px;
-                height: 4px;
-                background: #00ff41;
-                border-radius: 50%;
-                box-shadow: 0 0 4px #00ff41;
-                transform: translate(-50%, -50%);
-            "></div>
         `;
         
         this.crosshairContainer.appendChild(this.frontCrosshair);
         this.crosshairContainer.appendChild(this.aftCrosshair);
         document.body.appendChild(this.crosshairContainer);
+        
+        // Add CSS for crosshair animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% { opacity: 0.9; }
+                50% { opacity: 0.6; }
+                100% { opacity: 0.9; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Get references to crosshair elements after DOM creation
+        this.frontCrosshairElements = Array.from(this.frontCrosshair.querySelectorAll('.crosshair-element'));
+        this.aftCrosshairElements = Array.from(this.aftCrosshair.querySelectorAll('.crosshair-element'));
     }
 
     bindKeyEvents() {
@@ -894,6 +895,9 @@ export class ViewManager {
         if (this.warpDriveManager) {
             this.warpDriveManager.update(deltaTime);
         }
+        
+        // Update crosshair display
+        this.updateCrosshairDisplay();
     }
 
     getCamera() {
@@ -963,6 +967,269 @@ export class ViewManager {
     getDamageControl() {
         console.warn('getDamageControl() is deprecated - use StarfieldManager.damageControlInterface instead');
         return null;
+    }
+
+    /**
+     * Update crosshair display based on current weapon range and target distance
+     */
+    updateCrosshairDisplay() {
+        // Only update if crosshairs are visible and we have a ship
+        if (!this.ship || (this.frontCrosshair.style.display === 'none' && this.aftCrosshair.style.display === 'none')) {
+            return;
+        }
+        
+        // Get current weapon range from the active weapon slot
+        let currentWeaponRange = 0;
+        if (this.ship.weaponSystem && this.ship.weaponSystem.weaponSlots) {
+            for (const slot of this.ship.weaponSystem.weaponSlots) {
+                if (slot.equippedWeapon && slot.canFire()) {
+                    // Convert from meters to kilometers for comparison
+                    currentWeaponRange = slot.equippedWeapon.range / 1000;
+                    break; // Use first available weapon
+                }
+            }
+        }
+        
+        // Default state - no target in sights
+        let targetState = 'none';
+        let targetFaction = null;
+        
+        // Only check for targets if we have a weapon and access to the scene
+        if (currentWeaponRange > 0 && this.starfieldManager?.camera && this.starfieldManager?.scene) {
+            // Cast a ray from camera center in the direction the crosshairs are pointing
+            const camera = this.starfieldManager.camera;
+            const raycaster = new THREE.Raycaster();
+            
+            // Get camera forward direction (where crosshairs are pointing)
+            const aimDirection = new THREE.Vector3(0, 0, -1);
+            aimDirection.applyQuaternion(camera.quaternion);
+            
+            // Set up raycaster from camera position in aim direction
+            raycaster.set(camera.position, aimDirection);
+            
+            // Find the closest enemy ship under the crosshairs
+            let closestEnemyDistance = null;
+            let closestEnemyShip = null;
+            
+            // Check all enemy ships in the scene
+            if (this.starfieldManager.dummyShipMeshes) {
+                for (const enemyMesh of this.starfieldManager.dummyShipMeshes) {
+                    if (enemyMesh.userData?.ship && enemyMesh.position) {
+                        // Check if ray intersects with this enemy ship
+                        const intersects = raycaster.intersectObject(enemyMesh, true);
+                        
+                        if (intersects.length > 0) {
+                            const distance = camera.position.distanceTo(enemyMesh.position);
+                            
+                            // Keep track of closest enemy under crosshairs
+                            if (closestEnemyDistance === null || distance < closestEnemyDistance) {
+                                closestEnemyDistance = distance;
+                                closestEnemyShip = enemyMesh.userData.ship;
+                            }
+                        } else {
+                            // If no direct intersection, check if enemy is close to the aim line
+                            const enemyPos = enemyMesh.position;
+                            const distanceToAimLine = raycaster.ray.distanceToPoint(enemyPos);
+                            
+                            // Consider enemy "under crosshairs" if within 2km of aim line
+                            const aimTolerance = 2.0; // 2km tolerance
+                            if (distanceToAimLine <= aimTolerance) {
+                                const distance = camera.position.distanceTo(enemyPos);
+                                
+                                // Only consider if within extended range (4x weapon range for out-of-range detection)
+                                if (distance <= currentWeaponRange * 4) {
+                                    if (closestEnemyDistance === null || distance < closestEnemyDistance) {
+                                        closestEnemyDistance = distance;
+                                        closestEnemyShip = enemyMesh.userData.ship;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Determine target state based on closest enemy under crosshairs
+            if (closestEnemyDistance !== null && closestEnemyShip) {
+                const rangeRatio = closestEnemyDistance / currentWeaponRange;
+                
+                if (rangeRatio <= 1.0) {
+                    // Within range - in range
+                    targetState = 'inRange';
+                } else if (rangeRatio <= 1.2) {
+                    // Close to range (within 20% over) - close to range
+                    targetState = 'closeRange';
+                } else {
+                    // Clearly out of range - out of range
+                    targetState = 'outRange';
+                }
+                
+                // Determine faction of the target
+                targetFaction = this.getFactionColor(closestEnemyShip);
+            }
+        }
+        
+        // Apply visual changes based on target state and faction
+        this.applyCrosshairStyle(this.frontCrosshairElements, targetState, targetFaction);
+        this.applyCrosshairStyle(this.aftCrosshairElements, targetState, targetFaction);
+    }
+    
+    /**
+     * Get faction color for a ship
+     * @param {Object} ship - Ship object
+     * @returns {string} Faction color hex code
+     */
+    getFactionColor(ship) {
+        if (!ship) return '#ffffff'; // White for unknown
+        
+        const diplomacy = ship.diplomacy || ship.faction;
+        
+        switch(diplomacy) {
+            case 'enemy':
+            case 'hostile':
+                return '#ff4444'; // Red for enemies
+            case 'friendly':
+            case 'ally':
+                return '#44ff44'; // Green for friendlies
+            case 'neutral':
+                return '#ffff44'; // Yellow for neutrals
+            case 'unknown':
+                return '#44ffff'; // Cyan for unknown
+            default:
+                return '#ff4444'; // Default to red (assume hostile if unknown)
+        }
+    }
+    
+    /**
+     * Apply crosshair styling based on target state and faction
+     * @param {Array} elements - Array of crosshair elements to style
+     * @param {string} state - Target state: 'none', 'inRange', 'closeRange', 'outRange'
+     * @param {string} factionColor - Faction color hex code, null if no target
+     */
+    applyCrosshairStyle(elements, state, factionColor = null) {
+        // Use faction color if target detected, otherwise white for empty space
+        const baseColor = factionColor || '#ffffff';
+        
+        // Get the crosshair container to add/remove additional elements
+        const container = elements[0]?.parentElement;
+        if (!container) return;
+        
+        // Remove any existing range indicators
+        const existingIndicators = container.querySelectorAll('.range-indicator');
+        existingIndicators.forEach(indicator => indicator.remove());
+        
+        elements.forEach(element => {
+            // Only update color and glow - preserve original crosshair structure
+            element.style.background = baseColor;
+            element.style.boxShadow = `0 0 4px ${baseColor}`;
+            
+            // Reset any animations
+            element.style.animation = '';
+        });
+        
+        // Add range-specific visual indicators and adjust opacity/glow
+        switch(state) {
+            case 'none':
+                // No target - just basic crosshairs, slightly dimmed
+                elements.forEach(element => {
+                    element.style.opacity = '0.6';
+                    element.style.boxShadow = `0 0 2px ${baseColor}`;
+                });
+                break;
+                
+            case 'inRange':
+                // Target in range - add solid corner brackets
+                this.addCornerBrackets(container, baseColor, 'solid');
+                elements.forEach(element => {
+                    element.style.opacity = '1.0';
+                    element.style.boxShadow = `0 0 8px ${baseColor}`;
+                });
+                break;
+                
+            case 'closeRange':
+                // Target close to range - add pulsing corner brackets
+                this.addCornerBrackets(container, baseColor, 'pulse');
+                elements.forEach(element => {
+                    element.style.opacity = '0.9';
+                    element.style.boxShadow = `0 0 6px ${baseColor}`;
+                });
+                break;
+                
+            case 'outRange':
+                // Target out of range - add dashed circle around crosshairs
+                this.addRangeRing(container, baseColor, 'dashed');
+                elements.forEach(element => {
+                    element.style.opacity = '0.8';
+                    element.style.boxShadow = `0 0 4px ${baseColor}`;
+                });
+                break;
+        }
+    }
+    
+    /**
+     * Add corner brackets around crosshairs
+     * @param {HTMLElement} container - Crosshair container
+     * @param {string} color - Color for the brackets
+     * @param {string} style - 'solid' or 'pulse'
+     */
+    addCornerBrackets(container, color, style) {
+        const brackets = [
+            // Top-left bracket
+            { top: '10px', left: '10px', borderTop: `2px solid ${color}`, borderLeft: `2px solid ${color}` },
+            // Top-right bracket  
+            { top: '10px', right: '10px', borderTop: `2px solid ${color}`, borderRight: `2px solid ${color}` },
+            // Bottom-left bracket
+            { bottom: '10px', left: '10px', borderBottom: `2px solid ${color}`, borderLeft: `2px solid ${color}` },
+            // Bottom-right bracket
+            { bottom: '10px', right: '10px', borderBottom: `2px solid ${color}`, borderRight: `2px solid ${color}` }
+        ];
+        
+        brackets.forEach(bracketStyle => {
+            const bracket = document.createElement('div');
+            bracket.className = 'range-indicator bracket';
+            bracket.style.cssText = `
+                position: absolute;
+                width: 12px;
+                height: 12px;
+                pointer-events: none;
+            `;
+            
+            // Apply bracket-specific styling
+            Object.assign(bracket.style, bracketStyle);
+            
+            // Add pulsing animation if needed
+            if (style === 'pulse') {
+                bracket.style.animation = 'pulse 1s infinite';
+            }
+            
+            container.appendChild(bracket);
+        });
+    }
+    
+    /**
+     * Add a ring around crosshairs
+     * @param {HTMLElement} container - Crosshair container
+     * @param {string} color - Color for the ring
+     * @param {string} style - 'solid' or 'dashed'
+     */
+    addRangeRing(container, color, style) {
+        const ring = document.createElement('div');
+        ring.className = 'range-indicator ring';
+        ring.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 80px;
+            height: 80px;
+            border: 2px ${style} ${color};
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            opacity: 0.7;
+            box-shadow: 0 0 6px ${color};
+        `;
+        
+        container.appendChild(ring);
     }
 }
 

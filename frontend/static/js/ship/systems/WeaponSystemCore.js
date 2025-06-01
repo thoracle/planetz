@@ -15,7 +15,7 @@ export class WeaponSystemCore {
         // Initialize weapon slots array
         this.weaponSlots = [];
         for (let i = 0; i < maxWeaponSlots; i++) {
-            this.weaponSlots.push(new WeaponSlot(i));
+            this.weaponSlots.push(new WeaponSlot(i, ship, ship.starfieldManager));
         }
         
         // Active weapon management
