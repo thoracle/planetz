@@ -352,9 +352,9 @@ export class SolarSystemManager {
             // Check if this is the starter system for more compact moon layout
             const isStarterSystem = this.starSystem?.star_name === 'Sol';
             
-            // Calculate initial position relative to planet - closer for starter system
-            const baseMoonOrbitRadius = isStarterSystem ? 2.5 : 4.0; // Closer moons in starter system
-            const moonOrbitRadius = Math.max(1, (moonIndex + 1) * baseMoonOrbitRadius);
+            // Calculate initial position relative to planet - increased distances to avoid launch interference
+            const baseMoonOrbitRadius = isStarterSystem ? 8.0 : 12.0; // Much further from planets
+            const moonOrbitRadius = Math.max(6, (moonIndex + 1) * baseMoonOrbitRadius);
             const angle = (Math.random() * Math.PI * 2) || 0;
             const verticalVariation = Math.sin(angle * 0.5) * moonOrbitRadius * 0.2;
             
@@ -593,9 +593,15 @@ export class SolarSystemManager {
     }
 
     getCelestialBodyInfo(body) {
-        // Find the key for this body
-        const key = Array.from(this.celestialBodies.entries())
+        // Find the key for this body - first try by reference
+        let key = Array.from(this.celestialBodies.entries())
             .find(([_, value]) => value === body)?.[0];
+        
+        // If not found by reference, try by UUID as fallback
+        if (!key && body && body.uuid) {
+            key = Array.from(this.celestialBodies.entries())
+                .find(([_, value]) => value.uuid === body.uuid)?.[0];
+        }
         
         if (!key) return null;
 

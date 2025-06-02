@@ -1602,9 +1602,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         atmosphere.setSunPosition(light.position);
         atmosphere.update(camera);
         
-        // Update chunk manager (scene presence and culling)
+        // Update chunk manager with throttling to prevent worker spam
         if (planetGenerator && planetGenerator.chunkManager) {
-            planetGenerator.chunkManager.updateSceneRepresentation(camera);
+            // Throttle chunk manager updates to prevent excessive worker creation
+            const now = Date.now();
+            if (!planetGenerator.chunkManager.lastUpdateTime || now - planetGenerator.chunkManager.lastUpdateTime > 100) {
+                planetGenerator.chunkManager.updateSceneRepresentation(camera);
+                planetGenerator.chunkManager.lastUpdateTime = now;
+            }
         }
         
         // Update debug info if visible

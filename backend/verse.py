@@ -486,12 +486,12 @@ def generate_starter_system():
         'moon_name': 'Europa',
         'moon_type': 'ice',
         'moon_size': 0.25,
-        'diplomacy': 'friendly',
-        'government': 'Democracy',
+        'diplomacy': 'neutral',
+        'government': 'Independent',
         'economy': 'Research',
         'technology': 'Starfaring', 
         'description': "An ice-covered moon with subsurface oceans, used for training in extreme environment operations.",
-        'intel_brief': "Research station specializing in exobiology and extreme environment training. Ice mining facilities available."
+        'intel_brief': "Independent research station specializing in exobiology and extreme environment training. Ice mining facilities available. Standard docking fees apply."
     }
     
     starter_planet['moons'] = [moon1, moon2]

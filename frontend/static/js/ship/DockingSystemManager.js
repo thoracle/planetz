@@ -9,9 +9,7 @@ import { getSystemDisplayName } from './System.js';
 export default class DockingSystemManager {
     constructor() {
         this.dockingRequirements = {
-            minimumEnergy: 50,
-            minimumHullIntegrity: 10, // percentage
-            maximumDockingSpeed: 3, // impulse speed
+            maximumDockingSpeed: 1, // impulse speed
             dockingEnergyCost: 25,
             launchEnergyCost: 15,
             dockingRange: 1.5 // km - default for moons, planets will be 4.0km
@@ -131,20 +129,7 @@ export default class DockingSystemManager {
             warnings: []
         };
         
-        // Energy validation
-        if (ship.currentEnergy < this.dockingRequirements.minimumEnergy) {
-            result.canDock = false;
-            result.reasons.push(`Insufficient energy (${ship.currentEnergy.toFixed(0)} < ${this.dockingRequirements.minimumEnergy})`);
-        }
-        
-        // Hull integrity validation
-        const hullPercentage = (ship.currentHull / ship.maxHull) * 100;
-        if (hullPercentage < this.dockingRequirements.minimumHullIntegrity) {
-            result.canDock = false;
-            result.reasons.push(`Hull integrity too low (${hullPercentage.toFixed(1)}% < ${this.dockingRequirements.minimumHullIntegrity}%)`);
-        } else if (hullPercentage < 25) {
-            result.warnings.push(`Low hull integrity (${hullPercentage.toFixed(1)}%)`);
-        }
+        // Energy validation removed - docks are for refueling, so no energy required
         
         // Critical system validation
         for (const systemName of this.dockingRestrictions.systemFailures) {
@@ -272,15 +257,6 @@ export default class DockingSystemManager {
         if (!impulseEngines || !impulseEngines.isOperational()) {
             result.canLaunch = false;
             result.reasons.push('Impulse engines offline - cannot launch');
-        }
-        
-        // Hull integrity check
-        const hullPercentage = (ship.currentHull / ship.maxHull) * 100;
-        if (hullPercentage < 5) {
-            result.canLaunch = false;
-            result.reasons.push('Hull integrity critical - launch unsafe');
-        } else if (hullPercentage < 15) {
-            result.warnings.push('Low hull integrity - launch at own risk');
         }
         
         return result;

@@ -6,6 +6,8 @@ import { getSystemDisplayName } from '../ship/System.js';
 import DamageControlHUD from '../ui/DamageControlHUD.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { WeaponSlot } from '../ship/systems/WeaponSlot.js';
+import SimplifiedDamageControl from '../ui/SimplifiedDamageControl.js';
+import DockingModal from '../ui/DockingModal.js';
 // SimplifiedDamageControl removed - damage control integrated into ship systems HUD
 
 export class StarfieldManager {
@@ -130,6 +132,9 @@ export class StarfieldManager {
         // Create docking interface and system manager
         this.dockingInterface = new DockingInterface(this);
         this.dockingSystemManager = new DockingSystemManager();
+        
+        // Create docking modal for popup-based docking
+        this.dockingModal = new DockingModal(this);
         
         // Create help interface
         this.helpInterface = new HelpInterface(this);
@@ -3099,7 +3104,13 @@ export class StarfieldManager {
     }
 
     dispose() {
-        console.log('Disposing StarfieldManager...');
+        console.log('⚡ StarfieldManager disposal started...');
+        
+        // Clean up docking modal
+        if (this.dockingModal) {
+            this.dockingModal.destroy();
+            this.dockingModal = null;
+        }
         
         // Clean up damage control HUD
         if (this.damageControlHUD) {
@@ -4151,6 +4162,9 @@ export class StarfieldManager {
             }
         }
 
+        // Store the target we're launching from before clearing it
+        const launchTarget = this.dockedTo;
+
         // Hide docking interface
         this.dockingInterface.hide();
 
@@ -4172,7 +4186,10 @@ export class StarfieldManager {
 
         // Calculate undock position (move away from the body in the current direction)
         const forward = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-        const targetPos = this.camera.position.clone().add(forward.multiplyScalar(this.orbitRadius * 2));
+        
+        // NEW: Calculate safe launch distance to avoid nearby dockable objects
+        const safeDistance = this.calculateSafeLaunchDistance(launchTarget);
+        const targetPos = this.camera.position.clone().add(forward.multiplyScalar(safeDistance));
         this.undockingState.endPos = targetPos;
 
         // Reset to forward-facing rotation
@@ -4200,7 +4217,7 @@ export class StarfieldManager {
         }
         
         // Add a brief delay before target computer can be used again
-        this.undockCooldown = Date.now() + 2000; // 2 second cooldown
+        this.undockCooldown = Date.now() + 30000; // 30 second cooldown
         
         // Set speed to impulse 1 for a gentle launch
         this.targetSpeed = 1;
@@ -4423,46 +4440,50 @@ export class StarfieldManager {
      * Restore all ship systems to their pre-docking state when undocking
      */
     async restoreAllSystems() {
-        const ship = this.viewManager?.getShip();
-        if (!ship) {
-            console.warn('No ship available for system power management');
+        console.log('🔧 Restoring all ship systems after undocking');
+        
+        // Use this.ship instead of getting from viewManager since it's already set in constructor
+        if (!this.ship) {
+            console.warn('No ship available for system restoration');
             return;
         }
         
-        
-        // CRITICAL FIX: Initialize card system integration FIRST before restoring systems
-        if (ship && ship.cardSystemIntegration) {
-            await ship.cardSystemIntegration.initializeCardData();
-            
-            // NEW: Create missing systems based on installed cards
-            await ship.cardSystemIntegration.createSystemsFromCards();
-            
-            // CRITICAL: Reinitialize weapon system with new weapon cards after station changes
-            // This is now handled by CardSystemIntegration.refreshWeaponSystems() in createSystemsFromCards
-            // No need to call it here separately to avoid double initialization
+        // Check if ship has equipment property
+        if (!this.ship.equipment) {
+            console.warn('Ship does not have equipment property - skipping system restoration');
+            return;
         }
         
-        
-        // Power up all systems that were active before docking
-        let poweredUpCount = 0;
-        for (let [systemName, system] of ship.systems) {
-            // Skip systems that require manual activation (user-controlled systems)
-            const manualActivationSystems = ['galactic_chart', 'long_range_scanner', 'subspace_radio', 'target_computer', 'shields', 'impulse_engines', 'energy_reactor'];
-            if (manualActivationSystems.includes(systemName)) {
-                continue;
-            }
-            
-            if (system.canActivate && system.canActivate(ship)) {
-                try {
-                    system.powerUp();
-                    poweredUpCount++;
-                } catch (error) {
-                    console.warn(`  ❌ Failed to power up ${systemName}:`, error);
-                }
-            } else {
-            }
+        // Restore power management
+        if (this.ship.equipment.powerManagement) {
+            this.powerManagementEnabled = true;
+            console.log('⚡ Power management restored and enabled');
         }
         
+        // Restore navigation computer
+        if (this.ship.equipment.navigationComputer) {
+            this.navigationComputerEnabled = true;
+            console.log('🧭 Navigation computer restored and enabled');
+        }
+        
+        // Target computer should remain INACTIVE after launch - user must manually enable it
+        if (this.ship.equipment.targetComputer) {
+            this.targetComputerEnabled = false;  // Start inactive
+            console.log('🎯 Target computer available but inactive - manual activation required');
+            this.updateTargetDisplay();
+        }
+        
+        // Restore defensive systems
+        if (this.ship.equipment.defensiveSystems) {
+            this.defensiveSystemsEnabled = true;
+            console.log('🛡️ Defensive systems restored and enabled');
+        }
+        
+        // Restore ship status display
+        if (this.ship.equipment.shipStatusDisplay) {
+            this.shipStatusDisplayEnabled = true;
+            console.log('📊 Ship status display restored and enabled');
+        }
     }
 
     /**
@@ -5761,62 +5782,125 @@ export class StarfieldManager {
     }
 
     updateActionButtons(currentTargetData, info) {
-        // Calculate docking range based on body size
-        let dockingRange = this.dockingRange; // Default 1.5 for moons
-        if (info?.type === 'planet') {
-            // For planets, use a fixed 4.0KM range
-            dockingRange = 4.0;
-        }
-
-        // Calculate button state for docking (show dock button, but launch is handled by docking interface)
-        const canDock = this.canDock(this.currentTarget);
-        const isDocked = this.isDocked && this.dockedTo === this.currentTarget;
-        const isHostile = info?.diplomacy?.toLowerCase() === 'enemy';
-
-        // Add a small buffer to button display: only show button if distance is comfortably within range
-        let showButton = false;
-        if ((info?.type === 'planet' || info?.type === 'moon') && canDock && !isDocked && !isHostile) {
-            // Add 0.3km buffer - only show button if we're well within docking range
-            const currentDistance = this.camera.position.distanceTo(this.currentTarget.position);
-            let buttonRange = this.dockingRange - 0.3; // Default 1.2 for moons
-            if (info?.type === 'planet') {
-                buttonRange = 3.7; // 3.7km for planets (was 4.0km)
-            }
-            showButton = currentDistance <= buttonRange;
-        }
-
-        // Show dock button when in range and not docked, but launch is handled by docking interface
-        const newButtonState = {
-            hasDockButton: showButton,
+        // Dock button removed - docking is now handled by the DockingModal
+        // which shows when conditions are met (distance, speed, etc.)
+        
+        // Clear existing buttons since we no longer show dock button
+        this.actionButtonsContainer.innerHTML = '';
+        
+        // Reset button state
+        this.currentButtonState = {
+            hasDockButton: false,
             isDocked: this.isDocked,
             hasScanButton: false,
             hasTradeButton: false
         };
+    }
 
-        // Only recreate buttons if state has changed
-        const stateChanged = JSON.stringify(this.currentButtonState) !== JSON.stringify(newButtonState);
+    setImpulseSpeed(requestedSpeed) {
+        // Don't allow speed changes while docked
+        if (this.isDocked) {
+            return false;
+        }
         
-        if (stateChanged) {
-            // Throttle button state change logging to prevent spam
-            const now = Date.now();
-            if (!this.lastButtonStateLog || now - this.lastButtonStateLog > 2000) { // Log at most every 2 seconds
-                // Debugging button state changes (can be enabled if needed)
-                this.lastButtonStateLog = now;
-            }
-            this.currentButtonState = newButtonState;
-            
-            // Clear existing buttons
-            this.actionButtonsContainer.innerHTML = '';
-
-            // Add dock button if applicable (launch button is in docking interface)
-            if (newButtonState.hasDockButton) {
-                const dockButton = document.createElement('button');
-                dockButton.className = 'dock-button';
-                dockButton.textContent = 'DOCK';
-                dockButton.addEventListener('click', () => this.handleDockButtonClick(false, currentTargetData.name));
-                this.actionButtonsContainer.appendChild(dockButton);
+        // Update impulse engines with new speed setting (this will clamp the speed)
+        const ship = this.viewManager?.getShip();
+        let actualSpeed = requestedSpeed; // fallback
+        
+        if (ship) {
+            const impulseEngines = ship.getSystem('impulse_engines');
+            if (impulseEngines) {
+                // Check if the requested speed exceeds the engine's maximum capability
+                const maxSpeed = impulseEngines.getMaxImpulseSpeed();
+                
+                if (requestedSpeed > maxSpeed) {
+                    // Requested speed exceeds engine capability - fail silently for modal
+                    return false;
+                }
+                
+                impulseEngines.setImpulseSpeed(requestedSpeed);
+                // Get the actual clamped speed from the impulse engines
+                actualSpeed = impulseEngines.getImpulseSpeed();
             }
         }
+        
+        // Set target speed to the actual clamped speed
+        this.targetSpeed = actualSpeed;
+        
+        // Determine if we need to decelerate
+        if (actualSpeed < this.currentSpeed) {
+            this.decelerating = true;
+            // Start engine shutdown if going to zero
+            if (actualSpeed === 0 && this.engineState === 'running') {
+                this.playEngineShutdown();
+            }
+        } else {
+            this.decelerating = false;
+            // Handle engine sounds for acceleration
+            if (this.soundLoaded) {
+                const volume = actualSpeed / this.maxSpeed;
+                if (this.engineState === 'stopped') {
+                    this.playEngineStartup(volume);
+                } else if (this.engineState === 'running') {
+                    this.engineSound.setVolume(volume);
+                }
+            }
+        }
+        
+        return true;
+    }
+
+    // NEW: Calculate safe launch distance to avoid nearby dockable objects
+    calculateSafeLaunchDistance(launchTarget) {
+        const minBaseDistance = this.orbitRadius * 2; // Minimum distance (original logic)
+        let safeDistance = minBaseDistance;
+        
+        // Get all celestial bodies and filter for dockable objects (planets and moons)
+        const celestialBodies = this.solarSystemManager?.getCelestialBodies();
+        if (!celestialBodies) {
+            console.log(`🚀 Launch distance calculated: ${safeDistance.toFixed(1)}km (no solar system manager)`);
+            return safeDistance;
+        }
+        
+        const dockableObjects = [];
+        celestialBodies.forEach((body, bodyId) => {
+            // Only consider planets and moons (skip star)
+            if (bodyId.startsWith('planet_') || bodyId.startsWith('moon_')) {
+                dockableObjects.push(body);
+            }
+        });
+        
+        // Check distance to all other dockable objects
+        for (const obj of dockableObjects) {
+            if (obj === launchTarget) continue; // Skip the object we're launching from
+            
+            const distanceToObject = this.camera.position.distanceTo(obj.position);
+            const objectInfo = this.solarSystemManager.getCelestialBodyInfo(obj);
+            
+            // Get the docking range for this object
+            let objectDockingRange = 1.5; // Default for moons
+            if (objectInfo?.type === 'planet') {
+                objectDockingRange = 4.0;
+            }
+            
+            // If this object is close to our launch target, ensure we launch far enough
+            // to be outside its docking range plus a safety buffer
+            const safetyBuffer = 2.0; // 2km additional safety margin
+            const requiredDistance = objectDockingRange + safetyBuffer;
+            
+            // If the object is within a dangerous proximity to our launch point
+            if (distanceToObject < requiredDistance * 3) {
+                // Calculate how far we need to launch to clear this object's docking range
+                const neededDistance = requiredDistance + distanceToObject * 0.5;
+                safeDistance = Math.max(safeDistance, neededDistance);
+            }
+        }
+        
+        // Ensure we don't launch too far (maximum of 20km)
+        safeDistance = Math.min(safeDistance, 20.0);
+        
+        console.log(`🚀 Launch distance calculated: ${safeDistance.toFixed(1)}km (base: ${minBaseDistance.toFixed(1)}km)`);
+        return safeDistance;
     }
 
 } 
