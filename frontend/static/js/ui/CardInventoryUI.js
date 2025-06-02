@@ -1415,7 +1415,8 @@ export default class CardInventoryUI {
             'quantum_torpedo': ['weapons'],
             'singularity_launcher': ['weapons'],
             'void_ripper': ['weapons'],
-            // New projectile weapons
+            'nanite_swarm': ['weapons'],
+            // Projectile weapons
             'standard_missile': ['weapons'],
             'homing_missile': ['weapons'],
             'photon_torpedo': ['weapons'],
@@ -1423,21 +1424,40 @@ export default class CardInventoryUI {
             
             // Utility slot cards (most flexible)
             'hull_plating': ['utility'],
-            'shield_generator': ['shields', 'utility'],
+            'adaptive_armor': ['utility'],  // Advanced armor
+            'shield_generator': ['utility'],
+            'shields': ['utility'],
+            'phase_shield': ['utility'],
+            'quantum_barrier': ['utility'],
+            'temporal_deflector': ['utility'],
             'cargo_hold': ['utility'],
             'reinforced_cargo_hold': ['utility'],
             'shielded_cargo_hold': ['utility'],
-            'warp_drive': ['warpDrive', 'utility'],
-            'shields': ['shields', 'utility'],
-            'long_range_scanner': ['scanner', 'utility'],
-            'subspace_radio': ['radio', 'utility'],
-            'galactic_chart': ['galacticChart', 'utility'],
-            'target_computer': ['targetComputer', 'utility'],
+            'warp_drive': ['utility'],
+            'long_range_scanner': ['utility'],
+            'quantum_scanner': ['utility'],  // Advanced scanner
+            'dimensional_radar': ['utility'],
+            'subspace_radio': ['utility'],
+            'galactic_chart': ['utility'],
+            'target_computer': ['utility'],
+            'tactical_computer': ['utility'],
+            'combat_computer': ['utility'],
+            'strategic_computer': ['utility'],
+            'precognition_array': ['utility'],
+            'psionic_amplifier': ['utility'],
+            'neural_interface': ['utility'],
             
-            // Specialized slots
-            'tactical_computer': ['targetComputer', 'utility'],
-            'combat_computer': ['targetComputer', 'utility'],
-            'strategic_computer': ['targetComputer', 'utility']
+            // Alien Technology (utility only)
+            'zephyrian_crystal': ['utility'],
+            'vorthan_mind_link': ['utility'],
+            'nexus_harmonizer': ['utility'],
+            'ethereal_conduit': ['utility'],
+            
+            // Experimental Systems (utility only)
+            'probability_drive': ['utility'],
+            'chaos_field_gen': ['utility'],
+            'reality_anchor': ['utility'],
+            'entropy_reverser': ['utility']
         };
         
         const allowedSlots = cardToSlotMapping[cardType] || ['utility']; // Default to utility

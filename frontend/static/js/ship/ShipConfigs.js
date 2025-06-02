@@ -92,18 +92,13 @@ export const SHIP_CONFIGS = {
         // System slots (increased to accommodate future systems)
         systemSlots: 18,       // Available system slots
         
-        // System slot allocations (for reference) - SIMPLIFIED: All systems take 1 slot
+        // System slot allocations (standardized like starter_ship)
         slotConfig: {
             engines: 1,        // Impulse engines
-            warpDrive: 1,       // Warp drive
-            shields: 1,         // Deflector shield generator
-            weapons: 4,         // Maximum weapons for heavy combat role
-            missileTubes: 1,    // Missile tubes (now included for cooldown testing)
-            scanner: 1,         // Long range scanner
-            radio: 1,           // Subspace radio
-            galacticChart: 1,   // Galactic chart
-            targetComputer: 1,  // Target computer
-            // Available slots: 6 (18 total - 12 used = 6 free for future systems)
+            reactor: 1,        // Energy reactor
+            weapons: 4,        // Maximum weapons for heavy combat role
+            utility: 12,       // Utility slots for advanced systems
+            // Total slots: 18 (1 engine + 1 reactor + 4 weapons + 12 utility = 18)
         },
         
         // Default system configurations (energy consumption per second when active)
@@ -198,17 +193,13 @@ export const SHIP_CONFIGS = {
         // System slots - Adequate slots for core systems plus expansion
         systemSlots: 15,       // Increased for better expansion capability
         
-        // System slot allocations
+        // System slot allocations (standardized like starter_ship)
         slotConfig: {
             engines: 1,        // Impulse engines (high performance)
-            warpDrive: 1,       // Warp drive
-            shields: 1,         // Light shields
-            weapons: 2,         // Fewer weapons - reconnaissance focused
-            scanner: 1,         // Enhanced long range scanner
-            radio: 1,           // Subspace radio
-            galacticChart: 1,   // Galactic chart
-            targetComputer: 1,  // Target computer
-            // Available slots: 6 (15 total - 9 used = 6 free)
+            reactor: 1,        // Energy reactor
+            weapons: 2,        // Fewer weapons - reconnaissance focused
+            utility: 11,       // Utility slots for sensors and other equipment
+            // Total slots: 15 (1 engine + 1 reactor + 2 weapons + 11 utility = 15)
         },
         
         // Default system configurations - Scout optimized
@@ -297,17 +288,13 @@ export const SHIP_CONFIGS = {
         // System slots - Balanced allocation with good expansion
         systemSlots: 18,       // Increased for better expansion capability
         
-        // System slot allocations
+        // System slot allocations (standardized like starter_ship)
         slotConfig: {
             engines: 1,        // Impulse engines
-            warpDrive: 1,       // Warp drive
-            shields: 1,         // Medium shields
-            weapons: 3,         // Good combat capability but not maximum
-            scanner: 1,         // Long range scanner
-            radio: 1,           // Subspace radio
-            galacticChart: 1,   // Galactic chart
-            targetComputer: 1,  // Target computer
-            // Available slots: 8 (18 total - 10 used = 8 free)
+            reactor: 1,        // Energy reactor
+            weapons: 3,        // Good combat capability but not maximum
+            utility: 13,       // Utility slots for balanced equipment
+            // Total slots: 18 (1 engine + 1 reactor + 3 weapons + 13 utility = 18)
         },
         
         // Default system configurations - Combat balanced
@@ -396,17 +383,13 @@ export const SHIP_CONFIGS = {
         // System slots - More utility focused with expansion room
         systemSlots: 20,       // Increased for cargo systems and expansion
         
-        // System slot allocations
+        // System slot allocations (standardized like starter_ship)
         slotConfig: {
             engines: 1,        // Basic impulse engines
-            warpDrive: 1,       // Warp drive
-            shields: 1,         // Defensive shields
-            weapons: 2,         // Moderate defensive capability
-            scanner: 1,         // Long range scanner
-            radio: 1,           // Subspace radio
-            galacticChart: 1,   // Galactic chart
-            targetComputer: 1,  // Basic target computer
-            // Available slots: 11 (20 total - 9 used = 11 free for cargo systems)
+            reactor: 1,        // Energy reactor
+            weapons: 2,        // Moderate defensive capability
+            utility: 16,       // Utility slots for cargo systems and equipment
+            // Total slots: 20 (1 engine + 1 reactor + 2 weapons + 16 utility = 20)
         },
         
         // Default system configurations - Cargo optimized
@@ -495,17 +478,13 @@ export const SHIP_CONFIGS = {
         // System slots - Maximum utility focus with extensive expansion
         systemSlots: 25,       // Maximum system slots for cargo operations and expansion
         
-        // System slot allocations
+        // System slot allocations (standardized like starter_ship)
         slotConfig: {
             engines: 1,        // Heavy impulse engines
-            warpDrive: 1,       // Warp drive
-            shields: 1,         // Heavy shields
-            weapons: 1,         // Minimal weapons - cargo focused
-            scanner: 1,         // Long range scanner
-            radio: 1,           // Subspace radio
-            galacticChart: 1,   // Galactic chart
-            targetComputer: 1,  // Basic target computer
-            // Available slots: 16 (25 total - 9 used = 16 free for cargo systems)
+            reactor: 1,        // Energy reactor
+            weapons: 1,        // Minimal weapons - cargo focused
+            utility: 22,       // Utility slots for maximum cargo operations and equipment
+            // Total slots: 25 (1 engine + 1 reactor + 1 weapon + 22 utility = 25)
         },
         
         // Default system configurations - Heavy cargo optimized

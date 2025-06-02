@@ -383,7 +383,38 @@ export default class CardSystemIntegration {
             // 'disruptor_cannon': 'Weapons',
             // 'particle_beam': 'Weapons',
             'missile_tubes': 'MissileTubes',
-            'torpedo_launcher': 'MissileTubes'  // Map torpedo launcher to missile system
+            'torpedo_launcher': 'MissileTubes',  // Map torpedo launcher to missile system
+            'tactical_computer': 'TargetComputer',     // Advanced intel-enabled target computer
+            'combat_computer': 'TargetComputer',       // Advanced intel-enabled target computer
+            'strategic_computer': 'TargetComputer',    // Advanced intel-enabled target computer
+            
+            // Exotic Core Systems (map to existing reactor class)
+            'quantum_reactor': 'EnergyReactor',
+            'dark_matter_core': 'EnergyReactor',
+            'antimatter_generator': 'EnergyReactor',
+            'crystalline_matrix': 'EnergyReactor',
+            
+            // Advanced Propulsion (map to existing engine class)
+            'quantum_drive': 'ImpulseEngines',
+            'dimensional_shifter': 'ImpulseEngines',
+            'temporal_engine': 'ImpulseEngines',
+            'gravity_well_drive': 'ImpulseEngines',
+            
+            // Advanced Defense (map to existing defense classes)
+            'phase_shield': 'Shields',
+            'adaptive_armor': 'HullPlating',
+            'quantum_barrier': 'Shields',
+            'temporal_deflector': 'Shields',
+            
+            // Exotic Sensors & Tech (map to existing sensor classes)
+            'quantum_scanner': 'LongRangeScanner',
+            'precognition_array': 'TargetComputer',
+            'dimensional_radar': 'LongRangeScanner',
+            'psionic_amplifier': 'TargetComputer',
+            'neural_interface': 'TargetComputer'
+            
+            // NOTE: Alien Technology and Experimental Systems are handled as special cases
+            // They provide passive benefits without creating system objects
         };
         
         const systemPathMap = {
@@ -406,63 +437,62 @@ export default class CardSystemIntegration {
         
         let systemsCreated = 0;
         
-        // Check each installed card
+        // Handle each installed card
         for (const [slotId, cardData] of this.installedCards) {
-            const systemClass = cardToSystemMap[cardData.cardType];
-            const systemName = this.getSystemNameForCard(cardData.cardType);
+            const cardType = cardData.cardType;
+            const systemName = this.getSystemNameForCard(cardType);
             
-            // SKIP WEAPON CARDS - WeaponSyncManager handles individual weapon systems
-            if (this.isWeaponCard(cardData.cardType)) {
-                console.log(`🔫 SKIPPING weapon card ${cardData.cardType} - handled by WeaponSyncManager`);
+            console.log(`🔧 Processing card: ${cardType} → ${systemName}`);
+            
+            // Skip weapon cards - they're handled by WeaponSyncManager
+            if (this.isWeaponCard(cardType)) {
+                console.log(`🔫 SKIPPING weapon card ${cardType} - handled by WeaponSyncManager`);
                 continue;
             }
             
-            // Check if we need to replace an existing system
-            const existingSystem = this.ship.getSystem(systemName);
-            if (existingSystem) {
-                // Check if existing system is different level or type
-                let shouldReplace = false;
-                
-                if (systemName === 'weapons') {
-                    // For weapons, replace if weapon type has changed
-                    if (existingSystem.weaponCardType !== cardData.cardType) {
-                        console.log(`🔄 WEAPON TYPE CHANGED: ${existingSystem.weaponCardType} → ${cardData.cardType}`);
-                        shouldReplace = true;
-                    }
+            // Special handling for utility cards that don't create systems
+            if (cardType === 'entropy_reverser' || 
+                cardType === 'zephyrian_crystal' || 
+                cardType === 'vorthan_mind_link' || 
+                cardType === 'nexus_harmonizer' || 
+                cardType === 'ethereal_conduit' || 
+                cardType === 'probability_drive' || 
+                cardType === 'chaos_field_gen' || 
+                cardType === 'reality_anchor') {
+                console.log(`🔧 UTILITY CARD: ${cardType} - provides passive benefits (no system created)`);
+                continue;
+            }
+            
+            // Skip if system already exists with same level
+            if (this.ship.systems.has(systemName)) {
+                const existingSystem = this.ship.systems.get(systemName);
+                if (existingSystem.level === cardData.level) {
+                    console.log(`✅ EXISTING: ${systemName} (Level ${cardData.level}) - no change needed`);
+                    continue;
                 } else {
-                    // For other systems, replace if level has changed
-                    if (existingSystem.level !== cardData.level) {
-                        console.log(`🔄 SYSTEM LEVEL CHANGED: ${systemName} Level ${existingSystem.level} → Level ${cardData.level}`);
-                        shouldReplace = true;
-                    }
-                }
-                
-                if (shouldReplace) {
-                    // Remove the old system so new one can be created
+                    // Level changed - remove old system first
+                    console.log(`🔄 SYSTEM LEVEL CHANGED: ${systemName} Level ${existingSystem.level} → Level ${cardData.level}`);
                     this.ship.removeSystem(systemName);
                     console.log(`🗑️ Removed old ${systemName} system for replacement`);
-                } else {
-                    // System is up to date, skip creating new one
-                    continue;
                 }
             }
             
             // Skip if we don't know how to create this system
-            if (!systemClass || !systemPathMap[systemClass]) {
-                console.log(`❌ SYSTEM CREATION FAILED: ${cardData.cardType} → Unknown system type`);
+            if (!cardToSystemMap[cardType] || !systemPathMap[cardToSystemMap[cardType]]) {
+                console.log(`❌ SYSTEM CREATION FAILED: ${cardType} → Unknown system type`);
                 continue;
             }
             
             try {
                 // Import and create the system
-                const modulePath = systemPathMap[systemClass];
+                const modulePath = systemPathMap[cardToSystemMap[cardType]];
                 
                 // Handle both default and named exports
                 let SystemClass;
-                if (systemClass === 'ReinforcedCargoHold' || systemClass === 'ShieldedCargoHold') {
+                if (cardToSystemMap[cardType] === 'ReinforcedCargoHold' || cardToSystemMap[cardType] === 'ShieldedCargoHold') {
                     // Named exports for cargo variants
                     const module = await import(modulePath);
-                    SystemClass = module[systemClass];
+                    SystemClass = module[cardToSystemMap[cardType]];
                 } else {
                     // Default exports for most systems
                     const { default: DefaultSystemClass } = await import(modulePath);
@@ -471,7 +501,7 @@ export default class CardSystemIntegration {
                 
                 // Create system with appropriate configuration
                 let system;
-                if (systemClass === 'Weapons') {
+                if (cardToSystemMap[cardType] === 'Weapons') {
                     // Pass weapon card type to Weapons system
                     system = new SystemClass(cardData.level, { weaponCardType: cardData.cardType });
                 } else {
@@ -488,7 +518,7 @@ export default class CardSystemIntegration {
                 }
                 
             } catch (error) {
-                console.error(`❌ SYSTEM ERROR: ${cardData.cardType} →`, error.message);
+                console.error(`❌ SYSTEM ERROR: ${cardType} →`, error.message);
             }
         }
         
@@ -563,15 +593,84 @@ export default class CardSystemIntegration {
             return true;
         }
         
-        // Special cases
-        if (systemName === 'shields' && (installedCardTypes.includes('shields') || installedCardTypes.includes('shield_generator'))) {
+        // Special cases for systems with multiple card variants
+        if (systemName === 'shields' && (
+            installedCardTypes.includes('shields') || 
+            installedCardTypes.includes('shield_generator') || 
+            installedCardTypes.includes('phase_shield') || 
+            installedCardTypes.includes('quantum_barrier') || 
+            installedCardTypes.includes('temporal_deflector')
+        )) {
+            return true;
+        }
+        
+        // Target computer can be satisfied by various computer card types
+        if (systemName === 'target_computer' && (
+            installedCardTypes.includes('target_computer') || 
+            installedCardTypes.includes('tactical_computer') || 
+            installedCardTypes.includes('combat_computer') || 
+            installedCardTypes.includes('strategic_computer') || 
+            installedCardTypes.includes('precognition_array') || 
+            installedCardTypes.includes('psionic_amplifier') || 
+            installedCardTypes.includes('neural_interface')
+        )) {
+            return true;
+        }
+        
+        // Energy reactor variants
+        if (systemName === 'energy_reactor' && (
+            installedCardTypes.includes('energy_reactor') || 
+            installedCardTypes.includes('quantum_reactor') || 
+            installedCardTypes.includes('dark_matter_core') || 
+            installedCardTypes.includes('antimatter_generator') || 
+            installedCardTypes.includes('crystalline_matrix')
+        )) {
+            return true;
+        }
+        
+        // Impulse engine variants
+        if (systemName === 'impulse_engines' && (
+            installedCardTypes.includes('impulse_engines') || 
+            installedCardTypes.includes('quantum_drive') || 
+            installedCardTypes.includes('dimensional_shifter') || 
+            installedCardTypes.includes('temporal_engine') || 
+            installedCardTypes.includes('gravity_well_drive')
+        )) {
+            return true;
+        }
+        
+        // Long range scanner variants
+        if (systemName === 'long_range_scanner' && (
+            installedCardTypes.includes('long_range_scanner') || 
+            installedCardTypes.includes('quantum_scanner') || 
+            installedCardTypes.includes('dimensional_radar')
+        )) {
+            return true;
+        }
+        
+        // Hull plating variants
+        if (systemName === 'hull_plating' && (
+            installedCardTypes.includes('hull_plating') || 
+            installedCardTypes.includes('adaptive_armor')
+        )) {
+            return true;
+        }
+        
+        // Cargo hold variants
+        if (systemName === 'cargo_hold' && (
+            installedCardTypes.includes('cargo_hold') || 
+            installedCardTypes.includes('reinforced_cargo_hold') || 
+            installedCardTypes.includes('shielded_cargo_hold')
+        )) {
             return true;
         }
         
         // For weapon systems, check if the specific weapon card is installed
         const weaponSystems = ['laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array',
                               'disruptor_cannon', 'particle_beam', 'standard_missile', 'homing_missile',
-                              'heavy_torpedo', 'proximity_mine'];
+                              'heavy_torpedo', 'proximity_mine', 'photon_torpedo', 'ion_storm_cannon',
+                              'graviton_beam', 'quantum_torpedo', 'singularity_launcher', 'void_ripper',
+                              'nanite_swarm'];
         
         if (weaponSystems.includes(systemName)) {
             return installedCardTypes.includes(systemName);
@@ -654,7 +753,58 @@ export default class CardSystemIntegration {
             'torpedo_launcher': 'missile_tubes',  // Map torpedo launcher to missile system
             'tactical_computer': 'target_computer',     // Advanced intel-enabled target computer
             'combat_computer': 'target_computer',       // Advanced intel-enabled target computer
-            'strategic_computer': 'target_computer'     // Advanced intel-enabled target computer
+            'strategic_computer': 'target_computer',    // Advanced intel-enabled target computer
+            
+            // Projectile weapons
+            'standard_missile': 'weapons',
+            'homing_missile': 'weapons',
+            'photon_torpedo': 'weapons',
+            'proximity_mine': 'weapons',
+            
+            // Exotic Core Systems (reactor equivalents)
+            'quantum_reactor': 'energy_reactor',
+            'dark_matter_core': 'energy_reactor',
+            'antimatter_generator': 'energy_reactor',
+            'crystalline_matrix': 'energy_reactor',
+            
+            // Advanced Propulsion (engine equivalents)
+            'quantum_drive': 'impulse_engines',
+            'dimensional_shifter': 'impulse_engines',
+            'temporal_engine': 'impulse_engines',
+            'gravity_well_drive': 'impulse_engines',
+            
+            // Exotic Weapons
+            'ion_storm_cannon': 'weapons',
+            'graviton_beam': 'weapons',
+            'quantum_torpedo': 'weapons',
+            'singularity_launcher': 'weapons',
+            'void_ripper': 'weapons',
+            'nanite_swarm': 'weapons',
+            
+            // Advanced Defense (shield/armor equivalents)
+            'phase_shield': 'shields',
+            'adaptive_armor': 'hull_plating',
+            'quantum_barrier': 'shields',
+            'temporal_deflector': 'shields',
+            
+            // Exotic Sensors & Tech (utility/scanner equivalents)
+            'quantum_scanner': 'long_range_scanner',
+            'precognition_array': 'target_computer',
+            'dimensional_radar': 'long_range_scanner',
+            'psionic_amplifier': 'target_computer',
+            'neural_interface': 'target_computer',
+            
+            // Alien Technology (special utility systems)
+            'zephyrian_crystal': 'utility_special',
+            'vorthan_mind_link': 'utility_special',
+            'nexus_harmonizer': 'utility_special',
+            'ethereal_conduit': 'utility_special',
+            
+            // Experimental Systems (special utility systems)
+            'probability_drive': 'utility_special',
+            'chaos_field_gen': 'utility_special',
+            'reality_anchor': 'utility_special',
+            'entropy_reverser': 'utility_special'
         };
         
         return cardToSystemNameMap[cardType] || cardType;
