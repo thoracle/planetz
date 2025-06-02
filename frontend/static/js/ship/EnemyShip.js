@@ -326,4 +326,43 @@ export default class EnemyShip {
         
         return result;
     }
+    
+    /**
+     * Apply damage to a specific system (for sub-targeting)
+     * @param {string} systemName - Name of the system to damage
+     * @param {number} damage - Amount of damage to apply
+     * @param {string} damageType - Type of damage
+     * @returns {boolean} True if damage was applied successfully
+     */
+    applySubTargetDamage(systemName, damage, damageType = 'kinetic') {
+        const system = this.systems.get(systemName);
+        if (!system) {
+            console.warn(`Cannot apply sub-target damage: system ${systemName} not found on ${this.shipName}`);
+            return false;
+        }
+        
+        const healthBefore = system.healthPercentage;
+        system.takeDamage(damage);
+        const healthAfter = system.healthPercentage;
+        
+        console.log(`🎯 Sub-target damage: ${systemName} on ${this.shipName} took ${damage.toFixed(1)} ${damageType} damage`);
+        console.log(`📊 System health: ${(healthBefore * 100).toFixed(1)}% → ${(healthAfter * 100).toFixed(1)}%`);
+        
+        if (healthAfter === 0 && healthBefore > 0) {
+            console.log(`💥 SYSTEM DESTROYED: ${systemName} on ${this.shipName} completely disabled!`);
+        }
+        
+        // Apply some collateral damage to ship hull (25% of system damage)
+        const collateralDamage = damage * 0.25;
+        this.currentHull = Math.max(0, this.currentHull - collateralDamage);
+        console.log(`💥 Collateral hull damage: ${collateralDamage.toFixed(1)} (hull: ${this.currentHull.toFixed(1)}/${this.maxHull})`);
+        
+        // Check if ship is destroyed due to hull damage
+        if (this.currentHull <= 0) {
+            console.log(`🔥 ${this.shipName} DESTROYED by collateral damage!`);
+            return { isDestroyed: true };
+        }
+        
+        return true;
+    }
 } 

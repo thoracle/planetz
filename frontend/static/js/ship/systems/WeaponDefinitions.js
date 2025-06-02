@@ -20,7 +20,7 @@ export class WeaponDefinitions {
                 weaponType: 'scan-hit',
                 damage: 50,
                 cooldownTime: 2.0, // seconds - doubled from 1.0s
-                range: 20000, // meters - doubled from 10000m
+                range: 24000, // meters - increased 20% from 20000m (20km -> 24km)
                 autofireEnabled: true,
                 accuracy: 0.95,
                 energyCost: 10,
@@ -38,7 +38,7 @@ export class WeaponDefinitions {
                 weaponType: 'scan-hit',
                 damage: 120,
                 cooldownTime: 2.5, // seconds
-                range: 32000, // meters - doubled from 16000m
+                range: 38400, // meters - increased 20% from 32000m (32km -> 38.4km)
                 autofireEnabled: true,
                 accuracy: 0.80,
                 energyCost: 20,
@@ -56,7 +56,7 @@ export class WeaponDefinitions {
                 weaponType: 'scan-hit',
                 damage: 75,
                 cooldownTime: 3.0, // seconds - doubled from 1.5s (burst fire)
-                range: 24000, // meters - doubled from 12000m
+                range: 28800, // meters - increased 20% from 24000m (24km -> 28.8km)
                 autofireEnabled: true,
                 accuracy: 0.90,
                 energyCost: 15,
@@ -75,7 +75,7 @@ export class WeaponDefinitions {
                 weaponType: 'scan-hit',
                 damage: 90,
                 cooldownTime: 2.0, // seconds
-                range: 30000, // meters - doubled from 15000m
+                range: 36000, // meters - increased 20% from 30000m (30km -> 36km)
                 autofireEnabled: true,
                 accuracy: 0.88,
                 energyCost: 25,
@@ -96,14 +96,14 @@ export class WeaponDefinitions {
                 weaponType: 'splash-damage',
                 damage: 200,
                 cooldownTime: 3.0, // seconds
-                range: 6000, // meters - doubled from 3000m
+                range: 7200, // meters - increased 20% from 6000m (6km -> 7.2km)
                 autofireEnabled: false,
                 accuracy: 1.0, // Missiles don't miss if fired properly
                 energyCost: 5, // Low energy cost, but limited by cooldown
                 blastRadius: 50, // meters
                 homingCapability: false,
                 targetLockRequired: true,
-                flightRange: 6000, // doubled from 3000m
+                flightRange: 7200, // increased 20% from 6000m (6km -> 7.2km)
                 turnRate: 0, // No turning
                 specialProperties: {
                     explosionType: 'kinetic',
@@ -117,14 +117,14 @@ export class WeaponDefinitions {
                 weaponType: 'splash-damage',
                 damage: 180,
                 cooldownTime: 2.5, // seconds
-                range: 7000, // meters - doubled from 3500m
+                range: 8400, // meters - increased 20% from 7000m (7km -> 8.4km)
                 autofireEnabled: true, // Homing missiles can autofire
                 accuracy: 1.0,
                 energyCost: 8,
                 blastRadius: 45, // meters
                 homingCapability: true,
                 targetLockRequired: true,
-                flightRange: 7000, // doubled from 3500m
+                flightRange: 8400, // increased 20% from 7000m (7km -> 8.4km)
                 turnRate: 120, // degrees per second - faster turning
                 specialProperties: {
                     trackingArc: 60, // degrees
@@ -139,14 +139,14 @@ export class WeaponDefinitions {
                 weaponType: 'splash-damage',
                 damage: 320,
                 cooldownTime: 4.0, // seconds
-                range: 5000, // meters - doubled from 2500m
+                range: 6000, // meters - increased 20% from 5000m (5km -> 6km)
                 autofireEnabled: false,
                 accuracy: 1.0,
                 energyCost: 12,
                 blastRadius: 80, // meters
                 homingCapability: false,
                 targetLockRequired: true,
-                flightRange: 5000, // doubled from 2500m
+                flightRange: 6000, // increased 20% from 5000m (5km -> 6km)
                 turnRate: 0, // No turning
                 specialProperties: {
                     explosionType: 'photon',
@@ -161,7 +161,7 @@ export class WeaponDefinitions {
                 weaponType: 'splash-damage',
                 damage: 150,
                 cooldownTime: 3.5, // seconds
-                range: 1000, // deployment range - doubled from 500m
+                range: 1200, // deployment range - increased 20% from 1000m (1km -> 1.2km)
                 autofireEnabled: false,
                 accuracy: 1.0,
                 energyCost: 3,

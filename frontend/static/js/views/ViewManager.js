@@ -1118,51 +1118,137 @@ export class ViewManager {
         const existingIndicators = container.querySelectorAll('.range-indicator');
         existingIndicators.forEach(indicator => indicator.remove());
         
-        elements.forEach(element => {
-            // Only update color and glow - preserve original crosshair structure
-            element.style.background = baseColor;
-            element.style.boxShadow = `0 0 4px ${baseColor}`;
-            
-            // Reset any animations
-            element.style.animation = '';
-        });
-        
-        // Add range-specific visual indicators and adjust opacity/glow
+        // Apply different crosshair shapes based on target state
         switch(state) {
             case 'none':
-                // No target - just basic crosshairs, slightly dimmed
-                elements.forEach(element => {
-                    element.style.opacity = '0.6';
-                    element.style.boxShadow = `0 0 2px ${baseColor}`;
-                });
+                // No target - standard + crosshair
+                this.setCrosshairShape(container, 'standard', baseColor, 0.6);
                 break;
                 
             case 'inRange':
-                // Target in range - add solid corner brackets
-                this.addCornerBrackets(container, baseColor, 'solid');
-                elements.forEach(element => {
-                    element.style.opacity = '1.0';
-                    element.style.boxShadow = `0 0 8px ${baseColor}`;
-                });
+                // Target in range - dashed circle with center dot for precision targeting
+                this.setCrosshairShape(container, 'inRange', baseColor, 1.0);
                 break;
                 
             case 'closeRange':
-                // Target close to range - add pulsing corner brackets
-                this.addCornerBrackets(container, baseColor, 'pulse');
-                elements.forEach(element => {
-                    element.style.opacity = '0.9';
-                    element.style.boxShadow = `0 0 6px ${baseColor}`;
-                });
+                // Target close to range - use standard crosshair for now (complex version disabled)
+                this.setCrosshairShape(container, 'standard', baseColor, 0.9);
                 break;
                 
             case 'outRange':
-                // Target out of range - add dashed circle around crosshairs
-                this.addRangeRing(container, baseColor, 'dashed');
-                elements.forEach(element => {
-                    element.style.opacity = '0.8';
-                    element.style.boxShadow = `0 0 4px ${baseColor}`;
-                });
+                // Target out of range - use standard crosshair for now (special version disabled)
+                this.setCrosshairShape(container, 'standard', baseColor, 0.8);
                 break;
+        }
+    }
+    
+    /**
+     * Set crosshair shape based on target state
+     * @param {HTMLElement} container - Crosshair container
+     * @param {string} shapeType - 'standard', 'inRange', 'closeRange', 'outRange'
+     * @param {string} color - Color for crosshair
+     * @param {number} opacity - Opacity level
+     */
+    setCrosshairShape(container, shapeType, color, opacity) {
+        // Clear existing crosshair elements
+        container.querySelectorAll('.crosshair-element').forEach(el => el.remove());
+        
+        const baseStyle = `
+            position: absolute;
+            background: ${color};
+            box-shadow: 0 0 4px ${color};
+            opacity: ${opacity};
+        `;
+        
+        switch(shapeType) {
+            case 'standard':
+                // Classic + crosshair
+                container.innerHTML += `
+                    <div class="crosshair-element" style="${baseStyle}
+                        top: 50%; left: 0; width: calc(50% - 8px); height: 2px; transform: translateY(-50%);
+                    "></div>
+                    <div class="crosshair-element" style="${baseStyle}
+                        top: 50%; right: 0; width: calc(50% - 8px); height: 2px; transform: translateY(-50%);
+                    "></div>
+                    <div class="crosshair-element" style="${baseStyle}
+                        top: 0; left: 50%; height: calc(50% - 8px); width: 2px; transform: translateX(-50%);
+                    "></div>
+                    <div class="crosshair-element" style="${baseStyle}
+                        bottom: 0; left: 50%; height: calc(50% - 8px); width: 2px; transform: translateX(-50%);
+                    "></div>
+                `;
+                break;
+                
+            case 'inRange':
+                // Target in range - dashed circle with center dot for precision targeting
+                container.innerHTML += `
+                    <div class="crosshair-element" style="${baseStyle}
+                        top: 50%; left: 50%; width: 40px; height: 40px;
+                        border: 2px dashed ${color}; border-radius: 50%;
+                        transform: translate(-50%, -50%); box-shadow: 0 0 8px ${color};
+                        background: transparent;
+                    "></div>
+                    <div class="crosshair-element" style="${baseStyle}
+                        top: 50%; left: 50%; width: 4px; height: 4px; border-radius: 50%;
+                        transform: translate(-50%, -50%); box-shadow: 0 0 8px ${color};
+                    "></div>
+                `;
+                break;
+                
+            case 'closeRange':
+                // + with extended tips for close range
+                container.innerHTML += `
+                    <div class="crosshair-element" style="${baseStyle}
+                        top: 50%; left: 0; width: calc(50% - 4px); height: 2px; transform: translateY(-50%);
+                        box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
+                    "></div>
+                    <div class="crosshair-element" style="${baseStyle}
+                        top: 50%; right: 0; width: calc(50% - 4px); height: 2px; transform: translateY(-50%);
+                        box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
+                    "></div>
+                    <div class="crosshair-element" style="${baseStyle}
+                        top: 0; left: 50%; height: calc(50% - 4px); width: 2px; transform: translateX(-50%);
+                        box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
+                    "></div>
+                    <div class="crosshair-element" style="${baseStyle}
+                        bottom: 0; left: 50%; height: calc(50% - 4px); width: 2px; transform: translateX(-50%);
+                        box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
+                    "></div>
+                `;
+                break;
+                
+            case 'outRange':
+                // Target out of range - use standard crosshair for now (special version disabled)
+                container.innerHTML += `
+                    <div class="crosshair-element" style="${baseStyle}
+                        top: 50%; left: 0; width: calc(50% - 8px); height: 2px; 
+                        transform: translateY(-50%) rotate(30deg); transform-origin: right center;
+                        box-shadow: 0 0 4px ${color};
+                    "></div>
+                    <div class="crosshair-element" style="${baseStyle}
+                        top: 50%; right: 0; width: calc(50% - 8px); height: 2px; 
+                        transform: translateY(-50%) rotate(30deg); transform-origin: left center;
+                        box-shadow: 0 0 4px ${color};
+                    "></div>
+                    <div class="crosshair-element" style="${baseStyle}
+                        top: 0; left: 50%; height: calc(50% - 8px); width: 2px; 
+                        transform: translateX(-50%) rotate(30deg); transform-origin: center bottom;
+                        box-shadow: 0 0 4px ${color};
+                    "></div>
+                    <div class="crosshair-element" style="${baseStyle}
+                        bottom: 0; left: 50%; height: calc(50% - 8px); width: 2px; 
+                        transform: translateX(-50%) rotate(30deg); transform-origin: center top;
+                        box-shadow: 0 0 4px ${color};
+                    "></div>
+                `;
+                break;
+        }
+        
+        // Update the elements array reference
+        if (container === this.frontCrosshair) {
+            this.frontCrosshairElements = Array.from(container.querySelectorAll('.crosshair-element'));
+        } else if (container === this.aftCrosshair) {
+            this.aftCrosshairElements = Array.from(container.querySelectorAll('.crosshair-element'));
         }
     }
     

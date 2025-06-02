@@ -22,7 +22,7 @@ class PlayerData {
         
         // Initialize starter ship with basic configuration
         this.shipConfigurations.set('starter_ship', new Map([
-            ['utility_1', { cardType: 'target_computer', level: 1 }],
+            ['utility_1', { cardType: 'target_computer', level: 3 }], // Upgraded to level 3 for sub-targeting
             ['engine_1', { cardType: 'impulse_engines', level: 1 }],
             ['power_1', { cardType: 'energy_reactor', level: 1 }],
             ['weapon_1', { cardType: 'laser_cannon', level: 1 }],

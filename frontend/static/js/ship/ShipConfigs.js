@@ -48,9 +48,9 @@ export const SHIP_CONFIGS = {
                 energyConsumption: 8 // Low consumption for starter ship
             },
             target_computer: { 
-                level: 1, // Level 1 = basic targeting (no sub-targeting)
+                level: 3, // Level 3+ enables sub-targeting functionality (was level 1)
                 slots: 1, 
-                energyConsumption: 3 // Minimal consumption
+                energyConsumption: 8 // Increased from 3 to match level 3 requirements
             }
             // Removed laser_cannon - weapons now come from starterCards via WeaponSyncManager
             // No galactic chart or subspace radio - must be acquired from shop
@@ -58,7 +58,7 @@ export const SHIP_CONFIGS = {
         
         // Pre-installed starter cards
         starterCards: {
-            utility_1: { cardType: 'target_computer', level: 1 },
+            utility_1: { cardType: 'target_computer', level: 3 },
             engine_1: { cardType: 'impulse_engines', level: 1 },
             power_1: { cardType: 'energy_reactor', level: 1 },
             weapon_1: { cardType: 'laser_cannon', level: 1 },

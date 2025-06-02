@@ -314,6 +314,13 @@ export class StarfieldManager {
 
         // Debug mode for weapon hit detection (independent of damage control)
         this.debugMode = false; // Toggled with Ctrl-P
+        
+        // Target outline system
+        this.outlineEnabled = false; // Main outline toggle
+        this.targetOutline = null; // 3D outline mesh in the world
+        this.targetOutlineObject = null; // Track which object is being outlined
+        this.outlineDisabledUntilManualCycle = false; // Prevents auto-outline after destruction
+        this.lastOutlineUpdate = 0; // Throttling for outline updates
     }
     
     /**
@@ -2107,7 +2114,10 @@ export class StarfieldManager {
                     if (ship) {
                         const targetComputer = ship.getSystem('target_computer');
                         if (targetComputer && targetComputer.hasSubTargeting()) {
-                            if (targetComputer.cycleSubTargetPrevious()) {
+                            // Check if there's only one target available
+                            if (targetComputer.availableSubTargets.length <= 1) {
+                                this.playCommandFailedSound();
+                            } else if (targetComputer.cycleSubTargetPrevious()) {
                                 this.playCommandSound();
                                 this.updateTargetDisplay(); // Update HUD display
                             }
@@ -2121,7 +2131,10 @@ export class StarfieldManager {
                     if (ship) {
                         const targetComputer = ship.getSystem('target_computer');
                         if (targetComputer && targetComputer.hasSubTargeting()) {
-                            if (targetComputer.cycleSubTargetNext()) {
+                            // Check if there's only one target available
+                            if (targetComputer.availableSubTargets.length <= 1) {
+                                this.playCommandFailedSound();
+                            } else if (targetComputer.cycleSubTargetNext()) {
                                 this.playCommandSound();
                                 this.updateTargetDisplay(); // Update HUD display
                             }
@@ -2202,13 +2215,19 @@ export class StarfieldManager {
                 }
             }
 
-            // Spawn target dummy ships (X key) - REMOVED since X is now weapon selection
-            // if (commandKey === 'x') {
-            //     if (!this.isDocked) {
-            //         this.playCommandSound();
-            //         this.createTargetDummyShips(3);
-            //     }
-            // }
+            // Toggle 3D target outlines (O key)
+            if (commandKey === 'o') {
+                if (!this.isDocked) {
+                    this.playCommandSound();
+                    this.toggleTargetOutline();
+                } else {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'OUTLINE TOGGLE UNAVAILABLE',
+                        'Outline controls disabled while docked'
+                    );
+                }
+            }
         });
 
         document.addEventListener('keyup', (event) => {
@@ -2265,6 +2284,9 @@ export class StarfieldManager {
                 this.targetWireframe.material.dispose();
                 this.targetWireframe = null;
             }
+            
+            // Clear 3D outline when target computer is disabled
+            this.clearTargetOutline();
         } else {
             // Show the HUD immediately when target computer is enabled
             this.targetHUD.style.display = 'block';
@@ -2393,7 +2415,7 @@ export class StarfieldManager {
         
     }
 
-    cycleTarget() {
+    cycleTarget(isManualCycle = true) {
         // Prevent cycling targets while docked
         if (this.isDocked) {
             return;
@@ -2497,8 +2519,8 @@ export class StarfieldManager {
                     if (info) {
                         // Create different shapes based on object type
                         if (info.type === 'enemy_ship') {
-                            // Use a distinctive shape for enemy ships
-                            wireframeGeometry = new this.THREE.BoxGeometry(radius, radius * 0.5, radius * 2);
+                            // Use simple cube wireframe to match simplified target dummies
+                            wireframeGeometry = new this.THREE.BoxGeometry(radius, radius, radius);
                         } else if (currentTargetData?.isMoon) {
                             wireframeGeometry = new this.THREE.OctahedronGeometry(radius, 0);
                         } else {
@@ -2534,6 +2556,21 @@ export class StarfieldManager {
             } catch (error) {
                 console.warn('Failed to create wireframe for target:', error);
             }
+        }
+
+        // Create 3D world outline for the target (use updateTargetOutline for validation)
+        // Only create outline if manual cycle or if suppression is not active
+        if (this.currentTarget && this.outlineEnabled && (isManualCycle || !this.outlineDisabledUntilManualCycle)) {
+            // Use updateTargetOutline instead of createTargetOutline to ensure validation
+            this.updateTargetOutline(this.currentTarget, 0);
+        }
+        
+        // Only clear the destruction suppression flag for manual cycles
+        if (isManualCycle) {
+            this.outlineDisabledUntilManualCycle = false;
+            console.log('🎯 Manual target cycle - outline suppression cleared');
+        } else {
+            console.log('🔄 Automatic target cycle - outline suppression maintained');
         }
 
         // Update weapon system target
@@ -2836,6 +2873,16 @@ export class StarfieldManager {
                 this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
             } catch (error) {
                 console.warn('Error rendering wireframe:', error);
+            }
+        }
+
+        // Update 3D world outline if target computer is enabled and we have a target
+        if (this.targetComputerEnabled && this.currentTarget && this.outlineEnabled) {
+            // Throttle outline updates to prevent continuous recreation (max 10 FPS for outline updates)
+            const now = Date.now();
+            if (now - this.lastOutlineUpdate > 100) {
+                this.updateTargetOutline(this.currentTarget, deltaTime);
+                this.lastOutlineUpdate = now;
             }
         }
 
@@ -3440,6 +3487,9 @@ export class StarfieldManager {
             this.targetWireframe.material.dispose();
             this.targetWireframe = null;
         }
+        
+        // Clear 3D outline
+        this.clearTargetOutline();
         
         // Disable target computer
         this.targetComputerEnabled = false;
@@ -4487,68 +4537,45 @@ export class StarfieldManager {
     }
 
     /**
-     * Create a 3D mesh for a dummy ship
-     * @param {number} index - Ship index for variation
-     * @returns {THREE.Object3D} Ship mesh
+     * Create a visual mesh for a target dummy ship - simple flat-shaded cube
+     * @param {number} index - Ship index for color variation
+     * @returns {THREE.Mesh} Simple cube mesh
      */
     createDummyShipMesh(index) {
-        const group = new this.THREE.Group();
+        // Create simple cube geometry
+        const cubeGeometry = new this.THREE.BoxGeometry(2.0, 2.0, 2.0);
         
-        // Create main hull (elongated box)
-        const hullGeometry = new this.THREE.BoxGeometry(0.8, 0.3, 2.0);
-        const hullMaterial = new this.THREE.MeshBasicMaterial({ 
-            color: 0x666666,
-            wireframe: false
+        // Use bright, vibrant colors that stand out in space
+        const cubeColors = [
+            0x9932cc, // Bright purple (was red)
+            0x00ff00, // Bright green
+            0x0080ff, // Bright blue
+            0xffff00, // Bright yellow
+            0xff00ff, // Bright magenta
+            0x00ffff, // Bright cyan
+            0xff8000, // Bright orange
+            0x8000ff, // Bright purple
+        ];
+        
+        const cubeColor = cubeColors[index % cubeColors.length];
+        
+        const cubeMaterial = new this.THREE.MeshBasicMaterial({ 
+            color: cubeColor,
+            wireframe: false,
+            flatShading: true
         });
-        const hull = new this.THREE.Mesh(hullGeometry, hullMaterial);
-        group.add(hull);
         
-        // Create engine nacelles
-        const nacellGeometry = new this.THREE.CylinderGeometry(0.1, 0.1, 0.8);
-        const nacellMaterial = new this.THREE.MeshBasicMaterial({ color: 0x444444 });
+        const cube = new this.THREE.Mesh(cubeGeometry, cubeMaterial);
         
-        const leftNacell = new this.THREE.Mesh(nacellGeometry, nacellMaterial);
-        leftNacell.position.set(-0.5, 0, -0.5);
-        leftNacell.rotation.z = Math.PI / 2;
-        group.add(leftNacell);
+        // Add slight random rotation for variation
+        cube.rotation.y = (index * 0.7) + (Math.random() * 0.4 - 0.2);
+        cube.rotation.x = (Math.random() * 0.2 - 0.1);
+        cube.rotation.z = (Math.random() * 0.2 - 0.1);
         
-        const rightNacell = new this.THREE.Mesh(nacellGeometry, nacellMaterial);
-        rightNacell.position.set(0.5, 0, -0.5);
-        rightNacell.rotation.z = Math.PI / 2;
-        group.add(rightNacell);
+        // Scale the cube 50% smaller than before (was 1.5, now 0.75)
+        cube.scale.setScalar(0.75);
         
-        // Create weapon hardpoints
-        const weaponGeometry = new this.THREE.SphereGeometry(0.08, 8, 6);
-        const weaponMaterial = new this.THREE.MeshBasicMaterial({ color: 0xff3333 });
-        
-        const weapon1 = new this.THREE.Mesh(weaponGeometry, weaponMaterial);
-        weapon1.position.set(-0.3, 0, 0.8);
-        group.add(weapon1);
-        
-        const weapon2 = new this.THREE.Mesh(weaponGeometry, weaponMaterial);
-        weapon2.position.set(0.3, 0, 0.8);
-        group.add(weapon2);
-        
-        // Create shield emitters
-        const shieldGeometry = new this.THREE.SphereGeometry(0.06, 6, 4);
-        const shieldMaterial = new this.THREE.MeshBasicMaterial({ color: 0x4444ff });
-        
-        const shield1 = new this.THREE.Mesh(shieldGeometry, shieldMaterial);
-        shield1.position.set(0, 0.2, 0);
-        group.add(shield1);
-        
-        const shield2 = new this.THREE.Mesh(shieldGeometry, shieldMaterial);
-        shield2.position.set(0, -0.2, 0);
-        group.add(shield2);
-        
-        // Add some variation based on index
-        const hue = (index * 0.3) % 1;
-        hull.material.color.setHSL(hue, 0.3, 0.4);
-        
-        // Scale the ship
-        group.scale.setScalar(2.0);
-        
-        return group;
+        return cube;
     }
 
     /**
@@ -4922,13 +4949,19 @@ export class StarfieldManager {
                 if (targetComputer.currentSubTarget) {
                     const subTarget = targetComputer.currentSubTarget;
                     const healthPercent = Math.round(subTarget.health * 100);
-                    let healthColor = '#00ff41'; // Green for healthy
-                    if (healthPercent < 75) healthColor = '#ffaa00'; // Orange for damaged
-                    if (healthPercent < 25) healthColor = '#ff4400'; // Red for critical
                     
                     // Get accuracy and damage bonuses
                     const accuracyBonus = Math.round(targetComputer.getSubTargetAccuracyBonus() * 100);
                     const damageBonus = Math.round(targetComputer.getSubTargetDamageBonus() * 100);
+                    
+                    // Create health bar display matching main hull health style
+                    const healthBarSection = `
+                        <div style="margin-top: 8px; padding: 4px 0;">
+                            <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">${subTarget.displayName}: ${healthPercent}%</div>
+                            <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
+                                <div style="background-color: white; height: 100%; width: ${healthPercent}%; transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>`;
                     
                     subTargetHTML = `
                         <div style="
@@ -4940,11 +4973,8 @@ export class StarfieldManager {
                             font-weight: bold;
                         ">
                             <div style="font-size: 12px; margin-bottom: 2px;">SUB-TARGET:</div>
-                            <div style="font-size: 14px; margin-bottom: 2px;">${subTarget.displayName}</div>
-                            <div style="font-size: 11px; margin-bottom: 2px;">
-                                <span>Health:</span> <span style="font-weight: bold;">${healthPercent}%</span>
-                            </div>
-                            <div style="font-size: 10px; opacity: 0.8;">
+                            ${healthBarSection}
+                            <div style="font-size: 10px; opacity: 0.8; margin-top: 6px;">
                                 <span>Acc:</span> <span>+${accuracyBonus}%</span> • 
                                 <span>Dmg:</span> <span>+${damageBonus}%</span>
                             </div>
@@ -4983,131 +5013,47 @@ export class StarfieldManager {
         // Update target information display with colored background and black text
         let typeDisplay = info?.type || 'Unknown';
         if (isEnemyShip) {
-            typeDisplay = `${info.shipType} (Enemy Ship)`;
+            // Remove redundant "(Enemy Ship)" text since faction colors already indicate hostility
+            typeDisplay = info.shipType;
+        }
+        
+        // Format distance with proper commas
+        const formattedDistance = this.formatDistance(distance);
+        
+        // Prepare hull health display for enemy ships - integrate into main target info
+        let hullHealthSection = '';
+        if (isEnemyShip && currentTargetData.ship) {
+            const currentHull = currentTargetData.ship.currentHull || 0;
+            const maxHull = currentTargetData.ship.maxHull || 1;
+            const hullPercentage = maxHull > 0 ? (currentHull / maxHull) * 100 : 0;
+            
+            hullHealthSection = `
+                <div style="margin-top: 8px; padding: 4px 0;">
+                    <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">HULL: ${Math.round(hullPercentage)}%</div>
+                    <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
+                        <div style="background-color: white; height: 100%; width: ${hullPercentage}%; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>`;
         }
         
         this.targetInfoDisplay.innerHTML = `
-            <div style="
-                background-color: ${diplomacyColor}; 
-                color: #000000; 
-                padding: 8px; 
-                border-radius: 4px; 
-                margin-bottom: 4px;
-                font-weight: bold;
-            ">
-                <div style="font-size: 16px; margin-bottom: 4px;">${currentTargetData.name}</div>
-                <div style="font-size: 12px;">
-                    <span>${this.formatDistance(distance)}</span> • 
-                    <span>${typeDisplay}</span>
-                </div>
-                ${info?.diplomacy ? `<div style="font-size: 12px; margin-top: 4px;">${info.diplomacy}</div>` : ''}
+            <div style="background-color: ${diplomacyColor}; color: black; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+                <div style="font-weight: bold; font-size: 12px;">${info?.name || 'Unknown Target'}</div>
+                <div style="font-size: 10px;">${typeDisplay}</div>
+                <div style="font-size: 10px;">${formattedDistance}</div>
+                ${hullHealthSection}
             </div>
             ${subTargetHTML}
         `;
 
         // Update status icons with diplomacy color
-        this.governmentIcon.style.display = info?.government ? 'block' : 'none';
-        this.economyIcon.style.display = info?.economy ? 'block' : 'none';
-        this.technologyIcon.style.display = info?.technology ? 'block' : 'none';
+        this.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info);
 
-        // Update icon colors and borders to match diplomacy
-        [this.governmentIcon, this.economyIcon, this.technologyIcon].forEach(icon => {
-            if (icon.style.display !== 'none') {
-                icon.style.borderColor = diplomacyColor;
-                icon.style.color = diplomacyColor;
-                icon.style.textShadow = `0 0 4px ${diplomacyColor}`;
-                icon.style.boxShadow = `0 0 4px ${diplomacyColor.replace(')', ', 0.4)')}`;
-            }
-        });
+        // Update action buttons based on target type  
+        this.updateActionButtons(currentTargetData, info);
 
-        // Update intel icon display
-        this.updateIntelIconDisplay();
-
-        // Update tooltips with current info
-        if (info?.government) {
-            this.governmentIcon.title = `Government: ${info.government}`;
-        }
-        if (info?.economy) {
-            this.economyIcon.title = `Economy: ${info.economy}`;
-        }
-        if (info?.technology) {
-            this.technologyIcon.title = `Technology: ${info.technology}`;
-        }
-
-        // Calculate docking range based on body size
-        let dockingRange = this.dockingRange; // Default 1.5 for moons
-        if (info?.type === 'planet') {
-            // For planets, use a fixed 4.0KM range
-            dockingRange = 4.0;
-        }
-
-        // Calculate button state for docking (show dock button, but launch is handled by docking interface)
-        const canDock = this.canDock(this.currentTarget);
-        const isDocked = this.isDocked && this.dockedTo === this.currentTarget;
-        const isHostile = info?.diplomacy?.toLowerCase() === 'enemy';
-
-        // Add a small buffer to button display: only show button if distance is comfortably within range
-        let showButton = false;
-        if ((info?.type === 'planet' || info?.type === 'moon') && canDock && !isDocked && !isHostile) {
-            // Add 0.3km buffer - only show button if we're well within docking range
-            const currentDistance = this.camera.position.distanceTo(this.currentTarget.position);
-            let buttonRange = this.dockingRange - 0.3; // Default 1.2 for moons
-            if (info?.type === 'planet') {
-                buttonRange = 3.7; // 3.7km for planets (was 4.0km)
-            }
-            showButton = currentDistance <= buttonRange;
-        }
-
-        // Debug hostile detection
-        if (info?.diplomacy) {
-        }
-
-        // Show dock button when in range and not docked, but launch is handled by docking interface
-        const newButtonState = {
-            hasDockButton: showButton,
-            isDocked: this.isDocked,
-            hasScanButton: false,
-            hasTradeButton: false
-        };
-
-        // Only recreate buttons if state has changed
-        const stateChanged = JSON.stringify(this.currentButtonState) !== JSON.stringify(newButtonState);
-        
-        // Debug button state for stars and other issues
-        if (info?.type === 'star' && showButton) {
-            // Debugging star button state (can be enabled if needed)
-        }
-        
-        if (stateChanged) {
-            // Throttle button state change logging to prevent spam
-            const now = Date.now();
-            if (!this.lastButtonStateLog || now - this.lastButtonStateLog > 2000) { // Log at most every 2 seconds
-                // Debugging button state changes (can be enabled if needed)
-                this.lastButtonStateLog = now;
-            }
-            this.currentButtonState = newButtonState;
-            
-            // Clear existing buttons
-            this.actionButtonsContainer.innerHTML = '';
-
-            // Add dock button if applicable (launch button is in docking interface)
-            if (newButtonState.hasDockButton) {
-                const dockButton = document.createElement('button');
-                dockButton.className = 'dock-button';
-                dockButton.textContent = 'DOCK';
-                dockButton.addEventListener('click', () => this.handleDockButtonClick(false, currentTargetData.name));
-                this.actionButtonsContainer.appendChild(dockButton);
-            }
-        }
-
-        // Update reticle colors
-        const corners = this.targetReticle.getElementsByClassName('reticle-corner');
-        Array.from(corners).forEach(corner => {
-            corner.style.borderColor = diplomacyColor;
-            corner.style.boxShadow = `0 0 2px ${diplomacyColor}`;
-        });
-
-        // Update reticle position
+        // Display the reticle if we have a valid target
+        this.targetReticle.style.display = 'block';
         this.updateReticlePosition();
     }
 
@@ -5368,6 +5314,508 @@ export class StarfieldManager {
             
             // Clean up all existing debug spheres
             WeaponSlot.cleanupAllDebugSpheres(this);
+        }
+    }
+
+    /**
+     * Refresh the current target and its wireframe
+     */
+    refreshCurrentTarget() {
+        if (this.currentTarget && this.targetComputerEnabled) {
+            // Update the wireframe display without cycling
+            this.updateTargetDisplay();
+        }
+    }
+    
+    /**
+     * Create a 3D outline around the targeted object in the world
+     * @param {Object3D} targetObject - The object to outline
+     * @param {string} outlineColor - Hex color for the outline
+     */
+    createTargetOutline(targetObject, outlineColor = '#00ff41', targetData = null) {
+        if (!this.outlineEnabled || !targetObject) return;
+        
+        // Prevent continuous recreation - check if we already have an outline for this object
+        if (this.targetOutline && this.targetOutlineObject === targetObject) {
+            return; // Already have outline for this object
+        }
+        
+        // Use provided targetData or fetch it if not provided
+        const currentTargetData = targetData || this.getCurrentTargetData();
+        if (!currentTargetData || !currentTargetData.name || currentTargetData.name === 'unknown') {
+            console.log('🎯 Skipping outline creation - invalid target data:', {
+                hasTargetData: !!currentTargetData,
+                targetName: currentTargetData?.name,
+                targetType: currentTargetData?.type,
+                wasProvided: !!targetData
+            });
+            return;
+        }
+        
+        try {
+            // Clear any existing outline
+            this.clearTargetOutline();
+            
+            // Store reference to the object being outlined
+            this.targetOutlineObject = targetObject;
+            
+            console.log(`🎯 Creating 3D outline for target: ${currentTargetData.name}`);
+            
+            // Create outline material with slightly larger scale
+            const outlineMaterial = new this.THREE.MeshBasicMaterial({
+                color: new this.THREE.Color(outlineColor),
+                transparent: true,
+                opacity: 0.4,
+                side: this.THREE.BackSide, // Render back faces to create outline effect
+                depthWrite: false
+            });
+            
+            // Create outline mesh by cloning the target's geometry
+            let outlineGeometry = null;
+            
+            if (targetObject.geometry) {
+                // Direct geometry clone
+                outlineGeometry = targetObject.geometry.clone();
+            } else if (targetObject.children && targetObject.children.length > 0) {
+                // For grouped objects (like ships), create a bounding box outline
+                const box = new this.THREE.Box3().setFromObject(targetObject);
+                const size = box.getSize(new this.THREE.Vector3());
+                const center = box.getCenter(new this.THREE.Vector3());
+                
+                // Create a box geometry that encompasses the object
+                outlineGeometry = new this.THREE.BoxGeometry(size.x * 1.2, size.y * 1.2, size.z * 1.2);
+                
+                // Adjust position to match the bounding box center
+                const offset = center.clone().sub(targetObject.position);
+                outlineGeometry.translate(offset.x, offset.y, offset.z);
+            } else {
+                // Fallback: create a simple sphere outline
+                outlineGeometry = new this.THREE.SphereGeometry(2, 16, 12);
+            }
+            
+            if (outlineGeometry) {
+                this.targetOutline = new this.THREE.Mesh(outlineGeometry, outlineMaterial);
+                
+                // Position the outline to match the target
+                this.targetOutline.position.copy(targetObject.position);
+                this.targetOutline.rotation.copy(targetObject.rotation);
+                this.targetOutline.scale.copy(targetObject.scale).multiplyScalar(1.05); // Slightly larger
+                
+                // Add to scene
+                this.scene.add(this.targetOutline);
+                
+                console.log(`🎯 Created 3D outline for target: ${currentTargetData.name}`);
+            }
+            
+        } catch (error) {
+            console.warn('Failed to create target outline:', error);
+        }
+    }
+    
+    /**
+     * Update the outline position and animation
+     * @param {Object3D} targetObject - The current target object
+     * @param {number} deltaTime - Time delta for animations
+     */
+    updateTargetOutline(targetObject, deltaTime) {
+        // CRITICAL: Prevent outline creation when no targets exist
+        if (!this.targets || this.targets.length === 0) {
+            console.log('🚫 updateTargetOutline: No targets available - clearing outline');
+            if (this.targetOutline) {
+                this.clearTargetOutline();
+            }
+            return;
+        }
+        
+        // Check if outlines are enabled and not suppressed
+        if (!this.outlineEnabled || this.outlineDisabledUntilManualCycle) {
+            if (this.targetOutline) {
+                this.clearTargetOutline();
+            }
+            return;
+        }
+        
+        // CRITICAL: Check if we have a valid current target
+        if (!this.currentTarget) {
+            console.log('🚫 updateTargetOutline: No current target - clearing outline');
+            if (this.targetOutline) {
+                this.clearTargetOutline();
+            }
+            return;
+        }
+        
+        // Validate target data before proceeding
+        const targetData = this.getCurrentTargetData();
+        if (!targetData || !targetData.name || targetData.name === 'unknown') {
+            console.log('🚫 updateTargetOutline: Invalid target data - clearing outline');
+            // Clear outline for invalid targets
+            if (this.targetOutline) {
+                this.clearTargetOutline();
+            }
+            return;
+        }
+        
+        // Additional check: Ensure targetObject is valid and exists in scene
+        if (!targetObject || !targetObject.position) {
+            console.log('🚫 updateTargetOutline: Invalid target object - clearing outline');
+            if (this.targetOutline) {
+                this.clearTargetOutline();
+            }
+            return;
+        }
+        
+        // Check if outline needs to be created or recreated
+        if (!this.targetOutline || this.targetOutlineObject !== targetObject) {
+            const outlineColor = this.getOutlineColorForTarget(targetData);
+            // Pass the validated target data to prevent race condition
+            this.createTargetOutline(targetObject, outlineColor, targetData);
+        }
+        
+        // Update outline position and rotation to match target
+        if (this.targetOutline && targetObject) {
+            this.targetOutline.position.copy(targetObject.position);
+            this.targetOutline.rotation.copy(targetObject.rotation);
+            
+            // Add subtle pulsing animation
+            if (deltaTime) {
+                const time = Date.now() * 0.002;
+                const pulseScale = 1.0 + Math.sin(time) * 0.02;
+                this.targetOutline.scale.setScalar(pulseScale);
+            }
+        }
+    }
+    
+    /**
+     * Clear the current 3D outline
+     */
+    clearTargetOutline() {
+        // More thorough clearing with detailed logging
+        console.log('🎯 clearTargetOutline called');
+        console.log(`   • targetOutline exists: ${!!this.targetOutline}`);
+        console.log(`   • targetOutlineObject exists: ${!!this.targetOutlineObject}`);
+        
+        if (!this.targetOutline && !this.targetOutlineObject) {
+            console.log('🎯 No outline objects to clear');
+            return;
+        }
+        
+        try {
+            // Clear the 3D outline from scene
+            if (this.targetOutline) {
+                console.log('🗑️ Removing targetOutline from scene');
+                this.scene.remove(this.targetOutline);
+                
+                // Dispose of geometry and material to free memory
+                if (this.targetOutline.geometry) {
+                    this.targetOutline.geometry.dispose();
+                    console.log('🗑️ Disposed targetOutline geometry');
+                }
+                if (this.targetOutline.material) {
+                    this.targetOutline.material.dispose();
+                    console.log('🗑️ Disposed targetOutline material');
+                }
+            }
+            
+            // Force clear both properties
+            this.targetOutline = null;
+            this.targetOutlineObject = null;
+            
+            console.log('✅ Target outline completely cleared');
+            
+        } catch (error) {
+            console.warn('❌ Error clearing target outline:', error);
+            // Force clear even if there was an error
+            this.targetOutline = null;
+            this.targetOutlineObject = null;
+            console.log('🔧 Force-cleared outline properties after error');
+        }
+        
+        // Double-check that they're actually cleared
+        if (this.targetOutline || this.targetOutlineObject) {
+            console.error('⚠️ WARNING: Outline properties still exist after clearing!');
+            console.log(`   • targetOutline: ${this.targetOutline}`);
+            console.log(`   • targetOutlineObject: ${this.targetOutlineObject}`);
+        }
+    }
+    
+    /**
+     * Toggle the outline system on/off
+     */
+    toggleTargetOutline() {
+        this.outlineEnabled = !this.outlineEnabled;
+        
+        // Clear any destruction suppression when manually toggling
+        this.outlineDisabledUntilManualCycle = false;
+        
+        if (!this.outlineEnabled) {
+            this.clearTargetOutline();
+        } else if (this.currentTarget) {
+            // Recreate outline for current target using validated method with target data
+            const targetData = this.getCurrentTargetData();
+            if (targetData && targetData.name && targetData.name !== 'unknown') {
+                this.updateTargetOutline(this.currentTarget, 0);
+            }
+        }
+        
+        console.log(`🎯 Target outline ${this.outlineEnabled ? 'enabled' : 'disabled'}`);
+    }
+    
+    /**
+     * Get the appropriate outline color based on target type
+     * @param {Object} targetData - Target data from getCurrentTargetData()
+     * @returns {string} Hex color string
+     */
+    getOutlineColorForTarget(targetData) {
+        if (!targetData) return '#808080'; // Gray for unknown
+        
+        if (targetData.isShip) {
+            return '#ff3333'; // Red for enemy ships
+        } else if (targetData.diplomacy?.toLowerCase() === 'friendly') {
+            return '#00ff41'; // Green for friendlies
+        } else if (targetData.diplomacy?.toLowerCase() === 'neutral') {
+            return '#ffff00'; // Yellow for neutrals
+        } else {
+            return '#00ff41'; // Default green
+        }
+    }
+
+    /**
+     * Handle target destruction and synchronization across all targeting systems
+     * @param {Object} destroyedShip - The ship that was destroyed
+     */
+    removeDestroyedTarget(destroyedShip) {
+        if (!destroyedShip) return;
+        
+        console.log(`💥 removeDestroyedTarget called for: ${destroyedShip.shipName || 'unknown ship'}`);
+        
+        // Check if ANY targeting system was targeting the destroyed ship
+        const ship = this.viewManager?.getShip();
+        const targetComputer = ship?.getSystem('target_computer');
+        
+        const hudTargetsDestroyed = this.currentTarget && 
+            (this.currentTarget === destroyedShip.mesh || 
+             this.getCurrentTargetData()?.ship === destroyedShip);
+        
+        const weaponTargetsDestroyed = ship?.weaponSystem?.lockedTarget && 
+            (ship.weaponSystem.lockedTarget === destroyedShip.mesh || 
+             ship.weaponSystem.lockedTarget === destroyedShip);
+        
+        const tcTargetsDestroyed = targetComputer?.currentTarget === destroyedShip;
+        
+        // IMPROVED: Check if outline is targeting destroyed ship
+        const outlineTargetsDestroyed = this.targetOutlineObject && 
+            (this.targetOutlineObject === destroyedShip.mesh || 
+             this.targetOutlineObject === destroyedShip ||
+             this.targetOutlineObject === this.currentTarget);
+        
+        const anySystemTargeting = hudTargetsDestroyed || weaponTargetsDestroyed || tcTargetsDestroyed || outlineTargetsDestroyed;
+        
+        console.log(`🔍 Targeting analysis:`);
+        console.log(`   • HUD targets destroyed ship: ${hudTargetsDestroyed}`);
+        console.log(`   • Weapon targets destroyed ship: ${weaponTargetsDestroyed}`);
+        console.log(`   • Target computer targets destroyed ship: ${tcTargetsDestroyed}`);
+        console.log(`   • Outline targets destroyed ship: ${outlineTargetsDestroyed}`);
+        console.log(`   • Any system targeting: ${anySystemTargeting}`);
+        
+        if (anySystemTargeting) {
+            console.log('🗑️ Destroyed ship was targeted - performing full synchronization cleanup');
+            
+            // Clear ALL targeting system references
+            this.currentTarget = null;
+            this.targetIndex = -1;
+            
+            if (ship?.weaponSystem) {
+                ship.weaponSystem.setLockedTarget(null);
+            }
+            
+            if (targetComputer) {
+                targetComputer.clearTarget();
+                targetComputer.clearSubTarget();
+            }
+            
+            // ALWAYS clear 3D outline when a targeted ship is destroyed
+            console.log('🎯 Clearing 3D outline for destroyed target');
+            this.clearTargetOutline();
+            
+            // Update target list to remove destroyed ship
+            this.updateTargetList();
+            
+            // Select new target using proper cycling logic
+            if (this.targetObjects && this.targetObjects.length > 0) {
+                console.log(`🔄 Cycling to new target from ${this.targetObjects.length} available targets`);
+                
+                // Prevent outlines from appearing automatically after destruction
+                this.outlineDisabledUntilManualCycle = true;
+                
+                // Cycle to next target without creating outline (automatic cycle)
+                this.cycleTarget(false);
+                
+                console.log('🎯 Target cycled after destruction - outline disabled until next manual cycle');
+            } else {
+                console.log('📭 No targets remaining after destruction');
+                
+                // CRITICAL: Force clear outline again when no targets remain
+                console.log('🎯 Force-clearing outline - no targets remaining');
+                this.clearTargetOutline();
+                
+                // Clear wireframe and hide UI
+                if (this.targetWireframe) {
+                    this.wireframeScene.remove(this.targetWireframe);
+                    this.targetWireframe.geometry.dispose();
+                    this.targetWireframe.material.dispose();
+                    this.targetWireframe = null;
+                }
+                
+                if (this.targetHUD) {
+                    this.targetHUD.style.display = 'none';
+                }
+                if (this.targetReticle) {
+                    this.targetReticle.style.display = 'none';
+                }
+            }
+            
+        } else {
+            console.log('🎯 Destroyed ship was not targeted by any system - minimal cleanup');
+            
+            // ALWAYS clear 3D outline when any ship is destroyed
+            // Even if not "targeted", the outline might still be showing it
+            console.log('🎯 Force-clearing 3D outline for safety');
+            this.clearTargetOutline();
+            
+            // Still refresh the target list to keep everything in sync
+            this.updateTargetList();
+            
+            // Validate and refresh current target if needed
+            if (this.targetObjects && this.targetObjects.length > 0 && this.targetIndex >= 0) {
+                if (this.targetIndex >= this.targetObjects.length) {
+                    this.targetIndex = 0;
+                }
+                // Refresh display and outline for current target
+                this.updateTargetDisplay();
+                if (this.currentTarget && this.outlineEnabled) {
+                    // Use validated outline update instead of direct creation
+                    this.updateTargetOutline(this.currentTarget, 0);
+                }
+            } else if (this.targetObjects && this.targetObjects.length === 0) {
+                // No targets left, clear everything
+                this.currentTarget = null;
+                this.targetIndex = -1;
+                this.clearTargetOutline();
+                
+                if (this.targetHUD) {
+                    this.targetHUD.style.display = 'none';
+                }
+                if (this.targetReticle) {
+                    this.targetReticle.style.display = 'none';
+                }
+            }
+        }
+        
+        console.log(`✅ removeDestroyedTarget complete for: ${destroyedShip.shipName || 'unknown ship'}`);
+    }
+
+    adjustColorBrightness(color, factor) {
+        const hex = color.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        return `#${Math.round(r * factor).toString(16).padStart(2, '0')}${Math.round(g * factor).toString(16).padStart(2, '0')}${Math.round(b * factor).toString(16).padStart(2, '0')}`;
+    }
+
+    updateStatusIcons(distance, diplomacyColor, isEnemyShip, info) {
+        // Update status icons with diplomacy color
+        this.governmentIcon.style.display = info?.government ? 'block' : 'none';
+        this.economyIcon.style.display = info?.economy ? 'block' : 'none';
+        this.technologyIcon.style.display = info?.technology ? 'block' : 'none';
+
+        // Update icon colors and borders to match diplomacy
+        [this.governmentIcon, this.economyIcon, this.technologyIcon].forEach(icon => {
+            if (icon.style.display !== 'none') {
+                icon.style.borderColor = diplomacyColor;
+                icon.style.color = diplomacyColor;
+                icon.style.textShadow = `0 0 4px ${diplomacyColor}`;
+                icon.style.boxShadow = `0 0 4px ${diplomacyColor.replace(')', ', 0.4)')}`;
+            }
+        });
+
+        // Update intel icon display
+        this.updateIntelIconDisplay();
+
+        // Update tooltips with current info
+        if (info?.government) {
+            this.governmentIcon.title = `Government: ${info.government}`;
+        }
+        if (info?.economy) {
+            this.economyIcon.title = `Economy: ${info.economy}`;
+        }
+        if (info?.technology) {
+            this.technologyIcon.title = `Technology: ${info.technology}`;
+        }
+
+        // Update reticle colors
+        const corners = this.targetReticle.getElementsByClassName('reticle-corner');
+        Array.from(corners).forEach(corner => {
+            corner.style.borderColor = diplomacyColor;
+            corner.style.boxShadow = `0 0 2px ${diplomacyColor}`;
+        });
+    }
+
+    updateActionButtons(currentTargetData, info) {
+        // Calculate docking range based on body size
+        let dockingRange = this.dockingRange; // Default 1.5 for moons
+        if (info?.type === 'planet') {
+            // For planets, use a fixed 4.0KM range
+            dockingRange = 4.0;
+        }
+
+        // Calculate button state for docking (show dock button, but launch is handled by docking interface)
+        const canDock = this.canDock(this.currentTarget);
+        const isDocked = this.isDocked && this.dockedTo === this.currentTarget;
+        const isHostile = info?.diplomacy?.toLowerCase() === 'enemy';
+
+        // Add a small buffer to button display: only show button if distance is comfortably within range
+        let showButton = false;
+        if ((info?.type === 'planet' || info?.type === 'moon') && canDock && !isDocked && !isHostile) {
+            // Add 0.3km buffer - only show button if we're well within docking range
+            const currentDistance = this.camera.position.distanceTo(this.currentTarget.position);
+            let buttonRange = this.dockingRange - 0.3; // Default 1.2 for moons
+            if (info?.type === 'planet') {
+                buttonRange = 3.7; // 3.7km for planets (was 4.0km)
+            }
+            showButton = currentDistance <= buttonRange;
+        }
+
+        // Show dock button when in range and not docked, but launch is handled by docking interface
+        const newButtonState = {
+            hasDockButton: showButton,
+            isDocked: this.isDocked,
+            hasScanButton: false,
+            hasTradeButton: false
+        };
+
+        // Only recreate buttons if state has changed
+        const stateChanged = JSON.stringify(this.currentButtonState) !== JSON.stringify(newButtonState);
+        
+        if (stateChanged) {
+            // Throttle button state change logging to prevent spam
+            const now = Date.now();
+            if (!this.lastButtonStateLog || now - this.lastButtonStateLog > 2000) { // Log at most every 2 seconds
+                // Debugging button state changes (can be enabled if needed)
+                this.lastButtonStateLog = now;
+            }
+            this.currentButtonState = newButtonState;
+            
+            // Clear existing buttons
+            this.actionButtonsContainer.innerHTML = '';
+
+            // Add dock button if applicable (launch button is in docking interface)
+            if (newButtonState.hasDockButton) {
+                const dockButton = document.createElement('button');
+                dockButton.className = 'dock-button';
+                dockButton.textContent = 'DOCK';
+                dockButton.addEventListener('click', () => this.handleDockButtonClick(false, currentTargetData.name));
+                this.actionButtonsContainer.appendChild(dockButton);
+            }
         }
     }
 

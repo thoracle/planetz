@@ -346,7 +346,7 @@ export class WeaponEffectsManager {
     }
     
     /**
-     * Create explosion effect at position
+     * Create explosion effect at specified position
      * @param {Vector3} position Explosion center
      * @param {number} radius Blast radius in meters
      * @param {string} explosionType 'damage' or 'death'
@@ -359,10 +359,11 @@ export class WeaponEffectsManager {
         }
         
         // Proximity check: only create explosion if hit is close to target center
+        // Use a generous threshold based on hit detection radius, not explosion visual size
         if (targetCenter) {
             const distanceFromCenter = position.distanceTo(targetCenter);
-            // Convert radius from meters to world units (1 world unit = 1 kilometer)
-            const proximityThresholdKm = (radius * 2) / 1000; // Convert meters to km for threshold
+            // Use 2.5km threshold to match the enlarged hit detection system
+            const proximityThresholdKm = 2.5; // Fixed large threshold for hit detection compatibility
             
             if (distanceFromCenter > proximityThresholdKm) {
                 console.log(`💥 Explosion suppressed: Hit too far from center (${distanceFromCenter.toFixed(1)}km > ${proximityThresholdKm.toFixed(1)}km)`);
@@ -391,7 +392,7 @@ export class WeaponEffectsManager {
             mesh: explosion,
             startTime: Date.now(),
             duration: config.duration * 1000,
-            targetScale: radius * config.scale * 0.3, // Much smaller final size (30% of original)
+            targetScale: radius * config.scale * 0.00625, // 25% larger than previous (was 0.005, now 0.00625)
             explosionType: explosionType
         });
         
@@ -401,7 +402,7 @@ export class WeaponEffectsManager {
         const soundType = explosionType === 'death' ? 'death' : 'explosion';
         this.playSound(soundType, position);
         
-        console.log(`Created ${explosionType} explosion at`, position, `radius: ${(radius * 0.3).toFixed(1)} (reduced)`);
+        console.log(`Created ${explosionType} explosion at`, position, `radius: ${(radius * 0.00625).toFixed(3)} (25% larger)`);
     }
     
     /**
