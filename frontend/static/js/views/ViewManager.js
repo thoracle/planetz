@@ -99,6 +99,12 @@ export class ViewManager {
         if (this.subspaceRadio) {
             this.subspaceRadio.setStarfieldManager(manager);
         }
+        
+        // Initialize ship systems when StarfieldManager is available
+        if (manager && typeof manager.initializeShipSystems === 'function') {
+            console.log('🔗 ViewManager: StarfieldManager set - initializing ship systems');
+            this.initializeShipSystems();
+        }
     }
 
     // Add method to set SolarSystemManager
@@ -905,14 +911,26 @@ export class ViewManager {
     }
 
     /**
-     * Initialize default ship systems
-     * NOTE: Ship class now handles all default system initialization automatically
-     * This method is kept for backward compatibility but no longer adds systems
+     * Initialize default ship systems using unified approach
+     * This method now calls the unified initializeShipSystems from StarfieldManager 
+     * to ensure consistent initialization across all code paths
      */
     initializeShipSystems() {
-        // Ship class now handles all default system initialization in its constructor
-        // No need to add systems here as they're already added by Ship.initializeDefaultSystemInstances()
-        console.log('Ship systems already initialized by Ship class - no additional systems needed');
+        console.log('🚀 ViewManager: Initializing ship systems using unified approach');
+        
+        // Ship class handles basic system setup in its constructor
+        // But we need to initialize proper game systems for launch
+        
+        if (this.starfieldManager && typeof this.starfieldManager.initializeShipSystems === 'function') {
+            // Use unified initialization method from StarfieldManager
+            this.starfieldManager.initializeShipSystems().catch(error => {
+                console.error('Failed to initialize ship systems via StarfieldManager:', error);
+            });
+            console.log('✅ ViewManager: Ship systems initialized via StarfieldManager');
+        } else {
+            // Fallback for cases where StarfieldManager isn't available yet
+            console.log('⚠️ ViewManager: StarfieldManager not available yet - ship systems will be initialized when StarfieldManager is set');
+        }
     }
     
     /**

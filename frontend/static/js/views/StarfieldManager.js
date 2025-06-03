@@ -1630,8 +1630,14 @@ export class StarfieldManager {
                     return;
                 }
                 
-                // Check for undock cooldown
+                // Check for undock cooldown with proper user feedback
                 if (this.undockCooldown && Date.now() < this.undockCooldown) {
+                    const remainingSeconds = Math.ceil((this.undockCooldown - Date.now()) / 1000);
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'TARGETING SYSTEMS WARMING UP',
+                        `Systems initializing after launch - ${remainingSeconds}s remaining`
+                    );
                     return;
                 }
                 
@@ -3467,14 +3473,26 @@ export class StarfieldManager {
     }
 
     /**
-     * Clear target computer state
+     * Clear target computer state completely - removes all target data and UI elements
      */
     clearTargetComputer() {
-        // Reset target state
+        // Reset ALL target state variables
         this.currentTarget = null;
-        this.previousTarget = null; // Reset previous target tracking
+        this.previousTarget = null;
+        this.targetedObject = null;
+        this.lastTargetedObjectId = null;
         this.targetIndex = -1;
         this.targetObjects = [];
+        this.validTargets = [];
+        this.lastTargetCycleTime = 0;
+        
+        // Clear target computer system state if available
+        const ship = this.viewManager?.getShip();
+        const targetComputerSystem = ship?.getSystem('target_computer');
+        if (targetComputerSystem) {
+            targetComputerSystem.clearTarget();
+            targetComputerSystem.deactivate();
+        }
         
         // Hide intel when target computer is cleared
         if (this.intelVisible) {
@@ -3502,8 +3520,15 @@ export class StarfieldManager {
         // Clear 3D outline
         this.clearTargetOutline();
         
+        // Clear any targeting displays
+        if (this.updateTargetingDisplay) {
+            this.updateTargetingDisplay();
+        }
+        
         // Disable target computer
         this.targetComputerEnabled = false;
+        
+        console.log('🎯 Target computer completely cleared - all state reset');
     }
 
     playEngineStartup(targetVolume) {
@@ -4077,9 +4102,9 @@ export class StarfieldManager {
             this.viewManager.aftCrosshair.style.display = 'none';
             
             // Comprehensively power down all ship systems when docking to save energy
-            this.powerDownAllSystems();
+            this.shutdownAllSystems();
             
-            // Power down target computer UI (system is already powered down in powerDownAllSystems)
+            // Power down target computer UI (system is already powered down in shutdownAllSystems)
             if (this.targetComputerEnabled) {
                 this.targetComputerEnabled = false;
                 this.targetHUD.style.display = 'none';
@@ -4217,7 +4242,7 @@ export class StarfieldManager {
         }
         
         // Add a brief delay before target computer can be used again
-        this.undockCooldown = Date.now() + 30000; // 30 second cooldown
+        this.undockCooldown = Date.now() + 10000; // 10 second cooldown
         
         // Set speed to impulse 1 for a gentle launch
         this.targetSpeed = 1;
@@ -4241,23 +4266,12 @@ export class StarfieldManager {
             this.viewManager.frontCrosshair.style.display = viewToRestore === 'FORE' ? 'block' : 'none';
             this.viewManager.aftCrosshair.style.display = viewToRestore === 'AFT' ? 'block' : 'none';
             
-            // Restore all ship systems to their pre-docking state
-            this.restoreAllSystems();
+            // Initialize all ship systems for the current ship (whatever ship we're launching in)
+            this.initializeShipSystems().catch(error => {
+                console.error('Failed to initialize ship systems during launch:', error);
+            });
             
-            // Restore subspace radio UI if it was active before docking
-            if (this.viewManager.subspaceRadio && this.preDockingSystemStates) {
-                const radioState = this.preDockingSystemStates.get('subspace_radio');
-                if (radioState && radioState.isRadioActive) {
-                    // Check if the system can be activated
-                    const ship = this.viewManager.getShip();
-                    const radioSystem = ship.getSystem('subspace_radio');
-                    if (radioSystem && radioSystem.isActive) {
-                        this.viewManager.subspaceRadio.show();
-                    }
-                }
-            }
-            
-            // Remind player about shields after undocking
+            // Remove flawed subspace radio state restoration - systems will be properly initialized above
         }
         
         // Update the dock button to show "DOCK"
@@ -4379,61 +4393,49 @@ export class StarfieldManager {
     /**
      * Power down all ship systems when docking to conserve energy
      */
-    powerDownAllSystems() {
+    shutdownAllSystems() {
+        console.log('🛑 Shutting down all ship systems for docking');
+        
         const ship = this.viewManager?.getShip();
         if (!ship) {
-            console.warn('No ship available for system power management');
+            console.warn('No ship available for system shutdown');
             return;
         }
         
-        // Store the current state of all systems before powering them down
-        this.preDockingSystemStates = new Map();
-        
-        
-        // Iterate through all ship systems and store their current state
+        // Simply power down all systems without saving state
         for (const [systemName, system] of ship.systems) {
-            // Store the current active state
-            this.preDockingSystemStates.set(systemName, {
-                isActive: system.isActive,
-                // Store additional system-specific states
-                ...(systemName === 'shields' && system.isShieldsUp ? { isShieldsUp: true } : {}),
-                ...(systemName === 'long_range_scanner' && system.isScanning ? { isScanning: true } : {}),
-                ...(systemName === 'target_computer' && system.isTargeting ? { isTargeting: true } : {}),
-                ...(systemName === 'subspace_radio' ? { 
-                    isChartActive: system.isChartActive || false,
-                    isRadioActive: system.isRadioActive || false
-                } : {}),
-                ...(systemName === 'impulse_engines' && system.currentImpulseSpeed > 0 ? { 
-                    currentImpulseSpeed: system.currentImpulseSpeed,
-                    isMovingForward: system.isMovingForward 
-                } : {})
-            });
-            
-            // Power down the system based on its type
-            if (systemName === 'shields' && system.isShieldsUp) {
-                system.deactivateShields();
-            } else if (systemName === 'long_range_scanner' && system.isScanning) {
-                system.stopScan();
-            } else if (systemName === 'target_computer' && system.isTargeting) {
-                system.deactivate();
-            } else if (systemName === 'subspace_radio') {
-                // Handle both radio and chart functionalities
-                if (system.isRadioActive) {
-                    system.deactivateRadio();
+            try {
+                if (systemName === 'shields' && system.isShieldsUp) {
+                    system.deactivateShields();
+                    console.log(`  🛡️ Shields deactivated`);
+                } else if (systemName === 'long_range_scanner' && system.isScanning) {
+                    system.stopScan();
+                    console.log(`  📡 Scanner stopped`);
+                } else if (systemName === 'target_computer' && system.isTargeting) {
+                    system.deactivate();
+                    console.log(`  🎯 Targeting computer deactivated`);
+                } else if (systemName === 'subspace_radio') {
+                    if (system.isRadioActive) {
+                        system.deactivateRadio();
+                    }
+                    if (system.isChartActive) {
+                        system.deactivateChart();
+                    }
+                    console.log(`  📻 Subspace radio deactivated`);
+                } else if (systemName === 'impulse_engines') {
+                    system.setImpulseSpeed(0);
+                    system.setMovingForward(false);
+                    console.log(`  🚀 Impulse engines stopped`);
+                } else if (system.isActive) {
+                    system.deactivate();
+                    console.log(`  ⚡ ${systemName} deactivated`);
                 }
-                if (system.isChartActive) {
-                    system.deactivateChart();
-                }
-            } else if (systemName === 'impulse_engines') {
-                // Impulse engines are already stopped when docked, but ensure they're not active
-                system.setImpulseSpeed(0);
-                system.setMovingForward(false);
-            } else if (system.isActive) {
-                // For other systems, simply deactivate them
-                system.deactivate();
+            } catch (error) {
+                console.warn(`Failed to shutdown system ${systemName}:`, error);
             }
         }
         
+        console.log('🛑 All ship systems shutdown complete');
     }
     
     /**
@@ -5901,6 +5903,228 @@ export class StarfieldManager {
         
         console.log(`🚀 Launch distance calculated: ${safeDistance.toFixed(1)}km (base: ${minBaseDistance.toFixed(1)}km)`);
         return safeDistance;
+    }
+
+    /**
+     * Shutdown all ship systems when docking - properly power down without trying to save state
+     */
+    shutdownAllSystems() {
+        console.log('🛑 Shutting down all ship systems for docking');
+        
+        const ship = this.viewManager?.getShip();
+        if (!ship) {
+            console.warn('No ship available for system shutdown');
+            return;
+        }
+        
+        // Simply power down all systems without saving state
+        for (const [systemName, system] of ship.systems) {
+            try {
+                if (systemName === 'shields' && system.isShieldsUp) {
+                    system.deactivateShields();
+                    console.log(`  🛡️ Shields deactivated`);
+                } else if (systemName === 'long_range_scanner' && system.isScanning) {
+                    system.stopScan();
+                    console.log(`  📡 Scanner stopped`);
+                } else if (systemName === 'target_computer' && system.isTargeting) {
+                    system.deactivate();
+                    console.log(`  🎯 Targeting computer deactivated`);
+                } else if (systemName === 'subspace_radio') {
+                    if (system.isRadioActive) {
+                        system.deactivateRadio();
+                    }
+                    if (system.isChartActive) {
+                        system.deactivateChart();
+                    }
+                    console.log(`  📻 Subspace radio deactivated`);
+                } else if (systemName === 'impulse_engines') {
+                    system.setImpulseSpeed(0);
+                    system.setMovingForward(false);
+                    console.log(`  🚀 Impulse engines stopped`);
+                } else if (system.isActive) {
+                    system.deactivate();
+                    console.log(`  ⚡ ${systemName} deactivated`);
+                }
+            } catch (error) {
+                console.warn(`Failed to shutdown system ${systemName}:`, error);
+            }
+        }
+        
+        console.log('🛑 All ship systems shutdown complete');
+    }
+    
+    /**
+     * Initialize all ship systems for launch - fresh setup regardless of previous state
+     * This is the unified method that should be used for ALL ship initialization scenarios
+     */
+    async initializeShipSystems() {
+        console.log('🚀 Initializing ship systems for launch');
+        
+        const ship = this.viewManager?.getShip();
+        if (!ship) {
+            console.warn('No ship available for system initialization');
+            return;
+        }
+        
+        // Initialize power management
+        if (ship.equipment?.powerManagement) {
+            this.powerManagementEnabled = true;
+            console.log('  ⚡ Power management initialized and enabled');
+        }
+        
+        // Initialize navigation computer
+        if (ship.equipment?.navigationComputer) {
+            this.navigationComputerEnabled = true;
+            console.log('  🧭 Navigation computer initialized and enabled');
+        }
+        
+        // CRITICAL: Properly initialize targeting computer with complete state reset
+        const targetComputerSystem = ship.getSystem('target_computer');
+        const hasTargetComputerCards = ship.hasSystemCardsSync('target_computer');
+        
+        if (targetComputerSystem && hasTargetComputerCards) {
+            // STEP 1: Clear any previous target state completely
+            this.currentTarget = null;
+            this.targetedObject = null;
+            this.lastTargetedObjectId = null;
+            
+            // STEP 2: Clear targeting display and outlines
+            this.clearTargetOutline();
+            if (this.updateTargetingDisplay) {
+                this.updateTargetingDisplay();
+            }
+            
+            // STEP 3: Reset target cycling state
+            this.targetIndex = -1;
+            this.validTargets = [];
+            this.lastTargetCycleTime = 0;
+            
+            // STEP 4: Synchronize StarfieldManager state with system state
+            // The system starts inactive after launch (requires manual activation)
+            this.targetComputerEnabled = targetComputerSystem.isActive;
+            
+            // STEP 5: If system was somehow left active, ensure it works properly
+            if (targetComputerSystem.isActive) {
+                // Refresh targeting computer functionality
+                if (targetComputerSystem.refreshTargeting) {
+                    targetComputerSystem.refreshTargeting();
+                }
+                console.log('  🎯 Targeting computer initialized (ACTIVE) - state synchronized, targets cleared');
+            } else {
+                console.log('  🎯 Targeting computer initialized (INACTIVE) - ready for activation');
+            }
+            
+            console.log(`  🎯 Target state cleared: currentTarget=${this.currentTarget}, targetIndex=${this.targetIndex}`);
+        } else {
+            this.targetComputerEnabled = false;
+            // Still clear target state even without targeting computer
+            this.currentTarget = null;
+            this.targetedObject = null;
+            this.clearTargetOutline();
+            console.log('  🎯 No targeting computer available - target state cleared');
+        }
+        
+        // Initialize shields
+        const shieldSystem = ship.getSystem('shields');
+        if (shieldSystem) {
+            this.shieldsEnabled = shieldSystem.isActive;
+            console.log(`  🛡️ Shields initialized: ${this.shieldsEnabled ? 'enabled' : 'disabled'}`);
+        }
+        
+        // Initialize scanning systems
+        const scannerSystem = ship.getSystem('scanners');
+        if (scannerSystem) {
+            this.scannersEnabled = scannerSystem.isActive;
+            console.log(`  📡 Scanners initialized: ${this.scannersEnabled ? 'enabled' : 'disabled'}`);
+        }
+        
+        // Initialize weapon systems using the unified approach
+        await this.initializeWeaponSystems();
+        
+        // Initialize engine systems
+        const engineSystem = ship.getSystem('impulse_engines');
+        if (engineSystem) {
+            this.enginesEnabled = engineSystem.isActive;
+            console.log(`  🚀 Engines initialized: ${this.enginesEnabled ? 'enabled' : 'disabled'}`);
+        }
+        
+        // Initialize communication systems
+        const radioSystem = ship.getSystem('subspace_radio');
+        if (radioSystem) {
+            this.radioEnabled = radioSystem.isActive;
+            console.log(`  📻 Radio initialized: ${this.radioEnabled ? 'enabled' : 'disabled'}`);
+        }
+        
+        console.log('✅ Ship systems initialization complete - all states synchronized');
+    }
+    
+    /**
+     * Initialize weapon systems and ensure proper HUD connection
+     * Critical for ensuring weapons are properly registered with the HUD
+     */
+    async initializeWeaponSystems() {
+        console.log('  🔫 Initializing weapon systems and HUD integration...');
+        
+        try {
+            // Ensure weapon effects manager is initialized
+            this.ensureWeaponEffectsManager();
+            
+            // Connect weapon HUD to ship systems
+            this.connectWeaponHUDToSystem();
+            
+            // Update weapon selection UI to reflect current ship loadout
+            await this.updateWeaponSelectionUI();
+            
+            console.log('  🔫 Weapon systems initialization complete');
+        } catch (error) {
+            console.error('  ❌ Failed to initialize weapon systems:', error);
+        }
+    }
+    
+    /**
+     * Update weapon selection UI to reflect current ship loadout
+     * Ensures weapon HUD shows correct weapon counts and types
+     */
+    async updateWeaponSelectionUI() {
+        console.log('    🎯 Updating weapon selection UI...');
+        
+        const ship = this.viewManager?.getShip();
+        if (!ship) {
+            console.warn('    ⚠️ No ship available for weapon UI update');
+            return;
+        }
+        
+        const weaponsSystem = ship.getSystem('weapons');
+        if (!weaponsSystem) {
+            console.warn('    ⚠️ No weapons system found');
+            return;
+        }
+        
+        // Force refresh weapon inventory
+        if (typeof weaponsSystem.refreshInventory === 'function') {
+            weaponsSystem.refreshInventory();
+        }
+        
+        // Update weapon HUD display
+        if (this.weaponHUD) {
+            // Clear and rebuild weapon display
+            this.weaponHUD.innerHTML = '';
+            this.createWeaponHUD();
+        }
+        
+        console.log('    🎯 Weapon selection UI updated');
+    }
+
+    /**
+     * Get the requirements to dock with a target
+     * @param {Object} target - Target object to dock with
+     * @returns {Array} Array of requirement objects
+     */
+    getDockingRequirements() {
+        return [
+            { name: 'Within Docking Range', met: true },
+            { name: 'Ship Systems Operational', met: true }
+        ];
     }
 
 } 

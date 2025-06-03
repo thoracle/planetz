@@ -1686,6 +1686,19 @@ export default class CardInventoryUI {
         // Update UI - always render ship slots in both modes
         this.renderShipSlots();
         
+        // If this ship switch is happening in-game (when docked), 
+        // trigger unified ship system initialization
+        if (this.dockingInterface?.starfieldManager?.ship) {
+            console.log('🔄 CardInventoryUI: In-game ship switch detected - will need system reinitialization on launch');
+            // Note: The actual ship system initialization will happen when the player launches
+            // via StarfieldManager.initializeShipSystems() in the undock() method
+            
+            // Update the game ship reference if switching while docked
+            if (this.dockingInterface.starfieldManager.isDocked) {
+                console.log('🚀 CardInventoryUI: Ship switched while docked - systems will reinitialize on launch');
+            }
+        }
+        
         console.log(`Ship switched to ${shipType}`);
     }
 

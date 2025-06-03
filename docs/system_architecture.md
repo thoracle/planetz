@@ -139,6 +139,8 @@ classDiagram
         +update(deltaTime) void
         +consumeEnergy(amount) Boolean
         +hasSystemCards(systemName) Boolean
+        +initializeAllSystems() void
+        +shutdownAllSystems() void
     }
 
     class SystemSlot {
@@ -166,6 +168,8 @@ classDiagram
         +upgrade(newLevel) void
         +update(deltaTime, ship) void
         +isOperational() Boolean
+        +initialize() void
+        +shutdown() void
     }
 
     class ShipCollection {
@@ -194,30 +198,38 @@ classDiagram
         +hasSystemCards(systemName) Boolean
         +getSystemCardEffectiveness(systemName) Number
         +createSystemsFromCards() Promise
+        +reinitializeAllSystems() Promise
     }
 
     class WeaponSystemCore {
         +Ship ship
         +Array weaponSlots
         +Number activeSlotIndex
-        +Boolean isAutofireOn
-        +selectNextWeapon() void
-        +selectPreviousWeapon() void
-        +fireActiveWeapon() Boolean
-        +toggleAutofire() void
-        +update(deltaTime) void
+        +initializeFromCards() Promise
+        +registerAllWeapons() void
+        +updateWeaponHUD() void
+    }
+
+    class DockingManager {
+        +Ship ship
+        +StarfieldManager starfieldManager
+        +shutdownSystemsForDocking() void
+        +initializeSystemsForLaunch() Promise
+        +validateLaunchConditions() Boolean
     }
 
     Ship o-- SystemSlot : contains_many
-    SystemSlot --> System : holds_one
-    ShipCollection o-- Ship : manages_many
-    BuildValidator --> Ship : validates
-    Ship --> BuildValidator : uses
-    Ship --> CardSystemIntegration : integrates
-    Ship --> WeaponSystemCore : manages
+    SystemSlot --> System : holds
+    Ship --> CardSystemIntegration : uses
+    Ship --> WeaponSystemCore : has_one
+    Ship --> BuildValidator : validates_with
+    ShipCollection o-- Ship : contains_many
+    DockingManager --> Ship : manages
+    DockingManager --> CardSystemIntegration : coordinates_with
+    DockingManager --> WeaponSystemCore : coordinates_with
 ```
 
-### State Diagram - Ship Configuration States ✅ IMPLEMENTED
+### State Diagram - Ship Configuration States ✅ UPDATED
 
 ```mermaid
 stateDiagram-v2
@@ -229,18 +241,36 @@ stateDiagram-v2
     
     Docked --> ValidatingBuild : Attempt Launch
     ValidatingBuild --> Docked : Invalid Build
-    ValidatingBuild --> Launched : Valid Build
+    ValidatingBuild --> InitializingSystems : Valid Build
     
-    Launched --> InSpace : Undock
+    InitializingSystems --> Launched : Systems Ready
+    InitializingSystems --> Docked : Initialization Failed
+    
+    Launched --> InSpace : Undock Complete
     InSpace --> Damaged : Take Damage
     Damaged --> InSpace : Repair Systems
-    InSpace --> Docked : Dock at Station
+    InSpace --> ShuttingDown : Dock at Station
+    ShuttingDown --> Docked : Systems Shutdown
     
     state Configuring {
         [*] --> SelectingSlot
         SelectingSlot --> DraggingCard : Drag Card
         DraggingCard --> InstallingSystem : Drop on Slot
         InstallingSystem --> SelectingSlot : Installation Complete
+    }
+    
+    state InitializingSystems {
+        [*] --> LoadingCards
+        LoadingCards --> CreatingSystems : Cards Loaded
+        CreatingSystems --> RegisteringWeapons : Systems Created
+        RegisteringWeapons --> ActivatingTargeting : Weapons Registered
+        ActivatingTargeting --> [*] : Ready for Launch
+    }
+    
+    state ShuttingDown {
+        [*] --> DeactivatingSystems
+        DeactivatingSystems --> PoweringDown : Systems Deactivated
+        PoweringDown --> [*] : Ready for Docking
     }
 ```
 
@@ -419,264 +449,115 @@ flowchart LR
     ShipCollection --> StationUI
 ```
 
-## System Integration
+## UPDATED: Docking and Launch System Architecture 🚀
 
-### Component Integration Diagram
-
-```mermaid
-graph TB
-    subgraph "Frontend Layer"
-        UI[User Interface]
-        GameLogic[Game Logic]
-        CardSystem[Card System]
-        ShipSystem[Ship System]
-    end
-    
-    subgraph "API Layer"
-        ShipAPI[Ship API Endpoints]
-        CardAPI[Card API Endpoints]
-        StationAPI[Station API Endpoints]
-    end
-    
-    subgraph "Backend Layer"
-        ShipConfigs[Ship Configurations]
-        CardDefinitions[Card Definitions]
-        DropRates[Drop Rate System]
-        ValidationRules[Validation Rules]
-    end
-    
-    subgraph "Data Layer"
-        SessionData[Session Data]
-        LocalStorage[Local Storage]
-        FutureBlockchain[Future: Blockchain]
-    end
-    
-    UI --> GameLogic
-    UI --> CardSystem
-    UI --> ShipSystem
-    
-    CardSystem --> CardAPI
-    ShipSystem --> ShipAPI
-    UI --> StationAPI
-    
-    ShipAPI --> ShipConfigs
-    CardAPI --> CardDefinitions
-    CardAPI --> DropRates
-    ShipAPI --> ValidationRules
-    
-    ShipConfigs --> SessionData
-    CardDefinitions --> LocalStorage
-    DropRates --> SessionData
-    
-    LocalStorage -.-> FutureBlockchain
-    SessionData -.-> FutureBlockchain
-```
-
-### Sequence Diagram - Card Purchase and Installation
+### Updated Launch/Undocking Sequence ✅ CORRECTED
 
 ```mermaid
 sequenceDiagram
     participant Player
-    participant StationUI as Station_Interface
-    participant CardShop as Card_Shop
-    participant CardInventory as Card_Inventory
-    participant Ship as Ship_Configuration
-    participant SlotManager as Slot_Manager
-    participant SystemRegistry as System_Registry
+    participant DockingInterface as Docking Interface
+    participant StarfieldManager as Starfield Manager
+    participant Ship
+    participant TargetingComputer as Targeting Computer
+    participant WeaponHUD as Weapon HUD
+    participant PowerSystems as Power Systems
 
-    Player->>StationUI: Dock at station
-    StationUI->>StationUI: Show docking interface
-    Player->>StationUI: Click "CARD SHOP"
-    StationUI->>CardShop: Open card shop interface
-    
-    CardShop->>CardInventory: Load available cards
-    CardInventory->>CardShop: Display card grid
-    
-    Player->>CardShop: Purchase subspace_radio card
-    CardShop->>CardInventory: Add card to inventory
-    CardInventory->>CardShop: Confirm purchase
-    
-    Player->>CardShop: Purchase long_range_scanner card
-    CardShop->>CardInventory: Add card to inventory
-    CardInventory->>CardShop: Confirm purchase
-    
-    Player->>CardShop: Switch to ship configuration view
-    CardShop->>Ship: Load current ship configuration
-    Ship->>SlotManager: Get available slots
-    SlotManager->>CardShop: Display slot grid
-    
-    Player->>CardShop: Drag subspace_radio to slot
-    CardShop->>SlotManager: Validate card compatibility
-    SlotManager->>Ship: Install system(subspace_radio)
-    Ship->>SystemRegistry: Register system instance
-    SystemRegistry->>Ship: Confirm registration
-    Ship->>CardShop: Update slot display
-    
-    Player->>CardShop: Drag long_range_scanner to slot
-    CardShop->>SlotManager: Validate card compatibility
-    SlotManager->>Ship: Install system(long_range_scanner)
-    Ship->>SystemRegistry: Register system instance
-    SystemRegistry->>Ship: Confirm registration
-    Ship->>CardShop: Update slot display
-    
-    Player->>CardShop: Close card shop
-    CardShop->>Ship: Save ship configuration
-    Ship->>StationUI: Return to docking interface
-```
+    Note over Player,PowerSystems: ✅ CORRECTED: Unified Ship Initialization Pattern
 
-### Sequence Diagram - Ship Launch and System Recognition
-
-```mermaid
-sequenceDiagram
-    participant Player
-    participant StationUI as Station_Interface
-    participant Ship as Ship_Configuration
-    participant SystemRegistry as System_Registry
-    participant GameState as Game_State
-    participant HUD as HUD_Manager
-    participant KeyHandler as Key_Handler
-
-    Player->>StationUI: Click "UNDOCK" button
-    StationUI->>Ship: Validate ship configuration
-    Ship->>SystemRegistry: Verify installed systems
-    SystemRegistry->>Ship: Return system manifest
+    Player->>DockingInterface: Click LAUNCH
+    DockingInterface->>StarfieldManager: requestUndock()
     
-    alt Valid ship configuration
-        Ship->>GameState: Initialize ship in space
-        GameState->>SystemRegistry: Load active systems
-        SystemRegistry->>GameState: Register system handlers
+    Note over StarfieldManager: Check undock cooldown
+    alt Cooldown Active
+        StarfieldManager-->>DockingInterface: Reject (cooldown message)
+        DockingInterface-->>Player: Show cooldown warning
+    else Cooldown Expired
+        Note over StarfieldManager,PowerSystems: Phase 1: System Shutdown
+        StarfieldManager->>Ship: shutdownAllSystems()
+        Ship->>PowerSystems: stopAllSystemPower()
+        Ship->>TargetingComputer: shutdown()
+        Ship->>WeaponHUD: clearAllWeapons()
         
-        loop For each installed system
-            SystemRegistry->>KeyHandler: Register system key bindings
-            KeyHandler->>SystemRegistry: Confirm key registration
-        end
+        Note over StarfieldManager,PowerSystems: Phase 2: Unified Reinitialization
+        StarfieldManager->>Ship: initializeShipSystems()
         
-        GameState->>HUD: Update system status display
-        HUD->>Player: Show space view with active systems
-        StationUI->>GameState: Complete undocking sequence
-    else Invalid configuration
-        Ship->>StationUI: Show validation errors
-        StationUI->>Player: Display error message
+        Note over Ship: ✅ UNIFIED METHOD (used by all paths)
+        Ship->>Ship: clearSystemReferences()
+        Ship->>Ship: loadCurrentCardConfiguration()
+        Ship->>Ship: initializeCoreSystemInstances()
+        Ship->>TargetingComputer: initialize(availableWeapons)
+        Ship->>WeaponHUD: registerAllWeapons(weaponList)
+        Ship->>PowerSystems: registerAllSystems(systemList)
+        Ship->>Ship: setupSystemKeybindings()
+        Ship->>Ship: validateSystemIntegrity()
+        
+        Note over StarfieldManager,PowerSystems: Phase 3: Game State Transition
+        StarfieldManager->>StarfieldManager: hideStationView()
+        StarfieldManager->>StarfieldManager: showStarfieldView()
+        StarfieldManager->>StarfieldManager: enablePlayerControls()
+        StarfieldManager->>StarfieldManager: startUndockCooldown(30s)
+        
+        StarfieldManager-->>DockingInterface: Success
+        DockingInterface->>DockingInterface: hide()
+        DockingInterface-->>Player: Launch successful
     end
 ```
 
-### Sequence Diagram - System Activation (Success Path)
+### **🔄 Unified Ship Initialization Across All Code Paths**
 
+All ship initialization scenarios now use the same `initializeShipSystems()` method:
+
+#### **Code Path 1: Game Startup**
+```mermaid
+sequenceDiagram
+    participant App
+    participant ViewManager
+    participant Ship
+    
+    App->>ViewManager: new ViewManager()
+    ViewManager->>Ship: new Ship('starter_ship')
+    ViewManager->>Ship: initializeShipSystems() ✅ UNIFIED
+    Ship-->>ViewManager: Systems ready
+```
+
+#### **Code Path 2: Ship Loading from Saved State**
 ```mermaid
 sequenceDiagram
     participant Player
-    participant KeyHandler as Key_Handler
-    participant SystemRegistry as System_Registry
-    participant SubspaceRadio as Subspace_Radio_System
-    participant AudioManager as Audio_Manager
-    participant UI as UI_Manager
-
-    Note over Player, UI: Player has subspace_radio card installed
+    participant CardInventoryUI
+    participant Ship
     
-    Player->>KeyHandler: Press 'R' key
-    KeyHandler->>SystemRegistry: Check system availability(subspace_radio)
-    SystemRegistry->>SubspaceRadio: Verify system operational
-    
-    alt System available and operational
-        SubspaceRadio->>SystemRegistry: Return system ready
-        SystemRegistry->>KeyHandler: Confirm activation possible
-        KeyHandler->>SubspaceRadio: Activate system
-        SubspaceRadio->>AudioManager: Play activation sound
-        SubspaceRadio->>UI: Show subspace radio interface
-        UI->>Player: Display galactic chart overlay
-        AudioManager->>Player: Play success sound
-    else System damaged
-        SubspaceRadio->>SystemRegistry: Return system damaged
-        SystemRegistry->>AudioManager: Play error sound
-        SystemRegistry->>UI: Show damage message
-        UI->>Player: Display "Subspace Radio damaged"
-        AudioManager->>Player: Play error sound
-    end
+    Player->>CardInventoryUI: Load saved game
+    CardInventoryUI->>CardInventoryUI: loadShipConfiguration(savedShipType)
+    CardInventoryUI->>Ship: initializeShipSystems(savedConfiguration) ✅ UNIFIED
+    Ship-->>CardInventoryUI: Systems ready
 ```
 
-### Sequence Diagram - System Activation (Failure Path)
-
+#### **Code Path 3: Ship Switching at Station**
 ```mermaid
 sequenceDiagram
     participant Player
-    participant KeyHandler as Key_Handler
-    participant SystemRegistry as System_Registry
-    participant AudioManager as Audio_Manager
-    participant UI as UI_Manager
-    participant ErrorHandler as Error_Handler
-
-    Note over Player, ErrorHandler: Player has NO galactic_chart card installed
+    participant CardInventoryUI
+    participant Ship
     
-    Player->>KeyHandler: Press 'G' key
-    KeyHandler->>SystemRegistry: Check system availability(galactic_chart)
-    SystemRegistry->>SystemRegistry: Search installed systems
-    
-    alt System not found
-        SystemRegistry->>ErrorHandler: System not installed
-        ErrorHandler->>AudioManager: Play command fail sound
-        ErrorHandler->>UI: Show error message
-        UI->>Player: Display "Galactic Chart not available"
-        AudioManager->>Player: Play error sound effect
-        
-        Note over ErrorHandler, UI: Optional: Show card requirement hint
-        ErrorHandler->>UI: Show card installation hint
-        UI->>Player: Display "Install Galactic Chart card at station"
-    else System found but no card
-        SystemRegistry->>ErrorHandler: System exists but no card backing
-        ErrorHandler->>AudioManager: Play different error sound
-        ErrorHandler->>UI: Show specific error
-        UI->>Player: Display "Galactic Chart card required"
-        AudioManager->>Player: Play card-missing sound
-    end
+    Player->>CardInventoryUI: Switch to different ship
+    CardInventoryUI->>CardInventoryUI: switchShip(newShipType)
+    CardInventoryUI->>Ship: initializeShipSystems(newConfiguration) ✅ UNIFIED
+    Ship-->>CardInventoryUI: Systems ready
 ```
 
-### Sequence Diagram - System State Synchronization Issues
-
+#### **Code Path 4: Launch from Station** 
 ```mermaid
 sequenceDiagram
-    participant CardSystem as Card_System
-    participant ShipConfig as Ship_Configuration
-    participant SystemRegistry as System_Registry
-    participant KeyBindings as Key_Bindings
-    participant ActiveSystems as Active_Systems
-
-    Note over CardSystem, ActiveSystems: Common bug scenarios and synchronization points
+    participant Player
+    participant StarfieldManager
+    participant Ship
     
-    rect rgb(255, 200, 200)
-        Note over CardSystem, ActiveSystems: BUG SCENARIO 1: Card installed but system not recognized
-        CardSystem->>ShipConfig: Install card in slot
-        ShipConfig->>ShipConfig: Update configuration
-        Note over SystemRegistry: SystemRegistry not notified!
-        KeyBindings->>SystemRegistry: Try to activate system
-        SystemRegistry->>KeyBindings: System not found (ERROR)
-    end
-    
-    rect rgb(255, 255, 200)
-        Note over CardSystem, ActiveSystems: SOLUTION: Proper synchronization
-        CardSystem->>ShipConfig: Install card in slot
-        ShipConfig->>SystemRegistry: Register system instance
-        SystemRegistry->>KeyBindings: Update key bindings
-        KeyBindings->>ActiveSystems: Register activation handler
-        ActiveSystems->>SystemRegistry: Confirm registration
-    end
-    
-    rect rgb(255, 200, 200)
-        Note over CardSystem, ActiveSystems: BUG SCENARIO 2: Ship launch doesn't load card systems
-        ShipConfig->>SystemRegistry: Load ship configuration
-        Note over SystemRegistry: Card systems skipped!
-        KeyBindings->>SystemRegistry: Try to activate
-        SystemRegistry->>KeyBindings: System exists but not active (ERROR)
-    end
-    
-    rect rgb(200, 255, 200)
-        Note over CardSystem, ActiveSystems: SOLUTION: Complete system initialization
-        ShipConfig->>SystemRegistry: Load all installed cards
-        loop For each card
-            SystemRegistry->>ActiveSystems: Create system instance
-            ActiveSystems->>KeyBindings: Register key handler
-        end
-        SystemRegistry->>ShipConfig: Confirm all systems loaded
-    end
+    Player->>StarfieldManager: Launch from station
+    StarfieldManager->>Ship: shutdownAllSystems()
+    StarfieldManager->>Ship: initializeShipSystems() ✅ UNIFIED
+    Ship-->>StarfieldManager: Systems ready
 ```
 
 ## Damage Control System
@@ -727,76 +608,6 @@ sequenceDiagram
     DamageControl->>AutoRepair: toggle()
     AutoRepair->>AutoRepair: start()
     AutoRepair->>AutoRepair: updateRepairQueue()
-
-    %% Auto-Repair Processing Loop
-    loop Game Update Loop
-        Ship->>AutoRepair: update(deltaTime)
-        
-        alt Auto-repair is active and has target
-            AutoRepair->>Ship: getSystem(currentTarget)
-            Ship-->>AutoRepair: System instance
-            AutoRepair->>System: healthPercentage
-            System-->>AutoRepair: current health
-            
-            alt System needs repair
-                AutoRepair->>System: repair(repairAmount)
-                System->>System: currentHealth += repairAmount
-                System->>System: updateSystemState()
-                System->>System: calculateEffectiveness()
-                
-                alt Health milestone reached
-                    System->>AutoRepair: Log repair progress
-                end
-                
-                alt System restored to functionality
-                    System->>AutoRepair: Log restoration
-                    System->>Ship: Notify system operational
-                end
-            else System fully repaired
-                AutoRepair->>AutoRepair: updateRepairQueue()
-                AutoRepair->>AutoRepair: Set next target
-            end
-        end
-        
-        %% Update UI periodically
-        alt UI refresh interval
-            DamageControl->>Ship: getStatus()
-            Ship-->>DamageControl: Updated system status
-            DamageControl->>AutoRepair: getStatus()
-            AutoRepair-->>DamageControl: Updated repair status
-            DamageControl->>UI: Update display
-            UI->>UI: Refresh health bars
-            UI->>UI: Update repair queue
-            UI->>UI: Update current target
-        end
-    end
-
-    %% Damage Infliction Flow
-    rect rgb(255, 200, 200)
-        Note over Player, System: System Damage Scenario
-        Player->>Ship: applyDamage(amount, type)
-        Ship->>Ship: Calculate hull damage
-        Ship->>Ship: applySystemDamage()
-        
-        loop Random system damage
-            Ship->>System: takeDamage(damageAmount)
-            System->>System: currentHealth -= damage
-            System->>System: updateSystemState()
-            
-            alt System becomes critical/disabled
-                System->>System: handleStateEffects()
-                System->>Ship: Notify state change
-            end
-        end
-        
-        Ship->>Ship: calculateTotalStats()
-        Ship->>DamageControl: Trigger status update
-    end
-
-    %% Manual Repair Priority Changes
-    rect rgb(200, 255, 200)
-        Note over Player, AutoRepair: Priority Management
-        Player->>UI: Adjust multiple priorities
         
         loop For each priority change
             UI->>DamageControl: setPriority(system, value)
@@ -1047,317 +858,21 @@ classDiagram
 
     class WeaponHUD {
         +Element container
-        +Element weaponSlotsDisplay
-        +Element cooldownBars
-        +Element autofireIndicator
-        +Element targetLockIndicator
-        +initializeWeaponSlots(slotCount) void
-        +updateWeaponSlotsDisplay(weaponSlots, activeSlotIndex) void
-        +updateActiveWeaponHighlight(slotIndex) void
-        +updateCooldownDisplay(weaponSlots) void
-        +updateAutofireStatus(isOn) void
-        +updateTargetLockStatus(hasLock) void
-        +showWeaponSelectFeedback(weaponName) void
-        +showCooldownMessage(weaponName, timeRemaining) void
-        +showTargetLockRequiredMessage() void
-        +showMessage(message) void
+        +Array weaponSlots
+        +Number activeSlotIndex
+        +displayWeaponSlots() void
+        +updateActiveWeapon(slotIndex) void
+        +showCooldownIndicator(slotIndex, percentage) void
+        +displayTargetLockStatus(locked) void
+        +updateAmmoCount(slotIndex, count) void
+        +showWeaponName(slotIndex, name) void
     }
 
-    class WeaponDefinitions {
-        +getAllWeaponDefinitions() Object
-        +createLaserCannon() WeaponCard
-        +createPlasmaCannon() WeaponCard
-        +createPulseCannon() WeaponCard
-        +createPhaserArray() WeaponCard
-        +createStandardMissile() WeaponCard
-        +createHomingMissile() WeaponCard
-        +createHeavyTorpedo() WeaponCard
-        +createProximityMine() WeaponCard
-    }
-
-    class Ship {
-        +WeaponSystemCore weaponSystem
-        +initializeWeaponSystem() Promise
-        +getWeaponSystem() WeaponSystemCore
-        +consumeEnergy(amount) Boolean
-        +hasEnergy(amount) Boolean
-    }
-
-    class StarfieldManager {
-        +WeaponHUD weaponHUD
-        +createWeaponHUD() void
-        +connectWeaponHUDToSystem() void
-        +bindKeyEvents() void
-        +update(deltaTime) void
-        +cycleTarget() void
-    }
-
-    WeaponSystemCore o-- WeaponSlot : manages_4_slots
+    WeaponSystemCore o-- WeaponSlot : contains_many
     WeaponSlot --> WeaponCard : equipped_with
-    WeaponCard <|-- ScanHitWeapon : extends
-    WeaponCard <|-- SplashDamageWeapon : extends
+    WeaponCard <|-- ScanHitWeapon
+    WeaponCard <|-- SplashDamageWeapon
     SplashDamageWeapon --> Projectile : creates
     WeaponSystemCore --> WeaponHUD : updates
-    WeaponHUD --> WeaponSystemCore : displays_status
-    WeaponDefinitions --> WeaponCard : creates
-    Ship --> WeaponSystemCore : contains
-    StarfieldManager --> WeaponHUD : manages
-    StarfieldManager --> Ship : accesses_weapon_system
-```
-
-### Sequence Diagram - Manual Weapon Firing
-
-```mermaid
-sequenceDiagram
-    participant Player
-    participant StarfieldManager as Starfield_Manager
-    participant WeaponSystemCore as Weapon_System_Core
-    participant WeaponSlot as Active_Weapon_Slot
-    participant WeaponCard as Weapon_Card
-    participant Ship
-    participant TargetComputer as Target_Computer
-    participant WeaponHUD as Weapon_HUD
-
-    Player->>StarfieldManager: Press 'Z' key (previous weapon)
-    StarfieldManager->>Ship: getWeaponSystem()
-    Ship-->>StarfieldManager: Return weaponSystem
-    StarfieldManager->>WeaponSystemCore: selectPreviousWeapon()
-    WeaponSystemCore->>WeaponSystemCore: findPreviousEquippedSlot()
-    WeaponSystemCore->>WeaponHUD: showWeaponSelectFeedback(weaponName)
-    WeaponHUD->>Player: Show weapon selection feedback
-    StarfieldManager->>StarfieldManager: playCommandSound()
-
-    Player->>StarfieldManager: Press 'Space' key (fire weapon)
-    StarfieldManager->>Ship: getWeaponSystem()
-    Ship-->>StarfieldManager: Return weaponSystem
-    StarfieldManager->>WeaponSystemCore: fireActiveWeapon()
-    WeaponSystemCore->>WeaponSlot: getActiveWeapon()
-    WeaponSlot-->>WeaponSystemCore: Return active weapon slot
-
-    alt Weapon slot is empty
-        WeaponSystemCore->>WeaponHUD: showMessage("No weapons equipped")
-        WeaponHUD->>Player: Display message
-        StarfieldManager->>StarfieldManager: playCommandFailedSound()
-    else Weapon is in cooldown
-        WeaponSlot->>WeaponSlot: isInCooldown()
-        WeaponSlot-->>WeaponSystemCore: true
-        WeaponSystemCore->>WeaponHUD: showCooldownMessage(weaponName, timeRemaining)
-        WeaponHUD->>Player: Display cooldown message
-        StarfieldManager->>StarfieldManager: playCommandFailedSound()
-    else Weapon requires target lock
-        WeaponCard->>WeaponCard: targetLockRequired == true
-        WeaponSystemCore->>WeaponSystemCore: validateTargetLock()
-        WeaponSystemCore-->>WeaponSystemCore: false (no target locked)
-        WeaponSystemCore->>WeaponHUD: showTargetLockRequiredMessage()
-        WeaponHUD->>Player: Display target lock required message
-        StarfieldManager->>StarfieldManager: playCommandFailedSound()
-    else Valid fire conditions
-        WeaponSystemCore->>WeaponSlot: fire(ship, lockedTarget)
-        WeaponSlot->>WeaponCard: fire(origin, target)
-        
-        alt Scan-Hit Weapon
-            WeaponCard->>Ship: consumeEnergy(energyCost)
-            Ship-->>WeaponCard: energy_consumed
-            WeaponCard->>WeaponCard: calculateHitChance(distance)
-            WeaponCard->>WeaponCard: applyInstantDamage(target)
-        else Splash-Damage Weapon
-            WeaponCard->>Ship: consumeEnergy(energyCost)
-            Ship-->>WeaponCard: energy_consumed
-            WeaponCard->>WeaponCard: createProjectile(origin, target)
-            WeaponCard-->>WeaponSlot: Return projectile
-        end
-        
-        WeaponSlot->>WeaponSlot: setCooldownTimer(weaponCooldown)
-        WeaponSlot->>WeaponHUD: updateCooldownDisplay()
-        WeaponHUD->>Player: Show weapon fired + cooldown bar
-        StarfieldManager->>StarfieldManager: playCommandSound()
-    end
-```
-
-### Sequence Diagram - Autofire Mode Operation
-
-```mermaid
-sequenceDiagram
-    participant Player
-    participant StarfieldManager as Starfield_Manager
-    participant WeaponSystemCore as Weapon_System_Core
-    participant GameLoop as Game_Loop
-    participant WeaponSlot as Weapon_Slot
-    participant TargetComputer as Target_Computer
-    participant WeaponHUD as Weapon_HUD
-    participant Ship
-
-    Player->>StarfieldManager: Press 'C' key (toggle autofire)
-    StarfieldManager->>Ship: getWeaponSystem()
-    Ship-->>StarfieldManager: Return weaponSystem
-    StarfieldManager->>WeaponSystemCore: toggleAutofire()
-    WeaponSystemCore->>WeaponSystemCore: isAutofireOn = !isAutofireOn
-    WeaponSystemCore->>WeaponHUD: updateAutofireStatus(isAutofireOn)
-    WeaponHUD->>Player: Show "Autofire: ON/OFF"
-    StarfieldManager->>StarfieldManager: playCommandSound()
-
-    loop Game Update Loop (when autofire ON)
-        GameLoop->>StarfieldManager: update(deltaTime)
-        StarfieldManager->>Ship: getWeaponSystem()
-        Ship-->>StarfieldManager: Return weaponSystem
-        StarfieldManager->>WeaponSystemCore: updateAutofire(deltaTime)
-
-        loop For each weapon slot
-            WeaponSystemCore->>WeaponSlot: getEquippedWeapon()
-            WeaponSlot-->>WeaponSystemCore: Return weapon card
-
-            alt Weapon supports autofire and ready
-                WeaponSystemCore->>WeaponSlot: canFire()
-                WeaponSlot-->>WeaponSystemCore: true
-                WeaponSystemCore->>WeaponSystemCore: validateTargetLock()
-                
-                alt Target lock valid or not required
-                    WeaponSlot->>WeaponSlot: fire(ship, lockedTarget)
-                    WeaponSlot->>WeaponSlot: setCooldownTimer()
-                    WeaponSystemCore->>WeaponHUD: updateCooldownDisplay()
-                else Target lock required but not available
-                    Note over WeaponSystemCore: Skip this weapon
-                end
-            else Weapon in cooldown
-                WeaponSlot->>WeaponSlot: updateCooldown(deltaTime)
-            end
-        end
-        
-        StarfieldManager->>WeaponHUD: updateCooldownDisplay(weaponSlots)
-    end
-```
-
-### Sequence Diagram - Ship Integration and Initialization
-
-```mermaid
-sequenceDiagram
-    participant Ship
-    participant CardSystemIntegration as Card_System
-    participant WeaponSystemCore as Weapon_System_Core
-    participant StarfieldManager as Starfield_Manager
-    participant WeaponHUD as Weapon_HUD
-    participant TargetComputer as Target_Computer
-
-    Ship->>Ship: constructor()
-    Ship->>CardSystemIntegration: initializeCardData()
-    CardSystemIntegration->>CardSystemIntegration: createSystemsFromCards()
-    CardSystemIntegration->>Ship: initializeWeaponSystem()
-    
-    Ship->>Ship: import WeaponSystemCore
-    Ship->>WeaponSystemCore: new WeaponSystemCore(ship, 4)
-    WeaponSystemCore->>WeaponSystemCore: Initialize 4 weapon slots
-    WeaponSystemCore->>Ship: weaponSystem = weaponSystemCore
-    
-    Ship->>TargetComputer: getSystem('target_computer')
-    TargetComputer-->>Ship: Return target computer
-    Ship->>WeaponSystemCore: setLockedTarget(targetComputer.currentTarget)
-    
-    StarfieldManager->>StarfieldManager: createWeaponHUD()
-    StarfieldManager->>WeaponHUD: new WeaponHUD(document.body)
-    StarfieldManager->>WeaponHUD: initializeWeaponSlots(4)
-    StarfieldManager->>StarfieldManager: connectWeaponHUDToSystem()
-    
-    StarfieldManager->>Ship: getWeaponSystem()
-    Ship-->>StarfieldManager: Return weaponSystem
-    StarfieldManager->>WeaponSystemCore: setWeaponHUD(weaponHUD)
-    StarfieldManager->>WeaponHUD: updateWeaponSlotsDisplay(weaponSlots, activeSlotIndex)
-```
-
-### State Diagram - Weapon Slot States
-
-```mermaid
-stateDiagram-v2
-    [*] --> Empty
-    
-    Empty --> Equipped : installWeapon()
-    Equipped --> Empty : removeWeapon()
-    
-    state Equipped {
-        [*] --> Ready
-        Ready --> Firing : fire()
-        Firing --> Cooldown : weapon_fired
-        Cooldown --> Ready : cooldown_expired
-        
-        state Firing {
-            [*] --> ValidatingEnergy
-            ValidatingEnergy --> ValidatingTarget : energy_available
-            ValidatingEnergy --> [*] : insufficient_energy
-            ValidatingTarget --> CheckingCooldown : target_valid_or_not_required
-            ValidatingTarget --> [*] : target_invalid_and_required
-            CheckingCooldown --> ExecutingFire : not_in_cooldown
-            CheckingCooldown --> [*] : in_cooldown
-            ExecutingFire --> [*] : fire_complete
-        }
-        
-        state Cooldown {
-            [*] --> CoolingDown
-            CoolingDown --> CoolingDown : updateCooldown(deltaTime)
-            CoolingDown --> [*] : cooldownTimer <= 0
-        }
-    }
-```
-
-### Activity Diagram - Target Lock Integration Flow
-
-```mermaid
-flowchart TD
-    Start([Player Cycles Target]) --> GetTargetComputer{Target Computer Available?}
-    GetTargetComputer -->|No| End([No Weapon Target Updates])
-    GetTargetComputer -->|Yes| CycleTarget[Cycle to Next Target]
-    
-    CycleTarget --> UpdateTargetComputer[Update Target Computer]
-    UpdateTargetComputer --> GetShip{Ship Available?}
-    GetShip -->|No| End
-    GetShip -->|Yes| GetWeaponSystem{Weapon System Available?}
-    
-    GetWeaponSystem -->|No| End
-    GetWeaponSystem -->|Yes| SetLockedTarget[Set Locked Target in Weapon System]
-    SetLockedTarget --> ValidateWeapons[Validate Weapons for Autofire]
-    
-    ValidateWeapons --> CheckSplashWeapons{Splash-Damage Weapons Equipped?}
-    CheckSplashWeapons -->|Yes| EnableTargetLock[Enable Target Lock Requirements]
-    CheckSplashWeapons -->|No| DisableTargetLock[No Target Lock Requirements]
-    
-    EnableTargetLock --> UpdateHUD[Update Weapon HUD Target Status]
-    DisableTargetLock --> UpdateHUD
-    UpdateHUD --> End
-```
-
-### Component Interaction Diagram ✅ IMPLEMENTED
-
-```mermaid
-graph TD
-    StarfieldManager[Starfield Manager]
-    ViewManager[View Manager]
-    Ship[Ship Instance]
-    DockingInterface[Docking Interface]
-    StationServices[Station Services]
-    CardInventoryUI[Card Inventory UI]
-    CardInventory[Card Inventory]
-    PlayerData[Player Data]
-    SystemRegistry[System Registry]
-    WeaponSystem[Weapon System]
-    DamageControl[Damage Control]
-    WeaponHUD[Weapon HUD]
-    DamageHUD[Damage HUD]
-    HelpInterface[Help Interface]
-    
-    StarfieldManager --> Ship
-    ViewManager --> DockingInterface
-    DockingInterface --> CardInventoryUI
-    DockingInterface --> StationServices
-    
-    CardInventoryUI --> CardInventory
-    CardInventoryUI --> PlayerData
-    CardInventoryUI --> Ship
-    
-    Ship --> SystemRegistry
-    Ship --> WeaponSystem
-    Ship --> DamageControl
-    
-    SystemRegistry --> WeaponHUD
-    DamageControl --> DamageHUD
-    
-    WeaponHUD --> WeaponSystem
-    DamageHUD --> DamageControl
+    WeaponHUD --> WeaponSystemCore : callbacks_to
 ``` 
