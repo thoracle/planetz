@@ -312,12 +312,12 @@ export default class DockingModal {
             return;
         }
         
-        // NEW: Check for undock cooldown from StarfieldManager (prevents modal after launching)
+        // Check if undock cooldown is active
         if (this.starfieldManager.undockCooldown && Date.now() < this.starfieldManager.undockCooldown) {
-            const remaining = Math.round((this.starfieldManager.undockCooldown - Date.now()) / 1000);
             // Only log occasionally to avoid spam
-            if (Date.now() - (this.lastUndockCooldownLog || 0) > 2000) {
-                console.log(`🚫 checkDockingConditions: skipping - undock cooldown active (${remaining}s remaining)`);
+            if (!this.lastUndockCooldownLog || (Date.now() - this.lastUndockCooldownLog) > 5000) {
+                const remaining = Math.ceil((this.starfieldManager.undockCooldown - Date.now()) / 1000);
+                // Removed debug log - was causing spam
                 this.lastUndockCooldownLog = Date.now();
             }
             return;
@@ -329,7 +329,7 @@ export default class DockingModal {
         if (nearbyDockableObjects.length === 0) {
             // Only log when state changes from having targets to no targets
             if (this.lastDebugState.nearbyCount > 0) {
-                console.log('🔍 checkDockingConditions: No dockable objects nearby (was:', this.lastDebugState.nearbyCount, ')');
+                // Removed debug log - was causing spam
                 this.lastDebugState.nearbyCount = 0;
                 this.lastDebugState.closestTarget = null;
                 this.lastDebugState.inRange = false;
@@ -343,11 +343,9 @@ export default class DockingModal {
                     // This allows the player to approach again after moving away
                     this.cancelledTargets.delete(targetName);
                     clearedCount++;
-                    console.log(`🧹 Cleared cooldown for "${targetName}" - player moved away from all dockable objects`);
+                    // Removed debug log - was causing spam
                 }
-                if (clearedCount > 0) {
-                    console.log(`🧹 Cleared ${clearedCount} cooldown(s) - player moved away from docking range`);
-                }
+                // Removed debug log - was causing spam
             }
             
             return; // No dockable objects nearby
@@ -372,13 +370,7 @@ export default class DockingModal {
         
         // Only log detailed conditions when state changes, not continuously
         if (stateChanged) {
-            console.log('🔍 checkDockingConditions: State change detected:');
-            console.log('  - target:', target?.name || 'unnamed');
-            console.log('  - targetInfo:', targetInfo?.name || 'Unknown');
-            console.log('  - distance:', distance.toFixed(3), 'km');
-            console.log('  - dockingRange:', targetInfo.dockingRange || 'undefined');
-            console.log('  - currentSpeed:', currentSpeed);
-            console.log('  - inRange:', inRange);
+            // Removed debug logs - were causing spam
             
             // Update debug state
             this.lastDebugState = {
@@ -393,7 +385,7 @@ export default class DockingModal {
         // Don't show for hostile targets
         if (targetInfo.diplomacy?.toLowerCase() === 'enemy') {
             if (stateChanged) {
-                console.log('🔍 checkDockingConditions: skipping - hostile target');
+                // Removed debug log - was causing spam
             }
             return;
         }
@@ -410,12 +402,13 @@ export default class DockingModal {
             
             if (remainingCooldown > 0) {
                 if (stateChanged) {
-                    console.log(`🚫 checkDockingConditions: skipping - target "${targetName}" has cooldown: ${Math.round(timeSinceCancelled/1000)}s elapsed, ${Math.round(remainingCooldown/1000)}s remaining`);
+                    // Removed debug log - was causing spam
                 }
                 return;
             } else {
                 // Cooldown expired, remove it from the map
                 this.cancelledTargets.delete(targetName);
+                // Keep this important state change log
                 console.log(`✅ Cooldown expired for target "${targetName}" - modal can appear again`);
             }
         }
@@ -425,13 +418,12 @@ export default class DockingModal {
             // NEW: Check if player is going too fast - don't show modal if speed > 1
             if (currentSpeed > 1) {
                 if (stateChanged) {
-                    console.log(`🔍 checkDockingConditions: skipping - player too fast: speed ${currentSpeed} > 1`);
+                    // Removed debug log - was causing spam
                 }
                 return;
             }
             
-            console.log('🔍 checkDockingConditions: ALL CONDITIONS MET - calling show()');
-            console.log('🔍 checkDockingConditions: about to call show() with target =', target);
+            // Removed debug logs - were causing spam
             this.show(target, targetInfo, distance, currentSpeed);
         }
     }
@@ -458,7 +450,7 @@ export default class DockingModal {
         const shouldLogStateChange = (now - this.lastDebugState.lastLogTime) > this.debugThrottleMs; // Every 1 second max
         
         if (shouldLogScan) {
-            console.log(`🔍 findNearbyDockableObjects: checking ${celestialBodies.size} celestial bodies`);
+            // Removed debug log - was causing spam
             this.lastScanLogTime = now;
         }
         
@@ -516,13 +508,7 @@ export default class DockingModal {
                     dockingRange: dockingRange
                 });
                 
-                // Only log when finding new targets for the first time or during full scans
-                if (shouldLogScan) {
-                    console.log(`🎯 findNearbyDockableObjects: FOUND ${bodyType} "${body.name || bodyId}" at distance ${distance.toFixed(3)}km (within range: ${dockingRange}km)`);
-                }
-            } else if (shouldLogScan) {
-                // Only log out-of-range objects during full 10-second scans (not every check)
-                console.log(`🔍 findNearbyDockableObjects: checking ${bodyType} "${body.name || bodyId}" at distance ${distance.toFixed(3)}km (range: ${dockingRange}km)`);
+                // Removed debug logs - were causing spam
             }
         });
         
@@ -538,12 +524,9 @@ export default class DockingModal {
         
         // Only log count when it changes or during periodic full scans
         if (stateChanged && shouldLogStateChange) {
-            console.log(`🔍 findNearbyDockableObjects: found ${nearbyObjects.length} nearby dockable objects (was ${this.lastDebugState.nearbyCount})`);
-            if (nearbyObjects.length > 0) {
-                console.log(`🔍 findNearbyDockableObjects: closest target is "${closestTarget}" at ${closestDistance.toFixed(3)}km`);
-            }
+            // Removed debug logs - were causing spam
         } else if (shouldLogScan) {
-            console.log(`🔍 findNearbyDockableObjects: found ${nearbyObjects.length} nearby dockable objects`);
+            // Removed debug log - was causing spam
         }
         
         // Update state for next check
@@ -701,38 +684,33 @@ export default class DockingModal {
     }
     
     handleDock() {
-        console.log('🚀 DockingModal.handleDock() called');
-        console.log('🎯 this.currentTarget:', this.currentTarget);
-        console.log('🎯 starfieldManager.currentTarget:', this.starfieldManager.currentTarget);
-        console.log('🔒 this.targetVerificationId:', this.targetVerificationId);
-        console.log('🔒 this.currentTarget._dockingModalId:', this.currentTarget?._dockingModalId);
+        // Removed excessive debug logs - were causing spam
         
         let targetToUse = null;
         
         // First, try to use the modal's preserved target
         if (this.currentTarget && this.currentTarget._dockingModalId === this.targetVerificationId) {
-            console.log('✅ Target verification successful - using stored target');
+            // Removed debug log
             targetToUse = this.currentTarget;
         } else if (this.currentTarget) {
-            console.log('⚠️ Target verification failed - IDs do not match');
-            console.log('Expected:', this.targetVerificationId, 'Got:', this.currentTarget._dockingModalId);
+            // Removed debug logs
             
             // Try to restore from backup
             if (this.restoreTargetReference()) {
-                console.log('✅ Target restored from backup');
+                // Removed debug log
                 targetToUse = this.currentTarget;
             } else {
-                console.log('❌ Failed to restore from backup');
+                // Removed debug log
             }
         } else {
             console.warn('❌ No currentTarget in modal, trying alternative methods');
             
             // Try to restore from backup first
             if (this.restoreTargetReference()) {
-                console.log('✅ Target restored from backup');
+                // Removed debug log
                 targetToUse = this.currentTarget;
             } else if (this.starfieldManager.currentTarget) {
-                console.log('✅ Found target in starfieldManager, using it');
+                // Removed debug log
                 targetToUse = this.starfieldManager.currentTarget;
                 this.currentTarget = targetToUse; // Store it in modal
             }
@@ -755,14 +733,12 @@ export default class DockingModal {
             return;
         }
         
-        console.log('🎯 Final target for docking:', targetToUse);
-        console.log('🎯 Final target name:', targetToUse?.name);
-        console.log('🎯 Final target position:', targetToUse?.position);
+        // Removed debug logs - were causing spam
         
         // Use the same validation logic as the original dock button
         if (this.starfieldManager.canDockWithLogging(targetToUse)) {
             // ONLY hide modal AFTER successful docking validation
-            console.log('✅ Docking validation passed - hiding modal and docking');
+            // Removed debug log
             this.hide();
             
             // Use dockWithDebug for better debugging/logging
@@ -824,19 +800,19 @@ export default class DockingModal {
         this.targetVerificationId = null;
         this.starfieldManager = null;
         
-        console.log('🗑️ DockingModal destroyed and cleaned up');
+        // Removed debug log - was causing spam
     }
     
     preserveTargetReference() {
         // Store multiple backup references to prevent loss during the docking check loop
         if (this.currentTarget) {
             this.backupTarget = this.currentTarget;
-            console.log('🔒 Target reference preserved as backup:', this.backupTarget?.name);
+            // Removed debug log - was causing spam
             
             // Also store the StarfieldManager's current target as additional backup
             if (this.starfieldManager.currentTarget) {
                 this.originalStarfieldTarget = this.starfieldManager.currentTarget;
-                console.log('🔒 StarfieldManager target preserved as additional backup:', this.originalStarfieldTarget?.name);
+                // Removed debug log - was causing spam
             }
         }
     }
@@ -847,21 +823,21 @@ export default class DockingModal {
             // First try: restore from immediate backup
             if (this.backupTarget) {
                 this.currentTarget = this.backupTarget;
-                console.log('🔄 Target reference restored from immediate backup:', this.currentTarget?.name);
+                // Removed debug log - was causing spam
                 return true;
             }
             
             // Second try: restore from original StarfieldManager target
             if (this.originalStarfieldTarget) {
                 this.currentTarget = this.originalStarfieldTarget;
-                console.log('🔄 Target reference restored from original StarfieldManager target:', this.currentTarget?.name);
+                // Removed debug log - was causing spam
                 return true;
             }
             
             // Third try: get current StarfieldManager target (may have changed)
             if (this.starfieldManager.currentTarget) {
                 this.currentTarget = this.starfieldManager.currentTarget;
-                console.log('🔄 Target reference restored from current StarfieldManager target:', this.currentTarget?.name);
+                // Removed debug log - was causing spam
                 return true;
             }
             
@@ -880,7 +856,7 @@ export default class DockingModal {
             this.cancelledTargets.forEach((timestamp, targetName) => {
                 if (now - timestamp > this.cooldownDuration) {
                     this.cancelledTargets.delete(targetName);
-                    console.log(`🗑️ Removed cooldown for target: ${targetName}`);
+                    // Removed debug log - was causing spam
                 }
             });
         }, 30000);

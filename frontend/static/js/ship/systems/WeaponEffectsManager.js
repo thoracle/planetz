@@ -126,7 +126,8 @@ export class WeaponEffectsManager {
                 { type: 'missiles', file: '/audio/missiles.wav' },
                 { type: 'mines', file: '/audio/mines.mp3' },
                 { type: 'explosion', file: '/audio/explosion.wav' },
-                { type: 'death', file: '/audio/death.wav' }
+                { type: 'death', file: '/audio/death.wav' },
+                { type: 'success', file: '/audio/success.wav' }
             ];
 
             const loadPromises = soundFiles.map(sound => this.loadSound(sound.type, sound.file));
@@ -183,8 +184,9 @@ export class WeaponEffectsManager {
      * @param {Vector3} position 3D position for spatial audio
      * @param {number} volume Volume multiplier (0.0 - 1.0)
      * @param {number} duration Optional duration to limit playback (for laser sounds)
+     * @param {number} durationPercentage Optional percentage of the full audio to play (0.0 - 1.0)
      */
-    playSound(soundType, position = null, volume = 1.0, duration = null) {
+    playSound(soundType, position = null, volume = 1.0, duration = null, durationPercentage = null) {
         if (!this.audioInitialized || !this.audioContext || !this.audioBuffers.has(soundType)) {
             // Only warn if we've been waiting for a while (not on immediate first fire)
             if (this.audioInitialized === false && this.audioBuffers.size === 0) {
@@ -224,10 +226,22 @@ export class WeaponEffectsManager {
             
             gainNode.connect(this.audioContext.destination);
             
+            // Calculate actual duration to play
+            let actualDuration = duration;
+            
+            // If durationPercentage is specified, calculate duration based on audio buffer length
+            if (durationPercentage !== null && audioBuffer) {
+                actualDuration = audioBuffer.duration * Math.max(0, Math.min(1, durationPercentage));
+                console.log(`🎵 Playing ${(durationPercentage * 100).toFixed(0)}% of ${soundType} (${actualDuration.toFixed(2)}s of ${audioBuffer.duration.toFixed(2)}s)`);
+            }
+            
             // For laser sounds, play only the first part (0.05 seconds - reduced for very rapid fire)
             if (soundType === 'lasers') {
-                const laserDuration = duration || 0.05; // Reduced from 0.125s to 0.05s for very rapid fire
+                const laserDuration = actualDuration || 0.05; // Reduced from 0.125s to 0.05s for very rapid fire
                 source.start(0, 0, laserDuration);
+            } else if (actualDuration !== null) {
+                // For other sounds with duration specified, play from start with duration limit
+                source.start(0, 0, actualDuration);
             } else {
                 source.start();
             }
@@ -403,6 +417,23 @@ export class WeaponEffectsManager {
         this.playSound(soundType, position);
         
         console.log(`Created ${explosionType} explosion at`, position, `radius: ${(radius * 0.00625).toFixed(3)} (25% larger)`);
+    }
+    
+    /**
+     * Play success sound when an enemy is destroyed
+     * @param {Vector3} position 3D position for spatial audio (optional)
+     * @param {number} volume Volume multiplier (0.0 - 1.0)
+     * @param {number} durationPercentage Optional percentage of audio to play (0.0 - 1.0, defaults to full audio)
+     */
+    playSuccessSound(position = null, volume = 0.8, durationPercentage = null) {
+        // Play the success sound effect with optional duration percentage
+        this.playSound('success', position, volume, null, durationPercentage);
+        
+        if (durationPercentage !== null) {
+            console.log(`🎉 Playing ${(durationPercentage * 100).toFixed(0)}% of success sound for system destruction`);
+        } else {
+            console.log('🎉 Playing full success sound for enemy destruction');
+        }
     }
     
     /**

@@ -232,34 +232,140 @@ export default class SimplifiedDamageControl {
         const grid = document.getElementById('systems-grid');
         if (!grid) return;
         
-        const status = this.ship.getStatus();
+        if (!this.ship) {
+            grid.innerHTML = '<div class="error-message">No ship data available</div>';
+            return;
+        }
+        
         let html = '';
         
-        for (const [systemName, systemStatus] of Object.entries(status.systems)) {
+        // Get all ship systems
+        const shipStatus = this.ship.getStatus();
+        console.log('🔧 ALL ship systems (unfiltered):', Object.keys(shipStatus.systems));
+        
+        // Filter out systems that don't have corresponding cards OR the unified weapon system
+        const filteredSystems = {};
+        const skippedSystems = [];
+        
+        for (const [systemName, systemData] of Object.entries(shipStatus.systems)) {
+            // Always include systems that have cards, are repairable, or are the unified weapon system
+            if (this.ship.hasSystemCardsSync && this.ship.hasSystemCardsSync(systemName)) {
+                filteredSystems[systemName] = systemData;
+            } else if (this.isRepairableSystem(systemName)) {
+                filteredSystems[systemName] = systemData;
+            } else {
+                skippedSystems.push(systemName);
+            }
+        }
+        
+        console.log('🔧 FILTERED ship systems:', Object.keys(filteredSystems));
+        console.log('🔧 Systems filtered OUT:', skippedSystems);
+        
+        // Display ship.systems Map directly (which should include all systems)
+        const systemsMap = this.ship.systems;
+        if (systemsMap && systemsMap instanceof Map) {
+            console.log('🔧 Ship.systems Map entries:');
+            for (const [key, system] of systemsMap.entries()) {
+                console.log(`  - ${key}: ${system.constructor.name} (Level ${system.level}, Health: ${Math.round(system.healthPercentage * 100)}%)`);
+            }
+        }
+        
+        // Use unfiltered systems to ensure we show everything
+        const systemsToDisplay = filteredSystems;
+        console.log('🔧 Using unfiltered ship status systems:', Object.keys(systemsToDisplay));
+        
+        // Validate systems before displaying
+        for (const [systemName, systemData] of Object.entries(systemsToDisplay)) {
+            const hasCard = this.ship.hasSystemCardsSync ? this.ship.hasSystemCardsSync(systemName) : false;
+            const isRepairable = this.isRepairableSystem(systemName);
+            console.log(`🔧 System validation: ${systemName} - hasCard: ${hasCard}, repairable: ${isRepairable}`);
+        }
+        
+        // Add the unified WeaponSystemCore if it exists
+        if (this.ship.weaponSystem) {
+            const weaponSystemStatus = this.getWeaponSystemStatus();
+            if (weaponSystemStatus) {
+                const priority = this.ship.autoRepairSystem.getSystemPriority('weapons');
+                const healthPercent = (weaponSystemStatus.health * 100).toFixed(1);
+                const statusClass = this.getSystemStatusClass(weaponSystemStatus);
+                const statusIcon = this.getSystemStatusIcon(weaponSystemStatus);
+                
+                html += `
+                    <div class="system-card ${statusClass}">
+                        <div class="system-header">
+                            <span class="system-icon">${statusIcon}</span>
+                            <span class="system-name">Weapon Systems (${weaponSystemStatus.equippedWeapons}/${weaponSystemStatus.maxWeaponSlots})</span>
+                        </div>
+                        <div class="health-bar">
+                            <div class="health-fill ${this.getHealthBarClass(weaponSystemStatus.health)}" 
+                                 style="width: ${healthPercent}%"></div>
+                        </div>
+                        <div class="system-info">
+                            <div class="health-text">${healthPercent}% Health</div>
+                            <div class="weapon-details">
+                                <div class="weapon-list">
+                                    ${this.getWeaponListHTML()}
+                                </div>
+                            </div>
+                            <div class="priority-control">
+                                <label>Priority:</label>
+                                <input type="range" 
+                                       min="0" max="10" 
+                                       value="${priority}"
+                                       class="priority-slider"
+                                       onchange="window.starfieldManager.ship.autoRepairSystem.setSystemPriority('weapons', this.value)">
+                                <span class="priority-value">${priority}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Generate HTML for each system
+        for (const [systemName, systemData] of Object.entries(systemsToDisplay)) {
+            console.log(`🔧 Processing system: ${systemName}`);
+            
+            // Skip individual weapon systems since we show the unified weapon system above
+            if (this.isWeaponSystem(systemName)) {
+                console.log(`🔧 Skipping individual weapon system: ${systemName} (shown in unified weapons)`);
+                continue;
+            }
+            
             const priority = this.ship.autoRepairSystem.getSystemPriority(systemName);
-            const healthPercent = (systemStatus.health * 100).toFixed(1);
-            const statusClass = this.getSystemStatusClass(systemStatus);
-            const statusIcon = this.getSystemStatusIcon(systemStatus);
+            const healthPercent = (systemData.health * 100).toFixed(1);
+            const statusClass = this.getSystemStatusClass(systemData);
+            const statusIcon = this.getSystemStatusIcon(systemData);
+            const formattedName = this.formatSystemName(systemName);
+            const isDamaged = systemData.health < 1.0;
             
             html += `
                 <div class="system-card ${statusClass}">
                     <div class="system-header">
                         <span class="system-icon">${statusIcon}</span>
-                        <span class="system-name">${this.formatSystemName(systemName)}</span>
+                        <span class="system-name">${formattedName}</span>
                     </div>
                     <div class="health-bar">
-                        <div class="health-fill ${this.getHealthBarClass(systemStatus.health)}" 
+                        <div class="health-fill ${this.getHealthBarClass(systemData.health)}" 
                              style="width: ${healthPercent}%"></div>
                     </div>
                     <div class="system-info">
                         <div class="health-text">${healthPercent}% Health</div>
+                        ${isDamaged ? `
+                            <div class="repair-controls">
+                                <button class="manual-repair-btn" 
+                                        onclick="window.starfieldManager.ship.autoRepairSystem.requestManualRepair('${systemName}')">
+                                    Manual Repair
+                                </button>
+                            </div>
+                        ` : ''}
                         <div class="priority-control">
                             <label>Priority:</label>
                             <input type="range" 
                                    min="0" max="10" 
-                                   value="${priority}" 
+                                   value="${priority}"
                                    class="priority-slider"
-                                   data-system="${systemName}">
+                                   onchange="window.starfieldManager.ship.autoRepairSystem.setSystemPriority('${systemName}', this.value)">
                             <span class="priority-value">${priority}</span>
                         </div>
                     </div>
@@ -267,10 +373,8 @@ export default class SimplifiedDamageControl {
             `;
         }
         
-        grid.innerHTML = html;
-        
-        // Add event listeners for priority sliders
-        this.addSliderEventListeners();
+        console.log(`🔧 Displayed ${Object.keys(systemsToDisplay).length + (this.ship.weaponSystem ? 1 : 0)} systems`);
+        grid.innerHTML = html || '<div class="no-systems">No systems available</div>';
     }
     
     /**
@@ -370,13 +474,24 @@ export default class SimplifiedDamageControl {
      * @returns {string} Formatted name
      */
     formatSystemName(systemName) {
-        // Special handling for weapons - get the actual weapon type
+        // Special handling for weapons - check if we have unified weapon system
         if (systemName === 'weapons' && this.ship) {
+            // First try to get from individual weapon system (legacy support)
             const weaponsSystem = this.ship.getSystem('weapons');
             if (weaponsSystem && weaponsSystem.levelStats && weaponsSystem.level) {
                 const levelStats = weaponsSystem.levelStats[weaponsSystem.level];
                 if (levelStats && levelStats.weaponType) {
                     return levelStats.weaponType;
+                }
+            }
+            
+            // Fallback to unified weapon system
+            if (this.ship.weaponSystem) {
+                const weaponStatus = this.ship.weaponSystem.getStatus();
+                if (weaponStatus.equippedWeapons > 0) {
+                    return `Weapon Systems (${weaponStatus.equippedWeapons}/${weaponStatus.maxWeaponSlots})`;
+                } else {
+                    return 'Weapon Systems (No Weapons Equipped)';
                 }
             }
         }
@@ -761,6 +876,71 @@ export default class SimplifiedDamageControl {
             .system-critical { border-color: #ff4444; }
             .system-disabled { border-color: #666666; opacity: 0.6; }
             
+            /* Weapon details styling */
+            .weapon-details {
+                margin: 8px 0;
+                padding: 8px;
+                background: rgba(0, 20, 0, 0.2);
+                border: 1px solid rgba(0, 255, 65, 0.3);
+                border-radius: 4px;
+            }
+            
+            .weapon-list {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            
+            .weapon-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 4px 8px;
+                background: rgba(0, 0, 0, 0.3);
+                border-radius: 2px;
+                font-size: 12px;
+            }
+            
+            .weapon-item.active-weapon {
+                background: rgba(0, 255, 65, 0.2);
+                border: 1px solid rgba(0, 255, 65, 0.5);
+            }
+            
+            .weapon-item.empty {
+                color: #666;
+                font-style: italic;
+            }
+            
+            .weapon-slot-number {
+                display: inline-block;
+                width: 18px;
+                height: 18px;
+                line-height: 18px;
+                text-align: center;
+                background: rgba(0, 255, 65, 0.3);
+                border-radius: 2px;
+                font-weight: bold;
+                font-size: 10px;
+            }
+            
+            .weapon-name {
+                flex: 1;
+                color: rgba(0, 255, 65, 0.9);
+            }
+            
+            .active-indicator {
+                color: #00ff41;
+                font-weight: bold;
+                text-shadow: 0 0 3px rgba(0, 255, 65, 0.8);
+            }
+            
+            .no-weapons {
+                text-align: center;
+                color: #666;
+                font-style: italic;
+                padding: 8px;
+            }
+            
             @media (max-width: 1024px) {
                 .damage-control-content {
                     grid-template-columns: 1fr;
@@ -783,5 +963,106 @@ export default class SimplifiedDamageControl {
         if (this.isVisible) {
             this.updateInterface();
         }
+    }
+
+    /**
+     * Get unified weapon system status from WeaponSystemCore
+     * @returns {Object|null} Weapon system status compatible with damage control
+     */
+    getWeaponSystemStatus() {
+        if (!this.ship.weaponSystem) return null;
+        
+        const weaponStatus = this.ship.weaponSystem.getStatus();
+        
+        // Create a status object compatible with the damage control system
+        // Use the first equipped weapon to determine overall system health
+        // In practice, all weapons share the same health from the unified system
+        let overallHealth = 1.0; // Default to full health
+        let canBeActivated = true;
+        let isActive = false;
+        
+        // Check if we have any individual weapon systems for health reference
+        const weaponsSystem = this.ship.getSystem('weapons');
+        if (weaponsSystem) {
+            overallHealth = weaponsSystem.healthPercentage;
+            canBeActivated = weaponsSystem.isOperational();
+            isActive = weaponsSystem.isActive;
+        }
+        
+        return {
+            health: overallHealth,
+            isActive: isActive,
+            canBeActivated: canBeActivated,
+            level: 1, // Weapon system level
+            systemType: 'weapons',
+            equippedWeapons: weaponStatus.equippedWeapons,
+            maxWeaponSlots: weaponStatus.maxWeaponSlots,
+            activeSlotIndex: weaponStatus.activeSlotIndex
+        };
+    }
+
+    /**
+     * Generate HTML for weapon list display
+     * @returns {string} HTML for weapon list
+     */
+    getWeaponListHTML() {
+        if (!this.ship.weaponSystem || !this.ship.weaponSystem.weaponSlots) {
+            return '<div class="no-weapons">No weapons equipped</div>';
+        }
+        
+        let html = '';
+        for (const slot of this.ship.weaponSystem.weaponSlots) {
+            if (!slot.isEmpty && slot.equippedWeapon) {
+                const weapon = slot.equippedWeapon;
+                const isActive = slot.slotIndex === this.ship.weaponSystem.activeSlotIndex;
+                const activeClass = isActive ? 'active-weapon' : '';
+                
+                html += `
+                    <div class="weapon-item ${activeClass}">
+                        <span class="weapon-slot-number">${slot.slotIndex + 1}</span>
+                        <span class="weapon-name">${weapon.name}</span>
+                        ${isActive ? '<span class="active-indicator">●</span>' : ''}
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="weapon-item empty">
+                        <span class="weapon-slot-number">${slot.slotIndex + 1}</span>
+                        <span class="weapon-name">Empty Slot</span>
+                    </div>
+                `;
+            }
+        }
+        
+        return html;
+    }
+
+    /**
+     * Check if a system name represents an individual weapon system
+     * @param {string} systemName - Name of the system
+     * @returns {boolean} True if it's an individual weapon system
+     */
+    isWeaponSystem(systemName) {
+        const weaponSystems = [
+            // Legacy weapon system
+            'weapons',
+            // Scan-hit weapons (energy weapons)
+            'laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array',
+            'disruptor_cannon', 'particle_beam',
+            // Splash-damage weapons (projectile weapons)
+            'standard_missile', 'homing_missile', 'photon_torpedo', 'proximity_mine'
+        ];
+        return weaponSystems.includes(systemName);
+    }
+
+    /**
+     * Check if a system is repairable (has health and can be damaged)
+     * @param {string} systemName - Name of the system
+     * @returns {boolean} True if the system is repairable
+     */
+    isRepairableSystem(systemName) {
+        // Most ship systems are repairable, except for some special cases
+        const nonRepairableSystems = ['hull', 'cargo']; // Add more if needed
+        return !nonRepairableSystems.includes(systemName);
     }
 } 

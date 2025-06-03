@@ -9,6 +9,41 @@ A 3D web-based spaceship simulation game featuring intergalactic exploration, tr
 **Stability**: Production-ready with comprehensive testing and robust error handling  
 **Documentation**: Complete technical and user documentation available  
 
+## ⚡ Recent Major Fixes & Improvements
+
+### Equipment Synchronization Fix ✅ **NEW**
+**Issue**: After docking and changing equipment, ship systems weren't properly synchronized:
+- Weapons HUD showed old weapons instead of new ones  
+- New systems (Radio, Chart, Scanner) didn't work initially
+- Systems only activated after opening damage control HUD
+
+**Solution**: Enhanced `initializeShipSystems()` method with proper card system refresh:
+- Forces refresh of ship systems from current card configuration during launch
+- Ensures weapon HUD displays current weapons via WeaponSyncManager
+- New systems work immediately without needing damage control HUD activation
+- Comprehensive async initialization sequence for all ship systems
+
+### StarfieldManager Global Access ✅ **NEW**  
+**Issue**: Test scripts and debugging tools couldn't access StarfieldManager due to timing issues:
+- `window.starfieldManager` was undefined during async initialization
+- Scripts failed with "StarfieldManager not found" errors
+
+**Solution**: Implemented proper global exposure and utility functions:
+- Added `window.starfieldManager` global reference after initialization
+- Created `starfield-manager-utils.js` with `waitForStarfieldManager()` helper
+- Ensured proper timing between StarfieldManager creation and script access
+
+### Undock Cooldown User Experience ✅ **NEW**
+**Issue**: Post-launch targeting computer was silently blocked for 30 seconds:
+- TAB key targeting was disabled without user feedback
+- Players couldn't understand why systems weren't responding
+
+**Solution**: Enhanced user feedback and reduced cooldown duration:
+- Added clear "TARGETING SYSTEMS WARMING UP" message with countdown timer
+- Reduced cooldown from 30 seconds to 10 seconds for better UX
+- Added command failed sound and visual feedback during cooldown
+- Systems properly initialize after cooldown expires
+
 ## Features
 
 ### Core Spaceship Systems ✅ 100% Complete
@@ -168,7 +203,8 @@ python3 -m http.server 8080 --directory frontend/static
 - **System Installation**: Drag-and-drop interface for ship configuration
 - **Multi-Level Systems**: Level 1-5 progression with exponential card requirements
 - **Build Validation**: Prevents launching with invalid configurations
-- **Ship Synchronization**: WeaponSyncManager ensures consistent weapon loadouts
+- **Equipment Synchronization**: Enhanced system ensures weapons HUD shows current loadout after equipment changes
+- **Ship Synchronization**: WeaponSyncManager provides unified weapon initialization and real-time synchronization
 
 ### Damage & Repair ✅ Complete
 - **System Health**: 0-100% effectiveness based on damage with state transitions
@@ -218,6 +254,152 @@ python3 -m http.server 8080 --directory frontend/static
 - **Strengths**: Massive cargo capacity, heavy armor
 - **Weaknesses**: Slow speed, minimal combat capability
 - **Weapons**: 1 weapon slot for basic defense
+
+## 🔧 Troubleshooting & Common Issues
+
+### Equipment & Systems Issues
+
+#### Equipment Not Working After Docking ✅ **FIXED**
+**Symptoms**: 
+- Weapons HUD shows old weapons after equipment changes
+- New systems (Radio, Chart, Scanner) don't respond to key presses
+- Systems start working only after opening damage control HUD
+
+**Root Cause**: Ship systems weren't properly refreshed from card configuration during launch
+**Status**: ✅ **RESOLVED** - Enhanced equipment synchronization system
+
+**Solution**: 
+- `initializeShipSystems()` now forces card system refresh during launch
+- WeaponSyncManager properly synchronizes weapon HUD with current loadout
+- All systems initialize immediately without manual intervention
+
+#### Targeting Computer Not Responding After Launch ✅ **FIXED**
+**Symptoms**:
+- TAB key doesn't cycle targets immediately after undocking
+- No feedback when pressing TAB during cooldown period
+- Targeting works fine after waiting ~30 seconds
+
+**Root Cause**: Undock cooldown blocked targeting without user feedback
+**Status**: ✅ **RESOLVED** - Improved cooldown system with clear feedback
+
+**Solution**:
+- Reduced cooldown from 30 seconds to 10 seconds
+- Added "TARGETING SYSTEMS WARMING UP" message with countdown
+- Command failed sound plays when TAB pressed during cooldown
+- Clear visual feedback shows remaining initialization time
+
+### Development & Testing Issues
+
+#### StarfieldManager Not Found in Console ✅ **FIXED**
+**Symptoms**:
+- `window.starfieldManager` returns undefined in browser console
+- Test scripts fail with "StarfieldManager not found" errors
+- Debugging tools can't access game manager
+
+**Root Cause**: Timing issues between async initialization and global exposure
+**Status**: ✅ **RESOLVED** - Proper global exposure system
+
+**Solution**:
+- Added `window.starfieldManager` global reference after initialization
+- Created `starfield-manager-utils.js` with helper functions
+- `waitForStarfieldManager()` utility for safe async access
+
+**Usage Example**:
+```javascript
+// Loading test scripts safely
+await waitForStarfieldManager();
+const ship = window.starfieldManager.viewManager.getShip();
+console.log('✅ Ship systems:', ship.systems);
+```
+
+### Browser Compatibility Issues
+
+#### JavaScript Syntax Errors in Test Scripts
+**Symptoms**:
+- "SyntaxError: Unexpected identifier" in browser console
+- Test scripts fail to load or execute
+- Modern JavaScript features not supported
+
+**Solution**: 
+- Test scripts use compatible JavaScript syntax (ES5)
+- No arrow functions, optional chaining, or template literals
+- All scripts tested in multiple browser environments
+
+#### WebGL/Three.js Performance Issues
+**Symptoms**:
+- Low frame rates or stuttering
+- High CPU/GPU usage
+- Memory leaks during extended play
+
+**Solutions**:
+- Use Chrome/Firefox with hardware acceleration enabled
+- Close other tabs/applications for more GPU memory
+- Refresh page periodically during extended sessions
+- Monitor FPS with Ctrl+D (Cmd+D on Mac)
+
+### Game State Issues
+
+#### Ship Configuration Not Persisting
+**Symptoms**:
+- Equipment changes reset after refresh
+- Ship configurations don't save between sessions
+
+**Solutions**:
+- Ensure ship configurations are saved before closing browser
+- Check browser localStorage isn't cleared by privacy settings
+- Use "Apply" button in ship inventory before undocking
+
+#### Systems Not Responding to Key Presses
+**Symptoms**:
+- Specific system keys (S, T, L, etc.) don't work
+- UI focus issues preventing keyboard input
+
+**Solutions**:
+- Click on game viewport to ensure focus
+- Check for browser extensions blocking key events
+- Refresh page if keyboard input becomes unresponsive
+
+### Performance Optimization
+
+#### Large System Performance Issues
+**Symptoms**:
+- Slow loading in systems with many planets/stations
+- Frame rate drops in busy sectors
+
+**Solutions**:
+- Systems dynamically load only visible objects
+- Use lower graphics settings in busy areas
+- Worker threads handle mesh generation automatically
+
+### Getting Help
+
+#### Debugging Tools Available
+1. **Test Scripts**: Comprehensive test suite for all systems
+   - `test-equipment-sync-simple.js` - Equipment synchronization testing
+   - `test-starfield-ready.js` - StarfieldManager availability testing
+
+2. **Console Commands**:
+   ```javascript
+   // Check game state
+   window.starfieldManager.viewManager.getShip()
+   
+   // Test system functionality
+   ship.systems.forEach(sys => console.log(sys.name, sys.isOperational()))
+   
+   // Debug weapon synchronization
+   ship.weaponSyncManager.getWeaponStatus()
+   ```
+
+3. **Debug Modes**:
+   - **Ctrl+D** / **Cmd+D**: Toggle FPS display
+   - **Ctrl+E** / **Cmd+E**: Toggle edit mode (planet terraforming)
+
+#### Reporting Issues
+When reporting issues, please include:
+- Browser version and operating system
+- Console error messages (F12 Developer Tools)
+- Steps to reproduce the issue
+- Current ship configuration and system state
 
 ## Architecture
 
@@ -292,11 +474,15 @@ The project includes extensive test files for individual systems:
 ## 🎯 Current Development Status
 
 ### Recently Completed ✅
-- **WeaponSyncManager**: Unified weapon initialization system
-- **Documentation Updates**: All documentation reflects current implementation
-- **Ship Configuration**: Enhanced multi-ship management
-- **Intel System**: Faction-colored intelligence interface
-- **Damage Control**: Auto-repair system with priority management
+- **Equipment Synchronization System**: Complete fix for post-docking equipment issues
+- **StarfieldManager Global Access**: Proper global exposure with utility functions for debugging
+- **Undock Cooldown Enhancement**: Improved user feedback and reduced cooldown duration
+- **WeaponSyncManager**: Unified weapon initialization and real-time synchronization system
+- **Test Script Compatibility**: Enhanced browser compatibility for debugging tools
+- **Documentation Updates**: Comprehensive troubleshooting guide and system documentation
+- **Ship Configuration**: Enhanced multi-ship management with proper state persistence
+- **Intel System**: Faction-colored intelligence interface with detailed celestial information
+- **Damage Control**: Auto-repair system with priority management and visual feedback
 
 ### In Progress ⚙️
 - **Autofire Logic**: Automatic targeting and range validation (75% complete)

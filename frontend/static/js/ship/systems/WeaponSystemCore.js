@@ -150,19 +150,19 @@ export class WeaponSystemCore {
         // Only process autofire logic if autofire is enabled
         if (!this.isAutofireOn) return;
         
-        // Attempt to fire all autofire-enabled weapons
-        for (const slot of this.weaponSlots) {
-            if (slot.isEmpty || !slot.equippedWeapon.autofireEnabled) continue;
-            
-            if (slot.canFire()) {
-                // Check target requirements for this weapon
-                if (slot.equippedWeapon.targetLockRequired) {
-                    if (!this.validateTargetLock()) continue;
-                }
-                
-                // Fire the weapon
-                slot.fire(this.ship, this.lockedTarget);
+        // In autofire mode, only fire the currently active weapon
+        const activeSlot = this.getActiveWeapon();
+        if (!activeSlot || activeSlot.isEmpty) return;
+        
+        // Check if the active weapon can fire
+        if (activeSlot.canFire()) {
+            // Check target requirements for this weapon
+            if (activeSlot.equippedWeapon.targetLockRequired) {
+                if (!this.validateTargetLock()) return;
             }
+            
+            // Fire the active weapon
+            activeSlot.fire(this.ship, this.lockedTarget);
         }
     }
     

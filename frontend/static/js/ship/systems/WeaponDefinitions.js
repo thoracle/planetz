@@ -18,15 +18,14 @@ export class WeaponDefinitions {
                 weaponId: 'laser_cannon',
                 name: 'Laser Cannon',
                 weaponType: 'scan-hit',
-                damage: 50,
-                cooldownTime: 2.0, // seconds - doubled from 1.0s
+                damage: 60,
+                cooldownTime: 2.0, // seconds
                 range: 24000, // meters - increased 20% from 20000m (20km -> 24km)
-                autofireEnabled: true,
+                autofireEnabled: false, // Only active weapon should fire in autofire mode
                 accuracy: 0.95,
                 energyCost: 10,
                 targetLockRequired: false,
                 specialProperties: {
-                    penetration: false,
                     beamColor: 'red',
                     chargeTime: 0.1
                 }
@@ -36,10 +35,10 @@ export class WeaponDefinitions {
                 weaponId: 'plasma_cannon',
                 name: 'Plasma Cannon',
                 weaponType: 'scan-hit',
-                damage: 120,
+                damage: 85,
                 cooldownTime: 2.5, // seconds
                 range: 38400, // meters - increased 20% from 32000m (32km -> 38.4km)
-                autofireEnabled: true,
+                autofireEnabled: false, // Only active weapon should fire in autofire mode
                 accuracy: 0.80,
                 energyCost: 20,
                 targetLockRequired: false,
@@ -57,7 +56,7 @@ export class WeaponDefinitions {
                 damage: 75,
                 cooldownTime: 3.0, // seconds - doubled from 1.5s (burst fire)
                 range: 28800, // meters - increased 20% from 24000m (24km -> 28.8km)
-                autofireEnabled: true,
+                autofireEnabled: false, // Only active weapon should fire in autofire mode
                 accuracy: 0.90,
                 energyCost: 15,
                 targetLockRequired: false,
@@ -76,7 +75,7 @@ export class WeaponDefinitions {
                 damage: 90,
                 cooldownTime: 2.0, // seconds
                 range: 36000, // meters - increased 20% from 30000m (30km -> 36km)
-                autofireEnabled: true,
+                autofireEnabled: false, // Only active weapon should fire in autofire mode
                 accuracy: 0.88,
                 energyCost: 25,
                 targetLockRequired: false,

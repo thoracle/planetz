@@ -1484,22 +1484,17 @@ export class StarfieldManager {
 
     createWeaponHUD() {
         // Import and initialize WeaponHUD
-        return import('../ui/WeaponHUD.js').then(({ WeaponHUD }) => {
+        import('../ui/WeaponHUD.js').then(({ WeaponHUD }) => {
             this.weaponHUD = new WeaponHUD(document.body);
             
             // Initialize weapon slots display
             this.weaponHUD.initializeWeaponSlots(4);
             
-            console.log('WeaponHUD initialized successfully');
-            
             // Connect to weapon system if available
             this.connectWeaponHUDToSystem();
             
-            return this.weaponHUD;
-            
         }).catch(error => {
             console.error('Failed to initialize WeaponHUD:', error);
-            return null;
         });
     }
     
@@ -6138,15 +6133,15 @@ export class StarfieldManager {
             return;
         }
         
-        const weaponSystemCore = ship.weaponSystem;
-        if (!weaponSystemCore) {
-            console.warn('    ⚠️ No WeaponSystemCore found');
+        const weaponsSystem = ship.getSystem('weapons');
+        if (!weaponsSystem) {
+            console.warn('    ⚠️ No weapons system found');
             return;
         }
         
         // Force refresh weapon inventory
-        if (typeof weaponSystemCore.refreshInventory === 'function') {
-            weaponSystemCore.refreshInventory();
+        if (typeof weaponsSystem.refreshInventory === 'function') {
+            weaponsSystem.refreshInventory();
         }
         
         // Update weapon HUD display
