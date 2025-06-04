@@ -7,6 +7,7 @@ import { Cloud } from './Cloud.js';
 import { ViewManager } from './views/ViewManager.js';
 import { StarfieldManager } from './views/StarfieldManager.js';
 import { SolarSystemManager } from './SolarSystemManager.js';
+import { WeaponEffectsManager } from './ship/systems/WeaponEffectsManager.js';
 
 // Global variables for warp control mode
 let warpControlMode = false;
@@ -278,10 +279,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Initialize ViewManager
     viewManager = new ViewManager(scene, camera, controls);
+    
+    // Expose viewManager globally for debugging
+    window.viewManager = viewManager;
 
     // Initialize StarfieldManager and connect it to ViewManager
-    const starfieldManager = new StarfieldManager(scene, camera, viewManager);
+    const starfieldManager = new StarfieldManager(scene, camera, viewManager, THREE);
     viewManager.setStarfieldManager(starfieldManager);
+    
+    // Expose StarfieldManager globally for debugging and test scripts
+    window.starfieldManager = starfieldManager;
+    
+    // Set initialization flag to indicate StarfieldManager is available
+    window.starfieldManagerReady = true;
+    console.log('🌟 StarfieldManager exposed to global scope and ready for test scripts');
 
     // Initialize SolarSystemManager and connect it to StarfieldManager
     solarSystemManager = new SolarSystemManager(scene, camera);
@@ -1598,9 +1609,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         atmosphere.setSunPosition(light.position);
         atmosphere.update(camera);
         
-        // Update chunk manager (scene presence and culling)
+        // Update chunk manager with throttling to prevent worker spam
         if (planetGenerator && planetGenerator.chunkManager) {
-            planetGenerator.chunkManager.updateSceneRepresentation(camera);
+            // Throttle chunk manager updates to prevent excessive worker creation
+            const now = Date.now();
+            if (!planetGenerator.chunkManager.lastUpdateTime || now - planetGenerator.chunkManager.lastUpdateTime > 100) {
+                planetGenerator.chunkManager.updateSceneRepresentation(camera);
+                planetGenerator.chunkManager.lastUpdateTime = now;
+            }
         }
         
         // Update debug info if visible
@@ -2124,9 +2140,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             1: 0.25,
             2: 0.50,
             3: 1,
-            4: 3,
-            5: 6,
-            6: 12,
+            4: 1.2,
+            5: 2.0,
+            6: 6.0,
             7: 25,
             8: 37,
             9: 43
@@ -2223,3 +2239,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 }); 
+
+// Make classes available globally for other modules
+window.THREE = THREE;
+window.WeaponEffectsManager = WeaponEffectsManager; 

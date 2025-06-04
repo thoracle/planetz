@@ -1,379 +1,337 @@
 # Technical Design Document
 
-## System Architecture
+## Project Overview
+Planetz is a space exploration and combat game featuring procedurally generated planets, ship systems management, and NFT-based card collection mechanics inspired by Clash Royale.
 
-### High-Level Overview
-The system follows a client-server architecture with the following components:
-
-1. **Frontend (Client)**
-   - Web-based interface using Three.js for 3D rendering
-   - Real-time visualization of star systems and navigation
-   - Interactive controls for ship movement and system interaction
-
-2. **Backend (Server)**
-   - Python-based API server
-   - Star system generation and management
-   - Game state persistence
-   - Real-time updates and synchronization
-
-### Use Case Diagram
-```mermaid
-flowchart LR
-    %% Actors
-    Player((Player))
-    System((System))
-    AI((AI Opponent))
-
-    %% Use Cases
-    subgraph Navigation
-        direction TB
-        UC1[View Galactic Chart]
-        UC2[Select Destination]
-        UC3[Calculate Warp Energy]
-        UC4[Initiate Warp]
-        UC5[Monitor Warp Progress]
-    end
-
-    subgraph System_Interaction
-        direction TB
-        UC6[Scan Star System]
-        UC7[View System Details]
-        UC8[Interact with Planets]
-        UC9[Collect Resources]
-    end
-
-    subgraph Combat
-        direction TB
-        UC10[Engage Enemy]
-        UC11[Manage Shields]
-        UC12[Fire Weapons]
-        UC13[Evasive Maneuvers]
-    end
-
-    %% Relationships
-    Player --- UC1
-    Player --- UC2
-    Player --- UC3
-    Player --- UC4
-    Player --- UC5
-    Player --- UC6
-    Player --- UC7
-    Player --- UC8
-    Player --- UC9
-    Player --- UC10
-    Player --- UC11
-    Player --- UC12
-    Player --- UC13
-
-    System --- UC1
-    System --- UC2
-    System --- UC3
-    System --- UC4
-    System --- UC5
-    System --- UC6
-    System --- UC7
-    System --- UC8
-    System --- UC9
-
-    AI --- UC10
-    AI --- UC11
-    AI --- UC12
-    AI --- UC13
-```
-
-### Component Diagram
-```mermaid
-graph TD
-    %% Frontend Components
-    subgraph Frontend
-        UI[User Interface]
-        Renderer[3D Renderer]
-        Controls[Input Controls]
-        State[State Manager]
-    end
-
-    %% Backend Components
-    subgraph Backend
-        API[API Server]
-        Generator[System Generator]
-        Physics[Physics Engine]
-        DB[(Database)]
-    end
-
-    %% External Services
-    subgraph External
-        Auth[Authentication]
-        Storage[Cloud Storage]
-    end
-
-    %% Connections
-    UI --> Renderer
-    UI --> Controls
-    Controls --> State
-    State --> API
-    API --> Generator
-    API --> Physics
-    Generator --> DB
-    Physics --> DB
-    API --> Auth
-    API --> Storage
-```
-
-### Data Flow Diagram
-```mermaid
-graph TD
-    %% External Entities
-    Player((Player))
-    DB[(Database)]
-
-    %% Processes
-    subgraph Frontend
-        Input[Input Handler]
-        Render[Renderer]
-        State[State Manager]
-    end
-
-    subgraph Backend
-        API[API Server]
-        Physics[Physics Engine]
-        Generator[System Generator]
-    end
-
-    %% Data Stores
-    Cache[(Cache)]
-    Logs[(Logs)]
-
-    %% Data Flows
-    Player -->|User Input| Input
-    Input -->|Commands| State
-    State -->|State Updates| Render
-    State -->|API Requests| API
-    API -->|System Data| Generator
-    API -->|Physics Updates| Physics
-    Generator -->|System Data| DB
-    Physics -->|State Updates| DB
-    API -->|Cache Updates| Cache
-    API -->|Log Events| Logs
-    DB -->|Persisted Data| API
-    Cache -->|Cached Data| API
-```
-
-## Technical Specifications
+## Core Architecture
 
 ### Frontend Architecture
-
-#### Core Components
-1. **ViewManager**
-   - Manages different views (galactic, system, combat)
-   - Handles view transitions and state
-   - Coordinates between different UI components
-
-2. **StarfieldManager**
-   - Renders and manages the starfield
-   - Handles star movement and effects
-   - Manages view transitions
-
-3. **WarpDriveManager**
-   - Controls warp drive functionality
-   - Manages energy consumption
-   - Handles warp effects and transitions
-
-4. **SystemGenerator**
-   - Generates star systems based on sector coordinates
-   - Manages celestial body placement
-   - Handles system persistence
-
-#### State Management
-- Centralized state management through ViewManager
-- Real-time updates for ship position and system state
-- Efficient state synchronization between components
+- **Three.js**: 3D rendering engine for space environments and planets
+- **Vanilla JavaScript**: Core game logic and UI management
+- **Web Workers**: Offloaded mesh generation for performance
+- **Module System**: ES6 modules for code organization
 
 ### Backend Architecture
+- **Flask**: Python web framework for API endpoints
+- **SQLite**: Local database for game state (development)
+- **RESTful API**: Communication between frontend and backend
 
-#### API Endpoints
-1. **System Generation**
-   - `/api/generate_star_system`
-   - `/api/get_system_data`
-   - `/api/update_system_state`
+## Ship Systems Architecture
 
-2. **Navigation**
-   - `/api/calculate_warp_energy`
-   - `/api/initiate_warp`
-   - `/api/update_position`
+### Universal Slot System
+All ship systems use a universal slot system where:
+- Each system occupies exactly 1 slot regardless of type
+- No specialized hardpoint types (weapons, utility, etc.)
+- Slot availability determined by ship class
+- Systems can be installed/removed freely within slot constraints
 
-3. **Game State**
-   - `/api/get_game_state`
-   - `/api/update_game_state`
-   - `/api/save_game`
+### Energy Management
+- Centralized energy pool shared by all systems
+- Systems consume energy directly when active
+- No complex power grid or allocation system
+- Auto-deactivation when insufficient energy
 
-#### Database Schema
-1. **Star Systems**
-   ```sql
-   CREATE TABLE star_systems (
-       id SERIAL PRIMARY KEY,
-       sector VARCHAR(2),
-       seed INTEGER,
-       created_at TIMESTAMP,
-       updated_at TIMESTAMP
-   );
-   ```
-
-2. **Celestial Bodies**
-   ```sql
-   CREATE TABLE celestial_bodies (
-       id SERIAL PRIMARY KEY,
-       system_id INTEGER,
-       type VARCHAR(20),
-       position_x FLOAT,
-       position_y FLOAT,
-       position_z FLOAT,
-       properties JSONB
-   );
-   ```
-
-3. **Game State**
-   ```sql
-   CREATE TABLE game_state (
-       id SERIAL PRIMARY KEY,
-       player_id INTEGER,
-       current_sector VARCHAR(2),
-       ship_energy FLOAT,
-       last_updated TIMESTAMP
-   );
-   ```
-
-### Performance Considerations
-
-#### Frontend Optimization
-1. **Rendering**
-   - Use of WebGL for efficient 3D rendering
-   - Level of detail (LOD) system for distant objects
-   - Efficient particle systems for effects
-
-2. **State Updates**
-   - Batched state updates to minimize re-renders
-   - Efficient event handling and propagation
-   - Optimized collision detection
-
-#### Backend Optimization
-1. **System Generation**
-   - Cached system generation results
-   - Efficient seed-based generation
-   - Optimized database queries
-
-2. **Real-time Updates**
-   - WebSocket for real-time communication
-   - Efficient state synchronization
-   - Optimized physics calculations
-
-### Security Considerations
-
-1. **Authentication**
-   - JWT-based authentication
-   - Secure session management
-   - Role-based access control
-
-2. **Data Protection**
-   - Encrypted communication
-   - Secure storage of game state
-   - Input validation and sanitization
-
-3. **Anti-Cheat Measures**
-   - Server-side validation
-   - Rate limiting
-   - State verification
-
-## Implementation Guidelines
-
-### Code Organization
-
-#### Frontend Structure
-```
-frontend/
-├── static/
-│   ├── js/
-│   │   ├── views/
-│   │   ├── components/
-│   │   └── utils/
-│   ├── css/
-│   └── assets/
-└── templates/
+### System State Management
+```javascript
+class System {
+    constructor(config) {
+        this.level = config.level || 1;
+        this.health = 1.0;
+        this.isActive = false;
+        this.energyConsumption = config.energyConsumption || 0;
+    }
+}
 ```
 
-#### Backend Structure
+## NFT Card Collection System
+
+### Pseudo-NFT Implementation (MVP)
+For initial development, we implement a pseudo-NFT system that mimics real NFT behavior:
+- Each card has a unique token ID and metadata
+- Cards are never consumed or destroyed during upgrades
+- Cards accumulate in a crypto wallet simulation
+- Future integration with real NFT marketplaces (OpenSea, etc.)
+
+```javascript
+class NFTCard {
+    constructor(cardType, rarity, tokenId) {
+        this.cardType = cardType;           // e.g., "laser_cannon"
+        this.rarity = rarity;               // common, rare, epic, legendary
+        this.tokenId = tokenId;             // unique identifier
+        this.quantity = 1;                  // always 1 for NFTs
+        this.discovered = false;            // for silhouette display
+        this.metadata = {
+            name: cardType,
+            description: "",
+            image: "",
+            attributes: []
+        };
+    }
+}
 ```
-backend/
-├── api/
-│   ├── routes/
-│   ├── models/
-│   └── services/
-├── utils/
-└── config/
+
+### Card Stacking System (Clash Royale Style)
+- **Card Stacking**: All cards of the same type stack together in inventory
+- **Upgrade Requirements**: Multiple cards of the same type required for upgrades
+  - Level 1→2: 3x cards
+  - Level 2→3: 6x cards  
+  - Level 3→4: 12x cards
+  - Level 4→5: 24x cards
+- **Card Preservation**: Cards are never consumed, only accumulated
+- **No Stack Limits**: Unlimited cards per type can be collected
+
+### Discovery and Rarity System
+- **Undiscovered Cards**: Shown as silhouettes to build anticipation
+- **Pokédex-Style Discovery**: Cards unlock full art and details when first found
+- **Rarity by Drop Rates**: Controlled by availability, not card variants
+  - Common: 70% drop rate
+  - Rare: 20% drop rate
+  - Epic: 8% drop rate
+  - Legendary: 2% drop rate
+- **System Inventory**: Game maintains stock of available NFTs for drops
+- **Depletion Handling**: Alternative drops when specific types run out
+
+### Inventory Management
+```javascript
+class CardInventory {
+    constructor() {
+        this.cards = new Map(); // cardType -> NFTCard[]
+        this.discoveredTypes = new Set();
+    }
+    
+    addCard(nftCard) {
+        if (!this.cards.has(nftCard.cardType)) {
+            this.cards.set(nftCard.cardType, []);
+        }
+        this.cards.get(nftCard.cardType).push(nftCard);
+        this.discoveredTypes.add(nftCard.cardType);
+    }
+    
+    getCardCount(cardType) {
+        return this.cards.get(cardType)?.length || 0;
+    }
+    
+    canUpgrade(cardType, currentLevel) {
+        const required = this.getUpgradeRequirement(cardType, currentLevel);
+        return this.getCardCount(cardType) >= required;
+    }
+}
 ```
 
-### Development Workflow
+### Rarity and Drop System
+- Rarity controlled by drop rates, not card variants
+- System maintains inventory of available NFTs for drops
+- When NFT type depleted, alternative drops selected
+- Drop rates by rarity:
+  - Common: 70%
+  - Rare: 20%
+  - Epic: 8%
+  - Legendary: 2%
 
-1. **Setup**
-   ```bash
-   # Frontend
-   npm install
-   npm run dev
+### Discovery and Silhouettes
+- Undiscovered cards shown as silhouettes
+- Silhouettes build anticipation for new cards
+- Discovery unlocks full card art and details
+- Collection progress tracking (Pokédex style)
 
-   # Backend
-   python -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   python app.py
-   ```
+## User Interface Design
 
-2. **Testing**
-   ```bash
-   # Frontend
-   npm run test
+### Inventory Interface
+- Grid-based card display
+- Stack counters for each card type
+- Silhouettes for undiscovered cards
+- Drag-and-drop between inventory and ship slots
+- Ship selection interface (station-only)
 
-   # Backend
-   pytest
-   ```
+### Ship Editor (Ctrl-S)
+- Modal overlay system similar to Planet Editor (Ctrl-E)
+- Real-time ship configuration preview
+- Drag-and-drop card installation
+- Build validation and warnings
+- Save/load ship configurations
 
-3. **Deployment**
-   ```bash
-   # Frontend
-   npm run build
+### Station Interface
+- Ship selection from player's collection
+- Repair services integration
+- Launch validation (prevents invalid builds)
+- Access to all owned ships from any station
 
-   # Backend
-   gunicorn app:app
-   ```
+## Data Persistence
 
-### Best Practices
+### Ship Configurations
+```javascript
+const shipConfig = {
+    shipType: "heavy_fighter",
+    installedSystems: {
+        slot1: { cardType: "laser_cannon", level: 3 },
+        slot2: { cardType: "shield_generator", level: 2 },
+        // ... other slots
+    },
+    name: "Player Ship Name"
+};
+```
 
-1. **Code Style**
-   - Follow PEP 8 for Python
-   - Use ESLint for JavaScript
-   - Maintain consistent naming conventions
+### Card Collection
+```javascript
+const playerCollection = {
+    cards: {
+        "laser_cannon": [
+            { tokenId: "0x123...", rarity: "common" },
+            { tokenId: "0x124...", rarity: "common" },
+            // ... more cards of same type
+        ]
+    },
+    discoveredTypes: ["laser_cannon", "shield_generator", ...],
+    ships: [
+        { id: 1, config: shipConfig1 },
+        { id: 2, config: shipConfig2 }
+    ]
+};
+```
 
-2. **Documentation**
-   - JSDoc for JavaScript functions
-   - Docstrings for Python functions
-   - Keep README up to date
+## Build Validation System
 
-3. **Version Control**
-   - Feature branch workflow
-   - Meaningful commit messages
-   - Regular code reviews
+### Core Rules
+- Must have essential systems (engines, reactor, hull plating)
+- Cannot exceed slot capacity
+- Must have sufficient energy generation for active systems
+- Launch prevention for invalid builds
 
-## Future Considerations
+### Validation Logic
+```javascript
+class BuildValidator {
+    validateBuild(shipConfig) {
+        const errors = [];
+        
+        if (!this.hasEssentialSystems(shipConfig)) {
+            errors.push("Missing essential systems");
+        }
+        
+        if (this.exceedsSlotCapacity(shipConfig)) {
+            errors.push("Exceeds slot capacity");
+        }
+        
+        if (!this.hasAdequateEnergy(shipConfig)) {
+            errors.push("Insufficient energy generation");
+        }
+        
+        return {
+            isValid: errors.length === 0,
+            errors: errors
+        };
+    }
+}
+```
 
-### Scalability
-- Horizontal scaling of backend services
-- Load balancing for API servers
-- CDN integration for static assets
+## Performance Considerations
 
-### Feature Expansion
-- Multiplayer support
-- Additional star system types
-- Enhanced combat mechanics
+### Card Rendering Optimization
+- Virtual scrolling for large inventories
+- Lazy loading of card images
+- Efficient drag-and-drop implementation
+- Minimal DOM manipulation
 
-### Performance Optimization
-- WebAssembly integration
-- Advanced caching strategies
-- Optimized asset loading
+### Memory Management
+- Card object pooling
+- Efficient collection data structures
+- Garbage collection optimization
+- Asset preloading strategies
+
+## Future NFT Integration
+
+### Blockchain Preparation
+- Token ID structure compatible with ERC-721
+- Metadata standards compliance
+- Marketplace integration hooks
+- Wallet connection preparation
+
+### Third-Party Integration
+- OpenSea compatibility
+- External marketplace support
+- Trading functionality hooks
+- Ownership verification systems
+
+## Security Considerations
+
+### Pseudo-NFT Security
+- Secure token ID generation
+- Collection integrity validation
+- Anti-duplication measures
+- Save game encryption
+
+### Future Blockchain Security
+- Smart contract integration points
+- Wallet security best practices
+- Transaction validation
+- Ownership verification
+
+## Testing Strategy
+
+### Unit Testing
+- Card collection mechanics
+- Build validation logic
+- Inventory management
+- Upgrade calculations
+
+### Integration Testing
+- UI component interactions
+- Drag-and-drop functionality
+- Ship configuration persistence
+- Station interface integration
+
+### Performance Testing
+- Large inventory handling
+- Card rendering performance
+- Memory usage optimization
+- Load time measurements
+
+## Deployment Architecture
+
+### Development Environment
+- Local Flask server
+- File-based persistence
+- Debug logging enabled
+- Hot reload for development
+
+### Production Considerations
+- Database migration strategy
+- Asset optimization
+- CDN integration
+- Monitoring and analytics
+
+## API Design
+
+### Card Management Endpoints
+```
+GET /api/cards/collection - Get player's card collection
+POST /api/cards/discover - Discover new card
+PUT /api/cards/upgrade - Upgrade system using cards
+GET /api/cards/types - Get all available card types
+```
+
+### Ship Management Endpoints
+```
+GET /api/ships/collection - Get player's ships
+POST /api/ships/create - Create new ship configuration
+PUT /api/ships/update - Update ship configuration
+DELETE /api/ships/delete - Delete ship configuration
+```
+
+### Validation Endpoints
+```
+POST /api/ships/validate - Validate ship build
+GET /api/ships/requirements - Get build requirements
+```
+
+This technical design provides a solid foundation for implementing the NFT card collection system while maintaining compatibility with future blockchain integration.
+
+## Architecture Diagrams
+
+For detailed UML diagrams and visual architecture documentation, see [System Architecture Documentation](system_architecture.md), which includes:
+
+- Class diagrams for the NFT card collection system
+- Sequence diagrams for card discovery and upgrade flows
+- State diagrams for ship configuration states
+- Component diagrams for UI architecture
+- Activity diagrams for user interaction flows
+- Data flow diagrams showing system integration

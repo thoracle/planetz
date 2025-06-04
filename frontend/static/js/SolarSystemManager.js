@@ -257,13 +257,25 @@ export class SolarSystemManager {
             });
             const planet = new THREE.Mesh(planetGeometry, planetMaterial);
             
-            // Calculate orbit radius between 1000km and 5000km with exponential spacing
-            const minRadius = 1000;
-            const maxRadius = 5000;
+            // Check if this is the starter system for more compact layout
+            const isStarterSystem = this.starSystem?.star_name === 'Sol';
+            
+            // Calculate orbit radius - more compact for starter system
+            let minRadius, maxRadius;
+            if (isStarterSystem) {
+                // Much closer orbits for starter system - easier to navigate
+                minRadius = 15;  // Very close to star
+                maxRadius = 35;  // Still close but room for multiple bodies
+            } else {
+                // Regular system spacing
+                minRadius = 1000;
+                maxRadius = 5000;
+            }
+            
             const totalPlanets = Math.max(1, this.starSystem.planets.length);
             
             // Use exponential spacing to create more realistic orbital distances
-            const base = 1.8; // Base for exponential spacing
+            const base = isStarterSystem ? 1.5 : 1.8; // Smaller base for more compact starter system
             const normalizedIndex = index / (totalPlanets - 1 || 1);
             const orbitRadius = minRadius + (maxRadius - minRadius) * (Math.pow(base, normalizedIndex) - 1) / (base - 1);
             
@@ -337,8 +349,12 @@ export class SolarSystemManager {
                 return;
             }
             
-            // Calculate initial position relative to planet
-            const moonOrbitRadius = Math.max(1, (moonIndex + 1) * 2);
+            // Check if this is the starter system for more compact moon layout
+            const isStarterSystem = this.starSystem?.star_name === 'Sol';
+            
+            // Calculate initial position relative to planet - increased distances to avoid launch interference
+            const baseMoonOrbitRadius = isStarterSystem ? 8.0 : 12.0; // Much further from planets
+            const moonOrbitRadius = Math.max(6, (moonIndex + 1) * baseMoonOrbitRadius);
             const angle = (Math.random() * Math.PI * 2) || 0;
             const verticalVariation = Math.sin(angle * 0.5) * moonOrbitRadius * 0.2;
             
@@ -577,9 +593,15 @@ export class SolarSystemManager {
     }
 
     getCelestialBodyInfo(body) {
-        // Find the key for this body
-        const key = Array.from(this.celestialBodies.entries())
+        // Find the key for this body - first try by reference
+        let key = Array.from(this.celestialBodies.entries())
             .find(([_, value]) => value === body)?.[0];
+        
+        // If not found by reference, try by UUID as fallback
+        if (!key && body && body.uuid) {
+            key = Array.from(this.celestialBodies.entries())
+                .find(([_, value]) => value.uuid === body.uuid)?.[0];
+        }
         
         if (!key) return null;
 
@@ -587,7 +609,9 @@ export class SolarSystemManager {
             return {
                 name: this.starSystem.star_name || 'Unknown Star',
                 type: 'star',
-                classification: this.starSystem.star_type || 'Unknown'
+                classification: this.starSystem.star_type || 'Unknown',
+                description: this.starSystem.description || 'No description available.',
+                intel_brief: this.starSystem.intel_brief || 'No intelligence data available.'
             };
         }
 
@@ -608,7 +632,9 @@ export class SolarSystemManager {
                 government: planet.government || 'Unknown',
                 economy: planet.economy || 'Unknown',
                 technology: planet.technology || 'Unknown',
-                population: planet.population
+                population: planet.population,
+                description: planet.description || 'No description available.',
+                intel_brief: planet.intel_brief || 'No intelligence data available.'
             };
         } else if (type === 'moon') {
             const moon = planet.moons[parseInt(moonIndex)];
@@ -624,7 +650,9 @@ export class SolarSystemManager {
                 government: moon.government || 'Unknown',
                 economy: moon.economy || 'Unknown',
                 technology: moon.technology || 'Unknown',
-                population: moon.population
+                population: moon.population,
+                description: moon.description || 'No description available.',
+                intel_brief: moon.intel_brief || 'No intelligence data available.'
             };
         }
 

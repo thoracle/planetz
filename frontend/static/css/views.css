@@ -80,7 +80,7 @@ body.edit-mode .crosshair {
     padding: 20px;
     display: none;
     color: #00ff41;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     z-index: 1000;
     flex-direction: column;
     max-height: 90vh;
@@ -300,7 +300,7 @@ body.edit-mode .crosshair {
     color: #00ff41;
     border: 1px solid #00ff41;
     padding: 5px 15px;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     font-size: 0.9em;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -415,7 +415,7 @@ body.edit-mode .crosshair {
 }
 
 .diplomacy-unknown {
-    color: #808080;
+    color: #b3b3b3;
 }
 
 .planets-table {
@@ -547,7 +547,7 @@ body.edit-mode .crosshair {
     border: 2px solid #00ff41;
     padding: 30px;
     color: #00ff41;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     width: 400px;
     max-width: 90%;
     margin: 20px;
@@ -582,7 +582,7 @@ body.edit-mode .crosshair {
     border: 1px solid #00ff41;
     padding: 10px 30px;
     margin: 25px auto 0;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     font-size: 1.1em;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -671,13 +671,13 @@ body.warp-control-mode .crosshair {
     padding: 20px;
     display: none;
     color: #00ff41;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     z-index: 1000;
     flex-direction: row;
-    height: 80vh;
-    max-height: 90vh;
-    width: 900px;
-    min-width: 800px;
+    height: 64vh;
+    max-height: 72vh;
+    width: 720px;
+    min-width: 640px;
     box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
 }
 
@@ -777,11 +777,11 @@ body.warp-control-mode .crosshair {
 }
 
 .scanner-moon {
-    fill: #808080;
-    stroke: #808080;
+    fill: #b3b3b3;
+    stroke: #b3b3b3;
     stroke-width: 1;
     transition: all 0.3s ease;
-    filter: drop-shadow(0 0 2px rgba(128, 128, 128, 0.3));
+    filter: drop-shadow(0 0 2px rgba(179, 179, 179, 0.3));
     cursor: pointer;
 }
 
@@ -858,7 +858,7 @@ body.warp-control-mode .crosshair {
 }
 
 .body-type {
-    color: #808080;
+    color: #b3b3b3;
     font-style: italic;
 }
 
@@ -876,7 +876,7 @@ body.warp-control-mode .crosshair {
 }
 
 .detail-row .label {
-    color: #808080;
+    color: #b3b3b3;
 }
 
 .detail-row .value {
@@ -928,7 +928,7 @@ body.warp-control-mode .crosshair {
     font-size: 0.9em;
     pointer-events: none;
     z-index: 1001;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     white-space: nowrap;
     transform: translate(-50%, -100%);
     margin-top: -10px;
@@ -1035,7 +1035,7 @@ body.warp-control-mode .crosshair {
     color: #00ff41;
     border: 1px solid #00ff41;
     padding: 8px 20px;
-    font-family: "Courier New", monospace;
+    font-family: 'VT323', monospace;
     font-size: 0.9em;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -1056,4 +1056,90 @@ body.warp-control-mode .crosshair {
 
 .target-button.targeted:hover {
     background: #00cc35;
-} 
+}
+
+/* Description and Intel Brief sections */
+.detail-section {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.detail-row.description,
+.detail-row.intel-brief {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.detail-row.description .label,
+.detail-row.intel-brief .label {
+    color: #00ff41;
+    font-weight: bold;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.description-text,
+.intel-text {
+    color: #b3b3b3 !important;
+    font-size: 0.85em;
+    line-height: 1.4;
+    text-align: left;
+    font-style: italic;
+    padding: 5px 0;
+    border-left: 2px solid rgba(0, 255, 65, 0.3);
+    padding-left: 10px;
+    margin-left: 5px;
+}
+
+.intel-text {
+    color: #ffcc00 !important;
+    border-left-color: rgba(255, 204, 0, 0.3);
+}
+
+/* Intel icon pulse animation */
+@keyframes pulse {
+    0% {
+        opacity: 0.8;
+        transform: scale(1);
+        box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+        box-shadow: 0 0 12px rgba(0, 255, 65, 0.8);
+    }
+    100% {
+        opacity: 0.8;
+        transform: scale(1);
+        box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
+    }
+}
+
+/* Intel HUD scrollbar styling with dynamic faction colors */
+.intel-hud,
+.intel-hud * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb-color, #00ff41) var(--scrollbar-track-color, rgba(0, 255, 65, 0.1));
+}
+
+.intel-hud::-webkit-scrollbar,
+.intel-hud *::-webkit-scrollbar {
+    width: 8px;
+}
+
+.intel-hud::-webkit-scrollbar-track,
+.intel-hud *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track-color, rgba(0, 255, 65, 0.1));
+    border-radius: 4px;
+}
+
+.intel-hud::-webkit-scrollbar-thumb,
+.intel-hud *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-color, #00ff41);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}

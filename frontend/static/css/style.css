@@ -2,9 +2,9 @@ body {
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background-color: #000;
-    color: #fff;
-    font-family: Arial, sans-serif;
+    background: #000;
+    font-family: 'VT323', monospace;
+    color: #00ff41;
     width: 100vw;
     height: 100vh;
 }

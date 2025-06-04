@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Stored Configurations</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 20px;
+            background-color: #0a0a0a;
+            color: #00ff00;
+            text-align: center;
+        }
+        .button {
+            background-color: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 16px;
+        }
+        .button:hover {
+            background-color: #ff5555;
+        }
+        .result {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #111;
+        }
+    </style>
+</head>
+<body>
+    <h1>🗑️ Clear Stored Ship Configurations</h1>
+    <p>This will clear any stored ship configurations that may have weapons in wrong slots</p>
+    
+    <button class="button" onclick="clearStoredConfigs()">Clear All Ship Configs</button>
+    <button class="button" onclick="clearAllLocalStorage()">Clear All Local Storage</button>
+    
+    <div id="result" class="result"></div>
+
+    <script>
+        function clearStoredConfigs() {
+            const keys = Object.keys(localStorage);
+            const shipConfigKeys = keys.filter(key => key.startsWith('ship_config_'));
+            
+            if (shipConfigKeys.length === 0) {
+                document.getElementById('result').innerHTML = '✅ No ship configurations found to clear';
+                return;
+            }
+
+            shipConfigKeys.forEach(key => {
+                localStorage.removeItem(key);
+            });
+
+            document.getElementById('result').innerHTML = `✅ Cleared ${shipConfigKeys.length} ship configurations:<br>${shipConfigKeys.join('<br>')}`;
+        }
+
+        function clearAllLocalStorage() {
+            const keyCount = localStorage.length;
+            localStorage.clear();
+            document.getElementById('result').innerHTML = `✅ Cleared all local storage (${keyCount} items)`;
+        }
+
+        // Show current stored configurations
+        function showStoredConfigs() {
+            const keys = Object.keys(localStorage);
+            const shipConfigKeys = keys.filter(key => key.startsWith('ship_config_'));
+            
+            if (shipConfigKeys.length === 0) {
+                document.getElementById('result').innerHTML = 'ℹ️ No ship configurations currently stored';
+            } else {
+                document.getElementById('result').innerHTML = `ℹ️ Found ${shipConfigKeys.length} stored ship configurations:<br>${shipConfigKeys.join('<br>')}`;
+            }
+        }
+
+        // Show stored configs on page load
+        showStoredConfigs();
+    </script>
+</body>
+</html> 

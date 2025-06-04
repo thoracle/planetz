@@ -1,0 +1,14 @@
+# Ship Systems Implementation Rules
+- Always refer to docs/tech_design.md for:
+  - System architecture and class diagrams
+  - State machine implementations
+  - UI component designs
+  - Sequence diagrams for system interactions
+  - Component relationships and dependencies
+
+- Always refer to docs/spaceships_spec.md for:
+  - Ship class specifications and base stats
+  - System upgrade paths and levels
+  - Damage mechanics and thresholds
+  - Repair mechanics and requirements
+  - System interactions and dependencies 

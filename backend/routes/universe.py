@@ -35,11 +35,16 @@ def generate_universe_route():
         seed = request.args.get('seed', env_seed)
         num_systems = request.args.get('num_systems', default=90, type=int)  # Default to 90 systems (9x10 grid)
         
+        # Handle seed conversion more gracefully
         if seed:
             try:
                 seed = int(seed)
             except ValueError:
-                return jsonify({'error': 'Invalid seed value'}), 400
+                # If seed is not a valid integer, use hash of the string
+                seed = hash(seed) & 0xFFFFFFFF
+        else:
+            # If no seed provided, use None (will use default behavior)
+            seed = None
         
         universe = generate_universe(num_systems, seed)
         return jsonify(universe)

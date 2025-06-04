@@ -1,6 +1,7 @@
 README.md
 setup.py
 backend/PlanetTypes.py
+backend/ShipConfigs.py
 backend/__init__.py
 backend/api.py
 backend/app.py

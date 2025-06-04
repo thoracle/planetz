@@ -22,6 +22,9 @@ class WarpEffects {
         this.soundLoaded = false;
         this.redAlertSoundLoaded = false;
         
+        // Ensure AudioContext is running
+        this.ensureAudioContextRunning();
+        
         // Load the warp sounds
         console.log('Loading warp sounds...');
         this.audioLoader.load(
@@ -57,6 +60,24 @@ class WarpEffects {
                 console.error('Error loading red alert warp sound:', error);
             }
         );
+
+        // Add visibility change listener
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                this.ensureAudioContextRunning();
+            }
+        });
+    }
+
+    ensureAudioContextRunning() {
+        if (this.listener && this.listener.context) {
+            if (this.listener.context.state === 'suspended') {
+                console.log('Resuming suspended AudioContext');
+                this.listener.context.resume().catch(error => {
+                    console.error('Failed to resume AudioContext:', error);
+                });
+            }
+        }
     }
 
     initialize(scene, camera) {
@@ -155,6 +176,10 @@ class WarpEffects {
 
     showAll(destinationSystem) {
         if (!this.initialized) return;
+        
+        // Ensure AudioContext is running before playing sounds
+        this.ensureAudioContextRunning();
+        
         this.container.visible = true;
         this.warpStartTime = Date.now();
         this.isWarping = true;

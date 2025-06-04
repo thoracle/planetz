@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weapon Slot Enforcement Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 20px;
+            background-color: #0a0a0a;
+            color: #00ff00;
+        }
+        .test-container {
+            border: 1px solid #00ff00;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background-color: #111;
+        }
+        .ship-test {
+            margin: 10px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 3px;
+            background-color: #1a1a1a;
+        }
+        .slot {
+            display: inline-block;
+            width: 80px;
+            height: 80px;
+            margin: 5px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            text-align: center;
+            vertical-align: top;
+            background-color: #222;
+            font-size: 12px;
+            padding: 5px;
+        }
+        .slot.weapons {
+            border-color: #ff6b6b;
+            background-color: #2a1a1a;
+        }
+        .slot.utility {
+            border-color: #6bb6ff;
+            background-color: #1a1a2a;
+        }
+        .slot.engines {
+            border-color: #ffb86b;
+            background-color: #2a2a1a;
+        }
+        .slot.reactor {
+            border-color: #b86bff;
+            background-color: #201a2a;
+        }
+        .weapon-card {
+            background-color: #ff6b6b;
+            color: white;
+            padding: 2px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+        .error {
+            color: #ff4444;
+            font-weight: bold;
+        }
+        .success {
+            color: #44ff44;
+            font-weight: bold;
+        }
+        .log {
+            background-color: #000;
+            border: 1px solid #333;
+            padding: 10px;
+            margin: 10px 0;
+            height: 200px;
+            overflow-y: scroll;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🛡️ Weapon Slot Enforcement Test</h1>
+    <p>Testing that weapons can ONLY be placed in weapon slots</p>
+    
+    <div class="test-container">
+        <h2>Ship Configuration Test</h2>
+        <div id="ship-layout"></div>
+        <div class="log" id="test-log"></div>
+    </div>
+
+    <script type="module">
+        import { SHIP_CONFIGS } from './frontend/static/js/ship/ShipConfigs.js';
+
+        let testLog = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            testLog.push(`<span class="${type}">${logMessage}</span>`);
+            updateLogDisplay();
+            console.log(logMessage);
+        }
+
+        function updateLogDisplay() {
+            const logElement = document.getElementById('test-log');
+            logElement.innerHTML = testLog.slice(-20).join('<br>');
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // Mock the CardInventoryUI logic for testing
+        class SlotEnforcementTest {
+            constructor() {
+                this.shipSlots = new Map();
+            }
+
+            isWeaponCard(cardType) {
+                const weaponCards = ['laser_cannon', 'pulse_cannon', 'plasma_cannon', 'phaser_array', 'disruptor_cannon', 'particle_beam'];
+                return weaponCards.includes(cardType);
+            }
+
+            isCardCompatibleWithSlot(cardType, slotType) {
+                const cardToSlotMapping = {
+                    // Weapon slot cards - ONLY weapon slots
+                    'laser_cannon': ['weapons'],
+                    'pulse_cannon': ['weapons'],
+                    'plasma_cannon': ['weapons'],
+                    'phaser_array': ['weapons'],
+                    'disruptor_cannon': ['weapons'],
+                    'particle_beam': ['weapons'],
+                    
+                    // Other cards
+                    'impulse_engines': ['engines'],
+                    'energy_reactor': ['reactor'],
+                    'target_computer': ['utility'],
+                    'hull_plating': ['utility']
+                };
+                
+                const allowedSlots = cardToSlotMapping[cardType] || ['utility'];
+                return allowedSlots.includes(slotType);
+            }
+
+            generateSlotTypeMapping(config) {
+                const slotTypes = {};
+                let currentSlot = 0;
+                
+                if (config.slotConfig) {
+                    Object.entries(config.slotConfig).forEach(([slotType, count]) => {
+                        for (let i = 0; i < count; i++) {
+                            slotTypes[currentSlot] = slotType;
+                            currentSlot++;
+                        }
+                    });
+                }
+                
+                while (currentSlot < config.systemSlots) {
+                    slotTypes[currentSlot] = 'utility';
+                    currentSlot++;
+                }
+                
+                return slotTypes;
+            }
+
+            testWeaponPlacement(shipType) {
+                log(`Testing weapon placement for ${shipType}`, 'info');
+                
+                const shipConfig = SHIP_CONFIGS[shipType];
+                if (!shipConfig) {
+                    log(`❌ Ship config not found for ${shipType}`, 'error');
+                    return;
+                }
+
+                const slotTypeMapping = this.generateSlotTypeMapping(shipConfig);
+                const slotTypeToIndex = {};
+                
+                // Create reverse mapping
+                Object.entries(slotTypeMapping).forEach(([slotIndex, slotType]) => {
+                    if (!slotTypeToIndex[slotType]) {
+                        slotTypeToIndex[slotType] = [];
+                    }
+                    slotTypeToIndex[slotType].push(parseInt(slotIndex));
+                });
+
+                log(`Ship has ${slotTypeToIndex.weapons?.length || 0} weapon slots out of ${shipConfig.systemSlots} total`, 'info');
+
+                // Test placing weapons in weapon slots (should succeed)
+                const weaponTypes = ['laser_cannon', 'pulse_cannon', 'plasma_cannon', 'phaser_array'];
+                
+                for (const weaponType of weaponTypes) {
+                    let placed = false;
+                    
+                    // Try to place in weapon slots
+                    if (slotTypeToIndex.weapons) {
+                        for (const slotIndex of slotTypeToIndex.weapons) {
+                            if (!this.shipSlots.has(slotIndex.toString())) {
+                                if (this.isCardCompatibleWithSlot(weaponType, 'weapons')) {
+                                    this.shipSlots.set(slotIndex.toString(), { cardType: weaponType });
+                                    log(`✅ ${weaponType} placed in weapon slot ${slotIndex}`, 'success');
+                                    placed = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Test enforcement: try to place in utility slot (should fail)
+                    if (!placed && slotTypeToIndex.utility) {
+                        const utilitySlot = slotTypeToIndex.utility[0];
+                        if (this.isCardCompatibleWithSlot(weaponType, 'utility')) {
+                            log(`❌ ENFORCEMENT FAILED: ${weaponType} allowed in utility slot!`, 'error');
+                        } else {
+                            log(`✅ ENFORCEMENT SUCCESS: ${weaponType} correctly blocked from utility slot`, 'success');
+                        }
+                    }
+
+                    if (!placed) {
+                        log(`⚠️ No weapon slots available for ${weaponType}`, 'error');
+                    }
+                }
+
+                return this.shipSlots.size;
+            }
+
+            renderShipLayout(shipType) {
+                const shipConfig = SHIP_CONFIGS[shipType];
+                const slotTypeMapping = this.generateSlotTypeMapping(shipConfig);
+                
+                let html = `<h3>${shipConfig.name}</h3><div>`;
+                
+                for (let i = 0; i < shipConfig.systemSlots; i++) {
+                    const slotType = slotTypeMapping[i];
+                    const card = this.shipSlots.get(i.toString());
+                    
+                    let content = `${slotType}<br>Slot ${i}`;
+                    if (card) {
+                        content += `<br><div class="weapon-card">${card.cardType}</div>`;
+                    }
+                    
+                    html += `<div class="slot ${slotType}">${content}</div>`;
+                }
+                
+                html += '</div>';
+                return html;
+            }
+        }
+
+        function runTests() {
+            log('🎮 Starting weapon slot enforcement tests', 'info');
+            
+            const tester = new SlotEnforcementTest();
+            const shipLayoutElement = document.getElementById('ship-layout');
+            
+            // Test starter ship
+            const weaponsPlaced = tester.testWeaponPlacement('starter_ship');
+            shipLayoutElement.innerHTML = tester.renderShipLayout('starter_ship');
+            
+            log(`Final result: ${weaponsPlaced} weapons placed in correct slots`, 'info');
+            
+            // Test enforcement rules
+            log('Testing slot compatibility rules:', 'info');
+            const rules = [
+                { card: 'laser_cannon', slot: 'weapons', expected: true },
+                { card: 'laser_cannon', slot: 'utility', expected: false },
+                { card: 'pulse_cannon', slot: 'weapons', expected: true },
+                { card: 'pulse_cannon', slot: 'utility', expected: false },
+                { card: 'target_computer', slot: 'utility', expected: true },
+                { card: 'target_computer', slot: 'weapons', expected: false }
+            ];
+            
+            for (const rule of rules) {
+                const result = tester.isCardCompatibleWithSlot(rule.card, rule.slot);
+                const status = result === rule.expected ? '✅' : '❌';
+                log(`${status} ${rule.card} in ${rule.slot} slot: ${result} (expected: ${rule.expected})`, 
+                    result === rule.expected ? 'success' : 'error');
+            }
+            
+            log('🏁 Tests completed', 'info');
+        }
+
+        // Run tests when page loads
+        runTests();
+    </script>
+</body>
+</html> 

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projectile Weapons Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 20px;
+            background-color: #0a0a0a;
+            color: #00ff00;
+        }
+        .test-container {
+            border: 1px solid #00ff00;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background-color: #111;
+        }
+        .weapon-test {
+            margin: 10px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 3px;
+            background-color: #1a1a1a;
+        }
+        .fire-button {
+            background-color: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .fire-button:disabled {
+            background-color: #444;
+            cursor: not-allowed;
+        }
+        .cooldown-bar {
+            width: 200px;
+            height: 10px;
+            background-color: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        .cooldown-progress {
+            height: 100%;
+            background-color: #ff6b6b;
+            border-radius: 5px;
+            transition: width 0.1s linear;
+        }
+        .weapon-stats {
+            font-size: 12px;
+            color: #888;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Projectile Weapons Test</h1>
+    
+    <div class="test-container">
+        <h2>New Projectile Weapon System</h2>
+        <p>Testing individual weapon cards instead of missile tubes:</p>
+        <ul>
+            <li>Standard Missile - Direct fire, splash damage</li>
+            <li>Homing Missile - Tracking projectile</li>
+            <li>Photon Torpedo - High damage, shield piercing</li>
+            <li>Proximity Mine - Area denial weapon</li>
+        </ul>
+    </div>
+
+    <div class="test-container">
+        <h2>Weapon Tests</h2>
+        <div id="weapon-tests"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>Combat Log</h2>
+        <div id="combat-log" style="height: 200px; overflow-y: auto; background: #000; padding: 10px; border: 1px solid #333;"></div>
+    </div>
+
+    <script type="module">
+        import { WeaponDefinitions } from './frontend/static/js/ship/systems/WeaponDefinitions.js';
+        import { SplashDamageWeapon } from './frontend/static/js/ship/systems/WeaponCard.js';
+
+        class ProjectileWeaponTester {
+            constructor() {
+                this.weapons = {};
+                this.cooldowns = {};
+                this.init();
+            }
+
+            init() {
+                const projectileWeapons = [
+                    'standard_missile',
+                    'homing_missile', 
+                    'photon_torpedo',
+                    'proximity_mine'
+                ];
+
+                const testsContainer = document.getElementById('weapon-tests');
+
+                projectileWeapons.forEach(weaponId => {
+                    const weaponDef = WeaponDefinitions.getAllWeaponDefinitions()[weaponId];
+                    if (weaponDef) {
+                        this.weapons[weaponId] = WeaponDefinitions.createWeaponCard(weaponId);
+                        this.cooldowns[weaponId] = 0;
+                        
+                        const weaponDiv = this.createWeaponTestDiv(weaponId, weaponDef);
+                        testsContainer.appendChild(weaponDiv);
+                    }
+                });
+
+                this.startCooldownUpdates();
+            }
+
+            createWeaponTestDiv(weaponId, weaponDef) {
+                const div = document.createElement('div');
+                div.className = 'weapon-test';
+                div.innerHTML = `
+                    <h3>${weaponDef.name}</h3>
+                    <div class="weapon-stats">
+                        Damage: ${weaponDef.damage} | Cooldown: ${weaponDef.cooldownTime}s | 
+                        Blast Radius: ${weaponDef.blastRadius}m | Homing: ${weaponDef.homingCapability ? 'Yes' : 'No'}
+                    </div>
+                    <button class="fire-button" onclick="weaponTester.fireWeapon('${weaponId}')" id="btn-${weaponId}">
+                        FIRE ${weaponDef.name.toUpperCase()}
+                    </button>
+                    <div class="cooldown-bar">
+                        <div class="cooldown-progress" id="cooldown-${weaponId}" style="width: 0%"></div>
+                    </div>
+                    <div id="status-${weaponId}">Ready</div>
+                `;
+                return div;
+            }
+
+            fireWeapon(weaponId) {
+                if (this.cooldowns[weaponId] > 0) {
+                    this.log(`❌ ${this.weapons[weaponId].name} still cooling down (${this.cooldowns[weaponId].toFixed(1)}s remaining)`);
+                    return;
+                }
+
+                const weapon = this.weapons[weaponId];
+                const origin = { x: 0, y: 0, z: 0 };
+                const target = { x: 100, y: 0, z: 0, position: { x: 100, y: 0, z: 0 } };
+
+                // Fire the weapon
+                const result = weapon.fire(origin, target);
+                
+                if (result.success) {
+                    this.log(`🚀 ${weapon.name} fired! Damage: ${weapon.damage}, Blast Radius: ${weapon.blastRadius}m`);
+                    
+                    if (weapon.homingCapability) {
+                        this.log(`  🎯 Homing: Tracking target with ${weapon.turnRate}°/s turn rate`);
+                    }
+                    
+                    if (weapon.specialProperties.shieldPiercing) {
+                        this.log(`  🛡️ Shield piercing enabled`);
+                    }
+
+                    // Start cooldown
+                    this.cooldowns[weaponId] = weapon.cooldownTime;
+                    this.updateWeaponButton(weaponId, false);
+                } else {
+                    this.log(`❌ ${weapon.name} failed to fire: ${result.reason}`);
+                }
+            }
+
+            updateWeaponButton(weaponId, enabled) {
+                const button = document.getElementById(`btn-${weaponId}`);
+                const status = document.getElementById(`status-${weaponId}`);
+                
+                button.disabled = !enabled;
+                
+                if (!enabled) {
+                    status.textContent = `Cooling down: ${this.cooldowns[weaponId].toFixed(1)}s`;
+                } else {
+                    status.textContent = 'Ready';
+                }
+            }
+
+            startCooldownUpdates() {
+                setInterval(() => {
+                    Object.keys(this.cooldowns).forEach(weaponId => {
+                        if (this.cooldowns[weaponId] > 0) {
+                            this.cooldowns[weaponId] -= 0.1;
+                            
+                            const weapon = this.weapons[weaponId];
+                            const progress = (1 - (this.cooldowns[weaponId] / weapon.cooldownTime)) * 100;
+                            const progressBar = document.getElementById(`cooldown-${weaponId}`);
+                            progressBar.style.width = `${Math.max(0, progress)}%`;
+                            
+                            this.updateWeaponButton(weaponId, false);
+                            
+                            if (this.cooldowns[weaponId] <= 0) {
+                                this.cooldowns[weaponId] = 0;
+                                this.updateWeaponButton(weaponId, true);
+                                progressBar.style.width = '0%';
+                                this.log(`✅ ${weapon.name} ready to fire`);
+                            }
+                        }
+                    });
+                }, 100);
+            }
+
+            log(message) {
+                const logDiv = document.getElementById('combat-log');
+                const timestamp = new Date().toLocaleTimeString();
+                logDiv.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+        }
+
+        // Create global instance
+        window.weaponTester = new ProjectileWeaponTester();
+        
+        console.log('Projectile weapon system loaded');
+        console.log('Available weapons:', Object.keys(window.weaponTester.weapons));
+    </script>
+</body>
+</html> 

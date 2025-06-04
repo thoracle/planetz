@@ -121,12 +121,55 @@ export class LongRangeScanner {
         const solarSystemManager = this.viewManager.getSolarSystemManager();
         if (!solarSystemManager) return;
 
-        const starSystem = solarSystemManager.starSystem;
-        if (!starSystem) return;
+        const rawStarSystem = solarSystemManager.starSystem;
+        if (!rawStarSystem) return;
+
+        // Get the Long Range Scanner system from the ship
+        const ship = this.viewManager.getShip();
+        const scannerSystem = ship ? ship.systems.get('long_range_scanner') : null;
+        
+        // Process scan data through the system (applies damage effects)
+        let starSystem = rawStarSystem;
+        if (scannerSystem && scannerSystem.isOperational()) {
+            const processedData = scannerSystem.processScanData(rawStarSystem);
+            if (processedData) {
+                starSystem = processedData;
+            }
+        } else {
+            // If scanner is non-operational, show very limited data
+            console.warn('Long Range Scanner not operational - limited scan data available');
+            starSystem = {
+                star_name: rawStarSystem.star_name,
+                star_size: rawStarSystem.star_size,
+                planets: [] // No planet data when scanner is offline
+            };
+        }
 
         // Create the map SVG
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'scanner-map');
+        
+        // Add damage effects to SVG if system is damaged
+        if (scannerSystem) {
+            const status = scannerSystem.getStatus();
+            if (status.fogOfWarEnabled) {
+                svg.style.filter = 'contrast(0.7) brightness(0.8) saturate(0.6)';
+                svg.setAttribute('class', 'scanner-map damaged');
+            }
+            
+            // Reduce scan range affects viewBox size
+            const scanRange = status.currentScanRange;
+            const maxRange = 1000; // Base scan range
+            const rangeMultiplier = Math.max(0.3, scanRange / maxRange); // Minimum 30% range
+            
+            this.defaultViewBox = {
+                width: 1000 * rangeMultiplier,
+                height: 1000 * rangeMultiplier,
+                x: -500 * rangeMultiplier,
+                y: -500 * rangeMultiplier
+            };
+        }
+        
         svg.style.cursor = 'default'; // Set default cursor instead of grab
         
         // Ensure valid zoom level
@@ -571,6 +614,20 @@ export class LongRangeScanner {
                     <span class="value">${bodyInfo.population}</span>
                 </div>
                 ` : ''}
+                
+                <div class="detail-section">
+                    <div class="detail-row description">
+                        <span class="label">Description:</span>
+                        <span class="value description-text">${bodyInfo.description || 'No description available.'}</span>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-row intel-brief">
+                        <span class="label">Intel Brief:</span>
+                        <span class="value intel-text">${bodyInfo.intel_brief || 'No intelligence data available.'}</span>
+                    </div>
+                </div>
             </div>`;
 
         this.detailsPanel.innerHTML = detailsHTML;

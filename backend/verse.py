@@ -149,6 +149,227 @@ TECHNOLOGY_LEVELS = [
     'Intergalactic'
 ]
 
+# Description templates for different celestial body types
+PLANET_DESCRIPTIONS = {
+    'Class-M': [
+        "A lush, Earth-like world with vast oceans and diverse ecosystems.",
+        "Temperate planet with breathable atmosphere and abundant water resources.",
+        "Garden world featuring continental landmasses and polar ice caps.",
+        "Verdant planet with extensive forests and fertile agricultural regions."
+    ],
+    'Class-L': [
+        "Harsh world with marginal habitability and extreme weather patterns.",
+        "Challenging environment with thin atmosphere and limited water sources.",
+        "Rugged planet requiring environmental suits for extended surface operations.",
+        "Borderline habitable world with frequent atmospheric disturbances."
+    ],
+    'Class-H': [
+        "Arid desert world with scorching temperatures and minimal precipitation.",
+        "Barren landscape dominated by sand dunes and rocky outcroppings.",
+        "Hot, dry planet with rare oases and underground water reserves.",
+        "Sun-baked world where survival depends on finding shelter from the heat."
+    ],
+    'Class-D': [
+        "Toxic wasteland with corrosive atmosphere and volcanic activity.",
+        "Hellish world shrouded in poisonous gases and acid rain.",
+        "Demon-class planet where the very air is lethal to most life forms.",
+        "Nightmare landscape of sulfur pools and toxic volcanic emissions."
+    ],
+    'Class-J': [
+        "Massive gas giant with swirling atmospheric bands and powerful storms.",
+        "Colossal world of hydrogen and helium with no solid surface.",
+        "Giant planet featuring spectacular aurora displays and ring systems.",
+        "Enormous gas world with crushing atmospheric pressure and violent winds."
+    ],
+    'Class-K': [
+        "Barren rocky world with no atmosphere and cratered surface.",
+        "Lifeless planet scarred by asteroid impacts and solar radiation.",
+        "Desolate world suitable only for mining operations and research stations.",
+        "Airless rock with extreme temperature variations between day and night."
+    ],
+    'Class-N': [
+        "Ringed planet with spectacular ice and rock formations in orbit.",
+        "Beautiful world adorned with complex ring systems and multiple moons.",
+        "Gas giant featuring prominent rings visible from great distances.",
+        "Majestic planet whose rings create stunning celestial displays."
+    ],
+    'Class-Y': [
+        "Extremely hostile world with lethal radiation and toxic storms.",
+        "Demon-class planet where even advanced technology struggles to survive.",
+        "Apocalyptic landscape of molten rock and radioactive wastelands.",
+        "Ultimate death world where only the most desperate would dare to land."
+    ]
+}
+
+MOON_DESCRIPTIONS = {
+    'rocky': [
+        "Solid rocky satellite with mineral-rich surface deposits.",
+        "Cratered moon featuring valuable ore veins and mining potential.",
+        "Dense rocky body with exposed metallic formations.",
+        "Asteroid-like moon with significant geological activity."
+    ],
+    'ice': [
+        "Frozen world covered in thick layers of water ice.",
+        "Crystalline moon with subsurface oceans beneath the ice shell.",
+        "Glacial satellite featuring ice geysers and frozen valleys.",
+        "Pristine ice world with potential for water extraction operations."
+    ],
+    'desert': [
+        "Arid moon with sand-covered plains and rocky mesas.",
+        "Dry satellite featuring ancient riverbeds and mineral deposits.",
+        "Dusty world with extreme temperature variations and sandstorms.",
+        "Barren moon where water is scarce but other resources may be abundant."
+    ]
+}
+
+STAR_DESCRIPTIONS = {
+    'red dwarf': [
+        "Small, cool star with a long lifespan and stable energy output.",
+        "Dim red star providing gentle warmth to its planetary system.",
+        "Ancient stellar body with billions of years of remaining fuel.",
+        "Compact star with a habitable zone close to its surface."
+    ],
+    'yellow dwarf': [
+        "Sun-like star providing optimal conditions for planetary development.",
+        "Stable main-sequence star with balanced energy output.",
+        "Golden star supporting diverse planetary ecosystems.",
+        "Medium-sized star in the prime of its stellar evolution."
+    ],
+    'blue giant': [
+        "Massive, hot star burning through its fuel at an accelerated rate.",
+        "Brilliant blue star with intense radiation and short lifespan.",
+        "Powerful stellar giant dominating its local stellar neighborhood.",
+        "High-energy star creating spectacular nebular formations."
+    ],
+    'white dwarf': [
+        "Dense stellar remnant slowly cooling over cosmic time.",
+        "Compact star representing the final stage of stellar evolution.",
+        "Small but incredibly dense stellar core with intense gravity.",
+        "Ancient stellar remnant providing dim but steady illumination."
+    ]
+}
+
+def generate_description(body_type, classification, attributes=None):
+    """Generate a short description for a celestial body based on its type and attributes."""
+    if body_type == 'star':
+        descriptions = STAR_DESCRIPTIONS.get(classification, STAR_DESCRIPTIONS['yellow dwarf'])
+    elif body_type == 'planet':
+        descriptions = PLANET_DESCRIPTIONS.get(classification, PLANET_DESCRIPTIONS['Class-M'])
+    elif body_type == 'moon':
+        descriptions = MOON_DESCRIPTIONS.get(classification, MOON_DESCRIPTIONS['rocky'])
+    else:
+        return "Unknown celestial body with mysterious properties."
+    
+    # Use Lehmer32 to select a description deterministically
+    return descriptions[Lehmer32() % len(descriptions)]
+
+def generate_intel_brief(body_type, classification, attributes):
+    """Generate an intel brief based on the body's attributes."""
+    if body_type == 'star':
+        return generate_star_intel(classification)
+    elif body_type in ['planet', 'moon']:
+        return generate_planetary_intel(body_type, classification, attributes)
+    else:
+        return "No intelligence data available for this celestial body."
+
+def generate_star_intel(star_type):
+    """Generate intel brief for stars."""
+    intel_templates = {
+        'red dwarf': [
+            "Long-term stellar stability makes this system ideal for permanent settlements.",
+            "Low radiation output allows for close-orbit mining operations.",
+            "Extended stellar lifespan ensures reliable energy for millennia.",
+            "Stable fusion processes create predictable solar weather patterns."
+        ],
+        'yellow dwarf': [
+            "Optimal stellar conditions support diverse planetary biospheres.",
+            "Balanced energy output creates stable climate zones throughout the system.",
+            "Main-sequence stability indicates prime real estate for colonization.",
+            "Solar activity within normal parameters for most technological operations."
+        ],
+        'blue giant': [
+            "High radiation levels require enhanced shielding for all operations.",
+            "Stellar instability may affect long-term settlement viability.",
+            "Intense energy output accelerates stellar evolution timeline.",
+            "Extreme solar weather poses risks to unprotected spacecraft."
+        ],
+        'white dwarf': [
+            "Minimal stellar activity reduces interference with sensitive equipment.",
+            "Extreme gravitational fields may affect navigation systems.",
+            "Low energy output requires alternative power sources for operations.",
+            "Stellar remnant status indicates ancient system with potential artifacts."
+        ]
+    }
+    
+    templates = intel_templates.get(star_type, intel_templates['yellow dwarf'])
+    return templates[Lehmer32() % len(templates)]
+
+def generate_planetary_intel(body_type, classification, attributes):
+    """Generate intel brief for planets and moons."""
+    diplomacy = attributes.get('diplomacy', 'unknown')
+    government = attributes.get('government', 'Unknown')
+    economy = attributes.get('economy', 'Unknown')
+    technology = attributes.get('technology', 'Unknown')
+    
+    # Base intel on diplomacy status
+    diplomacy_intel = {
+        'friendly': [
+            "Allied territory with favorable trade agreements and docking privileges.",
+            "Friendly relations ensure safe passage and potential assistance.",
+            "Cooperative government welcomes foreign visitors and traders.",
+            "Established diplomatic ties provide security and commercial opportunities."
+        ],
+        'neutral': [
+            "Independent territory with standard diplomatic protocols.",
+            "Neutral stance requires careful navigation of local regulations.",
+            "Non-aligned government maintains cautious but fair trade policies.",
+            "Diplomatic neutrality offers opportunities for all factions."
+        ],
+        'enemy': [
+            "Hostile territory - approach with extreme caution and defensive measures.",
+            "Enemy forces may engage on sight - avoid unless absolutely necessary.",
+            "Aggressive government poses significant threat to unauthorized vessels.",
+            "Combat readiness essential when operating in this hostile region."
+        ],
+        'unknown': [
+            "Uncharted territory with unknown political affiliations and intentions.",
+            "First contact protocols recommended for initial diplomatic engagement.",
+            "Unknown government structure requires careful assessment before approach.",
+            "Proceed with caution until diplomatic status can be determined."
+        ]
+    }
+    
+    # Add technology-based intel
+    tech_intel = {
+        'Primitive': "Limited technological development restricts communication and trade options.",
+        'Post-Atomic': "Emerging technology base offers potential for technological exchange.",
+        'Starfaring': "Advanced spaceflight capabilities enable regular interstellar commerce.",
+        'Interstellar': "Sophisticated technology provides extensive trade and diplomatic opportunities.",
+        'Intergalactic': "Cutting-edge technology may offer access to advanced systems and knowledge."
+    }
+    
+    # Add economy-based intel
+    economy_intel = {
+        'Agricultural': "Primary food production makes this world valuable for supply operations.",
+        'Industrial': "Manufacturing capabilities offer repair services and equipment procurement.",
+        'Technological': "Research facilities may provide advanced technology and upgrades.",
+        'Commercial': "Major trade hub with extensive merchant networks and market opportunities.",
+        'Mining': "Resource extraction operations provide raw materials and fuel supplies.",
+        'Research': "Scientific installations offer data, analysis, and technological insights.",
+        'Tourism': "Service-oriented economy provides excellent facilities for crew rest and recreation."
+    }
+    
+    # Select primary intel based on diplomacy
+    primary_intel = diplomacy_intel.get(diplomacy, diplomacy_intel['unknown'])
+    selected_primary = primary_intel[Lehmer32() % len(primary_intel)]
+    
+    # Add secondary intel based on technology and economy
+    tech_detail = tech_intel.get(technology, "Technology level assessment unavailable.")
+    economy_detail = economy_intel.get(economy, "Economic analysis inconclusive.")
+    
+    # Combine into comprehensive brief
+    return f"{selected_primary} {tech_detail} {economy_detail}"
+
 def sector_to_seed(sector):
     """Convert a sector coordinate (e.g. 'A0') to a deterministic numeric seed"""
     if isinstance(sector, str) and len(sector) >= 2:
@@ -165,6 +386,9 @@ def generate_star_system(random_seed=None):
     try:
         # Convert string sector coordinates to numeric seeds
         if isinstance(random_seed, str):
+            # Check for special starter system
+            if random_seed == 'A0':
+                return generate_starter_system()
             random_seed = sector_to_seed(random_seed)
         elif not isinstance(random_seed, (int, type(None))):
             random_seed = hash(str(random_seed)) & 0xFFFFFFFF
@@ -188,6 +412,11 @@ def generate_star_system(random_seed=None):
     # Use the current RNG state for name generation to ensure uniqueness
     star_system['star_name'] = get_random_star_name(Lehmer32())
     star_system['star_size'] = 2.0  # Default star size for visualization
+    
+    # Add description and intel brief for the star
+    star_system['description'] = generate_description('star', star_system['star_type'])
+    star_system['intel_brief'] = generate_star_intel(star_system['star_type'])
+    
     star_system['planets'] = []
 
     # Generate planets with deterministic seeds
@@ -201,6 +430,73 @@ def generate_star_system(random_seed=None):
 
     # Restore the original RNG state
     restore_rng_state(original_state)
+    return star_system
+
+def generate_starter_system():
+    """Generate a special compact starter system for sector A0"""
+    star_system = {}
+    
+    # Fixed starter system configuration for consistency
+    star_system['star_type'] = 'yellow dwarf'
+    star_system['star_name'] = 'Sol'
+    star_system['star_size'] = 2.0
+    
+    # Custom descriptions for the starter system
+    star_system['description'] = "A stable yellow dwarf star providing optimal conditions for new space explorers to learn navigation and basic starship operations."
+    star_system['intel_brief'] = "Training zone designated for new starship captains. Minimal hostile activity expected. Ideal for learning basic ship systems and space navigation."
+    
+    # Create exactly one planet with a few moons for simplicity
+    starter_planet = {
+        'planet_name': 'Terra Prime',
+        'planet_type': 'Class-M',
+        'planet_size': 1.2,
+        'has_atmosphere': True,
+        'has_clouds': True,
+        'diplomacy': 'friendly',
+        'government': 'Democracy',
+        'economy': 'Training',
+        'technology': 'Starfaring',
+        'description': "A beautiful Earth-like training world with diverse biomes and friendly inhabitants. Perfect for new explorers to practice planetary scanning and basic diplomacy.",
+        'intel_brief': "Primary training facility for Starfleet Academy graduates. All services available. Excellent repair facilities and equipment suppliers for new captains.",
+        'params': {
+            'noise_scale': 0.02,
+            'octaves': 4,
+            'persistence': 0.5,
+            'lacunarity': 2.0,
+            'terrain_height': 0.3,
+            'seed': 12345
+        },
+        'moons': []
+    }
+    
+    # Add exactly 2 moons for practice navigation
+    moon1 = {
+        'moon_name': 'Luna',
+        'moon_type': 'rocky',
+        'moon_size': 0.3,
+        'diplomacy': 'friendly',
+        'government': 'Democracy', 
+        'economy': 'Mining',
+        'technology': 'Starfaring',
+        'description': "A barren but mineral-rich moon serving as a training ground for mining operations and surface exploration.",
+        'intel_brief': "Training mining facility. Safe environment for learning resource extraction and EVA procedures."
+    }
+    
+    moon2 = {
+        'moon_name': 'Europa',
+        'moon_type': 'ice',
+        'moon_size': 0.25,
+        'diplomacy': 'neutral',
+        'government': 'Independent',
+        'economy': 'Research',
+        'technology': 'Starfaring', 
+        'description': "An ice-covered moon with subsurface oceans, used for training in extreme environment operations.",
+        'intel_brief': "Independent research station specializing in exobiology and extreme environment training. Ice mining facilities available. Standard docking fees apply."
+    }
+    
+    starter_planet['moons'] = [moon1, moon2]
+    star_system['planets'] = [starter_planet]
+    
     return star_system
 
 # Generate a planet
@@ -249,6 +545,10 @@ def generate_planet(random_seed=None):
     planet['government'] = GOVERNMENT_TYPES[Lehmer32() % len(GOVERNMENT_TYPES)]
     planet['economy'] = ECONOMY_TYPES[Lehmer32() % len(ECONOMY_TYPES)]
     planet['technology'] = TECHNOLOGY_LEVELS[Lehmer32() % len(TECHNOLOGY_LEVELS)]
+    
+    # Add description and intel brief
+    planet['description'] = generate_description('planet', planet_type)
+    planet['intel_brief'] = generate_planetary_intel('planet', planet_type, planet)
 
     # Generate moons with deterministic seeds
     # Limit moons based on planet type
@@ -285,6 +585,10 @@ def generate_moon(random_seed=None):
     moon['government'] = GOVERNMENT_TYPES[Lehmer32() % len(GOVERNMENT_TYPES)]
     moon['economy'] = ECONOMY_TYPES[Lehmer32() % len(ECONOMY_TYPES)]
     moon['technology'] = TECHNOLOGY_LEVELS[Lehmer32() % len(TECHNOLOGY_LEVELS)]
+    
+    # Add description and intel brief
+    moon['description'] = generate_description('moon', moon['moon_type'])
+    moon['intel_brief'] = generate_planetary_intel('moon', moon['moon_type'], moon)
 
     # Restore the original RNG state
     restore_rng_state(original_state)
@@ -308,12 +612,16 @@ def generate_universe(num_star_systems, seed=None):
         # Create sector coordinate (e.g. 'A0', 'B1', etc.)
         sector = chr(ord('A') + row) + str(col)
         
-        # Create a unique but deterministic seed for this sector
-        # Combine the universe seed with the sector coordinate
-        sector_seed = (universe_seed + sector_to_seed(sector)) & 0xFFFFFFFF
-        
-        # Generate the star system using the combined seed
-        star_system = generate_star_system(random_seed=sector_seed)
+        # Special case for starter system
+        if sector == 'A0':
+            star_system = generate_starter_system()
+        else:
+            # Create a unique but deterministic seed for this sector
+            # Combine the universe seed with the sector coordinate
+            sector_seed = (universe_seed + sector_to_seed(sector)) & 0xFFFFFFFF
+            
+            # Generate the star system using the combined seed
+            star_system = generate_star_system(random_seed=sector_seed)
         
         # Add sector information to the star system
         star_system['sector'] = sector
