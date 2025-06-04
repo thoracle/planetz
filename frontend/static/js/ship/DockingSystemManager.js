@@ -10,8 +10,8 @@ export default class DockingSystemManager {
     constructor() {
         this.dockingRequirements = {
             maximumDockingSpeed: 1, // impulse speed
-            dockingEnergyCost: 25,
-            launchEnergyCost: 15,
+            dockingEnergyCost: 0,  // Free docking - docks provide refueling services
+            launchEnergyCost: 0,   // Free launch - players should be able to leave when low on energy
             dockingRange: 1.5 // km - default for moons, planets will be 4.0km
         };
         
@@ -246,11 +246,8 @@ export default class DockingSystemManager {
             return result;
         }
         
-        // Energy validation for launch
-        if (ship.currentEnergy < this.dockingRequirements.launchEnergyCost) {
-            result.canLaunch = false;
-            result.reasons.push(`Insufficient energy for launch (${ship.currentEnergy.toFixed(0)} < ${this.dockingRequirements.launchEnergyCost})`);
-        }
+        // Launch should not require energy - removed energy validation
+        // Players should be able to undock even when low on power to seek refueling
         
         // Impulse engines must be operational for launch
         const impulseEngines = ship.getSystem('impulse_engines');

@@ -350,6 +350,15 @@ export default class EnemyShip {
         
         if (healthAfter === 0 && healthBefore > 0) {
             console.log(`💥 SYSTEM DESTROYED: ${systemName} on ${this.shipName} completely disabled!`);
+            
+            // Play success sound for destroyed sub-system (50% duration for shorter sound)
+            // Try to get the weapon effects manager from the global game state
+            if (window.starfieldManager?.viewManager?.getShip()?.weaponSystem?.weaponEffectsManager) {
+                const effectsManager = window.starfieldManager.viewManager.getShip().weaponSystem.weaponEffectsManager;
+                // Play 50% duration success sound for sub-system destruction
+                effectsManager.playSuccessSound(null, 0.6, 0.5); 
+                console.log(`🎉 Playing sub-system destruction success sound (50% duration)`);
+            }
         }
         
         // Apply some collateral damage to ship hull (25% of system damage)
@@ -360,6 +369,14 @@ export default class EnemyShip {
         // Check if ship is destroyed due to hull damage
         if (this.currentHull <= 0) {
             console.log(`🔥 ${this.shipName} DESTROYED by collateral damage!`);
+            
+            // Play success sound for ship destruction (full duration)
+            if (window.starfieldManager?.viewManager?.getShip()?.weaponSystem?.weaponEffectsManager) {
+                const effectsManager = window.starfieldManager.viewManager.getShip().weaponSystem.weaponEffectsManager;
+                effectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
+                console.log(`🎉 Playing ship destruction success sound (full duration)`);
+            }
+            
             return { isDestroyed: true };
         }
         

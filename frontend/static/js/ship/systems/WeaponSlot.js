@@ -625,165 +625,74 @@ export class WeaponSlot {
                             // Check if we have a sub-target active for precision targeting
                             const ship = this.starfieldManager?.viewManager?.getShip();
                             const targetComputer = ship?.getSystem('target_computer');
-                            let damageApplied = false;
                             
-                            // Apply sub-targeting bonuses and direct system damage if active
-                            if (targetComputer && targetComputer.hasSubTargeting() && targetComputer.currentSubTarget) {
-                                const subTarget = targetComputer.currentSubTarget;
-                                const accuracyBonus = targetComputer.getSubTargetAccuracyBonus();
-                                const damageBonus = targetComputer.getSubTargetDamageBonus();
+                            console.log(`🐛 DEBUG: Checking damage application for ${enemyTarget.ship.shipName || 'enemy ship'}`);
+                            console.log(`🐛 DEBUG: Has target computer: ${!!targetComputer}`);
+                            console.log(`🐛 DEBUG: Has sub-targeting: ${targetComputer ? targetComputer.hasSubTargeting() : false}`);
+                            console.log(`🐛 DEBUG: Current sub-target: ${targetComputer?.currentSubTarget?.displayName || 'none'}`);
+                            
+                            // Check for active sub-targeting (must be valid target object, not null)
+                            if (targetComputer && 
+                                targetComputer.hasSubTargeting() && 
+                                targetComputer.currentSubTarget && 
+                                targetComputer.currentSubTarget !== null) {
                                 
-                                // Calculate enhanced damage with sub-targeting bonus
-                                const enhancedDamage = weapon.damage * (1 + damageBonus);
+                                console.log(`🎯 SUB-TARGET: ${targetComputer.currentSubTarget.displayName} targeted with 30% damage bonus`);
                                 
-                                console.log(`🎯 SUB-TARGET: ${subTarget.displayName} targeted with ${damageBonus * 100}% damage bonus`);
+                                // Calculate enhanced damage for sub-targeting
+                                const enhancedDamage = weapon.damage * 1.3; // 30% bonus
                                 console.log(`💥 Enhanced damage: ${weapon.damage} → ${enhancedDamage.toFixed(1)} (+${(enhancedDamage - weapon.damage).toFixed(1)})`);
                                 
-                                // Apply damage directly to the targeted system
+                                // Apply enhanced damage to specific sub-target using systemName
                                 if (enemyTarget.ship.applySubTargetDamage) {
-                                    damageApplied = enemyTarget.ship.applySubTargetDamage(subTarget.systemName, enhancedDamage, 'energy');
-                                    console.log(`🎯 Applied ${enhancedDamage.toFixed(1)} damage directly to ${subTarget.displayName}`);
+                                    enemyTarget.ship.applySubTargetDamage(targetComputer.currentSubTarget.systemName, enhancedDamage, 'energy');
+                                    console.log(`🎯 Applied ${enhancedDamage.toFixed(1)} damage directly to ${targetComputer.currentSubTarget.displayName}`);
                                     
-                                    // Check if ship was destroyed by collateral damage
-                                    if (damageApplied && typeof damageApplied === 'object' && damageApplied.isDestroyed) {
-                                        console.log(`🔥 ${enemyTarget.ship.shipName || 'enemy ship'} DESTROYED by collateral damage!`);
+                                    // Check if target was destroyed by sub-target damage
+                                    if (enemyTarget.ship.currentHull <= 0) {
+                                        console.log(`🔥 ${enemyTarget.ship.shipName || 'Enemy ship'} DESTROYED by collateral damage!`);
                                         
-                                        // Create death explosion effect (larger and different color)
-                                        const deathExplosionRadius = Math.min(weapon.damage * 4, 200); // Larger death explosion
-                                        effectsManager.createExplosion(targetHit.position, deathExplosionRadius, 'death', targetPos);
-                                        
-                                        // Play success sound for enemy destruction
-                                        if (effectsManager.playSuccessSound) {
-                                            effectsManager.playSuccessSound(targetHit.position);
+                                        // Play success sound for ship destruction (full duration)
+                                        if (ship?.weaponSystem?.weaponEffectsManager) {
+                                            ship.weaponSystem.weaponEffectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
+                                            console.log(`🎉 Playing ship destruction success sound (full duration)`);
                                         }
                                         
-                                        // Remove the mesh from the scene
-                                        if (enemyTarget.mesh && ship.starfieldManager) {
-                                            ship.starfieldManager.scene.remove(enemyTarget.mesh);
-                                            
-                                            // Dispose of mesh resources
-                                            enemyTarget.mesh.traverse((child) => {
-                                                if (child.geometry) {
-                                                    child.geometry.dispose();
-                                                }
-                                                if (child.material) {
-                                                    if (Array.isArray(child.material)) {
-                                                        child.material.forEach(material => material.dispose());
-                                                    } else {
-                                                        child.material.dispose();
-                                                    }
-                                                }
-                                            });
-                                            
-                                            // Remove from StarfieldManager tracking arrays
-                                            const meshIndex = ship.starfieldManager.dummyShipMeshes.indexOf(enemyTarget.mesh);
-                                            if (meshIndex > -1) {
-                                                ship.starfieldManager.dummyShipMeshes.splice(meshIndex, 1);
-                                            }
-                                            
-                                            const shipIndex = ship.starfieldManager.targetDummyShips.indexOf(enemyTarget.ship);
-                                            if (shipIndex > -1) {
-                                                ship.starfieldManager.targetDummyShips.splice(shipIndex, 1);
-                                            }
-                                            
-                                            // Update target list to remove destroyed ship
-                                            ship.starfieldManager.updateTargetList();
-                                            
-                                            // Notify StarfieldManager about destroyed target for proper cycling
-                                            if (ship.starfieldManager.removeDestroyedTarget) {
-                                                ship.starfieldManager.removeDestroyedTarget(enemyTarget.ship);
-                                            }
-                                            
-                                            console.log(`💀 Removed destroyed ship ${enemyTarget.ship.shipName} from scene and tracking arrays`);
-                                        }
-                                    } else {
-                                        // Fallback: apply enhanced damage to ship hull
-                                        console.warn('Ship has no applySubTargetDamage method, applying to hull with bonus');
-                                        const damageResult = enemyTarget.ship.applyDamage(enhancedDamage, 'energy');
-                                        damageApplied = true;
+                                        this.starfieldManager.removeDestroyedTarget(enemyTarget.ship);
+                                    }
+                                } else {
+                                    // Fallback: apply enhanced damage to hull
+                                    console.warn('Ship has no applySubTargetDamage method, applying to hull with bonus');
+                                    enemyTarget.ship.applyDamage(enhancedDamage, 'energy');
+                                    console.log(`💥 Enhanced hull hit: ${enemyTarget.ship.shipName || 'Enemy ship'} for ${enhancedDamage.toFixed(1)} damage - hull: ${enemyTarget.ship.currentHull}/${enemyTarget.ship.maxHull}`);
+                                }
+                                
+                                // Update sub-target system display if available
+                                if (targetComputer.currentSubTarget && enemyTarget.ship.getSystem) {
+                                    const subTargetSystem = enemyTarget.ship.getSystem(targetComputer.currentSubTarget.systemName);
+                                    if (subTargetSystem && subTargetSystem.health !== undefined) {
+                                        const healthPercent = (subTargetSystem.health * 100).toFixed(1);
+                                        console.log(`🎯 Sub-target system ${targetComputer.currentSubTarget.displayName} health: ${healthPercent}%`);
                                     }
                                 }
                                 
-                                // If no sub-targeting was applied, use normal damage
-                                if (!damageApplied) {
-                                    const damageResult = enemyTarget.ship.applyDamage(weapon.damage, 'energy');
-                                    console.log(`💥 Normal hit: ${enemyTarget.ship.shipName || 'enemy ship'} for ${weapon.damage} damage - hull: ${enemyTarget.ship.currentHull}/${enemyTarget.ship.maxHull}`);
+                            } else {
+                                // No sub-targeting - apply normal damage
+                                console.log(`🐛 DEBUG: No sub-targeting - applying normal damage`);
+                                enemyTarget.ship.applyDamage(weapon.damage, 'energy');
+                                console.log(`💥 Normal hit: ${enemyTarget.ship.shipName || 'Enemy ship'} for ${weapon.damage} damage - hull: ${enemyTarget.ship.currentHull}/${enemyTarget.ship.maxHull}`);
+                                
+                                // Check if target was destroyed
+                                if (enemyTarget.ship.currentHull <= 0) {
+                                    console.log(`🔥 ${enemyTarget.ship.shipName || 'Enemy ship'} DESTROYED!`);
                                     
-                                    // Check if ship was destroyed and remove it from the scene
-                                    if (damageResult.isDestroyed || enemyTarget.ship.currentHull <= 0) {
-                                        console.log(`🔥 ${enemyTarget.ship.shipName || 'enemy ship'} DESTROYED!`);
-                                        
-                                        // Create death explosion effect (larger and different color)
-                                        const deathExplosionRadius = Math.min(weapon.damage * 4, 200); // Larger death explosion
-                                        effectsManager.createExplosion(targetHit.position, deathExplosionRadius, 'death', targetPos);
-                                        
-                                        // Play success sound for enemy destruction
-                                        if (effectsManager.playSuccessSound) {
-                                            effectsManager.playSuccessSound(targetHit.position);
-                                        }
-                                        
-                                        // Remove the mesh from the scene
-                                        if (enemyTarget.mesh && ship.starfieldManager) {
-                                            ship.starfieldManager.scene.remove(enemyTarget.mesh);
-                                            
-                                            // Dispose of mesh resources
-                                            enemyTarget.mesh.traverse((child) => {
-                                                if (child.geometry) {
-                                                    child.geometry.dispose();
-                                                }
-                                                if (child.material) {
-                                                    if (Array.isArray(child.material)) {
-                                                        child.material.forEach(material => material.dispose());
-                                                    } else {
-                                                        child.material.dispose();
-                                                    }
-                                                }
-                                            });
-                                            
-                                            // Remove from StarfieldManager tracking arrays
-                                            const meshIndex = ship.starfieldManager.dummyShipMeshes.indexOf(enemyTarget.mesh);
-                                            if (meshIndex > -1) {
-                                                ship.starfieldManager.dummyShipMeshes.splice(meshIndex, 1);
-                                            }
-                                            
-                                            const shipIndex = ship.starfieldManager.targetDummyShips.indexOf(enemyTarget.ship);
-                                            if (shipIndex > -1) {
-                                                ship.starfieldManager.targetDummyShips.splice(shipIndex, 1);
-                                            }
-                                            
-                                            // Update target list to remove destroyed ship
-                                            ship.starfieldManager.updateTargetList();
-                                            
-                                            // Notify StarfieldManager about destroyed target for proper cycling
-                                            if (ship.starfieldManager.removeDestroyedTarget) {
-                                                ship.starfieldManager.removeDestroyedTarget(enemyTarget.ship);
-                                            }
-                                            
-                                            console.log(`💀 Removed destroyed ship ${enemyTarget.ship.shipName} from scene and tracking arrays`);
-                                        }
+                                    // Play success sound for ship destruction (full duration)
+                                    if (ship?.weaponSystem?.weaponEffectsManager) {
+                                        ship.weaponSystem.weaponEffectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
+                                        console.log(`🎉 Playing ship destruction success sound (full duration)`);
                                     }
-                                } else {
-                                    // Sub-targeting was used, check if the targeted system was destroyed
-                                    const subTarget = targetComputer.currentSubTarget;
-                                    console.log(`🎯 Sub-target system ${subTarget.displayName} health: ${(subTarget.system.healthPercentage * 100).toFixed(1)}%`);
                                     
-                                    if (subTarget.system.healthPercentage <= 0) {
-                                        console.log(`💥 SYSTEM DESTROYED: ${subTarget.displayName} has been completely disabled!`);
-                                        
-                                        // Play success sound for sub-system destruction
-                                        if (effectsManager.playSuccessSound) {
-                                            effectsManager.playSuccessSound(targetHit.position, 0.6, 0.5); // 60% volume, 50% duration
-                                        }
-                                        
-                                        // Update sub-targets to remove destroyed system from targeting list
-                                        targetComputer.updateSubTargets();
-                                        
-                                        // If no more sub-targets available, clear sub-targeting
-                                        if (targetComputer.availableSubTargets.length === 0) {
-                                            console.log(`🎯 No more targetable systems on ${enemyTarget.ship.shipName || 'enemy ship'}`);
-                                            targetComputer.clearSubTarget();
-                                        }
-                                    }
+                                    this.starfieldManager.removeDestroyedTarget(enemyTarget.ship);
                                 }
                             }
                         }

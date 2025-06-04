@@ -322,19 +322,12 @@ export class ViewManager {
                     // Check if chart cards are installed (required for basic viewing)
                     let hasChartCards = false;
                     try {
-                        const cardCheck = this.ship.hasSystemCardsSync('galactic_chart');
-                        console.log(`🗺️ ViewManager G key: Raw card check result:`, cardCheck);
-                        console.log(`🗺️ ViewManager G key: Card check type:`, typeof cardCheck);
-                        
-                        if (typeof cardCheck === 'boolean') {
-                            hasChartCards = cardCheck;
-                            console.log(`🗺️ ViewManager G key: Boolean result:`, hasChartCards);
-                        } else if (cardCheck && typeof cardCheck === 'object') {
-                            hasChartCards = cardCheck.hasCards;
-                            console.log(`🗺️ ViewManager G key: Object result - hasCards:`, cardCheck.hasCards, 'missingCards:', cardCheck.missingCards);
+                        if (this.ship.hasSystemCards && typeof this.ship.hasSystemCards === 'function') {
+                            hasChartCards = this.ship.hasSystemCards('galactic_chart');
+                            console.log(`🗺️ ViewManager G key: Card check result:`, hasChartCards);
                         } else {
-                            hasChartCards = false;
-                            console.log(`🗺️ ViewManager G key: Unknown result type, defaulting to false`);
+                            hasChartCards = true; // Fallback for ships without card system
+                            console.log(`🗺️ ViewManager G key: No card system - allowing access`);
                         }
                     } catch (error) {
                         console.warn('Chart card check failed:', error);
@@ -1011,6 +1004,8 @@ export class ViewManager {
         // Default state - no target in sights
         let targetState = 'none';
         let targetFaction = null;
+        let targetShip = null;
+        let targetDistance = null;
         
         // Only check for targets if we have a weapon and access to the scene
         if (currentWeaponRange > 0 && this.starfieldManager?.camera && this.starfieldManager?.scene) {
@@ -1082,14 +1077,16 @@ export class ViewManager {
                     targetState = 'outRange';
                 }
                 
-                // Determine faction of the target
+                // Store target information for display
+                targetShip = closestEnemyShip;
+                targetDistance = closestEnemyDistance;
                 targetFaction = this.getFactionColor(closestEnemyShip);
             }
         }
         
         // Apply visual changes based on target state and faction
-        this.applyCrosshairStyle(this.frontCrosshairElements, targetState, targetFaction);
-        this.applyCrosshairStyle(this.aftCrosshairElements, targetState, targetFaction);
+        this.applyCrosshairStyle(this.frontCrosshairElements, targetState, targetFaction, targetShip, targetDistance);
+        this.applyCrosshairStyle(this.aftCrosshairElements, targetState, targetFaction, targetShip, targetDistance);
     }
     
     /**
@@ -1123,8 +1120,10 @@ export class ViewManager {
      * @param {Array} elements - Array of crosshair elements to style
      * @param {string} state - Target state: 'none', 'inRange', 'closeRange', 'outRange'
      * @param {string} factionColor - Faction color hex code, null if no target
+     * @param {Object} targetShip - Target ship object, null if no target
+     * @param {number} targetDistance - Distance to target in km, null if no target
      */
-    applyCrosshairStyle(elements, state, factionColor = null) {
+    applyCrosshairStyle(elements, state, factionColor = null, targetShip = null, targetDistance = null) {
         // Use faction color if target detected, otherwise white for empty space
         const baseColor = factionColor || '#ffffff';
         
@@ -1132,8 +1131,8 @@ export class ViewManager {
         const container = elements[0]?.parentElement;
         if (!container) return;
         
-        // Remove any existing range indicators
-        const existingIndicators = container.querySelectorAll('.range-indicator');
+        // Remove any existing target info indicators
+        const existingIndicators = container.querySelectorAll('.target-info, .range-indicator');
         existingIndicators.forEach(indicator => indicator.remove());
         
         // Apply different crosshair shapes based on target state
@@ -1178,23 +1177,38 @@ export class ViewManager {
             opacity: ${opacity};
         `;
         
+        // Check if this is the aft crosshair container
+        const isAftCrosshair = container === this.aftCrosshair;
+        
         switch(shapeType) {
             case 'standard':
-                // Classic + crosshair
-                container.innerHTML += `
-                    <div class="crosshair-element" style="${baseStyle}
-                        top: 50%; left: 0; width: calc(50% - 8px); height: 2px; transform: translateY(-50%);
-                    "></div>
-                    <div class="crosshair-element" style="${baseStyle}
-                        top: 50%; right: 0; width: calc(50% - 8px); height: 2px; transform: translateY(-50%);
-                    "></div>
-                    <div class="crosshair-element" style="${baseStyle}
-                        top: 0; left: 50%; height: calc(50% - 8px); width: 2px; transform: translateX(-50%);
-                    "></div>
-                    <div class="crosshair-element" style="${baseStyle}
-                        bottom: 0; left: 50%; height: calc(50% - 8px); width: 2px; transform: translateX(-50%);
-                    "></div>
-                `;
+                if (isAftCrosshair) {
+                    // Aft view - only horizontal lines (-- --)
+                    container.innerHTML += `
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 50%; left: 0; width: 18px; height: 2px; transform: translateY(-50%);
+                        "></div>
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 50%; right: 0; width: 18px; height: 2px; transform: translateY(-50%);
+                        "></div>
+                    `;
+                } else {
+                    // Front view - classic + crosshair
+                    container.innerHTML += `
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 50%; left: 0; width: calc(50% - 8px); height: 2px; transform: translateY(-50%);
+                        "></div>
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 50%; right: 0; width: calc(50% - 8px); height: 2px; transform: translateY(-50%);
+                        "></div>
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 0; left: 50%; height: calc(50% - 8px); width: 2px; transform: translateX(-50%);
+                        "></div>
+                        <div class="crosshair-element" style="${baseStyle}
+                            bottom: 0; left: 50%; height: calc(50% - 8px); width: 2px; transform: translateX(-50%);
+                        "></div>
+                    `;
+                }
                 break;
                 
             case 'inRange':
@@ -1214,51 +1228,81 @@ export class ViewManager {
                 break;
                 
             case 'closeRange':
-                // + with extended tips for close range
-                container.innerHTML += `
-                    <div class="crosshair-element" style="${baseStyle}
-                        top: 50%; left: 0; width: calc(50% - 4px); height: 2px; transform: translateY(-50%);
-                        box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
-                    "></div>
-                    <div class="crosshair-element" style="${baseStyle}
-                        top: 50%; right: 0; width: calc(50% - 4px); height: 2px; transform: translateY(-50%);
-                        box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
-                    "></div>
-                    <div class="crosshair-element" style="${baseStyle}
-                        top: 0; left: 50%; height: calc(50% - 4px); width: 2px; transform: translateX(-50%);
-                        box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
-                    "></div>
-                    <div class="crosshair-element" style="${baseStyle}
-                        bottom: 0; left: 50%; height: calc(50% - 4px); width: 2px; transform: translateX(-50%);
-                        box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
-                    "></div>
-                `;
+                if (isAftCrosshair) {
+                    // Aft view - enhanced horizontal lines for close range
+                    container.innerHTML += `
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 50%; left: 0; width: 22px; height: 2px; transform: translateY(-50%);
+                            box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
+                        "></div>
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 50%; right: 0; width: 22px; height: 2px; transform: translateY(-50%);
+                            box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
+                        "></div>
+                    `;
+                } else {
+                    // Front view - + with extended tips for close range
+                    container.innerHTML += `
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 50%; left: 0; width: calc(50% - 4px); height: 2px; transform: translateY(-50%);
+                            box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
+                        "></div>
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 50%; right: 0; width: calc(50% - 4px); height: 2px; transform: translateY(-50%);
+                            box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
+                        "></div>
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 0; left: 50%; height: calc(50% - 4px); width: 2px; transform: translateX(-50%);
+                            box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
+                        "></div>
+                        <div class="crosshair-element" style="${baseStyle}
+                            bottom: 0; left: 50%; height: calc(50% - 4px); width: 2px; transform: translateX(-50%);
+                            box-shadow: 0 0 6px ${color}; animation: pulse 1s infinite;
+                        "></div>
+                    `;
+                }
                 break;
                 
             case 'outRange':
-                // Target out of range - use standard crosshair for now (special version disabled)
-                container.innerHTML += `
-                    <div class="crosshair-element" style="${baseStyle}
-                        top: 50%; left: 0; width: calc(50% - 8px); height: 2px; 
-                        transform: translateY(-50%) rotate(30deg); transform-origin: right center;
-                        box-shadow: 0 0 4px ${color};
-                    "></div>
-                    <div class="crosshair-element" style="${baseStyle}
-                        top: 50%; right: 0; width: calc(50% - 8px); height: 2px; 
-                        transform: translateY(-50%) rotate(30deg); transform-origin: left center;
-                        box-shadow: 0 0 4px ${color};
-                    "></div>
-                    <div class="crosshair-element" style="${baseStyle}
-                        top: 0; left: 50%; height: calc(50% - 8px); width: 2px; 
-                        transform: translateX(-50%) rotate(30deg); transform-origin: center bottom;
-                        box-shadow: 0 0 4px ${color};
-                    "></div>
-                    <div class="crosshair-element" style="${baseStyle}
-                        bottom: 0; left: 50%; height: calc(50% - 8px); width: 2px; 
-                        transform: translateX(-50%) rotate(30deg); transform-origin: center top;
-                        box-shadow: 0 0 4px ${color};
-                    "></div>
-                `;
+                if (isAftCrosshair) {
+                    // Aft view - angled horizontal lines for out of range
+                    container.innerHTML += `
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 50%; left: 0; width: 18px; height: 2px; 
+                            transform: translateY(-50%) rotate(15deg); transform-origin: right center;
+                            box-shadow: 0 0 4px ${color};
+                        "></div>
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 50%; right: 0; width: 18px; height: 2px; 
+                            transform: translateY(-50%) rotate(-15deg); transform-origin: left center;
+                            box-shadow: 0 0 4px ${color};
+                        "></div>
+                    `;
+                } else {
+                    // Front view - angled cross for out of range
+                    container.innerHTML += `
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 50%; left: 0; width: calc(50% - 8px); height: 2px; 
+                            transform: translateY(-50%) rotate(30deg); transform-origin: right center;
+                            box-shadow: 0 0 4px ${color};
+                        "></div>
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 50%; right: 0; width: calc(50% - 8px); height: 2px; 
+                            transform: translateY(-50%) rotate(30deg); transform-origin: left center;
+                            box-shadow: 0 0 4px ${color};
+                        "></div>
+                        <div class="crosshair-element" style="${baseStyle}
+                            top: 0; left: 50%; height: calc(50% - 8px); width: 2px; 
+                            transform: translateX(-50%) rotate(30deg); transform-origin: center bottom;
+                            box-shadow: 0 0 4px ${color};
+                        "></div>
+                        <div class="crosshair-element" style="${baseStyle}
+                            bottom: 0; left: 50%; height: calc(50% - 8px); width: 2px; 
+                            transform: translateX(-50%) rotate(30deg); transform-origin: center top;
+                            box-shadow: 0 0 4px ${color};
+                        "></div>
+                    `;
+                }
                 break;
         }
         
@@ -1334,6 +1378,129 @@ export class ViewManager {
         `;
         
         container.appendChild(ring);
+    }
+
+    /**
+     * Switch to a different ship type and reinitialize systems
+     * @param {string} shipType - The new ship type to switch to
+     */
+    async switchShip(shipType) {
+        console.log(`🔄 ViewManager: Switching ship from ${this.ship.shipType} to ${shipType}`);
+        
+        // Store current energy level to preserve it during switch
+        const currentEnergyPercent = this.ship.currentEnergy / Math.max(this.ship.maxEnergy, 1);
+        
+        // Create new ship instance
+        const oldShip = this.ship;
+        this.ship = new Ship(shipType);
+        
+        // Restore energy as a percentage of max energy
+        this.ship.currentEnergy = Math.max(100, this.ship.maxEnergy * currentEnergyPercent);
+        
+        // CRITICAL FIX: Load saved card configuration from PlayerData
+        // This ensures that installed cards like impulse_engines are properly loaded
+        try {
+            // Import PlayerData and CardInventoryUI to access saved configurations
+            const module = await import('../ui/CardInventoryUI.js');
+            const CardInventoryUI = module.default;
+            const playerData = CardInventoryUI.getPlayerData();
+            
+            if (playerData) {
+                const savedConfig = playerData.getShipConfiguration(shipType);
+                console.log(`📦 Loading saved configuration for ${shipType}:`, savedConfig.size, 'cards');
+                
+                // Load the configuration into the ship's CardSystemIntegration
+                if (this.ship.cardSystemIntegration && savedConfig.size > 0) {
+                    // Clear existing cards and load from saved configuration
+                    this.ship.cardSystemIntegration.installedCards.clear();
+                    
+                    savedConfig.forEach((cardData, slotId) => {
+                        if (cardData && cardData.cardType) {
+                            this.ship.cardSystemIntegration.installedCards.set(slotId, {
+                                cardType: cardData.cardType,
+                                level: cardData.level || 1
+                            });
+                            console.log(`🃏 Loaded card: ${cardData.cardType} (Lv.${cardData.level || 1}) in slot ${slotId}`);
+                        }
+                    });
+                    
+                    // Initialize systems from the loaded cards
+                    await this.ship.cardSystemIntegration.createSystemsFromCards();
+                    console.log('✅ Card systems initialized from saved configuration');
+                    
+                } else {
+                    console.log(`⚠️ No saved configuration found for ${shipType}, installing basic starter cards`);
+                    
+                    // CRITICAL: Install basic starter cards when no saved config exists
+                    // This ensures every ship has essential systems like impulse_engines
+                    if (this.ship.cardSystemIntegration) {
+                        this.ship.cardSystemIntegration.installedCards.clear();
+                        
+                        // Install essential starter cards for ship operation
+                        const starterCards = [
+                            { slotId: 'engine_1', cardType: 'impulse_engines', level: 1 },
+                            { slotId: 'power_1', cardType: 'energy_reactor', level: 1 },
+                            { slotId: 'utility_1', cardType: 'target_computer', level: 1 },
+                            { slotId: 'utility_2', cardType: 'long_range_scanner', level: 1 },
+                            { slotId: 'utility_3', cardType: 'galactic_chart', level: 1 },
+                            { slotId: 'utility_4', cardType: 'hull_plating', level: 1 }
+                        ];
+                        
+                        starterCards.forEach(({ slotId, cardType, level }) => {
+                            this.ship.cardSystemIntegration.installedCards.set(slotId, {
+                                cardType: cardType,
+                                level: level
+                            });
+                            console.log(`🃏 Installed starter card: ${cardType} (Lv.${level}) in slot ${slotId}`);
+                        });
+                        
+                        // Initialize systems from starter cards
+                        await this.ship.cardSystemIntegration.createSystemsFromCards();
+                        console.log('✅ Starter card systems initialized');
+                    }
+                }
+                
+                // Verify impulse engines are loaded
+                const impulseEngines = this.ship.getSystem('impulse_engines');
+                if (impulseEngines) {
+                    console.log('✅ Impulse engines loaded successfully:', impulseEngines.isOperational());
+                } else {
+                    console.error('❌ Impulse engines still not found after configuration loading');
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error loading saved configuration:', error);
+        }
+        
+        // Update SubspaceRadio with new ship reference
+        if (this.subspaceRadio) {
+            this.subspaceRadio.ship = this.ship;
+        }
+        
+        // Update StarfieldManager ship reference if available
+        if (this.starfieldManager) {
+            this.starfieldManager.ship = this.ship;
+            
+            // Set StarfieldManager reference on new ship
+            if (typeof this.ship.setStarfieldManager === 'function') {
+                this.ship.setStarfieldManager(this.starfieldManager);
+            }
+            
+            // Update damage control HUD with new ship
+            if (this.starfieldManager.damageControlHUD) {
+                this.starfieldManager.damageControlHUD.ship = this.ship;
+            }
+        }
+        
+        // Initialize ship systems for the new ship
+        this.initializeShipSystems();
+        
+        // If StarfieldManager exists and has ship system initialization, trigger it
+        if (this.starfieldManager && typeof this.starfieldManager.initializeShipSystems === 'function') {
+            this.starfieldManager.initializeShipSystems();
+        }
+        
+        console.log(`✅ ViewManager: Ship switched to ${shipType}`, this.ship.getStatus());
     }
 }
 

@@ -16,24 +16,28 @@ SHIP_CONFIGS = {
         'maxEnergy': 1000,
         'energyRechargeRate': 20,
         'maxHull': 300,
-        'systemSlots': 9,  # Updated to match frontend (was 6)
+        'systemSlots': 11,  # Updated to match frontend
         'slotConfig': {
             'engines': 1,
             'reactor': 1,
             'weapons': 4,  # Fixed: exactly 4 weapon slots for testing
-            'utility': 3
+            'utility': 5   # Updated to match frontend (was 3)
         },
         'defaultSystems': {
             'hull_plating': {'level': 1, 'slots': 1},
             'energy_reactor': {'level': 1, 'slots': 1},
             'impulse_engines': {'level': 1, 'slots': 1, 'energyConsumption': 8},
-            'target_computer': {'level': 1, 'slots': 1, 'energyConsumption': 3},
-            'laser_cannon': {'level': 1, 'slots': 1, 'energyConsumption': 0}
+            'target_computer': {'level': 1, 'slots': 1, 'energyConsumption': 5},
+            'long_range_scanner': {'level': 1, 'slots': 1, 'energyConsumption': 4},
+            'galactic_chart': {'level': 1, 'slots': 1, 'energyConsumption': 6}
         },
         'starterCards': {
-            'utility_1': {'cardType': 'target_computer', 'level': 1},
-            'utility_2': {'cardType': 'impulse_engines', 'level': 1},
-            'utility_3': {'cardType': 'energy_reactor', 'level': 1},
+            'utility_1': {'cardType': 'target_computer', 'level': 3},
+            'utility_2': {'cardType': 'hull_plating', 'level': 1},
+            'utility_3': {'cardType': 'long_range_scanner', 'level': 1},
+            'utility_4': {'cardType': 'galactic_chart', 'level': 1},
+            'engine_1': {'cardType': 'impulse_engines', 'level': 1},
+            'power_1': {'cardType': 'energy_reactor', 'level': 1},
             'weapon_1': {'cardType': 'laser_cannon', 'level': 1},
             'weapon_2': {'cardType': 'pulse_cannon', 'level': 1},
             'weapon_3': {'cardType': 'plasma_cannon', 'level': 1},
@@ -57,7 +61,7 @@ SHIP_CONFIGS = {
             'reactor': 1,
             'shields': 1,
             'weapons': 4,  # Maximum weapons for heavy combat role
-            'utility': 11
+            'utility': 11  # Updated to match frontend (was 11)
         },
         'defaultSystems': {
             'hull_plating': {'level': 5, 'slots': 1},
@@ -86,13 +90,13 @@ SHIP_CONFIGS = {
         'maxEnergy': 3500,
         'energyRechargeRate': 60,
         'maxHull': 500,
-        'systemSlots': 15,
+        'systemSlots': 18,  # Updated to match frontend (was 15)
         'slotConfig': {
             'engines': 1,
             'reactor': 1,
             'shields': 1,
             'weapons': 2,  # Fewer weapons - reconnaissance focused
-            'utility': 10
+            'utility': 14  # Updated to match frontend (was 10)
         },
         'defaultSystems': {
             'hull_plating': {'level': 3, 'slots': 1},
@@ -113,102 +117,102 @@ SHIP_CONFIGS = {
         'name': 'Light Fighter',
         'description': 'Balanced combat vessel for dogfights and skirmishes',
         'baseSpeed': 70,
-        'baseArmor': 40,
+        'baseArmor': 50,
         'baseFirepower': 60,
-        'baseCargoCapacity': 20,
-        'baseHardpoints': 5,
+        'baseCargoCapacity': 12,
+        'baseHardpoints': 6,
         'maxEnergy': 4000,
-        'energyRechargeRate': 45,
+        'energyRechargeRate': 55,
         'maxHull': 700,
-        'systemSlots': 16,
+        'systemSlots': 18,
         'slotConfig': {
             'engines': 1,
             'reactor': 1,
             'shields': 1,
-            'weapons': 3,  # Good combat capability but not maximum
-            'utility': 10
+            'weapons': 3,
+            'utility': 13
         },
         'defaultSystems': {
             'hull_plating': {'level': 4, 'slots': 1},
             'energy_reactor': {'level': 4, 'slots': 1},
             'shield_generator': {'level': 3, 'slots': 1, 'energyConsumption': 15},
-            'cargo_hold': {'level': 2, 'slots': 1},
-            'impulse_engines': {'level': 3, 'slots': 1, 'energyConsumption': 18},
+            'cargo_hold': {'level': 1, 'slots': 1},
+            'impulse_engines': {'level': 1, 'slots': 1, 'energyConsumption': 18},
             'warp_drive': {'level': 1, 'slots': 1, 'energyConsumption': 0},
-            'shields': {'level': 1, 'slots': 1, 'energyConsumption': 20},
-            'laser_cannon': {'level': 3, 'slots': 1, 'energyConsumption': 0},
+            'shields': {'level': 2, 'slots': 1, 'energyConsumption': 20},
+            'plasma_cannon': {'level': 2, 'slots': 1, 'energyConsumption': 0},
             'long_range_scanner': {'level': 1, 'slots': 1, 'energyConsumption': 5},
             'subspace_radio': {'level': 1, 'slots': 1, 'energyConsumption': 6},
             'galactic_chart': {'level': 1, 'slots': 1, 'energyConsumption': 8},
-            'target_computer': {'level': 2, 'slots': 1, 'energyConsumption': 7}
+            'target_computer': {'level': 3, 'slots': 1, 'energyConsumption': 7}
         }
     },
     'light_freighter': {
         'name': 'Light Freighter',
         'description': 'Versatile trading vessel with moderate combat capability',
-        'baseSpeed': 60,
-        'baseArmor': 50,
-        'baseFirepower': 40,
-        'baseCargoCapacity': 80,
+        'baseSpeed': 40,
+        'baseArmor': 60,
+        'baseFirepower': 30,
+        'baseCargoCapacity': 50,
         'baseHardpoints': 6,
-        'maxEnergy': 4500,
-        'energyRechargeRate': 40,
-        'maxHull': 800,
-        'systemSlots': 17,
-        'slotConfig': {
-            'engines': 1,
-            'reactor': 1,
-            'shields': 1,
-            'weapons': 2,  # Moderate defensive capability
-            'utility': 12
-        },
-        'defaultSystems': {
-            'hull_plating': {'level': 4, 'slots': 1},
-            'energy_reactor': {'level': 5, 'slots': 1},
-            'shield_generator': {'level': 4, 'slots': 1, 'energyConsumption': 20},
-            'cargo_hold': {'level': 8, 'slots': 1},
-            'impulse_engines': {'level': 3, 'slots': 1, 'energyConsumption': 22},
-            'warp_drive': {'level': 1, 'slots': 1, 'energyConsumption': 0},
-            'shields': {'level': 1, 'slots': 1, 'energyConsumption': 25},
-            'laser_cannon': {'level': 2, 'slots': 1, 'energyConsumption': 0},
-            'long_range_scanner': {'level': 2, 'slots': 1, 'energyConsumption': 4},
-            'subspace_radio': {'level': 1, 'slots': 1, 'energyConsumption': 6},
-            'galactic_chart': {'level': 1, 'slots': 1, 'energyConsumption': 8},
-            'target_computer': {'level': 1, 'slots': 1, 'energyConsumption': 8}
-        }
-    },
-    'heavy_freighter': {
-        'name': 'Heavy Freighter',
-        'description': 'High-capacity trading vessel for bulk cargo',
-        'baseSpeed': 30,
-        'baseArmor': 70,
-        'baseFirepower': 20,
-        'baseCargoCapacity': 150,
-        'baseHardpoints': 10,
         'maxEnergy': 6000,
-        'energyRechargeRate': 35,
-        'maxHull': 1200,
+        'energyRechargeRate': 45,
+        'maxHull': 900,
         'systemSlots': 20,
         'slotConfig': {
             'engines': 1,
             'reactor': 1,
             'shields': 1,
-            'weapons': 1,  # Minimal weapons - cargo focused
+            'weapons': 2,
             'utility': 16
         },
         'defaultSystems': {
-            'hull_plating': {'level': 6, 'slots': 1},
+            'hull_plating': {'level': 5, 'slots': 1},
             'energy_reactor': {'level': 6, 'slots': 1},
-            'shield_generator': {'level': 5, 'slots': 1, 'energyConsumption': 25},
-            'cargo_hold': {'level': 15, 'slots': 1},
-            'impulse_engines': {'level': 2, 'slots': 1, 'energyConsumption': 30},
+            'shield_generator': {'level': 4, 'slots': 1, 'energyConsumption': 20},
+            'cargo_hold': {'level': 5, 'slots': 1},
+            'impulse_engines': {'level': 1, 'slots': 1, 'energyConsumption': 25},
             'warp_drive': {'level': 1, 'slots': 1, 'energyConsumption': 0},
-            'shields': {'level': 1, 'slots': 1, 'energyConsumption': 30},
-            'laser_cannon': {'level': 1, 'slots': 1, 'energyConsumption': 0},
-            'long_range_scanner': {'level': 1, 'slots': 1, 'energyConsumption': 5},
-            'subspace_radio': {'level': 1, 'slots': 1, 'energyConsumption': 6},
-            'galactic_chart': {'level': 1, 'slots': 1, 'energyConsumption': 8},
-            'target_computer': {'level': 1, 'slots': 1, 'energyConsumption': 8}
+            'shields': {'level': 2, 'slots': 1, 'energyConsumption': 30},
+            'pulse_cannon': {'level': 1, 'slots': 1, 'energyConsumption': 0},
+            'long_range_scanner': {'level': 2, 'slots': 1, 'energyConsumption': 4},
+            'subspace_radio': {'level': 2, 'slots': 1, 'energyConsumption': 5},
+            'galactic_chart': {'level': 2, 'slots': 1, 'energyConsumption': 7},
+            'target_computer': {'level': 3, 'slots': 1, 'energyConsumption': 8}
+        }
+    },
+    'heavy_freighter': {
+        'name': 'Heavy Freighter',
+        'description': 'High-capacity trading vessel for bulk cargo',
+        'baseSpeed': 25,
+        'baseArmor': 70,
+        'baseFirepower': 20,
+        'baseCargoCapacity': 100,
+        'baseHardpoints': 4,
+        'maxEnergy': 8000,
+        'energyRechargeRate': 40,
+        'maxHull': 1200,
+        'systemSlots': 25,
+        'slotConfig': {
+            'engines': 1,
+            'reactor': 1,
+            'shields': 1,
+            'weapons': 1,
+            'utility': 22
+        },
+        'defaultSystems': {
+            'hull_plating': {'level': 6, 'slots': 1},
+            'energy_reactor': {'level': 8, 'slots': 1},
+            'shield_generator': {'level': 5, 'slots': 1, 'energyConsumption': 25},
+            'cargo_hold': {'level': 10, 'slots': 1},
+            'impulse_engines': {'level': 1, 'slots': 1, 'energyConsumption': 35},
+            'warp_drive': {'level': 1, 'slots': 1, 'energyConsumption': 0},
+            'shields': {'level': 3, 'slots': 1, 'energyConsumption': 40},
+            'pulse_cannon': {'level': 1, 'slots': 1, 'energyConsumption': 0},
+            'long_range_scanner': {'level': 2, 'slots': 1, 'energyConsumption': 6},
+            'subspace_radio': {'level': 2, 'slots': 1, 'energyConsumption': 7},
+            'galactic_chart': {'level': 2, 'slots': 1, 'energyConsumption': 9},
+            'target_computer': {'level': 3, 'slots': 1, 'energyConsumption': 10}
         }
     }
 }

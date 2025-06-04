@@ -74,8 +74,8 @@ export default class DockingModal {
             background: rgba(0, 30, 0, 0.95);
             border: 3px solid #00ff41;
             border-radius: 8px;
-            padding: 30px;
-            max-width: 400px;
+            padding: 27px;
+            max-width: 360px;
             text-align: center;
             box-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
             animation: dockingModalFadeIn 0.3s ease-out;
@@ -86,7 +86,7 @@ export default class DockingModal {
         header.style.cssText = `
             color: #00ff41;
             margin: 0 0 20px 0;
-            font-size: 24px;
+            font-size: 21.6px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -99,7 +99,7 @@ export default class DockingModal {
         this.targetInfo.style.cssText = `
             color: #cccccc;
             margin: 0 0 20px 0;
-            font-size: 16px;
+            font-size: 14.4px;
             line-height: 1.4;
         `;
         
@@ -108,9 +108,9 @@ export default class DockingModal {
         this.statusInfo.style.cssText = `
             color: #88ff88;
             margin: 0 0 30px 0;
-            font-size: 14px;
+            font-size: 12.6px;
             line-height: 1.6;
-            padding: 15px;
+            padding: 13.5px;
             background: rgba(0, 255, 65, 0.1);
             border: 1px solid rgba(0, 255, 65, 0.3);
             border-radius: 4px;
@@ -130,9 +130,9 @@ export default class DockingModal {
             background: #00aa41;
             color: #000;
             border: none;
-            padding: 12px 30px;
+            padding: 10.8px 27px;
             font-family: "Courier New", monospace;
-            font-size: 16px;
+            font-size: 14.4px;
             font-weight: bold;
             border-radius: 6px;
             cursor: pointer;
@@ -149,9 +149,9 @@ export default class DockingModal {
             background: transparent;
             color: #ff4444;
             border: 2px solid #ff4444;
-            padding: 12px 30px;
+            padding: 10.8px 27px;
             font-family: "Courier New", monospace;
-            font-size: 16px;
+            font-size: 14.4px;
             font-weight: bold;
             border-radius: 6px;
             cursor: pointer;
@@ -576,16 +576,13 @@ export default class DockingModal {
         this.targetInfo.innerHTML = `
             <div><strong>Target:</strong> ${targetInfo.name || 'Unknown'}</div>
             <div><strong>Type:</strong> ${targetInfo.type || 'Unknown'}</div>
-            <div><strong>Distance:</strong> ${distance.toFixed(1)} km</div>
+            <div><strong>Faction:</strong> <span style="color: ${diplomacyColor};">${diplomacyStatus}</span></div>
         `;
         
-        // Update status information - show current speed instead of claiming auto-reduction
-        const statusHTML = `
-            <div>✓ Speed: Impulse ${currentSpeed} (Ready for docking)</div>
-            <div style="color: ${diplomacyColor};">✓ Diplomacy: ${diplomacyStatus}</div>
-        `;
+        // Display station services instead of docking requirements
+        const servicesHTML = this.getStationServices(targetInfo, diplomacyStatus, diplomacyColor);
         
-        this.statusInfo.innerHTML = statusHTML;
+        this.statusInfo.innerHTML = servicesHTML;
         
         // Show modal
         this.modal.style.display = 'flex';
@@ -606,7 +603,11 @@ export default class DockingModal {
         if (this.targetMonitorInterval) {
             clearInterval(this.targetMonitorInterval);
         }
-        
+
+        // Track consecutive null checks to avoid false warnings
+        let consecutiveNullChecks = 0;
+        const maxNullChecks = 3; // Allow 3 consecutive null checks before warning
+
         // Monitor target every 500ms while modal is visible
         this.targetMonitorInterval = setInterval(() => {
             if (!this.isVisible) {
@@ -614,15 +615,41 @@ export default class DockingModal {
                 this.targetMonitorInterval = null;
                 return;
             }
-            
+
             const modalTarget = this.currentTarget;
             const sfmTarget = this.starfieldManager.currentTarget;
-            
-            if (!modalTarget || !sfmTarget) {
-                console.warn('🚨 TARGET LOST!', {
-                    modalTarget: modalTarget?.name || 'null',
-                    sfmTarget: sfmTarget?.name || 'null'
-                });
+
+            // Check if both targets are null or missing critical data
+            const modalTargetValid = modalTarget && modalTarget.position;
+            const sfmTargetValid = sfmTarget && sfmTarget.position;
+
+            if (!modalTargetValid && !sfmTargetValid) {
+                consecutiveNullChecks++;
+                
+                // Only warn after multiple consecutive null checks to avoid false alarms
+                if (consecutiveNullChecks >= maxNullChecks) {
+                    console.warn('🚨 TARGET LOST! (Consecutive null checks: ' + consecutiveNullChecks + ')', {
+                        modalTarget: modalTarget?.name || 'null',
+                        sfmTarget: sfmTarget?.name || 'null',
+                        modalTargetValid,
+                        sfmTargetValid
+                    });
+                    
+                    // Try to restore target before giving up
+                    if (this.restoreTargetReference()) {
+                        console.log('✅ Target restored from backup');
+                        consecutiveNullChecks = 0; // Reset counter after successful restore
+                    } else {
+                        // If we can't restore after max attempts, show error and close modal
+                        if (consecutiveNullChecks >= maxNullChecks + 2) {
+                            this.updateStatusWithError('Target connection lost - modal will close');
+                            return;
+                        }
+                    }
+                }
+            } else {
+                // Reset counter if we have valid targets
+                consecutiveNullChecks = 0;
             }
         }, 500);
     }
@@ -665,6 +692,112 @@ export default class DockingModal {
         }, 3000);
     }
     
+    getStationServices(targetInfo, diplomacyStatus, diplomacyColor) {
+        // Define available services based on target type and diplomacy
+        const services = [];
+        
+        // Basic services available at all friendly/neutral stations
+        if (diplomacyStatus.toLowerCase() !== 'hostile' && diplomacyStatus.toLowerCase() !== 'enemy') {
+            services.push({
+                name: 'Repair Services',
+                description: 'Hull and system repairs',
+                icon: '🔧',
+                available: true
+            });
+            
+            services.push({
+                name: 'Energy Recharge',
+                description: 'Full energy restoration',
+                icon: '⚡',
+                available: true
+            });
+            
+            services.push({
+                name: 'Ship Refitting',
+                description: 'Upgrade ship systems',
+                icon: '🛠️',
+                available: true
+            });
+        }
+        
+        // Advanced services based on target type
+        if (targetInfo.type === 'planet') {
+            services.push({
+                name: 'Trade Exchange',
+                description: 'Buy/sell commodities',
+                icon: '💰',
+                available: diplomacyStatus.toLowerCase() === 'friendly'
+            });
+            
+            services.push({
+                name: 'Mission Board',
+                description: 'Available contracts',
+                icon: '📋',
+                available: diplomacyStatus.toLowerCase() !== 'hostile'
+            });
+        }
+        
+        // Special services for friendly locations
+        if (diplomacyStatus.toLowerCase() === 'friendly') {
+            services.push({
+                name: 'Ship Storage',
+                description: 'Secure ship storage',
+                icon: '🏪',
+                available: true
+            });
+        }
+        
+        // Hostile/Limited services
+        if (diplomacyStatus.toLowerCase() === 'hostile' || diplomacyStatus.toLowerCase() === 'enemy') {
+            services.push({
+                name: 'Emergency Repairs',
+                description: 'Limited repair services',
+                icon: '🚨',
+                available: true,
+                note: 'At premium rates'
+            });
+        }
+        
+        // Generate HTML for services
+        let servicesHTML = `
+            <div style="margin-bottom: 15px;">
+                <div style="font-size: 16px; font-weight: bold; color: ${diplomacyColor}; margin-bottom: 8px;">
+                    STATION SERVICES
+                </div>
+            </div>
+        `;
+        
+        if (services.length === 0) {
+            servicesHTML += `
+                <div style="color: #ff4444; text-align: center; padding: 10px;">
+                    ⚠️ NO SERVICES AVAILABLE<br>
+                    <span style="font-size: 12px;">Hostile territory</span>
+                </div>
+            `;
+        } else {
+            servicesHTML += services.map(service => {
+                const statusColor = service.available ? '#44ff44' : '#888888';
+                const statusIcon = service.available ? '✓' : '✗';
+                
+                return `
+                    <div style="display: flex; align-items: center; margin-bottom: 8px; padding: 5px; background: rgba(0,0,0,0.3); border-radius: 3px;">
+                        <span style="font-size: 16px; margin-right: 8px;">${service.icon}</span>
+                        <div style="flex: 1;">
+                            <div style="color: ${statusColor}; font-weight: bold;">
+                                ${statusIcon} ${service.name}
+                            </div>
+                            <div style="font-size: 11px; color: #aaa;">
+                                ${service.description}${service.note ? ` (${service.note})` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        return servicesHTML;
+    }
+
     getDiplomacyColor(diplomacyStatus) {
         switch (diplomacyStatus.toLowerCase()) {
             case 'friendly':
@@ -684,33 +817,33 @@ export default class DockingModal {
     }
     
     handleDock() {
-        // Removed excessive debug logs - were causing spam
+        console.log('🚀 DOCK button pressed - starting docking process');
         
         let targetToUse = null;
         
         // First, try to use the modal's preserved target
         if (this.currentTarget && this.currentTarget._dockingModalId === this.targetVerificationId) {
-            // Removed debug log
+            console.log('✅ Using verified modal target:', this.currentTarget.name);
             targetToUse = this.currentTarget;
         } else if (this.currentTarget) {
-            // Removed debug logs
+            console.log('⚠️ Modal target verification failed, trying backup restoration');
             
             // Try to restore from backup
             if (this.restoreTargetReference()) {
-                // Removed debug log
+                console.log('✅ Target restored from backup');
                 targetToUse = this.currentTarget;
             } else {
-                // Removed debug log
+                console.warn('❌ Failed to restore target from backup');
             }
         } else {
             console.warn('❌ No currentTarget in modal, trying alternative methods');
             
             // Try to restore from backup first
             if (this.restoreTargetReference()) {
-                // Removed debug log
+                console.log('✅ Target restored from backup methods');
                 targetToUse = this.currentTarget;
             } else if (this.starfieldManager.currentTarget) {
-                // Removed debug log
+                console.log('✅ Using StarfieldManager current target');
                 targetToUse = this.starfieldManager.currentTarget;
                 this.currentTarget = targetToUse; // Store it in modal
             }
@@ -733,17 +866,25 @@ export default class DockingModal {
             return;
         }
         
-        // Removed debug logs - were causing spam
+        console.log('🎯 Using target for docking:', {
+            name: targetToUse.name,
+            position: targetToUse.position,
+            hasPosition: !!targetToUse.position,
+            verificationId: targetToUse._dockingModalId
+        });
         
         // Use the same validation logic as the original dock button
         if (this.starfieldManager.canDockWithLogging(targetToUse)) {
+            console.log('✅ Docking validation passed - proceeding with dock');
+            
             // ONLY hide modal AFTER successful docking validation
-            // Removed debug log
             this.hide();
             
             // Use dockWithDebug for better debugging/logging
             this.starfieldManager.dockWithDebug(targetToUse);
         } else {
+            console.warn('❌ Docking validation failed');
+            
             // Handle docking failure with proper feedback - keep modal open
             const info = this.starfieldManager.solarSystemManager?.getCelestialBodyInfo(targetToUse);
             const distance = this.starfieldManager.calculateDistance(
@@ -754,13 +895,20 @@ export default class DockingModal {
             // Calculate docking range for display
             const dockingRange = info?.type === 'planet' ? 4.0 : 1.5;
             
+            console.log('📊 Docking failure details:', {
+                distance: distance.toFixed(2),
+                maxRange: dockingRange,
+                currentSpeed: this.starfieldManager.currentSpeed,
+                targetType: info?.type
+            });
+            
             if (distance > dockingRange) {
                 // Keep modal open and update status to show error
-                this.updateStatusWithError(`Docking failed: Distance ${distance.toFixed(1)}km > ${dockingRange}km or speed too high`);
+                this.updateStatusWithError(`Docking failed: Distance ${distance.toFixed(1)}km > ${dockingRange}km range`);
                 console.warn(`Docking failed - Distance: ${distance.toFixed(2)}km (max: ${dockingRange}km), Speed: ${this.starfieldManager.currentSpeed}`);
             } else {
                 // Keep modal open and update status to show error - likely speed issue
-                this.updateStatusWithError(`Docking failed: Speed too high or other validation error`);
+                this.updateStatusWithError(`Docking failed: Speed too high (current: ${this.starfieldManager.currentSpeed})`);
                 console.warn(`Docking failed - Distance: ${distance.toFixed(2)}km (max: ${dockingRange}km), Speed: ${this.starfieldManager.currentSpeed}`);
             }
         }

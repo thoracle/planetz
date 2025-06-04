@@ -134,6 +134,7 @@ export class WeaponHUD {
         
         // Slot number
         const slotNumber = document.createElement('div');
+        slotNumber.className = 'weapon-slot-number';
         slotNumber.textContent = (slot.slotIndex + 1).toString();
         slotNumber.style.cssText = `
             position: absolute;
@@ -147,6 +148,7 @@ export class WeaponHUD {
         if (slot.isEmpty) {
             // Empty slot
             const emptyText = document.createElement('div');
+            emptyText.className = 'weapon-name-display';
             emptyText.textContent = 'EMPTY';
             emptyText.style.cssText = `
                 font-size: 8px;
@@ -157,6 +159,7 @@ export class WeaponHUD {
         } else {
             // Weapon icon/name
             const weaponName = document.createElement('div');
+            weaponName.className = 'weapon-name-display';
             weaponName.textContent = this.getWeaponAbbreviation(slot.equippedWeapon.name);
             weaponName.style.cssText = `
                 font-size: 10px;
@@ -187,6 +190,7 @@ export class WeaponHUD {
      */
     createCooldownBar(slot) {
         const cooldownContainer = document.createElement('div');
+        cooldownContainer.className = 'weapon-cooldown-bar';
         cooldownContainer.style.cssText = `
             position: absolute;
             bottom: 2px;
@@ -198,6 +202,7 @@ export class WeaponHUD {
         `;
         
         const cooldownFill = document.createElement('div');
+        cooldownFill.className = 'weapon-cooldown-fill';
         const percentage = slot.getCooldownPercentage();
         cooldownFill.style.cssText = `
             height: 100%;
@@ -247,10 +252,10 @@ export class WeaponHUD {
             // Update border color
             slot.style.borderColor = isActive ? '#00ff00' : '#666666';
             
-            // Update weapon name color
-            const weaponName = slot.querySelector('div:not(:first-child)');
-            if (weaponName && weaponName.textContent !== 'EMPTY') {
-                weaponName.style.color = isActive ? '#00ff00' : '#ffffff';
+            // Update weapon name color using reliable class selector
+            const weaponNameElement = slot.querySelector('.weapon-name-display');
+            if (weaponNameElement && weaponNameElement.textContent !== 'EMPTY') {
+                weaponNameElement.style.color = isActive ? '#00ff00' : '#ffffff';
             }
         }
     }
@@ -262,7 +267,7 @@ export class WeaponHUD {
     updateCooldownDisplay(weaponSlots) {
         // Update existing cooldown bars
         this.cooldownBars.forEach(({ element, slot }) => {
-            const cooldownFill = element.querySelector('div');
+            const cooldownFill = element.querySelector('.weapon-cooldown-fill');
             if (cooldownFill) {
                 const percentage = slot.getCooldownPercentage();
                 cooldownFill.style.width = `${percentage}%`;

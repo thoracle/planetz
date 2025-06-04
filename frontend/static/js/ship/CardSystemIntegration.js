@@ -436,6 +436,7 @@ export default class CardSystemIntegration {
         };
         
         let systemsCreated = 0;
+        let systemsUpdated = 0;
         
         // Handle each installed card
         for (const [slotId, cardData] of this.installedCards) {
@@ -463,17 +464,25 @@ export default class CardSystemIntegration {
                 continue;
             }
             
-            // Skip if system already exists with same level
+            // Check if system already exists
             if (this.ship.systems.has(systemName)) {
                 const existingSystem = this.ship.systems.get(systemName);
                 if (existingSystem.level === cardData.level) {
                     console.log(`✅ EXISTING: ${systemName} (Level ${cardData.level}) - no change needed`);
                     continue;
                 } else {
-                    // Level changed - remove old system first
-                    console.log(`🔄 SYSTEM LEVEL CHANGED: ${systemName} Level ${existingSystem.level} → Level ${cardData.level}`);
-                    this.ship.removeSystem(systemName);
-                    console.log(`🗑️ Removed old ${systemName} system for replacement`);
+                    // Update existing system level instead of removing and recreating
+                    console.log(`🔄 UPDATING: ${systemName} Level ${existingSystem.level} → Level ${cardData.level}`);
+                    existingSystem.level = cardData.level;
+                    systemsUpdated++;
+                    
+                    // Recalculate system stats after level change
+                    if (existingSystem.calculateStats) {
+                        existingSystem.calculateStats();
+                    }
+                    
+                    console.log(`✅ UPDATED: ${systemName} to Level ${cardData.level}`);
+                    continue;
                 }
             }
             
@@ -514,7 +523,7 @@ export default class CardSystemIntegration {
                     systemsCreated++;
                     console.log(`✅ CREATED: ${systemName} (Level ${cardData.level}) from card`);
                 } else {
-                    console.log(`❌ FAILED TO ADD: ${systemName} (no slots?)`);
+                    console.log(`❌ FAILED TO ADD: ${systemName} - insufficient slots or other error`);
                 }
                 
             } catch (error) {
@@ -522,9 +531,9 @@ export default class CardSystemIntegration {
             }
         }
         
-        if (systemsCreated > 0) {
-            console.log(`✅ Created ${systemsCreated} systems from cards`);
-            // Recalculate ship stats after adding systems
+        if (systemsCreated > 0 || systemsUpdated > 0) {
+            console.log(`✅ Created ${systemsCreated} systems, updated ${systemsUpdated} systems from cards`);
+            // Recalculate ship stats after adding/updating systems
             this.ship.calculateTotalStats();
             
             // CRITICAL: Clean up and refresh weapon systems after card changes
@@ -543,6 +552,8 @@ export default class CardSystemIntegration {
                     window.starfieldManager.updateShipSystemsDisplay();
                 }
             }
+        } else {
+            console.log(`✅ No system changes needed - all systems are current`);
         }
     }
     

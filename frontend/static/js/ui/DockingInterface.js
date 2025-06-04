@@ -180,6 +180,22 @@ export class DockingInterface {
         this.dockedLocation = dockedLocation;
         this.isVisible = true;
         
+        // **CRITICAL FIX**: Refresh current ship type from the actual ship instance
+        // This ensures the correct ship type is displayed after ship switching
+        const currentShip = this.starfieldManager.ship;
+        if (currentShip && currentShip.shipType) {
+            console.log(`🔄 DockingInterface: Refreshing ship type to ${currentShip.shipType}`);
+            
+            // Update CardInventoryUI ship references
+            this.cardInventoryUI.currentShipType = currentShip.shipType;
+            this.cardInventoryUI.currentShipConfig = currentShip.shipConfig;
+            
+            // Reload ship configuration to match current ship
+            this.cardInventoryUI.loadShipConfiguration(currentShip.shipType);
+            
+            console.log(`✅ DockingInterface: Ship type updated to ${currentShip.shipType}`);
+        }
+        
         // Update header with location info
         this.updateHeader();
         

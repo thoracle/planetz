@@ -24,20 +24,24 @@ export const SHIP_CONFIGS = {
         maxHull: 300,          // Very low hull hit points
         
         // System slots - Minimal but expandable
-        systemSlots: 9,        // Updated for 4 weapon slots testing (was 6)
+        systemSlots: 11,        // Updated for 5 utility slots (was 9)
         
         // System slot allocations
         slotConfig: {
             engines: 1,        // Basic impulse engines
             reactor: 1,         // Basic energy reactor
             weapons: 4,         // 4 weapon slots for testing (matches starter cards)
-            utility: 3,         // Standard utility slots
-            // Total slots: 9 (1 engine + 1 reactor + 4 weapons + 3 utility = 9)
+            utility: 5,         // 5 utility slots for target_computer, hull_plating, long_range_scanner, galactic_chart + 1 spare
+            // Total slots: 11 (1 engine + 1 reactor + 4 weapons + 5 utility = 11)
         },
         
         // Default system configurations - Starter optimized
         defaultSystems: {
             // Essential operational systems only (systems that have corresponding cards)
+            hull_plating: {
+                level: 1, // Level 1 = 200 hull (1 * 200) - basic hull protection
+                slots: 1
+            },
             energy_reactor: {
                 level: 1, // Level 1 = 1000 energy, 10/sec recharge (1 * 1000, 1 * 10)
                 slots: 1
@@ -48,9 +52,19 @@ export const SHIP_CONFIGS = {
                 energyConsumption: 8 // Low consumption for starter ship
             },
             target_computer: { 
-                level: 3, // Level 3+ enables sub-targeting functionality (was level 1)
-                slots: 1, 
-                energyConsumption: 8 // Increased from 3 to match level 3 requirements
+                level: 1, // Level 1 = 15km range, 3 targets (1 * 15, 1 * 3) - basic targeting
+                slots: 1,
+                energyConsumption: 5 // Low consumption for starter ship
+            },
+            long_range_scanner: {
+                level: 1, // Level 1 = basic scanning capabilities
+                slots: 1,
+                energyConsumption: 4 // Low consumption for starter ship
+            },
+            galactic_chart: {
+                level: 1, // Level 1 = basic chart capabilities
+                slots: 1,
+                energyConsumption: 6 // Low consumption for starter ship
             }
             // Removed laser_cannon - weapons now come from starterCards via WeaponSyncManager
             // No galactic chart or subspace radio - must be acquired from shop
@@ -59,6 +73,9 @@ export const SHIP_CONFIGS = {
         // Pre-installed starter cards
         starterCards: {
             utility_1: { cardType: 'target_computer', level: 3 },
+            utility_2: { cardType: 'hull_plating', level: 1 },
+            utility_3: { cardType: 'long_range_scanner', level: 1 },
+            utility_4: { cardType: 'galactic_chart', level: 1 },
             engine_1: { cardType: 'impulse_engines', level: 1 },
             power_1: { cardType: 'energy_reactor', level: 1 },
             weapon_1: { cardType: 'laser_cannon', level: 1 },
@@ -191,15 +208,15 @@ export const SHIP_CONFIGS = {
         maxHull: 500,          // Low hull hit points
         
         // System slots - Adequate slots for core systems plus expansion
-        systemSlots: 15,       // Increased for better expansion capability
+        systemSlots: 18,       // Increased for better expansion capability
         
         // System slot allocations (standardized like starter_ship)
         slotConfig: {
             engines: 1,        // Impulse engines (high performance)
             reactor: 1,        // Energy reactor
             weapons: 2,        // Fewer weapons - reconnaissance focused
-            utility: 11,       // Utility slots for sensors and other equipment
-            // Total slots: 15 (1 engine + 1 reactor + 2 weapons + 11 utility = 15)
+            utility: 14,       // Utility slots for sensors and other equipment
+            // Total slots: 18 (1 engine + 1 reactor + 2 weapons + 14 utility = 18)
         },
         
         // Default system configurations - Scout optimized

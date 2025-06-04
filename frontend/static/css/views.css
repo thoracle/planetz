@@ -674,10 +674,10 @@ body.warp-control-mode .crosshair {
     font-family: 'VT323', monospace;
     z-index: 1000;
     flex-direction: row;
-    height: 80vh;
-    max-height: 90vh;
-    width: 900px;
-    min-width: 800px;
+    height: 64vh;
+    max-height: 72vh;
+    width: 720px;
+    min-width: 640px;
     box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
 }
 

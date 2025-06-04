@@ -1407,48 +1407,6 @@ export class StarfieldManager {
             this.targetReticle.appendChild(el);
         });
 
-        // Create target name display (above the reticle)
-        this.targetNameDisplay = document.createElement('div');
-        this.targetNameDisplay.className = 'target-name-display';
-        this.targetNameDisplay.style.cssText = `
-            position: absolute;
-            top: -25px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #D0D0D0;
-            text-shadow: 0 0 4px #D0D0D0;
-            font-family: 'Orbitron', monospace;
-            font-size: 12.1px;
-            font-weight: bold;
-            text-align: center;
-            white-space: nowrap;
-            pointer-events: none;
-            z-index: 1000;
-            display: none;
-        `;
-        this.targetReticle.appendChild(this.targetNameDisplay);
-
-        // Create target distance display (below the reticle)
-        this.targetDistanceDisplay = document.createElement('div');
-        this.targetDistanceDisplay.className = 'target-distance-display';
-        this.targetDistanceDisplay.style.cssText = `
-            position: absolute;
-            top: 45px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #D0D0D0;
-            text-shadow: 0 0 4px #D0D0D0;
-            font-family: 'Orbitron', monospace;
-            font-size: 11px;
-            font-weight: bold;
-            text-align: center;
-            white-space: nowrap;
-            pointer-events: none;
-            z-index: 1000;
-            display: none;
-        `;
-        this.targetReticle.appendChild(this.targetDistanceDisplay);
-
         document.body.appendChild(this.targetReticle);
     }
 
@@ -1730,8 +1688,15 @@ export class StarfieldManager {
                                     `Energy Reactor disabled (${Math.round(energyReactor.healthPercentage * 100)}% health) - repair immediately`
                                 );
                             }
+                        } else if (ship.currentEnergy < targetComputer.getEnergyConsumptionRate()) {
+                            // Insufficient energy
+                            const required = targetComputer.getEnergyConsumptionRate();
+                            const available = Math.round(ship.currentEnergy);
+                            this.showHUDError(
+                                'TARGET CYCLING FAILURE',
+                                `Insufficient energy - need ${required}/sec energy. Available: ${available} units`
+                            );
                         } else {
-                            // Target cycling should not require energy - removed the energy check
                             // Generic fallback
                             this.showHUDError(
                                 'TARGET CYCLING FAILURE',
@@ -4075,9 +4040,12 @@ export class StarfieldManager {
         // Get ship instance for docking procedures
         const ship = this.viewManager?.getShip();
         if (ship) {
-            // Docking should not cost energy - docks are for refueling!
-            // Energy cost removed to allow docking when low on power
-            console.log('🚀 Docking procedures initiated - no energy cost');
+            // Consume energy for docking procedures
+            const dockingEnergyCost = 25;
+            if (!ship.consumeEnergy(dockingEnergyCost)) {
+                console.warn('Docking failed: Insufficient energy for docking procedures');
+                return false;
+            }
         }
 
         // Store the current view before docking
@@ -4180,15 +4148,6 @@ export class StarfieldManager {
                 console.log('🚪 Damage Control HUD dismissed during docking');
             }
             
-            // Hide weapon HUD when docking since weapon systems are powered down
-            if (this.weaponHUD && this.weaponHUD.weaponSlotsDisplay) {
-                this.weaponHUD.weaponSlotsDisplay.style.display = 'none';
-                this.weaponHUD.autofireIndicator.style.display = 'none';
-                this.weaponHUD.targetLockIndicator.style.display = 'none';
-                this.weaponHUD.messageDisplay.style.display = 'none';
-                console.log('🚪 Weapon HUD hidden during docking');
-            }
-            
             // Restore view to FORE if in modal view
             if (this.viewManager.currentView === 'GALACTIC' || this.viewManager.currentView === 'SCANNER') {
                 this.viewManager.restorePreviousView();
@@ -4224,11 +4183,13 @@ export class StarfieldManager {
             }
             
             if (launchValidation.warnings.length > 0) {
-                console.log('Launch warnings:', launchValidation.warnings.join(', '));
             }
             
-            // Launch should not cost energy - players should be able to leave even when low on power
-            console.log('🚀 Launch procedures initiated - no energy cost');
+            // Consume energy for launch procedures
+            if (!ship.consumeEnergy(launchValidation.energyCost)) {
+                console.warn('Launch failed: Insufficient energy for launch procedures');
+                return;
+            }
         }
 
         // Store the target we're launching from before clearing it
@@ -4314,21 +4275,6 @@ export class StarfieldManager {
             this.initializeShipSystems().catch(error => {
                 console.error('Failed to initialize ship systems during launch:', error);
             });
-            
-            // Restore weapon HUD after systems are initialized
-            if (this.weaponHUD && this.weaponHUD.weaponSlotsDisplay) {
-                this.weaponHUD.weaponSlotsDisplay.style.display = 'flex';
-                this.weaponHUD.autofireIndicator.style.display = 'none'; // Will be shown if autofire is on
-                this.weaponHUD.targetLockIndicator.style.display = 'none'; // Will be shown if locked
-                this.weaponHUD.messageDisplay.style.display = 'none'; // Will be shown when needed
-                console.log('🚀 Weapon HUD restored after launch');
-                
-                // Update weapon HUD with current weapon system state
-                const ship = this.viewManager?.getShip();
-                if (ship && ship.weaponSystem) {
-                    this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
-                }
-            }
             
             // Remove flawed subspace radio state restoration - systems will be properly initialized above
         }
@@ -5048,8 +4994,8 @@ export class StarfieldManager {
                     
                     subTargetHTML = `
                         <div style="
-                            background-color: ${isEnemyShip ? '#ff0000' : diplomacyColor}; 
-                            color: ${isEnemyShip ? 'white' : '#000000'}; 
+                            background-color: ${diplomacyColor}; 
+                            color: #000000; 
                             padding: 6px; 
                             border-radius: 4px; 
                             margin-top: 4px;
@@ -5110,39 +5056,17 @@ export class StarfieldManager {
             const maxHull = currentTargetData.ship.maxHull || 1;
             const hullPercentage = maxHull > 0 ? (currentHull / maxHull) * 100 : 0;
             
-            // More accurate hull percentage display - don't round to 0% unless actually 0
-            let displayPercentage;
-            if (hullPercentage === 0) {
-                displayPercentage = 0;
-            } else if (hullPercentage < 1) {
-                displayPercentage = Math.ceil(hullPercentage); // Always show at least 1% if hull > 0
-            } else {
-                displayPercentage = Math.round(hullPercentage);
-            }
-            
             hullHealthSection = `
                 <div style="margin-top: 8px; padding: 4px 0;">
-                    <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">HULL: ${displayPercentage}%</div>
+                    <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">HULL: ${Math.round(hullPercentage)}%</div>
                     <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
                         <div style="background-color: white; height: 100%; width: ${hullPercentage}%; transition: width 0.3s ease;"></div>
                     </div>
                 </div>`;
         }
         
-        // Determine text and background colors based on target type
-        let textColor, backgroundColor;
-        if (isEnemyShip) {
-            // White text on solid red background for hostile enemies
-            textColor = 'white';
-            backgroundColor = '#ff0000'; // Bright red background for hostile enemies
-        } else {
-            // Keep existing styling for non-hostile targets (black text on colored background)
-            textColor = 'black';
-            backgroundColor = diplomacyColor;
-        }
-        
         this.targetInfoDisplay.innerHTML = `
-            <div style="background-color: ${backgroundColor}; color: ${textColor}; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+            <div style="background-color: ${diplomacyColor}; color: black; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
                 <div style="font-weight: bold; font-size: 12px;">${info?.name || 'Unknown Target'}</div>
                 <div style="font-size: 10px;">${typeDisplay}</div>
                 <div style="font-size: 10px;">${formattedDistance}</div>
@@ -5165,12 +5089,6 @@ export class StarfieldManager {
     updateReticlePosition() {
         if (!this.currentTarget || !this.targetComputerEnabled) {
             this.targetReticle.style.display = 'none';
-            if (this.targetNameDisplay) {
-                this.targetNameDisplay.style.display = 'none';
-            }
-            if (this.targetDistanceDisplay) {
-                this.targetDistanceDisplay.style.display = 'none';
-            }
             return;
         }
 
@@ -5189,101 +5107,9 @@ export class StarfieldManager {
             this.targetReticle.style.display = isBehindCamera ? 'none' : 'block';
             this.targetReticle.style.left = `${x}px`;
             this.targetReticle.style.top = `${y}px`;
-
-            // Update target information displays if reticle is visible
-            if (!isBehindCamera) {
-                this.updateReticleTargetInfo();
-            } else {
-                if (this.targetNameDisplay) {
-                    this.targetNameDisplay.style.display = 'none';
-                }
-                if (this.targetDistanceDisplay) {
-                    this.targetDistanceDisplay.style.display = 'none';
-                }
-            }
         } else {
             this.targetReticle.style.display = 'none';
-            if (this.targetNameDisplay) {
-                this.targetNameDisplay.style.display = 'none';
-            }
-            if (this.targetDistanceDisplay) {
-                this.targetDistanceDisplay.style.display = 'none';
-            }
         }
-    }
-
-    updateReticleTargetInfo() {
-        if (!this.currentTarget || !this.targetNameDisplay || !this.targetDistanceDisplay) {
-            return;
-        }
-
-        // Get current target data
-        const currentTargetData = this.getCurrentTargetData();
-        if (!currentTargetData) {
-            return;
-        }
-
-        // Calculate distance to target
-        const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
-        
-        // Get target info for diplomacy status and display
-        let info = null;
-        let isEnemyShip = false;
-        let targetName = 'Unknown Target';
-        
-        // Check if this is an enemy ship
-        if (currentTargetData.isShip && currentTargetData.ship) {
-            isEnemyShip = true;
-            info = {
-                type: 'enemy_ship',
-                diplomacy: currentTargetData.ship.diplomacy || 'enemy',
-                name: currentTargetData.ship.shipName,
-                shipType: currentTargetData.ship.shipType
-            };
-            targetName = info.name || 'Enemy Ship';
-        } else {
-            // Get celestial body info
-            info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-            targetName = info?.name || 'Unknown Target';
-        }
-        
-        // Determine reticle color based on diplomacy using faction color rules
-        let reticleColor = '#D0D0D0'; // Default gray
-        if (isEnemyShip) {
-            reticleColor = '#ff0000'; // Enemy ships are bright red
-        } else if (info?.type === 'star') {
-            reticleColor = '#ffff00'; // Stars are neutral yellow
-        } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-            reticleColor = '#ff0000'; // Enemy territories are bright red
-        } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-            reticleColor = '#ffff00'; // Neutral territories are yellow
-        } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-            reticleColor = '#00ff41'; // Friendly territories are green
-        } else if (info?.diplomacy?.toLowerCase() === 'unknown') {
-            reticleColor = '#44ffff'; // Unknown territories are cyan
-        }
-
-        // Update reticle corner colors
-        const corners = this.targetReticle.getElementsByClassName('reticle-corner');
-        for (const corner of corners) {
-            corner.style.borderColor = reticleColor;
-            corner.style.boxShadow = `0 0 2px ${reticleColor}`;
-        }
-
-        // Format distance display
-        const formattedDistance = this.formatDistance(distance);
-
-        // Update target name display
-        this.targetNameDisplay.textContent = targetName;
-        this.targetNameDisplay.style.color = reticleColor;
-        this.targetNameDisplay.style.textShadow = `0 0 4px ${reticleColor}`;
-        this.targetNameDisplay.style.display = 'block';
-
-        // Update target distance display
-        this.targetDistanceDisplay.textContent = formattedDistance;
-        this.targetDistanceDisplay.style.color = reticleColor;
-        this.targetDistanceDisplay.style.textShadow = `0 0 4px ${reticleColor}`;
-        this.targetDistanceDisplay.style.display = 'block';
     }
 
     getCurrentTargetData() {
@@ -5791,55 +5617,23 @@ export class StarfieldManager {
         
         console.log(`💥 removeDestroyedTarget called for: ${destroyedShip.shipName || 'unknown ship'}`);
         
-        // First, physically remove the ship from the scene and arrays
-        let shipMesh = null;
-        
-        // Find the mesh for this ship
-        for (let i = this.dummyShipMeshes.length - 1; i >= 0; i--) {
-            const mesh = this.dummyShipMeshes[i];
-            if (mesh.userData.ship === destroyedShip) {
-                shipMesh = mesh;
-                
-                // Remove from the scene
-                console.log(`🗑️ Removing ${destroyedShip.shipName} mesh from scene`);
-                this.scene.remove(mesh);
-                
-                // Clean up mesh resources
-                if (mesh.geometry) {
-                    mesh.geometry.dispose();
-                }
-                if (mesh.material) {
-                    if (Array.isArray(mesh.material)) {
-                        mesh.material.forEach(material => material.dispose());
-                    } else {
-                        mesh.material.dispose();
-                    }
-                }
-                
-                // Remove from dummyShipMeshes array
-                this.dummyShipMeshes.splice(i, 1);
-                console.log(`🗑️ Removed ${destroyedShip.shipName} from dummyShipMeshes array`);
-                break;
-            }
-        }
-        
         // Check if ANY targeting system was targeting the destroyed ship
         const ship = this.viewManager?.getShip();
         const targetComputer = ship?.getSystem('target_computer');
         
         const hudTargetsDestroyed = this.currentTarget && 
-            (this.currentTarget === shipMesh || 
+            (this.currentTarget === destroyedShip.mesh || 
              this.getCurrentTargetData()?.ship === destroyedShip);
         
         const weaponTargetsDestroyed = ship?.weaponSystem?.lockedTarget && 
-            (ship.weaponSystem.lockedTarget === shipMesh || 
+            (ship.weaponSystem.lockedTarget === destroyedShip.mesh || 
              ship.weaponSystem.lockedTarget === destroyedShip);
         
         const tcTargetsDestroyed = targetComputer?.currentTarget === destroyedShip;
         
         // IMPROVED: Check if outline is targeting destroyed ship
         const outlineTargetsDestroyed = this.targetOutlineObject && 
-            (this.targetOutlineObject === shipMesh || 
+            (this.targetOutlineObject === destroyedShip.mesh || 
              this.targetOutlineObject === destroyedShip ||
              this.targetOutlineObject === this.currentTarget);
         
@@ -6355,13 +6149,11 @@ export class StarfieldManager {
             weaponsSystem.refreshInventory();
         }
         
-        // Update weapon HUD display properly
-        if (this.weaponHUD && ship.weaponSystem) {
-            // Update the weapon slots display with current weapon system state
-            this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
-            
-            // Ensure the highlighting is correct
-            this.weaponHUD.updateActiveWeaponHighlight(ship.weaponSystem.activeSlotIndex);
+        // Update weapon HUD display
+        if (this.weaponHUD) {
+            // Clear and rebuild weapon display
+            this.weaponHUD.innerHTML = '';
+            this.createWeaponHUD();
         }
         
         console.log('    🎯 Weapon selection UI updated');

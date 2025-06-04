@@ -2140,9 +2140,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             1: 0.25,
             2: 0.50,
             3: 1,
-            4: 3,
-            5: 6,
-            6: 12,
+            4: 1.2,
+            5: 2.0,
+            6: 6.0,
             7: 25,
             8: 37,
             9: 43

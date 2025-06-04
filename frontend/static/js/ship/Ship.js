@@ -872,4 +872,33 @@ export default class Ship {
     getStarfieldManager() {
         return this.starfieldManager || null;
     }
+
+    /**
+     * Simple boolean check if system has required cards (convenience method)
+     * @param {string} systemName - Name of the system
+     * @returns {boolean} - True if system has required cards or no card system integration
+     */
+    hasSystemCards(systemName) {
+        if (!this.cardSystemIntegration) {
+            // No card system integration, assume all systems are available
+            return true;
+        }
+        
+        // Check if this system is enabled by starter cards first
+        if (this.shipConfig?.starterCards) {
+            for (const card of Object.values(this.shipConfig.starterCards)) {
+                if (this.cardEnablesSystem(card, systemName)) {
+                    return true;
+                }
+            }
+        }
+        
+        try {
+            const result = this.cardSystemIntegration.hasSystemCardsSync(systemName);
+            return result && result.hasCards;
+        } catch (error) {
+            console.warn(`Error checking system cards for ${systemName}:`, error);
+            return false;
+        }
+    }
 } 

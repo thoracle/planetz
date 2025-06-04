@@ -191,15 +191,15 @@ export default class TargetComputer extends System {
         }
         
         // Check if required cards are installed
-        if (ship && !ship.hasSystemCardsSync('target_computer')) {
-            return false;
+        if (ship && ship.hasSystemCards && typeof ship.hasSystemCards === 'function') {
+            const hasCards = ship.hasSystemCards('target_computer');
+            if (!hasCards) {
+                return false;
+            }
         }
         
-        // Check energy availability for sustained operation
-        const energyRequired = this.getEnergyConsumptionRate();
-        if (!ship || ship.currentEnergy < energyRequired) {
-            return false;
-        }
+        // Target cycling should not require energy - removed energy check
+        // Players should be able to cycle targets even when low on power
         
         return true;
     }

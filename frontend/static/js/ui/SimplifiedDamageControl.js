@@ -243,43 +243,25 @@ export default class SimplifiedDamageControl {
         const shipStatus = this.ship.getStatus();
         console.log('🔧 ALL ship systems (unfiltered):', Object.keys(shipStatus.systems));
         
-        // Filter out systems that don't have corresponding cards OR the unified weapon system
-        const filteredSystems = {};
+        // NEW APPROACH: Show ALL systems except individual weapon systems
+        // Individual weapons are shown in the unified weapon system display
+        const systemsToDisplay = {};
         const skippedSystems = [];
         
         for (const [systemName, systemData] of Object.entries(shipStatus.systems)) {
-            // Always include systems that have cards, are repairable, or are the unified weapon system
-            if (this.ship.hasSystemCardsSync && this.ship.hasSystemCardsSync(systemName)) {
-                filteredSystems[systemName] = systemData;
-            } else if (this.isRepairableSystem(systemName)) {
-                filteredSystems[systemName] = systemData;
-            } else {
+            // Skip individual weapon systems since we show the unified weapon system separately
+            if (this.isWeaponSystem(systemName)) {
                 skippedSystems.push(systemName);
+                console.log(`🔧 Skipping individual weapon system: ${systemName} (shown in unified weapons)`);
+            } else {
+                // Include ALL non-weapon systems - engines, shields, hull, life support, etc.
+                systemsToDisplay[systemName] = systemData;
+                console.log(`🔧 Including system: ${systemName} (Health: ${(systemData.health * 100).toFixed(1)}%)`);
             }
         }
         
-        console.log('🔧 FILTERED ship systems:', Object.keys(filteredSystems));
-        console.log('🔧 Systems filtered OUT:', skippedSystems);
-        
-        // Display ship.systems Map directly (which should include all systems)
-        const systemsMap = this.ship.systems;
-        if (systemsMap && systemsMap instanceof Map) {
-            console.log('🔧 Ship.systems Map entries:');
-            for (const [key, system] of systemsMap.entries()) {
-                console.log(`  - ${key}: ${system.constructor.name} (Level ${system.level}, Health: ${Math.round(system.healthPercentage * 100)}%)`);
-            }
-        }
-        
-        // Use unfiltered systems to ensure we show everything
-        const systemsToDisplay = filteredSystems;
-        console.log('🔧 Using unfiltered ship status systems:', Object.keys(systemsToDisplay));
-        
-        // Validate systems before displaying
-        for (const [systemName, systemData] of Object.entries(systemsToDisplay)) {
-            const hasCard = this.ship.hasSystemCardsSync ? this.ship.hasSystemCardsSync(systemName) : false;
-            const isRepairable = this.isRepairableSystem(systemName);
-            console.log(`🔧 System validation: ${systemName} - hasCard: ${hasCard}, repairable: ${isRepairable}`);
-        }
+        console.log('🔧 Systems to display:', Object.keys(systemsToDisplay));
+        console.log('🔧 Systems skipped (individual weapons):', skippedSystems);
         
         // Add the unified WeaponSystemCore if it exists
         if (this.ship.weaponSystem) {
@@ -319,18 +301,13 @@ export default class SimplifiedDamageControl {
                         </div>
                     </div>
                 `;
+                console.log('🔧 Added unified weapon system display');
             }
         }
         
-        // Generate HTML for each system
+        // Generate HTML for each non-weapon system
         for (const [systemName, systemData] of Object.entries(systemsToDisplay)) {
             console.log(`🔧 Processing system: ${systemName}`);
-            
-            // Skip individual weapon systems since we show the unified weapon system above
-            if (this.isWeaponSystem(systemName)) {
-                console.log(`🔧 Skipping individual weapon system: ${systemName} (shown in unified weapons)`);
-                continue;
-            }
             
             const priority = this.ship.autoRepairSystem.getSystemPriority(systemName);
             const healthPercent = (systemData.health * 100).toFixed(1);
@@ -373,7 +350,9 @@ export default class SimplifiedDamageControl {
             `;
         }
         
-        console.log(`🔧 Displayed ${Object.keys(systemsToDisplay).length + (this.ship.weaponSystem ? 1 : 0)} systems`);
+        const totalSystems = Object.keys(systemsToDisplay).length + (this.ship.weaponSystem ? 1 : 0);
+        console.log(`🔧 Displayed ${totalSystems} systems (${Object.keys(systemsToDisplay).length} individual + ${this.ship.weaponSystem ? 1 : 0} unified weapons)`);
+        
         grid.innerHTML = html || '<div class="no-systems">No systems available</div>';
     }
     
@@ -975,19 +954,13 @@ export default class SimplifiedDamageControl {
         const weaponStatus = this.ship.weaponSystem.getStatus();
         
         // Create a status object compatible with the damage control system
-        // Use the first equipped weapon to determine overall system health
-        // In practice, all weapons share the same health from the unified system
+        // For unified weapon system, use default full health unless specifically damaged
         let overallHealth = 1.0; // Default to full health
         let canBeActivated = true;
-        let isActive = false;
+        let isActive = true; // Weapon system is always "active" if it exists
         
-        // Check if we have any individual weapon systems for health reference
-        const weaponsSystem = this.ship.getSystem('weapons');
-        if (weaponsSystem) {
-            overallHealth = weaponsSystem.healthPercentage;
-            canBeActivated = weaponsSystem.isOperational();
-            isActive = weaponsSystem.isActive;
-        }
+        // The unified weapon system doesn't have individual health tracking yet
+        // so we'll use full health for now
         
         return {
             health: overallHealth,

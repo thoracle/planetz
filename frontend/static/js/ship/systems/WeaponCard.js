@@ -134,32 +134,16 @@ export class ScanHitWeapon extends WeaponCard {
     fire(origin, target = null) {
         console.log(`${this.name} firing (scan-hit)`);
         
-        // Calculate hit chance
-        const hitChance = this.calculateHitChance(target);
-        const hit = Math.random() < hitChance;
-        
-        if (hit && target) {
-            const distance = this.calculateDistanceToTarget(origin, target);
-            const damage = this.calculateDamage(distance);
-            
-            // Apply instant damage
-            this.applyInstantDamage(target, damage);
-            
-            return {
-                success: true,
-                hit: true,
-                damage: damage,
-                weaponType: this.name,
-                distance: distance
-            };
-        }
+        // For scan-hit weapons, we always return hit: true because they use
+        // visual hit detection in the WeaponSlot.triggerWeaponEffects method
+        // rather than probabilistic hit calculation here
         
         return {
             success: true,
-            hit: false,
-            damage: 0,
+            hit: true, // Always true for scan-hit weapons - actual hit detection happens in triggerWeaponEffects
+            damage: this.damage, // Use full weapon damage - visual effects will handle actual targeting
             weaponType: this.name,
-            reason: hit ? 'No target' : 'Missed'
+            distance: target ? this.calculateDistanceToTarget(origin, target) : 0
         };
     }
     

@@ -122,29 +122,23 @@ export default class GalacticChartSystem extends System {
             return false;
         }
         
-        // STRICT CARD CHECK - This is the key fix
         // Check if required cards are installed - REQUIRED for any galactic chart functionality
         if (ship) {
             try {
-                const hasCards = ship.hasSystemCardsSync('galactic_chart');
-                console.log(`🗺️ GalacticChart: Card check result:`, hasCards, typeof hasCards);
-                
-                // Handle both boolean and object returns
-                let cardCheckPassed = false;
-                if (typeof hasCards === 'boolean') {
-                    cardCheckPassed = hasCards;
-                } else if (hasCards && typeof hasCards === 'object') {
-                    cardCheckPassed = hasCards.hasCards;
+                // Use the simple boolean method for card checking
+                if (ship.hasSystemCards && typeof ship.hasSystemCards === 'function') {
+                    const hasCards = ship.hasSystemCards('galactic_chart');
+                    console.log(`🗺️ GalacticChart: Card check result:`, hasCards);
+                    
+                    if (!hasCards) {
+                        console.warn('🗺️ GalacticChart: Cannot activate - No galactic chart card installed');
+                        return false;
+                    }
+                    console.log(`🗺️ GalacticChart: Card check PASSED`);
                 } else {
-                    cardCheckPassed = false;
+                    // If the method doesn't exist, assume all systems are available (fallback for older ships)
+                    console.log(`🗺️ GalacticChart: No card system integration - assuming system available`);
                 }
-                
-                if (!cardCheckPassed) {
-                    const missingCards = (hasCards && hasCards.missingCards) ? hasCards.missingCards : ['galactic_chart'];
-                    console.warn('🗺️ GalacticChart: Cannot activate - No galactic chart card installed:', missingCards);
-                    return false;
-                }
-                console.log(`🗺️ GalacticChart: Card check PASSED`);
             } catch (error) {
                 console.warn('🗺️ GalacticChart: Card check error:', error.message || error);
                 // If card check fails due to error, don't allow activation

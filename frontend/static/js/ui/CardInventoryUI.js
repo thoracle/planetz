@@ -1333,7 +1333,7 @@ export default class CardInventoryUI {
     /**
      * Handle drop with slot type validation
      */
-    handleDrop(e) {
+    async handleDrop(e) {
         e.preventDefault();
         e.stopPropagation();
         const slot = e.currentTarget;
@@ -1369,6 +1369,26 @@ export default class CardInventoryUI {
             
             console.log(`✅ Installed ${card.cardType} in ${slotType} slot ${slotId}`);
             
+            // CRITICAL FIX: Sync with ship's CardSystemIntegration.installedCards Map
+            // This prevents the orphaned systems cleanup from removing essential systems
+            if (window.viewManager && window.viewManager.ship && window.viewManager.ship.cardSystemIntegration) {
+                window.viewManager.ship.cardSystemIntegration.installedCards.set(slotId, {
+                    cardType: card.cardType,
+                    level: card.level
+                });
+                console.log(`🔗 Synced card with ship's CardSystemIntegration: ${card.cardType} (Lv.${card.level})`);
+                
+                // Refresh ship systems from the updated card configuration
+                try {
+                    await window.viewManager.ship.cardSystemIntegration.createSystemsFromCards();
+                    console.log('🔄 Ship systems refreshed after card installation');
+                } catch (error) {
+                    console.error('⚠️ Failed to refresh ship systems:', error);
+                }
+            } else {
+                console.warn('⚠️ Could not sync with ship CardSystemIntegration - ship may not be available');
+            }
+
             // Save the configuration to ensure changes persist
             this.saveCurrentShipConfiguration();
             
@@ -1467,11 +1487,28 @@ export default class CardInventoryUI {
     /**
      * Remove a card from a ship slot
      */
-    removeCard(slotId) {
+    async removeCard(slotId) {
         const card = this.shipSlots.get(slotId);
         if (card) {
             // Remove from ship slots
             this.shipSlots.delete(slotId);
+            
+            // CRITICAL FIX: Sync with ship's CardSystemIntegration.installedCards Map
+            // This ensures the ship's card tracking stays synchronized
+            if (window.viewManager && window.viewManager.ship && window.viewManager.ship.cardSystemIntegration) {
+                window.viewManager.ship.cardSystemIntegration.installedCards.delete(slotId);
+                console.log(`🔗 Removed card from ship's CardSystemIntegration: ${card.cardType}`);
+                
+                // Refresh ship systems from the updated card configuration
+                try {
+                    await window.viewManager.ship.cardSystemIntegration.createSystemsFromCards();
+                    console.log('🔄 Ship systems refreshed after card removal');
+                } catch (error) {
+                    console.error('⚠️ Failed to refresh ship systems:', error);
+                }
+            } else {
+                console.warn('⚠️ Could not sync with ship CardSystemIntegration - ship may not be available');
+            }
             
             // Save the configuration to ensure changes persist
             this.saveCurrentShipConfiguration();
@@ -1663,17 +1700,16 @@ export default class CardInventoryUI {
     }
 
     /**
-     * Switch to a different ship
+     * Switch to a different ship type
+     * @param {string} shipType - Ship type to switch to
      */
-    switchShip(shipType) {
-        if (shipType === this.currentShipType) return;
+    async switchShip(shipType) {
+        console.log(`Switching ship type from ${this.currentShipType} to ${shipType}`);
         
-        console.log(`Switching ship from ${this.currentShipType} to ${shipType}`);
-        
-        // Save current ship configuration
+        // Save current configuration before switching
         this.saveCurrentShipConfiguration();
         
-        // Switch to new ship
+        // Update ship type and configuration
         this.currentShipType = shipType;
         this.currentShipConfig = SHIP_CONFIGS[shipType];
         
@@ -1686,17 +1722,13 @@ export default class CardInventoryUI {
         // Update UI - always render ship slots in both modes
         this.renderShipSlots();
         
-        // If this ship switch is happening in-game (when docked), 
-        // trigger unified ship system initialization
-        if (this.dockingInterface?.starfieldManager?.ship) {
-            console.log('🔄 CardInventoryUI: In-game ship switch detected - will need system reinitialization on launch');
-            // Note: The actual ship system initialization will happen when the player launches
-            // via StarfieldManager.initializeShipSystems() in the undock() method
-            
-            // Update the game ship reference if switching while docked
-            if (this.dockingInterface.starfieldManager.isDocked) {
-                console.log('🚀 CardInventoryUI: Ship switched while docked - systems will reinitialize on launch');
-            }
+        // **CRITICAL FIX**: Update the actual ship instance in ViewManager
+        // This ensures the ship type persists when launching and docking
+        if (this.dockingInterface?.starfieldManager?.viewManager) {
+            console.log('🔄 CardInventoryUI: Updating ViewManager ship instance to', shipType);
+            await this.dockingInterface.starfieldManager.viewManager.switchShip(shipType);
+        } else {
+            console.warn('⚠️ CardInventoryUI: ViewManager not available - ship instance not updated');
         }
         
         console.log(`Ship switched to ${shipType}`);
@@ -1936,6 +1968,23 @@ export default class CardInventoryUI {
         }
         
         console.log(`Loaded ${this.shipSlots.size} cards for ${shipType}`);
+        
+        // CRITICAL FIX: Sync loaded cards with ship's CardSystemIntegration.installedCards Map
+        // This ensures the ship's card tracking is synchronized with the UI after loading
+        if (window.viewManager && window.viewManager.ship && window.viewManager.ship.cardSystemIntegration) {
+            window.viewManager.ship.cardSystemIntegration.installedCards.clear();
+            
+            this.shipSlots.forEach((card, slotId) => {
+                window.viewManager.ship.cardSystemIntegration.installedCards.set(slotId, {
+                    cardType: card.cardType,
+                    level: card.level
+                });
+            });
+            
+            console.log(`🔗 Synced ${this.shipSlots.size} cards with ship's CardSystemIntegration`);
+        } else {
+            console.warn('⚠️ Could not sync with ship CardSystemIntegration during load - ship may not be available');
+        }
     }
 
     /**

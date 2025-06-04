@@ -29,7 +29,8 @@ export class StationRepairInterface {
                 hull: 50,           // Credits per % hull damage
                 system: 100,        // Base cost per system
                 critical: 1.5,      // Multiplier for critical systems
-                emergency: 2.0      // Multiplier for emergency repairs
+                emergency: 2.0,     // Multiplier for emergency repairs
+                energy: 5           // Credits per energy unit recharged
             },
             
             // Ship class multipliers
@@ -52,7 +53,8 @@ export class StationRepairInterface {
             repairTimes: {
                 hull: 2,            // Seconds per % hull damage
                 system: 30,         // Base seconds per system
-                emergency: 0.5      // Multiplier for instant repair
+                emergency: 0.5,     // Multiplier for instant repair
+                energy: 0.1         // Seconds per energy unit recharged
             }
         };
         
@@ -151,7 +153,7 @@ export class StationRepairInterface {
             padding: 20px;
             z-index: 1000;
             box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
-            width: 900px;
+            width: 729px;
             max-height: 85vh;
             overflow-y: auto;
             display: none;
@@ -174,6 +176,7 @@ export class StationRepairInterface {
         // Create panels
         this.createCreditsPanel();
         this.createHullRepairPanel();
+        this.createEnergyRechargePanel();
         this.createSystemsRepairPanel();
         this.createSummaryPanel();
 
@@ -193,6 +196,7 @@ export class StationRepairInterface {
         this.updateLocationInfo();
         this.updateCreditsDisplay();
         this.updateHullRepairPanel();
+        this.updateEnergyRechargePanel();
         this.updateSystemsGrid();
         this.updateRepairSummary();
     }
@@ -216,7 +220,8 @@ export class StationRepairInterface {
         if (!creditsElement) return;
         
         creditsElement.textContent = this.playerCredits.toLocaleString();
-        creditsElement.style.color = this.playerCredits > 0 ? '#ffaa00' : '#ff4444';
+        creditsElement.style.color = this.playerCredits > 0 ? '#00ff41' : '#ff4444';
+        creditsElement.style.textShadow = this.playerCredits > 0 ? '0 0 5px rgba(0, 255, 65, 0.5)' : '0 0 5px rgba(255, 68, 68, 0.5)';
     }
     
     /**
@@ -303,6 +308,135 @@ export class StationRepairInterface {
                 </div>
             `;
         }
+    }
+    
+    /**
+     * Update energy recharge panel
+     */
+    updateEnergyRechargePanel() {
+        const energyInfoElement = document.getElementById('energy-recharge-info');
+        if (!energyInfoElement || !this.ship) return;
+        
+        const currentEnergy = this.ship.currentEnergy || 0;
+        const maxEnergy = this.ship.maxEnergy || 0;
+        const energyPercentage = maxEnergy > 0 ? (currentEnergy / maxEnergy) * 100 : 0;
+        const energyDeficit = maxEnergy - currentEnergy;
+        
+        if (maxEnergy <= 0) {
+            energyInfoElement.innerHTML = `
+                <div class="no-service-available">
+                    <div class="status-warning">⚠️ No energy reactor detected</div>
+                    <div class="status-info">Install energy reactor cards to enable energy systems</div>
+                </div>
+            `;
+            return;
+        }
+        
+        // Energy status display
+        energyInfoElement.innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <div class="status-line">
+                        <span>Current Energy:</span>
+                        <span class="${this.getEnergyClass(energyPercentage)}">${currentEnergy.toFixed(0)} / ${maxEnergy.toFixed(0)}</span>
+                    </div>
+                    <div class="status-line">
+                        <span>Energy Level:</span>
+                        <span class="${this.getEnergyClass(energyPercentage)}">${energyPercentage.toFixed(1)}%</span>
+                    </div>
+                    ${energyDeficit > 0 ? `
+                        <div class="status-line">
+                            <span>Energy Needed:</span>
+                            <span class="status-poor">${energyDeficit.toFixed(0)} units</span>
+                        </div>
+                    ` : ''}
+                </div>
+                <div>
+                    ${this.createEnergyRechargeOptions(energyDeficit)}
+                </div>
+            </div>
+        `;
+    }
+    
+    /**
+     * Get energy status class based on percentage
+     * @param {number} energyPercentage - Energy percentage (0-100)
+     * @returns {string} CSS class name
+     */
+    getEnergyClass(energyPercentage) {
+        if (energyPercentage >= 80) return 'status-good';
+        if (energyPercentage >= 50) return 'status-fair';
+        if (energyPercentage >= 25) return 'status-poor';
+        return 'status-critical';
+    }
+    
+    /**
+     * Create energy recharge options HTML
+     * @param {number} energyDeficit - Amount of energy needed
+     * @returns {string} HTML for recharge options
+     */
+    createEnergyRechargeOptions(energyDeficit) {
+        if (energyDeficit <= 0) {
+            return `
+                <div class="no-repair-needed">
+                    <div class="status-good">✓ Energy at full capacity</div>
+                </div>
+            `;
+        }
+        
+        // Calculate costs for different recharge amounts
+        const partialRecharge = Math.min(energyDeficit, energyDeficit * 0.5); // 50% of deficit
+        const fullRecharge = energyDeficit;
+        
+        const partialCost = this.calculateEnergyRechargeCost(partialRecharge);
+        const fullCost = this.calculateEnergyRechargeCost(fullRecharge);
+        const emergencyFullCost = Math.floor(fullCost * this.repairPricing.baseCosts.emergency);
+        
+        const partialTime = this.calculateEnergyRechargeTime(partialRecharge);
+        const fullTime = this.calculateEnergyRechargeTime(fullRecharge);
+        
+        return `
+            <div class="energy-options">
+                ${partialRecharge > 0 ? `
+                    <div class="repair-option" style="margin-bottom: 10px;">
+                        <div class="option-info">
+                            <div class="option-title">Partial Recharge</div>
+                            <div class="option-details">+${partialRecharge.toFixed(0)} energy units</div>
+                            <div class="option-cost">Cost: ${partialCost.toLocaleString()} credits</div>
+                            <div class="option-time">Time: ${partialTime}s</div>
+                        </div>
+                        <button class="repair-button" onclick="window.stationRepairInterface?.rechargeEnergy(${partialRecharge}, false)" 
+                                ${this.playerCredits < partialCost ? 'disabled' : ''}>
+                            RECHARGE 50%
+                        </button>
+                    </div>
+                ` : ''}
+                <div class="repair-option" style="margin-bottom: 10px;">
+                    <div class="option-info">
+                        <div class="option-title">Full Recharge</div>
+                        <div class="option-details">+${fullRecharge.toFixed(0)} energy units</div>
+                        <div class="option-cost">Cost: ${fullCost.toLocaleString()} credits</div>
+                        <div class="option-time">Time: ${fullTime}s</div>
+                    </div>
+                    <button class="repair-button" onclick="window.stationRepairInterface?.rechargeEnergy(${fullRecharge}, false)" 
+                            ${this.playerCredits < fullCost ? 'disabled' : ''}>
+                        FULL RECHARGE
+                    </button>
+                </div>
+                <div class="repair-option">
+                    <div class="option-info">
+                        <div class="option-title">Emergency Recharge</div>
+                        <div class="option-details">Instant full recharge (+${fullRecharge.toFixed(0)} units)</div>
+                        <div class="option-cost">Cost: ${emergencyFullCost.toLocaleString()} credits</div>
+                        <div class="option-time">Time: Instant</div>
+                    </div>
+                    <button class="repair-button emergency" onclick="window.stationRepairInterface?.rechargeEnergy(${fullRecharge}, true)" 
+                            ${this.playerCredits < emergencyFullCost ? 'disabled' : ''}>
+                        EMERGENCY RECHARGE
+                    </button>
+                </div>
+            </div>
+        `;
     }
     
     /**
@@ -505,6 +639,29 @@ export class StationRepairInterface {
     }
     
     /**
+     * Calculate energy recharge cost
+     * @param {number} energyToRecharge - Amount of energy to recharge
+     * @returns {number} Cost in credits
+     */
+    calculateEnergyRechargeCost(energyToRecharge) {
+        const baseCost = this.repairPricing.baseCosts.energy * energyToRecharge;
+        const shipMultiplier = this.getShipClassMultiplier();
+        const factionMultiplier = this.getFactionMultiplier();
+        
+        return Math.floor(baseCost * shipMultiplier * factionMultiplier);
+    }
+    
+    /**
+     * Calculate energy recharge time
+     * @param {number} energyToRecharge - Amount of energy to recharge
+     * @returns {number} Time in seconds
+     */
+    calculateEnergyRechargeTime(energyToRecharge) {
+        const baseTime = this.repairPricing.repairTimes.energy * energyToRecharge;
+        return Math.floor(baseTime);
+    }
+    
+    /**
      * Get ship class multiplier for repair costs
      * @returns {number} Multiplier value
      */
@@ -628,9 +785,6 @@ export class StationRepairInterface {
         // Repair hull
         this.ship.currentHull = this.ship.maxHull;
         
-        // Recharge energy to full as part of repair service
-        this.rechargeEnergy();
-        
         // Show repair progress
         if (emergency) {
             console.log(`Emergency hull repair completed instantly for ${cost.toLocaleString()} credits`);
@@ -674,9 +828,6 @@ export class StationRepairInterface {
             }
         }
         
-        // Recharge energy to full as part of repair service
-        this.rechargeEnergy();
-        
         // Show repair progress
         if (emergency) {
             console.log(`Emergency repair completed instantly for ${repairedSystems.length} systems: ${repairedSystems.join(', ')}`);
@@ -692,17 +843,61 @@ export class StationRepairInterface {
     }
     
     /**
-     * Recharge ship energy to full capacity
+     * Recharge ship energy for credits
+     * @param {number} energyAmount - Amount of energy to recharge (optional, defaults to full)
+     * @param {boolean} emergency - Whether to use emergency recharge (instant)
      */
-    rechargeEnergy() {
+    rechargeEnergy(energyAmount = null, emergency = false) {
         if (!this.ship) {
+            console.log('No ship available for energy recharge');
             return false;
         }
         
-        // Recharge energy to full capacity
-        this.ship.currentEnergy = this.ship.maxEnergy;
+        const currentEnergy = this.ship.currentEnergy || 0;
+        const maxEnergy = this.ship.maxEnergy || 0;
         
-        console.log('Ship energy recharged to full capacity as part of repair service');
+        if (maxEnergy <= 0) {
+            console.log('No energy reactor system detected');
+            return false;
+        }
+        
+        // Calculate energy to recharge
+        const energyDeficit = maxEnergy - currentEnergy;
+        const actualRechargeAmount = energyAmount !== null ? Math.min(energyAmount, energyDeficit) : energyDeficit;
+        
+        if (actualRechargeAmount <= 0) {
+            console.log('Energy is already at full capacity');
+            return false;
+        }
+        
+        // Calculate cost
+        const baseCost = this.calculateEnergyRechargeCost(actualRechargeAmount);
+        const cost = emergency ? Math.floor(baseCost * this.repairPricing.baseCosts.emergency) : baseCost;
+        
+        if (this.playerCredits < cost) {
+            console.log('Insufficient credits for energy recharge');
+            return false;
+        }
+        
+        // Deduct credits
+        this.playerCredits -= cost;
+        
+        // Recharge energy
+        this.ship.currentEnergy = Math.min(currentEnergy + actualRechargeAmount, maxEnergy);
+        
+        // Show recharge progress
+        if (emergency) {
+            console.log(`Emergency energy recharge completed instantly: +${actualRechargeAmount.toFixed(0)} energy for ${cost.toLocaleString()} credits`);
+        } else {
+            const rechargeTime = this.calculateEnergyRechargeTime(actualRechargeAmount);
+            console.log(`Energy recharge completed: +${actualRechargeAmount.toFixed(0)} energy in ${rechargeTime}s for ${cost.toLocaleString()} credits`);
+            this.simulateRepairProgress(`Energy Recharge (+${actualRechargeAmount.toFixed(0)})`, rechargeTime);
+        }
+        
+        // Update interface
+        this.updateInterface();
+        
+        console.log(`Ship energy recharged: ${currentEnergy.toFixed(0)} → ${this.ship.currentEnergy.toFixed(0)} / ${maxEnergy.toFixed(0)}`);
         return true;
     }
 
@@ -744,12 +939,18 @@ export class StationRepairInterface {
                 border: 1px solid rgba(0, 255, 65, 0.5);
                 background: rgba(0, 0, 0, 0.3);
                 transition: all 0.3s ease;
+                color: #00ff41;
             }
             
             .repair-option:hover {
                 background: rgba(0, 255, 65, 0.1);
                 border-color: #00ff41;
                 box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+            }
+            
+            .option-info, .option-title, .option-details, .option-cost, .option-time {
+                color: #00ff41;
+                text-shadow: 0 0 3px rgba(0, 255, 65, 0.3);
             }
             
             .repair-button {
@@ -779,6 +980,17 @@ export class StationRepairInterface {
                 text-shadow: none;
             }
             
+            .repair-button.emergency {
+                border-color: #ff4444;
+                color: #ff4444;
+                text-shadow: 0 0 5px rgba(255, 68, 68, 0.3);
+            }
+            
+            .repair-button.emergency:hover:not(:disabled) {
+                background: rgba(255, 68, 68, 0.15);
+                box-shadow: 0 0 15px rgba(255, 68, 68, 0.4);
+            }
+            
             .system-repair-item {
                 display: flex;
                 justify-content: space-between;
@@ -788,6 +1000,7 @@ export class StationRepairInterface {
                 cursor: pointer;
                 transition: all 0.3s ease;
                 background: rgba(0, 0, 0, 0.3);
+                color: #00ff41;
             }
             
             .system-repair-item:hover {
@@ -802,6 +1015,11 @@ export class StationRepairInterface {
                 box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
             }
             
+            .system-info, .system-name, .system-health, .system-cost, .system-time {
+                color: #00ff41;
+                text-shadow: 0 0 3px rgba(0, 255, 65, 0.3);
+            }
+            
             .checkbox {
                 width: 20px;
                 height: 20px;
@@ -813,6 +1031,7 @@ export class StationRepairInterface {
                 background: rgba(0, 0, 0, 0.3);
                 transition: all 0.3s ease;
                 margin-left: 15px;
+                color: #00ff41;
             }
             
             .checkbox.checked {
@@ -820,10 +1039,105 @@ export class StationRepairInterface {
                 box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
             }
             
-            .status-good { color: #44ff44; text-shadow: 0 0 5px rgba(68, 255, 68, 0.5); }
-            .status-fair { color: #ffaa00; text-shadow: 0 0 5px rgba(255, 170, 0, 0.5); }
-            .status-poor { color: #ff8800; text-shadow: 0 0 5px rgba(255, 136, 0, 0.5); }
+            .status-good { color: #00ff41; text-shadow: 0 0 5px rgba(0, 255, 65, 0.5); }
+            .status-fair { color: #00ff41; text-shadow: 0 0 5px rgba(0, 255, 65, 0.5); }
+            .status-poor { color: #00ff41; text-shadow: 0 0 5px rgba(0, 255, 65, 0.5); }
             .status-critical { color: #ff4444; text-shadow: 0 0 5px rgba(255, 68, 68, 0.5); }
+            .status-warning { color: #ff4444; text-shadow: 0 0 5px rgba(255, 68, 68, 0.5); }
+            .status-info { color: #00ff41; text-shadow: 0 0 5px rgba(0, 255, 65, 0.5); }
+            
+            .status-line {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 0;
+                border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+                font-size: 14px;
+                color: #00ff41;
+            }
+            
+            .status-line:last-child {
+                border-bottom: none;
+            }
+            
+            .status-line span {
+                color: #00ff41;
+                text-shadow: 0 0 3px rgba(0, 255, 65, 0.3);
+            }
+            
+            .energy-options .repair-option {
+                margin-bottom: 8px;
+                padding: 10px;
+                font-size: 12px;
+            }
+            
+            .energy-options .option-info {
+                margin-bottom: 8px;
+            }
+            
+            .energy-options .option-title {
+                font-weight: bold;
+                font-size: 13px;
+                color: #00ff41;
+            }
+            
+            .energy-options .option-details {
+                font-size: 11px;
+                opacity: 0.8;
+                color: #00ff41;
+            }
+            
+            .energy-options .option-cost,
+            .energy-options .option-time {
+                font-size: 11px;
+                opacity: 0.9;
+                color: #00ff41;
+            }
+            
+            .no-service-available {
+                text-align: center;
+                padding: 20px;
+                border: 1px solid rgba(255, 68, 68, 0.5);
+                background: rgba(255, 68, 68, 0.1);
+                border-radius: 4px;
+                color: #ff4444;
+            }
+            
+            .no-repair-needed {
+                text-align: center;
+                padding: 20px;
+                border: 1px solid rgba(0, 255, 65, 0.5);
+                background: rgba(0, 255, 65, 0.1);
+                border-radius: 4px;
+                color: #00ff41;
+                text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+            }
+            
+            .repair-actions-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin-top: 15px;
+            }
+            
+            .summary-line {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 0;
+                border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+                font-size: 14px;
+                color: #00ff41;
+            }
+            
+            .summary-line:last-child {
+                border-bottom: none;
+            }
+            
+            .summary-line span {
+                color: #00ff41;
+                text-shadow: 0 0 3px rgba(0, 255, 65, 0.3);
+            }
         `;
         
         if (!document.head.querySelector('style[data-repair-interface]')) {
@@ -846,8 +1160,8 @@ export class StationRepairInterface {
         
         this.header.innerHTML = `
             <div>
-                <div style="font-size: 20px; font-weight: bold; text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);">STATION REPAIR SERVICES</div>
-                <div id="repair-location" style="font-size: 14px; opacity: 0.8; margin-top: 5px;"></div>
+                <div style="font-size: 20px; font-weight: bold; color: #00ff41; text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);">STATION REPAIR SERVICES</div>
+                <div id="repair-location" style="font-size: 14px; color: #00ff41; opacity: 0.8; margin-top: 5px; text-shadow: 0 0 3px rgba(0, 255, 65, 0.3);"></div>
             </div>
             <button class="close-button" style="
                 background: rgba(0, 20, 0, 0.5);
@@ -858,6 +1172,7 @@ export class StationRepairInterface {
                 padding: 8px 15px;
                 cursor: pointer;
                 transition: all 0.3s ease;
+                text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
             ">← BACK</button>
         `;
         
@@ -886,8 +1201,8 @@ export class StationRepairInterface {
         `;
         
         panel.innerHTML = `
-            <div style="font-size: 16px; font-weight: bold; margin-bottom: 15px; text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);">CREDITS AVAILABLE</div>
-            <div id="credits-display" style="font-size: 24px; font-weight: bold; text-align: center; padding: 15px; border: 1px solid rgba(0, 255, 65, 0.5); background: rgba(0, 0, 0, 0.3); text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);">${this.playerCredits.toLocaleString()}</div>
+            <div style="font-size: 16px; font-weight: bold; color: #00ff41; margin-bottom: 15px; text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);">CREDITS AVAILABLE</div>
+            <div id="credits-display" style="font-size: 24px; font-weight: bold; text-align: center; padding: 15px; border: 1px solid rgba(0, 255, 65, 0.5); background: rgba(0, 0, 0, 0.3); color: #00ff41; text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);">${this.playerCredits.toLocaleString()}</div>
         `;
         
         this.contentWrapper.appendChild(panel);
@@ -903,9 +1218,27 @@ export class StationRepairInterface {
         `;
         
         panel.innerHTML = `
-            <div style="font-size: 16px; font-weight: bold; margin-bottom: 15px; text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);">HULL REPAIR</div>
+            <div style="font-size: 16px; font-weight: bold; color: #00ff41; margin-bottom: 15px; text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);">HULL REPAIR</div>
             <div id="hull-status"></div>
             <div id="hull-repair-options"></div>
+        `;
+        
+        this.contentWrapper.appendChild(panel);
+    }
+    
+    createEnergyRechargePanel() {
+        const panel = document.createElement('div');
+        panel.className = 'energy-recharge-panel';
+        panel.style.cssText = `
+            border: 2px solid #00ff41;
+            padding: 15px;
+            background: rgba(0, 20, 0, 0.3);
+            grid-column: 1 / -1;
+        `;
+        
+        panel.innerHTML = `
+            <div style="font-size: 16px; font-weight: bold; color: #00ff41; margin-bottom: 15px; text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);">ENERGY RECHARGE</div>
+            <div id="energy-recharge-info"></div>
         `;
         
         this.contentWrapper.appendChild(panel);
@@ -922,7 +1255,7 @@ export class StationRepairInterface {
         `;
         
         panel.innerHTML = `
-            <div style="font-size: 16px; font-weight: bold; margin-bottom: 15px; text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);">SYSTEM REPAIRS</div>
+            <div style="font-size: 16px; font-weight: bold; color: #00ff41; margin-bottom: 15px; text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);">SYSTEM REPAIRS</div>
             <div id="systems-grid" style="display: grid; gap: 15px; max-height: 300px; overflow-y: auto;"></div>
         `;
         
@@ -940,7 +1273,7 @@ export class StationRepairInterface {
         `;
         
         panel.innerHTML = `
-            <div style="font-size: 16px; font-weight: bold; margin-bottom: 15px; text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);">REPAIR SUMMARY</div>
+            <div style="font-size: 16px; font-weight: bold; color: #00ff41; margin-bottom: 15px; text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);">REPAIR SUMMARY</div>
             <div id="repair-summary"></div>
             <div id="repair-actions"></div>
         `;
