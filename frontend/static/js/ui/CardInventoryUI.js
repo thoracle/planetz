@@ -1014,7 +1014,7 @@ export default class CardInventoryUI {
             <h3>SHIP CONFIGURATION</h3>
             <div class="ship-type-selection">
                 <label>Ship Type:</label>
-                <select onchange="cardInventoryUI.switchShip(this.value)">
+                <select id="ship-type-select" onchange="cardInventoryUI.switchShip(this.value)">
                     ${this.createShipTypeOptions()}
                 </select>
             </div>
@@ -1712,6 +1712,13 @@ export default class CardInventoryUI {
         // Update ship type and configuration
         this.currentShipType = shipType;
         this.currentShipConfig = SHIP_CONFIGS[shipType];
+        
+        // CRITICAL FIX: Add the ship to player's owned ships if not already owned
+        // This prevents the "Player doesn't own X, falling back to starter_ship" issue
+        if (!playerData.ownsShip(shipType)) {
+            playerData.addShip(shipType);
+            console.log(`🛡️ Added ${shipType} to player's owned ships`);
+        }
         
         // Clear current ship slots
         this.shipSlots.clear();

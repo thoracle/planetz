@@ -5055,7 +5055,7 @@ export class StarfieldManager {
                             margin-top: 4px;
                             font-weight: bold;
                         ">
-                            <div style="font-size: 12px; margin-bottom: 2px;">SUB-TARGET:</div>
+                            <div style="font-size: 12px; margin-bottom: 2px;">SYSTEM:</div>
                             ${healthBarSection}
                             <div style="font-size: 10px; opacity: 0.8; margin-top: 6px;">
                                 <span>Acc:</span> <span>+${accuracyBonus}%</span> • 
@@ -5079,7 +5079,7 @@ export class StarfieldManager {
                                 margin-top: 4px;
                                 font-weight: bold;
                             ">
-                                <div style="font-size: 12px; margin-bottom: 2px;">SUB-TARGETING:</div>
+                                <div style="font-size: 12px; margin-bottom: 2px;">SYSTEM:</div>
                                 <div style="font-size: 11px; opacity: 0.8;">
                                     ${availableTargets} targetable systems detected
                                 </div>

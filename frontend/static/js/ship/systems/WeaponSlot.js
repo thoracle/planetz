@@ -637,7 +637,7 @@ export class WeaponSlot {
                                 targetComputer.currentSubTarget && 
                                 targetComputer.currentSubTarget !== null) {
                                 
-                                console.log(`🎯 SUB-TARGET: ${targetComputer.currentSubTarget.displayName} targeted with 30% damage bonus`);
+                                console.log(`🎯 SYSTEM: ${targetComputer.currentSubTarget.displayName} targeted with 30% damage bonus`);
                                 
                                 // Calculate enhanced damage for sub-targeting
                                 const enhancedDamage = weapon.damage * 1.3; // 30% bonus
@@ -653,8 +653,8 @@ export class WeaponSlot {
                                         console.log(`🔥 ${enemyTarget.ship.shipName || 'Enemy ship'} DESTROYED by collateral damage!`);
                                         
                                         // Play success sound for ship destruction (full duration)
-                                        if (ship?.weaponSystem?.weaponEffectsManager) {
-                                            ship.weaponSystem.weaponEffectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
+                                        if (ship?.weaponEffectsManager) {
+                                            ship.weaponEffectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
                                             console.log(`🎉 Playing ship destruction success sound (full duration)`);
                                         }
                                         
@@ -687,8 +687,8 @@ export class WeaponSlot {
                                     console.log(`🔥 ${enemyTarget.ship.shipName || 'Enemy ship'} DESTROYED!`);
                                     
                                     // Play success sound for ship destruction (full duration)
-                                    if (ship?.weaponSystem?.weaponEffectsManager) {
-                                        ship.weaponSystem.weaponEffectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
+                                    if (ship?.weaponEffectsManager) {
+                                        ship.weaponEffectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
                                         console.log(`🎉 Playing ship destruction success sound (full duration)`);
                                     }
                                     

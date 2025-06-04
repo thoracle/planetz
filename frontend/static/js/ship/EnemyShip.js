@@ -352,9 +352,8 @@ export default class EnemyShip {
             console.log(`💥 SYSTEM DESTROYED: ${systemName} on ${this.shipName} completely disabled!`);
             
             // Play success sound for destroyed sub-system (50% duration for shorter sound)
-            // Try to get the weapon effects manager from the global game state
-            if (window.starfieldManager?.viewManager?.getShip()?.weaponSystem?.weaponEffectsManager) {
-                const effectsManager = window.starfieldManager.viewManager.getShip().weaponSystem.weaponEffectsManager;
+            if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
+                const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
                 // Play 50% duration success sound for sub-system destruction
                 effectsManager.playSuccessSound(null, 0.6, 0.5); 
                 console.log(`🎉 Playing sub-system destruction success sound (50% duration)`);
@@ -371,8 +370,8 @@ export default class EnemyShip {
             console.log(`🔥 ${this.shipName} DESTROYED by collateral damage!`);
             
             // Play success sound for ship destruction (full duration)
-            if (window.starfieldManager?.viewManager?.getShip()?.weaponSystem?.weaponEffectsManager) {
-                const effectsManager = window.starfieldManager.viewManager.getShip().weaponSystem.weaponEffectsManager;
+            if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
+                const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
                 effectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
                 console.log(`🎉 Playing ship destruction success sound (full duration)`);
             }
