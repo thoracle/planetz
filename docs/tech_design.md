@@ -1,7 +1,7 @@
 # Technical Design Document
 
 ## Project Overview
-Planetz is a space exploration and combat game featuring procedurally generated planets, ship systems management, and NFT-based card collection mechanics inspired by Clash Royale.
+StarF*ckers is a space exploration and combat game featuring procedurally generated planets, ship systems management, and NFT-based card collection mechanics inspired by Clash Royale.
 
 ## Core Architecture
 

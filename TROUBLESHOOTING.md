@@ -1,4 +1,4 @@
-# Planetz Troubleshooting Guide
+# StarF*ckers Troubleshooting Guide
 
 ## 🚀 Recent Major System Fixes
 
@@ -365,4 +365,4 @@ Before reporting, try:
 - [ ] Test in incognito/private browsing mode
 - [ ] Try different browser if available
 
-This comprehensive troubleshooting guide should help identify and resolve most common issues with the Planetz game system. 
+This comprehensive troubleshooting guide should help identify and resolve most common issues with the StarF*ckers game system. 

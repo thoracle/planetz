@@ -1,8 +1,8 @@
-# 🎮 PLANETZ GAME - Complete Bluehost Fix Guide
+# 🎮 StarF*ckers GAME - Complete Bluehost Fix Guide
 
 ## 🎯 **All Issues Identified & Fixed!**
 
-Your Planetz game had three main deployment issues on Bluehost:
+Your StarF*ckers game had three main deployment issues on Bluehost:
 
 ### ✅ **Issue 1: FIXED - Chunk Worker Errors**
 - **Problem**: `Chunk (x, y, z) - Worker error` - 3D terrain generation failing
@@ -152,7 +152,7 @@ After deploying the AUDIO-FIXED version:
 
 ## 🎯 **Final Result**
 
-Your Planetz game is now **fully functional** as a frontend-only experience:
+Your StarF*ckers game is now **fully functional** as a frontend-only experience:
 
 - **3D World**: Procedural terrain generation ✅
 - **Audio System**: All sound effects working ✅  

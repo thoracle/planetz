@@ -1,7 +1,7 @@
 # System Architecture Documentation ✅ FULLY IMPLEMENTED
 
 ## Overview
-This document contains UML diagrams illustrating the architecture of the Planetz NFT card collection spaceship system.
+This document contains UML diagrams illustrating the architecture of the StarF*ckers NFT card collection spaceship system.
 
 **✅ IMPLEMENTATION STATUS**: All core systems fully implemented and integrated into the main game with comprehensive testing and production-ready stability.
 

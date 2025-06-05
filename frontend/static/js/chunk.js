@@ -128,7 +128,7 @@ export class Chunk {
         
         try {
             // Create a new worker
-            this.worker = new Worker('static/js/workers/meshGenerator.worker.js');
+            this.worker = new Worker('/js/workers/meshGenerator.worker.js');
             
             // Calculate adaptive timeout based on chunk complexity
             const chunkComplexity = this.calculateChunkComplexity();

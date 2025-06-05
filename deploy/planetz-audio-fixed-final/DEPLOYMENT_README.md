@@ -1,4 +1,4 @@
-# Planetz Game - Bluehost Deployment Guide
+# StarF*ckers Game - Bluehost Deployment Guide
 
 ## Quick Deployment Steps
 

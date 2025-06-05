@@ -28,7 +28,7 @@ class WarpEffects {
         // Load the warp sounds
         console.log('Loading warp sounds...');
         this.audioLoader.load(
-            'static/audio/warp.wav',
+                            '/audio/warp.wav',
             (buffer) => {
                 console.log('Warp sound loaded successfully');
                 this.warpSound.setBuffer(buffer);
@@ -45,7 +45,7 @@ class WarpEffects {
         );
 
         this.audioLoader.load(
-            'static/audio/warp-redalert.wav',
+                            '/audio/warp-redalert.wav',
             (buffer) => {
                 console.log('Red alert warp sound loaded successfully');
                 this.warpRedAlertSound.setBuffer(buffer);

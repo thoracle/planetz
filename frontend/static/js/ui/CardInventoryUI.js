@@ -173,7 +173,7 @@ export default class CardInventoryUI {
                 console.log('🎵 Loading upgrade sound...');
                 
                 audioLoader.load(
-                    'static/audio/blurb.mp3', // Simplified path
+                    '/audio/blurb.mp3', // Simplified path
                     (buffer) => {
                         console.log('✅ Upgrade sound loaded successfully');
                         this.upgradeSound.setBuffer(buffer);
@@ -211,7 +211,7 @@ export default class CardInventoryUI {
     initializeFallbackAudio() {
         console.log('🔄 Initializing fallback HTML5 audio...');
         try {
-            this.fallbackAudio = new Audio('static/audio/blurb.mp3');
+            this.fallbackAudio = new Audio('/audio/blurb.mp3');
             this.fallbackAudio.volume = 0.7;
             this.fallbackAudio.preload = 'auto';
             
@@ -263,7 +263,7 @@ export default class CardInventoryUI {
      * Create a single audio element for the pool
      */
     createAudioElement(index) {
-        const audioClone = new Audio('static/audio/blurb.mp3');
+                        const audioClone = new Audio('/audio/blurb.mp3');
         audioClone.volume = 0.7;
         audioClone.preload = 'auto';
         this.audioElementUseCount[index] = 0;
@@ -601,7 +601,7 @@ export default class CardInventoryUI {
         
         try {
             // Method 1: Create fresh Audio instance
-            const immediateAudio = new Audio('static/audio/blurb.mp3');
+                            const immediateAudio = new Audio('/audio/blurb.mp3');
             immediateAudio.volume = 0.7;
             
             // Add a small delay to ensure browser readiness
@@ -636,7 +636,7 @@ export default class CardInventoryUI {
                 const AudioCtx = AudioContext || webkitAudioContext;
                 const audioContext = new AudioCtx();
                 
-                fetch('static/audio/blurb.mp3')
+                fetch('/audio/blurb.mp3')
                     .then(response => response.arrayBuffer())
                     .then(data => audioContext.decodeAudioData(data))
                     .then(audioBuffer => {

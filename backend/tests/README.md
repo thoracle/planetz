@@ -1,7 +1,7 @@
 # Testing Documentation
 
 ## Overview
-This directory contains tests for the Planetz backend application. We use pytest as our testing framework.
+This directory contains tests for the StarF*ckers backend application. We use pytest as our testing framework.
 
 ## Directory Structure
 ```

@@ -1,6 +1,6 @@
-# PlanetZ Deployment Directory
+# StarF*ckers Deployment Directory
 
-This directory contains the final deployment versions of PlanetZ for Bluehost hosting.
+This directory contains the final deployment versions of StarF*ckers for Bluehost hosting.
 
 ## 📁 Contents:
 

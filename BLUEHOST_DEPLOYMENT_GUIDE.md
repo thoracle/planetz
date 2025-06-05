@@ -54,7 +54,7 @@ If you want it as a subfolder:
   - [ ] Name: "THOR ALEXANDER" 
   - [ ] Title: "GAME DESIGNER & ENTREPRENEUR"
   - [ ] About section
-  - [ ] Planetz project section
+  - [ ] StarF*ckers project section
   - [ ] Experience history
   - [ ] Contact section
 
@@ -102,7 +102,7 @@ Depending on your deployment choice:
 ✅ **Professional Content**
 - Executive gaming industry experience
 - Social media integration
-- Planetz game showcase
+- StarF*ckers game showcase
 - Contact information
 
 ✅ **Technical Features**

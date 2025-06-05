@@ -1,4 +1,4 @@
-# 🎮 PLANETZ GAME - Bluehost Chunk Error Fix
+# 🎮 STARF*CKERS GAME - Bluehost Chunk Error Fix
 
 ## 🚨 Problem Solved!
 

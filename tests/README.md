@@ -1,4 +1,4 @@
-# 🧪 Planetz Unit Testing Framework
+# 🧪 StarF*ckers Unit Testing Framework
 
 ## Overview
 
