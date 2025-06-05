@@ -1,272 +1,273 @@
 /**
- * Jest Setup File - Test Environment Configuration
- * Configures mocks and global setup for unit testing
+ * Jest Test Setup
+ * StarF*ckers Game Testing Infrastructure
  */
 
-// Mock Three.js objects and methods
+import { jest } from '@jest/globals';
+
+// Mock Three.js classes for testing
 global.THREE = {
-  Scene: jest.fn(() => ({
-    add: jest.fn(),
-    remove: jest.fn(),
-    children: []
-  })),
-  WebGLRenderer: jest.fn(() => ({
-    setSize: jest.fn(),
-    setClearColor: jest.fn(),
-    render: jest.fn(),
-    domElement: document.createElement('canvas')
-  })),
-  PerspectiveCamera: jest.fn(() => ({
-    position: { set: jest.fn(), x: 0, y: 0, z: 0 },
-    lookAt: jest.fn(),
-    updateProjectionMatrix: jest.fn()
-  })),
-  Vector3: jest.fn(() => ({
-    x: 0, y: 0, z: 0,
-    set: jest.fn(),
-    copy: jest.fn(),
-    add: jest.fn(),
-    sub: jest.fn(),
-    normalize: jest.fn(),
-    length: jest.fn(() => 0),
-    distanceTo: jest.fn(() => 0),
-    clone: jest.fn(() => new global.THREE.Vector3())
-  })),
-  Group: jest.fn(() => ({
-    add: jest.fn(),
-    remove: jest.fn(),
-    position: { set: jest.fn(), x: 0, y: 0, z: 0 },
-    rotation: { set: jest.fn(), x: 0, y: 0, z: 0 },
-    children: []
-  })),
-  Mesh: jest.fn(() => ({
-    position: { set: jest.fn(), x: 0, y: 0, z: 0 },
-    rotation: { set: jest.fn(), x: 0, y: 0, z: 0 },
-    scale: { set: jest.fn(), x: 1, y: 1, z: 1 },
-    visible: true
-  })),
-  DirectionalLight: jest.fn(),
-  AmbientLight: jest.fn(),
-  SphereGeometry: jest.fn(),
-  BoxGeometry: jest.fn(),
-  MeshBasicMaterial: jest.fn(),
-  MeshPhongMaterial: jest.fn(),
-  TextureLoader: jest.fn(() => ({
-    load: jest.fn()
-  })),
-  Clock: jest.fn(() => ({
-    getDelta: jest.fn(() => 0.016), // 60 FPS
-    getElapsedTime: jest.fn(() => 0)
-  }))
+    Scene: jest.fn(() => ({
+        add: jest.fn(),
+        remove: jest.fn(),
+        children: [],
+        background: null
+    })),
+    
+    PerspectiveCamera: jest.fn(() => ({
+        position: { set: jest.fn(), copy: jest.fn() },
+        lookAt: jest.fn(),
+        aspect: 1,
+        updateProjectionMatrix: jest.fn()
+    })),
+    
+    WebGLRenderer: jest.fn(() => ({
+        setSize: jest.fn(),
+        render: jest.fn(),
+        domElement: document.createElement('canvas'),
+        getSize: jest.fn(() => ({ width: 1024, height: 768 }))
+    })),
+    
+    Vector3: jest.fn((x = 0, y = 0, z = 0) => ({
+        x, y, z,
+        set: jest.fn(),
+        copy: jest.fn(),
+        add: jest.fn(),
+        subtract: jest.fn(),
+        length: jest.fn(() => Math.sqrt(x*x + y*y + z*z)),
+        normalize: jest.fn(),
+        clone: jest.fn(() => new global.THREE.Vector3(x, y, z))
+    })),
+    
+    Mesh: jest.fn(() => ({
+        position: new global.THREE.Vector3(),
+        rotation: new global.THREE.Vector3(),
+        scale: new global.THREE.Vector3(1, 1, 1),
+        visible: true,
+        add: jest.fn(),
+        remove: jest.fn()
+    })),
+    
+    Material: jest.fn(() => ({
+        color: { setHex: jest.fn() },
+        opacity: 1,
+        transparent: false
+    })),
+    
+    Geometry: jest.fn(() => ({
+        vertices: [],
+        faces: []
+    })),
+    
+    Light: jest.fn(),
+    AmbientLight: jest.fn(),
+    DirectionalLight: jest.fn(),
+    
+    Clock: jest.fn(() => ({
+        getDelta: jest.fn(() => 0.016), // 60 FPS
+        getElapsedTime: jest.fn(() => 1.0)
+    })),
+    
+    BufferGeometry: jest.fn(),
+    BoxGeometry: jest.fn(),
+    SphereGeometry: jest.fn(),
+    PlaneGeometry: jest.fn()
 };
+
+// Mock Web APIs
+global.requestAnimationFrame = jest.fn(cb => setTimeout(cb, 16));
+global.cancelAnimationFrame = jest.fn();
 
 // Mock Audio API
 global.Audio = jest.fn(() => ({
-  play: jest.fn().mockResolvedValue(undefined),
-  pause: jest.fn(),
-  load: jest.fn(),
-  addEventListener: jest.fn(),
-  removeEventListener: jest.fn(),
-  volume: 1.0,
-  currentTime: 0,
-  duration: 0,
-  paused: true,
-  ended: false
+    play: jest.fn().mockResolvedValue(),
+    pause: jest.fn(),
+    load: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    volume: 1,
+    currentTime: 0,
+    duration: 1,
+    readyState: 4
 }));
 
-// Mock AudioContext
 global.AudioContext = jest.fn(() => ({
-  createBuffer: jest.fn(),
-  createBufferSource: jest.fn(() => ({
-    connect: jest.fn(),
-    start: jest.fn(),
-    stop: jest.fn(),
-    buffer: null
-  })),
-  createGain: jest.fn(() => ({
-    connect: jest.fn(),
-    gain: { value: 1.0 }
-  })),
-  destination: {},
-  decodeAudioData: jest.fn().mockResolvedValue({}),
-  state: 'running',
-  resume: jest.fn().mockResolvedValue(undefined)
+    createBufferSource: jest.fn(() => ({
+        connect: jest.fn(),
+        start: jest.fn(),
+        stop: jest.fn(),
+        buffer: null
+    })),
+    createGain: jest.fn(() => ({
+        connect: jest.fn(),
+        gain: { value: 1 }
+    })),
+    destination: {},
+    currentTime: 0,
+    state: 'running',
+    resume: jest.fn().mockResolvedValue()
 }));
 
-// Mock localStorage
+// Mock WebGL Context
+HTMLCanvasElement.prototype.getContext = jest.fn((type) => {
+    if (type === 'webgl' || type === 'experimental-webgl') {
+        return {
+            drawArrays: jest.fn(),
+            drawElements: jest.fn(),
+            enable: jest.fn(),
+            disable: jest.fn(),
+            clear: jest.fn(),
+            clearColor: jest.fn(),
+            viewport: jest.fn(),
+            createShader: jest.fn(),
+            createProgram: jest.fn(),
+            useProgram: jest.fn(),
+            getParameter: jest.fn()
+        };
+    }
+    return null;
+});
+
+// Mock LocalStorage
 const localStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
-  length: 0,
-  key: jest.fn()
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+    clear: jest.fn(),
+    length: 0,
+    key: jest.fn()
 };
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock
-});
+global.localStorage = localStorageMock;
 
-// Mock sessionStorage
-const sessionStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
-  length: 0,
-  key: jest.fn()
-};
-Object.defineProperty(window, 'sessionStorage', {
-  value: sessionStorageMock
-});
-
-// Mock requestAnimationFrame
-global.requestAnimationFrame = jest.fn(cb => setTimeout(cb, 16));
-global.cancelAnimationFrame = jest.fn(id => clearTimeout(id));
-
-// Mock performance API
-global.performance = {
-  now: jest.fn(() => Date.now()),
-  mark: jest.fn(),
-  measure: jest.fn(),
-  getEntriesByType: jest.fn(() => []),
-  getEntriesByName: jest.fn(() => [])
-};
-
-// Mock console methods for cleaner test output
-const originalConsole = global.console;
-global.console = {
-  ...originalConsole,
-  log: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  info: jest.fn(),
-  debug: jest.fn()
-};
-
-// Mock fetch API
+// Mock fetch for audio/asset loading
 global.fetch = jest.fn(() =>
-  Promise.resolve({
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({}),
-    text: () => Promise.resolve(''),
-    headers: new Map()
-  })
+    Promise.resolve({
+        ok: true,
+        status: 200,
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+        json: () => Promise.resolve({}),
+        text: () => Promise.resolve('')
+    })
 );
 
-// Mock URL and URLSearchParams
-global.URL = {
-  createObjectURL: jest.fn(() => 'mock-blob-url'),
-  revokeObjectURL: jest.fn()
-};
-
-global.URLSearchParams = jest.fn(() => ({
-  get: jest.fn(),
-  set: jest.fn(),
-  append: jest.fn(),
-  delete: jest.fn(),
-  has: jest.fn(),
-  toString: jest.fn(() => '')
+// Mock Worker
+global.Worker = jest.fn(() => ({
+    postMessage: jest.fn(),
+    terminate: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    onmessage: null,
+    onerror: null
 }));
 
-// Mock IntersectionObserver
-global.IntersectionObserver = jest.fn(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn()
-}));
+// Set up DOM environment
+document.body.innerHTML = '';
 
-// Mock ResizeObserver
-global.ResizeObserver = jest.fn(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn()
-}));
+// Console setup for better test output
+const originalConsoleLog = console.log;
+const originalConsoleWarn = console.warn;
+const originalConsoleError = console.error;
 
-// Mock window methods
-Object.defineProperty(window, 'getComputedStyle', {
-  value: jest.fn(() => ({
-    getPropertyValue: jest.fn(() => ''),
-    width: '0px',
-    height: '0px'
-  }))
-});
+// Suppress noisy console output during tests unless verbose
+if (!process.env.VERBOSE_TESTS) {
+    console.log = jest.fn();
+    console.warn = jest.fn();
+    console.error = jest.fn();
+}
 
-// Test utilities available globally
+// Global test utilities
 global.testUtils = {
-  // Create a mock ship configuration
-  createMockShipConfig: (shipType = 'heavy_fighter') => ({
-    shipType,
-    name: `Test ${shipType}`,
-    maxSlots: 18,
-    maxEnergy: 100,
-    energyRechargeRate: 5,
-    maxHull: 100,
-    currentHull: 100,
-    currentEnergy: 100,
-    systems: new Map(),
-    upgrades: new Map()
-  }),
-
-  // Create a mock card inventory
-  createMockCardInventory: () => ({
-    cards: new Map(),
-    discoveredTypes: new Set(),
-    credits: 10000,
-    stackCounts: new Map()
-  }),
-
-  // Create a mock weapon system
-  createMockWeaponSystem: () => ({
-    weaponSlots: [],
-    activeSlotIndex: 0,
-    isAutofireOn: false,
-    lockedTarget: null,
-    maxWeaponSlots: 4
-  }),
-
-  // Create a mock station
-  createMockStation: () => ({
-    name: 'Test Station',
-    faction: 'friendly',
-    services: ['repair', 'inventory'],
-    position: { x: 0, y: 0, z: 0 }
-  }),
-
-  // Wait for async operations to complete
-  waitForAsync: () => new Promise(resolve => setTimeout(resolve, 0)),
-
-  // Create DOM elements for testing
-  createMockElement: (tag = 'div') => {
-    const element = document.createElement(tag);
-    element.getBoundingClientRect = jest.fn(() => ({
-      top: 0, left: 0, right: 100, bottom: 100,
-      width: 100, height: 100, x: 0, y: 0
-    }));
-    return element;
-  }
+    createMockContainer: () => {
+        const container = document.createElement('div');
+        container.style.width = '1024px';
+        container.style.height = '768px';
+        document.body.appendChild(container);
+        return container;
+    },
+    
+    createMockShip: (overrides = {}) => ({
+        id: 'test-ship-1',
+        name: 'Test Ship',
+        type: 'scout',
+        totalSlots: 15,
+        systems: new Map(),
+        cards: new Map(),
+        health: 100,
+        position: new global.THREE.Vector3(0, 0, 0),
+        rotation: new global.THREE.Vector3(0, 0, 0),
+        velocity: new global.THREE.Vector3(0, 0, 0),
+        energy: 100,
+        repairSystem: jest.fn(),
+        getEquippedCard: jest.fn(),
+        installCard: jest.fn(),
+        removeCard: jest.fn(),
+        ...overrides
+    }),
+    
+    createMockCard: (overrides = {}) => ({
+        id: 'test-card-1',
+        name: 'Test Card',
+        type: 'weapon',
+        subtype: 'laser',
+        level: 1,
+        rarity: 'common',
+        stackCount: 1,
+        stats: {
+            damage: 10,
+            energy: 5,
+            cooldown: 1000
+        },
+        ...overrides
+    }),
+    
+    createMockGameState: () => ({
+        currentShip: global.testUtils.createMockShip(),
+        cards: new Map(),
+        credits: 1000,
+        gameMode: 'space',
+        currentView: 'front',
+        paused: false
+    }),
+    
+    // Utility to wait for next tick
+    nextTick: () => new Promise(resolve => setTimeout(resolve, 0)),
+    
+    // Utility to trigger events
+    triggerEvent: (element, eventType, data = {}) => {
+        const event = new Event(eventType, { bubbles: true });
+        Object.assign(event, data);
+        element.dispatchEvent(event);
+        return event;
+    },
+    
+    // Utility to clean up DOM after tests
+    cleanupDOM: () => {
+        document.body.innerHTML = '';
+    }
 };
 
-// Setup and teardown hooks
+// Setup and teardown for each test
 beforeEach(() => {
-  // Clear all mocks before each test
-  jest.clearAllMocks();
-  
-  // Reset localStorage and sessionStorage
-  localStorageMock.getItem.mockReturnValue(null);
-  sessionStorageMock.getItem.mockReturnValue(null);
-  
-  // Reset console
-  console.log.mockClear();
-  console.warn.mockClear();
-  console.error.mockClear();
+    // Reset all mocks
+    jest.clearAllMocks();
+    
+    // Reset DOM
+    global.testUtils.cleanupDOM();
+    
+    // Reset localStorage
+    localStorageMock.getItem.mockClear();
+    localStorageMock.setItem.mockClear();
+    localStorageMock.removeItem.mockClear();
+    localStorageMock.clear.mockClear();
 });
 
 afterEach(() => {
-  // Clean up any global state
-  delete window.ship;
-  delete window.starfieldManager;
-  delete window.app;
+    // Clean up any timers
+    jest.clearAllTimers();
+    
+    // Clean up DOM
+    global.testUtils.cleanupDOM();
 });
 
-console.log('🧪 Jest testing environment configured for Planetz game'); 
+// Export for ES6 modules (not needed in setup file)
+// export { global }; 
