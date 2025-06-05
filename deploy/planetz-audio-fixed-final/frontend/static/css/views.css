@@ -1,0 +1,1145 @@
+/* View-specific styles */
+.crosshair-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.crosshair {
+    width: 40px;
+    height: 40px;
+    position: relative;
+    display: none;
+}
+
+.front-crosshair .line-horizontal {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: white;
+}
+
+.front-crosshair .line-vertical {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 100%;
+    background: white;
+}
+
+.aft-crosshair .line-left {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 40%;
+    height: 2px;
+    background: white;
+}
+
+.aft-crosshair .line-right {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 40%;
+    height: 2px;
+    background: white;
+}
+
+/* Edit mode styles */
+body.edit-mode .crosshair {
+    display: none !important;
+}
+
+/* View transition animations */
+.crosshair {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.crosshair.fade-out {
+    opacity: 0;
+}
+
+.crosshair.fade-in {
+    opacity: 1;
+}
+
+/* Galactic Chart Styles */
+.galactic-chart {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid #00ff41;
+    padding: 20px;
+    display: none;
+    color: #00ff41;
+    font-family: 'VT323', monospace;
+    z-index: 1000;
+    flex-direction: column;
+    max-height: 90vh;
+    min-width: 800px;
+}
+
+.galactic-chart.visible {
+    display: flex;
+}
+
+.content-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: auto repeat(9, 1fr);
+    gap: 5px;
+    margin-top: 20px;
+}
+
+.grid-corner {
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    border: none;
+}
+
+.grid-header, .grid-row-label {
+    padding: 10px;
+    text-align: center;
+    color: #00ff41;
+    font-weight: bold;
+}
+
+.grid-cell {
+    width: 60px;
+    height: 60px;
+    border: 1px solid #00ff41;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-size: 1.2em;
+    position: relative;
+}
+
+.grid-cell:hover {
+    background-color: rgba(0, 255, 65, 0.2);
+}
+
+.grid-cell.current-system {
+    background-color: #00ff41;
+    color: #000000;
+    border: none;
+    font-weight: bold;
+}
+
+.grid-cell.current-system:hover {
+    background-color: #00cc35;
+}
+
+.grid-cell.ship-location {
+    border: 3px solid #00ff41;
+    background-color: rgba(0, 255, 65, 0.15);
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+    position: relative;
+}
+
+.grid-cell.ship-location::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border: 1px solid #00ff41;
+    animation: rotate 4s linear infinite;
+}
+
+.grid-cell.ship-location:hover {
+    background-color: rgba(0, 255, 65, 0.25);
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.7);
+}
+
+/* Add combined state styling */
+.grid-cell.ship-location.current-system {
+    background-color: #00ff41;
+    color: #000000;
+    border: 3px solid #ffffff;
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.7);
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.6); }
+    70% { box-shadow: 0 0 0 15px rgba(0, 255, 65, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0); }
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border: 1px solid #00ff41;
+}
+
+.close-button:hover {
+    background-color: rgba(0, 255, 65, 0.2);
+}
+
+.system-details {
+    border-top: 1px solid #00ff41;
+    padding: 15px;
+    height: 300px;
+    min-height: unset;
+    overflow-y: auto;
+    margin-top: auto;
+    display: block;
+    scrollbar-width: thin;
+    scrollbar-color: #00ff41 rgba(0, 255, 65, 0.1);
+    position: relative;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.system-details * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.system-details::-webkit-scrollbar {
+    width: 8px;
+}
+
+.system-details::-webkit-scrollbar-track {
+    background: rgba(0, 255, 65, 0.1);
+    border-radius: 4px;
+}
+
+.system-details::-webkit-scrollbar-thumb {
+    background-color: #00ff41;
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.system-details h3 {
+    margin-top: 0;
+    color: #00ff41;
+    position: sticky;
+    top: 0;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 5px 0;
+    z-index: 1;
+    white-space: normal;
+}
+
+.system-details ul {
+    list-style-type: none;
+    padding-left: 20px;
+    margin: 10px 0;
+}
+
+.system-details li {
+    margin: 8px 0;
+    line-height: 1.4;
+    white-space: normal;
+}
+
+.coordinates {
+    color: #00ff41;
+    opacity: 0.7;
+    font-size: 0.8em;
+    margin-left: 10px;
+    display: inline-block;
+}
+
+.system-header {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #00ff41;
+    border-bottom: 1px solid #00ff41;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.system-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2em;
+    color: #000000;
+}
+
+.system-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.action-button {
+    background: #000000;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    padding: 5px 15px;
+    font-family: 'VT323', monospace;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.action-button:hover:not(:disabled) {
+    background: #00ff41;
+    color: #000000;
+}
+
+.action-button:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.action-button:disabled {
+    background: #1a1a1a;
+    color: #666666;
+    border-color: #666666;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.probe-button {
+    background: #000000;
+}
+
+.warp-button {
+    background: #000000;
+}
+
+.star-name {
+    font-weight: bold;
+    color: #000000;
+}
+
+.star-type {
+    opacity: 0.9;
+    color: #000000;
+    font-size: 0.9em;
+}
+
+.coordinates {
+    color: #000000;
+    opacity: 0.9;
+    font-size: 0.9em;
+    margin-right: 15px;
+    font-weight: bold;
+}
+
+.system-content {
+    padding: 10px 0;
+}
+
+.planets-grid {
+    display: grid;
+    gap: 15px;
+    padding: 10px;
+}
+
+.planet-entry {
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    background: rgba(0, 255, 65, 0.05);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.planet-header {
+    background: rgba(0, 255, 65, 0.1);
+    padding: 8px 12px;
+    font-weight: bold;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.moon-count {
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.planet-details {
+    padding: 10px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+}
+
+.detail-label {
+    color: rgba(0, 255, 65, 0.7);
+    font-size: 0.9em;
+}
+
+.detail-value {
+    text-align: right;
+}
+
+.diplomacy-friendly {
+    color: #00ff00;
+}
+
+.diplomacy-neutral {
+    color: #ffff00;
+}
+
+.diplomacy-hostile {
+    color: #ff0000;
+}
+
+.diplomacy-unknown {
+    color: #b3b3b3;
+}
+
+.planets-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.table-header {
+    display: flex;
+    background: rgba(0, 255, 65, 0.1);
+    border-bottom: 2px solid rgba(0, 255, 65, 0.3);
+    font-weight: bold;
+    padding: 8px 0;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.table-body {
+    max-height: none;
+    overflow-y: visible;
+}
+
+.table-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.table-body::-webkit-scrollbar-track {
+    background: rgba(0, 255, 65, 0.1);
+}
+
+.table-body::-webkit-scrollbar-thumb {
+    background-color: #00ff41;
+    border-radius: 4px;
+}
+
+.table-row {
+    display: flex;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.1);
+    padding: 6px 0;
+    transition: background-color 0.2s;
+}
+
+.table-row:hover {
+    background: rgba(0, 255, 65, 0.05);
+}
+
+.table-row.moon-row {
+    background: rgba(0, 255, 65, 0.02);
+    font-size: 0.9em;
+    color: rgba(0, 255, 65, 0.8);
+    padding-left: 20px;
+}
+
+.table-row.moon-row:hover {
+    background: rgba(0, 255, 65, 0.07);
+}
+
+.col {
+    padding: 0 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+}
+
+/* Adjust column widths */
+.col:nth-child(1) { flex: 1.5; }  /* Destination */
+.col:nth-child(2) { flex: 1; }    /* Type */
+.col:nth-child(3) { flex: 0.8; }  /* Diplomacy */
+.col:nth-child(4) { flex: 1; }    /* Government */
+.col:nth-child(5) { flex: 1; }    /* Economy */
+.col:nth-child(6) { flex: 1; }    /* Technology */
+
+/* Custom Tooltip Styles */
+.custom-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    padding: 5px 10px;
+    font-size: 0.9em;
+    white-space: nowrap;
+    z-index: 1000;
+    display: none;
+    pointer-events: none;
+    --arrow-top: 0;
+    --arrow-bottom: auto;
+    --arrow-border-color: transparent transparent #00ff41 transparent;
+}
+
+.custom-tooltip.insufficient {
+    color: #ff0000;
+    border-color: #ff0000;
+    --arrow-border-color: transparent transparent #ff0000 transparent;
+}
+
+.custom-tooltip::before {
+    content: '';
+    position: absolute;
+    top: var(--arrow-top);
+    bottom: var(--arrow-bottom);
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 0 5px 5px 5px;
+    border-style: solid;
+    border-color: var(--arrow-border-color);
+}
+
+/* Warning Popup Styles */
+.warning-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.warning-content {
+    position: relative;
+    background: #000000;
+    border: 2px solid #00ff41;
+    padding: 30px;
+    color: #00ff41;
+    font-family: 'VT323', monospace;
+    width: 400px;
+    max-width: 90%;
+    margin: 20px;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.warning-content h3 {
+    color: #00ff41;
+    margin: 0;
+    font-size: 1.4em;
+    text-align: center;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.3);
+    padding-bottom: 10px;
+}
+
+.warning-content p {
+    margin: 0;
+    line-height: 1.5;
+    text-align: center;
+    font-size: 1.1em;
+    min-height: 1.5em;
+    margin-bottom: 20px;
+}
+
+.warning-close {
+    display: block;
+    background: #000000;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    padding: 10px 30px;
+    margin: 25px auto 0;
+    font-family: 'VT323', monospace;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
+}
+
+.warning-close:hover {
+    background: #00ff41;
+    color: #000000;
+}
+
+/* Warp Control Mode styles */
+body.warp-control-mode .crosshair {
+    display: none !important;
+}
+
+#warp-gui-container {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 5px;
+    padding: 10px;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+}
+
+#warp-gui-container .dg.main {
+    background: transparent !important;
+}
+
+#warp-gui-container .dg .c {
+    width: 60% !important;
+}
+
+#warp-gui-container .dg .property-name {
+    width: 40% !important;
+}
+
+#warp-gui-container .dg .slider {
+    width: 60% !important;
+}
+
+#warp-gui-container .dg .c input[type="text"] {
+    background: rgba(0, 0, 0, 0.5) !important;
+    border: 1px solid rgba(0, 255, 65, 0.3) !important;
+    color: #00ff41 !important;
+}
+
+#warp-gui-container .dg .c select {
+    background: rgba(0, 0, 0, 0.5) !important;
+    border: 1px solid rgba(0, 255, 65, 0.3) !important;
+    color: #00ff41 !important;
+}
+
+#warp-gui-container .dg .closed li.title {
+    background: rgba(0, 0, 0, 0.5) !important;
+}
+
+#warp-gui-container .dg .cr.function:hover,
+#warp-gui-container .dg .cr.boolean:hover {
+    background: rgba(0, 255, 65, 0.1) !important;
+}
+
+#warp-gui-container .dg li:not(.folder) {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.1) !important;
+}
+
+#warp-gui-container .dg li.save-row select {
+    margin-left: 5px !important;
+}
+
+#warp-gui-container .dg li.save-row .button {
+    text-shadow: none !important;
+}
+
+#warp-gui-title {
+    text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+}
+
+/* Long Range Scanner Styles */
+.long-range-scanner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid #00ff41;
+    padding: 20px;
+    display: none;
+    color: #00ff41;
+    font-family: 'VT323', monospace;
+    z-index: 1000;
+    flex-direction: row;
+    height: 64vh;
+    max-height: 72vh;
+    width: 720px;
+    min-width: 640px;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+}
+
+.long-range-scanner.visible {
+    display: flex;
+}
+
+.scanner-content-wrapper {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    margin-right: 20px;
+    height: 100%;
+    min-width: 0;
+}
+
+.scanner-map-container {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    cursor: grab;
+    background: rgba(0, 20, 0, 0.3);
+    position: relative;
+}
+
+.scanner-map-container:active {
+    cursor: grabbing;
+}
+
+.scanner-star,
+.scanner-planet,
+.scanner-moon {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.scanner-star:hover,
+.scanner-planet:hover,
+.scanner-moon:hover {
+    filter: brightness(1.5) drop-shadow(0 0 5px currentColor);
+}
+
+/* Remove target indicator styles */
+.detail-row.target-selection,
+.target-button {
+    display: none;
+}
+
+.scanner-map {
+    width: 100%;
+    height: 100%;
+    min-width: auto;
+    min-height: auto;
+    transition: all 0.3s ease;
+}
+
+.scanner-star {
+    fill: #ffff00;
+    stroke: #ffff00;
+    stroke-width: 2;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 0, 0.5));
+}
+
+.scanner-orbit {
+    fill: none;
+    stroke: rgba(0, 255, 65, 0.4);
+    stroke-width: 1.5;
+    stroke-dasharray: 8,4;
+    filter: drop-shadow(0 0 2px rgba(0, 255, 65, 0.3));
+}
+
+.scanner-planet {
+    fill: #00ff41;
+    stroke: #00ff41;
+    stroke-width: 1;
+    transition: all 0.3s ease;
+}
+
+.scanner-planet:hover {
+    filter: brightness(1.5);
+    stroke-width: 2;
+}
+
+.scanner-planet-enemy {
+    fill: #ff0000;
+    stroke: #ff0000;
+}
+
+.scanner-planet-friendly {
+    fill: #00ff41;
+    stroke: #00ff41;
+}
+
+.scanner-planet-neutral {
+    fill: #ffff00;
+    stroke: #ffff00;
+}
+
+.scanner-moon {
+    fill: #b3b3b3;
+    stroke: #b3b3b3;
+    stroke-width: 1;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 0 2px rgba(179, 179, 179, 0.3));
+    cursor: pointer;
+}
+
+.scanner-moon-enemy {
+    fill: #ff0000;
+    stroke: #ff0000;
+    filter: drop-shadow(0 0 2px rgba(255, 0, 0, 0.3));
+}
+
+.scanner-moon-friendly {
+    fill: #00ff41;
+    stroke: #00ff41;
+    filter: drop-shadow(0 0 2px rgba(0, 255, 65, 0.3));
+}
+
+.scanner-moon-neutral {
+    fill: #ffff00;
+    stroke: #ffff00;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 0, 0.3));
+}
+
+/* Invisible larger hit area for moons */
+.scanner-moon-hitbox {
+    fill: transparent;
+    stroke: transparent;
+    pointer-events: all;
+    cursor: pointer;
+}
+
+.scanner-moon:hover,
+.scanner-moon-hitbox:hover + .scanner-moon {
+    filter: brightness(1.5) drop-shadow(0 0 3px currentColor);
+    stroke-width: 2;
+}
+
+/* Highlight moon orbit on hover */
+.scanner-moon:hover ~ .scanner-orbit-highlight,
+.scanner-moon-hitbox:hover ~ .scanner-orbit-highlight {
+    stroke: currentColor;
+    stroke-opacity: 0.5;
+    stroke-width: 1.5;
+}
+
+.scanner-orbit-highlight {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 1;
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.scanner-details {
+    background: rgba(0, 20, 0, 0.5);
+    padding: 15px;
+    border-left: 1px solid #00ff41;
+    width: 300px;
+    overflow-y: auto;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.scanner-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.scanner-details-header h2 {
+    margin: 0;
+    color: #00ff41;
+    font-size: 1.2em;
+}
+
+.body-type {
+    color: #b3b3b3;
+    font-style: italic;
+}
+
+.scanner-details-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+}
+
+.detail-row .label {
+    color: #b3b3b3;
+}
+
+.detail-row .value {
+    color: #00ff41;
+}
+
+.detail-row .value.enemy {
+    color: #ff0000;
+}
+
+.detail-row .value.friendly {
+    color: #00ff41;
+}
+
+.detail-row .value.neutral {
+    color: #ffff00;
+}
+
+/* Close button styles */
+.long-range-scanner .close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(0, 20, 0, 0.5);
+    z-index: 1;
+}
+
+.long-range-scanner .close-button:hover {
+    background: #00ff41;
+    color: #000;
+}
+
+/* Scanner Map Tooltip */
+.scanner-tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    padding: 5px 10px;
+    font-size: 0.9em;
+    pointer-events: none;
+    z-index: 1001;
+    font-family: 'VT323', monospace;
+    white-space: nowrap;
+    transform: translate(-50%, -100%);
+    margin-top: -10px;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+}
+
+.scanner-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid #00ff41;
+}
+
+/* Parent planet info in details panel */
+.detail-row.parent-planet {
+    border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+}
+
+.detail-row.parent-planet .value {
+    color: #00ff41;
+    font-weight: bold;
+}
+
+.scanner-ship-position {
+    fill: none;
+    stroke: #00ff41;
+    stroke-width: 2;
+    animation: shipPulse 2s infinite;
+    pointer-events: none;
+    filter: drop-shadow(0 0 5px #00ff41);
+}
+
+.scanner-ship-center {
+    fill: #00ff41;
+    r: 3;
+    pointer-events: none;
+    animation: shipCenterPulse 2s infinite;
+    filter: drop-shadow(0 0 3px #00ff41);
+}
+
+@keyframes shipPulse {
+    0% {
+        stroke-width: 2;
+        stroke-opacity: 1;
+        r: 8;
+        filter: drop-shadow(0 0 5px #00ff41);
+    }
+    50% {
+        stroke-width: 1;
+        stroke-opacity: 0.5;
+        r: 16;
+        filter: drop-shadow(0 0 10px #00ff41);
+    }
+    100% {
+        stroke-width: 2;
+        stroke-opacity: 1;
+        r: 8;
+        filter: drop-shadow(0 0 5px #00ff41);
+    }
+}
+
+@keyframes shipCenterPulse {
+    0% {
+        fill-opacity: 1;
+        r: 3;
+        filter: drop-shadow(0 0 3px #00ff41);
+    }
+    50% {
+        fill-opacity: 0.7;
+        r: 4;
+        filter: drop-shadow(0 0 6px #00ff41);
+    }
+    100% {
+        fill-opacity: 1;
+        r: 3;
+        filter: drop-shadow(0 0 3px #00ff41);
+    }
+}
+
+.scanner-tooltip.ship-tooltip {
+    background: rgba(0, 255, 65, 0.2);
+    border-color: #00ff41;
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+}
+
+.detail-row.target-selection {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(0, 255, 65, 0.2);
+    justify-content: center;
+}
+
+.target-button {
+    background: rgba(0, 0, 0, 0.5);
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    padding: 8px 20px;
+    font-family: 'VT323', monospace;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    text-align: center;
+}
+
+.target-button:hover {
+    background: rgba(0, 255, 65, 0.2);
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+}
+
+.target-button.targeted {
+    background: #00ff41;
+    color: #000000;
+    font-weight: bold;
+}
+
+.target-button.targeted:hover {
+    background: #00cc35;
+}
+
+/* Description and Intel Brief sections */
+.detail-section {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.detail-row.description,
+.detail-row.intel-brief {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.detail-row.description .label,
+.detail-row.intel-brief .label {
+    color: #00ff41;
+    font-weight: bold;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.description-text,
+.intel-text {
+    color: #b3b3b3 !important;
+    font-size: 0.85em;
+    line-height: 1.4;
+    text-align: left;
+    font-style: italic;
+    padding: 5px 0;
+    border-left: 2px solid rgba(0, 255, 65, 0.3);
+    padding-left: 10px;
+    margin-left: 5px;
+}
+
+.intel-text {
+    color: #ffcc00 !important;
+    border-left-color: rgba(255, 204, 0, 0.3);
+}
+
+/* Intel icon pulse animation */
+@keyframes pulse {
+    0% {
+        opacity: 0.8;
+        transform: scale(1);
+        box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+        box-shadow: 0 0 12px rgba(0, 255, 65, 0.8);
+    }
+    100% {
+        opacity: 0.8;
+        transform: scale(1);
+        box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
+    }
+}
+
+/* Intel HUD scrollbar styling with dynamic faction colors */
+.intel-hud,
+.intel-hud * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb-color, #00ff41) var(--scrollbar-track-color, rgba(0, 255, 65, 0.1));
+}
+
+.intel-hud::-webkit-scrollbar,
+.intel-hud *::-webkit-scrollbar {
+    width: 8px;
+}
+
+.intel-hud::-webkit-scrollbar-track,
+.intel-hud *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track-color, rgba(0, 255, 65, 0.1));
+    border-radius: 4px;
+}
+
+.intel-hud::-webkit-scrollbar-thumb,
+.intel-hud *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-color, #00ff41);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}

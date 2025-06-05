@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THOR ALEXANDER - GAME DESIGNER & ENTREPRENEUR</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            line-height: 1.6;
+            color: #00ff41;
+            background: #000000;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Retro CRT effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                linear-gradient(90deg, transparent 50%, rgba(0, 255, 65, 0.03) 50%),
+                linear-gradient(rgba(0, 255, 65, 0.02) 50%, transparent 50%);
+            background-size: 3px 3px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Scan lines effect */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                transparent 50%, 
+                rgba(0, 255, 65, 0.1) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            animation: scanlines 0.1s infinite linear;
+            z-index: 999;
+        }
+
+        @keyframes scanlines {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(4px); }
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .terminal-window {
+            background: rgba(0, 20, 0, 0.95);
+            border: 2px solid #00ff41;
+            border-radius: 5px;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 65, 0.5),
+                inset 0 0 20px rgba(0, 255, 65, 0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .terminal-header {
+            background: #00ff41;
+            color: #000000;
+            padding: 8px 15px;
+            font-weight: bold;
+            text-align: center;
+            border-bottom: 2px solid #00ff41;
+        }
+
+        .terminal-content {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .profile-section {
+            text-align: center;
+            padding: 30px 20px;
+            border-bottom: 1px solid #00ff41;
+            margin-bottom: 20px;
+        }
+
+        .profile-image {
+            width: 120px;
+            height: 120px;
+            border: 3px solid #00ff41;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            overflow: hidden;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.6);
+            filter: sepia(100%) hue-rotate(90deg) saturate(2);
+        }
+
+        .profile-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .name {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(0, 255, 65, 0.8);
+            letter-spacing: 2px;
+        }
+
+        .title {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #00cc33;
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .social-link {
+            color: #00ff41;
+            text-decoration: none;
+            padding: 8px 12px;
+            border: 1px solid #00ff41;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            background: rgba(0, 255, 65, 0.1);
+        }
+
+        .social-link:hover {
+            background: #00ff41;
+            color: #000000;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.8);
+            text-shadow: none;
+        }
+
+        .social-link i {
+            margin-right: 8px;
+            font-size: 1.1rem;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            border-left: 3px solid #00ff41;
+            padding-left: 15px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #00ff41;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section-title::before {
+            content: '> ';
+            color: #00cc33;
+        }
+
+        .about-text {
+            font-size: 1rem;
+            line-height: 1.7;
+            color: #00cc33;
+            margin-bottom: 15px;
+        }
+
+        .project-highlight {
+            background: rgba(0, 255, 65, 0.1);
+            border: 2px solid #00ff41;
+            padding: 25px;
+            border-radius: 5px;
+            margin: 20px 0;
+            position: relative;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 5px rgba(0, 255, 65, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(0, 255, 65, 0.8); }
+        }
+
+        .project-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #00ff41;
+            text-shadow: 0 0 8px rgba(0, 255, 65, 0.8);
+        }
+
+        .project-description {
+            font-size: 1rem;
+            margin-bottom: 20px;
+            color: #00cc33;
+            text-align: center;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .feature {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            padding: 10px;
+            text-align: center;
+            border-radius: 3px;
+            font-size: 0.9rem;
+        }
+
+        .play-button {
+            display: inline-block;
+            background: #00ff41;
+            color: #000000;
+            padding: 12px 25px;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0 auto;
+            display: block;
+            text-align: center;
+            width: fit-content;
+        }
+
+        .play-button:hover {
+            background: #000000;
+            color: #00ff41;
+            border: 2px solid #00ff41;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.8);
+        }
+
+        .experience-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .experience-item {
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px solid #00ff41;
+            padding: 20px;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .experience-item:hover {
+            background: rgba(0, 255, 65, 0.1);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+
+        .experience-item h3 {
+            color: #00ff41;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .experience-item .role {
+            color: #00cc33;
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        .experience-item .duration {
+            color: #009922;
+            font-size: 0.85rem;
+            margin: 0;
+        }
+
+        .contact-section {
+            background: rgba(0, 255, 65, 0.1);
+            border: 2px solid #00ff41;
+            padding: 25px;
+            text-align: center;
+            border-radius: 5px;
+            margin-top: 30px;
+        }
+
+        .contact-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #00ff41;
+            text-transform: uppercase;
+        }
+
+        .contact-text {
+            font-size: 1rem;
+            margin-bottom: 20px;
+            color: #00cc33;
+        }
+
+        .contact-button {
+            display: inline-block;
+            background: #00ff41;
+            color: #000000;
+            padding: 12px 25px;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .contact-button:hover {
+            background: #000000;
+            color: #00ff41;
+            border: 2px solid #00ff41;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.8);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .name {
+                font-size: 2rem;
+            }
+
+            .social-links {
+                flex-direction: column;
+                align-items: center;
+                gap: 15px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .experience-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Blinking cursor effect */
+        .cursor::after {
+            content: '_';
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="terminal-window">
+            <div class="terminal-header">
+                THORALEXANDER.COM - PROFESSIONAL_PROFILE_v2.0
+            </div>
+            <div class="terminal-content">
+                <div class="profile-section">
+                    <div class="profile-image">
+                        <img src="images/IMG_7300.JPG" alt="Thor Alexander">
+                    </div>
+                    <h1 class="name cursor">THOR ALEXANDER</h1>
+                    <p class="title">GAME DESIGNER & ENTREPRENEUR</p>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/thoralexander" class="social-link" target="_blank">
+                            [LINKEDIN]
+                        </a>
+                        <a href="https://github.com/thoracle/" class="social-link" target="_blank">
+                            [GITHUB]
+                        </a>
+                        <a href="https://x.com/god_of_thundarr" class="social-link" target="_blank">
+                            <i class="fab fa-x-twitter"></i> [X/TWITTER]
+                        </a>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">
+                        ABOUT_THOR
+                    </h2>
+                    <p class="about-text">
+                        Thor is a creative and technical executive with decades of hands on experience in online game and consumer internet production.
+                    </p>
+                    <br>
+                    <p class="about-text">
+                        <strong>SPECIALTIES:</strong> World Building & New IP Creation, AI/ML, Crypto, MMO & Virtual Worlds, Virtual Currencies, Free to Play, Monetization, Scaling, Startups, Team Building, Product Management & Strategy.
+                    </p>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">
+                        FEATURED_PROJECT
+                    </h2>
+                    <div class="project-highlight">
+                        <h3 class="project-title">🚀 PLANETZ SPACE SIMULATION</h3>
+                        <p class="project-description">
+                            >>> INITIALIZING SPACE EXPLORATION PROTOCOL...<br>
+                            >>> 3D ENVIRONMENT LOADED<br>
+                            >>> NFT CARD COLLECTION SYSTEM ACTIVE<br>
+                            >>> SHIP MANAGEMENT SYSTEMS ONLINE<br>
+                            >>> WEAPON SYSTEMS ARMED<br>
+                            >>> DAMAGE CONTROL INTERFACE READY<br>
+                            >>> STATION SERVICES AVAILABLE<br>
+                        </p>
+                        <a href="/frontend/" class="play-button">
+                            >>> EXECUTE PLANETZ.EXE <<<
+                        </a>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">
+                        EXEC_HISTORY
+                    </h2>
+                    <div class="experience-grid">
+                        <div class="experience-item">
+                            <h3>OPEN LOOT</h3>
+                            <p class="role">Advisor</p>
+                            <p class="duration">Oct 2022 - Present</p>
+                        </div>
+                        <div class="experience-item">
+                            <h3>BIG TIME STUDIOS</h3>
+                            <p class="role">Co-Founder / Chief Product Officer</p>
+                            <p class="duration">Jan 2020 - Oct 2022</p>
+                        </div>
+                        <div class="experience-item">
+                            <h3>DECENTRALAND</h3>
+                            <p class="role">Vice President of Production</p>
+                            <p class="duration">Oct 2018 - Jan 2020 · 1 yr 4 mos</p>
+                        </div>
+                        <div class="experience-item">
+                            <h3>ZYNGA</h3>
+                            <p class="role">Executive Producer</p>
+                            <p class="duration">Nov 2008 - Dec 2011</p>
+                        </div>
+                        <div class="experience-item">
+                            <h3>METAPLACE (ACQUIRED BY PLAYDOM/DISNEY)</h3>
+                            <p class="role">Director of Product Management</p>
+                            <p class="duration">Jan 2007 - Dec 2008</p>
+                        </div>
+                        <div class="experience-item">
+                            <h3>ELECTRONIC ARTS</h3>
+                            <p class="role">Development Director</p>
+                            <p class="duration">Apr 1999 - Dec 2006 · 7 yrs 9 mos</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="contact-section">
+                        <h2 class="contact-title">ESTABLISH_CONNECTION</h2>
+                        <p class="contact-text">
+                            >>> NETWORK STATUS: ONLINE<br>
+                            >>> COLLABORATION PROTOCOLS: ACTIVE<br>
+                            >>> NEW OPPORTUNITIES: ACCEPTING<br>
+                            >>> CONNECTION REQUEST: PENDING YOUR INPUT
+                        </p>
+                        <a href="https://www.linkedin.com/in/thoralexander" class="contact-button" target="_blank">
+                            >>> CONNECT VIA LINKEDIN <<<
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Terminal typing effect for sections
+        function typeText(element, text, speed = 50) {
+            let i = 0;
+            element.innerHTML = '';
+            const timer = setInterval(() => {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                } else {
+                    clearInterval(timer);
+                }
+            }, speed);
+        }
+
+        // Add terminal startup effect
+        window.addEventListener('load', () => {
+            const header = document.querySelector('.terminal-header');
+            const originalText = header.textContent;
+            typeText(header, originalText, 100);
+        });
+
+        // Add smooth scrolling for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Add animation on scroll with terminal-style reveal
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                    entry.target.style.filter = 'brightness(1)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe sections for animation
+        document.querySelectorAll('.section').forEach(section => {
+            section.style.opacity = '0';
+            section.style.transform = 'translateY(30px)';
+            section.style.filter = 'brightness(0.7)';
+            section.style.transition = 'opacity 0.8s ease, transform 0.8s ease, filter 0.8s ease';
+            observer.observe(section);
+        });
+
+        // Initialize first section as visible
+        if (document.querySelector('.section')) {
+            document.querySelector('.section').style.opacity = '1';
+            document.querySelector('.section').style.transform = 'translateY(0)';
+            document.querySelector('.section').style.filter = 'brightness(1)';
+        }
+
+        // Add random terminal flicker effect
+        setInterval(() => {
+            if (Math.random() < 0.1) {
+                document.body.style.filter = 'brightness(1.2)';
+                setTimeout(() => {
+                    document.body.style.filter = 'brightness(1)';
+                }, 50);
+            }
+        }, 2000);
+    </script>
+</body>
+</html> 

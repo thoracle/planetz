@@ -121,13 +121,13 @@ export class WeaponEffectsManager {
 
             // Load weapon sound files (corrected paths)
             const soundFiles = [
-                { type: 'lasers', file: '/audio/lasers.wav' },
-                { type: 'photons', file: '/audio/photons.wav' },
-                { type: 'missiles', file: '/audio/missiles.wav' },
-                { type: 'mines', file: '/audio/mines.mp3' },
-                { type: 'explosion', file: '/audio/explosion.wav' },
-                { type: 'death', file: '/audio/death.wav' },
-                { type: 'success', file: '/audio/success.wav' }
+                { type: 'lasers', file: 'static/audio/lasers.wav' },
+                { type: 'photons', file: 'static/audio/photons.wav' },
+                { type: 'missiles', file: 'static/audio/missiles.wav' },
+                { type: 'mines', file: 'static/audio/mines.mp3' },
+                { type: 'explosion', file: 'static/audio/explosion.wav' },
+                { type: 'death', file: 'static/audio/death.wav' },
+                { type: 'success', file: 'static/audio/success.wav' }
             ];
 
             const loadPromises = soundFiles.map(sound => this.loadSound(sound.type, sound.file));
