@@ -1736,6 +1736,27 @@ export class TargetComputerManager {
     }
     
     /**
+     * Update action buttons based on target type
+     */
+    updateActionButtons(currentTargetData, info) {
+        // Dock button removed - docking is now handled by the DockingModal
+        // which shows when conditions are met (distance, speed, etc.)
+        
+        // Clear existing buttons since we no longer show dock button
+        this.clearActionButtons();
+        
+        // Reset button state on StarfieldManager if it exists
+        if (this.viewManager?.starfieldManager) {
+            this.viewManager.starfieldManager.currentButtonState = {
+                hasDockButton: false,
+                isDocked: this.viewManager.starfieldManager.isDocked || false,
+                hasScanButton: false,
+                hasTradeButton: false
+            };
+        }
+    }
+
+    /**
      * Clear action buttons container
      */
     clearActionButtons() {
