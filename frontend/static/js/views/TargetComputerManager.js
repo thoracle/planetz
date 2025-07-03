@@ -1008,27 +1008,26 @@ export class TargetComputerManager {
     }
 
     /**
-     * Update target computer (called from main update loop)
+     * Update method called from StarfieldManager
      */
     update(deltaTime) {
-        if (!this.targetComputerEnabled) return;
+        if (!this.targetComputerEnabled) {
+            return;
+        }
 
-        // Update target display
-        this.updateTargetDisplay();
-        
-        // Update reticle position
-        this.updateReticlePosition();
-        
-        // Update direction arrows
-        this.updateDirectionArrow();
-        
-        // Render wireframe if we have a target
+        // Update reticle position if we have a target
+        if (this.currentTarget) {
+            this.updateReticlePosition();
+            this.updateReticleTargetInfo();
+        }
+
+        // Render wireframe if target computer is enabled and we have a target
         if (this.targetWireframe && this.wireframeScene && this.wireframeRenderer) {
             try {
                 // Rotate wireframe continuously
                 if (this.targetWireframe) {
-                    this.targetWireframe.rotation.y += deltaTime * 0.5;
-                    this.targetWireframe.rotation.x = 0.5 + Math.sin(Date.now() * 0.001) * 0.2;
+                    this.targetWireframe.rotation.y += deltaTime * 0.5; // Increased rotation speed
+                    this.targetWireframe.rotation.x = 0.5 + Math.sin(Date.now() * 0.001) * 0.2; // Increased oscillation
                 }
                 
                 // Update sub-target visual indicators
@@ -1041,87 +1040,21 @@ export class TargetComputerManager {
             }
         }
 
-        // Update 3D world outline if we have a target
-        if (this.currentTarget && this.outlineEnabled) {
-            const now = Date.now();
-            if (now - this.lastOutlineUpdate > 100) {
-                this.updateTargetOutline(this.currentTarget, deltaTime);
-                this.lastOutlineUpdate = now;
-            }
+        // Update direction arrow
+        if (this.currentTarget) {
+            this.updateDirectionArrow();
+        } else {
+            // Hide all arrows
+            this.hideAllDirectionArrows();
         }
     }
 
     /**
-     * Clear target computer state completely
-     */
-    clearTargetComputer() {
-        // Reset ALL target state variables
-        this.currentTarget = null;
-        this.previousTarget = null;
-        this.targetedObject = null;
-        this.lastTargetedObjectId = null;
-        this.targetIndex = -1;
-        this.targetObjects = [];
-        this.validTargets = [];
-        this.lastTargetCycleTime = 0;
-        
-        // Clear target computer system state if available
-        const ship = this.viewManager?.getShip();
-        const targetComputerSystem = ship?.getSystem('target_computer');
-        if (targetComputerSystem) {
-            targetComputerSystem.clearTarget();
-            targetComputerSystem.deactivate();
-        }
-        
-        // Hide HUD elements
-        if (this.targetHUD) {
-            this.targetHUD.style.display = 'none';
-        }
-        if (this.targetReticle) {
-            this.targetReticle.style.display = 'none';
-        }
-        
-        // Clear wireframe
-        if (this.targetWireframe) {
-            this.wireframeScene.remove(this.targetWireframe);
-            this.targetWireframe.geometry.dispose();
-            this.targetWireframe.material.dispose();
-            this.targetWireframe = null;
-        }
-        
-        // Clear 3D outline
-        this.clearTargetOutline();
-        
-        // Disable target computer
-        this.targetComputerEnabled = false;
-        
-        console.log('🎯 Target computer completely cleared - all state reset');
-    }
-
-    /**
-     * Clear target wireframe only
-     */
-    clearTargetWireframe() {
-        if (this.targetWireframe) {
-            this.wireframeScene.remove(this.targetWireframe);
-            this.targetWireframe.geometry.dispose();
-            this.targetWireframe.material.dispose();
-            this.targetWireframe = null;
-        }
-    }
-
-    /**
-     * Update reticle position for on-screen targets
+     * Update reticle position on screen
      */
     updateReticlePosition() {
         if (!this.currentTarget || !this.targetComputerEnabled) {
             this.targetReticle.style.display = 'none';
-            if (this.targetNameDisplay) {
-                this.targetNameDisplay.style.display = 'none';
-            }
-            if (this.targetDistanceDisplay) {
-                this.targetDistanceDisplay.style.display = 'none';
-            }
             return;
         }
 
@@ -1140,55 +1073,85 @@ export class TargetComputerManager {
             this.targetReticle.style.display = isBehindCamera ? 'none' : 'block';
             this.targetReticle.style.left = `${x}px`;
             this.targetReticle.style.top = `${y}px`;
-
-            // Update target information displays if reticle is visible
-            if (!isBehindCamera) {
-                this.updateReticleTargetInfo();
-            } else {
-                if (this.targetNameDisplay) {
-                    this.targetNameDisplay.style.display = 'none';
-                }
-                if (this.targetDistanceDisplay) {
-                    this.targetDistanceDisplay.style.display = 'none';
-                }
-            }
         } else {
             this.targetReticle.style.display = 'none';
-            if (this.targetNameDisplay) {
-                this.targetNameDisplay.style.display = 'none';
-            }
-            if (this.targetDistanceDisplay) {
-                this.targetDistanceDisplay.style.display = 'none';
-            }
         }
     }
 
     /**
-     * Update reticle target information display
+     * Update reticle target info (name and distance)
      */
     updateReticleTargetInfo() {
-        if (!this.currentTarget) return;
+        if (!this.currentTarget || !this.targetNameDisplay || !this.targetDistanceDisplay) {
+            return;
+        }
 
+        // Get current target data
         const currentTargetData = this.getCurrentTargetData();
-        if (!currentTargetData) return;
+        if (!currentTargetData) {
+            return;
+        }
 
+        // Calculate distance to target
         const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
         
-        // Update target name
-        if (this.targetNameDisplay) {
-            this.targetNameDisplay.textContent = currentTargetData.name || 'Unknown';
-            this.targetNameDisplay.style.display = 'block';
+        // Get target info for diplomacy status and display
+        let info = null;
+        let isEnemyShip = false;
+        let targetName = 'Unknown Target';
+        
+        // Check if this is an enemy ship
+        if (currentTargetData.isShip && currentTargetData.ship) {
+            isEnemyShip = true;
+            info = {
+                type: 'enemy_ship',
+                diplomacy: currentTargetData.ship.diplomacy || 'enemy',
+                name: currentTargetData.ship.shipName,
+                shipType: currentTargetData.ship.shipType
+            };
+            targetName = info.name || 'Enemy Ship';
+        } else {
+            // Get celestial body info
+            info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+            targetName = info?.name || 'Unknown Target';
         }
         
-        // Update target distance
-        if (this.targetDistanceDisplay) {
-            this.targetDistanceDisplay.textContent = this.formatDistance(distance);
-            this.targetDistanceDisplay.style.display = 'block';
+        // Determine reticle color based on diplomacy using faction color rules
+        let reticleColor = '#D0D0D0'; // Default gray
+        if (isEnemyShip) {
+            reticleColor = '#ff3333'; // Enemy ships are darker neon red
+        } else if (info?.type === 'star') {
+            reticleColor = '#ffff00'; // Stars are neutral yellow
+        } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
+            reticleColor = '#ff3333'; // Darker neon red
+        } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
+            reticleColor = '#ffff00';
+        } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
+            reticleColor = '#00ff41';
         }
+
+        // Update name display
+        this.targetNameDisplay.textContent = targetName;
+        this.targetNameDisplay.style.color = reticleColor;
+        this.targetNameDisplay.style.textShadow = `0 0 4px ${reticleColor}`;
+        this.targetNameDisplay.style.display = 'block';
+
+        // Update distance display
+        this.targetDistanceDisplay.textContent = this.formatDistance(distance);
+        this.targetDistanceDisplay.style.color = reticleColor;
+        this.targetDistanceDisplay.style.textShadow = `0 0 4px ${reticleColor}`;
+        this.targetDistanceDisplay.style.display = 'block';
+
+        // Update reticle corner colors
+        const corners = this.targetReticle.querySelectorAll('.reticle-corner');
+        corners.forEach(corner => {
+            corner.style.borderColor = reticleColor;
+            corner.style.boxShadow = `0 0 4px ${reticleColor}`;
+        });
     }
 
     /**
-     * Update direction arrows for off-screen targets
+     * Update direction arrow
      */
     updateDirectionArrow() {
         // Only proceed if we have a target and the target computer is enabled
@@ -1283,6 +1246,17 @@ export class TargetComputerManager {
         } else {
             // Target is on screen, hide all arrows
             this.hideAllDirectionArrows();
+        }
+    }
+
+    /**
+     * Hide all direction arrows
+     */
+    hideAllDirectionArrows() {
+        if (this.directionArrows) {
+            Object.values(this.directionArrows).forEach(arrow => {
+                arrow.style.display = 'none';
+            });
         }
     }
 
@@ -1615,17 +1589,6 @@ export class TargetComputerManager {
     }
     
     /**
-     * Hide all direction arrows
-     */
-    hideAllDirectionArrows() {
-        if (this.directionArrows) {
-            Object.values(this.directionArrows).forEach(arrow => {
-                arrow.style.display = 'none';
-            });
-        }
-    }
-    
-    /**
      * Show the target HUD
      */
     showTargetHUD() {
@@ -1837,5 +1800,128 @@ export class TargetComputerManager {
         this.clearTargetOutline();
         
         console.log('🎯 TargetComputerManager disposed');
+    }
+
+    /**
+     * Get parent planet name for moons
+     */
+    getParentPlanetName(moon) {
+        if (!this.solarSystemManager) return null;
+        
+        // Implementation depends on solar system manager structure
+        // This is a placeholder - would need actual implementation
+        return null;
+    }
+
+    /**
+     * Update current sector - resets target computer state on sector changes
+     */
+    updateCurrentSector() {
+        if (!this.solarSystemManager) return;
+
+        // Calculate current sector based on position
+        const currentSector = this.calculateCurrentSector();
+        
+        // Get the current sector from the solar system manager
+        const currentSystemSector = this.solarSystemManager.currentSector;
+        
+        // Only update if we've moved to a new sector
+        if (currentSector !== currentSystemSector) {
+            // Reset target computer state before sector change
+            if (this.targetComputerEnabled) {
+                this.currentTarget = null;
+                this.targetIndex = -1;
+                this.targetHUD.style.display = 'none';
+                this.targetReticle.style.display = 'none';
+                
+                // Clear any existing wireframe
+                if (this.targetWireframe) {
+                    this.wireframeScene.remove(this.targetWireframe);
+                    this.targetWireframe.geometry.dispose();
+                    this.targetWireframe.material.dispose();
+                    this.targetWireframe = null;
+                }
+            }
+            
+            this.solarSystemManager.setCurrentSector(currentSector);
+            // Generate new star system for the sector
+            this.solarSystemManager.generateStarSystem(currentSector);
+            
+            // Update target list after sector change if target computer is enabled
+            if (this.targetComputerEnabled) {
+                setTimeout(() => {
+                    this.updateTargetList();
+                    this.cycleTarget();
+                }, 100); // Small delay to ensure new system is fully generated
+            }
+        }
+    }
+
+    /**
+     * Calculate current sector - placeholder implementation
+     */
+    calculateCurrentSector() {
+        // This would need actual implementation based on camera position
+        // Placeholder for now
+        return 'A0';
+    }
+
+    /**
+     * Clear target computer state completely - removes all target data and UI elements
+     */
+    clearTargetComputer() {
+        // Reset ALL target state variables
+        this.currentTarget = null;
+        this.previousTarget = null;
+        this.targetedObject = null;
+        this.lastTargetedObjectId = null;
+        this.targetIndex = -1;
+        this.targetObjects = [];
+        this.validTargets = [];
+        this.lastTargetCycleTime = 0;
+        
+        // Clear target computer system state if available
+        const ship = this.viewManager?.getShip();
+        const targetComputerSystem = ship?.getSystem('target_computer');
+        if (targetComputerSystem) {
+            targetComputerSystem.clearTarget();
+            targetComputerSystem.deactivate();
+        }
+        
+        // Hide HUD elements
+        if (this.targetHUD) {
+            this.targetHUD.style.display = 'none';
+        }
+        if (this.targetReticle) {
+            this.targetReticle.style.display = 'none';
+        }
+        
+        // Clear wireframe
+        if (this.targetWireframe) {
+            this.wireframeScene.remove(this.targetWireframe);
+            this.targetWireframe.geometry.dispose();
+            this.targetWireframe.material.dispose();
+            this.targetWireframe = null;
+        }
+        
+        // Clear 3D outline
+        this.clearTargetOutline();
+        
+        // Disable target computer
+        this.targetComputerEnabled = false;
+        
+        console.log('🎯 Target computer completely cleared - all state reset');
+    }
+
+    /**
+     * Clear target wireframe only
+     */
+    clearTargetWireframe() {
+        if (this.targetWireframe) {
+            this.wireframeScene.remove(this.targetWireframe);
+            this.targetWireframe.geometry.dispose();
+            this.targetWireframe.material.dispose();
+            this.targetWireframe = null;
+        }
     }
 } 

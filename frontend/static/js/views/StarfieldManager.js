@@ -3079,13 +3079,8 @@ export class StarfieldManager {
                 this.targetComputerManager.hideTargetHUD();
                 this.targetComputerManager.hideTargetReticle();
                 
-                // Clear wireframe if it exists
-                if (this.targetWireframe) {
-                    this.wireframeScene.remove(this.targetWireframe);
-                    this.targetWireframe.geometry.dispose();
-                    this.targetWireframe.material.dispose();
-                    this.targetWireframe = null;
-                }
+                // Clear wireframe through target computer manager
+                this.targetComputerManager.clearTargetWireframe();
             }
             
             // Close galactic chart if open
