@@ -10,6 +10,7 @@ import SimplifiedDamageControl from '../ui/SimplifiedDamageControl.js';
 import DockingModal from '../ui/DockingModal.js';
 import { StarfieldAudioManager } from './StarfieldAudioManager.js';
 import { StarfieldRenderer } from './StarfieldRenderer.js';
+import { TargetComputerManager } from './TargetComputerManager.js';
 // SimplifiedDamageControl removed - damage control integrated into ship systems HUD
 
 export class StarfieldManager {
@@ -113,8 +114,11 @@ export class StarfieldManager {
         this.isDamageControlOpen = false; // Track if damage control is currently open
         this.shouldUpdateDamageControl = false; // Flag to control when to update
         
-        // Create target computer HUD
-        this.createTargetComputerHUD();
+        // Create target computer manager
+        this.targetComputerManager = new TargetComputerManager(
+            this.scene, this.camera, this.viewManager, this.THREE, this.solarSystemManager
+        );
+        this.targetComputerManager.initialize();
         
         // Add intel state
         this.intelVisible = false;
@@ -2386,6 +2390,10 @@ export class StarfieldManager {
 
     setSolarSystemManager(manager) {
         this.solarSystemManager = manager;
+        // Update target computer manager with new solar system manager
+        if (this.targetComputerManager) {
+            this.targetComputerManager.solarSystemManager = manager;
+        }
     }
 
     bindMouseEvents() {
