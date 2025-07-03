@@ -127,8 +127,10 @@ export class Chunk {
         let meshPromise;
         
         try {
-            // Create a new worker
-            this.worker = new Worker('static/js/workers/meshGenerator.worker.js');
+            // Create a new worker with auto-detected path
+            const isDevServer = window.location.port === '8080' || window.location.hostname === 'localhost';
+            const workerPath = isDevServer ? 'js/workers/meshGenerator.worker.js' : 'static/js/workers/meshGenerator.worker.js';
+            this.worker = new Worker(workerPath);
             
             // Calculate adaptive timeout based on chunk complexity
             const chunkComplexity = this.calculateChunkComplexity();
