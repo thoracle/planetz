@@ -753,37 +753,27 @@ export class TargetComputerManager {
         }
 
         const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
-        const info = currentTargetData.isShip ? 
-            { type: 'enemy_ship', name: currentTargetData.name } : 
-            this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-
-        // Update target info display
-        let targetInfoHTML = `
-            <div style="margin-bottom: 5px; font-weight: bold;">
-                ${info?.name || 'Unknown Target'}
-            </div>
-            <div style="margin-bottom: 3px;">
-                Type: ${info?.type || 'Unknown'}
-            </div>
-            <div style="margin-bottom: 3px;">
-                Distance: ${this.formatDistance(distance)}
-            </div>
-        `;
-
-        if (info?.diplomacy) {
-            targetInfoHTML += `
-                <div style="margin-bottom: 3px;">
-                    Status: ${info.diplomacy}
-                </div>
-            `;
-        }
-
-        this.targetInfoDisplay.innerHTML = targetInfoHTML;
-
-        // Update HUD border color based on diplomacy
-        let diplomacyColor = '#808080'; // Default gray
-        const isEnemyShip = currentTargetData?.isShip;
         
+        // Get target info for diplomacy status and actions
+        let info = null;
+        let isEnemyShip = false;
+        
+        // Check if this is an enemy ship
+        if (currentTargetData.isShip && currentTargetData.ship) {
+            isEnemyShip = true;
+            info = {
+                type: 'enemy_ship',
+                diplomacy: currentTargetData.ship.diplomacy || 'enemy',
+                name: currentTargetData.ship.shipName,
+                shipType: currentTargetData.ship.shipType
+            };
+        } else {
+            // Get celestial body info
+            info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+        }
+        
+        // Update HUD border color based on diplomacy
+        let diplomacyColor = '#D0D0D0'; // Default gray
         if (isEnemyShip) {
             diplomacyColor = '#ff3333'; // Enemy ships are darker neon red
         } else if (info?.type === 'star') {
@@ -802,6 +792,147 @@ export class TargetComputerManager {
         if (this.wireframeContainer) {
             this.wireframeContainer.style.borderColor = diplomacyColor;
         }
+
+        // Get sub-target information from targeting computer
+        const ship = this.viewManager?.getShip();
+        const targetComputer = ship?.getSystem('target_computer');
+        let subTargetHTML = '';
+        
+        // Add sub-target information if available
+        if (targetComputer && targetComputer.hasSubTargeting()) {
+            // For enemy ships, use actual sub-targeting
+            if (isEnemyShip && currentTargetData.ship) {
+                // Set the enemy ship as the current target for the targeting computer
+                targetComputer.currentTarget = currentTargetData.ship;
+                targetComputer.updateSubTargets();
+                
+                if (targetComputer.currentSubTarget) {
+                    const subTarget = targetComputer.currentSubTarget;
+                    const healthPercent = Math.round(subTarget.health * 100);
+                    
+                    // Get accuracy and damage bonuses
+                    const accuracyBonus = Math.round(targetComputer.getSubTargetAccuracyBonus() * 100);
+                    const damageBonus = Math.round(targetComputer.getSubTargetDamageBonus() * 100);
+                    
+                    // Create health bar display matching main hull health style
+                    const healthBarSection = `
+                        <div style="margin-top: 8px; padding: 4px 0;">
+                            <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">${subTarget.displayName}: ${healthPercent}%</div>
+                            <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
+                                <div style="background-color: white; height: 100%; width: ${healthPercent}%; transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>`;
+                    
+                    subTargetHTML = `
+                        <div style="
+                            background-color: ${isEnemyShip ? '#ff0000' : diplomacyColor}; 
+                            color: ${isEnemyShip ? 'white' : '#000000'}; 
+                            padding: 6px; 
+                            border-radius: 4px; 
+                            margin-top: 4px;
+                            font-weight: bold;
+                        ">
+                            <div style="font-size: 12px; margin-bottom: 2px;">SYSTEM:</div>
+                            ${healthBarSection}
+                            <div style="font-size: 10px; opacity: 0.8; margin-top: 6px;">
+                                <span>Acc:</span> <span>+${accuracyBonus}%</span> • 
+                                <span>Dmg:</span> <span>+${damageBonus}%</span>
+                            </div>
+                            <div style="font-size: 9px; opacity: 0.6; margin-top: 2px;">
+                                &lt; &gt; to cycle sub-targets
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Show available sub-targets count
+                    const availableTargets = targetComputer.availableSubTargets.length;
+                    if (availableTargets > 0) {
+                        subTargetHTML = `
+                            <div style="
+                                background-color: ${diplomacyColor}; 
+                                color: #000000; 
+                                padding: 6px; 
+                                border-radius: 4px; 
+                                margin-top: 4px;
+                                font-weight: bold;
+                            ">
+                                <div style="font-size: 12px; margin-bottom: 2px;">SYSTEM:</div>
+                                <div style="font-size: 11px; opacity: 0.8;">
+                                    ${availableTargets} targetable systems detected
+                                </div>
+                                <div style="font-size: 9px; opacity: 0.6; margin-top: 2px;">
+                                    &lt; &gt; to cycle sub-targets
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+        }
+
+        // Update target information display with colored background and black text
+        let typeDisplay = info?.type || 'Unknown';
+        if (isEnemyShip) {
+            // Remove redundant "(Enemy Ship)" text since faction colors already indicate hostility
+            typeDisplay = info.shipType;
+        }
+        
+        // Format distance for display
+        const formattedDistance = this.formatDistance(distance);
+        
+        // Create hull health section for enemy ships
+        let hullHealthSection = '';
+        if (isEnemyShip && currentTargetData.ship) {
+            const currentHull = currentTargetData.ship.currentHull || 0;
+            const maxHull = currentTargetData.ship.maxHull || 1;
+            const hullPercentage = maxHull > 0 ? (currentHull / maxHull) * 100 : 0;
+            
+            // More accurate hull percentage display - don't round to 0% unless actually 0
+            let displayPercentage;
+            if (hullPercentage === 0) {
+                displayPercentage = 0;
+            } else if (hullPercentage < 1) {
+                displayPercentage = Math.ceil(hullPercentage); // Always show at least 1% if hull > 0
+            } else {
+                displayPercentage = Math.round(hullPercentage);
+            }
+            
+            hullHealthSection = `
+                <div style="margin-top: 8px; padding: 4px 0;">
+                    <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">HULL: ${displayPercentage}%</div>
+                    <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
+                        <div style="background-color: white; height: 100%; width: ${hullPercentage}%; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>`;
+        }
+        
+        // Determine text and background colors based on target type
+        let textColor, backgroundColor;
+        if (isEnemyShip) {
+            // White text on solid red background for hostile enemies
+            textColor = 'white';
+            backgroundColor = '#ff0000'; // Bright red background for hostile enemies
+        } else {
+            // Keep existing styling for non-hostile targets (black text on colored background)
+            textColor = 'black';
+            backgroundColor = diplomacyColor;
+        }
+        
+        this.targetInfoDisplay.innerHTML = `
+            <div style="background-color: ${backgroundColor}; color: ${textColor}; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+                <div style="font-weight: bold; font-size: 12px;">${info?.name || 'Unknown Target'}</div>
+                <div style="font-size: 10px;">${typeDisplay}</div>
+                <div style="font-size: 10px;">${formattedDistance}</div>
+                ${hullHealthSection}
+            </div>
+            ${subTargetHTML}
+        `;
+
+        // Update status icons with diplomacy color
+        this.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info);
+
+        // Update action buttons based on target type  
+        this.updateActionButtons(currentTargetData, info);
         
         // Update reticle color based on faction
         this.updateReticleColor(diplomacyColor);
