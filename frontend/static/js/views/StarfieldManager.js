@@ -4705,7 +4705,7 @@ export class StarfieldManager {
             backgroundColor = diplomacyColor;
         }
         
-        this.targetInfoDisplay.innerHTML = `
+        this.targetComputerManager.updateTargetInfoDisplay(`
             <div style="background-color: ${backgroundColor}; color: ${textColor}; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
                 <div style="font-weight: bold; font-size: 12px;">${info?.name || 'Unknown Target'}</div>
                 <div style="font-size: 10px;">${typeDisplay}</div>
@@ -4713,7 +4713,7 @@ export class StarfieldManager {
                 ${hullHealthSection}
             </div>
             ${subTargetHTML}
-        `;
+        `);
 
         // Update status icons with diplomacy color
         this.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info);
@@ -4722,13 +4722,13 @@ export class StarfieldManager {
         this.updateActionButtons(currentTargetData, info);
 
         // Display the reticle if we have a valid target
-        this.targetReticle.style.display = 'block';
+        this.targetComputerManager.showTargetReticle();
         this.updateReticlePosition();
     }
 
     updateReticlePosition() {
         if (!this.currentTarget || !this.targetComputerEnabled) {
-            this.targetReticle.style.display = 'none';
+            this.targetComputerManager.hideTargetReticle();
             if (this.targetNameDisplay) {
                 this.targetNameDisplay.style.display = 'none';
             }
@@ -4750,9 +4750,12 @@ export class StarfieldManager {
             const relativePos = this.currentTarget.position.clone().sub(this.camera.position);
             const isBehindCamera = relativePos.dot(cameraForward) < 0;
             
-            this.targetReticle.style.display = isBehindCamera ? 'none' : 'block';
-            this.targetReticle.style.left = `${x}px`;
-            this.targetReticle.style.top = `${y}px`;
+            if (isBehindCamera) {
+                this.targetComputerManager.hideTargetReticle();
+            } else {
+                this.targetComputerManager.showTargetReticle();
+                this.targetComputerManager.setTargetReticlePosition(x, y);
+            }
 
             // Update target information displays if reticle is visible
             if (!isBehindCamera) {
@@ -4766,7 +4769,7 @@ export class StarfieldManager {
                 }
             }
         } else {
-            this.targetReticle.style.display = 'none';
+            this.targetComputerManager.hideTargetReticle();
             if (this.targetNameDisplay) {
                 this.targetNameDisplay.style.display = 'none';
             }
@@ -4828,7 +4831,7 @@ export class StarfieldManager {
         }
 
         // Update reticle corner colors
-        const corners = this.targetReticle.getElementsByClassName('reticle-corner');
+        const corners = this.targetComputerManager.getTargetReticleCorners();
         for (const corner of corners) {
             corner.style.borderColor = reticleColor;
             corner.style.boxShadow = `0 0 2px ${reticleColor}`;
@@ -5552,7 +5555,7 @@ export class StarfieldManager {
         }
 
         // Update reticle colors
-        const corners = this.targetReticle.getElementsByClassName('reticle-corner');
+        const corners = this.targetComputerManager.getTargetReticleCorners();
         Array.from(corners).forEach(corner => {
             corner.style.borderColor = diplomacyColor;
             corner.style.boxShadow = `0 0 2px ${diplomacyColor}`;

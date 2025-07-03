@@ -1258,6 +1258,35 @@ export class TargetComputerManager {
     }
     
     /**
+     * Update the target info display with HTML content
+     */
+    updateTargetInfoDisplay(htmlContent) {
+        if (this.targetInfoDisplay) {
+            this.targetInfoDisplay.innerHTML = htmlContent;
+        }
+    }
+    
+    /**
+     * Set target reticle position
+     */
+    setTargetReticlePosition(x, y) {
+        if (this.targetReticle) {
+            this.targetReticle.style.left = `${x}px`;
+            this.targetReticle.style.top = `${y}px`;
+        }
+    }
+    
+    /**
+     * Get target reticle corners for styling
+     */
+    getTargetReticleCorners() {
+        if (this.targetReticle) {
+            return this.targetReticle.getElementsByClassName('reticle-corner');
+        }
+        return [];
+    }
+    
+    /**
      * Clean up resources
      */
     dispose() {
