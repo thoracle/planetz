@@ -1213,6 +1213,51 @@ export class TargetComputerManager {
     }
     
     /**
+     * Show the target HUD
+     */
+    showTargetHUD() {
+        if (this.targetHUD) {
+            this.targetHUD.style.display = 'block';
+        }
+    }
+    
+    /**
+     * Hide the target HUD
+     */
+    hideTargetHUD() {
+        if (this.targetHUD) {
+            this.targetHUD.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Set the target HUD border color
+     */
+    setTargetHUDBorderColor(color) {
+        if (this.targetHUD) {
+            this.targetHUD.style.borderColor = color;
+        }
+    }
+    
+    /**
+     * Show the target reticle
+     */
+    showTargetReticle() {
+        if (this.targetReticle) {
+            this.targetReticle.style.display = 'block';
+        }
+    }
+    
+    /**
+     * Hide the target reticle
+     */
+    hideTargetReticle() {
+        if (this.targetReticle) {
+            this.targetReticle.style.display = 'none';
+        }
+    }
+    
+    /**
      * Clean up resources
      */
     dispose() {

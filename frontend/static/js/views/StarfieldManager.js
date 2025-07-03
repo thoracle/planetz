@@ -2072,8 +2072,8 @@ export class StarfieldManager {
 
         
         if (!this.targetComputerEnabled) {
-            this.targetHUD.style.display = 'none';
-            this.targetReticle.style.display = 'none';
+            this.targetComputerManager.hideTargetHUD();
+            this.targetComputerManager.hideTargetReticle();
             
             // Hide intel when target computer is disabled
             if (this.intelVisible) {
@@ -2094,7 +2094,7 @@ export class StarfieldManager {
             this.clearTargetOutline();
         } else {
             // Show the HUD immediately when target computer is enabled
-            this.targetHUD.style.display = 'block';
+            this.targetComputerManager.showTargetHUD();
             
             this.updateTargetList();
             // Only reset target index if we don't have a current target
@@ -2236,12 +2236,10 @@ export class StarfieldManager {
         }
 
         // Hide reticle until new target is set
-        if (this.targetReticle) {
-            this.targetReticle.style.display = 'none';
-        }
+        this.targetComputerManager.hideTargetReticle();
 
         // Keep target HUD visible
-        this.targetHUD.style.display = 'block';
+        this.targetComputerManager.showTargetHUD();
 
         // Cycle to next target
         if (this.targetIndex === -1 || !this.currentTarget) {
@@ -2740,8 +2738,8 @@ export class StarfieldManager {
             if (this.targetComputerEnabled) {
                 this.currentTarget = null;
                 this.targetIndex = -1;
-                this.targetHUD.style.display = 'none';
-                this.targetReticle.style.display = 'none';
+                this.targetComputerManager.hideTargetHUD();
+                this.targetComputerManager.hideTargetReticle();
                 
                 // Clear any existing wireframe
                 if (this.targetWireframe) {
@@ -3206,12 +3204,8 @@ export class StarfieldManager {
         this.updateIntelIconDisplay();
         
         // Hide HUD elements
-        if (this.targetHUD) {
-            this.targetHUD.style.display = 'none';
-        }
-        if (this.targetReticle) {
-            this.targetReticle.style.display = 'none';
-        }
+        this.targetComputerManager.hideTargetHUD();
+        this.targetComputerManager.hideTargetReticle();
         
         // Clear wireframe
         if (this.targetWireframe) {
@@ -4490,11 +4484,11 @@ export class StarfieldManager {
         }
 
         // Keep target HUD visible as long as targeting is enabled
-        this.targetHUD.style.display = 'block';
+        this.targetComputerManager.showTargetHUD();
 
         // Handle case where there's no current target
         if (!this.currentTarget) {
-            this.targetReticle.style.display = 'none';
+            this.targetComputerManager.hideTargetReticle();
             // Clear any existing action buttons to prevent stale dock buttons
             if (this.actionButtonsContainer) {
                 this.actionButtonsContainer.innerHTML = '';
@@ -4518,7 +4512,7 @@ export class StarfieldManager {
         // Get the current target data
         const currentTargetData = this.getCurrentTargetData();
         if (!currentTargetData) {
-            this.targetReticle.style.display = 'none';
+            this.targetComputerManager.hideTargetReticle();
             // Clear any existing action buttons to prevent stale dock buttons
             if (this.actionButtonsContainer) {
                 this.actionButtonsContainer.innerHTML = '';
@@ -4579,7 +4573,7 @@ export class StarfieldManager {
         } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
             diplomacyColor = '#00ff41';
         }
-        this.targetHUD.style.borderColor = diplomacyColor;
+        this.targetComputerManager.setTargetHUDBorderColor(diplomacyColor);
         
         // Update wireframe container border color to match
         if (this.wireframeContainer) {
