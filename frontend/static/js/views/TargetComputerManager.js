@@ -1518,7 +1518,7 @@ export class TargetComputerManager {
     }
 
     /**
-     * Remove destroyed target from target list
+     * Remove destroyed target from target list and automatically cycle to next target
      */
     removeDestroyedTarget(destroyedShip) {
         if (!destroyedShip) {
@@ -1527,46 +1527,78 @@ export class TargetComputerManager {
 
         console.log(`💥 removeDestroyedTarget called for: ${destroyedShip.shipName || 'unknown ship'}`);
 
-        // Find and remove the destroyed ship from target objects
-        const initialLength = this.targetObjects.length;
-        this.targetObjects = this.targetObjects.filter(targetData => {
-            return !(targetData.type === 'ship' && targetData.object === destroyedShip);
-        });
+        // Get ship systems for proper cleanup
+        const ship = this.viewManager?.getShip();
+        const targetComputer = ship?.getSystem('target_computer');
 
-        // Check if we removed the current target
-        const wasCurrentTarget = (this.currentTarget === destroyedShip || 
-                                 this.getCurrentTargetData()?.ship === destroyedShip);
+        // Check if the destroyed ship is currently targeted by any system
+        const isCurrentTarget = this.currentTarget === destroyedShip;
+        const isCurrentTargetData = this.getCurrentTargetData()?.ship === destroyedShip;
+        const isWeaponTarget = ship?.weaponSystem?.lockedTarget === destroyedShip;
+        const isTargetComputerTarget = targetComputer?.currentTarget === destroyedShip;
 
-        if (wasCurrentTarget) {
-            console.log(`🎯 Current target was destroyed, clearing outline and cycling to next target`);
-            
-            // Clear current target state
+        const anySystemTargeting = isCurrentTarget || isCurrentTargetData || isWeaponTarget || isTargetComputerTarget;
+
+        console.log(`🔍 Checking targeting systems for destroyed ship: ${destroyedShip.shipName}`);
+        console.log(`   • Current target: ${isCurrentTarget}`);
+        console.log(`   • Current target data: ${isCurrentTargetData}`);
+        console.log(`   • Weapon system target: ${isWeaponTarget}`);
+        console.log(`   • Target computer target: ${isTargetComputerTarget}`);
+        console.log(`   • Any system targeting: ${anySystemTargeting}`);
+
+        if (anySystemTargeting) {
+            console.log('🗑️ Destroyed ship was targeted - performing full synchronization cleanup');
+
+            // Clear ALL targeting system references
             this.currentTarget = null;
+            this.targetIndex = -1;
+
+            if (ship?.weaponSystem) {
+                ship.weaponSystem.setLockedTarget(null);
+            }
+
+            if (targetComputer) {
+                targetComputer.clearTarget();
+                targetComputer.clearSubTarget();
+            }
+
+            // ALWAYS clear 3D outline when a targeted ship is destroyed
+            console.log('🎯 Clearing 3D outline for destroyed target');
             this.clearTargetOutline();
-            
-            // Update target list and cycle to next target
+
+            // Update target list to remove destroyed ship
             this.updateTargetList();
-            
-            if (this.targetObjects.length > 0) {
-                // Reset index and cycle to first available target
-                this.targetIndex = -1;
-                this.cycleTarget();
+
+            // Select new target using proper cycling logic
+            if (this.targetObjects && this.targetObjects.length > 0) {
+                console.log(`🔄 Cycling to new target from ${this.targetObjects.length} available targets`);
+
+                // Prevent outlines from appearing automatically after destruction
+                if (this.viewManager?.starfieldManager) {
+                    this.viewManager.starfieldManager.outlineDisabledUntilManualCycle = true;
+                }
+
+                // Cycle to next target without creating outline (automatic cycle)
+                this.cycleTarget(false);
+
+                console.log('🎯 Target cycled after destruction - outline disabled until next manual cycle');
             } else {
-                // No targets left
-                this.targetIndex = -1;
+                console.log('📭 No targets remaining after destruction');
+
+                // CRITICAL: Force clear outline again when no targets remain
+                console.log('🎯 Force-clearing outline - no targets remaining');
                 this.clearTargetOutline();
+
+                // Clear wireframe and hide UI
+                this.clearTargetWireframe();
+                this.hideTargetHUD();
+                this.hideTargetReticle();
             }
         } else {
-            // Target wasn't current target, just update the list
-            this.clearTargetOutline();
-            this.updateTargetList();
+            console.log('🔄 Destroyed ship was not currently targeted - performing standard list update');
             
-            // Re-establish outline for current target if it still exists
-            if (this.currentTarget) {
-                this.updateTargetOutline(this.currentTarget, 0);
-            } else {
-                this.clearTargetOutline();
-            }
+            // Just update the target list without changing current target
+            this.updateTargetList();
         }
 
         console.log(`✅ removeDestroyedTarget complete for: ${destroyedShip.shipName || 'unknown ship'}`);
