@@ -78,45 +78,41 @@ export class TargetComputerManager {
      * Create the target computer HUD
      */
     createTargetComputerHUD() {
-        // Create main target HUD container
+        // Create main target HUD container - match original position and styling
         this.targetHUD = document.createElement('div');
         this.targetHUD.style.cssText = `
             position: fixed;
-            top: 10px;
-            right: 10px;
-            width: 300px;
-            height: 400px;
-            background: rgba(0, 0, 0, 0.8);
-            border: 2px solid #808080;
+            bottom: 80px;
+            left: 10px;
+            width: 200px;
+            height: auto;
+            border: 2px solid #00ff41;
+            background: rgba(0, 0, 0, 0.7);
             color: #00ff41;
             font-family: "Courier New", monospace;
-            font-size: 12px;
+            font-size: 14px;
             padding: 10px;
-            z-index: 1001;
             display: none;
-            pointer-events: none;
-            border-radius: 5px;
-            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+            pointer-events: auto;
+            z-index: 1000;
+            transition: border-color 0.3s ease;
         `;
 
-        // Create wireframe container
+        // Create wireframe container - match original styling
         this.wireframeContainer = document.createElement('div');
         this.wireframeContainer.style.cssText = `
-            width: 200px;
+            width: 100%;
             height: 150px;
             border: 1px solid #00ff41;
-            margin: 10px auto;
-            background: rgba(0, 0, 0, 0.9);
+            margin-bottom: 10px;
             position: relative;
-            border-radius: 3px;
+            overflow: visible;
+            pointer-events: none;
+            z-index: 1001;
         `;
 
-        // Create wireframe renderer
-        this.wireframeRenderer = new this.THREE.WebGLRenderer({ 
-            alpha: true, 
-            antialias: true,
-            preserveDrawingBuffer: true
-        });
+        // Create wireframe renderer - match original size
+        this.wireframeRenderer = new this.THREE.WebGLRenderer({ alpha: true });
         this.wireframeRenderer.setSize(200, 150);
         this.wireframeRenderer.setClearColor(0x000000, 0);
         
@@ -160,35 +156,100 @@ export class TargetComputerManager {
             z-index: 1003;
         `;
 
+        // Create icons with tooltips - match original
+        const createIcon = (symbol, tooltip) => {
+            const icon = document.createElement('div');
+            icon.style.cssText = `
+                cursor: help;
+                opacity: 0.8;
+                transition: all 0.2s ease;
+                position: relative;
+                width: 24px;
+                height: 24px;
+                border: 1px solid #00ff41;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: "Courier New", monospace;
+                font-size: 14px;
+                text-shadow: 0 0 4px #00ff41;
+                box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
+            `;
+            icon.innerHTML = symbol;
+            icon.title = tooltip;
+            
+            // Add hover effects
+            icon.addEventListener('mouseenter', () => {
+                icon.style.opacity = '1';
+                icon.style.transform = 'scale(1.1)';
+                icon.style.boxShadow = '0 0 8px rgba(0, 255, 65, 0.6)';
+            });
+            
+            icon.addEventListener('mouseleave', () => {
+                icon.style.opacity = '0.8';
+                icon.style.transform = 'scale(1)';
+                icon.style.boxShadow = '0 0 4px rgba(0, 255, 65, 0.4)';
+            });
+            
+            return icon;
+        };
+
+        // Create sci-fi style icons - match original
+        this.governmentIcon = createIcon('⬡', 'Government');
+        this.economyIcon = createIcon('⬢', 'Economy');
+        this.technologyIcon = createIcon('⬨', 'Technology');
+
+        this.statusIconsContainer.appendChild(this.governmentIcon);
+        this.statusIconsContainer.appendChild(this.economyIcon);
+        this.statusIconsContainer.appendChild(this.technologyIcon);
+
+        // Create action buttons container
+        this.actionButtonsContainer = document.createElement('div');
+        this.actionButtonsContainer.style.cssText = `
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            position: relative;
+            z-index: 1004;
+        `;
+
         // Create direction arrows for off-screen targets
         this.createDirectionArrows();
 
-        // Assemble the HUD
+        // Assemble the HUD - match original order
+        this.targetHUD.appendChild(this.wireframeContainer);
         this.targetHUD.appendChild(this.targetInfoDisplay);
         this.targetHUD.appendChild(this.statusIconsContainer);
-        this.targetHUD.appendChild(this.wireframeContainer);
+        this.targetHUD.appendChild(this.actionButtonsContainer);
         
         document.body.appendChild(this.targetHUD);
     }
 
     /**
-     * Create direction arrows for off-screen targets
+     * Create direction arrows for off-screen targets - match original style
      */
     createDirectionArrows() {
-        const positions = ['top', 'bottom', 'left', 'right'];
-        
-        positions.forEach(position => {
-            const arrow = document.createElement('div');
+        // Create direction arrows (one for each edge)
+        this.directionArrows = {
+            left: document.createElement('div'),
+            right: document.createElement('div'),
+            top: document.createElement('div'),
+            bottom: document.createElement('div')
+        };
+
+        // Style each arrow - match original styling with proper borders
+        Object.entries(this.directionArrows).forEach(([position, arrow]) => {
             arrow.style.cssText = `
-                position: fixed;
+                position: absolute;
                 width: 0;
                 height: 0;
-                z-index: 999;
                 display: none;
                 pointer-events: none;
+                z-index: 1001;
             `;
             
-            // Set arrow direction based on position
+            // Set specific border styles for each direction
             if (position === 'top') {
                 arrow.style.borderLeft = '10px solid transparent';
                 arrow.style.borderRight = '10px solid transparent';
@@ -207,91 +268,108 @@ export class TargetComputerManager {
                 arrow.style.borderLeft = '15px solid #D0D0D0';
             }
             
-            this.directionArrows[position] = arrow;
-            document.body.appendChild(arrow);
+            document.body.appendChild(arrow); // Append to body, not HUD
         });
     }
 
     /**
-     * Create target reticle for on-screen targets
+     * Create target reticle for on-screen targets - match original style
      */
     createTargetReticle() {
+        // Create target reticle corners - match original design
         this.targetReticle = document.createElement('div');
         this.targetReticle.style.cssText = `
             position: fixed;
             width: 40px;
             height: 40px;
-            border: 2px solid #00ff41;
-            pointer-events: none;
-            z-index: 1000;
             display: none;
+            pointer-events: none;
+            z-index: 999;
             transform: translate(-50%, -50%);
         `;
 
-        // Create corner brackets
-        const corners = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+        // Create corner elements - match original bracket style
+        const corners = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
         corners.forEach(corner => {
-            const bracket = document.createElement('div');
-            bracket.style.cssText = `
+            const el = document.createElement('div');
+            el.classList.add('reticle-corner');
+            el.style.cssText = `
                 position: absolute;
                 width: 10px;
                 height: 10px;
-                border: 2px solid #00ff41;
+                border: 2px solid #D0D0D0;
+                box-shadow: 0 0 2px #D0D0D0;
             `;
-            
-            if (corner === 'top-left') {
-                bracket.style.top = '-2px';
-                bracket.style.left = '-2px';
-                bracket.style.borderRight = 'none';
-                bracket.style.borderBottom = 'none';
-            } else if (corner === 'top-right') {
-                bracket.style.top = '-2px';
-                bracket.style.right = '-2px';
-                bracket.style.borderLeft = 'none';
-                bracket.style.borderBottom = 'none';
-            } else if (corner === 'bottom-left') {
-                bracket.style.bottom = '-2px';
-                bracket.style.left = '-2px';
-                bracket.style.borderRight = 'none';
-                bracket.style.borderTop = 'none';
-            } else if (corner === 'bottom-right') {
-                bracket.style.bottom = '-2px';
-                bracket.style.right = '-2px';
-                bracket.style.borderLeft = 'none';
-                bracket.style.borderTop = 'none';
+
+            // Position and style each corner - match original
+            switch(corner) {
+                case 'topLeft':
+                    el.style.top = '0';
+                    el.style.left = '0';
+                    el.style.borderRight = 'none';
+                    el.style.borderBottom = 'none';
+                    break;
+                case 'topRight':
+                    el.style.top = '0';
+                    el.style.right = '0';
+                    el.style.borderLeft = 'none';
+                    el.style.borderBottom = 'none';
+                    break;
+                case 'bottomLeft':
+                    el.style.bottom = '0';
+                    el.style.left = '0';
+                    el.style.borderRight = 'none';
+                    el.style.borderTop = 'none';
+                    break;
+                case 'bottomRight':
+                    el.style.bottom = '0';
+                    el.style.right = '0';
+                    el.style.borderLeft = 'none';
+                    el.style.borderTop = 'none';
+                    break;
             }
-            
-            this.targetReticle.appendChild(bracket);
+
+            this.targetReticle.appendChild(el);
         });
 
-        // Create target name display
+        // Create target name display (above the reticle) - match original
         this.targetNameDisplay = document.createElement('div');
+        this.targetNameDisplay.className = 'target-name-display';
         this.targetNameDisplay.style.cssText = `
             position: absolute;
             top: -25px;
             left: 50%;
             transform: translateX(-50%);
-            color: #00ff41;
-            font-family: "Courier New", monospace;
-            font-size: 12px;
+            color: #D0D0D0;
+            text-shadow: 0 0 4px #D0D0D0;
+            font-family: 'Orbitron', monospace;
+            font-size: 12.1px;
+            font-weight: bold;
+            text-align: center;
             white-space: nowrap;
             pointer-events: none;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: none;
         `;
 
-        // Create target distance display
+        // Create target distance display (below the reticle) - match original
         this.targetDistanceDisplay = document.createElement('div');
+        this.targetDistanceDisplay.className = 'target-distance-display';
         this.targetDistanceDisplay.style.cssText = `
             position: absolute;
             top: 45px;
             left: 50%;
             transform: translateX(-50%);
-            color: #00ff41;
-            font-family: "Courier New", monospace;
-            font-size: 10px;
+            color: #D0D0D0;
+            text-shadow: 0 0 4px #D0D0D0;
+            font-family: 'Orbitron', monospace;
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
             white-space: nowrap;
             pointer-events: none;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: none;
         `;
 
         this.targetReticle.appendChild(this.targetNameDisplay);
@@ -364,32 +442,67 @@ export class TargetComputerManager {
      * Update the list of available targets
      */
     updateTargetList() {
-        if (!this.solarSystemManager) {
-            return;
+        let allTargets = [];
+        
+        // Get celestial bodies from SolarSystemManager
+        if (this.solarSystemManager) {
+            const bodies = this.solarSystemManager.getCelestialBodies();
+            
+            const celestialBodies = Array.from(bodies.entries())
+                .map(([key, body]) => {
+                    const info = this.solarSystemManager.getCelestialBodyInfo(body);
+                    
+                    // Validate body position
+                    if (!body.position || 
+                        isNaN(body.position.x) || 
+                        isNaN(body.position.y) || 
+                        isNaN(body.position.z)) {
+                        console.warn('Invalid position detected for celestial body:', info.name);
+                        return null;
+                    }
+                    
+                    return {
+                        name: info.name,
+                        type: info.type,
+                        position: body.position.toArray(),
+                        isMoon: key.startsWith('moon_'),
+                        object: body,  // Store the actual THREE.js object
+                        isShip: false,
+                        distance: this.calculateDistance(this.camera.position, body.position)
+                    };
+                })
+                .filter(body => body !== null); // Remove any invalid bodies
+            
+            allTargets = allTargets.concat(celestialBodies);
         }
-
-        // Get all celestial objects from the solar system
-        const celestialObjects = this.solarSystemManager.getCelestialObjects();
         
-        // Get all enemy ships
-        const enemyShips = this.solarSystemManager.getEnemyShips();
+        // Add target dummy ships (need to get from StarfieldManager)
+        if (this.viewManager && this.viewManager.starfieldManager && this.viewManager.starfieldManager.dummyShipMeshes) {
+            const dummyShipTargets = this.viewManager.starfieldManager.dummyShipMeshes.map(mesh => {
+                const ship = mesh.userData.ship;
+                return {
+                    name: ship.shipName,
+                    type: 'enemy_ship',
+                    position: mesh.position.toArray(),
+                    isMoon: false,
+                    object: mesh,  // Store the mesh as the target object
+                    isShip: true,
+                    ship: ship,     // Store the ship instance for sub-targeting
+                    distance: this.calculateDistance(this.camera.position, mesh.position)
+                };
+            });
+            
+            allTargets = allTargets.concat(dummyShipTargets);
+        }
         
-        // Combine celestial objects and enemy ships
-        this.targetObjects = [
-            ...celestialObjects.map(obj => ({
-                object: obj,
-                distance: this.calculateDistance(this.camera.position, obj.position),
-                type: 'celestial'
-            })),
-            ...enemyShips.map(ship => ({
-                object: ship,
-                distance: this.calculateDistance(this.camera.position, ship.position),
-                type: 'ship'
-            }))
-        ];
-
+        // Update target list
+        this.targetObjects = allTargets;
+        
         // Sort targets by distance
         this.sortTargetsByDistance();
+        
+        // Update target display
+        this.updateTargetDisplay();
     }
 
     /**
@@ -415,6 +528,16 @@ export class TargetComputerManager {
      * Cycle to the next target
      */
     cycleTarget(isManualCycle = true) {
+        // Prevent cycling targets while docked
+        if (this.viewManager?.starfieldManager?.isDocked) {
+            return;
+        }
+
+        // Prevent cycling targets immediately after undocking
+        if (this.viewManager?.starfieldManager?.undockCooldown && Date.now() < this.viewManager.starfieldManager.undockCooldown) {
+            return;
+        }
+
         if (!this.targetComputerEnabled || this.targetObjects.length === 0) {
             return;
         }
@@ -457,7 +580,6 @@ export class TargetComputerManager {
         // Create new wireframe and update display
         this.createTargetWireframe();
         this.updateTargetDisplay();
-        this.updateTargetOutline(this.currentTarget, 0);
     }
 
     /**
@@ -500,25 +622,121 @@ export class TargetComputerManager {
                     wireframeColor = 0x00ff41;
                 }
             }
-
-            // Create wireframe geometry
-            const wireframeGeometry = new this.THREE.SphereGeometry(radius, 16, 12);
-            const wireframeMaterial = new this.THREE.MeshBasicMaterial({
+            
+            const wireframeMaterial = new this.THREE.LineBasicMaterial({ 
                 color: wireframeColor,
-                wireframe: true,
+                linewidth: 1,
                 transparent: true,
                 opacity: 0.8
             });
 
-            this.targetWireframe = new this.THREE.Mesh(wireframeGeometry, wireframeMaterial);
+            if (info && (info.type === 'star' || (this.getStarSystem() && info.name === this.getStarSystem().star_name))) {
+                // For stars, use the custom star geometry directly (it's already a line geometry)
+                const starGeometry = this.createStarGeometry(radius);
+                this.targetWireframe = new this.THREE.LineSegments(starGeometry, wireframeMaterial);
+            } else {
+                // For other objects, create standard wireframes using EdgesGeometry
+                let wireframeGeometry;
+                if (info) {
+                    // Create different shapes based on object type
+                    if (info.type === 'enemy_ship') {
+                        // Use simple cube wireframe to match simplified target dummies
+                        wireframeGeometry = new this.THREE.BoxGeometry(radius, radius, radius);
+                    } else if (currentTargetData?.isMoon) {
+                        wireframeGeometry = new this.THREE.OctahedronGeometry(radius, 0);
+                    } else {
+                        wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
+                    }
+                } else {
+                    wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 1);
+                }
+                
+                const edgesGeometry = new this.THREE.EdgesGeometry(wireframeGeometry);
+                this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
+                
+                // Clean up the temporary geometries
+                wireframeGeometry.dispose();
+                edgesGeometry.dispose();
+            }
+            
+            // Add sub-target visual indicators only for enemy ships
+            const targetData = this.getCurrentTargetData();
+            const isEnemyShip = targetData?.isShip && targetData?.ship;
+            if (isEnemyShip) {
+                this.createSubTargetIndicators(radius, wireframeColor);
+            } else {
+                // Clear sub-target indicators for celestial bodies
+                this.createSubTargetIndicators(0, 0); // This will clear existing indicators
+            }
+            
+            this.targetWireframe.position.set(0, 0, 0);
             this.wireframeScene.add(this.targetWireframe);
-
-            // Create sub-target indicators if available
-            this.createSubTargetIndicators(radius, wireframeColor);
+            
+            this.wireframeCamera.position.z = radius * 3;
+            this.targetWireframe.rotation.set(0.5, 0, 0.3);
 
         } catch (error) {
             console.error('Error creating target wireframe:', error);
         }
+    }
+
+    /**
+     * Create star geometry for wireframe display
+     */
+    createStarGeometry(radius) {
+        const geometry = new this.THREE.BufferGeometry();
+        const vertices = [];
+        
+        // Create a simpler 3D star with radiating lines from center
+        const center = [0, 0, 0];
+        
+        // Create star points radiating outward in multiple directions
+        const directions = [
+            // Primary axes
+            [1, 0, 0], [-1, 0, 0],    // X axis
+            [0, 1, 0], [0, -1, 0],    // Y axis  
+            [0, 0, 1], [0, 0, -1],    // Z axis
+            
+            // Diagonal directions for more star-like appearance
+            [0.707, 0.707, 0], [-0.707, -0.707, 0],     // XY diagonal
+            [0.707, 0, 0.707], [-0.707, 0, -0.707],     // XZ diagonal
+            [0, 0.707, 0.707], [0, -0.707, -0.707],     // YZ diagonal
+            
+            // Additional points for fuller star shape
+            [0.577, 0.577, 0.577], [-0.577, -0.577, -0.577],  // 3D diagonals
+            [0.577, -0.577, 0.577], [-0.577, 0.577, -0.577],
+        ];
+        
+        // Create lines from center to each star point
+        directions.forEach(direction => {
+            // Line from center to outer point
+            vertices.push(center[0], center[1], center[2]);
+            vertices.push(
+                direction[0] * radius,
+                direction[1] * radius, 
+                direction[2] * radius
+            );
+        });
+        
+        // Create some connecting lines between points for more complex star pattern
+        const outerPoints = directions.map(dir => [
+            dir[0] * radius,
+            dir[1] * radius,
+            dir[2] * radius
+        ]);
+        
+        // Connect some outer points to create star pattern
+        for (let i = 0; i < 6; i += 2) {
+            // Connect opposite primary axis points
+            vertices.push(outerPoints[i][0], outerPoints[i][1], outerPoints[i][2]);
+            vertices.push(outerPoints[i + 1][0], outerPoints[i + 1][1], outerPoints[i + 1][2]);
+        }
+        
+        // Convert vertices array to Float32Array and set as position attribute
+        const vertexArray = new Float32Array(vertices);
+        geometry.setAttribute('position', new this.THREE.BufferAttribute(vertexArray, 3));
+        
+        return geometry;
     }
 
     /**
@@ -584,6 +802,9 @@ export class TargetComputerManager {
         if (this.wireframeContainer) {
             this.wireframeContainer.style.borderColor = diplomacyColor;
         }
+        
+        // Update reticle color based on faction
+        this.updateReticleColor(diplomacyColor);
     }
 
     /**
@@ -599,24 +820,36 @@ export class TargetComputerManager {
             return null;
         }
 
-        if (targetData.type === 'ship') {
+        // Check if this is a ship (either 'ship' or 'enemy_ship' type, or has isShip flag)
+        if (targetData.type === 'ship' || targetData.type === 'enemy_ship' || targetData.isShip) {
             return {
                 object: this.currentTarget,
-                name: this.currentTarget.shipName || 'Enemy Ship',
+                name: targetData.name || this.currentTarget.shipName || 'Enemy Ship',
+                type: targetData.type || 'enemy_ship',
                 isShip: true,
-                ship: this.currentTarget,
-                distance: targetData.distance
+                ship: targetData.ship || this.currentTarget,
+                distance: targetData.distance,
+                isMoon: targetData.isMoon || false
             };
         } else {
             const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
             return {
                 object: this.currentTarget,
                 name: info?.name || 'Unknown',
+                type: info?.type || 'unknown',
                 isShip: false,
                 distance: targetData.distance,
+                isMoon: targetData.isMoon || false,
                 ...info
             };
         }
+    }
+
+    /**
+     * Get star system information from solar system manager
+     */
+    getStarSystem() {
+        return this.solarSystemManager?.getStarSystem?.() || null;
     }
 
     /**
@@ -732,6 +965,18 @@ export class TargetComputerManager {
         this.targetComputerEnabled = false;
         
         console.log('🎯 Target computer completely cleared - all state reset');
+    }
+
+    /**
+     * Clear target wireframe only
+     */
+    clearTargetWireframe() {
+        if (this.targetWireframe) {
+            this.wireframeScene.remove(this.targetWireframe);
+            this.targetWireframe.geometry.dispose();
+            this.targetWireframe.material.dispose();
+            this.targetWireframe = null;
+        }
     }
 
     /**
@@ -884,11 +1129,16 @@ export class TargetComputerManager {
                     arrow.style.transform = 'translateY(-50%)';
                 }
 
-                // Update arrow color
-                arrow.style.borderTopColor = arrowColor;
-                arrow.style.borderBottomColor = arrowColor;
-                arrow.style.borderLeftColor = arrowColor;
-                arrow.style.borderRightColor = arrowColor;
+                // Update arrow color for the visible border
+                if (primaryDirection === 'top') {
+                    arrow.style.borderBottomColor = arrowColor;
+                } else if (primaryDirection === 'bottom') {
+                    arrow.style.borderTopColor = arrowColor;
+                } else if (primaryDirection === 'left') {
+                    arrow.style.borderRightColor = arrowColor;
+                } else if (primaryDirection === 'right') {
+                    arrow.style.borderLeftColor = arrowColor;
+                }
                 
                 arrow.style.display = 'block';
                 
@@ -1273,6 +1523,29 @@ export class TargetComputerManager {
         if (this.targetReticle) {
             this.targetReticle.style.left = `${x}px`;
             this.targetReticle.style.top = `${y}px`;
+        }
+    }
+
+    /**
+     * Update reticle color based on target faction
+     */
+    updateReticleColor(diplomacyColor = '#D0D0D0') {
+        if (this.targetReticle) {
+            const corners = this.targetReticle.querySelectorAll('.reticle-corner');
+            corners.forEach(corner => {
+                corner.style.borderColor = diplomacyColor;
+                corner.style.boxShadow = `0 0 2px ${diplomacyColor}`;
+            });
+            
+            // Update name and distance display colors
+            if (this.targetNameDisplay) {
+                this.targetNameDisplay.style.color = diplomacyColor;
+                this.targetNameDisplay.style.textShadow = `0 0 4px ${diplomacyColor}`;
+            }
+            if (this.targetDistanceDisplay) {
+                this.targetDistanceDisplay.style.color = diplomacyColor;
+                this.targetDistanceDisplay.style.textShadow = `0 0 4px ${diplomacyColor}`;
+            }
         }
     }
     
