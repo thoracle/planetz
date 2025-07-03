@@ -2700,10 +2700,8 @@ export class StarfieldManager {
         if (this.targetComputerEnabled && this.currentTarget) {
             this.updateDirectionArrow();
         } else {
-            // Hide all arrows
-            Object.values(this.directionArrows).forEach(arrow => {
-                arrow.style.display = 'none';
-            });
+            // Hide all arrows - delegate to target computer manager
+            this.targetComputerManager.hideAllDirectionArrows();
         }
         
         // Update weapon system

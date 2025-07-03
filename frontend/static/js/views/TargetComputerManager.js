@@ -818,9 +818,7 @@ export class TargetComputerManager {
         // Only proceed if we have a target and the target computer is enabled
         if (!this.currentTarget || !this.targetComputerEnabled || !this.directionArrows) {
             // Hide all arrows
-            Object.values(this.directionArrows).forEach(arrow => {
-                arrow.style.display = 'none';
-            });
+            this.hideAllDirectionArrows();
             return;
         }
 
@@ -903,9 +901,7 @@ export class TargetComputerManager {
             }
         } else {
             // Target is on screen, hide all arrows
-            Object.values(this.directionArrows).forEach(arrow => {
-                arrow.style.display = 'none';
-            });
+            this.hideAllDirectionArrows();
         }
     }
 
@@ -1202,6 +1198,17 @@ export class TargetComputerManager {
         if (this.currentTarget && this.targetComputerEnabled) {
             // Update the wireframe display without cycling
             this.updateTargetDisplay();
+        }
+    }
+    
+    /**
+     * Hide all direction arrows
+     */
+    hideAllDirectionArrows() {
+        if (this.directionArrows) {
+            Object.values(this.directionArrows).forEach(arrow => {
+                arrow.style.display = 'none';
+            });
         }
     }
     
