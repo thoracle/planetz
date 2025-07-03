@@ -924,292 +924,9 @@ export class StarfieldManager {
         this.viewBox.textContent = `View: ${this.view}`;
     }
 
-    createTargetComputerHUD() {
-        // Create target computer container
-        this.targetHUD = document.createElement('div');
-        this.targetHUD.style.cssText = `
-            position: fixed;
-            bottom: 80px;
-            left: 10px;
-            width: 200px;
-            height: auto;
-            border: 2px solid #00ff41;
-            background: rgba(0, 0, 0, 0.7);
-            color: #00ff41;
-            font-family: "Courier New", monospace;
-            font-size: 14px;
-            padding: 10px;
-            display: none;
-            pointer-events: auto;
-            z-index: 1000;
-            transition: border-color 0.3s ease;
-        `;
 
-        // Create direction arrows (one for each edge)
-        this.directionArrows = {
-            left: document.createElement('div'),
-            right: document.createElement('div'),
-            top: document.createElement('div'),
-            bottom: document.createElement('div')
-        };
 
-        // Style each arrow
-        Object.entries(this.directionArrows).forEach(([position, arrow]) => {
-            arrow.style.cssText = `
-                position: absolute;
-                width: 0;
-                height: 0;
-                display: none;
-                pointer-events: none;
-                z-index: 1001;
-            `;
-            document.body.appendChild(arrow); // Append to body, not HUD
-        });
 
-        // Create wireframe container with a renderer
-        this.wireframeContainer = document.createElement('div');
-        this.wireframeContainer.style.cssText = `
-            width: 100%;
-            height: 150px;
-            border: 1px solid #00ff41;
-            margin-bottom: 10px;
-            position: relative;
-            overflow: visible;
-            pointer-events: none;
-            z-index: 1001;
-        `;
-
-        // Create renderer for wireframe
-        this.wireframeRenderer = new this.THREE.WebGLRenderer({ alpha: true });
-        this.wireframeRenderer.setSize(200, 150);
-        this.wireframeRenderer.setClearColor(0x000000, 0);
-        
-        // Create scene and camera for wireframe
-        this.wireframeScene = new this.THREE.Scene();
-        this.wireframeCamera = new this.THREE.PerspectiveCamera(45, 200/150, 0.1, 1000);
-        this.wireframeCamera.position.z = 5;
-        
-        // Add lights to wireframe scene
-        const wireframeLight = new this.THREE.DirectionalLight(0x00ff41, 1);
-        wireframeLight.position.set(1, 1, 1);
-        this.wireframeScene.add(wireframeLight);
-        
-        const wireframeAmbient = new this.THREE.AmbientLight(0x00ff41, 0.4);
-        this.wireframeScene.add(wireframeAmbient);
-        
-        this.wireframeContainer.appendChild(this.wireframeRenderer.domElement);
-
-        // Create target info display
-        this.targetInfoDisplay = document.createElement('div');
-        this.targetInfoDisplay.style.cssText = `
-            width: 100%;
-            text-align: left;
-            margin-bottom: 10px;
-            pointer-events: none;
-            position: relative;
-            z-index: 1002;
-        `;
-
-        // Create status icons container
-        this.statusIconsContainer = document.createElement('div');
-        this.statusIconsContainer.style.cssText = `
-            width: 100%;
-            text-align: center;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            font-size: 16px;
-            position: relative;
-            z-index: 1003;
-        `;
-
-        // Create icons with tooltips
-        const createIcon = (symbol, tooltip) => {
-            const icon = document.createElement('div');
-            icon.style.cssText = `
-                cursor: help;
-                opacity: 0.8;
-                transition: all 0.2s ease;
-                position: relative;
-                width: 24px;
-                height: 24px;
-                border: 1px solid #00ff41;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-family: "Courier New", monospace;
-                font-size: 14px;
-                text-shadow: 0 0 4px #00ff41;
-                box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
-            `;
-            icon.innerHTML = symbol;
-            icon.title = tooltip;
-            
-            // Add hover effects
-            icon.addEventListener('mouseenter', () => {
-                icon.style.opacity = '1';
-                icon.style.transform = 'scale(1.1)';
-                icon.style.boxShadow = '0 0 8px rgba(0, 255, 65, 0.6)';
-            });
-            
-            icon.addEventListener('mouseleave', () => {
-                icon.style.opacity = '0.8';
-                icon.style.transform = 'scale(1)';
-                icon.style.boxShadow = '0 0 4px rgba(0, 255, 65, 0.4)';
-            });
-            
-            return icon;
-        };
-
-        // Create sci-fi style icons
-        this.governmentIcon = createIcon('⬡', 'Government'); // Hexagon for government/structure
-        this.economyIcon = createIcon('⬢', 'Economy');      // Filled hexagon for economy/resources
-        this.technologyIcon = createIcon('⬨', 'Technology'); // Diamond with dot for technology/advancement
-
-        // Create intel icon (initially hidden)
-        this.intelIcon = createIcon('ⓘ', 'Intel Available - Press I');
-        this.intelIcon.style.display = 'none';
-        this.intelIcon.style.cursor = 'pointer';
-        this.intelIcon.style.animation = 'pulse 2s infinite';
-        
-        // Add click handler for intel icon
-        this.intelIcon.addEventListener('click', () => {
-            if (this.intelAvailable && this.targetComputerEnabled && this.currentTarget) {
-                this.playCommandSound();
-                this.toggleIntel();
-            }
-        });
-
-        this.statusIconsContainer.appendChild(this.governmentIcon);
-        this.statusIconsContainer.appendChild(this.economyIcon);
-        this.statusIconsContainer.appendChild(this.technologyIcon);
-        this.statusIconsContainer.appendChild(this.intelIcon);
-
-        // Create action buttons container
-        this.actionButtonsContainer = document.createElement('div');
-        this.actionButtonsContainer.style.cssText = `
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            gap: 8px;
-            position: relative;
-            z-index: 1004;
-        `;
-
-        // Assemble the HUD
-        this.targetHUD.appendChild(this.wireframeContainer);
-        this.targetHUD.appendChild(this.targetInfoDisplay);
-        this.targetHUD.appendChild(this.statusIconsContainer);
-        this.targetHUD.appendChild(this.actionButtonsContainer);
-
-        document.body.appendChild(this.targetHUD);
-
-        // Create target reticle
-        this.createTargetReticle();
-    }
-
-    createTargetReticle() {
-        // Create target reticle corners
-        this.targetReticle = document.createElement('div');
-        this.targetReticle.style.cssText = `
-            position: fixed;
-            width: 40px;
-            height: 40px;
-            display: none;
-            pointer-events: none;
-            z-index: 999;
-            transform: translate(-50%, -50%);
-        `;
-
-        // Create corner elements
-        const corners = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
-        corners.forEach(corner => {
-            const el = document.createElement('div');
-            el.classList.add('reticle-corner');
-            el.style.cssText = `
-                position: absolute;
-                width: 10px;
-                height: 10px;
-                border: 2px solid #D0D0D0;
-                box-shadow: 0 0 2px #D0D0D0;
-            `;
-
-            // Position and style each corner
-            switch(corner) {
-                case 'topLeft':
-                    el.style.top = '0';
-                    el.style.left = '0';
-                    el.style.borderRight = 'none';
-                    el.style.borderBottom = 'none';
-                    break;
-                case 'topRight':
-                    el.style.top = '0';
-                    el.style.right = '0';
-                    el.style.borderLeft = 'none';
-                    el.style.borderBottom = 'none';
-                    break;
-                case 'bottomLeft':
-                    el.style.bottom = '0';
-                    el.style.left = '0';
-                    el.style.borderRight = 'none';
-                    el.style.borderTop = 'none';
-                    break;
-                case 'bottomRight':
-                    el.style.bottom = '0';
-                    el.style.right = '0';
-                    el.style.borderLeft = 'none';
-                    el.style.borderTop = 'none';
-                    break;
-            }
-
-            this.targetReticle.appendChild(el);
-        });
-
-        // Create target name display (above the reticle)
-        this.targetNameDisplay = document.createElement('div');
-        this.targetNameDisplay.className = 'target-name-display';
-        this.targetNameDisplay.style.cssText = `
-            position: absolute;
-            top: -25px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #D0D0D0;
-            text-shadow: 0 0 4px #D0D0D0;
-            font-family: 'Orbitron', monospace;
-            font-size: 12.1px;
-            font-weight: bold;
-            text-align: center;
-            white-space: nowrap;
-            pointer-events: none;
-            z-index: 1000;
-            display: none;
-        `;
-        this.targetReticle.appendChild(this.targetNameDisplay);
-
-        // Create target distance display (below the reticle)
-        this.targetDistanceDisplay = document.createElement('div');
-        this.targetDistanceDisplay.className = 'target-distance-display';
-        this.targetDistanceDisplay.style.cssText = `
-            position: absolute;
-            top: 45px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #D0D0D0;
-            text-shadow: 0 0 4px #D0D0D0;
-            font-family: 'Orbitron', monospace;
-            font-size: 11px;
-            font-weight: bold;
-            text-align: center;
-            white-space: nowrap;
-            pointer-events: none;
-            z-index: 1000;
-            display: none;
-        `;
-        this.targetReticle.appendChild(this.targetDistanceDisplay);
-
-        document.body.appendChild(this.targetReticle);
-    }
 
     createIntelHUD() {
         // Create intel HUD container
@@ -2043,68 +1760,22 @@ export class StarfieldManager {
     }
 
     toggleTargetComputer() {
-        const ship = this.viewManager?.getShip();
-        if (!ship) {
-            console.warn('No ship available for target computer control');
-            return;
-        }
+        // Delegate to target computer manager
+        this.targetComputerManager.toggleTargetComputer();
         
-        const targetComputer = ship.getSystem('target_computer');
-        if (!targetComputer) {
-            console.warn('No target computer system found on ship');
-            return;
-        }
+        // Update local state to match
+        this.targetComputerEnabled = this.targetComputerManager.targetComputerEnabled;
+        this.currentTarget = this.targetComputerManager.currentTarget;
+        this.targetIndex = this.targetComputerManager.targetIndex;
+        this.targetObjects = this.targetComputerManager.targetObjects;
         
-        // Toggle the target computer system
-        if (targetComputer.isActive) {
-            targetComputer.deactivate();
-            this.targetComputerEnabled = false;
-        } else {
-            if (targetComputer.activate(ship)) {
-                this.targetComputerEnabled = true;
-            } else {
-                this.targetComputerEnabled = false;
-                console.warn('Failed to activate target computer - check system status and energy');
-                return;
-            }
-        }
-        
-
-        
+        // Handle intel visibility
         if (!this.targetComputerEnabled) {
-            this.targetComputerManager.hideTargetHUD();
-            this.targetComputerManager.hideTargetReticle();
-            
-            // Hide intel when target computer is disabled
             if (this.intelVisible) {
                 this.intelVisible = false;
                 this.intelHUD.style.display = 'none';
             }
             this.updateIntelIconDisplay();
-            
-            // Clear wireframe if it exists
-            if (this.targetWireframe) {
-                this.wireframeScene.remove(this.targetWireframe);
-                this.targetWireframe.geometry.dispose();
-                this.targetWireframe.material.dispose();
-                this.targetWireframe = null;
-            }
-            
-            // Clear 3D outline when target computer is disabled
-            this.clearTargetOutline();
-        } else {
-            // Show the HUD immediately when target computer is enabled
-            this.targetComputerManager.showTargetHUD();
-            
-            this.updateTargetList();
-            // Only reset target index if we don't have a current target
-            if (!this.currentTarget) {
-                this.targetIndex = -1;
-                this.cycleTarget();
-            } else {
-                // Just update the display with existing target
-                this.updateTargetDisplay();
-            }
         }
     }
 
@@ -2159,216 +1830,27 @@ export class StarfieldManager {
     }
 
     updateTargetList() {
+        // Delegate to target computer manager
+        this.targetComputerManager.updateTargetList();
         
-        let allTargets = [];
-        
-        // Get celestial bodies from SolarSystemManager
-        if (this.solarSystemManager) {
-            const bodies = this.solarSystemManager.getCelestialBodies();
-            
-            const celestialBodies = Array.from(bodies.entries())
-                .map(([key, body]) => {
-                    const info = this.solarSystemManager.getCelestialBodyInfo(body);
-                    
-                    // Validate body position
-                    if (!body.position || 
-                        isNaN(body.position.x) || 
-                        isNaN(body.position.y) || 
-                        isNaN(body.position.z)) {
-                        console.warn('Invalid position detected for celestial body:', info.name);
-                        return null;
-                    }
-                    
-                    return {
-                        name: info.name,
-                        type: info.type,
-                        position: body.position.toArray(),
-                        isMoon: key.startsWith('moon_'),
-                        object: body,  // Store the actual THREE.js object
-                        isShip: false
-                    };
-                })
-                .filter(body => body !== null); // Remove any invalid bodies
-            
-            allTargets = allTargets.concat(celestialBodies);
-        }
-        
-        // Add target dummy ships
-        const dummyShipTargets = this.dummyShipMeshes.map(mesh => {
-            const ship = mesh.userData.ship;
-            return {
-                name: ship.shipName,
-                type: 'enemy_ship',
-                position: mesh.position.toArray(),
-                isMoon: false,
-                object: mesh,  // Store the mesh as the target object
-                isShip: true,
-                ship: ship     // Store the ship instance for sub-targeting
-            };
-        });
-        
-        allTargets = allTargets.concat(dummyShipTargets);
-        
-        // Update target list
-        this.targetObjects = allTargets;
-        
-        // Sort targets by distance
-        this.sortTargetsByDistance();
-        
-        // Update target display
-        this.updateTargetDisplay();
-        
+        // Update local state to match
+        this.targetObjects = this.targetComputerManager.targetObjects;
     }
 
     cycleTarget(isManualCycle = true) {
-        // Prevent cycling targets while docked
-        if (this.isDocked) {
-            return;
-        }
-
-        // Prevent cycling targets immediately after undocking
-        if (this.undockCooldown && Date.now() < this.undockCooldown) {
-            return;
-        }
-
-        if (!this.targetComputerEnabled || this.targetObjects.length === 0) {
-            return;
-        }
-
-        // Hide reticle until new target is set
-        this.targetComputerManager.hideTargetReticle();
-
-        // Keep target HUD visible
-        this.targetComputerManager.showTargetHUD();
-
-        // Cycle to next target
-        if (this.targetIndex === -1 || !this.currentTarget) {
-            this.targetIndex = 0;
-        } else {
-            this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
-        }
-
-        // Get the target object directly from our target list
-        const targetData = this.targetObjects[this.targetIndex];
-        this.currentTarget = targetData.object;
-
-        // Clean up existing wireframe before creating a new one
-        if (this.targetWireframe) {
-            this.wireframeScene.remove(this.targetWireframe);
-            if (this.targetWireframe.geometry) {
-                this.targetWireframe.geometry.dispose();
-            }
-            if (this.targetWireframe.material) {
-                if (Array.isArray(this.targetWireframe.material)) {
-                    this.targetWireframe.material.forEach(material => material.dispose());
-                } else {
-                    this.targetWireframe.material.dispose();
-                }
-            }
-            this.targetWireframe = null;
-        }
-
-        // Create new wireframe in the HUD
-        if (this.currentTarget) {
-            try {
-                // Get current target data to determine if it's a ship or celestial body
-                const currentTargetData = this.getCurrentTargetData();
-                let radius = 1;
-                let wireframeColor = 0x808080; // Default gray for unknown
-                let info = null;
-                
-                // Handle enemy ships differently from celestial bodies
-                if (currentTargetData?.isShip) {
-                    // For enemy ships, use a fixed radius and get info from ship data
-                    radius = 2; // Fixed radius for ship wireframes
-                    wireframeColor = 0xff3333; // Enemy ships are darker neon red
-                    info = { type: 'enemy_ship' };
-                } else {
-                    // For celestial bodies, get radius from geometry
-                    if (this.currentTarget.geometry?.boundingSphere) {
-                        this.currentTarget.geometry.computeBoundingSphere();
-                        radius = this.currentTarget.geometry.boundingSphere.radius || 1;
-                    }
-                    
-                    // Get celestial body info
-                    info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-                    
-                    // Determine wireframe color based on diplomacy
-                    if (info?.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
-                        wireframeColor = 0xffff00; // Stars are always yellow
-                    } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-                        wireframeColor = 0xff3333; // Darker neon red
-                    } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-                        wireframeColor = 0xffff00;
-                    } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-                        wireframeColor = 0x00ff41;
-                    }
-                }
-                
-                const wireframeMaterial = new this.THREE.LineBasicMaterial({ 
-                    color: wireframeColor,
-                    linewidth: 1,
-                    transparent: true,
-                    opacity: 0.8
-                });
-
-                if (info && (info.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name))) {
-                    // For stars, use the custom star geometry directly (it's already a line geometry)
-                    const starGeometry = this.createStarGeometry(radius);
-                    this.targetWireframe = new this.THREE.LineSegments(starGeometry, wireframeMaterial);
-                } else {
-                    // For other objects, create standard wireframes using EdgesGeometry
-                    let wireframeGeometry;
-                    if (info) {
-                        // Create different shapes based on object type
-                        if (info.type === 'enemy_ship') {
-                            // Use simple cube wireframe to match simplified target dummies
-                            wireframeGeometry = new this.THREE.BoxGeometry(radius, radius, radius);
-                        } else if (currentTargetData?.isMoon) {
-                            wireframeGeometry = new this.THREE.OctahedronGeometry(radius, 0);
-                        } else {
-                            wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
-                        }
-                    } else {
-                        wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 1);
-                    }
-                    
-                    const edgesGeometry = new this.THREE.EdgesGeometry(wireframeGeometry);
-                    this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
-                    
-                    // Clean up the temporary geometries
-                    wireframeGeometry.dispose();
-                    edgesGeometry.dispose();
-                }
-                
-                // Add sub-target visual indicators only for enemy ships
-                const targetData = this.getCurrentTargetData();
-                const isEnemyShip = targetData?.isShip && targetData?.ship;
-                if (isEnemyShip) {
-                    this.createSubTargetIndicators(radius, wireframeColor);
-                } else {
-                    // Clear sub-target indicators for celestial bodies
-                    this.createSubTargetIndicators(0, 0); // This will clear existing indicators
-                }
-                
-                this.targetWireframe.position.set(0, 0, 0);
-                this.wireframeScene.add(this.targetWireframe);
-                
-                this.wireframeCamera.position.z = radius * 3;
-                this.targetWireframe.rotation.set(0.5, 0, 0.3);
-            } catch (error) {
-                console.warn('Failed to create wireframe for target:', error);
-            }
-        }
-
-        // Create 3D world outline for the target (use updateTargetOutline for validation)
-        // Only create outline if manual cycle or if suppression is not active
+        // Delegate to target computer manager
+        this.targetComputerManager.cycleTarget(isManualCycle);
+        
+        // Update local state to match
+        this.currentTarget = this.targetComputerManager.currentTarget;
+        this.targetIndex = this.targetComputerManager.targetIndex;
+        this.targetObjects = this.targetComputerManager.targetObjects;
+        
+        // Handle outline suppression logic
         if (this.currentTarget && this.outlineEnabled && (isManualCycle || !this.outlineDisabledUntilManualCycle)) {
-            // Use updateTargetOutline instead of createTargetOutline to ensure validation
             this.updateTargetOutline(this.currentTarget, 0);
         }
         
-        // Only clear the destruction suppression flag for manual cycles
         if (isManualCycle) {
             this.outlineDisabledUntilManualCycle = false;
             console.log('🎯 Manual target cycle - outline suppression cleared');
@@ -2381,9 +1863,6 @@ export class StarfieldManager {
         if (ship && ship.weaponSystem) {
             ship.weaponSystem.setLockedTarget(this.currentTarget);
         }
-
-        // Update display after cycling target
-        this.updateTargetDisplay();
     }
 
     setSolarSystemManager(manager) {
@@ -2665,23 +2144,9 @@ export class StarfieldManager {
             }
         }
         
-        // Render wireframe if target computer is enabled and we have a target
-        if (this.targetComputerEnabled && this.targetWireframe && this.wireframeScene && this.wireframeRenderer) {
-            try {
-                // Rotate wireframe continuously
-                if (this.targetWireframe) {
-                    this.targetWireframe.rotation.y += deltaTime * 0.5; // Increased rotation speed
-                    this.targetWireframe.rotation.x = 0.5 + Math.sin(Date.now() * 0.001) * 0.2; // Increased oscillation
-                }
-                
-                // Update sub-target visual indicators
-                this.updateSubTargetIndicators();
-                
-                // Render the wireframe scene
-                this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
-            } catch (error) {
-                console.warn('Error rendering wireframe:', error);
-            }
+        // Update target computer manager (handles wireframe rendering, reticles, etc.)
+        if (this.targetComputerEnabled) {
+            this.targetComputerManager.update(deltaTime);
         }
 
         // Update 3D world outline if target computer is enabled and we have a target
@@ -2995,108 +2460,16 @@ export class StarfieldManager {
      * @param {number} baseColor - The base color of the wireframe
      */
     createSubTargetIndicators(radius, baseColor) {
-        // Check if sub-targeting is available
-        const ship = this.viewManager?.getShip();
-        const targetComputer = ship?.getSystem('target_computer');
-        
-        // Always clear existing indicators first
-        if (this.subTargetIndicators) {
-            this.subTargetIndicators.forEach(indicator => {
-                this.wireframeScene.remove(indicator);
-                if (indicator.geometry) indicator.geometry.dispose();
-                if (indicator.material) indicator.material.dispose();
-            });
-        }
-        this.subTargetIndicators = [];
-        
-        // Only create new indicators if sub-targeting is available
-        if (!targetComputer || !targetComputer.hasSubTargeting()) {
-            return;
-        }
-
-        // Create targetable area indicators (simulating different systems/areas)
-        const targetableAreas = [
-            { name: 'Command Center', position: [0, radius * 0.7, 0], color: 0xff3333 },
-            { name: 'Power Core', position: [0, 0, 0], color: 0x44ff44 },
-            { name: 'Communications', position: [radius * 0.6, 0, 0], color: 0x4444ff },
-            { name: 'Defense Grid', position: [-radius * 0.6, 0, 0], color: 0xffff44 },
-            { name: 'Sensor Array', position: [0, -radius * 0.7, 0], color: 0xff44ff },
-            { name: 'Docking Bay', position: [0, 0, radius * 0.8], color: 0x44ffff }
-        ];
-
-        // Create indicators for each targetable area
-        targetableAreas.forEach((area, index) => {
-            // Create a small sphere to represent the targetable area
-            const indicatorGeometry = new this.THREE.SphereGeometry(radius * 0.15, 8, 6);
-            const indicatorMaterial = new this.THREE.MeshBasicMaterial({
-                color: area.color,
-                transparent: true,
-                opacity: 0.6,
-                wireframe: true
-            });
-            
-            const indicator = new this.THREE.Mesh(indicatorGeometry, indicatorMaterial);
-            indicator.position.set(area.position[0], area.position[1], area.position[2]);
-            
-            // Store area information for sub-targeting
-            indicator.userData = {
-                areaName: area.name,
-                areaIndex: index,
-                isTargetable: true
-            };
-            
-            this.wireframeScene.add(indicator);
-            this.subTargetIndicators.push(indicator);
-        });
-
-        // Store targetable areas for sub-targeting simulation
-        this.targetableAreas = targetableAreas;
+        // Delegate to target computer manager
+        this.targetComputerManager.createSubTargetIndicators(radius, baseColor);
     }
 
     /**
      * Update sub-target visual indicators based on current selection
      */
     updateSubTargetIndicators() {
-        if (!this.subTargetIndicators || !this.targetableAreas) {
-            return;
-        }
-
-        const ship = this.viewManager?.getShip();
-        const targetComputer = ship?.getSystem('target_computer');
-        
-        if (!targetComputer || !targetComputer.hasSubTargeting()) {
-            return;
-        }
-
-        // Get current sub-target index (simulate based on available areas)
-        const currentSubTargetIndex = targetComputer.subTargetIndex || 0;
-        const hasSubTarget = targetComputer.currentSubTarget !== null;
-
-        // Update each indicator based on selection state
-        this.subTargetIndicators.forEach((indicator, index) => {
-            const isSelected = hasSubTarget && (index === currentSubTargetIndex % this.targetableAreas.length);
-            
-            if (isSelected) {
-                // Highlight the selected sub-target
-                indicator.scale.setScalar(1.3); // Make it larger
-                
-                // Add pulsing effect
-                const time = Date.now() * 0.005;
-                const pulse = 0.8 + Math.sin(time) * 0.2;
-                indicator.material.opacity = pulse;
-                
-                // Make it brighter by setting color to white
-                indicator.material.color.setHex(0xffffff);
-            } else {
-                // Normal state for non-selected indicators
-                indicator.material.opacity = 0.6;
-                indicator.scale.setScalar(1.0);
-                
-                // Restore original color from targetable areas
-                const originalColor = this.targetableAreas[index]?.color || 0xffffff;
-                indicator.material.color.setHex(originalColor);
-            }
-        });
+        // Delegate to target computer manager
+        this.targetComputerManager.updateSubTargetIndicators();
     }
 
     // Update the setView method to handle view changes
@@ -3208,12 +2581,7 @@ export class StarfieldManager {
         this.targetComputerManager.hideTargetReticle();
         
         // Clear wireframe
-        if (this.targetWireframe) {
-            this.wireframeScene.remove(this.targetWireframe);
-            this.targetWireframe.geometry.dispose();
-            this.targetWireframe.material.dispose();
-            this.targetWireframe = null;
-        }
+        this.targetComputerManager.clearTargetWireframe();
         
         // Clear 3D outline
         this.clearTargetOutline();
@@ -3708,8 +3076,8 @@ export class StarfieldManager {
             // Power down target computer UI (system is already powered down in shutdownAllSystems)
             if (this.targetComputerEnabled) {
                 this.targetComputerEnabled = false;
-                this.targetHUD.style.display = 'none';
-                this.targetReticle.style.display = 'none';
+                this.targetComputerManager.hideTargetHUD();
+                this.targetComputerManager.hideTargetReticle();
                 
                 // Clear wireframe if it exists
                 if (this.targetWireframe) {
@@ -4466,8 +3834,8 @@ export class StarfieldManager {
     updateTargetDisplay() {
         // Don't show anything if targeting is completely disabled
         if (!this.targetComputerEnabled) {
-            this.targetHUD.style.display = 'none';
-            this.targetReticle.style.display = 'none';
+            this.targetComputerManager.hideTargetHUD();
+            this.targetComputerManager.hideTargetReticle();
             this.currentButtonState = {
                 hasDockButton: false,
                 isDocked: false,
@@ -4479,7 +3847,7 @@ export class StarfieldManager {
 
         // Handle galactic view
         if (this.viewManager.currentView === 'galactic') {
-            this.targetHUD.style.display = 'none';
+            this.targetComputerManager.hideTargetHUD();
             return;
         }
 
@@ -5336,11 +4704,9 @@ export class StarfieldManager {
                     this.targetWireframe = null;
                 }
                 
-                if (this.targetHUD) {
-                    this.targetHUD.style.display = 'none';
-                }
-                if (this.targetReticle) {
-                    this.targetReticle.style.display = 'none';
+                if (this.targetComputerManager) {
+                    this.targetComputerManager.hideTargetHUD();
+                    this.targetComputerManager.hideTargetReticle();
                 }
             }
             
@@ -5372,11 +4738,9 @@ export class StarfieldManager {
                 this.targetIndex = -1;
                 this.clearTargetOutline();
                 
-                if (this.targetHUD) {
-                    this.targetHUD.style.display = 'none';
-                }
-                if (this.targetReticle) {
-                    this.targetReticle.style.display = 'none';
+                if (this.targetComputerManager) {
+                    this.targetComputerManager.hideTargetHUD();
+                    this.targetComputerManager.hideTargetReticle();
                 }
             }
         }
