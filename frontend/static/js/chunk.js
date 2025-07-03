@@ -127,10 +127,24 @@ export class Chunk {
         let meshPromise;
         
         try {
-            // Create a new worker with auto-detected path
-            const isDevServer = window.location.port === '8080' || window.location.hostname === 'localhost';
-            const workerPath = isDevServer ? 'js/workers/meshGenerator.worker.js' : 'static/js/workers/meshGenerator.worker.js';
-            this.worker = new Worker(workerPath);
+            // Try development path first, then fallback to production path
+            let workerPath = 'js/workers/meshGenerator.worker.js';
+            console.log(`🔧 CHUNK DEBUG: Attempting to create worker with dev path: ${workerPath}`);
+            
+            try {
+                this.worker = new Worker(workerPath);
+                console.log(`✅ CHUNK DEBUG: Worker created successfully with dev path`);
+            } catch (devError) {
+                console.log(`⚠️ CHUNK DEBUG: Dev path failed, trying production path...`);
+                workerPath = 'static/js/workers/meshGenerator.worker.js';
+                try {
+                    this.worker = new Worker(workerPath);
+                    console.log(`✅ CHUNK DEBUG: Worker created successfully with production path`);
+                } catch (prodError) {
+                    console.error(`❌ CHUNK DEBUG: Both paths failed:`, {dev: devError.message, prod: prodError.message});
+                    throw new Error(`Worker creation failed: ${prodError.message}`);
+                }
+            }
             
             // Calculate adaptive timeout based on chunk complexity
             const chunkComplexity = this.calculateChunkComplexity();

@@ -121,24 +121,20 @@ export class WeaponEffectsManager {
             // Try to resume audio context
             await this.ensureAudioContextResumed();
 
-            // Auto-detect correct audio path based on server configuration
-            const isDevServer = window.location.port === '8080' || window.location.hostname === 'localhost';
-            const audioBasePath = isDevServer ? 'audio/' : 'static/audio/';
-            
-            // Load weapon sound files with auto-detected paths
+            // Try development paths first, then fallback to production paths
             const soundFiles = [
-                { type: 'lasers', file: audioBasePath + 'lasers.wav' },
-                { type: 'photons', file: audioBasePath + 'photons.wav' },
-                { type: 'missiles', file: audioBasePath + 'missiles.wav' },
-                { type: 'mines', file: audioBasePath + 'mines.mp3' },
-                { type: 'explosion', file: audioBasePath + 'explosion.wav' },
-                { type: 'death', file: audioBasePath + 'death.wav' },
-                { type: 'success', file: audioBasePath + 'success.wav' }
+                { type: 'lasers', dev: 'audio/lasers.wav', prod: 'static/audio/lasers.wav' },
+                { type: 'photons', dev: 'audio/photons.wav', prod: 'static/audio/photons.wav' },
+                { type: 'missiles', dev: 'audio/missiles.wav', prod: 'static/audio/missiles.wav' },
+                { type: 'mines', dev: 'audio/mines.mp3', prod: 'static/audio/mines.mp3' },
+                { type: 'explosion', dev: 'audio/explosion.wav', prod: 'static/audio/explosion.wav' },
+                { type: 'death', dev: 'audio/death.wav', prod: 'static/audio/death.wav' },
+                { type: 'success', dev: 'audio/success.wav', prod: 'static/audio/success.wav' }
             ];
 
-            console.log(`🎵 Using audio base path: ${audioBasePath} (dev server: ${isDevServer})`);
+            console.log(`🎵 Loading weapon audio with fallback path detection...`);
 
-            const loadPromises = soundFiles.map(sound => this.loadSound(sound.type, sound.file));
+            const loadPromises = soundFiles.map(sound => this.loadSoundWithFallback(sound.type, sound.dev, sound.prod));
             await Promise.all(loadPromises);
             
             console.log(`✅ Loaded ${Object.keys(this.audioBuffers).length} weapon audio effects - ready to fire!`);
@@ -167,6 +163,44 @@ export class WeaponEffectsManager {
         }
     }
     
+    /**
+     * Load a single sound file with fallback path
+     * @param {string} type Sound type identifier
+     * @param {string} devPath Development path
+     * @param {string} prodPath Production path
+     */
+    async loadSoundWithFallback(type, devPath, prodPath) {
+        try {
+            // Try development path first
+            const response = await fetch(devPath);
+            if (response.ok) {
+                const arrayBuffer = await response.arrayBuffer();
+                if (this.audioContext) {
+                    const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                    this.audioBuffers.set(type, audioBuffer);
+                    console.log(`🎵 Loaded ${type} from dev path: ${devPath}`);
+                    return;
+                }
+            }
+        } catch (devError) {
+            console.log(`⚠️ Dev audio path failed for ${type}, trying production path...`);
+        }
+        
+        try {
+            // Fallback to production path
+            const response = await fetch(prodPath);
+            const arrayBuffer = await response.arrayBuffer();
+            
+            if (this.audioContext) {
+                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                this.audioBuffers.set(type, audioBuffer);
+                console.log(`🎵 Loaded ${type} from prod path: ${prodPath}`);
+            }
+        } catch (prodError) {
+            console.warn(`Failed to load weapon audio ${type} from both paths:`, {dev: devPath, prod: prodPath, error: prodError});
+        }
+    }
+
     /**
      * Load a single sound file
      * @param {string} type Sound type identifier
@@ -270,31 +304,33 @@ export class WeaponEffectsManager {
      * @param {string} soundType Type of sound
      * @param {number} volume Volume (0.0 - 1.0)
      */
-    playHTML5Sound(soundType, volume = 0.5) {
+        playHTML5Sound(soundType, volume = 0.5) {
         try {
-            // Auto-detect correct audio path based on server configuration
-            const isDevServer = window.location.port === '8080' || window.location.hostname === 'localhost';
-            const audioBasePath = isDevServer ? 'audio/' : 'static/audio/';
-            
             const audioMap = {
-                'lasers': audioBasePath + 'lasers.wav',
-                'photons': audioBasePath + 'photons.wav',
-                'missiles': audioBasePath + 'missiles.wav',
-                'explosion': audioBasePath + 'explosion.wav',
-                'success': audioBasePath + 'success.wav',
-                'mines': audioBasePath + 'mines.mp3',
-                'death': audioBasePath + 'death.wav'
+                'lasers': { dev: 'audio/lasers.wav', prod: 'static/audio/lasers.wav' },
+                'photons': { dev: 'audio/photons.wav', prod: 'static/audio/photons.wav' },
+                'missiles': { dev: 'audio/missiles.wav', prod: 'static/audio/missiles.wav' },
+                'explosion': { dev: 'audio/explosion.wav', prod: 'static/audio/explosion.wav' },
+                'success': { dev: 'audio/success.wav', prod: 'static/audio/success.wav' },
+                'mines': { dev: 'audio/mines.mp3', prod: 'static/audio/mines.mp3' },
+                'death': { dev: 'audio/death.wav', prod: 'static/audio/death.wav' }
             };
             
             if (audioMap[soundType]) {
-                const audio = new Audio(audioMap[soundType]);
-                audio.volume = Math.max(0, Math.min(1, volume));
-                audio.play().catch(e => {
-                    // Only log error if this is the first failure
-                    if (!this.html5AudioWarningShown) {
-                        console.warn('HTML5 audio play failed (autoplay policy):', e.message);
-                        this.html5AudioWarningShown = true;
-                    }
+                // Try development path first
+                const devAudio = new Audio(audioMap[soundType].dev);
+                devAudio.volume = Math.max(0, Math.min(1, volume));
+                devAudio.play().catch(devError => {
+                    // Fallback to production path
+                    const prodAudio = new Audio(audioMap[soundType].prod);
+                    prodAudio.volume = Math.max(0, Math.min(1, volume));
+                    prodAudio.play().catch(prodError => {
+                        // Only log error if this is the first failure
+                        if (!this.html5AudioWarningShown) {
+                            console.warn('HTML5 audio play failed on both paths (autoplay policy):', {dev: devError.message, prod: prodError.message});
+                            this.html5AudioWarningShown = true;
+                        }
+                    });
                 });
             }
         } catch (error) {
