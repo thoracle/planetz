@@ -4490,9 +4490,7 @@ export class StarfieldManager {
         if (!this.currentTarget) {
             this.targetComputerManager.hideTargetReticle();
             // Clear any existing action buttons to prevent stale dock buttons
-            if (this.actionButtonsContainer) {
-                this.actionButtonsContainer.innerHTML = '';
-            }
+            this.targetComputerManager.clearActionButtons();
             // Reset button state
             this.currentButtonState = {
                 hasDockButton: false,
@@ -4514,9 +4512,7 @@ export class StarfieldManager {
         if (!currentTargetData) {
             this.targetComputerManager.hideTargetReticle();
             // Clear any existing action buttons to prevent stale dock buttons
-            if (this.actionButtonsContainer) {
-                this.actionButtonsContainer.innerHTML = '';
-            }
+            this.targetComputerManager.clearActionButtons();
             // Reset button state
             this.currentButtonState = {
                 hasDockButton: false,
@@ -5525,41 +5521,11 @@ export class StarfieldManager {
     }
 
     updateStatusIcons(distance, diplomacyColor, isEnemyShip, info) {
-        // Update status icons with diplomacy color
-        this.governmentIcon.style.display = info?.government ? 'block' : 'none';
-        this.economyIcon.style.display = info?.economy ? 'block' : 'none';
-        this.technologyIcon.style.display = info?.technology ? 'block' : 'none';
+        // Delegate status icon updates to target computer manager
+        this.targetComputerManager.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info);
 
-        // Update icon colors and borders to match diplomacy
-        [this.governmentIcon, this.economyIcon, this.technologyIcon].forEach(icon => {
-            if (icon.style.display !== 'none') {
-                icon.style.borderColor = diplomacyColor;
-                icon.style.color = diplomacyColor;
-                icon.style.textShadow = `0 0 4px ${diplomacyColor}`;
-                icon.style.boxShadow = `0 0 4px ${diplomacyColor.replace(')', ', 0.4)')}`;
-            }
-        });
-
-        // Update intel icon display
+        // Update intel icon display (this is still handled by StarfieldManager)
         this.updateIntelIconDisplay();
-
-        // Update tooltips with current info
-        if (info?.government) {
-            this.governmentIcon.title = `Government: ${info.government}`;
-        }
-        if (info?.economy) {
-            this.economyIcon.title = `Economy: ${info.economy}`;
-        }
-        if (info?.technology) {
-            this.technologyIcon.title = `Technology: ${info.technology}`;
-        }
-
-        // Update reticle colors
-        const corners = this.targetComputerManager.getTargetReticleCorners();
-        Array.from(corners).forEach(corner => {
-            corner.style.borderColor = diplomacyColor;
-            corner.style.boxShadow = `0 0 2px ${diplomacyColor}`;
-        });
     }
 
     updateActionButtons(currentTargetData, info) {
@@ -5567,7 +5533,7 @@ export class StarfieldManager {
         // which shows when conditions are met (distance, speed, etc.)
         
         // Clear existing buttons since we no longer show dock button
-        this.actionButtonsContainer.innerHTML = '';
+        this.targetComputerManager.clearActionButtons();
         
         // Reset button state
         this.currentButtonState = {

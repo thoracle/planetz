@@ -1287,6 +1287,60 @@ export class TargetComputerManager {
     }
     
     /**
+     * Update status icons with diplomacy color and info
+     */
+    updateStatusIcons(distance, diplomacyColor, isEnemyShip, info) {
+        // Update status icons with diplomacy color
+        if (this.governmentIcon) {
+            this.governmentIcon.style.display = info?.government ? 'block' : 'none';
+        }
+        if (this.economyIcon) {
+            this.economyIcon.style.display = info?.economy ? 'block' : 'none';
+        }
+        if (this.technologyIcon) {
+            this.technologyIcon.style.display = info?.technology ? 'block' : 'none';
+        }
+
+        // Update icon colors and borders to match diplomacy
+        const icons = [this.governmentIcon, this.economyIcon, this.technologyIcon].filter(icon => icon);
+        icons.forEach(icon => {
+            if (icon.style.display !== 'none') {
+                icon.style.borderColor = diplomacyColor;
+                icon.style.color = diplomacyColor;
+                icon.style.textShadow = `0 0 4px ${diplomacyColor}`;
+                icon.style.boxShadow = `0 0 4px ${diplomacyColor.replace(')', ', 0.4)')}`;
+            }
+        });
+
+        // Update tooltips with current info
+        if (info?.government && this.governmentIcon) {
+            this.governmentIcon.title = `Government: ${info.government}`;
+        }
+        if (info?.economy && this.economyIcon) {
+            this.economyIcon.title = `Economy: ${info.economy}`;
+        }
+        if (info?.technology && this.technologyIcon) {
+            this.technologyIcon.title = `Technology: ${info.technology}`;
+        }
+
+        // Update reticle colors
+        const corners = this.getTargetReticleCorners();
+        Array.from(corners).forEach(corner => {
+            corner.style.borderColor = diplomacyColor;
+            corner.style.boxShadow = `0 0 2px ${diplomacyColor}`;
+        });
+    }
+    
+    /**
+     * Clear action buttons container
+     */
+    clearActionButtons() {
+        if (this.actionButtonsContainer) {
+            this.actionButtonsContainer.innerHTML = '';
+        }
+    }
+    
+    /**
      * Clean up resources
      */
     dispose() {
