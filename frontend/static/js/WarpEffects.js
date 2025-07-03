@@ -26,40 +26,9 @@ class WarpEffects {
         this.ensureAudioContextRunning();
         
         // Load the warp sounds
-        console.log('Loading warp sounds...');
-        this.audioLoader.load(
-            'static/audio/warp.wav',
-            (buffer) => {
-                console.log('Warp sound loaded successfully');
-                this.warpSound.setBuffer(buffer);
-                this.warpSound.setLoop(false);
-                this.warpSound.setVolume(1.0);
-                this.soundLoaded = true;
-            },
-            (progress) => {
-                console.log(`Loading warp sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
-            },
-            (error) => {
-                console.error('Error loading warp sound:', error);
-            }
-        );
-
-        this.audioLoader.load(
-            'static/audio/warp-redalert.wav',
-            (buffer) => {
-                console.log('Red alert warp sound loaded successfully');
-                this.warpRedAlertSound.setBuffer(buffer);
-                this.warpRedAlertSound.setLoop(false);
-                this.warpRedAlertSound.setVolume(1.0);
-                this.redAlertSoundLoaded = true;
-            },
-            (progress) => {
-                console.log(`Loading red alert warp sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
-            },
-            (error) => {
-                console.error('Error loading red alert warp sound:', error);
-            }
-        );
+        console.log('Loading warp sounds with fallback path detection...');
+        this.loadWarpSoundWithFallback('audio/warp.wav', 'static/audio/warp.wav', 'warp');
+        this.loadWarpSoundWithFallback('audio/warp-redalert.wav', 'static/audio/warp-redalert.wav', 'redalert');
 
         // Add visibility change listener
         document.addEventListener('visibilitychange', () => {
@@ -338,6 +307,60 @@ class WarpEffects {
         if (elapsedTime >= this.warpDuration) {
             this.hideAll();
         }
+    }
+
+    /**
+     * Load warp sound with fallback path system
+     */
+    loadWarpSoundWithFallback(devPath, prodPath, soundType) {
+        // Try development path first
+        this.audioLoader.load(
+            devPath,
+            (buffer) => {
+                console.log(`${soundType === 'warp' ? 'Warp' : 'Red alert warp'} sound loaded successfully from dev path: ${devPath}`);
+                if (soundType === 'warp') {
+                    this.warpSound.setBuffer(buffer);
+                    this.warpSound.setLoop(false);
+                    this.warpSound.setVolume(1.0);
+                    this.soundLoaded = true;
+                } else {
+                    this.warpRedAlertSound.setBuffer(buffer);
+                    this.warpRedAlertSound.setLoop(false);
+                    this.warpRedAlertSound.setVolume(1.0);
+                    this.redAlertSoundLoaded = true;
+                }
+            },
+            (progress) => {
+                console.log(`Loading ${soundType === 'warp' ? 'warp' : 'red alert warp'} sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
+            },
+            (error) => {
+                console.log(`⚠️ Dev path failed for ${soundType} sound, trying production path...`);
+                // Fallback to production path
+                this.audioLoader.load(
+                    prodPath,
+                    (buffer) => {
+                        console.log(`${soundType === 'warp' ? 'Warp' : 'Red alert warp'} sound loaded successfully from prod path: ${prodPath}`);
+                        if (soundType === 'warp') {
+                            this.warpSound.setBuffer(buffer);
+                            this.warpSound.setLoop(false);
+                            this.warpSound.setVolume(1.0);
+                            this.soundLoaded = true;
+                        } else {
+                            this.warpRedAlertSound.setBuffer(buffer);
+                            this.warpRedAlertSound.setLoop(false);
+                            this.warpRedAlertSound.setVolume(1.0);
+                            this.redAlertSoundLoaded = true;
+                        }
+                    },
+                    (progress) => {
+                        console.log(`Loading ${soundType === 'warp' ? 'warp' : 'red alert warp'} sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
+                    },
+                    (error) => {
+                        console.error(`Error loading ${soundType === 'warp' ? 'warp' : 'red alert warp'} sound from both paths:`, error);
+                    }
+                );
+            }
+        );
     }
 }
 
