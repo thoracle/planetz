@@ -20,6 +20,10 @@ export class StarfieldAudioManager {
         this.engineState = 'stopped'; // 'stopped', 'starting', 'running', 'stopping'
         this.engineTimes = null;
         
+        // User interaction tracking to prevent warning spam
+        this.userHasInteracted = false;
+        this.interactionWarningShown = false;
+        
         // Initialize audio system
         this.initializeAudio();
     }
@@ -44,6 +48,9 @@ export class StarfieldAudioManager {
                 this.ensureAudioContextRunning();
             }
         });
+        
+        // Set up user interaction detection
+        this.setupUserInteractionDetection();
     }
 
     /**
@@ -52,8 +59,16 @@ export class StarfieldAudioManager {
     ensureAudioContextRunning() {
         if (this.audioListener?.context) {
             if (this.audioListener.context.state === 'suspended') {
+                // Only show warning if user hasn't interacted and we haven't shown it before
+                if (!this.userHasInteracted && !this.interactionWarningShown) {
+                    console.warn('⚠️ No user interaction detected - sound may not play due to browser policy');
+                    this.interactionWarningShown = true;
+                }
+                
                 this.audioListener.context.resume().then(() => {
-                    console.log('🎵 AudioContext resumed successfully');
+                    if (this.userHasInteracted) {
+                        console.log('🎵 AudioContext resumed successfully');
+                    }
                 }).catch(error => {
                     console.warn('⚠️ Failed to resume AudioContext:', error);
                 });
@@ -418,5 +433,27 @@ export class StarfieldAudioManager {
         this.soundLoaded = false;
         this.commandSoundLoaded = false;
         this.commandFailedSoundLoaded = false;
+    }
+
+    /**
+     * Set up user interaction detection to prevent audio policy warnings
+     */
+    setupUserInteractionDetection() {
+        const interactionEvents = ['click', 'keydown', 'touchstart', 'mousedown'];
+        
+        const handleUserInteraction = () => {
+            this.userHasInteracted = true;
+            console.log('🎵 User interaction detected - audio policy satisfied');
+            
+            // Remove event listeners after first interaction
+            interactionEvents.forEach(event => {
+                document.removeEventListener(event, handleUserInteraction);
+            });
+        };
+        
+        // Add event listeners for user interaction
+        interactionEvents.forEach(event => {
+            document.addEventListener(event, handleUserInteraction, { once: true });
+        });
     }
 } 
