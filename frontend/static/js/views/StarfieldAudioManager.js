@@ -34,13 +34,16 @@ export class StarfieldAudioManager {
     initializeAudio() {
         console.log('🎵 Initializing StarfieldAudioManager...');
         
+        // Set up user interaction detection FIRST
+        this.setupUserInteractionDetection();
+        
         // Ensure AudioContext is running
         this.ensureAudioContextRunning();
         
         // Load audio files with fallback paths
-        this.loadEngineAudioWithFallback('audio/engines.wav', 'static/audio/engines.wav');
-        this.loadCommandAudioWithFallback('audio/command.wav', 'static/audio/command.wav');
-        this.loadCommandFailedAudioWithFallback('audio/command_failed.mp3', 'static/audio/command_failed.mp3');
+        this.loadEngineAudioWithFallback('audio/engines.wav', 'audio/engines.wav');
+        this.loadCommandAudioWithFallback('audio/command.wav', 'audio/command.wav');
+        this.loadCommandFailedAudioWithFallback('audio/command_failed.mp3', 'audio/command_failed.mp3');
         
         // Add visibility change listener for audio context
         document.addEventListener('visibilitychange', () => {
@@ -48,9 +51,6 @@ export class StarfieldAudioManager {
                 this.ensureAudioContextRunning();
             }
         });
-        
-        // Set up user interaction detection
-        this.setupUserInteractionDetection();
     }
 
     /**
@@ -59,18 +59,21 @@ export class StarfieldAudioManager {
     ensureAudioContextRunning() {
         if (this.audioListener?.context) {
             if (this.audioListener.context.state === 'suspended') {
-                // Only show warning if user hasn't interacted and we haven't shown it before
+                // Only show warning once per session until user interaction
                 if (!this.userHasInteracted && !this.interactionWarningShown) {
                     console.warn('⚠️ No user interaction detected - sound may not play due to browser policy');
                     this.interactionWarningShown = true;
                 }
                 
+                // Always try to resume, but don't spam console
                 this.audioListener.context.resume().then(() => {
                     if (this.userHasInteracted) {
                         console.log('🎵 AudioContext resumed successfully');
                     }
                 }).catch(error => {
-                    console.warn('⚠️ Failed to resume AudioContext:', error);
+                    if (this.userHasInteracted) {
+                        console.warn('⚠️ Failed to resume AudioContext:', error);
+                    }
                 });
             }
         }
@@ -442,18 +445,53 @@ export class StarfieldAudioManager {
         const interactionEvents = ['click', 'keydown', 'touchstart', 'mousedown'];
         
         const handleUserInteraction = () => {
-            this.userHasInteracted = true;
-            console.log('🎵 User interaction detected - audio policy satisfied');
-            
-            // Remove event listeners after first interaction
-            interactionEvents.forEach(event => {
-                document.removeEventListener(event, handleUserInteraction);
-            });
+            if (!this.userHasInteracted) {
+                this.userHasInteracted = true;
+                console.log('🎵 User interaction detected - audio policy satisfied');
+                
+                // Reset warning flag so future audio attempts work
+                this.interactionWarningShown = false;
+                
+                // Resume AudioContext if suspended
+                if (this.audioListener?.context && this.audioListener.context.state === 'suspended') {
+                    this.audioListener.context.resume().then(() => {
+                        console.log('🎵 AudioContext resumed after user interaction');
+                    }).catch(error => {
+                        console.warn('⚠️ Failed to resume AudioContext after interaction:', error);
+                    });
+                }
+                
+                // Remove event listeners after first successful interaction
+                interactionEvents.forEach(event => {
+                    document.removeEventListener(event, handleUserInteraction);
+                });
+            }
         };
         
-        // Add event listeners for user interaction
+        // Add event listeners for user interaction (not using once: true to avoid double cleanup)
         interactionEvents.forEach(event => {
-            document.addEventListener(event, handleUserInteraction, { once: true });
+            document.addEventListener(event, handleUserInteraction, false);
         });
+    }
+
+    /**
+     * Check if user has interacted (for other audio systems)
+     */
+    hasUserInteracted() {
+        return this.userHasInteracted;
+    }
+
+    /**
+     * Mark that warning has been shown (for other audio systems)
+     */
+    markWarningShown() {
+        this.interactionWarningShown = true;
+    }
+
+    /**
+     * Check if warning has been shown (for other audio systems)
+     */
+    hasWarningBeenShown() {
+        return this.interactionWarningShown;
     }
 } 

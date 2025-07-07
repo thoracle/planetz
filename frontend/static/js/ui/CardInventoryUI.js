@@ -172,7 +172,7 @@ export default class CardInventoryUI {
                 const audioLoader = new window.THREE.AudioLoader();
                 console.log('🎵 Loading upgrade sound with fallback path detection...');
                 
-                this.loadAudioWithFallback(audioLoader, 'audio/blurb.mp3', 'static/audio/blurb.mp3');
+                this.loadAudioWithFallback(audioLoader, 'audio/blurb.mp3', 'audio/blurb.mp3');
             } else {
                 console.warn('⚠️ THREE.js not available for audio initialization, using fallback');
                 this.upgradeSoundLoaded = false;
@@ -248,9 +248,10 @@ export default class CardInventoryUI {
             this.audioElementUseCount = []; // Track usage for health monitoring
             this.maxUsesPerElement = 10; // Regenerate elements after this many uses
             
-            // Track user interaction for browser audio policies
-            this.userHasInteracted = false;
-            this.setupUserInteractionTracking();
+                    // Track user interaction for browser audio policies
+        this.userHasInteracted = false;
+        this.audioWarningShown = false; // Track if we've shown the audio warning
+        this.setupUserInteractionTracking();
             
             this.fallbackAudio.addEventListener('canplaythrough', () => {
                 console.log('✅ Fallback audio loaded successfully (dev path)');
@@ -263,7 +264,7 @@ export default class CardInventoryUI {
             this.fallbackAudio.addEventListener('error', (e) => {
                 console.log('⚠️ Dev path failed for fallback audio, trying production path...');
                 // Try production path fallback
-                this.fallbackAudio = new Audio('static/audio/blurb.mp3');
+                this.fallbackAudio = new Audio('audio/blurb.mp3');
                 this.fallbackAudio.volume = 0.7;
                 this.fallbackAudio.preload = 'auto';
                 
@@ -321,7 +322,7 @@ export default class CardInventoryUI {
         audioClone.addEventListener('error', (e) => {
             console.log(`⚠️ Audio ${index} dev path failed, trying production path...`);
             // Try production path as fallback
-            const prodAudioClone = new Audio('static/audio/blurb.mp3');
+                            const prodAudioClone = new Audio('audio/blurb.mp3');
             prodAudioClone.volume = 0.7;
             prodAudioClone.preload = 'auto';
             
@@ -442,24 +443,63 @@ export default class CardInventoryUI {
      * Set up user interaction tracking for browser audio policies
      */
     setupUserInteractionTracking() {
-        const trackInteraction = () => {
-            if (!this.userHasInteracted) {
-                this.userHasInteracted = true;
-                console.log('👆 User interaction detected - audio should work now');
-                
-                // Resume AudioContext if suspended
-                if (this.audioListener && this.audioListener.context && this.audioListener.context.state === 'suspended') {
-                    this.audioListener.context.resume().then(() => {
-                        console.log('🔊 AudioContext resumed after user interaction');
-                    });
+        // Check if StarfieldAudioManager is handling user interaction detection
+        const starfieldAudioManager = window.starfieldAudioManager;
+        if (starfieldAudioManager) {
+            // Use the global user interaction detection
+            console.log('🔗 Using global StarfieldAudioManager for user interaction detection');
+            
+            // Set up a periodic check to sync with the global state
+            const checkInteractionState = () => {
+                if (!this.userHasInteracted && starfieldAudioManager.hasUserInteracted()) {
+                    this.userHasInteracted = true;
+                    console.log('👆 User interaction detected via StarfieldAudioManager');
+                    
+                    // Resume AudioContext if suspended
+                    if (this.audioListener && this.audioListener.context && this.audioListener.context.state === 'suspended') {
+                        this.audioListener.context.resume().then(() => {
+                            console.log('🔊 AudioContext resumed after user interaction');
+                        });
+                    }
                 }
-            }
-        };
-        
-        // Track various user interactions
-        ['click', 'touchstart', 'keydown'].forEach(event => {
-            document.addEventListener(event, trackInteraction, { once: false });
-        });
+            };
+            
+            // Check immediately and then periodically
+            checkInteractionState();
+            this.interactionCheckInterval = setInterval(checkInteractionState, 100);
+        } else {
+            // Fallback to local user interaction detection if StarfieldAudioManager not available
+            console.log('⚠️ StarfieldAudioManager not available, using local user interaction detection');
+            
+            const trackInteraction = () => {
+                if (!this.userHasInteracted) {
+                    this.userHasInteracted = true;
+                    console.log('👆 User interaction detected - audio should work now');
+                    
+                    // Resume AudioContext if suspended
+                    if (this.audioListener && this.audioListener.context && this.audioListener.context.state === 'suspended') {
+                        this.audioListener.context.resume().then(() => {
+                            console.log('🔊 AudioContext resumed after user interaction');
+                        });
+                    }
+                }
+            };
+            
+            // Track various user interactions
+            ['click', 'touchstart', 'keydown'].forEach(event => {
+                document.addEventListener(event, trackInteraction, { once: false });
+            });
+        }
+    }
+
+    /**
+     * Clean up resources
+     */
+    dispose() {
+        if (this.interactionCheckInterval) {
+            clearInterval(this.interactionCheckInterval);
+            this.interactionCheckInterval = null;
+        }
     }
 
     /**
@@ -468,9 +508,17 @@ export default class CardInventoryUI {
     playUpgradeSound() {
         console.log('🎵 Attempting to play upgrade sound...');
         
-        // Check user interaction for browser policies
+        // Check user interaction for browser policies - only show warning once per session
         if (!this.userHasInteracted) {
-            console.warn('⚠️ No user interaction detected - sound may not play due to browser policy');
+            // Check if StarfieldAudioManager has already shown the warning
+            const starfieldAudioManager = window.starfieldAudioManager;
+            if (starfieldAudioManager && !starfieldAudioManager.hasWarningBeenShown()) {
+                console.warn('⚠️ No user interaction detected - sound may not play due to browser policy');
+                starfieldAudioManager.markWarningShown();
+            } else if (!starfieldAudioManager && !this.audioWarningShown) {
+                console.warn('⚠️ No user interaction detected - sound may not play due to browser policy');
+                this.audioWarningShown = true;
+            }
         }
         
         try {
@@ -676,7 +724,7 @@ export default class CardInventoryUI {
                         console.log('⚠️ Emergency dev path failed, trying production path...');
                         
                         // Try production path
-                        const prodAudio = new Audio('static/audio/blurb.mp3');
+                        const prodAudio = new Audio('audio/blurb.mp3');
                         prodAudio.volume = 0.7;
                         prodAudio.play().then(() => {
                             console.log('✅ Emergency audio playback successful (prod path)');
@@ -731,7 +779,7 @@ export default class CardInventoryUI {
                     .catch(devErr => {
                         console.log('⚠️ Web Audio dev path failed, trying production path...');
                         // Try production path
-                        fetch('static/audio/blurb.mp3')
+                        fetch('audio/blurb.mp3')
                             .then(response => response.arrayBuffer())
                             .then(data => audioContext.decodeAudioData(data))
                             .then(audioBuffer => {

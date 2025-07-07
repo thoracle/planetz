@@ -520,8 +520,8 @@ export class WeaponSlot {
             console.warn('🎯 Camera not found, using fallback ship-relative positioning');
         }
         
-        // Always create dual muzzle flashes with fixed 0.9s sound duration for lasers
-        const soundDuration = weapon.weaponType === 'scan-hit' ? 0.9 : undefined;
+        // Always create dual muzzle flashes with optimal sound duration
+        const soundDuration = weapon.weaponType === 'scan-hit' ? 0.5 : undefined;
         effectsManager.createMuzzleFlash(leftWeaponPos, aimDirection, weapon.cardType, soundDuration);
         effectsManager.createMuzzleFlash(rightWeaponPos, aimDirection, weapon.cardType, soundDuration);
         

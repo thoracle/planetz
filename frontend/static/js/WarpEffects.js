@@ -27,8 +27,8 @@ class WarpEffects {
         
         // Load the warp sounds
         console.log('Loading warp sounds with fallback path detection...');
-        this.loadWarpSoundWithFallback('audio/warp.wav', 'static/audio/warp.wav', 'warp');
-        this.loadWarpSoundWithFallback('audio/warp-redalert.wav', 'static/audio/warp-redalert.wav', 'redalert');
+        this.loadWarpSoundWithFallback('audio/warp.wav', 'audio/warp.wav', 'warp');
+        this.loadWarpSoundWithFallback('audio/warp-redalert.wav', 'audio/warp-redalert.wav', 'redalert');
 
         // Add visibility change listener
         document.addEventListener('visibilitychange', () => {

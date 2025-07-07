@@ -168,6 +168,9 @@ export class StarfieldManager {
 
         // Make this instance globally available for button click handlers
         window.starfieldManager = this;
+        
+        // Make audio manager globally accessible for other audio systems
+        window.starfieldAudioManager = this.audioManager;
 
         // Add CSS for dock button
         const style = document.createElement('style');
@@ -2485,9 +2488,12 @@ export class StarfieldManager {
             this.audioManager.dispose();
         }
         
-        // Remove global reference
+        // Remove global references
         if (window.starfieldManager === this) {
             delete window.starfieldManager;
+        }
+        if (window.starfieldAudioManager === this.audioManager) {
+            delete window.starfieldAudioManager;
         }
         
         this.ship = null;

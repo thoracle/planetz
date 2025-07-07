@@ -6,6 +6,12 @@
 
 export class WeaponEffectsManager {
     constructor(scene, camera, audioContext = null) {
+        console.log('🎆 WeaponEffectsManager constructor called');
+        console.log('  - Scene:', !!scene);
+        console.log('  - Camera:', !!camera);
+        console.log('  - AudioContext:', !!audioContext);
+        console.log('  - AudioContext state:', audioContext?.state || 'N/A');
+        
         this.scene = scene;
         this.camera = camera;
         this.audioContext = audioContext;
@@ -23,11 +29,13 @@ export class WeaponEffectsManager {
             
             // Instead of throwing, create a fallback mode
             this.fallbackMode = true;
+            console.log('🎆 WeaponEffectsManager: Entering fallback mode');
             this.initializeFallbackMode();
             return;
         }
         
         this.fallbackMode = false;
+        console.log('🎆 WeaponEffectsManager: Entering full mode');
         this.initializeFullMode();
     }
     
@@ -53,6 +61,8 @@ export class WeaponEffectsManager {
      * Initialize in full mode when THREE.js is available
      */
     initializeFullMode() {
+        console.log('🎆 WeaponEffectsManager: Initializing full mode...');
+        
         // Effect collections
         this.muzzleFlashes = [];
         this.laserBeams = [];
@@ -66,6 +76,10 @@ export class WeaponEffectsManager {
         this.audioInitialized = false;
         this.useFallbackAudio = false;
         this.html5AudioWarningShown = false;
+        
+        // User interaction tracking for audio policy compliance
+        this.userHasInteracted = false;
+        this.setupUserInteractionDetection();
         
         // Performance settings
         this.maxEffectsPerType = 20;
@@ -101,35 +115,87 @@ export class WeaponEffectsManager {
         };
         
         // Initialize audio system
+        console.log('🎆 WeaponEffectsManager: Starting audio initialization...');
         this.initializeAudio();
         
         console.log('WeaponEffectsManager initialized in full mode');
     }
     
     /**
+     * Set up user interaction detection for browser audio policies
+     */
+    setupUserInteractionDetection() {
+        // Check if StarfieldAudioManager is handling user interaction detection
+        const starfieldAudioManager = window.starfieldAudioManager;
+        if (starfieldAudioManager) {
+            // Use the global user interaction detection
+            console.log('🔗 WeaponEffectsManager: Using global StarfieldAudioManager for user interaction detection');
+            
+            // Set up a periodic check to sync with the global state
+            const checkInteractionState = () => {
+                if (!this.userHasInteracted && starfieldAudioManager.hasUserInteracted()) {
+                    this.userHasInteracted = true;
+                    console.log('👆 WeaponEffectsManager: User interaction detected via StarfieldAudioManager');
+                    
+                    // Resume AudioContext if suspended
+                    this.ensureAudioContextResumed();
+                }
+            };
+            
+            // Check immediately and then periodically
+            checkInteractionState();
+            this.interactionCheckInterval = setInterval(checkInteractionState, 100);
+        } else {
+            // Fallback to local user interaction detection if StarfieldAudioManager not available
+            console.log('⚠️ WeaponEffectsManager: StarfieldAudioManager not available, using local user interaction detection');
+            
+            const trackInteraction = () => {
+                if (!this.userHasInteracted) {
+                    this.userHasInteracted = true;
+                    console.log('👆 WeaponEffectsManager: User interaction detected - weapon audio should work now');
+                    
+                    // Resume AudioContext if suspended
+                    this.ensureAudioContextResumed();
+                }
+            };
+            
+            // Track various user interactions
+            ['click', 'touchstart', 'keydown'].forEach(event => {
+                document.addEventListener(event, trackInteraction, { once: false });
+            });
+        }
+    }
+    
+    /**
      * Initialize audio system
      */
     async initializeAudio() {
+        console.log('🎵 WeaponEffectsManager: Starting audio initialization...');
+        
         try {
             if (!this.audioContext) {
                 console.warn('WeaponEffectsManager: No audio context available for weapon sounds');
+                console.log('🎵 Falling back to HTML5 audio...');
+                this.useFallbackAudio = true;
+                this.audioInitialized = true; // Mark as initialized to allow HTML5 fallback
                 return;
             }
 
             console.log('🎵 Loading weapon audio effects...');
+            console.log('🎵 AudioContext state:', this.audioContext.state);
 
             // Try to resume audio context
             await this.ensureAudioContextResumed();
 
             // Try development paths first, then fallback to production paths
             const soundFiles = [
-                { type: 'lasers', dev: 'audio/lasers.wav', prod: 'static/audio/lasers.wav' },
-                { type: 'photons', dev: 'audio/photons.wav', prod: 'static/audio/photons.wav' },
-                { type: 'missiles', dev: 'audio/missiles.wav', prod: 'static/audio/missiles.wav' },
-                { type: 'mines', dev: 'audio/mines.mp3', prod: 'static/audio/mines.mp3' },
-                { type: 'explosion', dev: 'audio/explosion.wav', prod: 'static/audio/explosion.wav' },
-                { type: 'death', dev: 'audio/death.wav', prod: 'static/audio/death.wav' },
-                { type: 'success', dev: 'audio/success.wav', prod: 'static/audio/success.wav' }
+                { type: 'lasers', dev: 'audio/lasers.wav', prod: 'audio/lasers.wav' },
+                { type: 'photons', dev: 'audio/photons.wav', prod: 'audio/photons.wav' },
+                { type: 'missiles', dev: 'audio/missiles.wav', prod: 'audio/missiles.wav' },
+                { type: 'mines', dev: 'audio/mines.mp3', prod: 'audio/mines.mp3' },
+                { type: 'explosion', dev: 'audio/explosion.wav', prod: 'audio/explosion.wav' },
+                { type: 'death', dev: 'audio/death.wav', prod: 'audio/death.wav' },
+                { type: 'success', dev: 'audio/success.wav', prod: 'audio/success.wav' }
             ];
 
             console.log(`🎵 Loading weapon audio with fallback path detection...`);
@@ -137,15 +203,18 @@ export class WeaponEffectsManager {
             const loadPromises = soundFiles.map(sound => this.loadSoundWithFallback(sound.type, sound.dev, sound.prod));
             await Promise.all(loadPromises);
             
-            console.log(`✅ Loaded ${Object.keys(this.audioBuffers).length} weapon audio effects - ready to fire!`);
+            console.log(`✅ Loaded ${this.audioBuffers.size} weapon audio effects - ready to fire!`);
             
             // Log sound duration configuration once
-            console.log(`🔊 WEAPON AUDIO CONFIG: Laser sound duration = 0.05s (reduced for very rapid fire)`);
+            console.log(`🔊 WEAPON AUDIO CONFIG: Laser sound duration = 0.5s (increased for full audibility)`);
             
             this.audioInitialized = true;
             
         } catch (error) {
             console.error('WeaponEffectsManager: Failed to initialize audio:', error);
+            console.log('🎵 Falling back to HTML5 audio due to initialization failure...');
+            this.useFallbackAudio = true;
+            this.audioInitialized = true; // Mark as initialized to allow HTML5 fallback
         }
     }
     
@@ -229,13 +298,25 @@ export class WeaponEffectsManager {
      * @param {number} durationPercentage Optional percentage of the full audio to play (0.0 - 1.0)
      */
     playSound(soundType, position = null, volume = 1.0, duration = null, durationPercentage = null) {
+        console.log(`🎵 WeaponEffectsManager.playSound called: ${soundType}, volume=${volume}`);
+        console.log(`🎵 System state: audioInitialized=${this.audioInitialized}, audioContext=${!!this.audioContext}, buffers=${this.audioBuffers.size}`);
+        console.log(`🎵 Has buffer for ${soundType}: ${this.audioBuffers.has(soundType)}`);
+        console.log(`🎵 User interaction detected: ${this.userHasInteracted}`);
+        
+        // Check user interaction for browser audio policies
+        if (!this.userHasInteracted) {
+            console.warn('⚠️ WeaponEffectsManager: No user interaction detected - sound may not play due to browser policy');
+        }
+        
         // Use HTML5 audio fallback if Web Audio API isn't available or failed
         if (this.useFallbackAudio || !this.audioInitialized || !this.audioContext || !this.audioBuffers.has(soundType)) {
+            console.log(`🎵 Using HTML5 fallback for ${soundType}: fallback=${this.useFallbackAudio}, initialized=${this.audioInitialized}, context=${!!this.audioContext}, hasBuffer=${this.audioBuffers.has(soundType)}`);
             this.playHTML5Sound(soundType, volume);
             return;
         }
         
         try {
+            console.log(`🎵 Attempting Web Audio playback for ${soundType}`);
             const audioBuffer = this.audioBuffers.get(soundType);
             const source = this.audioContext.createBufferSource();
             const gainNode = this.audioContext.createGain();
@@ -273,15 +354,19 @@ export class WeaponEffectsManager {
                 console.log(`🎵 Playing ${(durationPercentage * 100).toFixed(0)}% of ${soundType} (${actualDuration.toFixed(2)}s of ${audioBuffer.duration.toFixed(2)}s)`);
             }
             
-            // For laser sounds, play only the first part (0.05 seconds - reduced for very rapid fire)
+            // For laser sounds, play only the first part (0.5 seconds - increased for full audibility)
             if (soundType === 'lasers') {
-                const laserDuration = actualDuration || 0.05; // Reduced from 0.125s to 0.05s for very rapid fire
+                const laserDuration = actualDuration || 0.5; // Increased from 0.2s for full audibility
+                console.log(`🎵 Laser audio buffer duration: ${audioBuffer.duration.toFixed(3)}s, playing: ${laserDuration}s`);
                 source.start(0, 0, laserDuration);
+                console.log(`🎵 Playing laser sound for ${laserDuration}s`);
             } else if (actualDuration !== null) {
                 // For other sounds with duration specified, play from start with duration limit
                 source.start(0, 0, actualDuration);
+                console.log(`🎵 Playing ${soundType} for ${actualDuration}s`);
             } else {
                 source.start();
+                console.log(`🎵 Playing full ${soundType} sound`);
             }
             
             // Clean up after sound finishes
@@ -291,6 +376,7 @@ export class WeaponEffectsManager {
             };
             
             this.audioSources.push(source);
+            console.log(`✅ Web Audio playback started for ${soundType}`);
             
         } catch (error) {
             console.warn(`Failed to play sound ${soundType}, falling back to HTML5:`, error);
@@ -304,27 +390,37 @@ export class WeaponEffectsManager {
      * @param {string} soundType Type of sound
      * @param {number} volume Volume (0.0 - 1.0)
      */
-        playHTML5Sound(soundType, volume = 0.5) {
+    playHTML5Sound(soundType, volume = 0.5) {
+        console.log(`🎵 WeaponEffectsManager.playHTML5Sound called: ${soundType}, volume=${volume}`);
+        
         try {
             const audioMap = {
-                'lasers': { dev: 'audio/lasers.wav', prod: 'static/audio/lasers.wav' },
-                'photons': { dev: 'audio/photons.wav', prod: 'static/audio/photons.wav' },
-                'missiles': { dev: 'audio/missiles.wav', prod: 'static/audio/missiles.wav' },
-                'explosion': { dev: 'audio/explosion.wav', prod: 'static/audio/explosion.wav' },
-                'success': { dev: 'audio/success.wav', prod: 'static/audio/success.wav' },
-                'mines': { dev: 'audio/mines.mp3', prod: 'static/audio/mines.mp3' },
-                'death': { dev: 'audio/death.wav', prod: 'static/audio/death.wav' }
+                'lasers': { dev: 'audio/lasers.wav', prod: 'audio/lasers.wav' },
+                'photons': { dev: 'audio/photons.wav', prod: 'audio/photons.wav' },
+                'missiles': { dev: 'audio/missiles.wav', prod: 'audio/missiles.wav' },
+                'explosion': { dev: 'audio/explosion.wav', prod: 'audio/explosion.wav' },
+                'success': { dev: 'audio/success.wav', prod: 'audio/success.wav' },
+                'mines': { dev: 'audio/mines.mp3', prod: 'audio/mines.mp3' },
+                'death': { dev: 'audio/death.wav', prod: 'audio/death.wav' }
             };
             
             if (audioMap[soundType]) {
+                console.log(`🎵 HTML5: Trying dev path: ${audioMap[soundType].dev}`);
+                
                 // Try development path first
                 const devAudio = new Audio(audioMap[soundType].dev);
                 devAudio.volume = Math.max(0, Math.min(1, volume));
-                devAudio.play().catch(devError => {
+                devAudio.play().then(() => {
+                    console.log(`✅ HTML5: Successfully played ${soundType} from dev path`);
+                }).catch(devError => {
+                    console.log(`⚠️ HTML5: Dev path failed for ${soundType}, trying production path...`);
+                    
                     // Fallback to production path
                     const prodAudio = new Audio(audioMap[soundType].prod);
                     prodAudio.volume = Math.max(0, Math.min(1, volume));
-                    prodAudio.play().catch(prodError => {
+                    prodAudio.play().then(() => {
+                        console.log(`✅ HTML5: Successfully played ${soundType} from prod path`);
+                    }).catch(prodError => {
                         // Only log error if this is the first failure
                         if (!this.html5AudioWarningShown) {
                             console.warn('HTML5 audio play failed on both paths (autoplay policy):', {dev: devError.message, prod: prodError.message});
@@ -332,6 +428,8 @@ export class WeaponEffectsManager {
                         }
                     });
                 });
+            } else {
+                console.warn(`🎵 HTML5: No audio mapping found for sound type: ${soundType}`);
             }
         } catch (error) {
             console.warn(`HTML5 audio fallback failed for ${soundType}:`, error);
@@ -356,7 +454,10 @@ export class WeaponEffectsManager {
         
         // ALWAYS play audio even when visual muzzle flash is disabled
         const audioType = this.getAudioType(weaponType);
-        this.playSound(audioType, position, 0.7, soundDuration);
+        console.log(`🔫 WeaponEffectsManager: Firing ${weaponType} -> audio type: ${audioType}`);
+        console.log(`🔫 Audio system status: initialized=${this.audioInitialized}, buffers=${this.audioBuffers.size}, fallback=${this.useFallbackAudio}`);
+        
+        this.playSound(audioType, position, 1.0, soundDuration);
         
         // DISABLED: Muzzle flash spheres temporarily disabled (but audio still plays above)
         return;
@@ -650,7 +751,12 @@ export class WeaponEffectsManager {
             'standard_missile': 'missiles',
             'homing_missile': 'missiles',
             'heavy_torpedo': 'missiles',
-            'proximity_mine': 'mines'
+            'proximity_mine': 'mines',
+            'laser': 'lasers',
+            'pulse': 'lasers',
+            'plasma': 'photons',
+            'phaser': 'photons',
+            'scan-hit': 'lasers'
         };
         
         return audioMap[weaponType] || 'lasers'; // Default to lasers sound
@@ -815,6 +921,12 @@ export class WeaponEffectsManager {
         });
         this.audioSources = [];
         
+        // Clean up interaction check interval
+        if (this.interactionCheckInterval) {
+            clearInterval(this.interactionCheckInterval);
+            this.interactionCheckInterval = null;
+        }
+        
         // Remove all effects from scene
         this.activeEffects.forEach(effect => {
             this.scene.remove(effect);
@@ -857,5 +969,13 @@ export class WeaponEffectsManager {
      */
     isAudioReady() {
         return this.audioInitialized && this.audioContext && this.audioBuffers.size > 0;
+    }
+    
+    /**
+     * Check if user interaction has been detected
+     * @returns {boolean} True if user has interacted
+     */
+    hasUserInteracted() {
+        return this.userHasInteracted;
     }
 } 
