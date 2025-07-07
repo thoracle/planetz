@@ -1165,8 +1165,8 @@ export class TargetComputerManager {
         const targetPosition = this.currentTarget.position.clone();
         const screenPosition = targetPosition.clone().project(this.camera);
         
-        // Check if target is off screen
-        const isOffScreen = Math.abs(screenPosition.x) > 1 || Math.abs(screenPosition.y) > 1;
+        // Check if target is near or off screen edges (arrows appear sooner)
+        const isOffScreen = Math.abs(screenPosition.x) > 0.85 || Math.abs(screenPosition.y) > 0.85;
 
         if (isOffScreen) {
             // Get camera's view direction and relative position
