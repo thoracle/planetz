@@ -123,13 +123,63 @@ export class WeaponSystemCore {
     }
     
     /**
-     * Toggle autofire mode (\ key binding)
-     * @returns {boolean} New autofire state
+     * Check if autofire is available for the current weapon
+     * @returns {boolean} True if autofire is available
+     */
+    isAutofireAvailable() {
+        const activeSlot = this.getActiveWeapon();
+        if (!activeSlot || activeSlot.isEmpty) return false;
+        
+        const weapon = activeSlot.equippedWeapon;
+        if (!weapon) return false;
+        
+        // Check if weapon level is 3 or higher
+        const weaponLevel = weapon.level || 1;
+        if (weaponLevel < 3) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Toggle autofire mode
+     * @returns {boolean} True if autofire toggle was successful, false if it failed
      */
     toggleAutofire() {
+        // Check if autofire is available before toggling
+        if (!this.isAutofireAvailable()) {
+            const activeSlot = this.getActiveWeapon();
+            if (activeSlot && !activeSlot.isEmpty) {
+                const weapon = activeSlot.equippedWeapon;
+                const weaponLevel = weapon.level || 1;
+                const hudMessage = `Autofire unavailable: ${weapon.name} is Level ${weaponLevel} (requires Level 3+)`;
+                
+                console.log(`🎯 Autofire unavailable: ${weapon.name} is Level ${weaponLevel} (requires Level 3+)`);
+                
+                // Show UI message using unified method
+                this.showMessage(hudMessage, 4000); // 4 seconds
+            } else {
+                console.log('🎯 Autofire unavailable: No weapon equipped');
+                this.showMessage('Autofire unavailable: No weapon equipped', 3000);
+            }
+            return false; // Command failed
+        }
+        
         this.isAutofireOn = !this.isAutofireOn;
-        this.updateAutofireStatus();
-        return this.isAutofireOn;
+        
+        const activeSlot = this.getActiveWeapon();
+        const weaponName = activeSlot?.equippedWeapon?.name || 'Unknown';
+        const weaponLevel = activeSlot?.equippedWeapon?.level || 1;
+        
+        console.log(`🎯 Autofire ${this.isAutofireOn ? 'ON' : 'OFF'} for ${weaponName} (Level ${weaponLevel})`);
+        
+        // Update UI
+        if (this.weaponHUD) {
+            this.weaponHUD.updateAutofireStatus(this.isAutofireOn);
+        }
+        
+        return true; // Command succeeded
     }
     
     /**
@@ -147,23 +197,98 @@ export class WeaponSystemCore {
             }
         });
 
-        // Only process autofire logic if autofire is enabled
-        if (!this.isAutofireOn) return;
+        // Only process autofire logic if autofire is enabled AND available
+        if (!this.isAutofireOn || !this.isAutofireAvailable()) {
+            return;
+        }
         
         // In autofire mode, only fire the currently active weapon
         const activeSlot = this.getActiveWeapon();
-        if (!activeSlot || activeSlot.isEmpty) return;
-        
-        // Check if the active weapon can fire
-        if (activeSlot.canFire()) {
-            // Check target requirements for this weapon
-            if (activeSlot.equippedWeapon.targetLockRequired) {
-                if (!this.validateTargetLock()) return;
-            }
-            
-            // Fire the active weapon
-            activeSlot.fire(this.ship, this.lockedTarget);
+        if (!activeSlot || activeSlot.isEmpty) {
+            return;
         }
+        
+        const weapon = activeSlot.equippedWeapon;
+        
+        // If no target is locked, try to find the closest target automatically
+        if (!this.lockedTarget) {
+            const closestTarget = this.findClosestTarget();
+            if (closestTarget) {
+                this.setLockedTarget(closestTarget);
+                console.log(`🎯 Auto-selected target: ${closestTarget.name || 'Unknown'} at ${this.calculateDistanceToTarget(closestTarget).toFixed(0)}m`);
+            }
+        }
+        
+        // Fire the weapon if conditions are met
+        if (this.lockedTarget) {
+            // For target-lock-required weapons (like missiles), only fire if we have a locked target
+            if (weapon.targetLockRequired && this.lockedTarget) {
+                const fired = activeSlot.fire(this.ship, this.lockedTarget);
+                if (fired) {
+                    console.log(`🎯 AUTOFIRE: Fired ${weapon.name} at ${this.lockedTarget.name || 'target'}`);
+                }
+            }
+            // For direct-fire weapons (like lasers), fire at the target
+            else if (!weapon.targetLockRequired) {
+                const fired = activeSlot.fire(this.ship, this.lockedTarget);
+                if (fired) {
+                    console.log(`🎯 AUTOFIRE: Fired ${weapon.name} at ${this.lockedTarget.name || 'target'}`);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Find the closest hostile target within weapon range for autofire
+     * @returns {Object|null} Closest enemy target or null if none found
+     */
+    findClosestTarget() {
+        const activeSlot = this.getActiveWeapon();
+        if (!activeSlot || activeSlot.isEmpty) return null;
+        
+        const weapon = activeSlot.equippedWeapon;
+        const weaponRange = weapon.range;
+        
+        // Get camera position (player position)
+        const camera = this.ship.starfieldManager?.camera;
+        if (!camera) return null;
+        
+        // Get THREE.js reference using the same pattern as other files
+        const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
+        if (!THREE) return null;
+        
+        let closestTarget = null;
+        let closestDistance = Infinity;
+        
+        // Search through all enemy ships
+        if (this.ship.starfieldManager?.dummyShipMeshes) {
+            this.ship.starfieldManager.dummyShipMeshes.forEach(mesh => {
+                if (mesh.userData?.ship && mesh.position) {
+                    const distance = camera.position.distanceTo(mesh.position);
+                    
+                    // Check if target is within weapon range and closer than current closest
+                    if (distance <= weaponRange && distance < closestDistance) {
+                        // Create target object in the format expected by the weapon system
+                        const target = {
+                            position: {
+                                x: mesh.position.x,
+                                y: mesh.position.y,
+                                z: mesh.position.z
+                            },
+                            radius: 50, // Default ship radius in meters
+                            ship: mesh.userData.ship,
+                            mesh: mesh,
+                            name: mesh.userData.ship.shipName || 'Enemy Ship'
+                        };
+                        
+                        closestTarget = target;
+                        closestDistance = distance;
+                    }
+                }
+            });
+        }
+        
+        return closestTarget;
     }
     
     /**
@@ -249,7 +374,7 @@ export class WeaponSystemCore {
         const activeWeapon = this.getActiveWeapon();
         if (!activeWeapon || activeWeapon.isEmpty) return false;
         
-        // Calculate distance to target (simplified for now)
+        // Calculate distance to target
         const distance = this.calculateDistanceToTarget(this.lockedTarget);
         return distance <= activeWeapon.equippedWeapon.range;
     }
@@ -257,12 +382,24 @@ export class WeaponSystemCore {
     /**
      * Calculate distance to target
      * @param {Object} target Target object with position
-     * @returns {number} Distance in appropriate units
+     * @returns {number} Distance in meters
      */
     calculateDistanceToTarget(target) {
-        // This would integrate with the existing targeting system
-        // For now, return a placeholder value
-        return 500; // meters
+        if (!target || !target.position) return Infinity;
+        
+        // Get camera position (player position)
+        const camera = this.ship.starfieldManager?.camera;
+        if (!camera) return Infinity;
+        
+        // Get THREE.js reference using the same pattern as other files
+        const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
+        if (!THREE) return Infinity;
+        
+        // Calculate actual distance between camera and target
+        const targetPos = new THREE.Vector3(target.position.x, target.position.y, target.position.z);
+        const distance = camera.position.distanceTo(targetPos);
+        
+        return distance; // Return distance in meters (same units as weapon range)
     }
     
     /**
@@ -335,14 +472,86 @@ export class WeaponSystemCore {
     }
     
     /**
-     * Show message in HUD
+     * Show message on HUD (with fallback for when WeaponHUD is not connected)
      * @param {string} message Message to display
+     * @param {number} duration Duration in milliseconds
      */
-    showMessage(message) {
+    showMessage(message, duration = 3000) {
+        console.log(`🎯 ${message}`);
+        
         if (this.weaponHUD) {
-            this.weaponHUD.showMessage(message);
+            // Use connected WeaponHUD
+            this.weaponHUD.showMessage(message, duration);
+            console.log(`🎯 Message sent to connected WeaponHUD`);
+        } else {
+            // Fallback: try to find WeaponHUD directly in DOM
+            console.warn(`🎯 WeaponHUD not connected, using fallback message system`);
+            this.showFallbackHUDMessage(message, duration);
         }
-        console.log(`Weapon System: ${message}`);
+    }
+    
+    /**
+     * Fallback method to show HUD message directly via DOM
+     * @param {string} message Message to display
+     * @param {number} duration Duration in milliseconds
+     */
+    showFallbackHUDMessage(message, duration = 3000) {
+        // Try to find the WeaponHUD message display element directly
+        const messageDisplay = document.querySelector('.weapon-message-display');
+        
+        if (messageDisplay) {
+            // Found the message display element
+            messageDisplay.textContent = message;
+            messageDisplay.style.display = 'block';
+            messageDisplay.style.opacity = '1';
+            
+            console.log(`🎯 Fallback: Message displayed via DOM - "${message}"`);
+            
+            // Hide after duration
+            setTimeout(() => {
+                messageDisplay.style.display = 'none';
+                messageDisplay.style.opacity = '0';
+            }, duration);
+        } else {
+            // Last resort: show as a temporary overlay
+            console.warn(`🎯 WeaponHUD message display not found, creating temporary overlay`);
+            this.showTemporaryOverlay(message, duration);
+        }
+    }
+    
+    /**
+     * Show temporary overlay message as last resort
+     * @param {string} message Message to display
+     * @param {number} duration Duration in milliseconds
+     */
+    showTemporaryOverlay(message, duration = 3000) {
+        // Create temporary overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff41;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-family: "Courier New", monospace;
+            font-size: 14px;
+            z-index: 10000;
+            border: 1px solid #00ff41;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        `;
+        overlay.textContent = message;
+        
+        document.body.appendChild(overlay);
+        console.log(`🎯 Temporary overlay created: "${message}"`);
+        
+        // Remove after duration
+        setTimeout(() => {
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+        }, duration);
     }
     
     /**

@@ -1002,18 +1002,52 @@ export class StarfieldManager {
 
     createWeaponHUD() {
         // Import and initialize WeaponHUD
+        console.log('🔫 StarfieldManager: Starting WeaponHUD creation...');
         import('../ui/WeaponHUD.js').then(({ WeaponHUD }) => {
+            console.log('🔫 StarfieldManager: WeaponHUD module loaded, creating instance...');
             this.weaponHUD = new WeaponHUD(document.body);
             
             // Initialize weapon slots display
             this.weaponHUD.initializeWeaponSlots(4);
+            console.log('🔫 StarfieldManager: WeaponHUD created and initialized');
             
             // Connect to weapon system if available
             this.connectWeaponHUDToSystem();
             
+            // Set up retry mechanism for connection
+            this.setupWeaponHUDConnectionRetry();
+            
         }).catch(error => {
-            console.error('Failed to initialize WeaponHUD:', error);
+            console.error('❌ StarfieldManager: Failed to initialize WeaponHUD:', error);
         });
+    }
+    
+    /**
+     * Set up retry mechanism for WeaponHUD connection
+     */
+    setupWeaponHUDConnectionRetry() {
+        // Retry connection every 500ms for up to 30 seconds
+        this.weaponHUDRetryCount = 0;
+        this.maxWeaponHUDRetries = 60; // 30 seconds at 500ms intervals
+        
+        this.weaponHUDRetryInterval = setInterval(() => {
+            this.weaponHUDRetryCount++;
+            
+            // Try to connect
+            this.connectWeaponHUDToSystem();
+            
+            // If connected or max retries reached, stop trying
+            if (this.weaponHUDConnected || this.weaponHUDRetryCount >= this.maxWeaponHUDRetries) {
+                clearInterval(this.weaponHUDRetryInterval);
+                this.weaponHUDRetryInterval = null;
+                
+                if (this.weaponHUDConnected) {
+                    console.log(`✅ WeaponHUD connected after ${this.weaponHUDRetryCount} attempts`);
+                } else {
+                    console.warn(`❌ WeaponHUD connection failed after ${this.maxWeaponHUDRetries} attempts`);
+                }
+            }
+        }, 500);
     }
     
     /**
@@ -1021,6 +1055,12 @@ export class StarfieldManager {
      */
     connectWeaponHUDToSystem() {
         const ship = this.viewManager?.getShip();
+        
+        console.log('🔗 Attempting to connect WeaponHUD to WeaponSystemCore...');
+        console.log('  - Ship available:', !!ship);
+        console.log('  - Ship weaponSystem available:', !!(ship?.weaponSystem));
+        console.log('  - WeaponHUD available:', !!this.weaponHUD);
+        
         if (ship && ship.weaponSystem && this.weaponHUD) {
             // Set HUD reference in weapon system
             ship.weaponSystem.setWeaponHUD(this.weaponHUD);
@@ -1029,8 +1069,13 @@ export class StarfieldManager {
             this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
             
             this.weaponHUDConnected = true;
+            console.log('✅ WeaponHUD successfully connected to WeaponSystemCore');
         } else {
             this.weaponHUDConnected = false;
+            console.warn('❌ WeaponHUD connection failed:');
+            if (!ship) console.warn('  - Ship not available');
+            if (!ship?.weaponSystem) console.warn('  - WeaponSystem not available');
+            if (!this.weaponHUD) console.warn('  - WeaponHUD not available');
         }
     }
 
@@ -1704,8 +1749,12 @@ export class StarfieldManager {
                 if (!this.isDocked) {
                     const ship = this.viewManager?.getShip();
                     if (ship && ship.weaponSystem) {
-                        const autofireState = ship.weaponSystem.toggleAutofire();
-                        this.playCommandSound();
+                        const autofireSuccess = ship.weaponSystem.toggleAutofire();
+                        if (autofireSuccess) {
+                            this.playCommandSound();
+                        } else {
+                            this.playCommandFailedSound();
+                        }
                     }
                 }
             }
@@ -2172,13 +2221,14 @@ export class StarfieldManager {
         if (ship && ship.weaponSystem) {
             // Ensure WeaponHUD is connected (retry if needed)
             if (this.weaponHUD && !this.weaponHUDConnected) {
+                console.log('🔗 Attempting WeaponHUD connection during game loop...');
                 this.connectWeaponHUDToSystem();
             }
             
             ship.weaponSystem.updateAutofire(deltaTime);
             
             // Update weapon HUD if available
-            if (this.weaponHUD) {
+            if (this.weaponHUD && this.weaponHUDConnected) {
                 // Update the weapon slots display with current weapon system state
                 this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
                 
@@ -2394,6 +2444,12 @@ export class StarfieldManager {
         if (this.repairUpdateInterval) {
             clearInterval(this.repairUpdateInterval);
             this.repairUpdateInterval = null;
+        }
+        
+        // Clean up WeaponHUD retry interval
+        if (this.weaponHUDRetryInterval) {
+            clearInterval(this.weaponHUDRetryInterval);
+            this.weaponHUDRetryInterval = null;
         }
 
         // Clean up target dummy ships
@@ -3247,7 +3303,7 @@ export class StarfieldManager {
                 this.weaponHUD.weaponSlotsDisplay.style.display = 'flex';
                 this.weaponHUD.autofireIndicator.style.display = 'none'; // Will be shown if autofire is on
                 this.weaponHUD.targetLockIndicator.style.display = 'none'; // Will be shown if locked
-                this.weaponHUD.messageDisplay.style.display = 'none'; // Will be shown when needed
+                // Don't force messageDisplay to be hidden - let WeaponHUD.showMessage() control it
                 console.log('🚀 Weapon HUD restored after launch');
                 
                 // Update weapon HUD with current weapon system state
@@ -5143,6 +5199,24 @@ export class StarfieldManager {
         ];
     }
 
-
+    /**
+     * Callback when weapon system is ready (called by Ship)
+     */
+    onWeaponSystemReady() {
+        console.log('🔫 StarfieldManager: Weapon system ready notification received');
+        
+        // Try to connect WeaponHUD immediately
+        if (this.weaponHUD && !this.weaponHUDConnected) {
+            console.log('🔗 Attempting immediate WeaponHUD connection...');
+            this.connectWeaponHUDToSystem();
+            
+            // If connection successful, clear the retry interval
+            if (this.weaponHUDConnected && this.weaponHUDRetryInterval) {
+                clearInterval(this.weaponHUDRetryInterval);
+                this.weaponHUDRetryInterval = null;
+                console.log('✅ WeaponHUD connected immediately, retry interval cleared');
+            }
+        }
+    }
 
 } 

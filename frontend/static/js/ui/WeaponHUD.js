@@ -74,19 +74,25 @@ export class WeaponHUD {
         this.messageDisplay = document.createElement('div');
         this.messageDisplay.className = 'weapon-message-display';
         this.messageDisplay.style.cssText = `
-            position: fixed;
-            bottom: 180px;
-            right: 20px;
-            color: #00ff00;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            z-index: 1000;
-            display: none;
-            background: rgba(0, 20, 0, 0.8);
-            padding: 5px 10px;
-            border-radius: 3px;
-            border: 1px solid #00aa00;
-            text-shadow: 0 0 5px #00ff00;
+            position: fixed !important;
+            bottom: 20px !important;
+            right: 20px !important;
+            color: #00ff00 !important;
+            font-family: 'Courier New', monospace !important;
+            font-size: 12px !important;
+            font-weight: normal !important;
+            z-index: 1000 !important;
+            display: none !important;
+            opacity: 1 !important;
+            background: rgba(0, 20, 0, 0.8) !important;
+            padding: 5px 10px !important;
+            border-radius: 3px !important;
+            border: 1px solid #00aa00 !important;
+            text-shadow: 0 0 5px #00ff00 !important;
+            max-width: 250px !important;
+            word-wrap: break-word !important;
+            text-align: left !important;
+            pointer-events: none !important;
         `;
         this.hudContainer.appendChild(this.messageDisplay);
     }
@@ -346,8 +352,16 @@ export class WeaponHUD {
      * @param {number} duration Duration in milliseconds (default: 3000)
      */
     showMessage(message, duration = 3000) {
+        console.log(`🎯 WeaponHUD.showMessage called with: "${message}" (duration: ${duration}ms)`);
+        console.log(`🎯 messageDisplay element:`, this.messageDisplay);
+        console.log(`🎯 messageDisplay current style:`, this.messageDisplay.style.cssText);
+        
         this.messageDisplay.textContent = message;
         this.messageDisplay.style.display = 'block';
+        this.messageDisplay.style.opacity = '1'; // Ensure message is visible
+        
+        console.log(`🎯 messageDisplay after setting display=block:`, this.messageDisplay.style.cssText);
+        console.log(`🎯 messageDisplay visible in DOM:`, this.messageDisplay.offsetHeight > 0);
         
         // Clear any existing timeout
         if (this.messageTimeout) {
@@ -357,7 +371,9 @@ export class WeaponHUD {
         // Hide after specified duration
         this.messageTimeout = setTimeout(() => {
             this.messageDisplay.style.display = 'none';
+            this.messageDisplay.style.opacity = '0';
             this.messageTimeout = null;
+            console.log(`🎯 WeaponHUD message hidden after ${duration}ms`);
         }, duration);
     }
     
