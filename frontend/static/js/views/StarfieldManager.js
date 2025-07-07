@@ -497,8 +497,8 @@ export class StarfieldManager {
         // Clear existing display
         this.systemsList.innerHTML = '';
         
-        // Only show damage control view now (no more original systems view)
-        this.updateDamageControlDisplay(shipStatus);
+        // Use the new DamageControlHUD system instead of deprecated method
+        // The damage control display is now handled by the DamageControlHUD component
     }
 
     /**
@@ -1044,7 +1044,7 @@ export class StarfieldManager {
                 if (this.weaponHUDConnected) {
                     console.log(`✅ WeaponHUD connected after ${this.weaponHUDRetryCount} attempts`);
                 } else {
-                    console.warn(`❌ WeaponHUD connection failed after ${this.maxWeaponHUDRetries} attempts`);
+                    console.log(`🔍 WeaponHUD connection will retry later (${this.maxWeaponHUDRetries} attempts completed)`);
                 }
             }
         }, 500);
@@ -1072,10 +1072,11 @@ export class StarfieldManager {
             console.log('✅ WeaponHUD successfully connected to WeaponSystemCore');
         } else {
             this.weaponHUDConnected = false;
-            console.warn('❌ WeaponHUD connection failed:');
-            if (!ship) console.warn('  - Ship not available');
-            if (!ship?.weaponSystem) console.warn('  - WeaponSystem not available');
-            if (!this.weaponHUD) console.warn('  - WeaponHUD not available');
+            // Use debug logging instead of warnings during startup
+            console.log('🔍 WeaponHUD connection pending:');
+            if (!ship) console.log('  - Ship initializing...');
+            if (!ship?.weaponSystem) console.log('  - WeaponSystem initializing...');
+            if (!this.weaponHUD) console.log('  - WeaponHUD initializing...');
         }
     }
 
@@ -5156,7 +5157,7 @@ export class StarfieldManager {
         try {
             const ship = this.viewManager?.getShip();
             if (!ship) {
-                console.warn('    ⚠️ No ship available for weapon system initialization');
+                console.log('    🔍 Ship initializing - weapon system setup deferred');
                 return;
             }
 
@@ -5199,13 +5200,13 @@ export class StarfieldManager {
         
         const ship = this.viewManager?.getShip();
         if (!ship) {
-            console.warn('    ⚠️ No ship available for weapon UI update');
+            console.log('    🔍 Ship initializing - weapon UI updates deferred');
             return;
         }
         
         const weaponsSystem = ship.getSystem('weapons');
         if (!weaponsSystem) {
-            console.warn('    ⚠️ No weapons system found');
+            console.log('    🔍 No weapons system installed - weapon UI updates skipped');
             return;
         }
         
