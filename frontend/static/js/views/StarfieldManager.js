@@ -4715,6 +4715,21 @@ export class StarfieldManager {
             
             if (ship?.weaponSystem) {
                 ship.weaponSystem.setLockedTarget(null);
+                
+                // Turn off autofire when main target is destroyed
+                // This doesn't apply to sub-targets, only when the entire ship is destroyed
+                if (ship.weaponSystem.isAutofireOn) {
+                    ship.weaponSystem.isAutofireOn = false;
+                    console.log('🎯 Autofire turned OFF - main target destroyed');
+                    
+                    // Update UI to reflect autofire is now off
+                    if (ship.weaponSystem.weaponHUD) {
+                        ship.weaponSystem.weaponHUD.updateAutofireStatus(false);
+                    }
+                    
+                    // Show message to player
+                    ship.weaponSystem.showMessage('Autofire disabled - target destroyed', 3000);
+                }
             }
             
             if (targetComputer) {
@@ -4763,6 +4778,25 @@ export class StarfieldManager {
             
         } else {
             console.log('🎯 Destroyed ship was not targeted by any system - minimal cleanup');
+            
+            // Check if autofire was targeting this ship even if not officially "targeted"
+            if (ship?.weaponSystem?.isAutofireOn && ship.weaponSystem.lockedTarget) {
+                // Check if the destroyed ship matches the autofire target
+                const autofireTargetShip = ship.weaponSystem.lockedTarget.ship;
+                if (autofireTargetShip === destroyedShip) {
+                    ship.weaponSystem.isAutofireOn = false;
+                    ship.weaponSystem.setLockedTarget(null);
+                    console.log('🎯 Autofire turned OFF - autofire target destroyed');
+                    
+                    // Update UI to reflect autofire is now off
+                    if (ship.weaponSystem.weaponHUD) {
+                        ship.weaponSystem.weaponHUD.updateAutofireStatus(false);
+                    }
+                    
+                    // Show message to player
+                    ship.weaponSystem.showMessage('Autofire disabled - target destroyed', 3000);
+                }
+            }
             
             // ALWAYS clear 3D outline when any ship is destroyed
             // Even if not "targeted", the outline might still be showing it

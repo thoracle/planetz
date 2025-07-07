@@ -210,6 +210,30 @@ export class WeaponSystemCore {
         
         const weapon = activeSlot.equippedWeapon;
         
+        // Check if current target is still valid (not destroyed)
+        if (this.lockedTarget && this.lockedTarget.ship) {
+            // Check if the target ship still exists in the game world
+            const targetStillExists = this.ship.starfieldManager?.dummyShipMeshes?.some(mesh => 
+                mesh.userData?.ship === this.lockedTarget.ship
+            );
+            
+            if (!targetStillExists) {
+                // Target has been destroyed, turn off autofire
+                this.isAutofireOn = false;
+                this.setLockedTarget(null);
+                console.log('🎯 Autofire turned OFF - target no longer exists');
+                
+                // Update UI to reflect autofire is now off
+                if (this.weaponHUD) {
+                    this.weaponHUD.updateAutofireStatus(false);
+                }
+                
+                // Show message to player
+                this.showMessage('Autofire disabled - target destroyed', 3000);
+                return;
+            }
+        }
+        
         // If no target is locked, try to find the closest target automatically
         if (!this.lockedTarget) {
             const closestTarget = this.findClosestTarget();
