@@ -2665,7 +2665,12 @@ export class StarfieldManager {
 
     playCommandSound() {
         // Delegate to audio manager
-        this.audioManager.playCommandSound();
+        if (this.audioManager) {
+            this.audioManager.playCommandSound();
+        } else {
+            // Fallback if audio manager is not available
+            this.generateCommandSuccessBeep();
+        }
     }
 
     generateCommandSuccessBeep() {

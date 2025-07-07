@@ -292,6 +292,9 @@ export class StarfieldAudioManager {
         if (this.commandSoundLoaded && !this.commandSound.isPlaying) {
             this.ensureAudioContextRunning();
             this.commandSound.play();
+        } else if (!this.commandSoundLoaded) {
+            // Fallback: generate a success beep using Web Audio API
+            this.generateCommandSuccessBeep();
         }
     }
 
@@ -305,6 +308,34 @@ export class StarfieldAudioManager {
         } else if (!this.commandFailedSoundLoaded) {
             // Fallback: generate a low-pitched beep using Web Audio API
             this.generateCommandFailedBeep();
+        }
+    }
+
+    /**
+     * Generate a command success beep using Web Audio API as fallback
+     */
+    generateCommandSuccessBeep() {
+        if (this.audioListener?.context) {
+            try {
+                const audioContext = this.audioListener.context;
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // High frequency
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.15);
+            } catch (error) {
+                console.warn('⚠️ Failed to generate command success beep:', error);
+            }
         }
     }
 
