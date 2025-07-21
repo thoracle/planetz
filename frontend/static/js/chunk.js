@@ -137,7 +137,8 @@ export class Chunk {
         
         try {
             // Use correct path for Flask static serving (static_url_path='')
-            let workerPath = 'static/js/workers/meshGenerator.worker.js';
+            // Add cache-busting timestamp to force reload
+            let workerPath = `static/js/workers/meshGenerator.worker.js?t=${Date.now()}`;
             
             try {
                 this.worker = new Worker(workerPath);
