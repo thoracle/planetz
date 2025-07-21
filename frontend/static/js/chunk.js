@@ -137,7 +137,7 @@ export class Chunk {
         
         try {
             // Use correct path for Flask static serving (static_url_path='')
-            let workerPath = '/js/workers/meshGenerator.worker.js';
+            let workerPath = 'static/js/workers/meshGenerator.worker.js';
             
             try {
                 this.worker = new Worker(workerPath);

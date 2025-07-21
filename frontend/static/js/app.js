@@ -29,11 +29,28 @@ let physicsManager = null;
  * @returns {boolean} True if Ammo.js is available, false otherwise
  */
 function isAmmoAvailable() {
+    // Check for Ammo.js availability with multiple detection methods
     if (typeof Ammo !== 'undefined') {
         console.log('✅ Ammo.js loaded instantly from local file');
         return true;
+    } else if (typeof window.Ammo !== 'undefined') {
+        console.log('✅ Ammo.js found on window object');
+        window.Ammo = window.Ammo; // Ensure global access
+        return true;
     } else {
+        // Try to access Ammo from global scope
+        try {
+            if (window.Ammo) {
+                console.log('✅ Ammo.js found via window.Ammo');
+                return true;
+            }
+        } catch (e) {
+            // Ignore errors
+        }
+        
         console.warn('❌ Ammo.js not available - physics will be disabled');
+        console.warn('   Checking: typeof Ammo =', typeof Ammo);
+        console.warn('   Checking: typeof window.Ammo =', typeof window.Ammo);
         return false;
     }
 }
@@ -311,9 +328,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('🌟 StarfieldManager exposed to global scope and ready for test scripts');
 
     // Check if Ammo.js is available for instant local loading
-    const ammoAvailable = isAmmoAvailable();
+    let ammoAvailable = isAmmoAvailable();
+    
+    // If Ammo.js not immediately available, wait a bit for it to load
+    if (!ammoAvailable) {
+        console.log('🔄 Ammo.js not immediately available, waiting for load...');
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+        ammoAvailable = isAmmoAvailable();
+    }
     
     if (ammoAvailable) {
+        console.log('🚀 Proceeding with PhysicsManager initialization...');
         // Initialize PhysicsManager only if Ammo.js loaded successfully
         physicsManager = new PhysicsManager();
         
