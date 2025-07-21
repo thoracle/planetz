@@ -8,6 +8,7 @@ import { ViewManager } from './views/ViewManager.js';
 import { StarfieldManager } from './views/StarfieldManager.js';
 import { SolarSystemManager } from './SolarSystemManager.js';
 import { WeaponEffectsManager } from './ship/systems/WeaponEffectsManager.js';
+import PhysicsManager from './PhysicsManager.js';
 
 // Global variables for warp control mode
 let warpControlMode = false;
@@ -21,6 +22,21 @@ let guiContainer = null;
 let viewManager = null;
 let solarSystemManager = null;
 let debugManager = null;
+let physicsManager = null;
+
+/**
+ * Check if Ammo.js is available for instant local loading
+ * @returns {boolean} True if Ammo.js is available, false otherwise
+ */
+function isAmmoAvailable() {
+    if (typeof Ammo !== 'undefined') {
+        console.log('✅ Ammo.js loaded instantly from local file');
+        return true;
+    } else {
+        console.warn('❌ Ammo.js not available - physics will be disabled');
+        return false;
+    }
+}
 
 // Function to update debug info
 function updateDebugInfo() {
@@ -294,6 +310,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.starfieldManagerReady = true;
     console.log('🌟 StarfieldManager exposed to global scope and ready for test scripts');
 
+    // Check if Ammo.js is available for instant local loading
+    const ammoAvailable = isAmmoAvailable();
+    
+    if (ammoAvailable) {
+        // Initialize PhysicsManager only if Ammo.js loaded successfully
+        physicsManager = new PhysicsManager();
+        
+        // Initialize the physics engine (async) and wait for completion
+        try {
+            const success = await physicsManager.initialize();
+            if (success) {
+                console.log('🚀 PhysicsManager initialized successfully');
+                window.physicsManager = physicsManager;
+                window.physicsManagerReady = true;
+            } else {
+                console.error('❌ Failed to initialize PhysicsManager - continuing without physics');
+                physicsManager = null;
+                window.physicsManager = null;
+                window.physicsManagerReady = false;
+            }
+        } catch (error) {
+            console.error('❌ PhysicsManager initialization error:', error, '- continuing without physics');
+            physicsManager = null;
+            window.physicsManager = null;
+            window.physicsManagerReady = false;
+        }
+    } else {
+        // Ammo.js failed to load - continue without physics
+        console.log('🎮 Continuing without physics engine - game will run in visual-only mode');
+        physicsManager = null;
+        window.physicsManager = null;
+        window.physicsManagerReady = false;
+    }
+
     // Initialize SolarSystemManager and connect it to StarfieldManager
     solarSystemManager = new SolarSystemManager(scene, camera);
     starfieldManager.setSolarSystemManager(solarSystemManager);
@@ -319,17 +369,41 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             // Generate initial star system for sector A0
+            console.log('🌟 Generating initial star system for sector A0...');
             const success = await solarSystemManager.generateStarSystem('A0');
             if (success) {
-                console.log('Star system generated successfully');
+                console.log('✅ Star system generated successfully');
+                
+                // Wait a moment to ensure all celestial bodies are fully created
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Force an immediate update of the target list to include celestial bodies
+                if (starfieldManager?.targetComputerManager) {
+                    console.log('🎯 Forcing target list update after star system generation...');
+                    starfieldManager.targetComputerManager.updateTargetList();
+                    
+                    // Verify the target list was updated
+                    const targetCount = starfieldManager.targetComputerManager.targetObjects?.length || 0;
+                    console.log(`🎯 Target list updated: ${targetCount} targets available`);
+                    
+                    // If no targets found, try again after a short delay
+                    if (targetCount === 0) {
+                        console.log('🎯 No targets found, trying again in 500ms...');
+                        setTimeout(() => {
+                            starfieldManager.targetComputerManager.updateTargetList();
+                            const retryCount = starfieldManager.targetComputerManager.targetObjects?.length || 0;
+                            console.log(`🎯 Retry target list update: ${retryCount} targets available`);
+                        }, 500);
+                    }
+                }
             } else {
-                console.error('Failed to generate star system');
+                console.error('❌ Failed to generate star system');
             }
         } else {
-            console.error('Failed to fetch universe data');
+            console.error('❌ Failed to fetch universe data');
         }
     } catch (error) {
-        console.error('Error during initialization:', error);
+        console.error('❌ Error during initialization:', error);
     }
 
     // Set up GUI controls with fixed positioning
@@ -1566,6 +1640,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         starfieldManager.update(deltaTime);
         solarSystemManager.update(deltaTime);
         debugManager.update();
+        
+        // Update physics simulation
+        if (physicsManager && physicsManager.initialized) {
+            physicsManager.update(deltaTime);
+        }
         
         // Update wave animation if enabled
         if (oceanParams.enabled && oceanParams.wavesEnabled && planet.oceanMesh) {

@@ -3598,6 +3598,29 @@ export class StarfieldManager {
                 this.targetDummyShips.push(dummyShip);
                 this.dummyShipMeshes.push(shipMesh);
                 
+                // Add physics body for the ship
+                if (window.physicsManager && window.physicsManagerReady) {
+                    const physicsBody = window.physicsManager.createShipRigidBody(shipMesh, {
+                        mass: 1000,
+                        width: 4.0,  // Ship dimensions based on mesh size (2.0 * 2 for buffer)
+                        height: 4.0,
+                        depth: 4.0,
+                        entityType: 'enemy_ship',
+                        entityId: `target_dummy_${i + 1}`,
+                        health: dummyShip.currentHull || 100
+                    });
+                    
+                    if (physicsBody) {
+                        console.log(`🚀 Physics body created for Target Dummy ${i + 1}`);
+                        // Store physics body reference in mesh userData
+                        shipMesh.userData.physicsBody = physicsBody;
+                    } else {
+                        console.warn(`❌ Failed to create physics body for Target Dummy ${i + 1}`);
+                    }
+                } else {
+                    console.warn('⚠️ PhysicsManager not ready - skipping physics body creation for ships');
+                }
+                
                 // Debug log actual distance from origin (where player should be)
                 const originPosition = new this.THREE.Vector3(0, 0, 0);
                 const actualDistance = originPosition.distanceTo(shipMesh.position);
@@ -3698,6 +3721,12 @@ export class StarfieldManager {
         // Remove meshes from scene
         this.dummyShipMeshes.forEach(mesh => {
             this.scene.remove(mesh);
+            
+            // Remove physics body if it exists
+            if (mesh.userData?.physicsBody && window.physicsManager) {
+                window.physicsManager.removeRigidBody(mesh);
+                console.log('🧹 Physics body removed for target dummy ship');
+            }
             
             // Dispose of geometries and materials
             mesh.traverse((child) => {

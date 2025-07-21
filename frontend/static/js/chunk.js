@@ -42,6 +42,7 @@ export class Chunk {
         this.maxTimeout = 60000; // Maximum timeout in milliseconds
         this.baseTimeout = 30000; // Base timeout in milliseconds
         this.timeoutMultiplier = 1.0; // Multiplier for adaptive timeout
+        this.lastGenerationAttempt = 0; // Timestamp of last mesh generation attempt
     }
 
     getBoundingBox() {
@@ -112,6 +113,14 @@ export class Chunk {
         if (this.loadState === 'error' && this.nextRetryTime && Date.now() < this.nextRetryTime) {
             return null;
         }
+        
+        // Add rate limiting to prevent excessive worker creation
+        const now = Date.now();
+        const minGenerationInterval = 1000; // Minimum 1 second between generations for same chunk
+        if (this.lastGenerationAttempt && (now - this.lastGenerationAttempt) < minGenerationInterval) {
+            return null;
+        }
+        this.lastGenerationAttempt = now;
 
         this.isGeneratingMesh = true;
         const generationId = Date.now();
@@ -129,11 +138,9 @@ export class Chunk {
         try {
             // Use correct path for Flask static serving (static_url_path='')
             let workerPath = '/js/workers/meshGenerator.worker.js';
-            console.log(`🔧 CHUNK DEBUG: Attempting to create worker with path: ${workerPath}`);
             
             try {
                 this.worker = new Worker(workerPath);
-                console.log(`✅ CHUNK DEBUG: Worker created successfully`);
             } catch (error) {
                 console.error(`❌ CHUNK DEBUG: Worker creation failed:`, error.message);
                 throw new Error(`Worker creation failed: ${error.message}`);

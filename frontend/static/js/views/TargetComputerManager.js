@@ -442,22 +442,138 @@ export class TargetComputerManager {
      * Update the list of available targets
      */
     updateTargetList() {
+        // Use physics-based spatial queries if available, otherwise fall back to traditional method
+        if (window.physicsManager && window.physicsManagerReady) {
+            this.updateTargetListWithPhysics();
+        } else {
+            this.updateTargetListTraditional();
+        }
+    }
+
+    /**
+     * Enhanced target list update using physics-based spatial queries
+     */
+    updateTargetListWithPhysics() {
+        const maxTargetingRange = 10000; // 10,000 km max targeting range
+        
+        // Perform spatial query around the camera position
+        const nearbyEntities = window.physicsManager.spatialQuery(
+            this.camera.position, 
+            maxTargetingRange
+        );
+        
+        console.log(`🎯 Physics spatial query found ${nearbyEntities.length} entities within ${maxTargetingRange}km`);
+        
         let allTargets = [];
+        
+        // Process entities found by physics spatial query
+        nearbyEntities.forEach(entity => {
+            if (!entity.threeObject || !entity.threeObject.position) {
+                return; // Skip invalid entities
+            }
+            
+            const distance = this.calculateDistance(this.camera.position, entity.threeObject.position);
+            
+            // Create target data based on entity type
+            let targetData = null;
+            
+            if (entity.type === 'enemy_ship') {
+                // Handle enemy ships
+                const ship = entity.threeObject.userData?.ship;
+                if (ship) {
+                    targetData = {
+                        name: ship.shipName || entity.id,
+                        type: 'enemy_ship',
+                        position: entity.threeObject.position.toArray(),
+                        isMoon: false,
+                        object: entity.threeObject,
+                        isShip: true,
+                        ship: ship,
+                        distance: distance,
+                        physicsEntity: entity
+                    };
+                }
+            } else if (entity.type === 'star' || entity.type === 'planet' || entity.type === 'moon') {
+                // Handle celestial bodies
+                const info = this.solarSystemManager.getCelestialBodyInfo(entity.threeObject);
+                if (info) {
+                    targetData = {
+                        name: info.name,
+                        type: info.type,
+                        position: entity.threeObject.position.toArray(),
+                        isMoon: entity.type === 'moon',
+                        object: entity.threeObject,
+                        isShip: false,
+                        distance: distance,
+                        physicsEntity: entity,
+                        ...info
+                    };
+                }
+            }
+            
+            if (targetData) {
+                allTargets.push(targetData);
+            }
+        });
+        
+        // Add any targets that might not have physics bodies yet (fallback)
+        this.addNonPhysicsTargets(allTargets, maxTargetingRange);
+        
+        // Update target list
+        this.targetObjects = allTargets;
+        
+        // Sort targets by distance using physics-enhanced sorting
+        this.sortTargetsByDistanceWithPhysics();
+        
+        // Update target display
+        this.updateTargetDisplay();
+        
+        console.log(`🎯 Physics-enhanced targeting: ${allTargets.length} total targets`);
+    }
+
+    /**
+     * Traditional target list update (fallback when physics not available)
+     */
+    updateTargetListTraditional() {
+        let allTargets = [];
+        
+        // Add comprehensive debugging
+        console.log('🎯 TargetComputerManager.updateTargetListTraditional() called');
+        console.log('🎯 Debug info:', {
+            hasSolarSystemManager: !!this.solarSystemManager,
+            viewManager: !!this.viewManager,
+            starfieldManager: !!this.viewManager?.starfieldManager,
+            dummyShips: this.viewManager?.starfieldManager?.dummyShipMeshes?.length || 0
+        });
         
         // Get celestial bodies from SolarSystemManager
         if (this.solarSystemManager) {
             const bodies = this.solarSystemManager.getCelestialBodies();
+            console.log('🎯 Celestial bodies found:', {
+                bodiesMapSize: bodies.size,
+                bodiesKeys: Array.from(bodies.keys()),
+                hasStarSystem: !!this.solarSystemManager.starSystem
+            });
             
             const celestialBodies = Array.from(bodies.entries())
                 .map(([key, body]) => {
                     const info = this.solarSystemManager.getCelestialBodyInfo(body);
+                    
+                    // Add detailed debugging for each body
+                    console.log(`🎯 Processing celestial body: ${key}`, {
+                        hasBody: !!body,
+                        hasPosition: !!body?.position,
+                        position: body?.position ? [body.position.x, body.position.y, body.position.z] : null,
+                        info: info,
+                        bodyType: typeof body
+                    });
                     
                     // Validate body position
                     if (!body.position || 
                         isNaN(body.position.x) || 
                         isNaN(body.position.y) || 
                         isNaN(body.position.z)) {
-                        console.warn('Invalid position detected for celestial body:', info.name);
+                        console.warn('🎯 Invalid position detected for celestial body:', info?.name);
                         return null;
                     }
                     
@@ -473,7 +589,13 @@ export class TargetComputerManager {
                 })
                 .filter(body => body !== null); // Remove any invalid bodies
             
+            console.log(`🎯 Processed ${celestialBodies.length} valid celestial bodies:`, 
+                celestialBodies.map(b => ({ name: b.name, type: b.type, distance: b.distance.toFixed(1) + 'km' }))
+            );
+            
             allTargets = allTargets.concat(celestialBodies);
+        } else {
+            console.warn('🎯 No SolarSystemManager available for targeting');
         }
         
         // Add target dummy ships (need to get from StarfieldManager)
@@ -492,17 +614,105 @@ export class TargetComputerManager {
                 };
             });
             
+            console.log(`🎯 Found ${dummyShipTargets.length} dummy ships for targeting`);
             allTargets = allTargets.concat(dummyShipTargets);
         }
         
         // Update target list
         this.targetObjects = allTargets;
         
+        console.log(`🎯 Final target list: ${allTargets.length} targets total`, 
+            allTargets.map(t => ({ name: t.name, type: t.type, isShip: t.isShip }))
+        );
+        
         // Sort targets by distance
         this.sortTargetsByDistance();
         
         // Update target display
         this.updateTargetDisplay();
+    }
+
+    /**
+     * Add targets that don't have physics bodies yet (fallback)
+     */
+    addNonPhysicsTargets(allTargets, maxRange) {
+        const existingTargetIds = new Set(allTargets.map(t => t.physicsEntity?.id || t.name));
+        
+        // Check for ships without physics bodies
+        if (this.viewManager?.starfieldManager?.dummyShipMeshes) {
+            this.viewManager.starfieldManager.dummyShipMeshes.forEach(mesh => {
+                const ship = mesh.userData.ship;
+                const targetId = ship.shipName;
+                
+                if (!existingTargetIds.has(targetId)) {
+                    const distance = this.calculateDistance(this.camera.position, mesh.position);
+                    if (distance <= maxRange) {
+                        allTargets.push({
+                            name: ship.shipName,
+                            type: 'enemy_ship',
+                            position: mesh.position.toArray(),
+                            isMoon: false,
+                            object: mesh,
+                            isShip: true,
+                            ship: ship,
+                            distance: distance
+                        });
+                    }
+                }
+            });
+        }
+        
+        // Check for celestial bodies without physics bodies
+        if (this.solarSystemManager) {
+            const bodies = this.solarSystemManager.getCelestialBodies();
+            Array.from(bodies.entries()).forEach(([key, body]) => {
+                const info = this.solarSystemManager.getCelestialBodyInfo(body);
+                if (info && !existingTargetIds.has(info.name)) {
+                    const distance = this.calculateDistance(this.camera.position, body.position);
+                    if (distance <= maxRange && body.position) {
+                        allTargets.push({
+                            name: info.name,
+                            type: info.type,
+                            position: body.position.toArray(),
+                            isMoon: key.startsWith('moon_'),
+                            object: body,
+                            isShip: false,
+                            distance: distance,
+                            ...info
+                        });
+                    }
+                }
+            });
+        }
+    }
+
+    /**
+     * Enhanced sorting with physics data
+     */
+    sortTargetsByDistanceWithPhysics() {
+        const now = Date.now();
+        if (now - this.lastSortTime < this.sortInterval) {
+            return; // Don't sort too frequently
+        }
+        this.lastSortTime = now;
+
+        // Update distances for all targets (some may have moved via physics)
+        this.targetObjects.forEach(targetData => {
+            if (targetData.physicsEntity) {
+                // Get updated position from physics if available
+                const physicsBody = window.physicsManager.getRigidBody(targetData.object);
+                if (physicsBody && physicsBody.isActive()) {
+                    // Position is already synced by physics manager
+                    targetData.distance = this.calculateDistance(this.camera.position, targetData.object.position);
+                }
+            } else {
+                // Fallback to regular distance calculation
+                targetData.distance = this.calculateDistance(this.camera.position, targetData.object.position);
+            }
+        });
+
+        // Sort by distance
+        this.targetObjects.sort((a, b) => a.distance - b.distance);
     }
 
     /**

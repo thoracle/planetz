@@ -172,6 +172,25 @@ export class SolarSystemManager {
             this.celestialBodies.set('star', star);
             console.log('Star created and added to scene');
 
+            // Add physics body for the star
+            if (window.physicsManager && window.physicsManagerReady) {
+                const physicsBody = window.physicsManager.createPlanetRigidBody(star, {
+                    radius: starSize,
+                    entityType: 'star',
+                    entityId: this.starSystem.star_name || 'Unknown Star',
+                    health: 50000 // Stars are essentially indestructible
+                });
+                
+                if (physicsBody) {
+                    console.log('🌟 Physics body created for star');
+                    star.userData.physicsBody = physicsBody;
+                } else {
+                    console.warn('❌ Failed to create physics body for star');
+                }
+            } else {
+                console.warn('⚠️ PhysicsManager not ready - skipping physics body creation for star');
+            }
+
             // Add star light with increased intensity and range
             const starLight = new THREE.PointLight(starColor, 2, 1000);
             starLight.position.copy(star.position);
@@ -298,6 +317,25 @@ export class SolarSystemManager {
             this.scene.add(planet);
             this.celestialBodies.set(`planet_${index}`, planet);
             
+            // Add physics body for the planet
+            if (window.physicsManager && window.physicsManagerReady) {
+                const physicsBody = window.physicsManager.createPlanetRigidBody(planet, {
+                    radius: planetSize,
+                    entityType: 'planet',
+                    entityId: planetData.planet_name || `Planet ${index}`,
+                    health: 20000 // Planets are very durable
+                });
+                
+                if (physicsBody) {
+                    console.log(`🌍 Physics body created for planet ${planetData.planet_name || index}`);
+                    planet.userData.physicsBody = physicsBody;
+                } else {
+                    console.warn(`❌ Failed to create physics body for planet ${index}`);
+                }
+            } else {
+                console.warn('⚠️ PhysicsManager not ready - skipping physics body creation for planets');
+            }
+            
             // Add orbital elements with mass and proper initialization
             this.setOrbitalElements(`planet_${index}`, {
                 semiMajorAxis: orbitRadius,
@@ -383,6 +421,25 @@ export class SolarSystemManager {
             this.scene.add(moon);
             this.celestialBodies.set(`moon_${planetIndex}_${moonIndex}`, moon);
             
+            // Add physics body for the moon
+            if (window.physicsManager && window.physicsManagerReady) {
+                const physicsBody = window.physicsManager.createPlanetRigidBody(moon, {
+                    radius: moonSize,
+                    entityType: 'moon',
+                    entityId: moonData.moon_name || `Moon ${moonIndex} of Planet ${planetIndex}`,
+                    health: 10000 // Moons are durable but less than planets
+                });
+                
+                if (physicsBody) {
+                    console.log(`🌙 Physics body created for moon ${moonData.moon_name || `${planetIndex}_${moonIndex}`}`);
+                    moon.userData.physicsBody = physicsBody;
+                } else {
+                    console.warn(`❌ Failed to create physics body for moon ${planetIndex}_${moonIndex}`);
+                }
+            } else {
+                console.warn('⚠️ PhysicsManager not ready - skipping physics body creation for moons');
+            }
+            
             // Add orbital elements with mass and proper initialization
             this.setOrbitalElements(`moon_${planetIndex}_${moonIndex}`, {
                 semiMajorAxis: moonOrbitRadius,
@@ -419,6 +476,12 @@ export class SolarSystemManager {
             if (body) {
                 // Remove from scene
                 this.scene.remove(body);
+                
+                // Remove physics body if it exists
+                if (body.userData?.physicsBody && window.physicsManager) {
+                    window.physicsManager.removeRigidBody(body);
+                    console.log(`🧹 Physics body removed for ${id}`);
+                }
                 
                 // Dispose of geometry
                 if (body.geometry) {

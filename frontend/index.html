@@ -36,11 +36,14 @@
     <!-- dat.GUI -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
     
-    <!-- Application Scripts -->
-    <script type="module" src="static/js/chunk.js"></script>
-    <script type="module" src="static/js/chunkManager.js"></script>
-    <script type="module" src="static/js/planetGenerator.js"></script>
-    <script type="module" src="static/js/views/StarfieldManager.js"></script>
+    <!-- Three.js Library -->
+    <script src="static/lib/three.min.js"></script>
+    
+    <!-- Ammo.js Physics Engine - LOCAL HOSTING for INSTANT LOADING -->
+    <link rel="preload" href="static/lib/ammo.js" as="script">
+    <script src="static/lib/ammo.js"></script>
+    
+    <!-- Game Application -->
     <script type="module" src="static/js/app.js"></script>
 </body>
 </html> 
