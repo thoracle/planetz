@@ -29,30 +29,46 @@ let physicsManager = null;
  * @returns {boolean} True if Ammo.js is available, false otherwise
  */
 function isAmmoAvailable() {
-    // Check for Ammo.js availability with multiple detection methods
-    if (typeof Ammo !== 'undefined') {
-        console.log('✅ Ammo.js loaded instantly from local file');
+    // Comprehensive Ammo.js detection with detailed debugging
+    console.log('🔍 Checking Ammo.js availability...');
+    console.log('   • typeof Ammo:', typeof Ammo);
+    console.log('   • typeof window.Ammo:', typeof window.Ammo);
+    console.log('   • window.Ammo exists:', !!window.Ammo);
+    
+    // Method 1: Direct global Ammo access
+    if (typeof Ammo !== 'undefined' && Ammo) {
+        console.log('✅ Method 1: Ammo.js found via global Ammo');
+        window.Ammo = Ammo; // Ensure it's on window object too
         return true;
-    } else if (typeof window.Ammo !== 'undefined') {
-        console.log('✅ Ammo.js found on window object');
-        window.Ammo = window.Ammo; // Ensure global access
-        return true;
-    } else {
-        // Try to access Ammo from global scope
-        try {
-            if (window.Ammo) {
-                console.log('✅ Ammo.js found via window.Ammo');
-                return true;
-            }
-        } catch (e) {
-            // Ignore errors
-        }
-        
-        console.warn('❌ Ammo.js not available - physics will be disabled');
-        console.warn('   Checking: typeof Ammo =', typeof Ammo);
-        console.warn('   Checking: typeof window.Ammo =', typeof window.Ammo);
-        return false;
     }
+    
+    // Method 2: Window.Ammo access
+    if (typeof window.Ammo !== 'undefined' && window.Ammo) {
+        console.log('✅ Method 2: Ammo.js found via window.Ammo');
+        // Make it available as global Ammo too
+        if (typeof globalThis !== 'undefined') {
+            globalThis.Ammo = window.Ammo;
+        }
+        return true;
+    }
+    
+    // Method 3: Try to access Ammo with error handling
+    try {
+        if (window.Ammo && typeof window.Ammo === 'function') {
+            console.log('✅ Method 3: Ammo.js found and is a function');
+            return true;
+        }
+    } catch (error) {
+        console.warn('⚠️ Error accessing window.Ammo:', error.message);
+    }
+    
+    // All methods failed
+    console.warn('❌ Ammo.js not available - physics will be disabled');
+    console.warn('💡 Troubleshooting:');
+    console.warn('   • Check if static/lib/ammo.js loads without errors');
+    console.warn('   • Check browser network tab for failed requests');
+    console.warn('   • Verify ammo.js is accessible from the static server');
+    return false;
 }
 
 // Function to update debug info
@@ -330,11 +346,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Check if Ammo.js is available for instant local loading
     let ammoAvailable = isAmmoAvailable();
     
-    // If Ammo.js not immediately available, wait a bit for it to load
+    // If Ammo.js not immediately available, wait for it to load with multiple attempts
     if (!ammoAvailable) {
         console.log('🔄 Ammo.js not immediately available, waiting for load...');
-        await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
-        ammoAvailable = isAmmoAvailable();
+        
+        // Try multiple times with increasing delays
+        for (let attempt = 1; attempt <= 5; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, attempt * 200)); // Progressive delay
+            ammoAvailable = isAmmoAvailable();
+            
+            if (ammoAvailable) {
+                console.log(`✅ Ammo.js loaded successfully on attempt ${attempt}`);
+                break;
+            } else {
+                console.log(`⏳ Ammo.js loading attempt ${attempt}/5 failed, retrying...`);
+            }
+        }
+        
+        if (!ammoAvailable) {
+            console.error('❌ Failed to load Ammo.js after 5 attempts. Physics will be disabled.');
+            console.error('💡 Check browser console for Ammo.js loading errors.');
+            console.error('💡 Verify static/lib/ammo.js exists and is accessible.');
+        }
     }
     
     if (ammoAvailable) {

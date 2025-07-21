@@ -43,6 +43,13 @@
     <link rel="preload" href="static/lib/ammo.js" as="script">
     <script src="static/lib/ammo.js"></script>
     
+    <!-- Ensure Ammo.js is available globally for modules -->
+    <script>
+        // Make Ammo available globally for ES6 modules
+        window.Ammo = Ammo;
+        console.log('🔧 Ammo.js made globally available:', typeof window.Ammo);
+    </script>
+    
     <!-- Game Application -->
     <script type="module" src="static/js/app.js"></script>
 </body>
