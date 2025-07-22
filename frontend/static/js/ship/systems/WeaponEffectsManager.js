@@ -662,7 +662,10 @@ export class WeaponEffectsManager {
         
         this.particleTrails.set(projectileId, trailData);
         
-        // Removed torpedo trail system logging to keep console clean
+        // Add torpedo particle trail debugging
+        if (projectileType === 'photon_torpedo') {
+            console.log(`🎆 TORPEDO TRAIL CREATED → ${config.particleCount} particles, ${config.trailDuration}ms duration`);
+        }
         
         return trailData;
     }
@@ -730,7 +733,10 @@ export class WeaponEffectsManager {
                 trailData.particleSystem.material.opacity = opacity;
             }
             
-            // Removed all torpedo trail logging to keep console clean
+            // Add torpedo trail update debugging (limited frequency)
+            if (trailData.type === 'photon_torpedo' && trailData.particleHistory.length % 30 === 0) {
+                console.log(`🎆 TORPEDO TRAIL UPDATE → ${trailData.particleHistory.length} history points, opacity: ${opacity.toFixed(2)}`);
+            }
         }
     }
     

@@ -681,6 +681,20 @@ export class PhysicsProjectile {
         this.initializeParticleTrail();
         
         // Removed torpedo launch logging to keep console clean
+        
+        // Set up collision delay to prevent immediate impacts
+        this.canCollide = false;
+        this.collisionDelay = 0.3; // 300ms delay before collision detection
+        this.lastCollisionTime = null;
+        this.launchTime = Date.now();
+        
+        setTimeout(() => {
+            this.canCollide = true;
+            // Only log torpedo collision enablement for debugging
+            if (this.weaponName.toLowerCase().includes('torpedo')) {
+                console.log(`🎯 TORPEDO ARMED → Collision detection enabled after ${this.collisionDelay}s delay`);
+            }
+        }, this.collisionDelay * 1000);
     }
     
     /**
@@ -865,8 +879,18 @@ export class PhysicsProjectile {
             return;
         }
         
-        // Removed torpedo-specific collision logging to keep console clean
-        console.log(`💥 ${this.weaponName} collision detected with:`, otherObject);
+        // Prevent rapid-fire collision detection spam
+        const now = Date.now();
+        if (this.lastCollisionTime && (now - this.lastCollisionTime) < 100) {
+            // Ignore collisions within 100ms of last collision to prevent spam
+            return;
+        }
+        this.lastCollisionTime = now;
+        
+        // Only log collision for torpedo debugging (limited)
+        if (this.weaponName.toLowerCase().includes('torpedo')) {
+            console.log(`🎯 TORPEDO COLLISION → Impact after ${((now - this.launchTime) / 1000).toFixed(1)}s flight`);
+        }
         
         // Get collision position from physics
         const collisionPos = contactPoint.get_m_positionWorldOnA();

@@ -955,7 +955,10 @@ export class PhysicsManager {
                 }
             }
             
-            console.log(`🔥 Projectile collision detected: ${projectile.weaponName}`);
+            // Rate-limited collision logging to prevent spam (only log torpedo collisions)
+            if (projectile.weaponName.toLowerCase().includes('torpedo')) {
+                console.log(`🔥 Projectile collision detected: ${projectile.weaponName}`);
+            }
             
             // Call the projectile's collision handler
             if (typeof projectile.onCollision === 'function') {

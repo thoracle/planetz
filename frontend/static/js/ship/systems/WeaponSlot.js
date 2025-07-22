@@ -91,6 +91,26 @@ export class WeaponSlot {
         // Calculate proper weapon firing position (especially important for projectiles)
         const weaponOrigin = this.calculateWeaponOrigin(ship);
         
+        // Add torpedo trajectory debugging
+        if (weapon.name.toLowerCase().includes('torpedo')) {
+            console.log(`🎯 TORPEDO LAUNCH DEBUG:`);
+            console.log(`   └ Origin: (${weaponOrigin.x.toFixed(1)}, ${weaponOrigin.y.toFixed(1)}, ${weaponOrigin.z.toFixed(1)})`);
+            if (target) {
+                const targetPos = target.position || target.threeObject?.position;
+                if (targetPos) {
+                    console.log(`   └ Target: ${target.ship?.shipName || target.name} at (${targetPos.x.toFixed(1)}, ${targetPos.y.toFixed(1)}, ${targetPos.z.toFixed(1)})`);
+                    const distance = Math.sqrt(
+                        Math.pow(targetPos.x - weaponOrigin.x, 2) + 
+                        Math.pow(targetPos.y - weaponOrigin.y, 2) + 
+                        Math.pow(targetPos.z - weaponOrigin.z, 2)
+                    );
+                    console.log(`   └ Distance: ${distance.toFixed(1)}m`);
+                }
+            } else {
+                console.log(`   └ Target: None (free-fire mode)`);
+            }
+        }
+        
         // Fire the weapon with proper origin position
         const fireResult = weapon.fire(weaponOrigin, target);
         
@@ -144,24 +164,29 @@ export class WeaponSlot {
             return ship.position;
         }
         
-        // Calculate weapon origin position similar to visual effects
+        // Calculate weapon origin position using camera-relative positioning (like lasers)
         const cameraPos = camera.position.clone();
         
-        // Calculate camera's forward vector for weapon positioning
+        // Calculate camera's orientation vectors
+        const cameraRight = new THREE.Vector3(1, 0, 0);
+        const cameraDown = new THREE.Vector3(0, -1, 0);
         const cameraForward = new THREE.Vector3(0, 0, -1);
+        
+        // Apply camera rotation to get actual orientation vectors
+        cameraRight.applyQuaternion(camera.quaternion);
+        cameraDown.applyQuaternion(camera.quaternion);
         cameraForward.applyQuaternion(camera.quaternion);
         
-        // Position weapon slightly ahead of camera (simulating ship's weapon hardpoint)
-        const weaponOffset = 10; // 10 meters ahead of camera (much less than the previous 50m)
-        const weaponPosition = cameraPos.clone().add(
-            cameraForward.clone().multiplyScalar(weaponOffset)
-        );
+        // Position weapon at bottom center of screen (like lasers but centered and lower)
+        const bottomOffset = 1.5; // Increased from 0.8 to make projectiles start lower
+        const forwardOffset = 0.5; // Slight forward offset from camera (same as lasers)
         
-        // For different weapon slots, add slight positional variation
-        const slotVariance = this.slotIndex * 0.5; // Small variance per slot
-        const cameraRight = new THREE.Vector3(1, 0, 0);
-        cameraRight.applyQuaternion(camera.quaternion);
-        weaponPosition.add(cameraRight.clone().multiplyScalar(slotVariance - 1.5)); // Center around slot 1.5
+        // Create centered weapon position at bottom center (no variations)
+        const weaponPosition = cameraPos.clone()
+            .add(cameraDown.clone().multiplyScalar(bottomOffset))   // Down from center (more than lasers)
+            .add(cameraForward.clone().multiplyScalar(forwardOffset)); // Slightly forward
+        
+        console.log(`🚀 Projectile origin: Lower center screen position (unified for all weapons)`);
         
         return {
             x: weaponPosition.x,
