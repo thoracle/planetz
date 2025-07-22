@@ -943,14 +943,50 @@ export class PhysicsProjectile {
             console.log(`💥 SPLASH DAMAGE: Found ${affectedEntities.length} entities within ${this.blastRadius}m blast radius`);
             
             affectedEntities.forEach(entity => {
-                const distance = this.calculateDistance(position, entity.position);
+                // Get entity position from threeObject
+                let entityPosition = null;
+                if (entity.threeObject && entity.threeObject.position) {
+                    entityPosition = {
+                        x: entity.threeObject.position.x,
+                        y: entity.threeObject.position.y,
+                        z: entity.threeObject.position.z
+                    };
+                } else if (entity.position) {
+                    // Fallback if position is directly available
+                    entityPosition = entity.position;
+                } else {
+                    console.warn('⚠️ Entity has no accessible position, skipping splash damage:', entity);
+                    return;
+                }
+                
+                const distance = this.calculateDistance(position, entityPosition);
                 const damage = this.calculateDamageAtDistance(distance);
                 
                 if (damage > 0) {
                     // Apply damage to entity
                     if (entity.ship && typeof entity.ship.applyDamage === 'function') {
-                        entity.ship.applyDamage(damage, 'explosive');
+                        const damageResult = entity.ship.applyDamage(damage, 'explosive');
                         console.log(`💥 Applied ${damage} explosive damage to ${entity.ship.shipName || 'entity'} at ${distance.toFixed(1)}m`);
+                        
+                        // Check if the ship was destroyed by the damage
+                        if (damageResult && (damageResult.isDestroyed || entity.ship.currentHull <= 0.001)) {
+                            console.log(`🔥 ${entity.ship.shipName || 'Enemy ship'} DESTROYED by ${this.weaponName} splash damage!`);
+                            
+                            // Ensure hull is exactly 0 for consistency
+                            entity.ship.currentHull = 0;
+                            
+                            // Play success sound for ship destruction
+                            if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
+                                const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
+                                effectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
+                                console.log(`🎉 Playing ship destruction success sound (full duration)`);
+                            }
+                            
+                            // Remove destroyed ship from game
+                            if (window.starfieldManager && typeof window.starfieldManager.removeDestroyedTarget === 'function') {
+                                window.starfieldManager.removeDestroyedTarget(entity.ship);
+                            }
+                        }
                     } else if (entity.takeDamage) {
                         entity.takeDamage(damage);
                         console.log(`💥 Applied ${damage} damage to entity at ${distance.toFixed(1)}m`);
