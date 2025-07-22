@@ -82,9 +82,28 @@ export class WeaponCard {
      * @returns {Projectile} Projectile instance
      */
     createProjectile(origin, target) {
-        // Calculate direction to target for physics projectiles
+        // Calculate direction for physics projectiles
         let direction = { x: 0, y: 0, z: 1 }; // Default forward
-        if (target && target.position) {
+        
+        // For NON-homing weapons, fire toward crosshairs (camera forward direction)
+        // For homing weapons, can fire toward target since they'll adjust course anyway
+        if (!this.homingCapability) {
+            // Non-homing weapons (like photon torpedoes) should fire straight ahead toward crosshairs
+            const camera = window.starfieldManager?.sceneManager?.camera;
+            if (camera) {
+                // Get camera's forward direction (where crosshairs are pointing)
+                const forward = new window.THREE.Vector3(0, 0, -1);
+                forward.applyQuaternion(camera.quaternion);
+                direction = {
+                    x: forward.x,
+                    y: forward.y,
+                    z: forward.z
+                };
+                
+                console.log(`🎯 NON-HOMING PROJECTILE: Firing toward crosshairs direction (${direction.x.toFixed(2)}, ${direction.y.toFixed(2)}, ${direction.z.toFixed(2)})`);
+            }
+        } else if (target && target.position) {
+            // Homing weapons can start by pointing toward target (they'll adjust course anyway)
             const dirVector = {
                 x: target.position.x - origin.x,
                 y: target.position.y - origin.y,
@@ -98,6 +117,7 @@ export class WeaponCard {
                     z: dirVector.z / magnitude
                 };
             }
+            console.log(`🎯 HOMING PROJECTILE: Initial direction toward target (${direction.x.toFixed(2)}, ${direction.y.toFixed(2)}, ${direction.z.toFixed(2)})`);
         }
 
         // Try to create physics-based projectile first
@@ -817,7 +837,7 @@ export class PhysicsProjectile {
             // Removed torpedo-specific trail unavailable logging to keep console clean
             return;
         }
-        
+
         // Map weapon names to particle trail types
         const weaponTypeMap = {
             'Homing Missile': 'homing_missile',
@@ -827,27 +847,33 @@ export class PhysicsProjectile {
             'photon_torpedo': 'photon_torpedo',
             'proximity_mine': 'proximity_mine'
         };
-        
+
         const particleType = weaponTypeMap[this.weaponName] || 'homing_missile';
         const projectileId = `${this.weaponName}_${this.launchTime}`;
-        
-        // Create particle trail if we have a visual object
-        if (this.threeObject && this.threeObject.position) {
+
+        // Create particle trail starting from the original weapon origin (lower center screen)
+        // instead of the physics body position which has a forward offset
+        if (this.threeObject) {
             const THREE = window.THREE;
-            const startPosition = new THREE.Vector3(
-                this.threeObject.position.x,
-                this.threeObject.position.y, 
-                this.threeObject.position.z
+            
+            // Use the original start position (weapon origin) for particle trail
+            // This makes the trail appear to start from lower center screen as expected
+            const trailStartPosition = new THREE.Vector3(
+                this.startPosition.x,
+                this.startPosition.y, 
+                this.startPosition.z
             );
             
+            console.log(`🎆 PARTICLE TRAIL START: Using weapon origin (${this.startPosition.x.toFixed(1)}, ${this.startPosition.y.toFixed(1)}, ${this.startPosition.z.toFixed(1)}) instead of physics body position`);
+
             this.particleTrailId = projectileId;
             const trailData = effectsManager.createProjectileTrail(
                 projectileId, 
                 particleType, 
-                startPosition, 
+                trailStartPosition, 
                 this.threeObject
             );
-            
+
             // Removed all torpedo-specific logging to keep console clean
         }
     }
