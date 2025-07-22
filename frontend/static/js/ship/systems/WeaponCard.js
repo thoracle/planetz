@@ -864,8 +864,6 @@ export class PhysicsProjectile {
                 this.startPosition.z
             );
             
-            console.log(`🎆 PARTICLE TRAIL START: Using weapon origin (${this.startPosition.x.toFixed(1)}, ${this.startPosition.y.toFixed(1)}, ${this.startPosition.z.toFixed(1)}) instead of physics body position`);
-
             this.particleTrailId = projectileId;
             const trailData = effectsManager.createProjectileTrail(
                 projectileId, 

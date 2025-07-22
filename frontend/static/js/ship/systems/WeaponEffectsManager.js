@@ -740,9 +740,10 @@ export class WeaponEffectsManager {
             
             // Add torpedo trail update debugging (limited frequency)
             if (trailData.type === 'photon_torpedo' && trailData.particleHistory.length % 30 === 0) {
-                console.log(`🎆 TORPEDO TRAIL UPDATE → ${trailData.particleHistory.length} history points, opacity: ${opacity.toFixed(2)}`);
-                console.log(`   └ Latest position: (${newPosition.x.toFixed(1)}, ${newPosition.y.toFixed(1)}, ${newPosition.z.toFixed(1)})`);
-                console.log(`   └ Trail age: ${(trailAge/1000).toFixed(1)}s, max age: ${(maxAge/1000).toFixed(1)}s`);
+                // Removed trail update logging - too much spam for useful debugging
+                // console.log(`🎆 TORPEDO TRAIL UPDATE → ${trailData.particleHistory.length} history points, opacity: ${opacity.toFixed(2)}`);
+                // console.log(`   └ Latest position: (${newPosition.x.toFixed(1)}, ${newPosition.y.toFixed(1)}, ${newPosition.z.toFixed(1)})`);
+                // console.log(`   └ Trail age: ${(trailAge/1000).toFixed(1)}s, max age: ${(maxAge/1000).toFixed(1)}s`);
             }
         }
     }
@@ -760,7 +761,8 @@ export class WeaponEffectsManager {
         
         // Add debugging for torpedo particle geometry updates
         if (trailData.type === 'photon_torpedo' && history.length % 20 === 0) {
-            console.log(`🎯 TORPEDO PARTICLE GEOMETRY UPDATE → ${particleCount} particles across ${history.length} history points`);
+            // Removed geometry update logging - too much spam for useful debugging
+            // console.log(`🎯 TORPEDO PARTICLE GEOMETRY UPDATE → ${particleCount} particles across ${history.length} history points`);
         }
         
         // Distribute particles along the trail path
