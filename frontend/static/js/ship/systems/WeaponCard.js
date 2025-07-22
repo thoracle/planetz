@@ -82,9 +82,65 @@ export class WeaponCard {
      * @returns {Projectile} Projectile instance
      */
     createProjectile(origin, target) {
-        // Override in splash-damage weapons
-        console.warn(`createProjectile() not implemented for ${this.name}`);
-        return null;
+        // Calculate direction to target for physics projectiles
+        let direction = { x: 0, y: 0, z: 1 }; // Default forward
+        if (target && target.position) {
+            const dirVector = {
+                x: target.position.x - origin.x,
+                y: target.position.y - origin.y,
+                z: target.position.z - origin.z
+            };
+            const magnitude = Math.sqrt(dirVector.x * dirVector.x + dirVector.y * dirVector.y + dirVector.z * dirVector.z);
+            if (magnitude > 0) {
+                direction = {
+                    x: dirVector.x / magnitude,
+                    y: dirVector.y / magnitude,
+                    z: dirVector.z / magnitude
+                };
+            }
+        }
+
+        // Try to create physics-based projectile first
+        if (window.physicsManager && window.physicsManager.isReady()) {
+            try {
+                const physicsProjectile = new PhysicsProjectile({
+                    origin: origin,
+                    direction: direction,
+                    target: target,
+                    damage: this.damage,
+                    blastRadius: this.blastRadius,
+                    flightRange: this.flightRange,
+                    isHoming: this.homingCapability,
+                    turnRate: this.turnRate,
+                    weaponName: this.name,
+                    physicsManager: window.physicsManager,
+                    scene: window.scene
+                });
+                
+                // Clean torpedo-focused logging
+                if (this.name.toLowerCase().includes('torpedo')) {
+                    console.log(`🟦 TORPEDO FIRED → Target: ${target?.ship?.shipName || 'None'}`);
+                }
+                
+                return physicsProjectile;
+                
+            } catch (error) {
+                console.warn('Failed to create physics projectile, falling back to simple projectile:', error);
+            }
+        }
+        
+        // Fallback to simple projectile if physics not available
+        console.log(`⚠️ Using fallback projectile for ${this.name}`);
+        return new Projectile({
+            origin: origin,
+            target: target,
+            damage: this.damage,
+            blastRadius: this.blastRadius,
+            flightRange: this.flightRange,
+            isHoming: this.homingCapability,
+            turnRate: this.turnRate,
+            weaponName: this.name
+        });
     }
     
     /**
@@ -288,7 +344,11 @@ export class SplashDamageWeapon extends WeaponCard {
                     scene: window.scene
                 });
                 
-                console.log(`🚀 Created physics projectile: ${this.name}`);
+                // Clean torpedo-focused logging
+                if (this.name.toLowerCase().includes('torpedo')) {
+                    console.log(`🟦 TORPEDO FIRED → Target: ${target?.ship?.shipName || 'None'}`);
+                }
+                
                 return physicsProjectile;
                 
             } catch (error) {
@@ -330,8 +390,6 @@ export class SplashDamageWeapon extends WeaponCard {
      * @param {Projectile} projectile Projectile to add
      */
     addProjectileToGame(projectile) {
-        console.log(`Adding projectile to game: ${projectile.weaponName}`);
-        
         // Add to global projectile tracking for frame updates
         if (!window.activeProjectiles) {
             window.activeProjectiles = [];
@@ -342,9 +400,11 @@ export class SplashDamageWeapon extends WeaponCard {
         // If it's a physics projectile, it will be automatically updated by the physics system
         // If it's a fallback projectile, we need to set up manual updates
         if (projectile instanceof PhysicsProjectile) {
-            console.log(`✅ Physics projectile added to tracking: ${projectile.weaponName}`);
+            // Clean torpedo tracking
+            if (projectile.weaponName.toLowerCase().includes('torpedo')) {
+                console.log(`🟦 TORPEDO tracking started`);
+            }
         } else {
-            console.log(`⚠️ Fallback projectile added to tracking: ${projectile.weaponName}`);
             // Set up simple flight simulation for fallback projectiles
             this.simulateFallbackProjectile(projectile);
         }
@@ -365,7 +425,10 @@ export class SplashDamageWeapon extends WeaponCard {
             if (elapsed >= flightTime || projectile.hasDetonated) {
                 clearInterval(simulationTimer);
                 if (!projectile.hasDetonated) {
-                    console.log(`⏰ ${projectile.weaponName} flight time expired, detonating`);
+                    // Only log torpedo simulation events
+                    if (projectile.weaponName.toLowerCase().includes('torpedo')) {
+                        console.log(`🟦 TORPEDO simulation timeout, detonating`);
+                    }
                     projectile.detonate();
                 }
                 
@@ -405,7 +468,10 @@ export class Projectile {
         // Calculate initial velocity toward target
         this.calculateInitialVelocity();
         
-        console.log(`Projectile created: ${this.weaponName} (homing: ${this.isHoming})`);
+        // Only log torpedo fallback projectile creation
+        if (this.weaponName.toLowerCase().includes('torpedo')) {
+            console.log(`🟦 TORPEDO (fallback) created - ${this.isHoming ? 'Guided' : 'Ballistic'}`);
+        }
     }
     
     /**
@@ -514,7 +580,11 @@ export class Projectile {
         if (this.hasDetonated) return;
         
         this.hasDetonated = true;
-        console.log(`${this.weaponName} detonated at position`, this.position);
+        
+        // Only log torpedo detonation events
+        if (this.weaponName.toLowerCase().includes('torpedo')) {
+            console.log(`🟦 TORPEDO (fallback) detonated`);
+        }
         
         // Apply splash damage to all targets within blast radius
         this.applySplashDamage();
@@ -527,8 +597,10 @@ export class Projectile {
      * Apply splash damage to targets within blast radius
      */
     applySplashDamage() {
-        // This would integrate with the game's target/entity system
-        console.log(`Applying splash damage: ${this.damage} base damage, ${this.blastRadius}m radius`);
+        // Only log torpedo splash damage for fallback projectiles
+        if (this.weaponName.toLowerCase().includes('torpedo')) {
+            console.log(`🟦 TORPEDO (fallback) splash damage: ${this.damage} @ ${this.blastRadius}m`);
+        }
         
         // For now, just apply damage to primary target if within range
         if (this.target && this.target.position) {
@@ -633,7 +705,10 @@ export class PhysicsProjectile {
         // Create particle trail effects
         this.initializeParticleTrail();
         
-        console.log(`🚀 PhysicsProjectile created: ${this.weaponName} (homing: ${this.isHoming})`);
+        // Clean torpedo logging only
+        if (this.weaponName.toLowerCase().includes('torpedo')) {
+            console.log(`🟦 TORPEDO LAUNCHED → ${this.isHoming ? 'Guided' : 'Ballistic'}`);
+        }
     }
     
     /**
@@ -753,7 +828,10 @@ export class PhysicsProjectile {
         // Get weapon effects manager from global scope
         const effectsManager = window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager;
         if (!effectsManager || effectsManager.fallbackMode) {
-            console.log('⚠️ WeaponEffectsManager not available for particle trails');
+            // Only log torpedo trail issues for focused debugging
+            if (this.weaponName.toLowerCase().includes('torpedo')) {
+                console.log('🟦 TORPEDO trail unavailable');
+            }
             return;
         }
         
@@ -787,8 +865,9 @@ export class PhysicsProjectile {
                 this.threeObject
             );
             
-            if (trailData) {
-                console.log(`✨ Created particle trail for ${this.weaponName}: ${particleType}`);
+            // Only log torpedo trail creation for focused debugging
+            if (trailData && this.weaponName.toLowerCase().includes('torpedo')) {
+                console.log(`🟦 TORPEDO trail active`);
             }
         }
     }
@@ -816,8 +895,13 @@ export class PhysicsProjectile {
         
         // Check collision delay - don't collide until delay period has passed
         if (!this.canCollide) {
-            console.log(`⏳ ${this.weaponName} collision ignored - still in delay period`);
+            // Silently ignore collision during delay period to prevent console spam
             return;
+        }
+        
+        // Clean torpedo collision logging
+        if (this.weaponName.toLowerCase().includes('torpedo')) {
+            console.log(`🟦 TORPEDO HIT → Impact detected`);
         }
         
         console.log(`💥 ${this.weaponName} collision detected with:`, otherObject);
@@ -826,10 +910,11 @@ export class PhysicsProjectile {
         const collisionPos = contactPoint.get_m_positionWorldOnA();
         const position = {
             x: collisionPos.x(),
-            y: collisionPos.y(),
+            y: collisionPos.y(), 
             z: collisionPos.z()
         };
         
+        // Detonate at collision point
         this.detonate(position);
     }
     
@@ -999,7 +1084,10 @@ export class PhysicsProjectile {
             };
         }
         
-        console.log(`💥 ${this.weaponName} detonated at:`, detonationPos);
+        // Clean torpedo detonation logging
+        if (this.weaponName.toLowerCase().includes('torpedo')) {
+            console.log(`🟦 TORPEDO DETONATED → Splash damage: ${this.damage} @ ${this.blastRadius}m`);
+        }
         
         // Apply physics-based splash damage
         this.applyPhysicsSplashDamage(detonationPos);
@@ -1022,27 +1110,35 @@ export class PhysicsProjectile {
             // Use physics spatial query to find all entities within blast radius
             const affectedEntities = this.physicsManager.spatialQuery(position, this.blastRadius);
             
-            console.log(`💥 SPLASH DAMAGE: Found ${affectedEntities.length} entities within ${this.blastRadius}m blast radius`);
+            // Clean torpedo logging
+            if (this.weaponName.toLowerCase().includes('torpedo')) {
+                console.log(`🟦 TORPEDO BLAST → ${affectedEntities.length} targets in range`);
+            }
             
             affectedEntities.forEach(entity => {
                 // Get entity position from threeObject
                 let entityPosition = null;
                 if (entity.threeObject && entity.threeObject.position) {
-                    entityPosition = {
-                        x: entity.threeObject.position.x,
-                        y: entity.threeObject.position.y,
-                        z: entity.threeObject.position.z
-                    };
+                    entityPosition = entity.threeObject.position;
                 } else if (entity.position) {
-                    // Fallback if position is directly available
                     entityPosition = entity.position;
                 } else {
-                    console.warn('⚠️ Entity has no accessible position, skipping splash damage:', entity);
+                    console.warn('Entity has no position, skipping damage application');
                     return;
                 }
                 
-                const distance = this.calculateDistance(position, entityPosition);
-                const damage = this.calculateDamageAtDistance(distance);
+                // Calculate distance from explosion center
+                const distance = Math.sqrt(
+                    Math.pow(position.x - entityPosition.x, 2) +
+                    Math.pow(position.y - entityPosition.y, 2) +
+                    Math.pow(position.z - entityPosition.z, 2)
+                );
+                
+                // Calculate damage based on distance (inverse square law with minimum damage)
+                const maxDamage = this.damage;
+                const minDamage = maxDamage * 0.1; // 10% minimum damage at blast edge
+                const damageRatio = Math.max(0, (this.blastRadius - distance) / this.blastRadius);
+                const damage = Math.round(minDamage + (maxDamage - minDamage) * damageRatio * damageRatio);
                 
                 if (damage > 0) {
                     // Apply damage to entity
@@ -1051,11 +1147,13 @@ export class PhysicsProjectile {
                         const wasAlreadyDestroyed = entity.ship.currentHull <= 0.001;
                         
                         const damageResult = entity.ship.applyDamage(damage, 'explosive');
-                        console.log(`💥 Applied ${damage} explosive damage to ${entity.ship.shipName || 'entity'} at ${distance.toFixed(1)}m`);
                         
-                        // Only play success sound if this damage actually destroyed the ship (wasn't already destroyed)
-                        if (!wasAlreadyDestroyed && damageResult && (damageResult.isDestroyed || entity.ship.currentHull <= 0.001)) {
-                            console.log(`🔥 ${entity.ship.shipName || 'Enemy ship'} DESTROYED by ${this.weaponName} splash damage!`);
+                        // Only play success sound if this damage actually destroyed the ship and it wasn't already destroyed
+                        if (damageResult && damageResult.isDestroyed && !wasAlreadyDestroyed) {
+                            // Clean torpedo destruction logging
+                            if (this.weaponName.toLowerCase().includes('torpedo')) {
+                                console.log(`🟦 TORPEDO KILL → ${entity.ship.shipName || 'Target'} destroyed!`);
+                            }
                             
                             // Ensure hull is exactly 0 for consistency
                             entity.ship.currentHull = 0;
@@ -1064,7 +1162,6 @@ export class PhysicsProjectile {
                             if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
                                 const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
                                 effectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
-                                console.log(`🎉 Playing ship destruction success sound (full duration)`);
                             }
                             
                             // Remove destroyed ship from game
@@ -1072,11 +1169,16 @@ export class PhysicsProjectile {
                                 window.starfieldManager.removeDestroyedTarget(entity.ship);
                             }
                         } else if (wasAlreadyDestroyed) {
-                            console.log(`⚫ Ship was already destroyed, skipping success sound`);
+                            // Skip logging for already destroyed ships to reduce spam
+                        } else {
+                            // Clean torpedo damage logging (only for living targets)
+                            if (this.weaponName.toLowerCase().includes('torpedo')) {
+                                const hullPercent = Math.round((entity.ship.currentHull / entity.ship.maxHull) * 100);
+                                console.log(`🟦 TORPEDO DMG → ${damage} damage, hull: ${hullPercent}%`);
+                            }
                         }
                     } else if (entity.takeDamage) {
                         entity.takeDamage(damage);
-                        console.log(`💥 Applied ${damage} damage to entity at ${distance.toFixed(1)}m`);
                     }
                 }
             });

@@ -6,12 +6,6 @@
 
 export class WeaponEffectsManager {
     constructor(scene, camera, audioContext = null) {
-        console.log('🎆 WeaponEffectsManager constructor called');
-        console.log('  - Scene:', !!scene);
-        console.log('  - Camera:', !!camera);
-        console.log('  - AudioContext:', !!audioContext);
-        console.log('  - AudioContext state:', audioContext?.state || 'N/A');
-        
         this.scene = scene;
         this.camera = camera;
         this.audioContext = audioContext;
@@ -19,23 +13,17 @@ export class WeaponEffectsManager {
         // Get THREE reference (use global pattern like other files)
         this.THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
         if (!this.THREE) {
-            const availableGlobals = {
-                windowTHREE: !!window.THREE,
-                globalTHREE: typeof THREE !== 'undefined',
-                scene: !!scene,
-                camera: !!camera
-            };
-            console.error('THREE.js not available for WeaponEffectsManager. Available globals:', availableGlobals);
+            console.error('THREE.js not available for WeaponEffectsManager');
             
             // Instead of throwing, create a fallback mode
             this.fallbackMode = true;
-            console.log('🎆 WeaponEffectsManager: Entering fallback mode');
+            console.log('🎆 WeaponEffectsManager: Fallback mode active');
             this.initializeFallbackMode();
             return;
         }
         
         this.fallbackMode = false;
-        console.log('🎆 WeaponEffectsManager: Entering full mode');
+        console.log('🎆 WeaponEffectsManager: Initialized successfully');
         this.initializeFullMode();
     }
     
@@ -650,16 +638,20 @@ export class WeaponEffectsManager {
         const particleSystem = new this.THREE.Points(particleGeometry, particleMaterial);
         this.scene.add(particleSystem);
         
-        console.log(`🚀 Created particle system at position:`, startPosition);
-        console.log(`🚀 Particle count: ${config.particleCount}, size: ${config.size}`);
-        console.log(`🚀 Particle system added to scene:`, !!this.scene);
+        // Clean torpedo-focused particle logging 
+        if (projectileType === 'photon_torpedo') {
+            console.log(`🟦 TORPEDO particles: ${config.particleCount} created`);
+        }
         
         // Create engine glow if enabled
         let engineGlow = null;
         if (config.engineGlow) {
             engineGlow = this.createEngineGlow(startPosition, config.engineColor, config.emissiveColor);
             this.scene.add(engineGlow);
-            console.log(`🚀 Created engine glow at position:`, startPosition);
+            // Only log torpedo engine glow for focused debugging
+            if (projectileType === 'photon_torpedo') {
+                console.log(`🟦 TORPEDO engine glow activated`);
+            }
         }
         
         // Track trail data
@@ -685,7 +677,11 @@ export class WeaponEffectsManager {
             this.activeEffects.add(engineGlow);
         }
         
-        console.log(`🚀 Created particle trail for ${projectileType}: ${config.particleCount} particles`);
+        // Only log torpedo trail creation for focused debugging
+        if (projectileType === 'photon_torpedo') {
+            console.log(`🟦 TORPEDO trail system created: ${config.particleCount} particles`);
+        }
+        
         return trailData;
     }
     
@@ -735,51 +731,67 @@ export class WeaponEffectsManager {
             time: now
         });
         
-        // Remove old history beyond trail length
-        const maxHistoryTime = trailData.config.trailDuration * 1000;
-        trailData.particleHistory = trailData.particleHistory.filter(
-            entry => (now - entry.time) < maxHistoryTime
-        );
+        // Remove old history points beyond trail duration
+        const cutoffTime = now - trailData.config.trailDuration;
+        trailData.particleHistory = trailData.particleHistory.filter(point => point.time > cutoffTime);
         
-        // Update particle positions along trail
+        // Update particle positions based on history
+        if (trailData.particleSystem && trailData.particleHistory.length > 0) {
+            this.updateParticleGeometry(trailData);
+            
+            // Calculate trail opacity based on age (fade over time)
+            const trailAge = now - trailData.creationTime;
+            const maxAge = trailData.config.trailDuration;
+            const opacity = Math.max(0.1, 1.0 - (trailAge / (maxAge * 2))); // Fade to 10% over 2x trail duration
+            
+            if (trailData.particleSystem.material) {
+                trailData.particleSystem.material.opacity = opacity;
+            }
+            
+            // Only log torpedo trail updates occasionally, not every frame
+            if (trailData.type === 'photon_torpedo' && trailData.particleHistory.length % 10 === 0) {
+                console.log(`🟦 TORPEDO trail: ${trailData.particleHistory.length} points, opacity: ${opacity.toFixed(2)}`);
+            }
+        }
+    }
+    
+    /**
+     * Update particle geometry for a trail based on its history
+     * @param {Object} trailData Trail data
+     */
+    updateParticleGeometry(trailData) {
         const positions = trailData.positions;
         const particleCount = trailData.config.particleCount;
         const history = trailData.particleHistory;
         
+        if (history.length === 0) return;
+        
+        // Distribute particles along the trail path
         for (let i = 0; i < particleCount; i++) {
-            const historyIndex = Math.floor((i / particleCount) * history.length);
+            const t = i / (particleCount - 1); // 0 to 1
+            const historyIndex = Math.floor(t * (history.length - 1));
+            const historyPoint = history[historyIndex];
             
-            if (historyIndex < history.length) {
-                const historyEntry = history[historyIndex];
-                positions[i * 3] = historyEntry.position.x;
-                positions[i * 3 + 1] = historyEntry.position.y;
-                positions[i * 3 + 2] = historyEntry.position.z;
-            } else {
-                // No history for this particle, place it at current position (invisible)
-                positions[i * 3] = newPosition.x;
-                positions[i * 3 + 1] = newPosition.y;
-                positions[i * 3 + 2] = newPosition.z;
+            if (historyPoint) {
+                positions[i * 3] = historyPoint.position.x;
+                positions[i * 3 + 1] = historyPoint.position.y;
+                positions[i * 3 + 2] = historyPoint.position.z;
             }
         }
         
         // Update GPU buffers
         trailData.particleSystem.geometry.attributes.position.needsUpdate = true;
         
-        // Update overall trail opacity based on age
-        const trailAge = (now - trailData.startTime) / (trailData.config.trailDuration * 1000);
-        const opacity = Math.max(0.3, 0.9 - trailAge * 0.6); // Fade from 0.9 to 0.3
-        trailData.particleSystem.material.opacity = opacity;
-        
-        // Update engine glow position
-        if (trailData.engineGlow) {
-            trailData.engineGlow.position.copy(newPosition);
+        // Update engine glow position if it exists
+        if (trailData.engineGlow && history.length > 0) {
+            const latestPos = history[0].position;
+            trailData.engineGlow.position.copy(latestPos);
             
             // Animate engine glow pulsing
+            const now = Date.now();
             const pulseFactor = 0.8 + 0.2 * Math.sin(now * 0.01);
             trailData.engineGlow.scale.setScalar(pulseFactor);
         }
-        
-        console.log(`🔄 Updated trail ${projectileId}: ${history.length} history points, opacity: ${opacity.toFixed(2)}`);
     }
     
     /**
@@ -801,7 +813,10 @@ export class WeaponEffectsManager {
             // Mark trail for delayed cleanup but don't remove immediately
             trailData.pendingDestruction = true;
             trailData.destructionTime = currentTime + (minimumPersistenceTime - trailAge);
-            console.log(`⏳ Trail ${projectileId} marked for delayed cleanup - will persist ${(minimumPersistenceTime - trailAge)/1000}s more`);
+            // Only log torpedo trail delays for focused debugging
+            if (trailData.type === 'photon_torpedo') {
+                console.log(`🟦 TORPEDO trail cleanup delayed`);
+            }
             return;
         }
         
@@ -819,7 +834,10 @@ export class WeaponEffectsManager {
             this.scene.remove(trailData.engineGlow);
         }
         
-        console.log(`🧹 Removed particle trail for projectile: ${projectileId}`);
+        // Only log torpedo trail cleanup for focused debugging
+        if (trailData.type === 'photon_torpedo') {
+            console.log(`🟦 TORPEDO trail removed`);
+        }
     }
     
     /**
@@ -849,10 +867,13 @@ export class WeaponEffectsManager {
         
         // Actually remove the trails that have waited long enough
         trailsToDestroy.forEach(projectileId => {
-            console.log(`🧹 Delayed cleanup: removing trail for ${projectileId}`);
-            
             const trailData = this.particleTrails.get(projectileId);
             if (trailData) {
+                // Only log torpedo delayed cleanup for focused debugging
+                if (trailData.type === 'photon_torpedo') {
+                    console.log(`🟦 TORPEDO trail cleanup complete`);
+                }
+                
                 // Clean up trail data
                 this.particleTrails.delete(projectileId);
                 
