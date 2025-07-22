@@ -442,10 +442,14 @@ export class TargetComputerManager {
      * Update the list of available targets
      */
     updateTargetList() {
+        console.log(`🎯 updateTargetList called: physicsManager=${!!window.physicsManager}, physicsManagerReady=${!!window.physicsManagerReady}`);
+        
         // Use physics-based spatial queries if available, otherwise fall back to traditional method
         if (window.physicsManager && window.physicsManagerReady) {
+            console.log(`🎯 Using updateTargetListWithPhysics()`);
             this.updateTargetListWithPhysics();
         } else {
+            console.log(`🎯 Using updateTargetListTraditional()`);
             this.updateTargetListTraditional();
         }
     }
@@ -454,6 +458,7 @@ export class TargetComputerManager {
      * Enhanced target list update using physics-based spatial queries
      */
     updateTargetListWithPhysics() {
+        console.log('🎯 TargetComputerManager.updateTargetListWithPhysics() called');
         const maxTargetingRange = 10000; // 10,000 km max targeting range
         
         // Perform spatial query around the camera position
@@ -480,7 +485,7 @@ export class TargetComputerManager {
             if (entity.type === 'enemy_ship') {
                 // Handle enemy ships
                 const ship = entity.threeObject.userData?.ship;
-                if (ship) {
+                if (ship && ship.currentHull > 0.001) { // Filter out destroyed ships
                     targetData = {
                         name: ship.shipName || entity.id,
                         type: 'enemy_ship',
@@ -492,6 +497,8 @@ export class TargetComputerManager {
                         distance: distance,
                         physicsEntity: entity
                     };
+                } else if (ship && ship.currentHull <= 0.001) {
+                    console.log(`🗑️ Physics query filtering out destroyed ship: ${ship.shipName} (Hull: ${ship.currentHull})`);
                 }
             } else if (entity.type === 'star' || entity.type === 'planet' || entity.type === 'moon') {
                 // Handle celestial bodies
@@ -598,31 +605,13 @@ export class TargetComputerManager {
             console.warn('🎯 No SolarSystemManager available for targeting');
         }
         
-        // Add target dummy ships (need to get from StarfieldManager)
-        if (this.viewManager && this.viewManager.starfieldManager && this.viewManager.starfieldManager.dummyShipMeshes) {
-            const dummyShipTargets = this.viewManager.starfieldManager.dummyShipMeshes.map(mesh => {
-                const ship = mesh.userData.ship;
-                return {
-                    name: ship.shipName,
-                    type: 'enemy_ship',
-                    position: mesh.position.toArray(),
-                    isMoon: false,
-                    object: mesh,  // Store the mesh as the target object
-                    isShip: true,
-                    ship: ship,     // Store the ship instance for sub-targeting
-                    distance: this.calculateDistance(this.camera.position, mesh.position)
-                };
-            });
-            
-            console.log(`🎯 Found ${dummyShipTargets.length} dummy ships for targeting`);
-            allTargets = allTargets.concat(dummyShipTargets);
-        }
+        // Note: Dummy ships will be added by addNonPhysicsTargets() to avoid duplicates
         
         // Update target list
         this.targetObjects = allTargets;
         
         console.log(`🎯 Final target list: ${allTargets.length} targets total`, 
-            allTargets.map(t => ({ name: t.name, type: t.type, isShip: t.isShip }))
+            allTargets.map((t, index) => ({ index, name: t.name, type: t.type, isShip: t.isShip }))
         );
         
         // Sort targets by distance
@@ -640,13 +629,20 @@ export class TargetComputerManager {
         
         // Check for ships without physics bodies
         if (this.viewManager?.starfieldManager?.dummyShipMeshes) {
-            this.viewManager.starfieldManager.dummyShipMeshes.forEach(mesh => {
+            console.log(`🎯 addNonPhysicsTargets: Processing ${this.viewManager.starfieldManager.dummyShipMeshes.length} dummy ships`);
+            console.log(`🎯 addNonPhysicsTargets: Existing target IDs:`, Array.from(existingTargetIds));
+            
+            this.viewManager.starfieldManager.dummyShipMeshes.forEach((mesh, index) => {
                 const ship = mesh.userData.ship;
                 const targetId = ship.shipName;
                 
-                if (!existingTargetIds.has(targetId)) {
+                console.log(`🎯 addNonPhysicsTargets: Checking dummy ship ${index}: ${targetId}, hull: ${ship.currentHull}, already exists: ${existingTargetIds.has(targetId)}`);
+                
+                // Filter out destroyed ships and check if not already in target list
+                if (!existingTargetIds.has(targetId) && ship && ship.currentHull > 0.001) {
                     const distance = this.calculateDistance(this.camera.position, mesh.position);
                     if (distance <= maxRange) {
+                        console.log(`🎯 addNonPhysicsTargets: Adding dummy ship: ${targetId}`);
                         allTargets.push({
                             name: ship.shipName,
                             type: 'enemy_ship',
@@ -657,7 +653,13 @@ export class TargetComputerManager {
                             ship: ship,
                             distance: distance
                         });
+                    } else {
+                        console.log(`🎯 addNonPhysicsTargets: Dummy ship ${targetId} out of range: ${distance.toFixed(1)}km > ${maxRange}km`);
                     }
+                } else if (ship && ship.currentHull <= 0.001) {
+                    console.log(`🗑️ Fallback method filtering out destroyed ship: ${ship.shipName} (Hull: ${ship.currentHull})`);
+                } else if (existingTargetIds.has(targetId)) {
+                    console.log(`🎯 addNonPhysicsTargets: Skipping duplicate ship: ${targetId}`);
                 }
             });
         }
@@ -761,6 +763,9 @@ export class TargetComputerManager {
         this.targetHUD.style.display = 'block';
 
         // Cycle to next target
+        const previousIndex = this.targetIndex;
+        const previousTarget = this.currentTarget;
+        
         if (this.targetIndex === -1 || !this.currentTarget) {
             this.targetIndex = 0;
         } else {
@@ -770,6 +775,10 @@ export class TargetComputerManager {
         // Get the target object directly from our target list
         const targetData = this.targetObjects[this.targetIndex];
         this.currentTarget = targetData.object;
+        
+        console.log(`🔄 Target cycled: ${previousIndex} → ${this.targetIndex} (${targetData.name})`);
+        console.log(`🎯 Previous target: ${previousTarget?.userData?.ship?.shipName || 'none'}`);
+        console.log(`🎯 New target: ${targetData.name}`);
 
         // Clean up existing wireframe before creating a new one
         if (this.targetWireframe) {

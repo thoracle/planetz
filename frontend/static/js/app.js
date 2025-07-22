@@ -34,11 +34,19 @@ function isAmmoAvailable() {
     console.log('   • typeof Ammo:', typeof Ammo);
     console.log('   • typeof window.Ammo:', typeof window.Ammo);
     console.log('   • window.Ammo exists:', !!window.Ammo);
+    console.log('   • window.AmmoLoaded:', window.AmmoLoaded);
+    
+    // Method 0: Check explicit load flag (most reliable)
+    if (window.AmmoLoaded === true && window.Ammo) {
+        console.log('✅ Method 0: Ammo.js confirmed loaded via AmmoLoaded flag');
+        return true;
+    }
     
     // Method 1: Direct global Ammo access
     if (typeof Ammo !== 'undefined' && Ammo) {
         console.log('✅ Method 1: Ammo.js found via global Ammo');
         window.Ammo = Ammo; // Ensure it's on window object too
+        window.AmmoLoaded = true; // Set flag for future checks
         return true;
     }
     
@@ -49,6 +57,7 @@ function isAmmoAvailable() {
         if (typeof globalThis !== 'undefined') {
             globalThis.Ammo = window.Ammo;
         }
+        window.AmmoLoaded = true; // Set flag for future checks
         return true;
     }
     
@@ -56,6 +65,7 @@ function isAmmoAvailable() {
     try {
         if (window.Ammo && typeof window.Ammo === 'function') {
             console.log('✅ Method 3: Ammo.js found and is a function');
+            window.AmmoLoaded = true; // Set flag for future checks
             return true;
         }
     } catch (error) {
@@ -68,6 +78,7 @@ function isAmmoAvailable() {
     console.warn('   • Check if static/lib/ammo.js loads without errors');
     console.warn('   • Check browser network tab for failed requests');
     console.warn('   • Verify ammo.js is accessible from the static server');
+    console.warn('   • Ensure script loading order: ammo.js before app.js');
     return false;
 }
 
@@ -343,31 +354,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.starfieldManagerReady = true;
     console.log('🌟 StarfieldManager exposed to global scope and ready for test scripts');
 
-    // Check if Ammo.js is available for instant local loading
-    let ammoAvailable = isAmmoAvailable();
+    // Wait for the HTML-based Ammo.js loading to complete
+    console.log('🔄 Waiting for HTML-based Ammo.js loading...');
+    let ammoAvailable = false;
+    let attempts = 0;
+    const maxAttempts = 25; // 5 seconds with 200ms intervals
     
-    // If Ammo.js not immediately available, wait for it to load with multiple attempts
+    while (!ammoAvailable && attempts < maxAttempts) {
+        attempts++;
+        
+        // Check if HTML loading completed successfully
+        if (window.AmmoLoaded === true && typeof window.Ammo !== 'undefined') {
+            ammoAvailable = true;
+            console.log(`✅ Ammo.js loaded by HTML loader on attempt ${attempts}`);
+            break;
+        }
+        
+        // Check if HTML loading explicitly failed
+        if (window.AmmoLoaded === false) {
+            console.log(`❌ HTML-based Ammo.js loading failed`);
+            break;
+        }
+        
+        // Still waiting...
+        if (attempts % 5 === 0) {
+            console.log(`⏳ Still waiting for Ammo.js loading... (attempt ${attempts}/${maxAttempts})`);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    
     if (!ammoAvailable) {
-        console.log('🔄 Ammo.js not immediately available, waiting for load...');
-        
-        // Try multiple times with increasing delays
-        for (let attempt = 1; attempt <= 5; attempt++) {
-            await new Promise(resolve => setTimeout(resolve, attempt * 200)); // Progressive delay
-            ammoAvailable = isAmmoAvailable();
-            
-            if (ammoAvailable) {
-                console.log(`✅ Ammo.js loaded successfully on attempt ${attempt}`);
-                break;
-            } else {
-                console.log(`⏳ Ammo.js loading attempt ${attempt}/5 failed, retrying...`);
-            }
-        }
-        
-        if (!ammoAvailable) {
-            console.error('❌ Failed to load Ammo.js after 5 attempts. Physics will be disabled.');
-            console.error('💡 Check browser console for Ammo.js loading errors.');
-            console.error('💡 Verify static/lib/ammo.js exists and is accessible.');
-        }
+        console.error('❌ Ammo.js loading timed out or failed. Physics will be disabled.');
+        console.error('💡 Check browser console for Ammo.js loading errors.');
+        console.error('💡 Verify lib/ammo.js exists and is accessible.');
     }
     
     if (ammoAvailable) {
@@ -1238,26 +1258,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateDebugInfo();
     }
     
-    // Add keyboard shortcuts
-    document.addEventListener('keydown', (event) => {
-        if (event.ctrlKey) {
-            if (event.key === 'd') {
-                event.preventDefault();
-                toggleDebugMode();
-            } else if (event.key === 'e') {
-                event.preventDefault();
-                toggleEditMode();
-            } else if (event.key === 'w') {
-                event.preventDefault();
-                toggleWarpControlMode();
-            }
-        } else if (editMode && event.key === 'Tab') {
-            event.preventDefault();
-            event.stopPropagation();
-            cycleCelestialBody();
-            return false;
-        }
-    }, true);
+    // Duplicate keyboard shortcuts removed - handled by global listener above
     
     console.log('Container dimensions:', {
         width: container.clientWidth,
@@ -1702,6 +1703,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Update physics simulation
         if (physicsManager && physicsManager.initialized) {
             physicsManager.update(deltaTime);
+        }
+        
+        // Update physics projectiles
+        if (window.activeProjectiles && window.activeProjectiles.length > 0) {
+            // Update and clean up projectiles
+            window.activeProjectiles = window.activeProjectiles.filter(projectile => {
+                if (projectile.isActive && typeof projectile.update === 'function') {
+                    try {
+                        projectile.update(deltaTime * 1000); // Convert to milliseconds
+                        return projectile.isActive(); // Keep active projectiles
+                    } catch (error) {
+                        console.error('Error updating projectile:', error);
+                        // Clean up failed projectile
+                        if (typeof projectile.cleanup === 'function') {
+                            projectile.cleanup();
+                        }
+                        return false; // Remove failed projectile
+                    }
+                } else {
+                    // Clean up inactive projectiles
+                    if (typeof projectile.cleanup === 'function') {
+                        projectile.cleanup();
+                    }
+                    return false; // Remove inactive projectile
+                }
+            });
         }
         
         // Update wave animation if enabled
@@ -2333,26 +2360,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Add keyboard shortcuts
-    document.addEventListener('keydown', (event) => {
-        if (event.ctrlKey) {
-            if (event.key === 'd') {
-                event.preventDefault();
-                toggleDebugMode();
-            } else if (event.key === 'e') {
-                event.preventDefault();
-                toggleEditMode();
-            } else if (event.key === 'w') {
-                event.preventDefault();
-                toggleWarpControlMode();
-            }
-        } else if (editMode && event.key === 'Tab') {
-            event.preventDefault();
-            event.stopPropagation();
-            cycleCelestialBody();
-            return false;
-        }
-    }, true);
+    // Duplicate keyboard shortcuts removed - handled by global listener above
 
     // Debug logging function for mouse events
     function logMouseEvent(type, event) {

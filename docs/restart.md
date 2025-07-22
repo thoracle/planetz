@@ -1,81 +1,109 @@
-# PROJECT CONTEXT: Planetz - 3D Space Simulation Game Physics Implementation
+# PROJECT CONTEXT: Planetz - 3D Space Combat Game
 
-You're joining the development of **Planetz**, a fully functional 3D web-based space simulation game inspired by Elite, Privateer, and Star Raiders. The game is built with Three.js (frontend), Flask/Python (backend), and features complete ship management, combat, trading, and exploration systems.
+You're joining the development of **Planetz**, a fully functional 3D web-based space simulation game inspired by Elite, Privateer, and Star Raiders. The game is built with Three.js (frontend), Flask/Python (backend), and features complete ship management, combat, targeting, and exploration systems.
 
 ## 📁 Current Project State
-- **Branch**: `optimization` (10 commits ahead of origin)
-- **Tech Stack**: Three.js, ES6+ modules, Flask/Python backend, HTML5/CSS3
+- **Branch**: `optimization` (1 commit ahead of origin)
+- **Tech Stack**: Three.js, ES6+ modules, Flask/Python backend, HTML5/CSS3, Ammo.js physics
 - **Codebase**: 25,000+ lines, 150+ files, fully modular architecture
-- **Recent Fixes**: Audio system overhaul, directional arrow timing improvements
-- **Status**: Production-ready game seeking physics engine integration
+- **Recent Fixes**: Target removal precision issues, ship destruction detection, subsystem targeting
+- **Status**: Fully functional combat game with working physics-based weapons
 
 ## 🏗️ Architecture Overview
 ```
 planetz/
 ├── frontend/static/js/
-│   ├── ship/systems/          # Ship systems (weapons, targeting, etc.)
+│   ├── ship/systems/          # Ship systems (weapons, targeting, shields, etc.)
+│   ├── ship/                  # Ship classes (Ship.js, EnemyShip.js)
 │   ├── views/                 # UI managers (StarfieldManager, TargetComputerManager)
-│   ├── ui/                    # HUD components
+│   ├── ui/                    # HUD components (WeaponHUD, DamageControlHUD)
+│   ├── PhysicsManager.js      # Ammo.js physics integration
 │   └── app.js                 # Main entry point
-├── backend/                   # Flask server
-└── docs/physics_spec.md       # PHYSICS IMPLEMENTATION SPEC
+├── backend/                   # Flask server (app.py, routes/)
+└── docs/                      # Documentation and specs
 ```
 
-## 🎯 Current Mission: Implement Physics Engine
-You need to implement **Ammo.js physics integration** based on `docs/physics_spec.md`. The spec calls for:
+## 🎮 Current Game Features (All Working)
+- ✅ **Physics-based combat** - Ammo.js raycasting for lasers, hit detection
+- ✅ **Ship systems** - 5 ship types with modular upgrade systems
+- ✅ **Weapon systems** - 8 weapon types (laser, pulse, plasma, phaser arrays)
+- ✅ **Target computer** - Sub-system targeting with wireframe outlines
+- ✅ **Damage system** - Hull damage, subsystem damage, destruction sounds
+- ✅ **Target removal** - Destroyed ships properly removed from target lists
+- ✅ **Audio system** - Success sounds for ship/subsystem destruction
+- ✅ **Station docking** - Repair and upgrade interface
+- ✅ **Card-based upgrades** - Equipment management system
+- ✅ **Starfield navigation** - 40,000 star background with smooth movement
 
-1. **Spatial tracking** - Physics-based entity queries with octrees
-2. **Real ship collisions** - Momentum-based damage and bouncing  
-3. **Physics weapons** - Raycast lasers + projectile missiles with splash damage
-4. **Zero-gravity space environment** - btDiscreteDynamicsWorld with no gravity
+## 🔧 Key Files Recently Modified
+- `frontend/static/js/ship/systems/WeaponSlot.js` - Weapon firing and destruction detection
+- `frontend/static/js/ship/EnemyShip.js` - Damage application and hull management
+- `frontend/static/js/views/StarfieldManager.js` - Target removal and cleanup
+- `frontend/static/js/PhysicsManager.js` - Physics entity metadata management
 
-## ✅ Current Todo List (Ready to Execute)
-1. **ammo-js-setup** - Initialize physics engine (START HERE)
-2. **physics-world-integration** - Create btDiscreteDynamicsWorld  
-3. **entity-rigid-bodies** - Add physics bodies to ships/stations/planets
-4. **threejs-physics-sync** - Sync visual and physics objects
-5. **spatial-tracking-system** - Octree + btGhostObject queries
-6. **ship-collision-detection** - Real collision callbacks
-7. **collision-response-system** - Damage/bouncing mechanics
-8. **laser-raycast-weapons** - Physics-accurate laser firing
-9. **missile-projectile-system** - Flying missile physics
-10. **splash-damage-mechanics** - Area-effect explosions
+## 🐛 Recent Bug Fixes (Completed)
+1. **Target removal precision** - Fixed floating-point precision issue where ships with 0% hull weren't being removed
+   - **Problem**: Ships showing 0% hull but remaining in target list
+   - **Solution**: Changed destruction detection from `currentHull <= 0` to `currentHull <= 0.001` AND added defensive filtering in target list generation
+   - **Files**: `WeaponSlot.js`, `EnemyShip.js`, `TargetComputerManager.js`
+   - **Status**: ✅ COMPLETELY RESOLVED - Added hull filtering to all target list generation methods
 
-## 🔧 Key Files to Know
-- `frontend/static/js/views/StarfieldManager.js` - Main game manager (5,268 lines)
-- `frontend/static/js/ship/Ship.js` - Ship system core (904 lines)
-- `frontend/static/js/ship/systems/WeaponSystemCore.js` - Current weapons (404 lines)
-- `docs/physics_spec.md` - Complete implementation specification
+2. **Physics hit detection** - Fixed raycast hits not finding ship objects
+   - **Problem**: "Hit entity does not have a ship with applyDamage method"
+   - **Solution**: Updated `PhysicsManager` to properly link ship objects to physics entities
+   - **Files**: `PhysicsManager.js`
 
-## 🎮 Current Game Features (Working)
-- ✅ 5 ship types with modular systems
-- ✅ 8 weapon types (energy + projectile)  
-- ✅ Target computer with wireframes
-- ✅ Station docking and repair
-- ✅ Card-based upgrade system
-- ✅ Audio system (recently fixed)
-- ✅ Directional arrows (recently improved)
+3. **Subsystem targeting** - Fixed focused damage application
+   - **Problem**: Sub-targeted damage was spilling to hull and other systems
+   - **Solution**: Updated `applyDamage` to handle `targetSystem` parameter correctly
+   - **Files**: `EnemyShip.js`
 
-## 🚀 Your Starting Point
-1. **Read** `docs/physics_spec.md` thoroughly
-2. **Start with** "ammo-js-setup" todo item
-3. **Add Ammo.js** to the project via CDN or npm
-4. **Initialize** physics world with zero gravity
-5. **Test** basic physics setup before moving to entity integration
+4. **Success audio** - Restored success sounds for subsystem destruction
+   - **Problem**: Missing audio feedback when destroying subsystems
+   - **Solution**: Added sound playback logic to `applyDamage` method
+   - **Files**: `EnemyShip.js`
 
-## 💡 Implementation Notes
-- Game runs at 60 FPS - physics should match
-- All entities are already in Three.js - need physics bodies
-- Current weapon system uses basic hit detection - replace with physics
-- Flask serves static JSON - can add physics configs
-- Memory management is critical with Ammo.js
+5. **Duplicate TAB cycling** - Fixed TAB key showing same target twice before advancing
+   - **Problem**: TAB key was processed multiple times due to duplicate event listeners AND duplicate target entries in target list
+   - **Solution**: Removed duplicate TAB key event listeners in `app.js` AND fixed duplicate target population in `TargetComputerManager.js`
+   - **Root Cause**: Both `updateTargetListWithPhysics()` and `addNonPhysicsTargets()` were adding the same dummy ships to the target list
+   - **Files**: `app.js`, `TargetComputerManager.js`, `StarfieldManager.js`
+   - **Status**: ✅ COMPLETELY RESOLVED - TAB now cycles correctly through unique targets without duplicates
 
-## 🎯 Success Criteria
-When done, Planetz should have:
-- Ships that physically collide and bounce
-- Lasers that use real raycasting  
-- Missiles that fly with physics trajectories
-- Explosions with area-of-effect damage
-- Smart spatial queries for advanced gameplay
+## 🚀 How to Run the Game
+1. **Backend**: `cd backend && python app.py` (runs on port 5001)
+2. **Frontend**: `cd frontend && python -m http.server 8081` (serves on port 8081)
+3. **Access**: Open `http://localhost:8081` in browser
 
-**Ready to implement realistic space physics! Start with the Ammo.js setup and work through the todo list systematically.** 
+## 🎯 Current Gameplay
+- Target dummy ships spawn automatically
+- Use **Tab** to cycle targets, **R** for sub-targeting
+- Weapons fire automatically when targeting (autofire)
+- Ships explode with success sounds when destroyed
+- Target computer automatically selects next target
+- Hull and subsystem damage is fully functional
+
+## 🔍 Development Status
+The game is **fully functional** with working:
+- Physics-based weapon systems
+- Target acquisition and destruction
+- Audio feedback systems
+- Ship upgrade mechanics
+- Smooth 3D navigation
+
+## 🛠️ Potential Next Steps
+- Additional ship types or weapon varieties
+- Enhanced enemy AI behaviors
+- Trading and economy systems
+- Mission/quest system
+- Multiplayer networking
+- Performance optimizations
+
+## 💡 Technical Notes
+- Uses Ammo.js for physics simulation (dynamically loaded)
+- Three.js for 3D rendering and scene management
+- Modular ES6 architecture with clean separation of concerns
+- Flask backend serves configuration and game data
+- All major systems are working and stable
+
+**The game is production-ready! Focus on gameplay features, balance, or additional content rather than core system fixes.** 
