@@ -253,6 +253,51 @@ export class SplashDamageWeapon extends WeaponCard {
      * @returns {Projectile} Projectile instance
      */
     createProjectile(origin, target) {
+        // Calculate direction to target for physics projectiles
+        let direction = { x: 0, y: 0, z: 1 }; // Default forward
+        if (target && target.position) {
+            const dirVector = {
+                x: target.position.x - origin.x,
+                y: target.position.y - origin.y,
+                z: target.position.z - origin.z
+            };
+            const magnitude = Math.sqrt(dirVector.x * dirVector.x + dirVector.y * dirVector.y + dirVector.z * dirVector.z);
+            if (magnitude > 0) {
+                direction = {
+                    x: dirVector.x / magnitude,
+                    y: dirVector.y / magnitude,
+                    z: dirVector.z / magnitude
+                };
+            }
+        }
+
+        // Try to create physics-based projectile first
+        if (window.physicsManager && window.physicsManager.isReady()) {
+            try {
+                const physicsProjectile = new PhysicsProjectile({
+                    origin: origin,
+                    direction: direction,
+                    target: target,
+                    damage: this.damage,
+                    blastRadius: this.blastRadius,
+                    flightRange: this.flightRange,
+                    isHoming: this.homingCapability,
+                    turnRate: this.turnRate,
+                    weaponName: this.name,
+                    physicsManager: window.physicsManager,
+                    scene: window.scene
+                });
+                
+                console.log(`🚀 Created physics projectile: ${this.name}`);
+                return physicsProjectile;
+                
+            } catch (error) {
+                console.warn('Failed to create physics projectile, falling back to simple projectile:', error);
+            }
+        }
+        
+        // Fallback to simple projectile if physics not available
+        console.log(`⚠️ Using fallback projectile for ${this.name}`);
         return new Projectile({
             origin: origin,
             target: target,
@@ -285,13 +330,56 @@ export class SplashDamageWeapon extends WeaponCard {
      * @param {Projectile} projectile Projectile to add
      */
     addProjectileToGame(projectile) {
-        // This would integrate with the game's projectile management system
         console.log(`Adding projectile to game: ${projectile.weaponName}`);
         
-        // For now, just log - this would be connected to ProjectileManager
-        if (window.gameInstance && window.gameInstance.projectileManager) {
-            window.gameInstance.projectileManager.addProjectile(projectile);
+        // Add to global projectile tracking for frame updates
+        if (!window.activeProjectiles) {
+            window.activeProjectiles = [];
         }
+        
+        window.activeProjectiles.push(projectile);
+        
+        // If it's a physics projectile, it will be automatically updated by the physics system
+        // If it's a fallback projectile, we need to set up manual updates
+        if (projectile instanceof PhysicsProjectile) {
+            console.log(`✅ Physics projectile added to tracking: ${projectile.weaponName}`);
+        } else {
+            console.log(`⚠️ Fallback projectile added to tracking: ${projectile.weaponName}`);
+            // Set up simple flight simulation for fallback projectiles
+            this.simulateFallbackProjectile(projectile);
+        }
+    }
+    
+    /**
+     * Simulate flight for fallback projectiles (when physics not available)
+     * @param {Projectile} projectile Fallback projectile to simulate
+     */
+    simulateFallbackProjectile(projectile) {
+        const flightTime = 2000; // 2 seconds flight time
+        const updateInterval = 50; // 50ms updates (20 FPS)
+        
+        const startTime = Date.now();
+        const simulationTimer = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            
+            if (elapsed >= flightTime || projectile.hasDetonated) {
+                clearInterval(simulationTimer);
+                if (!projectile.hasDetonated) {
+                    console.log(`⏰ ${projectile.weaponName} flight time expired, detonating`);
+                    projectile.detonate();
+                }
+                
+                // Remove from active projectiles
+                const index = window.activeProjectiles.indexOf(projectile);
+                if (index > -1) {
+                    window.activeProjectiles.splice(index, 1);
+                }
+                return;
+            }
+            
+            // Update projectile
+            projectile.update(updateInterval);
+        }, updateInterval);
     }
 }
 
@@ -506,5 +594,387 @@ export class Projectile {
             this.velocity.y = (direction.y / distance) * speed;
             this.velocity.z = (direction.z / distance) * speed;
         }
+    }
+} 
+
+/**
+ * PhysicsProjectile - Real physics-based projectile using Ammo.js rigid bodies
+ * Replaces simple math-based projectile with true physics simulation
+ */
+export class PhysicsProjectile {
+    constructor(config) {
+        // Basic projectile properties  
+        this.weaponName = config.weaponName || 'Physics Projectile';
+        this.damage = config.damage || 100;
+        this.blastRadius = config.blastRadius || 50;
+        this.flightRange = config.flightRange || 3000;
+        this.isHoming = config.isHoming || false;
+        this.turnRate = config.turnRate || 90; // degrees per second
+        this.target = config.target;
+        this.launchTime = Date.now();
+        
+        // Physics properties
+        this.physicsManager = config.physicsManager || window.physicsManager;
+        this.rigidBody = null;
+        this.threeObject = null;
+        this.hasDetonated = false;
+        this.distanceTraveled = 0;
+        this.startPosition = { ...config.origin };
+        
+        // Visual properties
+        this.scene = config.scene || window.scene;
+        
+        // Initialize physics body
+        this.initializePhysicsBody(config.origin, config.direction);
+        
+        console.log(`🚀 PhysicsProjectile created: ${this.weaponName} (homing: ${this.isHoming})`);
+    }
+    
+    /**
+     * Initialize Ammo.js rigid body for the projectile
+     * @param {Object} origin Starting position {x, y, z}
+     * @param {Object} direction Initial direction vector {x, y, z}
+     */
+    initializePhysicsBody(origin, direction = {x: 0, y: 0, z: 1}) {
+        if (!this.physicsManager || !this.physicsManager.isReady()) {
+            console.warn('PhysicsManager not ready - falling back to simple projectile');
+            return;
+        }
+        
+        const THREE = window.THREE;
+        if (!THREE) {
+            console.error('THREE.js not available for projectile visualization');
+            return;
+        }
+        
+        try {
+            // Create visual representation (small sphere)
+            const geometry = new THREE.SphereGeometry(0.5, 8, 6); // 1m diameter projectile
+            const material = new THREE.MeshBasicMaterial({ 
+                color: this.isHoming ? 0xff4444 : 0x44ff44,
+                emissive: this.isHoming ? 0x220000 : 0x002200
+            });
+            this.threeObject = new THREE.Mesh(geometry, material);
+            this.threeObject.position.set(origin.x, origin.y, origin.z);
+            
+            // Add to scene
+            if (this.scene) {
+                this.scene.add(this.threeObject);
+            }
+            
+            // Create physics rigid body
+            const bodyConfig = {
+                mass: 10.0, // 10kg missile
+                restitution: 0.1, // Slight bounce
+                friction: 0.3,
+                shape: 'sphere',
+                radius: 0.5
+            };
+            
+            this.rigidBody = this.physicsManager.createRigidBody(this.threeObject, bodyConfig);
+            
+            if (this.rigidBody) {
+                // Set initial velocity
+                const speed = 1000; // 1000 m/s
+                const velocity = this.physicsManager.createVector3(
+                    direction.x * speed,
+                    direction.y * speed, 
+                    direction.z * speed
+                );
+                this.rigidBody.setLinearVelocity(velocity);
+                
+                // Enable continuous collision detection for fast-moving projectiles
+                this.rigidBody.setCcdMotionThreshold(0.1);
+                this.rigidBody.setCcdSweptSphereRadius(0.2);
+                
+                // Set up collision callback
+                this.setupCollisionCallback();
+                
+                console.log(`✅ Physics body created for ${this.weaponName}`);
+            }
+            
+        } catch (error) {
+            console.error('Failed to create physics projectile:', error);
+        }
+    }
+    
+    /**
+     * Set up collision detection callback for the projectile
+     */
+    setupCollisionCallback() {
+        if (!this.rigidBody || !this.physicsManager) return;
+        
+        // Add projectile to physics manager's collision tracking
+        this.rigidBody.projectileOwner = this;
+        
+        // The collision will be handled by PhysicsManager's collision detection system
+        // When a collision is detected, it will call this.onCollision()
+    }
+    
+    /**
+     * Handle collision event from physics engine
+     * @param {Object} contactPoint Contact point information
+     * @param {Object} otherObject The object we collided with
+     */
+    onCollision(contactPoint, otherObject) {
+        if (this.hasDetonated) return;
+        
+        console.log(`💥 ${this.weaponName} collision detected with:`, otherObject);
+        
+        // Get collision position from physics
+        const collisionPos = contactPoint.get_m_positionWorldOnA();
+        const position = {
+            x: collisionPos.x(),
+            y: collisionPos.y(),
+            z: collisionPos.z()
+        };
+        
+        this.detonate(position);
+    }
+    
+    /**
+     * Update projectile physics and guidance systems
+     * @param {number} deltaTime Time elapsed in milliseconds
+     */
+    update(deltaTime) {
+        if (this.hasDetonated || !this.rigidBody) return;
+        
+        const deltaSeconds = deltaTime / 1000;
+        
+        // Update distance traveled
+        this.updateDistanceTraveled();
+        
+        // Check range limit
+        if (this.distanceTraveled >= this.flightRange) {
+            console.log(`${this.weaponName} reached max range, detonating`);
+            this.detonate();
+            return;
+        }
+        
+        // Update homing guidance if enabled
+        if (this.isHoming && this.target) {
+            this.updateHomingGuidance(deltaSeconds);
+        }
+        
+        // Sync visual position with physics body
+        if (this.threeObject) {
+            this.physicsManager.syncThreeWithPhysics(this.threeObject, this.rigidBody);
+        }
+    }
+    
+    /**
+     * Update distance traveled calculation
+     */
+    updateDistanceTraveled() {
+        if (!this.threeObject) return;
+        
+        const currentPos = this.threeObject.position;
+        const distance = Math.sqrt(
+            Math.pow(currentPos.x - this.startPosition.x, 2) +
+            Math.pow(currentPos.y - this.startPosition.y, 2) +
+            Math.pow(currentPos.z - this.startPosition.z, 2)
+        );
+        this.distanceTraveled = distance;
+    }
+    
+    /**
+     * Update homing guidance using physics forces
+     * @param {number} deltaTime Time in seconds
+     */
+    updateHomingGuidance(deltaTime) {
+        if (!this.target || !this.target.position || !this.rigidBody) return;
+        
+        // Get current position and velocity from physics body
+        const transform = this.rigidBody.getWorldTransform();
+        const origin = transform.getOrigin();
+        const currentPos = { x: origin.x(), y: origin.y(), z: origin.z() };
+        
+        const velocity = this.rigidBody.getLinearVelocity();
+        const currentVel = { x: velocity.x(), y: velocity.y(), z: velocity.z() };
+        
+        // Calculate direction to target
+        const toTarget = {
+            x: this.target.position.x - currentPos.x,
+            y: this.target.position.y - currentPos.y,
+            z: this.target.position.z - currentPos.z
+        };
+        
+        // Normalize target direction
+        const targetDistance = Math.sqrt(toTarget.x * toTarget.x + toTarget.y * toTarget.y + toTarget.z * toTarget.z);
+        if (targetDistance > 0) {
+            toTarget.x /= targetDistance;
+            toTarget.y /= targetDistance;
+            toTarget.z /= targetDistance;
+        }
+        
+        // Calculate desired velocity direction
+        const currentSpeed = Math.sqrt(currentVel.x * currentVel.x + currentVel.y * currentVel.y + currentVel.z * currentVel.z);
+        const desiredVel = {
+            x: toTarget.x * currentSpeed,
+            y: toTarget.y * currentSpeed,
+            z: toTarget.z * currentSpeed
+        };
+        
+        // Calculate steering force (proportional navigation)
+        const maxTurnForce = this.turnRate * 10; // Convert turn rate to force magnitude
+        const steeringForce = {
+            x: (desiredVel.x - currentVel.x) * maxTurnForce * deltaTime,
+            y: (desiredVel.y - currentVel.y) * maxTurnForce * deltaTime,
+            z: (desiredVel.z - currentVel.z) * maxTurnForce * deltaTime
+        };
+        
+        // Apply steering force
+        const forceVector = this.physicsManager.createVector3(
+            steeringForce.x,
+            steeringForce.y,
+            steeringForce.z
+        );
+        this.rigidBody.applyCentralForce(forceVector);
+        
+        console.log(`🎯 ${this.weaponName} steering toward target at ${targetDistance.toFixed(0)}m`);
+    }
+    
+    /**
+     * Detonate projectile with physics-based splash damage
+     * @param {Object} position Optional detonation position
+     */
+    detonate(position = null) {
+        if (this.hasDetonated) return;
+        
+        this.hasDetonated = true;
+        
+        // Get detonation position
+        let detonationPos = position;
+        if (!detonationPos && this.threeObject) {
+            detonationPos = {
+                x: this.threeObject.position.x,
+                y: this.threeObject.position.y,
+                z: this.threeObject.position.z
+            };
+        }
+        
+        console.log(`💥 ${this.weaponName} detonated at:`, detonationPos);
+        
+        // Apply physics-based splash damage
+        this.applyPhysicsSplashDamage(detonationPos);
+        
+        // Create explosion effects
+        this.createExplosionEffect(detonationPos);
+        
+        // Clean up physics resources
+        this.cleanup();
+    }
+    
+    /**
+     * Apply splash damage using physics spatial queries
+     * @param {Object} position Explosion center position
+     */
+    applyPhysicsSplashDamage(position) {
+        if (!this.physicsManager || !position) return;
+        
+        try {
+            // Use physics spatial query to find all entities within blast radius
+            const affectedEntities = this.physicsManager.spatialQuery(position, this.blastRadius);
+            
+            console.log(`💥 SPLASH DAMAGE: Found ${affectedEntities.length} entities within ${this.blastRadius}m blast radius`);
+            
+            affectedEntities.forEach(entity => {
+                const distance = this.calculateDistance(position, entity.position);
+                const damage = this.calculateDamageAtDistance(distance);
+                
+                if (damage > 0) {
+                    // Apply damage to entity
+                    if (entity.ship && typeof entity.ship.applyDamage === 'function') {
+                        entity.ship.applyDamage(damage, 'explosive');
+                        console.log(`💥 Applied ${damage} explosive damage to ${entity.ship.shipName || 'entity'} at ${distance.toFixed(1)}m`);
+                    } else if (entity.takeDamage) {
+                        entity.takeDamage(damage);
+                        console.log(`💥 Applied ${damage} damage to entity at ${distance.toFixed(1)}m`);
+                    }
+                }
+            });
+            
+        } catch (error) {
+            console.error('Failed to apply physics splash damage:', error);
+        }
+    }
+    
+    /**
+     * Calculate damage at specific distance from blast center
+     * @param {number} distance Distance from blast center in meters
+     * @returns {number} Damage amount
+     */
+    calculateDamageAtDistance(distance) {
+        if (distance > this.blastRadius) {
+            return 0;
+        }
+        
+        // Exponential falloff for more realistic blast damage
+        const falloffFactor = Math.pow(1 - (distance / this.blastRadius), 2);
+        return Math.round(this.damage * falloffFactor);
+    }
+    
+    /**
+     * Calculate distance between two positions
+     * @param {Object} pos1 First position {x, y, z}
+     * @param {Object} pos2 Second position {x, y, z} 
+     * @returns {number} Distance in meters
+     */
+    calculateDistance(pos1, pos2) {
+        return Math.sqrt(
+            Math.pow(pos1.x - pos2.x, 2) +
+            Math.pow(pos1.y - pos2.y, 2) +
+            Math.pow(pos1.z - pos2.z, 2)
+        );
+    }
+    
+    /**
+     * Create visual explosion effect
+     * @param {Object} position Explosion position
+     */
+    createExplosionEffect(position) {
+        // This will integrate with the existing effects system
+        if (window.effectsManager) {
+            try {
+                window.effectsManager.createExplosion(position, this.blastRadius, 'missile', position);
+                console.log(`✨ Created explosion effect at:`, position);
+            } catch (error) {
+                console.warn('Failed to create explosion effect:', error);
+            }
+        }
+    }
+    
+    /**
+     * Clean up physics resources
+     */
+    cleanup() {
+        try {
+            // Remove from physics world
+            if (this.rigidBody && this.physicsManager) {
+                this.physicsManager.removeRigidBody(this.rigidBody);
+                this.rigidBody = null;
+            }
+            
+            // Remove from visual scene
+            if (this.threeObject && this.scene) {
+                this.scene.remove(this.threeObject);
+                this.threeObject.geometry?.dispose();
+                this.threeObject.material?.dispose();
+                this.threeObject = null;
+            }
+            
+            console.log(`🧹 Cleaned up ${this.weaponName} physics resources`);
+            
+        } catch (error) {
+            console.error('Error cleaning up physics projectile:', error);
+        }
+    }
+    
+    /**
+     * Check if projectile is active (not detonated)
+     * @returns {boolean} True if projectile is still active
+     */
+    isActive() {
+        return !this.hasDetonated && this.rigidBody !== null;
     }
 } 

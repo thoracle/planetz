@@ -40,10 +40,12 @@ export class StarfieldAudioManager {
         // Ensure AudioContext is running
         this.ensureAudioContextRunning();
         
-        // Load audio files with fallback paths
-        this.loadEngineAudioWithFallback('audio/engines.wav', 'audio/engines.wav');
-        this.loadCommandAudioWithFallback('audio/command.wav', 'audio/command.wav');
-        this.loadCommandFailedAudioWithFallback('audio/command_failed.mp3', 'audio/command_failed.mp3');
+        // Load audio files from static directory
+        const audioBasePath = 'static/audio/';
+        console.log(`🔍 Loading audio from: ${audioBasePath}`);
+        this.loadEngineAudio(`${audioBasePath}engines.wav`);
+        this.loadCommandAudio(`${audioBasePath}command.wav`);
+        this.loadCommandFailedAudio(`${audioBasePath}command_failed.mp3`);
         
         // Add visibility change listener for audio context
         document.addEventListener('visibilitychange', () => {
@@ -80,13 +82,13 @@ export class StarfieldAudioManager {
     }
 
     /**
-     * Load engine audio with fallback path system
+     * Load engine audio
      */
-    loadEngineAudioWithFallback(devPath, prodPath) {
+    loadEngineAudio(audioPath) {
         this.audioLoader.load(
-            devPath,
+            audioPath,
             (buffer) => {
-                console.log(`🎵 Engine sound loaded successfully from dev path: ${devPath}`);
+                console.log(`🎵 Engine sound loaded successfully from: ${audioPath}`);
                 this.engineSound.setBuffer(buffer);
                 this.engineSound.setLoop(true);
                 
@@ -111,53 +113,22 @@ export class StarfieldAudioManager {
                 // Progress callback (optional)
             },
             (error) => {
-                console.log('⚠️ Dev path failed for engine sound, trying production path...');
-                this.audioLoader.load(
-                    prodPath,
-                    (buffer) => {
-                        console.log(`🎵 Engine sound loaded successfully from prod path: ${prodPath}`);
-                        this.engineSound.setBuffer(buffer);
-                        this.engineSound.setLoop(true);
-                        
-                        const duration = buffer.duration;
-                        const startupTime = duration * 0.25;
-                        const shutdownTime = duration * 0.70;
-                        
-                        this.engineSound.setLoopStart(startupTime);
-                        this.engineSound.setLoopEnd(shutdownTime);
-                        
-                        this.engineTimes = {
-                            startup: startupTime,
-                            shutdown: shutdownTime,
-                            total: duration
-                        };
-                        
-                        this.engineSound.setVolume(0.0);
-                        this.soundLoaded = true;
-                    },
-                    (progress) => {
-                        // Progress callback (optional)
-                    },
-                    (error) => {
-                        console.error('❌ Error loading engine sound from both paths:', {
-                            dev: devPath,
-                            prod: prodPath,
-                            error: error
-                        });
-                    }
-                );
+                console.error('❌ Error loading engine sound:', {
+                    path: audioPath,
+                    error: error
+                });
             }
         );
     }
 
     /**
-     * Load command audio with fallback path system
+     * Load command audio
      */
-    loadCommandAudioWithFallback(devPath, prodPath) {
+    loadCommandAudio(audioPath) {
         this.audioLoader.load(
-            devPath,
+            audioPath,
             (buffer) => {
-                console.log(`🎵 Command sound loaded successfully from dev path: ${devPath}`);
+                console.log(`🎵 Command sound loaded successfully from: ${audioPath}`);
                 this.commandSound.setBuffer(buffer);
                 this.commandSound.setVolume(0.5);
                 this.commandSoundLoaded = true;
@@ -166,38 +137,22 @@ export class StarfieldAudioManager {
                 // Progress callback (optional)
             },
             (error) => {
-                console.log('⚠️ Dev path failed for command sound, trying production path...');
-                this.audioLoader.load(
-                    prodPath,
-                    (buffer) => {
-                        console.log(`🎵 Command sound loaded successfully from prod path: ${prodPath}`);
-                        this.commandSound.setBuffer(buffer);
-                        this.commandSound.setVolume(0.5);
-                        this.commandSoundLoaded = true;
-                    },
-                    (progress) => {
-                        // Progress callback (optional)
-                    },
-                    (error) => {
-                        console.error('❌ Error loading command sound from both paths:', {
-                            dev: devPath,
-                            prod: prodPath,
-                            error: error
-                        });
-                    }
-                );
+                console.error('❌ Error loading command sound:', {
+                    path: audioPath,
+                    error: error
+                });
             }
         );
     }
 
     /**
-     * Load command failed audio with fallback path system
+     * Load command failed audio
      */
-    loadCommandFailedAudioWithFallback(devPath, prodPath) {
+    loadCommandFailedAudio(audioPath) {
         this.audioLoader.load(
-            devPath,
+            audioPath,
             (buffer) => {
-                console.log(`🎵 Command failed sound loaded successfully from dev path: ${devPath}`);
+                console.log(`🎵 Command failed sound loaded successfully from: ${audioPath}`);
                 this.commandFailedSound.setBuffer(buffer);
                 this.commandFailedSound.setVolume(0.6);
                 this.commandFailedSoundLoaded = true;
@@ -206,26 +161,10 @@ export class StarfieldAudioManager {
                 // Progress callback (optional)
             },
             (error) => {
-                console.log('⚠️ Dev path failed for command failed sound, trying production path...');
-                this.audioLoader.load(
-                    prodPath,
-                    (buffer) => {
-                        console.log(`🎵 Command failed sound loaded successfully from prod path: ${prodPath}`);
-                        this.commandFailedSound.setBuffer(buffer);
-                        this.commandFailedSound.setVolume(0.6);
-                        this.commandFailedSoundLoaded = true;
-                    },
-                    (progress) => {
-                        // Progress callback (optional)
-                    },
-                    (error) => {
-                        console.error('❌ Error loading command failed sound from both paths:', {
-                            dev: devPath,
-                            prod: prodPath,
-                            error: error
-                        });
-                    }
-                );
+                console.error('❌ Error loading command failed sound:', {
+                    path: audioPath,
+                    error: error
+                });
             }
         );
     }

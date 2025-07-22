@@ -668,8 +668,11 @@ export class WeaponSlot {
                         }
                         
                         // Check if target was destroyed
-                        if (hitEntity.ship.currentHull <= 0) {
-                            console.log(`🔥 ${hitEntity.ship.shipName || 'Enemy ship'} DESTROYED!`);
+                        if (hitEntity.ship.currentHull <= 0.001) { // Use small threshold instead of exact 0 to handle floating-point precision
+                            console.log(`🔥 ${hitEntity.ship.shipName || 'Enemy ship'} DESTROYED! (Hull: ${hitEntity.ship.currentHull})`);
+                            
+                            // Ensure hull is exactly 0 for consistency
+                            hitEntity.ship.currentHull = 0;
                             
                             // Play success sound for ship destruction
                             if (ship?.weaponEffectsManager) {

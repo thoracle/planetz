@@ -187,20 +187,22 @@ export class WeaponEffectsManager {
             // Try to resume audio context
             await this.ensureAudioContextResumed();
 
-            // Try development paths first, then fallback to production paths
+            // Load weapon audio from static directory
+            const audioBasePath = 'static/audio/';
+            console.log(`🔍 Loading weapon audio from: ${audioBasePath}`);
             const soundFiles = [
-                { type: 'lasers', dev: 'audio/lasers.wav', prod: 'audio/lasers.wav' },
-                { type: 'photons', dev: 'audio/photons.wav', prod: 'audio/photons.wav' },
-                { type: 'missiles', dev: 'audio/missiles.wav', prod: 'audio/missiles.wav' },
-                { type: 'mines', dev: 'audio/mines.mp3', prod: 'audio/mines.mp3' },
-                { type: 'explosion', dev: 'audio/explosion.wav', prod: 'audio/explosion.wav' },
-                { type: 'death', dev: 'audio/death.wav', prod: 'audio/death.wav' },
-                { type: 'success', dev: 'audio/success.wav', prod: 'audio/success.wav' }
+                { type: 'lasers', file: `${audioBasePath}lasers.wav` },
+                { type: 'photons', file: `${audioBasePath}photons.wav` },
+                { type: 'missiles', file: `${audioBasePath}missiles.wav` },
+                { type: 'mines', file: `${audioBasePath}mines.mp3` },
+                { type: 'explosion', file: `${audioBasePath}explosion.wav` },
+                { type: 'death', file: `${audioBasePath}death.wav` },
+                { type: 'success', file: `${audioBasePath}success.wav` }
             ];
 
-            console.log(`🎵 Loading weapon audio with fallback path detection...`);
+            console.log(`🎵 Loading weapon audio files...`);
 
-            const loadPromises = soundFiles.map(sound => this.loadSoundWithFallback(sound.type, sound.dev, sound.prod));
+            const loadPromises = soundFiles.map(sound => this.loadSound(sound.type, sound.file));
             await Promise.all(loadPromises);
             
             console.log(`✅ Loaded ${this.audioBuffers.size} weapon audio effects - ready to fire!`);
@@ -232,43 +234,7 @@ export class WeaponEffectsManager {
         }
     }
     
-    /**
-     * Load a single sound file with fallback path
-     * @param {string} type Sound type identifier
-     * @param {string} devPath Development path
-     * @param {string} prodPath Production path
-     */
-    async loadSoundWithFallback(type, devPath, prodPath) {
-        try {
-            // Try development path first
-            const response = await fetch(devPath);
-            if (response.ok) {
-                const arrayBuffer = await response.arrayBuffer();
-                if (this.audioContext) {
-                    const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-                    this.audioBuffers.set(type, audioBuffer);
-                    console.log(`🎵 Loaded ${type} from dev path: ${devPath}`);
-                    return;
-                }
-            }
-        } catch (devError) {
-            console.log(`⚠️ Dev audio path failed for ${type}, trying production path...`);
-        }
-        
-        try {
-            // Fallback to production path
-            const response = await fetch(prodPath);
-            const arrayBuffer = await response.arrayBuffer();
-            
-            if (this.audioContext) {
-                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-                this.audioBuffers.set(type, audioBuffer);
-                console.log(`🎵 Loaded ${type} from prod path: ${prodPath}`);
-            }
-        } catch (prodError) {
-            console.warn(`Failed to load weapon audio ${type} from both paths:`, {dev: devPath, prod: prodPath, error: prodError});
-        }
-    }
+
 
     /**
      * Load a single sound file
@@ -394,39 +360,30 @@ export class WeaponEffectsManager {
         console.log(`🎵 WeaponEffectsManager.playHTML5Sound called: ${soundType}, volume=${volume}`);
         
         try {
+            const audioBasePath = 'static/audio/';
             const audioMap = {
-                'lasers': { dev: 'audio/lasers.wav', prod: 'audio/lasers.wav' },
-                'photons': { dev: 'audio/photons.wav', prod: 'audio/photons.wav' },
-                'missiles': { dev: 'audio/missiles.wav', prod: 'audio/missiles.wav' },
-                'explosion': { dev: 'audio/explosion.wav', prod: 'audio/explosion.wav' },
-                'success': { dev: 'audio/success.wav', prod: 'audio/success.wav' },
-                'mines': { dev: 'audio/mines.mp3', prod: 'audio/mines.mp3' },
-                'death': { dev: 'audio/death.wav', prod: 'audio/death.wav' }
+                'lasers': `${audioBasePath}lasers.wav`,
+                'photons': `${audioBasePath}photons.wav`,
+                'missiles': `${audioBasePath}missiles.wav`,
+                'explosion': `${audioBasePath}explosion.wav`,
+                'success': `${audioBasePath}success.wav`,
+                'mines': `${audioBasePath}mines.mp3`,
+                'death': `${audioBasePath}death.wav`
             };
             
             if (audioMap[soundType]) {
-                console.log(`🎵 HTML5: Trying dev path: ${audioMap[soundType].dev}`);
+                console.log(`🎵 HTML5: Playing ${soundType} from: ${audioMap[soundType]}`);
                 
-                // Try development path first
-                const devAudio = new Audio(audioMap[soundType].dev);
-                devAudio.volume = Math.max(0, Math.min(1, volume));
-                devAudio.play().then(() => {
-                    console.log(`✅ HTML5: Successfully played ${soundType} from dev path`);
-                }).catch(devError => {
-                    console.log(`⚠️ HTML5: Dev path failed for ${soundType}, trying production path...`);
-                    
-                    // Fallback to production path
-                    const prodAudio = new Audio(audioMap[soundType].prod);
-                    prodAudio.volume = Math.max(0, Math.min(1, volume));
-                    prodAudio.play().then(() => {
-                        console.log(`✅ HTML5: Successfully played ${soundType} from prod path`);
-                    }).catch(prodError => {
-                        // Only log error if this is the first failure
-                        if (!this.html5AudioWarningShown) {
-                            console.warn('HTML5 audio play failed on both paths (autoplay policy):', {dev: devError.message, prod: prodError.message});
-                            this.html5AudioWarningShown = true;
-                        }
-                    });
+                const audio = new Audio(audioMap[soundType]);
+                audio.volume = Math.max(0, Math.min(1, volume));
+                audio.play().then(() => {
+                    console.log(`✅ HTML5: Successfully played ${soundType}`);
+                }).catch(error => {
+                    // Only log error if this is the first failure
+                    if (!this.html5AudioWarningShown) {
+                        console.warn('HTML5 audio play failed (autoplay policy):', error.message);
+                        this.html5AudioWarningShown = true;
+                    }
                 });
             } else {
                 console.warn(`🎵 HTML5: No audio mapping found for sound type: ${soundType}`);

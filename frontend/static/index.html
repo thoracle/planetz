@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Star F*ckers</title>
+    <title>Star Fuckers</title>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/views.css">
-    <link rel="stylesheet" href="css/card-inventory.css">
+    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="stylesheet" href="static/css/views.css">
+    <link rel="stylesheet" href="static/css/card-inventory.css">
     <style>
         body {
             margin: 0;
@@ -36,8 +36,71 @@
     <!-- dat.GUI -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
     
-    <!-- Application Scripts -->
-    <script type="module" src="js/app.js"></script>
-
+    <!-- Three.js Library loaded via ES modules (importmap above) -->
+    
+    <!-- Ammo.js Physics Engine - Dynamic loading for both Flask and Python servers -->
+    <script>
+        // Dynamic Ammo.js loading to work with both Flask (port 5001) and Python HTTP server (port 8081)
+        function loadAmmoJS() {
+            const ammoPath = 'static/lib/ammo.js'; // Use static path for all servers
+            console.log(`🔍 Loading Ammo.js from: ${ammoPath}`);
+            
+            // Create preload link
+            const preloadLink = document.createElement('link');
+            preloadLink.rel = 'preload';
+            preloadLink.href = ammoPath;
+            preloadLink.as = 'script';
+            document.head.appendChild(preloadLink);
+            
+            // Create script tag
+            const script = document.createElement('script');
+            script.src = ammoPath;
+            script.async = true; // Use async instead of defer for dynamic loading
+            script.onload = function() {
+                console.log(`✅ Ammo.js loaded successfully from ${ammoPath}`);
+                window.AmmoLoaded = true;
+                if (typeof Ammo !== 'undefined') {
+                    window.Ammo = Ammo;
+                    console.log(`✅ Ammo object available:`, typeof Ammo);
+                } else {
+                    console.warn(`⚠️ Script loaded but Ammo not defined`);
+                }
+            };
+            script.onerror = function(error) {
+                console.error(`❌ Failed to load Ammo.js from ${ammoPath}:`, error);
+                window.AmmoLoaded = false;
+            };
+            document.head.appendChild(script);
+        }
+        
+        // Load Ammo.js based on server type - with timing protection
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadAmmoJS);
+        } else {
+            loadAmmoJS();
+        }
+        
+        // Wait for Ammo.js to load completely before making it available
+        window.addEventListener('load', function() {
+            if (typeof Ammo !== 'undefined') {
+                window.Ammo = Ammo;
+                window.AmmoLoaded = true;
+                console.log('✅ Ammo.js successfully loaded and made globally available');
+            } else if (!window.AmmoLoaded) {
+                console.error('❌ Ammo.js failed to load - trying fallback');
+                window.AmmoLoaded = false;
+            }
+        });
+        
+        // Immediate check for early loading
+        if (typeof Ammo !== 'undefined') {
+            window.Ammo = Ammo;
+            window.AmmoLoaded = true;
+            console.log('✅ Ammo.js loaded immediately');
+        }
+    </script>
+    
+    <!-- Game Application -->
+    <script type="module" src="static/js/app.js"></script>
 </body>
 </html> 

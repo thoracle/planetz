@@ -288,8 +288,11 @@ export default class EnemyShip {
     
     /**
      * Apply damage to enemy ship (simplified damage model)
+     * @param {number} damage - Amount of damage to apply
+     * @param {string} damageType - Type of damage ('kinetic', 'energy', etc.)
+     * @param {string} targetSystem - Optional specific system to target (for sub-targeting)
      */
-    applyDamage(damage, damageType = 'kinetic') {
+    applyDamage(damage, damageType = 'kinetic', targetSystem = null) {
         const result = {
             totalDamage: damage,
             hullDamage: 0,
@@ -297,17 +300,51 @@ export default class EnemyShip {
             isDestroyed: false
         };
         
-        // Simple damage model: apply damage to hull
+        // Handle sub-targeting: apply damage to specific system only
+        if (targetSystem) {
+            console.log(`🎯 SUB-TARGET DAMAGE: Applying ${damage} damage to ${targetSystem} system`);
+            
+            const system = this.systems.get(targetSystem);
+            if (system) {
+                const healthBefore = system.healthPercentage;
+                system.takeDamage(damage);
+                const healthAfter = system.healthPercentage;
+                result.systemsDamaged.push(targetSystem);
+                console.log(`💥 ${targetSystem} system took ${damage} focused damage (health: ${(system.currentHealth / system.maxHealth * 100).toFixed(1)}%)`);
+                
+                // Check if subsystem was destroyed and play success sound
+                if (healthAfter === 0 && healthBefore > 0) {
+                    console.log(`💥 SYSTEM DESTROYED: ${targetSystem} on ${this.shipName} completely disabled!`);
+                    
+                    // Play success sound for destroyed sub-system (50% duration for shorter sound)
+                    if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
+                        const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
+                        // Play 50% duration success sound for sub-system destruction
+                        effectsManager.playSuccessSound(null, 0.6, 0.5); 
+                        console.log(`🎉 Playing sub-system destruction success sound (50% duration)`);
+                    }
+                }
+                
+                // No hull damage or spillover damage when sub-targeting
+                return result;
+            } else {
+                console.warn(`❌ Target system '${targetSystem}' not found, applying to hull instead`);
+                // Fall through to normal hull damage
+            }
+        }
+        
+        // Normal damage model: apply damage to hull
         const actualDamage = Math.min(damage, this.currentHull);
         this.currentHull -= actualDamage;
         result.hullDamage = actualDamage;
         
-        // Check if ship is destroyed
-        if (this.currentHull <= 0) {
+        // Check if ship is destroyed - use small threshold to handle floating-point precision
+        if (this.currentHull <= 0.001) {
+            this.currentHull = 0; // Ensure hull is exactly 0 for consistency
             result.isDestroyed = true;
         }
         
-        // Randomly damage systems when hull is damaged
+        // Randomly damage systems when hull is damaged (only for non-sub-targeted damage)
         if (actualDamage > 0 && this.systems.size > 0) {
             const systemNames = Array.from(this.systems.keys());
             const numSystemsToCheck = Math.min(2, systemNames.length);
@@ -365,8 +402,9 @@ export default class EnemyShip {
         this.currentHull = Math.max(0, this.currentHull - collateralDamage);
         console.log(`💥 Collateral hull damage: ${collateralDamage.toFixed(1)} (hull: ${this.currentHull.toFixed(1)}/${this.maxHull})`);
         
-        // Check if ship is destroyed due to hull damage
-        if (this.currentHull <= 0) {
+        // Check if ship is destroyed due to hull damage - use small threshold to handle floating-point precision
+        if (this.currentHull <= 0.001) {
+            this.currentHull = 0; // Ensure hull is exactly 0 for consistency
             console.log(`🔥 ${this.shipName} DESTROYED by collateral damage!`);
             
             // Play success sound for ship destruction (full duration)

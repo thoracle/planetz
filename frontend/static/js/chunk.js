@@ -136,16 +136,10 @@ export class Chunk {
         let meshPromise;
         
         try {
-            // Use correct path for Flask static serving (static_url_path='')
-            // Add cache-busting timestamp to force reload
-            let workerPath = `static/js/workers/meshGenerator.worker.js?t=${Date.now()}`;
-            
-            try {
-                this.worker = new Worker(workerPath);
-            } catch (error) {
-                console.error(`❌ CHUNK DEBUG: Worker creation failed:`, error.message);
-                throw new Error(`Worker creation failed: ${error.message}`);
-            }
+            // Use correct path for Flask server
+            const timestamp = Date.now();
+            const workerPath = `static/js/workers/meshGenerator.worker.js?v=${timestamp}`;
+            this.worker = new Worker(workerPath);
             
             // Calculate adaptive timeout based on chunk complexity
             const chunkComplexity = this.calculateChunkComplexity();

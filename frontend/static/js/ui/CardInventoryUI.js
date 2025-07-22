@@ -172,7 +172,7 @@ export default class CardInventoryUI {
                 const audioLoader = new window.THREE.AudioLoader();
                 console.log('🎵 Loading upgrade sound with fallback path detection...');
                 
-                this.loadAudioWithFallback(audioLoader, 'audio/blurb.mp3', 'audio/blurb.mp3');
+                this.loadAudio(audioLoader, 'static/audio/blurb.mp3');
             } else {
                 console.warn('⚠️ THREE.js not available for audio initialization, using fallback');
                 this.upgradeSoundLoaded = false;
@@ -188,14 +188,13 @@ export default class CardInventoryUI {
     }
 
     /**
-     * Load audio with fallback path system
+     * Load audio
      */
-    loadAudioWithFallback(audioLoader, devPath, prodPath) {
-        // Try development path first
+    loadAudio(audioLoader, audioPath) {
         audioLoader.load(
-            devPath,
+            audioPath,
             (buffer) => {
-                console.log(`✅ Upgrade sound loaded from dev path: ${devPath}`);
+                console.log(`✅ Upgrade sound loaded from: ${audioPath}`);
                 this.upgradeSound.setBuffer(buffer);
                 this.upgradeSound.setVolume(0.7);
                 this.upgradeSoundLoaded = true;
@@ -205,27 +204,10 @@ export default class CardInventoryUI {
                 console.log(`🎵 Loading upgrade sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
             },
             (error) => {
-                console.log(`⚠️ Dev path failed for upgrade sound, trying production path...`);
-                // Fallback to production path
-                audioLoader.load(
-                    prodPath,
-                    (buffer) => {
-                        console.log(`✅ Upgrade sound loaded from prod path: ${prodPath}`);
-                        this.upgradeSound.setBuffer(buffer);
-                        this.upgradeSound.setVolume(0.7);
-                        this.upgradeSoundLoaded = true;
-                        console.log('🎵 Upgrade sound initialization complete');
-                    },
-                    (progress) => {
-                        console.log(`🎵 Loading upgrade sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
-                    },
-                    (error) => {
-                        console.error('❌ Error loading upgrade sound from both paths:', error);
-                        this.upgradeSoundLoaded = false;
-                        // Try fallback HTML5 audio
-                        this.initializeFallbackAudio();
-                    }
-                );
+                console.error('❌ Error loading upgrade sound:', error);
+                this.upgradeSoundLoaded = false;
+                // Try fallback HTML5 audio
+                this.initializeFallbackAudio();
             }
         );
     }
@@ -236,8 +218,8 @@ export default class CardInventoryUI {
     initializeFallbackAudio() {
         console.log('🔄 Initializing fallback HTML5 audio with path detection...');
         try {
-            // Try development path first, then production path
-            this.fallbackAudio = new Audio('audio/blurb.mp3');
+            // Use static audio directory path
+            this.fallbackAudio = new Audio('static/audio/blurb.mp3');
             this.fallbackAudio.volume = 0.7;
             this.fallbackAudio.preload = 'auto';
             
@@ -254,7 +236,7 @@ export default class CardInventoryUI {
         this.setupUserInteractionTracking();
             
             this.fallbackAudio.addEventListener('canplaythrough', () => {
-                console.log('✅ Fallback audio loaded successfully (dev path)');
+                console.log('✅ Fallback audio loaded successfully');
                 this.fallbackAudioLoaded = true;
                 
                 // Pre-create audio pool for better rapid playback
@@ -262,22 +244,8 @@ export default class CardInventoryUI {
             });
             
             this.fallbackAudio.addEventListener('error', (e) => {
-                console.log('⚠️ Dev path failed for fallback audio, trying production path...');
-                // Try production path fallback
-                this.fallbackAudio = new Audio('audio/blurb.mp3');
-                this.fallbackAudio.volume = 0.7;
-                this.fallbackAudio.preload = 'auto';
-                
-                this.fallbackAudio.addEventListener('canplaythrough', () => {
-                    console.log('✅ Fallback audio loaded successfully (prod path)');
-                    this.fallbackAudioLoaded = true;
-                    this.createAudioPool();
-                });
-                
-                this.fallbackAudio.addEventListener('error', (e) => {
-                    console.error('❌ Fallback audio loading failed on both paths:', e);
-                    this.fallbackAudioLoaded = false;
-                });
+                console.error('❌ Fallback audio loading failed:', e);
+                this.fallbackAudioLoaded = false;
             });
             
         } catch (error) {
@@ -304,8 +272,9 @@ export default class CardInventoryUI {
      * Create a single audio element for the pool
      */
     createAudioElement(index) {
-        // Try development path first
-        const audioClone = new Audio('audio/blurb.mp3');
+        // Use static audio directory path
+        const audioBasePath = 'static/audio/';
+        const audioClone = new Audio(`${audioBasePath}blurb.mp3`);
         audioClone.volume = 0.7;
         audioClone.preload = 'auto';
         this.audioElementUseCount[index] = 0;
@@ -320,30 +289,9 @@ export default class CardInventoryUI {
         });
         
         audioClone.addEventListener('error', (e) => {
-            console.log(`⚠️ Audio ${index} dev path failed, trying production path...`);
-            // Try production path as fallback
-                            const prodAudioClone = new Audio('audio/blurb.mp3');
-            prodAudioClone.volume = 0.7;
-            prodAudioClone.preload = 'auto';
-            
-            prodAudioClone.addEventListener('error', (e) => {
-                console.error(`❌ Audio ${index} error on both paths:`, e);
-                // Immediately recreate this element after a delay
-                setTimeout(() => this.recreateAudioElement(index), 100);
-            });
-            
-            // Copy over event listeners to production fallback
-            prodAudioClone.addEventListener('play', () => {
-                console.log(`🎵 Audio ${index} started playing (use #${this.audioElementUseCount[index] + 1}) [prod path]`);
-            });
-            
-            prodAudioClone.addEventListener('ended', () => {
-                console.log(`🎵 Audio ${index} finished playing [prod path]`);
-            });
-            
-            this.audioPool[index] = prodAudioClone;
-            console.log(`🔧 Created audio element ${index} (prod path)`);
-            return;
+            console.error(`❌ Audio ${index} error:`, e);
+            // Immediately recreate this element after a delay
+            setTimeout(() => this.recreateAudioElement(index), 100);
         });
         
         // Monitor for potential corruption - if an element gets stuck
@@ -710,8 +658,8 @@ export default class CardInventoryUI {
         console.log('🔄 Trying alternative audio playback with path fallback...');
         
         try {
-            // Method 1: Create fresh Audio instance with development path
-            const immediateAudio = new Audio('audio/blurb.mp3');
+            // Method 1: Create fresh Audio instance
+            const immediateAudio = new Audio('static/audio/blurb.mp3');
             immediateAudio.volume = 0.7;
             
             // Add a small delay to ensure browser readiness
@@ -719,20 +667,11 @@ export default class CardInventoryUI {
                 const playPromise = immediateAudio.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
-                        console.log('✅ Emergency audio playback successful (dev path)');
+                        console.log('✅ Emergency audio playback successful');
                     }).catch(err => {
-                        console.log('⚠️ Emergency dev path failed, trying production path...');
-                        
-                        // Try production path
-                        const prodAudio = new Audio('audio/blurb.mp3');
-                        prodAudio.volume = 0.7;
-                        prodAudio.play().then(() => {
-                            console.log('✅ Emergency audio playback successful (prod path)');
-                        }).catch(prodErr => {
-                            console.error('❌ Emergency audio playback failed on both paths:', {dev: err, prod: prodErr});
-                            // Method 2: Try Web Audio API if available
-                            this.tryWebAudioPlayback();
-                        });
+                        console.error('❌ Emergency audio playback failed:', err);
+                        // Method 2: Try Web Audio API if available
+                        this.tryWebAudioPlayback();
                     });
                 }
             }, 10);
@@ -754,14 +693,9 @@ export default class CardInventoryUI {
                 const AudioCtx = AudioContext || webkitAudioContext;
                 const audioContext = new AudioCtx();
                 
-                // Try development path first
-                fetch('audio/blurb.mp3')
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Dev path failed');
-                        }
-                        return response.arrayBuffer();
-                    })
+                // Load and play audio
+                fetch('static/audio/blurb.mp3')
+                    .then(response => response.arrayBuffer())
                     .then(data => audioContext.decodeAudioData(data))
                     .then(audioBuffer => {
                         const source = audioContext.createBufferSource();
@@ -774,31 +708,11 @@ export default class CardInventoryUI {
                         gainNode.connect(audioContext.destination);
                         
                         source.start();
-                        console.log('✅ Web Audio API playback successful (dev path)');
+                        console.log('✅ Web Audio API playback successful');
                     })
-                    .catch(devErr => {
-                        console.log('⚠️ Web Audio dev path failed, trying production path...');
-                        // Try production path
-                        fetch('audio/blurb.mp3')
-                            .then(response => response.arrayBuffer())
-                            .then(data => audioContext.decodeAudioData(data))
-                            .then(audioBuffer => {
-                                const source = audioContext.createBufferSource();
-                                const gainNode = audioContext.createGain();
-                                
-                                source.buffer = audioBuffer;
-                                gainNode.gain.value = 0.7;
-                                
-                                source.connect(gainNode);
-                                gainNode.connect(audioContext.destination);
-                                
-                                source.start();
-                                console.log('✅ Web Audio API playback successful (prod path)');
-                            })
-                            .catch(prodErr => {
-                                console.error('❌ Web Audio API failed on both paths:', {dev: devErr, prod: prodErr});
-                                console.warn('💔 All audio playback methods failed');
-                            });
+                    .catch(error => {
+                        console.error('❌ Web Audio API failed:', error);
+                        console.warn('💔 All audio playback methods failed');
                     });
                     
             } catch (webAudioError) {

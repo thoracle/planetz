@@ -26,9 +26,9 @@ class WarpEffects {
         this.ensureAudioContextRunning();
         
         // Load the warp sounds
-        console.log('Loading warp sounds with fallback path detection...');
-        this.loadWarpSoundWithFallback('audio/warp.wav', 'audio/warp.wav', 'warp');
-        this.loadWarpSoundWithFallback('audio/warp-redalert.wav', 'audio/warp-redalert.wav', 'redalert');
+        console.log('Loading warp sounds...');
+        this.loadWarpSound('static/audio/warp.wav', 'warp');
+        this.loadWarpSound('static/audio/warp-redalert.wav', 'redalert');
 
         // Add visibility change listener
         document.addEventListener('visibilitychange', () => {
@@ -310,14 +310,13 @@ class WarpEffects {
     }
 
     /**
-     * Load warp sound with fallback path system
+     * Load warp sound
      */
-    loadWarpSoundWithFallback(devPath, prodPath, soundType) {
-        // Try development path first
+    loadWarpSound(audioPath, soundType) {
         this.audioLoader.load(
-            devPath,
+            audioPath,
             (buffer) => {
-                console.log(`${soundType === 'warp' ? 'Warp' : 'Red alert warp'} sound loaded successfully from dev path: ${devPath}`);
+                console.log(`${soundType === 'warp' ? 'Warp' : 'Red alert warp'} sound loaded successfully from: ${audioPath}`);
                 if (soundType === 'warp') {
                     this.warpSound.setBuffer(buffer);
                     this.warpSound.setLoop(false);
@@ -334,31 +333,7 @@ class WarpEffects {
                 console.log(`Loading ${soundType === 'warp' ? 'warp' : 'red alert warp'} sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
             },
             (error) => {
-                console.log(`⚠️ Dev path failed for ${soundType} sound, trying production path...`);
-                // Fallback to production path
-                this.audioLoader.load(
-                    prodPath,
-                    (buffer) => {
-                        console.log(`${soundType === 'warp' ? 'Warp' : 'Red alert warp'} sound loaded successfully from prod path: ${prodPath}`);
-                        if (soundType === 'warp') {
-                            this.warpSound.setBuffer(buffer);
-                            this.warpSound.setLoop(false);
-                            this.warpSound.setVolume(1.0);
-                            this.soundLoaded = true;
-                        } else {
-                            this.warpRedAlertSound.setBuffer(buffer);
-                            this.warpRedAlertSound.setLoop(false);
-                            this.warpRedAlertSound.setVolume(1.0);
-                            this.redAlertSoundLoaded = true;
-                        }
-                    },
-                    (progress) => {
-                        console.log(`Loading ${soundType === 'warp' ? 'warp' : 'red alert warp'} sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
-                    },
-                    (error) => {
-                        console.error(`Error loading ${soundType === 'warp' ? 'warp' : 'red alert warp'} sound from both paths:`, error);
-                    }
-                );
+                console.error(`Error loading ${soundType === 'warp' ? 'warp' : 'red alert warp'} sound:`, error);
             }
         );
     }

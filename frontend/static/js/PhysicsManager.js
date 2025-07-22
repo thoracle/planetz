@@ -50,6 +50,10 @@ export class PhysicsManager {
                     // Direct loading (local file) - Ammo() returns the module directly
                     this.Ammo = ammoResult || Ammo;
                 }
+            } else if (typeof Ammo === 'object' && Ammo !== null) {
+                // Ammo is already loaded as an object (script tag loading)
+                this.Ammo = Ammo;
+                console.log('🔍 Using Ammo.js as pre-loaded object');
             } else {
                 throw new Error('Ammo.js is not available');
             }
@@ -58,25 +62,67 @@ export class PhysicsManager {
                 throw new Error('Failed to initialize Ammo.js module');
             }
             
+            console.log('🔍 Ammo.js available, checking components...');
+            console.log('- btDefaultCollisionConfiguration:', typeof this.Ammo.btDefaultCollisionConfiguration);
+            console.log('- btCollisionDispatcher:', typeof this.Ammo.btCollisionDispatcher);
+            console.log('- btDbvtBroadphase:', typeof this.Ammo.btDbvtBroadphase);
+            console.log('- btSequentialImpulseConstraintSolver:', typeof this.Ammo.btSequentialImpulseConstraintSolver);
+            console.log('- btDiscreteDynamicsWorld:', typeof this.Ammo.btDiscreteDynamicsWorld);
+            console.log('- btVector3:', typeof this.Ammo.btVector3);
+            
             // Set up collision configuration
+            console.log('🔧 Creating collision configuration...');
             const collisionConfig = new this.Ammo.btDefaultCollisionConfiguration();
+            console.log('✅ Collision config created');
+            
+            console.log('🔧 Creating dispatcher...');
             const dispatcher = new this.Ammo.btCollisionDispatcher(collisionConfig);
+            this.dispatcher = dispatcher; // Store dispatcher for collision detection
+            console.log('✅ Dispatcher created');
+            
+            console.log('🔧 Creating broadphase...');
             const broadphase = new this.Ammo.btDbvtBroadphase();
+            console.log('✅ Broadphase created');
+            
+            console.log('🔧 Creating solver...');
             const solver = new this.Ammo.btSequentialImpulseConstraintSolver();
+            console.log('✅ Solver created');
             
             // Create physics world with zero gravity (space environment)
+            console.log('🔧 Creating physics world...');
             this.physicsWorld = new this.Ammo.btDiscreteDynamicsWorld(
                 dispatcher, 
                 broadphase, 
                 solver, 
                 collisionConfig
             );
+            console.log('✅ Physics world created');
             
             // Set zero gravity for space simulation
+            console.log('🔧 Setting gravity...');
             this.physicsWorld.setGravity(new this.Ammo.btVector3(0, 0, 0));
+            console.log('✅ Gravity set to zero');
             
             // Enable collision detection
-            this.physicsWorld.getDispatchInfo().set_m_allowedCcdPenetration(0.0001);
+            console.log('🔧 Configuring collision detection...');
+            try {
+                // Try different ways to set CCD penetration
+                const dispatchInfo = this.physicsWorld.getDispatchInfo();
+                console.log('🔍 DispatchInfo methods:', Object.getOwnPropertyNames(dispatchInfo));
+                
+                if (typeof dispatchInfo.set_m_allowedCcdPenetration === 'function') {
+                    dispatchInfo.set_m_allowedCcdPenetration(0.0001);
+                    console.log('✅ Used set_m_allowedCcdPenetration');
+                } else if (typeof dispatchInfo.m_allowedCcdPenetration !== 'undefined') {
+                    dispatchInfo.m_allowedCcdPenetration = 0.0001;
+                    console.log('✅ Used direct property assignment');
+                } else {
+                    console.log('⚠️ CCD penetration setting not available, continuing without it');
+                }
+            } catch (error) {
+                console.log('⚠️ Collision detection config failed, continuing without CCD:', error.message);
+            }
+            console.log('✅ Collision detection configured');
             
             // Set up collision detection
             this.setupCollisionDetection();
@@ -170,12 +216,22 @@ export class PhysicsManager {
 
             // Store references
             this.rigidBodies.set(threeObject, rigidBody);
-            this.entityMetadata.set(rigidBody, {
+            
+            // Include ship reference if available in Three.js object userData
+            const entityData = {
                 type: entityType,
                 id: entityId,
                 health: health,
                 threeObject: threeObject
-            });
+            };
+            
+            // Add ship reference if it exists in userData
+            if (threeObject.userData && threeObject.userData.ship) {
+                entityData.ship = threeObject.userData.ship;
+                console.log(`🔗 Physics entity includes ship reference for ${entityId}`);
+            }
+            
+            this.entityMetadata.set(rigidBody, entityData);
 
             console.log(`Created ship rigid body for ${entityType} ${entityId}`);
             return rigidBody;
@@ -345,6 +401,13 @@ export class PhysicsManager {
         }
 
         try {
+            // Check if ghost objects are available
+            if (!this.Ammo.btGhostObject) {
+                // Fallback: Use simple distance-based query
+                console.log('🔍 Using fallback spatial query (btGhostObject not available)');
+                return this.spatialQueryFallback(position, radius);
+            }
+
             // Create ghost object for spatial query
             const ghost = new this.Ammo.btGhostObject();
             const shape = new this.Ammo.btSphereShape(radius);
@@ -361,12 +424,14 @@ export class PhysicsManager {
 
             // Get overlapping objects
             const overlaps = [];
-            const numOverlaps = ghost.getNumOverlappingObjects();
-            for (let i = 0; i < numOverlaps; i++) {
-                const overlappingObject = ghost.getOverlappingObject(i);
-                const metadata = this.entityMetadata.get(overlappingObject);
-                if (metadata) {
-                    overlaps.push(metadata);
+            if (typeof ghost.getNumOverlappingObjects === 'function') {
+                const numOverlaps = ghost.getNumOverlappingObjects();
+                for (let i = 0; i < numOverlaps; i++) {
+                    const overlappingObject = ghost.getOverlappingObject(i);
+                    const metadata = this.entityMetadata.get(overlappingObject);
+                    if (metadata) {
+                        overlaps.push(metadata);
+                    }
                 }
             }
 
@@ -377,9 +442,32 @@ export class PhysicsManager {
             return overlaps;
 
         } catch (error) {
-            console.error('Error performing spatial query:', error);
-            return [];
+            console.log('⚠️ Spatial query failed, using fallback:', error.message);
+            return this.spatialQueryFallback(position, radius);
         }
+    }
+
+    /**
+     * Fallback spatial query using distance calculations
+     */
+    spatialQueryFallback(position, radius) {
+        const overlaps = [];
+        const radiusSquared = radius * radius;
+        
+        // Check all registered rigid bodies
+        for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
+            if (threeObject.position) {
+                const distanceSquared = threeObject.position.distanceToSquared(position);
+                if (distanceSquared <= radiusSquared) {
+                    const metadata = this.entityMetadata.get(rigidBody);
+                    if (metadata) {
+                        overlaps.push(metadata);
+                    }
+                }
+            }
+        }
+        
+        return overlaps;
     }
 
     /**
@@ -396,6 +484,13 @@ export class PhysicsManager {
         }
 
         try {
+            // Check if raycast methods are available
+            if (!this.Ammo.ClosestRayResultCallback || !this.physicsWorld.rayTest) {
+                // Use fallback raycast method
+                console.log('🔄 Using Three.js raycast (physics methods not available)');
+                return this.raycastFallback(origin, direction, maxDistance);
+            }
+
             const rayStart = new this.Ammo.btVector3(origin.x, origin.y, origin.z);
             const rayEnd = new this.Ammo.btVector3(
                 origin.x + direction.x * maxDistance,
@@ -429,7 +524,76 @@ export class PhysicsManager {
             return null;
 
         } catch (error) {
-            console.error('Error performing raycast:', error);
+            console.log('🔄 Physics raycast failed, using Three.js fallback:', error.message);
+            return this.raycastFallback(origin, direction, maxDistance);
+        }
+    }
+
+    /**
+     * Fallback raycast using Three.js raycaster
+     * @param {THREE.Vector3} origin - Ray origin  
+     * @param {THREE.Vector3} direction - Ray direction (normalized)
+     * @param {number} maxDistance - Maximum ray distance
+     * @returns {object|null} Hit result or null
+     */
+    raycastFallback(origin, direction, maxDistance = 1000) {
+        try {
+            // Use Three.js raycaster as fallback
+            if (typeof THREE === 'undefined') {
+                console.log('⚠️ THREE.js not available for raycast fallback');
+                return null;
+            }
+
+            const raycaster = new THREE.Raycaster();
+            raycaster.set(origin, direction);
+            raycaster.far = maxDistance;
+
+            // Get all rigid body objects to test against
+            const targetObjects = [];
+            for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
+                if (threeObject && threeObject.visible) {
+                    targetObjects.push(threeObject);
+                }
+            }
+
+            if (targetObjects.length === 0) {
+                return null;
+            }
+
+            // Perform Three.js raycast
+            const intersections = raycaster.intersectObjects(targetObjects, true);
+            
+            if (intersections.length > 0) {
+                const firstHit = intersections[0];
+                const hitObject = firstHit.object;
+                
+                // Find the top-level object (ship) that contains this mesh
+                let targetShip = hitObject;
+                while (targetShip.parent && !this.rigidBodies.has(targetShip)) {
+                    targetShip = targetShip.parent;
+                }
+                
+                const rigidBody = this.rigidBodies.get(targetShip);
+                const metadata = this.entityMetadata.get(rigidBody);
+
+                const result = {
+                    hit: true,
+                    body: rigidBody,
+                    point: firstHit.point,
+                    normal: firstHit.face ? firstHit.face.normal : new THREE.Vector3(0, 1, 0),
+                    distance: firstHit.distance,
+                    entity: metadata,
+                    threeObject: targetShip
+                };
+
+                console.log(`🎯 THREE.js raycast HIT: ${metadata?.name || 'unknown'} at ${firstHit.distance.toFixed(1)}m`);
+                return result;
+            }
+
+            return null;
+
+        } catch (error) {
+            console.log('⚠️ Three.js raycast fallback failed:', error.message);
             return null;
         }
     }
@@ -444,6 +608,9 @@ export class PhysicsManager {
         try {
             // Update physics world
             this.physicsWorld.stepSimulation(deltaTime, 10);
+            
+            // Handle collision detection for projectiles
+            this.handleCollisions();
 
             // Sync Three.js objects with physics bodies
             this.syncThreeJSWithPhysics();
@@ -459,6 +626,97 @@ export class PhysicsManager {
 
         } catch (error) {
             console.error('Error updating physics:', error);
+        }
+    }
+    
+    /**
+     * Handle collision detection for projectiles and other objects
+     */
+    handleCollisions() {
+        if (!this.initialized) return;
+        
+        try {
+            // Check if collision manifold detection is available
+            if (!this.dispatcher || typeof this.dispatcher.getNumManifolds !== 'function') {
+                // Use fallback collision detection
+                return this.handleCollisionsFallback();
+            }
+            
+            const numManifolds = this.dispatcher.getNumManifolds();
+            
+            for (let i = 0; i < numManifolds; i++) {
+                const contactManifold = this.dispatcher.getManifoldByIndexInternal(i);
+                
+                if (!contactManifold) continue;
+                
+                const body0 = this.Ammo.castObject(contactManifold.getBody0(), this.Ammo.btRigidBody);
+                const body1 = this.Ammo.castObject(contactManifold.getBody1(), this.Ammo.btRigidBody);
+                
+                // Check if either body is a projectile
+                const projectile0 = body0?.projectileOwner;
+                const projectile1 = body1?.projectileOwner;
+                
+                if (projectile0 || projectile1) {
+                    const numContacts = contactManifold.getNumContacts();
+                    
+                    for (let j = 0; j < numContacts; j++) {
+                        const contactPoint = contactManifold.getContactPoint(j);
+                        const distance = contactPoint.getDistance();
+                        
+                        // Only process contact if distance indicates actual collision
+                        if (distance <= 0.0) {
+                            // Handle projectile collision
+                            if (projectile0) {
+                                this.handleProjectileCollision(projectile0, contactPoint, body1);
+                            }
+                            if (projectile1) {
+                                this.handleProjectileCollision(projectile1, contactPoint, body0);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.log('⚠️ Collision detection failed, using basic mode:', error.message);
+            this.handleCollisionsFallback();
+        }
+    }
+
+    /**
+     * Fallback collision detection using simple distance checks
+     */
+    handleCollisionsFallback() {
+        // For now, skip complex collision detection
+        // This would be implemented later when we add projectiles
+        // console.log('🔍 Using basic collision detection (manifolds not available)');
+    }
+    
+    /**
+     * Handle individual projectile collision
+     * @param {Object} projectile The projectile object
+     * @param {Object} contactPoint The collision contact point
+     * @param {Object} otherBody The other body in the collision
+     */
+    handleProjectileCollision(projectile, contactPoint, otherBody) {
+        try {
+            // Find the Three.js object associated with the other body
+            let otherObject = null;
+            for (const [threeObj, rigidBody] of this.rigidBodies.entries()) {
+                if (rigidBody === otherBody) {
+                    otherObject = threeObj;
+                    break;
+                }
+            }
+            
+            console.log(`🔥 Projectile collision detected: ${projectile.weaponName}`);
+            
+            // Call the projectile's collision handler
+            if (typeof projectile.onCollision === 'function') {
+                projectile.onCollision(contactPoint, otherObject);
+            }
+            
+        } catch (error) {
+            console.error('Error handling projectile collision:', error);
         }
     }
 
@@ -552,10 +810,21 @@ export class PhysicsManager {
      * Set up collision detection system
      */
     setupCollisionDetection() {
-        if (!this.initialized) return;
-
-        // Enable collision callbacks
-        this.physicsWorld.setCollisionEventCallback(this.onCollisionEvent.bind(this));
+        console.log('🔧 Setting up collision detection system...');
+        
+        try {
+            // Check if collision event callback is available
+            if (typeof this.physicsWorld.setCollisionEventCallback === 'function') {
+                this.physicsWorld.setCollisionEventCallback(this.onCollisionEvent.bind(this));
+                console.log('✅ Collision event callbacks enabled');
+            } else {
+                console.log('⚠️ Collision event callbacks not available in this Ammo.js build');
+                console.log('💡 Will use manual collision detection instead');
+            }
+        } catch (error) {
+            console.log('⚠️ Collision detection setup failed:', error.message);
+            console.log('💡 Continuing without automatic collision callbacks');
+        }
         
         console.log('🚨 Collision detection system initialized');
     }

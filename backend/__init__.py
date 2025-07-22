@@ -30,7 +30,7 @@ def create_app(config_name):
     
     app = Flask(__name__, 
                 static_folder=static_dir,
-                static_url_path='')
+                static_url_path='/static')
     
     # Load configuration
     app.config.from_object(config[config_name])
