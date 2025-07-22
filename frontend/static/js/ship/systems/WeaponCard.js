@@ -654,8 +654,8 @@ export class PhysicsProjectile {
         }
         
         try {
-            // Move projectile starting position further forward for better visibility
-            const startOffset = 50; // Start 50 meters ahead of camera
+            // Small forward offset to ensure projectiles don't collide with ship immediately
+            const startOffset = 5; // Reduced from 50m to 5m since we now have proper weapon positions
             const adjustedOrigin = {
                 x: origin.x + (direction.x * startOffset),
                 y: origin.y + (direction.y * startOffset), 
@@ -711,8 +711,8 @@ export class PhysicsProjectile {
                 );
                 this.rigidBody.setLinearVelocity(velocity);
                 
-                // Add collision delay for better particle trail visibility
-                this.collisionDelayTime = 1.0; // 1 second delay before collision detection activates
+                // Reduced collision delay since projectiles now start from proper position
+                this.collisionDelayTime = 0.3; // Reduced from 1.0s to 0.3s
                 this.canCollide = false;
                 
                 // Enable collision detection after delay
@@ -738,7 +738,7 @@ export class PhysicsProjectile {
                 // Set up collision callback
                 this.setupCollisionCallback();
                 
-                console.log(`✅ Physics body created for ${this.weaponName} - speed: ${speed} m/s, collision delay: ${this.collisionDelayTime}s`);
+                console.log(`✅ Physics body created for ${this.weaponName} - speed: ${speed} m/s, collision delay: ${this.collisionDelayTime}s, offset: ${startOffset}m`);
             }
             
         } catch (error) {

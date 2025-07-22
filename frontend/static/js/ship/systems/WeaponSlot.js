@@ -88,8 +88,11 @@ export class WeaponSlot {
             return false;
         }
         
-        // Fire the weapon
-        const fireResult = weapon.fire(ship.position, target);
+        // Calculate proper weapon firing position (especially important for projectiles)
+        const weaponOrigin = this.calculateWeaponOrigin(ship);
+        
+        // Fire the weapon with proper origin position
+        const fireResult = weapon.fire(weaponOrigin, target);
         
         if (fireResult.success) {
             // Set cooldown timer
@@ -111,6 +114,60 @@ export class WeaponSlot {
         }
         
         return false;
+    }
+    
+    /**
+     * Calculate weapon origin position for firing projectiles
+     * @param {Ship} ship Ship instance
+     * @returns {Object} Weapon origin position {x, y, z}
+     */
+    calculateWeaponOrigin(ship) {
+        // Get THREE reference
+        const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
+        if (!THREE) {
+            console.warn('THREE.js not available, using ship position as weapon origin');
+            return ship.position;
+        }
+        
+        // Try to get camera reference for proper positioning
+        let camera = null;
+        if (ship.starfieldManager?.camera) {
+            camera = ship.starfieldManager.camera;
+        } else if (ship.viewManager?.camera) {
+            camera = ship.viewManager.camera;
+        } else if (ship.camera) {
+            camera = ship.camera;
+        }
+        
+        if (!camera) {
+            console.warn('Camera not available, using ship position as weapon origin');
+            return ship.position;
+        }
+        
+        // Calculate weapon origin position similar to visual effects
+        const cameraPos = camera.position.clone();
+        
+        // Calculate camera's forward vector for weapon positioning
+        const cameraForward = new THREE.Vector3(0, 0, -1);
+        cameraForward.applyQuaternion(camera.quaternion);
+        
+        // Position weapon slightly ahead of camera (simulating ship's weapon hardpoint)
+        const weaponOffset = 10; // 10 meters ahead of camera (much less than the previous 50m)
+        const weaponPosition = cameraPos.clone().add(
+            cameraForward.clone().multiplyScalar(weaponOffset)
+        );
+        
+        // For different weapon slots, add slight positional variation
+        const slotVariance = this.slotIndex * 0.5; // Small variance per slot
+        const cameraRight = new THREE.Vector3(1, 0, 0);
+        cameraRight.applyQuaternion(camera.quaternion);
+        weaponPosition.add(cameraRight.clone().multiplyScalar(slotVariance - 1.5)); // Center around slot 1.5
+        
+        return {
+            x: weaponPosition.x,
+            y: weaponPosition.y,
+            z: weaponPosition.z
+        };
     }
     
     /**
