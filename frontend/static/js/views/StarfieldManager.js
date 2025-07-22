@@ -3600,10 +3600,10 @@ export class StarfieldManager {
                 this.targetDummyShips.push(dummyShip);
                 this.dummyShipMeshes.push(shipMesh);
                 
-                // Add physics body for the ship
+                // Add physics body for the ship (static body for target practice)
                 if (window.physicsManager && window.physicsManagerReady) {
                     const physicsBody = window.physicsManager.createShipRigidBody(shipMesh, {
-                        mass: 1000,
+                        mass: 0, // Static body - won't move when hit by projectiles
                         width: 4.0,  // Ship dimensions based on mesh size (2.0 * 2 for buffer)
                         height: 4.0,
                         depth: 4.0,
