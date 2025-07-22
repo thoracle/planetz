@@ -623,15 +623,17 @@ export class WeaponEffectsManager {
         particleGeometry.setAttribute('color', new this.THREE.BufferAttribute(colors, 3));
         particleGeometry.setAttribute('size', new this.THREE.BufferAttribute(sizes, 1));
         
-        // Create particle material - simplified without per-particle alpha for now
+        // Create particle material - use smaller size and different blending for better rendering
         const particleMaterial = new this.THREE.PointsMaterial({
-            size: config.size * 2, // Make particles more visible
+            size: config.size * 0.5, // Smaller particles to prevent rectangle rendering
             vertexColors: true,
             transparent: true,
-            opacity: 0.9, // Higher opacity for visibility
-            blending: this.THREE.AdditiveBlending,
+            opacity: 0.8, // Slightly lower opacity
+            blending: this.THREE.NormalBlending, // Changed from AdditiveBlending to prevent white rectangles
             depthWrite: false,
-            sizeAttenuation: true // Size based on distance
+            sizeAttenuation: true, // Size based on distance
+            map: null, // No texture to ensure circular points
+            alphaTest: 0.1 // Help with transparency
         });
         
         // Create particle system
@@ -661,6 +663,9 @@ export class WeaponEffectsManager {
         };
         
         this.particleTrails.set(projectileId, trailData);
+        
+        // Also add to particleSystems array for cleanup tracking
+        this.particleSystems.push(trailData);
         
         // Add torpedo particle trail debugging
         if (projectileType === 'photon_torpedo') {
@@ -736,6 +741,8 @@ export class WeaponEffectsManager {
             // Add torpedo trail update debugging (limited frequency)
             if (trailData.type === 'photon_torpedo' && trailData.particleHistory.length % 30 === 0) {
                 console.log(`🎆 TORPEDO TRAIL UPDATE → ${trailData.particleHistory.length} history points, opacity: ${opacity.toFixed(2)}`);
+                console.log(`   └ Latest position: (${newPosition.x.toFixed(1)}, ${newPosition.y.toFixed(1)}, ${newPosition.z.toFixed(1)})`);
+                console.log(`   └ Trail age: ${(trailAge/1000).toFixed(1)}s, max age: ${(maxAge/1000).toFixed(1)}s`);
             }
         }
     }
@@ -750,6 +757,11 @@ export class WeaponEffectsManager {
         const history = trailData.particleHistory;
         
         if (history.length === 0) return;
+        
+        // Add debugging for torpedo particle geometry updates
+        if (trailData.type === 'photon_torpedo' && history.length % 20 === 0) {
+            console.log(`🎯 TORPEDO PARTICLE GEOMETRY UPDATE → ${particleCount} particles across ${history.length} history points`);
+        }
         
         // Distribute particles along the trail path
         for (let i = 0; i < particleCount; i++) {
@@ -829,7 +841,8 @@ export class WeaponEffectsManager {
         const currentTime = Date.now();
         
         // Update each active particle trail by getting position from its projectile object
-        for (const trailData of this.particleSystems) {
+        // FIXED: Iterate through this.particleTrails Map instead of this.particleSystems Array
+        for (const [projectileId, trailData] of this.particleTrails) {
             if (trailData.projectileObject && trailData.projectileObject.position) {
                 // Update trail with current projectile position
                 this.updateProjectileTrail(trailData.id, trailData.projectileObject.position);
