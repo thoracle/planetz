@@ -3,11 +3,11 @@
 You're joining the development of **Planetz**, a fully functional 3D web-based space simulation game inspired by Elite, Privateer, and Star Raiders. The game is built with Three.js (frontend), Flask/Python (backend), and features complete ship management, combat, targeting, and exploration systems.
 
 ## 📁 Current Project State
-- **Branch**: `optimization` (1 commit ahead of origin)
+- **Branch**: `optimization` (2 commits ahead of origin)
 - **Tech Stack**: Three.js, ES6+ modules, Flask/Python backend, HTML5/CSS3, Ammo.js physics
 - **Codebase**: 25,000+ lines, 150+ files, fully modular architecture
-- **Recent Fixes**: Target removal precision issues, ship destruction detection, subsystem targeting
-- **Status**: Fully functional combat game with working physics-based weapons
+- **Recent Fixes**: Target removal precision, ship destruction detection, subsystem targeting, TAB cycling duplicates
+- **Status**: Fully functional combat game with working physics-based weapons and target cycling
 
 ## 🏗️ Architecture Overview
 ```
@@ -28,6 +28,7 @@ planetz/
 - ✅ **Ship systems** - 5 ship types with modular upgrade systems
 - ✅ **Weapon systems** - 8 weapon types (laser, pulse, plasma, phaser arrays)
 - ✅ **Target computer** - Sub-system targeting with wireframe outlines
+- ✅ **Target cycling** - TAB key cycles through unique targets without duplicates
 - ✅ **Damage system** - Hull damage, subsystem damage, destruction sounds
 - ✅ **Target removal** - Destroyed ships properly removed from target lists
 - ✅ **Audio system** - Success sounds for ship/subsystem destruction
@@ -36,6 +37,8 @@ planetz/
 - ✅ **Starfield navigation** - 40,000 star background with smooth movement
 
 ## 🔧 Key Files Recently Modified
+- `frontend/static/js/views/TargetComputerManager.js` - Target list management and cycling logic
+- `frontend/static/js/app.js` - Event listener management and initialization
 - `frontend/static/js/ship/systems/WeaponSlot.js` - Weapon firing and destruction detection
 - `frontend/static/js/ship/EnemyShip.js` - Damage application and hull management
 - `frontend/static/js/views/StarfieldManager.js` - Target removal and cleanup
@@ -71,9 +74,21 @@ planetz/
    - **Status**: ✅ COMPLETELY RESOLVED - TAB now cycles correctly through unique targets without duplicates
 
 ## 🚀 How to Run the Game
-1. **Backend**: `cd backend && python app.py` (runs on port 5001)
+1. **Backend**: `cd backend && python3 app.py` (runs on port 5001)
 2. **Frontend**: `cd frontend && python -m http.server 8081` (serves on port 8081)
 3. **Access**: Open `http://localhost:8081` in browser
+
+### Quick Start Commands
+```bash
+# Terminal 1 - Backend
+cd backend && python3 app.py
+
+# Terminal 2 - Frontend  
+cd frontend && python -m http.server 8081
+
+# Browser
+open http://localhost:8081
+```
 
 ## 🎯 Current Gameplay
 - Target dummy ships spawn automatically
@@ -86,10 +101,30 @@ planetz/
 ## 🔍 Development Status
 The game is **fully functional** with working:
 - Physics-based weapon systems
-- Target acquisition and destruction
+- Target acquisition and destruction with proper cycling
 - Audio feedback systems
 - Ship upgrade mechanics
 - Smooth 3D navigation
+- Robust target list management
+
+### Latest Commit: `18b17d1`
+- **Fix**: Duplicate TAB target cycling bug resolved
+- **Added**: Enhanced debugging for target list management  
+- **Improved**: Target list uniqueness and cycling reliability
+
+## 🧪 Testing Status
+### ✅ Verified Working
+- TAB target cycling (no duplicates)
+- Ship destruction and target removal
+- Physics-based weapon hits
+- Sub-system targeting and damage
+- Audio feedback for destruction
+- Target wireframe outlines
+
+### 🔍 Areas to Monitor
+- Performance with large numbers of targets
+- Memory usage during extended play sessions
+- Physics simulation stability over time
 
 ## 🛠️ Potential Next Steps
 - Additional ship types or weapon varieties
