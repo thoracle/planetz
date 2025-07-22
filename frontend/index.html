@@ -43,7 +43,7 @@
     <script>
         // Dynamic Ammo.js loading to work with both Flask (port 5001) and Python HTTP server (port 8081)
         function loadAmmoJS() {
-            const ammoPath = 'static/lib/ammo.js'; // Use static path for all servers
+            const ammoPath = `static/lib/ammo.js?v=${Date.now()}`; // Use static path with cache-busting  
             console.log(`🔍 Dynamic Ammo.js loading: port=${window.location.port}, using path: ${ammoPath}`);
             
             // Create preload link

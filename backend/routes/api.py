@@ -5,7 +5,7 @@ from backend.PlanetTypes import PLANET_CLASSES
 from backend.verse import generate_planet, calculate_checksum
 from backend.ShipConfigs import SHIP_CONFIGS, REPAIR_PRICING, CRITICAL_SYSTEMS, get_ship_config, get_available_ship_types, validate_ship_config
 import hashlib
-import numpy as np
+# import numpy as np  # Temporarily commented out - not used in this file
 from backend.planetGenerator import PlanetGenerator
 
 api_bp = Blueprint('api', __name__)
