@@ -575,40 +575,38 @@ export class WeaponEffectsManager {
         }
         
         // Configuration based on projectile type
-        const trailConfigs = {
+        // Particle trail configurations for different projectile types
+        const configs = {
             homing_missile: {
-                particleCount: 20,
-                trailLength: 15, // meters
-                particleSize: 0.8,
-                color: 0xff4444,
-                emissiveColor: 0x440000,
-                trailDuration: 3.0,
+                particleCount: 30, // Increased from 20 for denser trail
+                trailDuration: 5000, // Increased from 3000ms for longer trails
+                color: 0xff4444, // Red
+                size: 1.2, // Increased size
                 engineGlow: true,
-                thrusterParticles: true
+                engineColor: 0xff0000,
+                emissiveColor: 0x440000
             },
             photon_torpedo: {
-                particleCount: 25,
-                trailLength: 20, // meters  
-                particleSize: 1.2,
-                color: 0x4444ff,
-                emissiveColor: 0x000044,
-                trailDuration: 4.0,
+                particleCount: 35, // Increased from 25 for denser trail  
+                trailDuration: 7000, // Increased from 4000ms for longer trails
+                color: 0x4444ff, // Blue
+                size: 1.6, // Increased size
                 engineGlow: true,
-                thrusterParticles: true
+                engineColor: 0x0000ff,
+                emissiveColor: 0x000044
             },
             proximity_mine: {
-                particleCount: 8,
-                trailLength: 5, // meters - shorter since mines are slower
-                particleSize: 0.4,
-                color: 0xffaa00,
-                emissiveColor: 0x442200,
-                trailDuration: 2.0,
-                engineGlow: false, // mines don't have big engines
-                thrusterParticles: false
+                particleCount: 15, // Increased from 8 for more visible trail
+                trailDuration: 4000, // Increased from 2000ms for longer trails
+                color: 0xff8800, // Orange
+                size: 0.8, // Increased size  
+                engineGlow: false,
+                engineColor: null,
+                emissiveColor: null
             }
         };
         
-        const config = trailConfigs[projectileType] || trailConfigs.homing_missile;
+        const config = configs[projectileType] || configs.homing_missile;
         
         // Create particle system
         const particleGeometry = new this.THREE.BufferGeometry();
@@ -630,7 +628,7 @@ export class WeaponEffectsManager {
             colors[i * 3 + 2] = color.b;
             
             // Set sizes
-            sizes[i] = config.particleSize * (0.5 + Math.random() * 0.5);
+            sizes[i] = config.size * (0.5 + Math.random() * 0.5);
         }
         
         particleGeometry.setAttribute('position', new this.THREE.BufferAttribute(positions, 3));
@@ -639,7 +637,7 @@ export class WeaponEffectsManager {
         
         // Create particle material - simplified without per-particle alpha for now
         const particleMaterial = new this.THREE.PointsMaterial({
-            size: config.particleSize * 2, // Make particles more visible
+            size: config.size * 2, // Make particles more visible
             vertexColors: true,
             transparent: true,
             opacity: 0.9, // Higher opacity for visibility
@@ -653,13 +651,13 @@ export class WeaponEffectsManager {
         this.scene.add(particleSystem);
         
         console.log(`🚀 Created particle system at position:`, startPosition);
-        console.log(`🚀 Particle count: ${config.particleCount}, size: ${config.particleSize}`);
+        console.log(`🚀 Particle count: ${config.particleCount}, size: ${config.size}`);
         console.log(`🚀 Particle system added to scene:`, !!this.scene);
         
         // Create engine glow if enabled
         let engineGlow = null;
         if (config.engineGlow) {
-            engineGlow = this.createEngineGlow(startPosition, config.color, config.emissiveColor);
+            engineGlow = this.createEngineGlow(startPosition, config.engineColor, config.emissiveColor);
             this.scene.add(engineGlow);
             console.log(`🚀 Created engine glow at position:`, startPosition);
         }
@@ -675,7 +673,8 @@ export class WeaponEffectsManager {
             positions: positions,
             particleHistory: [], // Store recent positions for trail effect
             startTime: Date.now(),
-            lastUpdateTime: Date.now()
+            lastUpdateTime: Date.now(),
+            creationTime: Date.now() // Added creation time
         };
         
         this.particleTrails.set(projectileId, trailData);
@@ -784,7 +783,7 @@ export class WeaponEffectsManager {
     }
     
     /**
-     * Remove particle trail when projectile is destroyed
+     * Remove particle trail for a destroyed projectile
      * @param {string} projectileId Projectile identifier
      */
     removeProjectileTrail(projectileId) {
@@ -793,29 +792,31 @@ export class WeaponEffectsManager {
         const trailData = this.particleTrails.get(projectileId);
         if (!trailData) return;
         
-        // Remove from scene
-        this.scene.remove(trailData.particleSystem);
-        this.activeEffects.delete(trailData.particleSystem);
+        // Don't immediately remove trails - let them persist for minimum visibility time
+        const currentTime = Date.now();
+        const trailAge = currentTime - trailData.creationTime;
+        const minimumPersistenceTime = 2000; // Minimum 2 seconds visibility
         
-        if (trailData.engineGlow) {
-            this.scene.remove(trailData.engineGlow);
-            this.activeEffects.delete(trailData.engineGlow);
+        if (trailAge < minimumPersistenceTime) {
+            // Mark trail for delayed cleanup but don't remove immediately
+            trailData.pendingDestruction = true;
+            trailData.destructionTime = currentTime + (minimumPersistenceTime - trailAge);
+            console.log(`⏳ Trail ${projectileId} marked for delayed cleanup - will persist ${(minimumPersistenceTime - trailAge)/1000}s more`);
+            return;
         }
         
-        // Dispose geometry and material
-        trailData.particleSystem.geometry.dispose();
-        trailData.particleSystem.material.dispose();
-        
-        if (trailData.engineGlow) {
-            trailData.engineGlow.geometry.dispose();
-            trailData.engineGlow.material.dispose();
-        }
-        
-        // Remove from tracking
+        // Clean up trail data
         this.particleTrails.delete(projectileId);
-        const systemIndex = this.particleSystems.findIndex(system => system.id === projectileId);
-        if (systemIndex !== -1) {
-            this.particleSystems.splice(systemIndex, 1);
+        
+        // Remove from particle systems array
+        this.particleSystems = this.particleSystems.filter(system => system.id !== projectileId);
+        
+        // Remove visual elements from scene
+        if (trailData.particleSystem && this.scene) {
+            this.scene.remove(trailData.particleSystem);
+        }
+        if (trailData.engineGlow && this.scene) {
+            this.scene.remove(trailData.engineGlow);
         }
         
         console.log(`🧹 Removed particle trail for projectile: ${projectileId}`);
@@ -828,6 +829,8 @@ export class WeaponEffectsManager {
     updateParticleTrails(deltaTime) {
         if (this.fallbackMode) return;
         
+        const currentTime = Date.now();
+        
         // Update each active particle trail by getting position from its projectile object
         for (const trailData of this.particleSystems) {
             if (trailData.projectileObject && trailData.projectileObject.position) {
@@ -836,18 +839,43 @@ export class WeaponEffectsManager {
             }
         }
         
-        // Clean up trails for destroyed projectiles
-        const activeTrailIds = Array.from(this.particleTrails.keys());
-        for (const trailId of activeTrailIds) {
-            const trailData = this.particleTrails.get(trailId);
+        // Clean up trails marked for delayed destruction
+        const trailsToDestroy = [];
+        for (const [projectileId, trailData] of this.particleTrails) {
+            if (trailData.pendingDestruction && currentTime >= trailData.destructionTime) {
+                trailsToDestroy.push(projectileId);
+            }
+        }
+        
+        // Actually remove the trails that have waited long enough
+        trailsToDestroy.forEach(projectileId => {
+            console.log(`🧹 Delayed cleanup: removing trail for ${projectileId}`);
             
-            // Check if projectile still exists and is active
-            if (!trailData.projectileObject || 
-                !trailData.projectileObject.parent || 
-                (trailData.projectileObject.userData && trailData.projectileObject.userData.projectile && !trailData.projectileObject.userData.projectile.isActive())) {
+            const trailData = this.particleTrails.get(projectileId);
+            if (trailData) {
+                // Clean up trail data
+                this.particleTrails.delete(projectileId);
                 
-                console.log(`🧹 Auto-cleaning destroyed projectile trail: ${trailId}`);
-                this.removeProjectileTrail(trailId);
+                // Remove from particle systems array
+                this.particleSystems = this.particleSystems.filter(system => system.id !== projectileId);
+                
+                // Remove visual elements from scene
+                if (trailData.particleSystem && this.scene) {
+                    this.scene.remove(trailData.particleSystem);
+                }
+                if (trailData.engineGlow && this.scene) {
+                    this.scene.remove(trailData.engineGlow);
+                }
+            }
+        });
+        
+        // Clean up trails for destroyed projectiles (if not using projectile objects)
+        for (const [projectileId, trailData] of this.particleTrails) {
+            // Check if projectile object still exists and is valid
+            if (trailData.projectileObject && trailData.projectileObject.hasDetonated) {
+                console.log(`🧹 Projectile ${projectileId} has detonated - marking trail for cleanup`);
+                // Don't immediately remove - let removeProjectileTrail handle the timing
+                this.removeProjectileTrail(projectileId);
             }
         }
     }

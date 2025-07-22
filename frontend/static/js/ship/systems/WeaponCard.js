@@ -654,19 +654,27 @@ export class PhysicsProjectile {
         }
         
         try {
-            // Create visual representation (small sphere)
-            const geometry = new THREE.SphereGeometry(0.5, 8, 6); // 1m diameter projectile
+            // Move projectile starting position further forward for better visibility
+            const startOffset = 50; // Start 50 meters ahead of camera
+            const adjustedOrigin = {
+                x: origin.x + (direction.x * startOffset),
+                y: origin.y + (direction.y * startOffset), 
+                z: origin.z + (direction.z * startOffset)
+            };
+            
+            // Create visual representation (larger sphere for better visibility)
+            const geometry = new THREE.SphereGeometry(2.0, 8, 6); // 4m diameter projectile (larger for visibility)
             
             // Use MeshLambertMaterial which supports emissive property
             const material = new THREE.MeshLambertMaterial({ 
                 color: this.isHoming ? 0xff4444 : 0x44ff44,
-                emissive: this.isHoming ? 0x220000 : 0x002200,
+                emissive: this.isHoming ? 0x440000 : 0x004400, // Brighter emissive
                 transparent: true,
-                opacity: 0.8
+                opacity: 0.9 // More opaque
             });
             
             this.threeObject = new THREE.Mesh(geometry, material);
-            this.threeObject.position.set(origin.x, origin.y, origin.z);
+            this.threeObject.position.set(adjustedOrigin.x, adjustedOrigin.y, adjustedOrigin.z);
             
             // Add projectile reference to userData for collision detection
             this.threeObject.userData = {
@@ -685,7 +693,7 @@ export class PhysicsProjectile {
                 restitution: 0.1, // Slight bounce
                 friction: 0.3,
                 shape: 'sphere',
-                radius: 0.5,
+                radius: 2.0, // Match visual size
                 entityType: 'projectile',
                 entityId: `${this.weaponName}_${Date.now()}`,
                 health: 1 // Projectiles have minimal health
@@ -694,14 +702,24 @@ export class PhysicsProjectile {
             this.rigidBody = this.physicsManager.createRigidBody(this.threeObject, bodyConfig);
             
             if (this.rigidBody) {
-                // Set initial velocity
-                const speed = 1000; // 1000 m/s
+                // Reduced speed for better visibility and particle trail effects
+                const speed = this.isHoming ? 150 : 200; // Much slower: 150-200 m/s instead of 1000 m/s
                 const velocity = this.physicsManager.createVector3(
                     direction.x * speed,
                     direction.y * speed, 
                     direction.z * speed
                 );
                 this.rigidBody.setLinearVelocity(velocity);
+                
+                // Add collision delay for better particle trail visibility
+                this.collisionDelayTime = 1.0; // 1 second delay before collision detection activates
+                this.canCollide = false;
+                
+                // Enable collision detection after delay
+                setTimeout(() => {
+                    this.canCollide = true;
+                    console.log(`✅ Collision detection enabled for ${this.weaponName}`);
+                }, this.collisionDelayTime * 1000);
                 
                 // Enable continuous collision detection for fast-moving projectiles (if available)
                 try {
@@ -720,7 +738,7 @@ export class PhysicsProjectile {
                 // Set up collision callback
                 this.setupCollisionCallback();
                 
-                console.log(`✅ Physics body created for ${this.weaponName}`);
+                console.log(`✅ Physics body created for ${this.weaponName} - speed: ${speed} m/s, collision delay: ${this.collisionDelayTime}s`);
             }
             
         } catch (error) {
@@ -795,6 +813,12 @@ export class PhysicsProjectile {
      */
     onCollision(contactPoint, otherObject) {
         if (this.hasDetonated) return;
+        
+        // Check collision delay - don't collide until delay period has passed
+        if (!this.canCollide) {
+            console.log(`⏳ ${this.weaponName} collision ignored - still in delay period`);
+            return;
+        }
         
         console.log(`💥 ${this.weaponName} collision detected with:`, otherObject);
         
