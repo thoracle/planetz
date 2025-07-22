@@ -692,9 +692,19 @@ export class PhysicsProjectile {
                 );
                 this.rigidBody.setLinearVelocity(velocity);
                 
-                // Enable continuous collision detection for fast-moving projectiles
-                this.rigidBody.setCcdMotionThreshold(0.1);
-                this.rigidBody.setCcdSweptSphereRadius(0.2);
+                // Enable continuous collision detection for fast-moving projectiles (if available)
+                try {
+                    if (typeof this.rigidBody.setCcdMotionThreshold === 'function') {
+                        this.rigidBody.setCcdMotionThreshold(0.1);
+                        console.log('✅ CCD motion threshold set');
+                    }
+                    if (typeof this.rigidBody.setCcdSweptSphereRadius === 'function') {
+                        this.rigidBody.setCcdSweptSphereRadius(0.2);
+                        console.log('✅ CCD swept sphere radius set');
+                    }
+                } catch (error) {
+                    console.log('⚠️ CCD methods not available, continuing without them');
+                }
                 
                 // Set up collision callback
                 this.setupCollisionCallback();
@@ -793,13 +803,37 @@ export class PhysicsProjectile {
     updateHomingGuidance(deltaTime) {
         if (!this.target || !this.target.position || !this.rigidBody) return;
         
-        // Get current position and velocity from physics body
-        const transform = this.rigidBody.getWorldTransform();
-        const origin = transform.getOrigin();
-        const currentPos = { x: origin.x(), y: origin.y(), z: origin.z() };
-        
-        const velocity = this.rigidBody.getLinearVelocity();
-        const currentVel = { x: velocity.x(), y: velocity.y(), z: velocity.z() };
+        // Get current position and velocity from physics body (with error handling)
+        let currentPos, currentVel;
+        try {
+            const transform = this.rigidBody.getWorldTransform();
+            const origin = transform.getOrigin();
+            currentPos = { x: origin.x(), y: origin.y(), z: origin.z() };
+            
+            const velocity = this.rigidBody.getLinearVelocity();
+            currentVel = { x: velocity.x(), y: velocity.y(), z: velocity.z() };
+        } catch (error) {
+            console.warn('⚠️ Failed to get physics body transform/velocity:', error);
+            // Fallback to Three.js object position and estimated velocity
+            currentPos = {
+                x: this.threeObject.position.x,
+                y: this.threeObject.position.y,
+                z: this.threeObject.position.z
+            };
+            // Estimate velocity from direction to target
+            const toTarget = {
+                x: this.target.position.x - currentPos.x,
+                y: this.target.position.y - currentPos.y,
+                z: this.target.position.z - currentPos.z
+            };
+            const distance = Math.sqrt(toTarget.x * toTarget.x + toTarget.y * toTarget.y + toTarget.z * toTarget.z);
+            const speed = 1000; // Default speed
+            currentVel = distance > 0 ? {
+                x: (toTarget.x / distance) * speed,
+                y: (toTarget.y / distance) * speed,
+                z: (toTarget.z / distance) * speed
+            } : { x: 0, y: 0, z: 1000 };
+        }
         
         // Calculate direction to target
         const toTarget = {
@@ -832,13 +866,34 @@ export class PhysicsProjectile {
             z: (desiredVel.z - currentVel.z) * maxTurnForce * deltaTime
         };
         
-        // Apply steering force
-        const forceVector = this.physicsManager.createVector3(
-            steeringForce.x,
-            steeringForce.y,
-            steeringForce.z
-        );
-        this.rigidBody.applyCentralForce(forceVector);
+        // Apply steering force (try applyCentralForce first, fallback to velocity adjustment)
+        try {
+            if (typeof this.rigidBody.applyCentralForce === 'function') {
+                const forceVector = this.physicsManager.createVector3(
+                    steeringForce.x,
+                    steeringForce.y,
+                    steeringForce.z
+                );
+                this.rigidBody.applyCentralForce(forceVector);
+            } else {
+                // Fallback: directly adjust velocity for steering
+                const newVelocity = this.physicsManager.createVector3(
+                    desiredVel.x,
+                    desiredVel.y,
+                    desiredVel.z
+                );
+                this.rigidBody.setLinearVelocity(newVelocity);
+            }
+        } catch (error) {
+            console.warn('⚠️ Force application failed, using velocity fallback:', error);
+            // Final fallback: direct velocity setting
+            const newVelocity = this.physicsManager.createVector3(
+                desiredVel.x,
+                desiredVel.y,
+                desiredVel.z
+            );
+            this.rigidBody.setLinearVelocity(newVelocity);
+        }
         
         console.log(`🎯 ${this.weaponName} steering toward target at ${targetDistance.toFixed(0)}m`);
     }
