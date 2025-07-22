@@ -657,6 +657,12 @@ export class PhysicsProjectile {
             this.threeObject = new THREE.Mesh(geometry, material);
             this.threeObject.position.set(origin.x, origin.y, origin.z);
             
+            // Add projectile reference to userData for collision detection
+            this.threeObject.userData = {
+                projectile: this,
+                type: 'projectile'
+            };
+            
             // Add to scene
             if (this.scene) {
                 this.scene.add(this.threeObject);
@@ -668,7 +674,10 @@ export class PhysicsProjectile {
                 restitution: 0.1, // Slight bounce
                 friction: 0.3,
                 shape: 'sphere',
-                radius: 0.5
+                radius: 0.5,
+                entityType: 'projectile',
+                entityId: `${this.weaponName}_${Date.now()}`,
+                health: 1 // Projectiles have minimal health
             };
             
             this.rigidBody = this.physicsManager.createRigidBody(this.threeObject, bodyConfig);

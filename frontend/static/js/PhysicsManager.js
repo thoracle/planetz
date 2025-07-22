@@ -389,6 +389,239 @@ export class PhysicsManager {
     }
 
     /**
+     * Generic method to create a rigid body with configurable shape
+     * @param {THREE.Object3D} threeObject - The Three.js object
+     * @param {object} config - Configuration object
+     * @returns {object} The created rigid body
+     */
+    createRigidBody(threeObject, config = {}) {
+        if (!this.initialized) {
+            console.error('PhysicsManager not initialized');
+            return null;
+        }
+
+        const {
+            mass = 1.0,
+            restitution = 0.3,
+            friction = 0.5,
+            shape = 'box',
+            radius = 1.0,
+            width = 2.0,
+            height = 2.0,
+            depth = 2.0,
+            entityType = 'object',
+            entityId = null,
+            health = 100
+        } = config;
+
+        try {
+            let ammoShape;
+
+            // Create appropriate shape based on config
+            switch (shape.toLowerCase()) {
+                case 'sphere':
+                    ammoShape = new this.Ammo.btSphereShape(radius);
+                    break;
+                case 'box':
+                    ammoShape = new this.Ammo.btBoxShape(
+                        new this.Ammo.btVector3(width / 2, height / 2, depth / 2)
+                    );
+                    break;
+                case 'capsule':
+                    ammoShape = new this.Ammo.btCapsuleShape(radius, height);
+                    break;
+                case 'cylinder':
+                    ammoShape = new this.Ammo.btCylinderShape(
+                        new this.Ammo.btVector3(radius, height / 2, radius)
+                    );
+                    break;
+                default:
+                    console.warn(`Unknown shape type: ${shape}, defaulting to box`);
+                    ammoShape = new this.Ammo.btBoxShape(
+                        new this.Ammo.btVector3(width / 2, height / 2, depth / 2)
+                    );
+            }
+
+            // Set up transform
+            const transform = new this.Ammo.btTransform();
+            transform.setIdentity();
+            transform.setOrigin(new this.Ammo.btVector3(
+                threeObject.position.x,
+                threeObject.position.y,
+                threeObject.position.z
+            ));
+            transform.setRotation(new this.Ammo.btQuaternion(
+                threeObject.quaternion.x,
+                threeObject.quaternion.y,
+                threeObject.quaternion.z,
+                threeObject.quaternion.w
+            ));
+
+            // Create motion state
+            const motionState = new this.Ammo.btDefaultMotionState(transform);
+
+            // Calculate local inertia for dynamic bodies
+            const inertia = new this.Ammo.btVector3(0, 0, 0);
+            if (mass > 0) {
+                ammoShape.calculateLocalInertia(mass, inertia);
+            }
+
+            // Create rigid body
+            const rbInfo = new this.Ammo.btRigidBodyConstructionInfo(
+                mass,
+                motionState,
+                ammoShape,
+                inertia
+            );
+            const rigidBody = new this.Ammo.btRigidBody(rbInfo);
+
+            // Set physics properties
+            rigidBody.setRestitution(restitution);
+            rigidBody.setFriction(friction);
+            
+            // Set appropriate damping for space environment
+            if (mass > 0) {
+                rigidBody.setDamping(0.1, 0.1); // Linear and angular damping
+            }
+
+            // Set user data for collision detection
+            rigidBody.userData = {
+                type: entityType,
+                id: entityId || `${entityType}_${Date.now()}`,
+                health: health,
+                threeObject: threeObject
+            };
+
+            // Add to physics world
+            this.physicsWorld.addRigidBody(rigidBody);
+
+            // Store references
+            this.rigidBodies.set(threeObject, rigidBody);
+            
+            const entityData = {
+                type: entityType,
+                id: entityId || `${entityType}_${Date.now()}`,
+                health: health,
+                threeObject: threeObject
+            };
+            
+            // Add additional references if available
+            if (threeObject.userData) {
+                if (threeObject.userData.ship) {
+                    entityData.ship = threeObject.userData.ship;
+                }
+                if (threeObject.userData.projectile) {
+                    entityData.projectile = threeObject.userData.projectile;
+                }
+            }
+            
+            this.entityMetadata.set(rigidBody, entityData);
+
+            console.log(`✅ Created ${shape} rigid body for ${entityType} (mass: ${mass}kg)`);
+            return rigidBody;
+
+        } catch (error) {
+            console.error('Error creating rigid body:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Create a btVector3 for Ammo.js
+     * @param {number} x - X component
+     * @param {number} y - Y component  
+     * @param {number} z - Z component
+     * @returns {object} Ammo.js btVector3
+     */
+    createVector3(x, y, z) {
+        if (!this.initialized) {
+            console.error('PhysicsManager not initialized');
+            return null;
+        }
+
+        try {
+            return new this.Ammo.btVector3(x, y, z);
+        } catch (error) {
+            console.error('Error creating btVector3:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Helper method to check if PhysicsManager is ready for use
+     * @returns {boolean} True if ready for physics operations
+     */
+    isReady() {
+        return this.initialized && this.physicsWorld && this.Ammo;
+    }
+
+    /**
+     * Synchronize Three.js object position/rotation with physics body
+     * @param {THREE.Object3D} threeObject - The Three.js object to update
+     * @param {object} rigidBody - The Ammo.js rigid body to sync from
+     */
+    syncThreeWithPhysics(threeObject, rigidBody) {
+        if (!this.initialized || !threeObject || !rigidBody) {
+            return;
+        }
+
+        try {
+            // Get transform from rigid body
+            const transform = new this.Ammo.btTransform();
+            rigidBody.getMotionState().getWorldTransform(transform);
+            
+            // Update position
+            const origin = transform.getOrigin();
+            threeObject.position.set(origin.x(), origin.y(), origin.z());
+            
+            // Update rotation
+            const rotation = transform.getRotation();
+            threeObject.quaternion.set(rotation.x(), rotation.y(), rotation.z(), rotation.w());
+            
+            // Update matrix
+            threeObject.updateMatrixWorld();
+            
+        } catch (error) {
+            console.error('Error syncing Three.js object with physics body:', error);
+        }
+    }
+
+    /**
+     * Synchronize physics body with Three.js object position/rotation
+     * @param {object} rigidBody - The Ammo.js rigid body to update
+     * @param {THREE.Object3D} threeObject - The Three.js object to sync from
+     */
+    syncPhysicsWithThree(rigidBody, threeObject) {
+        if (!this.initialized || !threeObject || !rigidBody) {
+            return;
+        }
+
+        try {
+            // Create transform from Three.js object
+            const transform = new this.Ammo.btTransform();
+            transform.setIdentity();
+            transform.setOrigin(new this.Ammo.btVector3(
+                threeObject.position.x,
+                threeObject.position.y,
+                threeObject.position.z
+            ));
+            transform.setRotation(new this.Ammo.btQuaternion(
+                threeObject.quaternion.x,
+                threeObject.quaternion.y,
+                threeObject.quaternion.z,
+                threeObject.quaternion.w
+            ));
+            
+            // Update rigid body transform
+            rigidBody.getMotionState().setWorldTransform(transform);
+            rigidBody.setWorldTransform(transform);
+            
+        } catch (error) {
+            console.error('Error syncing physics body with Three.js object:', error);
+        }
+    }
+
+    /**
      * Perform spatial query to find nearby entities
      * @param {THREE.Vector3} position - Search position
      * @param {number} radius - Search radius
