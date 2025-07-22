@@ -965,11 +965,14 @@ export class PhysicsProjectile {
                 if (damage > 0) {
                     // Apply damage to entity
                     if (entity.ship && typeof entity.ship.applyDamage === 'function') {
+                        // Check if ship is already destroyed before applying damage
+                        const wasAlreadyDestroyed = entity.ship.currentHull <= 0.001;
+                        
                         const damageResult = entity.ship.applyDamage(damage, 'explosive');
                         console.log(`💥 Applied ${damage} explosive damage to ${entity.ship.shipName || 'entity'} at ${distance.toFixed(1)}m`);
                         
-                        // Check if the ship was destroyed by the damage
-                        if (damageResult && (damageResult.isDestroyed || entity.ship.currentHull <= 0.001)) {
+                        // Only play success sound if this damage actually destroyed the ship (wasn't already destroyed)
+                        if (!wasAlreadyDestroyed && damageResult && (damageResult.isDestroyed || entity.ship.currentHull <= 0.001)) {
                             console.log(`🔥 ${entity.ship.shipName || 'Enemy ship'} DESTROYED by ${this.weaponName} splash damage!`);
                             
                             // Ensure hull is exactly 0 for consistency
@@ -986,6 +989,8 @@ export class PhysicsProjectile {
                             if (window.starfieldManager && typeof window.starfieldManager.removeDestroyedTarget === 'function') {
                                 window.starfieldManager.removeDestroyedTarget(entity.ship);
                             }
+                        } else if (wasAlreadyDestroyed) {
+                            console.log(`⚫ Ship was already destroyed, skipping success sound`);
                         }
                     } else if (entity.takeDamage) {
                         entity.takeDamage(damage);
