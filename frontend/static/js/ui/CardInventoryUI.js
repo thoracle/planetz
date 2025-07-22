@@ -20,15 +20,18 @@ class PlayerData {
         this.credits = 50000;
         this.shipConfigurations = new Map(); // Store equipped cards for each ship
         
-        // Initialize starter ship with basic configuration
+        // Initialize starter ship with physics weapons configuration
         this.shipConfigurations.set('starter_ship', new Map([
             ['utility_1', { cardType: 'target_computer', level: 3 }], // Upgraded to level 3 for sub-targeting
+            ['utility_2', { cardType: 'hull_plating', level: 1 }],
+            ['utility_3', { cardType: 'long_range_scanner', level: 1 }],
+            ['utility_4', { cardType: 'galactic_chart', level: 1 }],
             ['engine_1', { cardType: 'impulse_engines', level: 1 }],
             ['power_1', { cardType: 'energy_reactor', level: 1 }],
             ['weapon_1', { cardType: 'laser_cannon', level: 1 }],
-            ['weapon_2', { cardType: 'pulse_cannon', level: 1 }],
-            ['weapon_3', { cardType: 'plasma_cannon', level: 1 }],
-            ['weapon_4', { cardType: 'phaser_array', level: 1 }]
+            ['weapon_2', { cardType: 'homing_missile', level: 1 }],
+            ['weapon_3', { cardType: 'photon_torpedo', level: 1 }],
+            ['weapon_4', { cardType: 'proximity_mine', level: 1 }]
         ]));
     }
     

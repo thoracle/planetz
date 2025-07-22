@@ -8,7 +8,7 @@ import * as THREE from 'three';
  * Simplified: Systems consume energy from shared pool when active (no separate power grid)
  */
 export default class Ship {
-    constructor(shipType = 'heavy_fighter') {
+    constructor(shipType = 'starter_ship') {
         // Ship identification
         this.shipType = shipType;
         this.shipConfig = getShipConfig(shipType);
