@@ -656,10 +656,15 @@ export class PhysicsProjectile {
         try {
             // Create visual representation (small sphere)
             const geometry = new THREE.SphereGeometry(0.5, 8, 6); // 1m diameter projectile
-            const material = new THREE.MeshBasicMaterial({ 
+            
+            // Use MeshLambertMaterial which supports emissive property
+            const material = new THREE.MeshLambertMaterial({ 
                 color: this.isHoming ? 0xff4444 : 0x44ff44,
-                emissive: this.isHoming ? 0x220000 : 0x002200
+                emissive: this.isHoming ? 0x220000 : 0x002200,
+                transparent: true,
+                opacity: 0.8
             });
+            
             this.threeObject = new THREE.Mesh(geometry, material);
             this.threeObject.position.set(origin.x, origin.y, origin.z);
             

@@ -615,7 +615,6 @@ export class WeaponEffectsManager {
         const positions = new Float32Array(config.particleCount * 3);
         const colors = new Float32Array(config.particleCount * 3);
         const sizes = new Float32Array(config.particleCount);
-        const alphas = new Float32Array(config.particleCount);
         
         // Initialize particles
         for (let i = 0; i < config.particleCount; i++) {
@@ -630,35 +629,39 @@ export class WeaponEffectsManager {
             colors[i * 3 + 1] = color.g;
             colors[i * 3 + 2] = color.b;
             
-            // Set sizes and alphas
+            // Set sizes
             sizes[i] = config.particleSize * (0.5 + Math.random() * 0.5);
-            alphas[i] = 1.0;
         }
         
         particleGeometry.setAttribute('position', new this.THREE.BufferAttribute(positions, 3));
         particleGeometry.setAttribute('color', new this.THREE.BufferAttribute(colors, 3));
         particleGeometry.setAttribute('size', new this.THREE.BufferAttribute(sizes, 1));
-        particleGeometry.setAttribute('alpha', new this.THREE.BufferAttribute(alphas, 1));
         
-        // Create particle material
+        // Create particle material - simplified without per-particle alpha for now
         const particleMaterial = new this.THREE.PointsMaterial({
-            size: config.particleSize,
+            size: config.particleSize * 2, // Make particles more visible
             vertexColors: true,
             transparent: true,
-            opacity: 0.8,
+            opacity: 0.9, // Higher opacity for visibility
             blending: this.THREE.AdditiveBlending,
-            depthWrite: false
+            depthWrite: false,
+            sizeAttenuation: true // Size based on distance
         });
         
         // Create particle system
         const particleSystem = new this.THREE.Points(particleGeometry, particleMaterial);
         this.scene.add(particleSystem);
         
+        console.log(`🚀 Created particle system at position:`, startPosition);
+        console.log(`🚀 Particle count: ${config.particleCount}, size: ${config.particleSize}`);
+        console.log(`🚀 Particle system added to scene:`, !!this.scene);
+        
         // Create engine glow if enabled
         let engineGlow = null;
         if (config.engineGlow) {
             engineGlow = this.createEngineGlow(startPosition, config.color, config.emissiveColor);
             this.scene.add(engineGlow);
+            console.log(`🚀 Created engine glow at position:`, startPosition);
         }
         
         // Track trail data
@@ -670,7 +673,6 @@ export class WeaponEffectsManager {
             projectileObject: projectileObject,
             config: config,
             positions: positions,
-            alphas: alphas,
             particleHistory: [], // Store recent positions for trail effect
             startTime: Date.now(),
             lastUpdateTime: Date.now()
@@ -692,12 +694,14 @@ export class WeaponEffectsManager {
      * Create engine glow effect for projectiles
      * @param {Vector3} position Engine position
      * @param {number} color Main color
-     * @param {number} emissiveColor Emissive color
+     * @param {number} emissiveColor Emissive color (for materials that support it)
      * @returns {Mesh} Engine glow mesh
      */
     createEngineGlow(position, color, emissiveColor) {
         const glowGeometry = new this.THREE.SphereGeometry(1.5, 8, 6);
-        const glowMaterial = new this.THREE.MeshBasicMaterial({
+        
+        // Use MeshLambertMaterial which supports emissive property
+        const glowMaterial = new this.THREE.MeshLambertMaterial({
             color: color,
             emissive: emissiveColor,
             transparent: true,
@@ -740,7 +744,6 @@ export class WeaponEffectsManager {
         
         // Update particle positions along trail
         const positions = trailData.positions;
-        const alphas = trailData.alphas;
         const particleCount = trailData.config.particleCount;
         const history = trailData.particleHistory;
         
@@ -752,19 +755,21 @@ export class WeaponEffectsManager {
                 positions[i * 3] = historyEntry.position.x;
                 positions[i * 3 + 1] = historyEntry.position.y;
                 positions[i * 3 + 2] = historyEntry.position.z;
-                
-                // Fade particles based on age
-                const age = (now - historyEntry.time) / (trailData.config.trailDuration * 1000);
-                alphas[i] = Math.max(0, 1.0 - age);
             } else {
-                // No history for this particle, make it invisible
-                alphas[i] = 0;
+                // No history for this particle, place it at current position (invisible)
+                positions[i * 3] = newPosition.x;
+                positions[i * 3 + 1] = newPosition.y;
+                positions[i * 3 + 2] = newPosition.z;
             }
         }
         
         // Update GPU buffers
         trailData.particleSystem.geometry.attributes.position.needsUpdate = true;
-        trailData.particleSystem.geometry.attributes.alpha.needsUpdate = true;
+        
+        // Update overall trail opacity based on age
+        const trailAge = (now - trailData.startTime) / (trailData.config.trailDuration * 1000);
+        const opacity = Math.max(0.3, 0.9 - trailAge * 0.6); // Fade from 0.9 to 0.3
+        trailData.particleSystem.material.opacity = opacity;
         
         // Update engine glow position
         if (trailData.engineGlow) {
@@ -774,6 +779,8 @@ export class WeaponEffectsManager {
             const pulseFactor = 0.8 + 0.2 * Math.sin(now * 0.01);
             trailData.engineGlow.scale.setScalar(pulseFactor);
         }
+        
+        console.log(`🔄 Updated trail ${projectileId}: ${history.length} history points, opacity: ${opacity.toFixed(2)}`);
     }
     
     /**
