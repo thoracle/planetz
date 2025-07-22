@@ -40,11 +40,6 @@
     
     <!-- Ammo.js Physics Engine - Dynamic loading for both Flask and Python servers -->
     <script>
-        // Clear localStorage to force fresh starter ship configuration with physics weapons
-        console.log('🔄 Clearing localStorage to apply new physics weapons configuration...');
-        localStorage.clear();
-        console.log('✅ localStorage cleared - new physics weapons will be loaded');
-        
         // Dynamic Ammo.js loading to work with both Flask (port 5001) and Python HTTP server (port 8081)
         function loadAmmoJS() {
             const ammoPath = `static/lib/ammo.js?v=${Date.now()}`; // Use static path with cache-busting
