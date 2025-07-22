@@ -1,6 +1,6 @@
 # PROJECT CONTEXT: Planetz - 3D Space Combat Game
 
-You're joining the development of **Planetz**, a fully functional 3D web-based space simulation game inspired by Elite, Privateer, and Star Raiders. The game is built with Three.js (frontend), Flask/Python (backend), and features complete ship management, combat, targeting, and exploration systems.
+You're joining the development of **Star F*ckers **, a fully functional 3D web-based space simulation game inspired by Elite, Privateer, and Star Raiders. The game is built with Three.js (frontend), Flask/Python (backend), and features complete ship management, combat, targeting, and exploration systems.
 
 ## 📁 Current Project State
 - **Branch**: `optimization` (up to date with origin)
@@ -177,6 +177,47 @@ The game is **fully functional** with working:
 - Multiplayer networking
 - Performance optimizations
 - Visual effects improvements
+
+## 🚀 Physics Development Priorities (Arcade-Focused)
+
+The game uses **Star Raiders-style arcade movement** for immediate, responsive ship controls. Physics integration focuses on **spectacular effects and environmental interaction** while preserving the arcade feel.
+
+### **Design Philosophy**
+- ✅ **Ship Movement**: Keep immediate and responsive (current camera-based system)
+- 🎆 **Physics Integration**: Add to everything else for visual spectacle and tactical depth
+- 🎯 **Goal**: Combine arcade responsiveness with realistic physics effects
+
+### **Priority 1: 🔧 Enhanced Projectile Physics** ⭐ *IN PROGRESS*
+- ✅ **COMPLETED**: Missing `createRigidBody()` and `createVector3()` methods implemented
+- ✅ **COMPLETED**: PhysicsProjectile integration working with proper rigid bodies
+- 🔄 **Next**: Physics-based missile trails and exhaust effects
+- 🔄 **Next**: Realistic projectile bouncing off asteroids/stations  
+- 🔄 **Next**: Multiple projectiles with proper collision detection
+- **Why**: Visual spectacle and tactical depth without affecting ship controls
+
+### **Priority 2: 🌌 Environmental Physics Objects**
+- Destructible asteroids that create physics debris
+- Space wreckage that tumbles realistically
+- Physics-based pick-ups (cargo containers, power-ups)
+- **Why**: Dynamic environment that reacts to combat
+
+### **Priority 3: 💥 Enhanced Combat Physics**
+- Explosion shockwaves that affect nearby objects (not ships)
+- Debris from destroyed ships with physics simulation
+- Physics-based particle effects for weapons
+- **Why**: Spectacular visual feedback without changing core movement
+
+### **Priority 4: 🏗️ Interactive Structures**
+- Destructible space stations with collapsing sections
+- Rotating space habitats with physics simulation
+- Deployable objects (mines, sensor buoys) with physics
+- **Why**: Rich environment interaction while keeping ship movement arcade-style
+
+### **Priority 5: 🎮 Advanced Physics Features**
+- Enhanced collision callbacks and event systems
+- Physics-based tractor beams and gravitational effects
+- Realistic orbital mechanics for environmental objects
+- **Why**: Advanced gameplay mechanics without compromising core feel
 
 ## 💡 Technical Notes
 - **Ammo.js**: Dynamically loaded via consistent `static/lib/ammo.js` path
