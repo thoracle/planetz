@@ -70,6 +70,10 @@ export class WeaponEffectsManager {
         this.explosions = [];
         this.activeEffects = new Set();
         
+        // NEW: Particle trail system
+        this.particleTrails = new Map(); // Map projectile ID to trail data
+        this.particleSystems = []; // Active particle systems for updating
+        
         // Audio system
         this.audioBuffers = new Map();
         this.audioSources = [];
@@ -557,6 +561,291 @@ export class WeaponEffectsManager {
     }
     
     /**
+     * Create particle trail for a projectile (missiles, torpedoes, etc.)
+     * @param {string} projectileId Unique identifier for the projectile
+     * @param {string} projectileType Type of projectile ('homing_missile', 'photon_torpedo', 'proximity_mine')
+     * @param {Vector3} startPosition Starting position of the trail
+     * @param {Object} projectileObject Reference to the Three.js projectile object for position tracking
+     * @returns {Object} Particle trail data for updating
+     */
+    createProjectileTrail(projectileId, projectileType, startPosition, projectileObject) {
+        if (this.fallbackMode) {
+            console.warn('WeaponEffectsManager: createProjectileTrail called in fallback mode');
+            return null;
+        }
+        
+        // Configuration based on projectile type
+        const trailConfigs = {
+            homing_missile: {
+                particleCount: 20,
+                trailLength: 15, // meters
+                particleSize: 0.8,
+                color: 0xff4444,
+                emissiveColor: 0x440000,
+                trailDuration: 3.0,
+                engineGlow: true,
+                thrusterParticles: true
+            },
+            photon_torpedo: {
+                particleCount: 25,
+                trailLength: 20, // meters  
+                particleSize: 1.2,
+                color: 0x4444ff,
+                emissiveColor: 0x000044,
+                trailDuration: 4.0,
+                engineGlow: true,
+                thrusterParticles: true
+            },
+            proximity_mine: {
+                particleCount: 8,
+                trailLength: 5, // meters - shorter since mines are slower
+                particleSize: 0.4,
+                color: 0xffaa00,
+                emissiveColor: 0x442200,
+                trailDuration: 2.0,
+                engineGlow: false, // mines don't have big engines
+                thrusterParticles: false
+            }
+        };
+        
+        const config = trailConfigs[projectileType] || trailConfigs.homing_missile;
+        
+        // Create particle system
+        const particleGeometry = new this.THREE.BufferGeometry();
+        const positions = new Float32Array(config.particleCount * 3);
+        const colors = new Float32Array(config.particleCount * 3);
+        const sizes = new Float32Array(config.particleCount);
+        const alphas = new Float32Array(config.particleCount);
+        
+        // Initialize particles
+        for (let i = 0; i < config.particleCount; i++) {
+            // Start all particles at projectile position
+            positions[i * 3] = startPosition.x;
+            positions[i * 3 + 1] = startPosition.y;
+            positions[i * 3 + 2] = startPosition.z;
+            
+            // Set colors
+            const color = new this.THREE.Color(config.color);
+            colors[i * 3] = color.r;
+            colors[i * 3 + 1] = color.g;
+            colors[i * 3 + 2] = color.b;
+            
+            // Set sizes and alphas
+            sizes[i] = config.particleSize * (0.5 + Math.random() * 0.5);
+            alphas[i] = 1.0;
+        }
+        
+        particleGeometry.setAttribute('position', new this.THREE.BufferAttribute(positions, 3));
+        particleGeometry.setAttribute('color', new this.THREE.BufferAttribute(colors, 3));
+        particleGeometry.setAttribute('size', new this.THREE.BufferAttribute(sizes, 1));
+        particleGeometry.setAttribute('alpha', new this.THREE.BufferAttribute(alphas, 1));
+        
+        // Create particle material
+        const particleMaterial = new this.THREE.PointsMaterial({
+            size: config.particleSize,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: this.THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        
+        // Create particle system
+        const particleSystem = new this.THREE.Points(particleGeometry, particleMaterial);
+        this.scene.add(particleSystem);
+        
+        // Create engine glow if enabled
+        let engineGlow = null;
+        if (config.engineGlow) {
+            engineGlow = this.createEngineGlow(startPosition, config.color, config.emissiveColor);
+            this.scene.add(engineGlow);
+        }
+        
+        // Track trail data
+        const trailData = {
+            id: projectileId,
+            type: projectileType,
+            particleSystem: particleSystem,
+            engineGlow: engineGlow,
+            projectileObject: projectileObject,
+            config: config,
+            positions: positions,
+            alphas: alphas,
+            particleHistory: [], // Store recent positions for trail effect
+            startTime: Date.now(),
+            lastUpdateTime: Date.now()
+        };
+        
+        this.particleTrails.set(projectileId, trailData);
+        this.particleSystems.push(trailData);
+        this.activeEffects.add(particleSystem);
+        
+        if (engineGlow) {
+            this.activeEffects.add(engineGlow);
+        }
+        
+        console.log(`🚀 Created particle trail for ${projectileType}: ${config.particleCount} particles`);
+        return trailData;
+    }
+    
+    /**
+     * Create engine glow effect for projectiles
+     * @param {Vector3} position Engine position
+     * @param {number} color Main color
+     * @param {number} emissiveColor Emissive color
+     * @returns {Mesh} Engine glow mesh
+     */
+    createEngineGlow(position, color, emissiveColor) {
+        const glowGeometry = new this.THREE.SphereGeometry(1.5, 8, 6);
+        const glowMaterial = new this.THREE.MeshBasicMaterial({
+            color: color,
+            emissive: emissiveColor,
+            transparent: true,
+            opacity: 0.6,
+            blending: this.THREE.AdditiveBlending
+        });
+        
+        const engineGlow = new this.THREE.Mesh(glowGeometry, glowMaterial);
+        engineGlow.position.copy(position);
+        
+        return engineGlow;
+    }
+    
+    /**
+     * Update particle trail for a moving projectile
+     * @param {string} projectileId Projectile identifier
+     * @param {Vector3} newPosition Current projectile position
+     */
+    updateProjectileTrail(projectileId, newPosition) {
+        if (this.fallbackMode) return;
+        
+        const trailData = this.particleTrails.get(projectileId);
+        if (!trailData) return;
+        
+        const now = Date.now();
+        const deltaTime = (now - trailData.lastUpdateTime) / 1000; // seconds
+        trailData.lastUpdateTime = now;
+        
+        // Update particle history
+        trailData.particleHistory.unshift({
+            position: newPosition.clone(),
+            time: now
+        });
+        
+        // Remove old history beyond trail length
+        const maxHistoryTime = trailData.config.trailDuration * 1000;
+        trailData.particleHistory = trailData.particleHistory.filter(
+            entry => (now - entry.time) < maxHistoryTime
+        );
+        
+        // Update particle positions along trail
+        const positions = trailData.positions;
+        const alphas = trailData.alphas;
+        const particleCount = trailData.config.particleCount;
+        const history = trailData.particleHistory;
+        
+        for (let i = 0; i < particleCount; i++) {
+            const historyIndex = Math.floor((i / particleCount) * history.length);
+            
+            if (historyIndex < history.length) {
+                const historyEntry = history[historyIndex];
+                positions[i * 3] = historyEntry.position.x;
+                positions[i * 3 + 1] = historyEntry.position.y;
+                positions[i * 3 + 2] = historyEntry.position.z;
+                
+                // Fade particles based on age
+                const age = (now - historyEntry.time) / (trailData.config.trailDuration * 1000);
+                alphas[i] = Math.max(0, 1.0 - age);
+            } else {
+                // No history for this particle, make it invisible
+                alphas[i] = 0;
+            }
+        }
+        
+        // Update GPU buffers
+        trailData.particleSystem.geometry.attributes.position.needsUpdate = true;
+        trailData.particleSystem.geometry.attributes.alpha.needsUpdate = true;
+        
+        // Update engine glow position
+        if (trailData.engineGlow) {
+            trailData.engineGlow.position.copy(newPosition);
+            
+            // Animate engine glow pulsing
+            const pulseFactor = 0.8 + 0.2 * Math.sin(now * 0.01);
+            trailData.engineGlow.scale.setScalar(pulseFactor);
+        }
+    }
+    
+    /**
+     * Remove particle trail when projectile is destroyed
+     * @param {string} projectileId Projectile identifier
+     */
+    removeProjectileTrail(projectileId) {
+        if (this.fallbackMode) return;
+        
+        const trailData = this.particleTrails.get(projectileId);
+        if (!trailData) return;
+        
+        // Remove from scene
+        this.scene.remove(trailData.particleSystem);
+        this.activeEffects.delete(trailData.particleSystem);
+        
+        if (trailData.engineGlow) {
+            this.scene.remove(trailData.engineGlow);
+            this.activeEffects.delete(trailData.engineGlow);
+        }
+        
+        // Dispose geometry and material
+        trailData.particleSystem.geometry.dispose();
+        trailData.particleSystem.material.dispose();
+        
+        if (trailData.engineGlow) {
+            trailData.engineGlow.geometry.dispose();
+            trailData.engineGlow.material.dispose();
+        }
+        
+        // Remove from tracking
+        this.particleTrails.delete(projectileId);
+        const systemIndex = this.particleSystems.findIndex(system => system.id === projectileId);
+        if (systemIndex !== -1) {
+            this.particleSystems.splice(systemIndex, 1);
+        }
+        
+        console.log(`🧹 Removed particle trail for projectile: ${projectileId}`);
+    }
+    
+    /**
+     * Update all active particle trails automatically
+     * @param {number} deltaTime Time elapsed in seconds
+     */
+    updateParticleTrails(deltaTime) {
+        if (this.fallbackMode) return;
+        
+        // Update each active particle trail by getting position from its projectile object
+        for (const trailData of this.particleSystems) {
+            if (trailData.projectileObject && trailData.projectileObject.position) {
+                // Update trail with current projectile position
+                this.updateProjectileTrail(trailData.id, trailData.projectileObject.position);
+            }
+        }
+        
+        // Clean up trails for destroyed projectiles
+        const activeTrailIds = Array.from(this.particleTrails.keys());
+        for (const trailId of activeTrailIds) {
+            const trailData = this.particleTrails.get(trailId);
+            
+            // Check if projectile still exists and is active
+            if (!trailData.projectileObject || 
+                !trailData.projectileObject.parent || 
+                (trailData.projectileObject.userData && trailData.projectileObject.userData.projectile && !trailData.projectileObject.userData.projectile.isActive())) {
+                
+                console.log(`🧹 Auto-cleaning destroyed projectile trail: ${trailId}`);
+                this.removeProjectileTrail(trailId);
+            }
+        }
+    }
+    
+    /**
      * Play success sound when an enemy is destroyed
      * @param {Vector3} position 3D position for spatial audio (optional)
      * @param {number} volume Volume multiplier (0.0 - 1.0)
@@ -592,6 +881,9 @@ export class WeaponEffectsManager {
         
         // Update explosions
         this.updateExplosions(now, deltaTime);
+        
+        // NEW: Update particle trails
+        this.updateParticleTrails(deltaTime);
         
         // Clean up finished effects
         this.cleanupFinishedEffects();

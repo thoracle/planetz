@@ -624,8 +624,14 @@ export class PhysicsProjectile {
         // Visual properties
         this.scene = config.scene || window.scene;
         
+        // Particle trail tracking
+        this.particleTrailId = null;
+        
         // Initialize physics body
         this.initializePhysicsBody(config.origin, config.direction);
+        
+        // Create particle trail effects
+        this.initializeParticleTrail();
         
         console.log(`🚀 PhysicsProjectile created: ${this.weaponName} (homing: ${this.isHoming})`);
     }
@@ -714,6 +720,53 @@ export class PhysicsProjectile {
             
         } catch (error) {
             console.error('Failed to create physics projectile:', error);
+        }
+    }
+    
+    /**
+     * Initialize particle trail effects for the projectile
+     */
+    initializeParticleTrail() {
+        // Get weapon effects manager from global scope
+        const effectsManager = window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager;
+        if (!effectsManager || effectsManager.fallbackMode) {
+            console.log('⚠️ WeaponEffectsManager not available for particle trails');
+            return;
+        }
+        
+        // Map weapon names to particle trail types
+        const weaponTypeMap = {
+            'Homing Missile': 'homing_missile',
+            'Photon Torpedo': 'photon_torpedo', 
+            'Proximity Mine': 'proximity_mine',
+            'homing_missile': 'homing_missile',
+            'photon_torpedo': 'photon_torpedo',
+            'proximity_mine': 'proximity_mine'
+        };
+        
+        const particleType = weaponTypeMap[this.weaponName] || 'homing_missile';
+        const projectileId = `${this.weaponName}_${this.launchTime}`;
+        
+        // Create particle trail if we have a visual object
+        if (this.threeObject && this.threeObject.position) {
+            const THREE = window.THREE;
+            const startPosition = new THREE.Vector3(
+                this.threeObject.position.x,
+                this.threeObject.position.y, 
+                this.threeObject.position.z
+            );
+            
+            this.particleTrailId = projectileId;
+            const trailData = effectsManager.createProjectileTrail(
+                projectileId, 
+                particleType, 
+                startPosition, 
+                this.threeObject
+            );
+            
+            if (trailData) {
+                console.log(`✨ Created particle trail for ${this.weaponName}: ${particleType}`);
+            }
         }
     }
     
@@ -1066,6 +1119,12 @@ export class PhysicsProjectile {
                 this.threeObject.geometry?.dispose();
                 this.threeObject.material?.dispose();
                 this.threeObject = null;
+            }
+
+            // Remove particle trail if it exists
+            if (this.particleTrailId && window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
+                window.starfieldManager.viewManager.getShip().weaponEffectsManager.removeProjectileTrail(this.particleTrailId);
+                console.log(`🧹 Removed particle trail for ${this.weaponName}`);
             }
             
             console.log(`🧹 Cleaned up ${this.weaponName} physics resources`);
