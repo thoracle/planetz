@@ -473,7 +473,7 @@ Freighter convoys position escorts in a cylindrical pattern around the freighter
 Example in Action
 Patrol Encounter: A patrol of 3 light fighters and 1 heavy fighter detects the player (hostile). The light fighters use high pursuit and separation to swarm and flank, performing evasive rolls when targeted. The heavy fighter uses high alignment and cohesion to stay centered, engaging head-on. If the player damages a light fighter, its evasion weight increases, causing it to break formation and flee.
 
-Carrier Formation: A carrier with 2 heavy fighters and 1 light freighter moves in a tight formation (high cohesion). The heavy fighters orbit the freighter and carrier, using moderate alignment to maintain a spherical pattern. If the player attacks, the carrier launches 2 light fighters, which use pursuit to chase the player while maintaining loose cohesion with the group.
+Carrier Formation: A carrier with 2 heavy fighters and 1 light freighter moves in a tight formation (high cohesion). The heavy fighters orbit the freighter and carrier, using moderate alignment to maintain a spherical pattern. If the player attacks, the carrier launches up to 3 light fighters, which use pursuit to chase the player while maintaining loose cohesion with the group.
 
 Neutral Buzz: A scout (neutral) detects the player, uses orbiting to approach and circle at 500m, then resumes patrol with low alignment and cohesion, as it’s not part of a group.
 

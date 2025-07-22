@@ -52,8 +52,12 @@ export default class EnemyShip {
         this.maxHull = 0;
         this.currentHull = 0;
         
+        // Track initialization state
+        this.isInitialized = false;
+        this.initializationPromise = null;
+        
         // Initialize enemy systems
-        this.initializeEnemySystemInstances();
+        this.initializationPromise = this.initializeEnemySystemInstances();
         
         console.log(`Enemy ship created: ${enemyShipType}`, this.shipConfig);
     }
@@ -144,11 +148,16 @@ export default class EnemyShip {
             this.currentEnergy = this.maxEnergy;
             this.currentHull = this.maxHull;
             
+            // Mark as fully initialized
+            this.isInitialized = true;
+            
             console.log(`Enemy ship systems initialized: ${this.systems.size} systems installed`);
+            console.log(`Enemy ship health: Hull=${this.currentHull}/${this.maxHull}, Energy=${this.currentEnergy}/${this.maxEnergy}`);
             console.log('Enemy ship systems:', Array.from(this.systems.keys()));
             
         } catch (error) {
             console.error('Failed to initialize enemy ship systems:', error);
+            this.isInitialized = false;
         }
     }
     
@@ -228,15 +237,23 @@ export default class EnemyShip {
      * Wait for systems to be fully initialized
      */
     async waitForSystemsInitialized() {
+        // Wait for the initialization promise to complete
+        if (this.initializationPromise) {
+            await this.initializationPromise;
+        }
+        
+        // Double-check that initialization actually completed
         return new Promise((resolve) => {
-            const checkSystems = () => {
-                if (this.systems.size > 0) {
+            const checkInitialization = () => {
+                if (this.isInitialized && this.systems.size > 0 && this.maxHull > 0 && this.currentHull > 0) {
+                    console.log(`✅ Enemy ship fully initialized: ${this.shipName} - Hull: ${this.currentHull}/${this.maxHull}`);
                     resolve();
                 } else {
-                    setTimeout(checkSystems, 10);
+                    console.log(`⏳ Waiting for enemy ship initialization: ${this.shipName} - Hull: ${this.currentHull}/${this.maxHull}, Systems: ${this.systems.size}`);
+                    setTimeout(checkInitialization, 10);
                 }
             };
-            checkSystems();
+            checkInitialization();
         });
     }
     

@@ -894,7 +894,21 @@ export class PhysicsManager {
                     
                     for (let j = 0; j < numContacts; j++) {
                         const contactPoint = contactManifold.getContactPoint(j);
-                        const distance = contactPoint.getDistance();
+                        
+                        // Try to get contact distance with fallback
+                        let distance = 0.0; // Default to collision assumption
+                        try {
+                            if (typeof contactPoint.getDistance === 'function') {
+                                distance = contactPoint.getDistance();
+                            } else {
+                                // Fallback: assume collision if contact point exists
+                                console.log('⚠️ contactPoint.getDistance not available, assuming collision');
+                                distance = -0.1; // Negative value indicates penetration/collision
+                            }
+                        } catch (error) {
+                            console.log('⚠️ Error getting contact distance, assuming collision:', error.message);
+                            distance = -0.1; // Assume collision
+                        }
                         
                         // Only process contact if distance indicates actual collision
                         if (distance <= 0.0) {
@@ -1228,7 +1242,21 @@ export class PhysicsManager {
         
         for (let i = 0; i < numContacts; i++) {
             const contactPoint = contactManifold.getContactPoint(i);
-            const distance = contactPoint.getDistance();
+            
+            // Try to get contact distance with fallback
+            let distance = -0.1; // Default to penetration assumption
+            try {
+                if (typeof contactPoint.getDistance === 'function') {
+                    distance = contactPoint.getDistance();
+                } else {
+                    // Fallback: assume moderate penetration for impulse calculation
+                    console.log('⚠️ contactPoint.getDistance not available for impulse calculation, using fallback');
+                    distance = -0.1;
+                }
+            } catch (error) {
+                console.log('⚠️ Error getting contact distance for impulse, using fallback:', error.message);
+                distance = -0.1;
+            }
             
             if (distance < 0) { // Penetrating contact
                 totalImpulse += Math.abs(distance) * 1000; // Scale factor
