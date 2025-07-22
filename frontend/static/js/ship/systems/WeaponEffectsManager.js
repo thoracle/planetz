@@ -638,23 +638,14 @@ export class WeaponEffectsManager {
         const particleSystem = new this.THREE.Points(particleGeometry, particleMaterial);
         this.scene.add(particleSystem);
         
-        // Clean torpedo-focused particle logging 
-        if (projectileType === 'photon_torpedo') {
-            console.log(`🟦 TORPEDO particles: ${config.particleCount} created`);
-        }
-        
         // Create engine glow if enabled
         let engineGlow = null;
         if (config.engineGlow) {
             engineGlow = this.createEngineGlow(startPosition, config.engineColor, config.emissiveColor);
             this.scene.add(engineGlow);
-            // Only log torpedo engine glow for focused debugging
-            if (projectileType === 'photon_torpedo') {
-                console.log(`🟦 TORPEDO engine glow activated`);
-            }
         }
         
-        // Track trail data
+        // Store trail data for updates and cleanup
         const trailData = {
             id: projectileId,
             type: projectileType,
@@ -670,17 +661,8 @@ export class WeaponEffectsManager {
         };
         
         this.particleTrails.set(projectileId, trailData);
-        this.particleSystems.push(trailData);
-        this.activeEffects.add(particleSystem);
         
-        if (engineGlow) {
-            this.activeEffects.add(engineGlow);
-        }
-        
-        // Only log torpedo trail creation for focused debugging
-        if (projectileType === 'photon_torpedo') {
-            console.log(`🟦 TORPEDO trail system created: ${config.particleCount} particles`);
-        }
+        // Removed torpedo trail system logging to keep console clean
         
         return trailData;
     }
@@ -748,10 +730,7 @@ export class WeaponEffectsManager {
                 trailData.particleSystem.material.opacity = opacity;
             }
             
-            // Only log torpedo trail updates occasionally, not every frame
-            if (trailData.type === 'photon_torpedo' && trailData.particleHistory.length % 10 === 0) {
-                console.log(`🟦 TORPEDO trail: ${trailData.particleHistory.length} points, opacity: ${opacity.toFixed(2)}`);
-            }
+            // Removed all torpedo trail logging to keep console clean
         }
     }
     
@@ -813,10 +792,7 @@ export class WeaponEffectsManager {
             // Mark trail for delayed cleanup but don't remove immediately
             trailData.pendingDestruction = true;
             trailData.destructionTime = currentTime + (minimumPersistenceTime - trailAge);
-            // Only log torpedo trail delays for focused debugging
-            if (trailData.type === 'photon_torpedo') {
-                console.log(`🟦 TORPEDO trail cleanup delayed`);
-            }
+            // Removed torpedo trail delay logging to keep console clean
             return;
         }
         
@@ -834,10 +810,7 @@ export class WeaponEffectsManager {
             this.scene.remove(trailData.engineGlow);
         }
         
-        // Only log torpedo trail cleanup for focused debugging
-        if (trailData.type === 'photon_torpedo') {
-            console.log(`🟦 TORPEDO trail removed`);
-        }
+        // Removed torpedo trail cleanup logging to keep console clean
     }
     
     /**
@@ -869,10 +842,7 @@ export class WeaponEffectsManager {
         trailsToDestroy.forEach(projectileId => {
             const trailData = this.particleTrails.get(projectileId);
             if (trailData) {
-                // Only log torpedo delayed cleanup for focused debugging
-                if (trailData.type === 'photon_torpedo') {
-                    console.log(`🟦 TORPEDO trail cleanup complete`);
-                }
+                // Removed torpedo delayed cleanup logging to keep console clean
                 
                 // Clean up trail data
                 this.particleTrails.delete(projectileId);

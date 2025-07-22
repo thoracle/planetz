@@ -117,11 +117,6 @@ export class WeaponCard {
                     scene: window.scene
                 });
                 
-                // Clean torpedo-focused logging
-                if (this.name.toLowerCase().includes('torpedo')) {
-                    console.log(`🟦 TORPEDO FIRED → Target: ${target?.ship?.shipName || 'None'}`);
-                }
-                
                 return physicsProjectile;
                 
             } catch (error) {
@@ -344,11 +339,6 @@ export class SplashDamageWeapon extends WeaponCard {
                     scene: window.scene
                 });
                 
-                // Clean torpedo-focused logging
-                if (this.name.toLowerCase().includes('torpedo')) {
-                    console.log(`🟦 TORPEDO FIRED → Target: ${target?.ship?.shipName || 'None'}`);
-                }
-                
                 return physicsProjectile;
                 
             } catch (error) {
@@ -401,9 +391,6 @@ export class SplashDamageWeapon extends WeaponCard {
         // If it's a fallback projectile, we need to set up manual updates
         if (projectile instanceof PhysicsProjectile) {
             // Clean torpedo tracking
-            if (projectile.weaponName.toLowerCase().includes('torpedo')) {
-                console.log(`🟦 TORPEDO tracking started`);
-            }
         } else {
             // Set up simple flight simulation for fallback projectiles
             this.simulateFallbackProjectile(projectile);
@@ -426,9 +413,6 @@ export class SplashDamageWeapon extends WeaponCard {
                 clearInterval(simulationTimer);
                 if (!projectile.hasDetonated) {
                     // Only log torpedo simulation events
-                    if (projectile.weaponName.toLowerCase().includes('torpedo')) {
-                        console.log(`🟦 TORPEDO simulation timeout, detonating`);
-                    }
                     projectile.detonate();
                 }
                 
@@ -468,10 +452,7 @@ export class Projectile {
         // Calculate initial velocity toward target
         this.calculateInitialVelocity();
         
-        // Only log torpedo fallback projectile creation
-        if (this.weaponName.toLowerCase().includes('torpedo')) {
-            console.log(`🟦 TORPEDO (fallback) created - ${this.isHoming ? 'Guided' : 'Ballistic'}`);
-        }
+        // Removed torpedo creation logging to keep console clean
     }
     
     /**
@@ -581,10 +562,7 @@ export class Projectile {
         
         this.hasDetonated = true;
         
-        // Only log torpedo detonation events
-        if (this.weaponName.toLowerCase().includes('torpedo')) {
-            console.log(`🟦 TORPEDO (fallback) detonated`);
-        }
+        // Removed torpedo detonation logging to keep console clean
         
         // Apply splash damage to all targets within blast radius
         this.applySplashDamage();
@@ -597,10 +575,7 @@ export class Projectile {
      * Apply splash damage to targets within blast radius
      */
     applySplashDamage() {
-        // Only log torpedo splash damage for fallback projectiles
-        if (this.weaponName.toLowerCase().includes('torpedo')) {
-            console.log(`🟦 TORPEDO (fallback) splash damage: ${this.damage} @ ${this.blastRadius}m`);
-        }
+        // Removed torpedo splash damage logging to keep console clean
         
         // For now, just apply damage to primary target if within range
         if (this.target && this.target.position) {
@@ -705,10 +680,7 @@ export class PhysicsProjectile {
         // Create particle trail effects
         this.initializeParticleTrail();
         
-        // Clean torpedo logging only
-        if (this.weaponName.toLowerCase().includes('torpedo')) {
-            console.log(`🟦 TORPEDO LAUNCHED → ${this.isHoming ? 'Guided' : 'Ballistic'}`);
-        }
+        // Removed torpedo launch logging to keep console clean
     }
     
     /**
@@ -828,10 +800,7 @@ export class PhysicsProjectile {
         // Get weapon effects manager from global scope
         const effectsManager = window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager;
         if (!effectsManager || effectsManager.fallbackMode) {
-            // Only log torpedo trail issues for focused debugging
-            if (this.weaponName.toLowerCase().includes('torpedo')) {
-                console.log('🟦 TORPEDO trail unavailable');
-            }
+            // Removed torpedo-specific trail unavailable logging to keep console clean
             return;
         }
         
@@ -865,10 +834,7 @@ export class PhysicsProjectile {
                 this.threeObject
             );
             
-            // Only log torpedo trail creation for focused debugging
-            if (trailData && this.weaponName.toLowerCase().includes('torpedo')) {
-                console.log(`🟦 TORPEDO trail active`);
-            }
+            // Removed all torpedo-specific logging to keep console clean
         }
     }
     
@@ -899,11 +865,7 @@ export class PhysicsProjectile {
             return;
         }
         
-        // Clean torpedo collision logging
-        if (this.weaponName.toLowerCase().includes('torpedo')) {
-            console.log(`🟦 TORPEDO HIT → Impact detected`);
-        }
-        
+        // Removed torpedo-specific collision logging to keep console clean
         console.log(`💥 ${this.weaponName} collision detected with:`, otherObject);
         
         // Get collision position from physics
@@ -1084,10 +1046,8 @@ export class PhysicsProjectile {
             };
         }
         
-        // Clean torpedo detonation logging
-        if (this.weaponName.toLowerCase().includes('torpedo')) {
-            console.log(`🟦 TORPEDO DETONATED → Splash damage: ${this.damage} @ ${this.blastRadius}m`);
-        }
+        // Removed torpedo-specific detonation logging to keep console clean
+        console.log(`💥 ${this.weaponName} detonated at position:`, detonationPos);
         
         // Apply physics-based splash damage
         this.applyPhysicsSplashDamage(detonationPos);
@@ -1110,10 +1070,7 @@ export class PhysicsProjectile {
             // Use physics spatial query to find all entities within blast radius
             const affectedEntities = this.physicsManager.spatialQuery(position, this.blastRadius);
             
-            // Clean torpedo logging
-            if (this.weaponName.toLowerCase().includes('torpedo')) {
-                console.log(`🟦 TORPEDO BLAST → ${affectedEntities.length} targets in range`);
-            }
+            // Removed torpedo blast logging to keep console clean
             
             affectedEntities.forEach(entity => {
                 // Get entity position from threeObject
@@ -1150,10 +1107,7 @@ export class PhysicsProjectile {
                         
                         // Only play success sound if this damage actually destroyed the ship and it wasn't already destroyed
                         if (damageResult && damageResult.isDestroyed && !wasAlreadyDestroyed) {
-                            // Clean torpedo destruction logging
-                            if (this.weaponName.toLowerCase().includes('torpedo')) {
-                                console.log(`🟦 TORPEDO KILL → ${entity.ship.shipName || 'Target'} destroyed!`);
-                            }
+                            // Removed torpedo kill logging to keep console clean
                             
                             // Ensure hull is exactly 0 for consistency
                             entity.ship.currentHull = 0;
@@ -1171,11 +1125,7 @@ export class PhysicsProjectile {
                         } else if (wasAlreadyDestroyed) {
                             // Skip logging for already destroyed ships to reduce spam
                         } else {
-                            // Clean torpedo damage logging (only for living targets)
-                            if (this.weaponName.toLowerCase().includes('torpedo')) {
-                                const hullPercent = Math.round((entity.ship.currentHull / entity.ship.maxHull) * 100);
-                                console.log(`🟦 TORPEDO DMG → ${damage} damage, hull: ${hullPercent}%`);
-                            }
+                            // Removed torpedo damage logging to keep console clean
                         }
                     } else if (entity.takeDamage) {
                         entity.takeDamage(damage);
