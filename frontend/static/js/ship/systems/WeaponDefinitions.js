@@ -138,14 +138,14 @@ export class WeaponDefinitions {
                 weaponType: 'splash-damage',
                 damage: 320,
                 cooldownTime: 4.0, // seconds
-                range: 6000, // meters - increased 20% from 5000m (5km -> 6km)
+                range: 20000, // meters - increased from 6000m to match targeting system crosshair range (20km)
                 autofireEnabled: false,
                 accuracy: 1.0,
                 energyCost: 12,
                 blastRadius: 80, // meters
                 homingCapability: false,
                 targetLockRequired: true,
-                flightRange: 6000, // increased 20% from 5000m (5km -> 6km)
+                flightRange: 20000, // increased from 6000m to match targeting system crosshair range (20km)
                 turnRate: 0, // No turning
                 specialProperties: {
                     explosionType: 'photon',

@@ -12,14 +12,29 @@ export class WeaponEffectsManager {
         
         // Get THREE reference (use global pattern like other files)
         this.THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
+        console.log('🔍 DEBUG: Checking THREE.js availability');
+        console.log('🔍 DEBUG: window.THREE =', !!window.THREE);
+        console.log('🔍 DEBUG: global THREE =', typeof THREE !== 'undefined');
+        console.log('🔍 DEBUG: this.THREE =', !!this.THREE);
+        
         if (!this.THREE) {
             console.error('THREE.js not available for WeaponEffectsManager');
             
-            // Instead of throwing, create a fallback mode
-            this.fallbackMode = true;
-            console.log('🎆 WeaponEffectsManager: Fallback mode active');
-            this.initializeFallbackMode();
-            return;
+            // Try to get THREE from scene if available
+            if (scene && scene.constructor && scene.constructor.name === 'Scene') {
+                console.log('🔍 DEBUG: Trying to get THREE from scene object');
+                // Scene exists, so THREE must be available somehow
+                this.THREE = window.THREE || THREE;
+                console.log('🔍 DEBUG: Retrieved THREE from scene context:', !!this.THREE);
+            }
+            
+            if (!this.THREE) {
+                // Instead of throwing, create a fallback mode
+                this.fallbackMode = true;
+                console.log('🎆 WeaponEffectsManager: Fallback mode active');
+                this.initializeFallbackMode();
+                return;
+            }
         }
         
         this.fallbackMode = false;
@@ -58,9 +73,8 @@ export class WeaponEffectsManager {
         this.explosions = [];
         this.activeEffects = new Set();
         
-        // NEW: Particle trail system
-        this.particleTrails = new Map(); // Map projectile ID to trail data
-        this.particleSystems = []; // Active particle systems for updating
+        // SIMPLIFIED: Basic particle trail system - no complex tracking
+        this.staticTrails = []; // Simple array of trail objects
         
         // Audio system
         this.audioBuffers = new Map();
@@ -82,23 +96,23 @@ export class WeaponEffectsManager {
             explosion: []
         };
         
-        // Effect configuration (will be exposed to ship editor)
+        // SIMPLIFIED: Basic effect configuration
         this.effectConfig = {
             muzzleFlash: {
-                duration: 0.08, // seconds - reduced from 0.15 for subtlety
-                scale: 0.4, // reduced from 1.0 for smaller flash
-                intensity: 0.3 // reduced from 1.0 for lower opacity
+                duration: 0.08,
+                scale: 0.4,
+                intensity: 0.3
             },
             laserBeam: {
-                duration: 0.8, // seconds - tunable
-                thickness: 0.02, // tunable
+                duration: 0.8,
+                thickness: 0.02,
                 intensity: 1.0,
                 fadeTime: 0.6
             },
-            missile: {
-                trailIntensity: 1.0, // tunable
-                trailDuration: 2.0,
-                particleCount: 15
+            projectileTrail: {
+                particleCount: 5, // Much fewer particles for simplicity
+                trailDuration: 1500, // Shorter duration - 1.5 seconds
+                fadeTime: 500 // Quick fade - 0.5 seconds
             },
             explosion: {
                 scale: 1.0,
@@ -256,10 +270,12 @@ export class WeaponEffectsManager {
      * @param {number} durationPercentage Optional percentage of the full audio to play (0.0 - 1.0)
      */
     playSound(soundType, position = null, volume = 1.0, duration = null, durationPercentage = null) {
-        console.log(`🎵 WeaponEffectsManager.playSound called: ${soundType}, volume=${volume}`);
-        console.log(`🎵 System state: audioInitialized=${this.audioInitialized}, audioContext=${!!this.audioContext}, buffers=${this.audioBuffers.size}`);
-        console.log(`🎵 Has buffer for ${soundType}: ${this.audioBuffers.has(soundType)}`);
-        console.log(`🎵 User interaction detected: ${this.userHasInteracted}`);
+        // Removed audio call log to prevent console spam
+        // console.log(`🎵 WeaponEffectsManager.playSound called: ${soundType}, volume=${volume}`);
+        // Removed audio state logs to prevent console spam
+        // console.log(`🎵 System state: audioInitialized=${this.audioInitialized}, audioContext=${!!this.audioContext}, buffers=${this.audioBuffers.size}`);
+        // console.log(`🎵 Has buffer for ${soundType}: ${this.audioBuffers.has(soundType)}`);
+        // console.log(`🎵 User interaction detected: ${this.userHasInteracted}`);
         
         // Check user interaction for browser audio policies
         if (!this.userHasInteracted) {
@@ -274,7 +290,7 @@ export class WeaponEffectsManager {
         }
         
         try {
-            console.log(`🎵 Attempting Web Audio playback for ${soundType}`);
+            // Removed audio playback attempt log to prevent console spam  
             const audioBuffer = this.audioBuffers.get(soundType);
             const source = this.audioContext.createBufferSource();
             const gainNode = this.audioContext.createGain();
@@ -309,22 +325,22 @@ export class WeaponEffectsManager {
             // If durationPercentage is specified, calculate duration based on audio buffer length
             if (durationPercentage !== null && audioBuffer) {
                 actualDuration = audioBuffer.duration * Math.max(0, Math.min(1, durationPercentage));
-                console.log(`🎵 Playing ${(durationPercentage * 100).toFixed(0)}% of ${soundType} (${actualDuration.toFixed(2)}s of ${audioBuffer.duration.toFixed(2)}s)`);
+                // Removed duration calculation log to prevent console spam
             }
             
             // For laser sounds, play only the first part (0.5 seconds - increased for full audibility)
             if (soundType === 'lasers') {
                 const laserDuration = actualDuration || 0.5; // Increased from 0.2s for full audibility
-                console.log(`🎵 Laser audio buffer duration: ${audioBuffer.duration.toFixed(3)}s, playing: ${laserDuration}s`);
+                // Removed laser audio logging to prevent console spam
                 source.start(0, 0, laserDuration);
-                console.log(`🎵 Playing laser sound for ${laserDuration}s`);
+                // console.log(`🎵 Playing laser sound for ${laserDuration}s`);
             } else if (actualDuration !== null) {
                 // For other sounds with duration specified, play from start with duration limit
                 source.start(0, 0, actualDuration);
-                console.log(`🎵 Playing ${soundType} for ${actualDuration}s`);
+                // Removed sound duration log to prevent console spam
             } else {
                 source.start();
-                console.log(`🎵 Playing full ${soundType} sound`);
+                // Removed full sound log to prevent console spam
             }
             
             // Clean up after sound finishes
@@ -334,7 +350,7 @@ export class WeaponEffectsManager {
             };
             
             this.audioSources.push(source);
-            console.log(`✅ Web Audio playback started for ${soundType}`);
+            // Removed audio playback log to prevent console spam
             
         } catch (error) {
             console.warn(`Failed to play sound ${soundType}, falling back to HTML5:`, error);
@@ -403,8 +419,11 @@ export class WeaponEffectsManager {
         
         // ALWAYS play audio even when visual muzzle flash is disabled
         const audioType = this.getAudioType(weaponType);
-        console.log(`🔫 WeaponEffectsManager: Firing ${weaponType} -> audio type: ${audioType}`);
-        console.log(`🔫 Audio system status: initialized=${this.audioInitialized}, buffers=${this.audioBuffers.size}, fallback=${this.useFallbackAudio}`);
+        
+        // Removed weapon firing audio log to prevent console spam
+        // console.log(`🔫 WeaponEffectsManager: Firing ${weaponType} -> audio type: ${audioType}`);
+        // Removed audio system status log to prevent console spam  
+        // console.log(`🔫 Audio system status: initialized=${this.audioInitialized}, buffers=${this.audioBuffers.size}, fallback=${this.useFallbackAudio}`);
         
         this.playSound(audioType, position, 1.0, soundDuration);
         
@@ -549,7 +568,7 @@ export class WeaponEffectsManager {
     }
     
     /**
-     * Create particle trail for a projectile (missiles, torpedoes, etc.)
+     * IMPROVED: Create simple projectile trail for flight (restored for simple trails)
      * @param {string} projectileId Unique identifier for the projectile
      * @param {string} projectileType Type of projectile ('homing_missile', 'photon_torpedo', 'proximity_mine')
      * @param {Vector3} startPosition Starting position of the trail
@@ -557,280 +576,179 @@ export class WeaponEffectsManager {
      * @returns {Object} Particle trail data for updating
      */
     createProjectileTrail(projectileId, projectileType, startPosition, projectileObject) {
-        if (this.fallbackMode) {
-            console.warn('WeaponEffectsManager: createProjectileTrail called in fallback mode');
-            return null;
-        }
+        // MESH-BASED TRAIL: Use small spheres instead of particles
+        const timestamp = Date.now();
+        console.log(`🚀 MESH TRAIL v2.0 [${timestamp}]: Creating trail for ${projectileType} at position:`, startPosition);
         
-        // Configuration based on projectile type
-        // Particle trail configurations for different projectile types
-        const configs = {
-            homing_missile: {
-                particleCount: 30, // Increased from 20 for denser trail
-                trailDuration: 5000, // Increased from 3000ms for longer trails
-                color: 0xff4444, // Red
-                size: 1.2, // Increased size
-                engineGlow: true,
-                engineColor: 0xff0000,
-                emissiveColor: 0x440000
-            },
-            photon_torpedo: {
-                particleCount: 35, // Increased from 25 for denser trail  
-                trailDuration: 7000, // Increased from 4000ms for longer trails
-                color: 0x4444ff, // Blue
-                size: 1.6, // Increased size
-                engineGlow: true,
-                engineColor: 0x0000ff,
-                emissiveColor: 0x000044
-            },
-            proximity_mine: {
-                particleCount: 15, // Increased from 8 for more visible trail
-                trailDuration: 4000, // Increased from 2000ms for longer trails
-                color: 0xff8800, // Orange
-                size: 0.8, // Increased size  
-                engineGlow: false,
-                engineColor: null,
-                emissiveColor: null
-            }
+        const colors = {
+            homing_missile: 0xff4444, // Red
+            photon_torpedo: 0x44ffff, // Cyan  
+            proximity_mine: 0xffff44  // Yellow
         };
         
-        const config = configs[projectileType] || configs.homing_missile;
+        const color = colors[projectileType] || colors.homing_missile;
+        const trailLength = 5; // Number of spheres in trail
         
-        // Create particle system
-        const particleGeometry = new this.THREE.BufferGeometry();
-        const positions = new Float32Array(config.particleCount * 3);
-        const colors = new Float32Array(config.particleCount * 3);
-        const sizes = new Float32Array(config.particleCount);
+        // Create a group to hold all trail spheres
+        const trailGroup = new this.THREE.Group();
+        const spheres = [];
         
-        // Initialize particles
-        for (let i = 0; i < config.particleCount; i++) {
-            // Start all particles at projectile position
-            positions[i * 3] = startPosition.x;
-            positions[i * 3 + 1] = startPosition.y;
-            positions[i * 3 + 2] = startPosition.z;
+        // Create small spheres for the trail
+        for (let i = 0; i < trailLength; i++) {
+            const sphereGeometry = new this.THREE.SphereGeometry(0.5, 8, 6); // Small sphere
+            const sphereMaterial = new this.THREE.MeshBasicMaterial({ 
+                color: color,
+                transparent: true,
+                opacity: 1.0 - (i * 0.2) // Fade along trail
+            });
             
-            // Set colors
-            const color = new this.THREE.Color(config.color);
-            colors[i * 3] = color.r;
-            colors[i * 3 + 1] = color.g;
-            colors[i * 3 + 2] = color.b;
+            const sphere = new this.THREE.Mesh(sphereGeometry, sphereMaterial);
             
-            // Set sizes
-            sizes[i] = config.size * (0.5 + Math.random() * 0.5);
+            // Position spheres at start position initially
+            sphere.position.copy(startPosition);
+            
+            trailGroup.add(sphere);
+            spheres.push(sphere);
         }
         
-        particleGeometry.setAttribute('position', new this.THREE.BufferAttribute(positions, 3));
-        particleGeometry.setAttribute('color', new this.THREE.BufferAttribute(colors, 3));
-        particleGeometry.setAttribute('size', new this.THREE.BufferAttribute(sizes, 1));
+        this.scene.add(trailGroup);
         
-        // Create particle material - use smaller size and different blending for better rendering
-        const particleMaterial = new this.THREE.PointsMaterial({
-            size: config.size * 0.5, // Smaller particles to prevent rectangle rendering
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.8, // Slightly lower opacity
-            blending: this.THREE.NormalBlending, // Changed from AdditiveBlending to prevent white rectangles
-            depthWrite: false,
-            sizeAttenuation: true, // Size based on distance
-            map: null, // No texture to ensure circular points
-            alphaTest: 0.1 // Help with transparency
-        });
+        console.log(`🚀 MESH TRAIL v2.0: Created ${trailLength} spheres with color ${color.toString(16)}`);
+        console.log(`🚀 MESH TRAIL v2.0: Group added to scene, scene children count:`, this.scene.children.length);
         
-        // Create particle system
-        const particleSystem = new this.THREE.Points(particleGeometry, particleMaterial);
-        this.scene.add(particleSystem);
-        
-        // Create engine glow if enabled
-        let engineGlow = null;
-        if (config.engineGlow) {
-            engineGlow = this.createEngineGlow(startPosition, config.engineColor, config.emissiveColor);
-            this.scene.add(engineGlow);
-        }
-        
-        // Store trail data for updates and cleanup
         const trailData = {
             id: projectileId,
             type: projectileType,
-            particleSystem: particleSystem,
-            engineGlow: engineGlow,
+            system: trailGroup, // Use group instead of particles
+            spheres: spheres,    // Store sphere references
             projectileObject: projectileObject,
-            config: config,
-            positions: positions,
-            particleHistory: [], // Store recent positions for trail effect
+            positions: [], // Will store position history
+            particleHistory: [],
             startTime: Date.now(),
-            lastUpdateTime: Date.now(),
-            creationTime: Date.now() // Added creation time
+            lastUpdateTime: Date.now()
         };
         
-        this.particleTrails.set(projectileId, trailData);
-        
-        // Also add to particleSystems array for cleanup tracking
-        this.particleSystems.push(trailData);
-        
-        // Add torpedo particle trail debugging
-        if (projectileType === 'photon_torpedo') {
-            console.log(`🎆 TORPEDO TRAIL CREATED → ${config.particleCount} particles, ${config.trailDuration}ms duration`);
-        }
-        
+        this.staticTrails.push(trailData);
+        console.log(`🎆 MESH TRAIL v2.0 CREATED for ${projectileType} with ${trailLength} spheres`);
         return trailData;
     }
-    
+
     /**
-     * Create engine glow effect for projectiles
-     * @param {Vector3} position Engine position
-     * @param {number} color Main color
-     * @param {number} emissiveColor Emissive color (for materials that support it)
-     * @returns {Mesh} Engine glow mesh
-     */
-    createEngineGlow(position, color, emissiveColor) {
-        const glowGeometry = new this.THREE.SphereGeometry(1.5, 8, 6);
-        
-        // Use MeshLambertMaterial which supports emissive property
-        const glowMaterial = new this.THREE.MeshLambertMaterial({
-            color: color,
-            emissive: emissiveColor,
-            transparent: true,
-            opacity: 0.6,
-            blending: this.THREE.AdditiveBlending
-        });
-        
-        const engineGlow = new this.THREE.Mesh(glowGeometry, glowMaterial);
-        engineGlow.position.copy(position);
-        
-        return engineGlow;
-    }
-    
-    /**
-     * Update particle trail for a moving projectile
-     * @param {string} projectileId Projectile identifier
-     * @param {Vector3} newPosition Current projectile position
-     */
-    updateProjectileTrail(projectileId, newPosition) {
-        if (this.fallbackMode) return;
-        
-        const trailData = this.particleTrails.get(projectileId);
-        if (!trailData) return;
-        
-        const now = Date.now();
-        const deltaTime = (now - trailData.lastUpdateTime) / 1000; // seconds
-        trailData.lastUpdateTime = now;
-        
-        // Update particle history
-        trailData.particleHistory.unshift({
-            position: newPosition.clone(),
-            time: now
-        });
-        
-        // Remove old history points beyond trail duration
-        const cutoffTime = now - trailData.config.trailDuration;
-        trailData.particleHistory = trailData.particleHistory.filter(point => point.time > cutoffTime);
-        
-        // Update particle positions based on history
-        if (trailData.particleSystem && trailData.particleHistory.length > 0) {
-            this.updateParticleGeometry(trailData);
-            
-            // Calculate trail opacity based on age (fade over time)
-            const trailAge = now - trailData.creationTime;
-            const maxAge = trailData.config.trailDuration;
-            const opacity = Math.max(0.1, 1.0 - (trailAge / (maxAge * 2))); // Fade to 10% over 2x trail duration
-            
-            if (trailData.particleSystem.material) {
-                trailData.particleSystem.material.opacity = opacity;
-            }
-            
-            // Add torpedo trail update debugging (limited frequency)
-            if (trailData.type === 'photon_torpedo' && trailData.particleHistory.length % 30 === 0) {
-                // Removed trail update logging - too much spam for useful debugging
-                // console.log(`🎆 TORPEDO TRAIL UPDATE → ${trailData.particleHistory.length} history points, opacity: ${opacity.toFixed(2)}`);
-                // console.log(`   └ Latest position: (${newPosition.x.toFixed(1)}, ${newPosition.y.toFixed(1)}, ${newPosition.z.toFixed(1)})`);
-                // console.log(`   └ Trail age: ${(trailAge/1000).toFixed(1)}s, max age: ${(maxAge/1000).toFixed(1)}s`);
-            }
-        }
-    }
-    
-    /**
-     * Update particle geometry for a trail based on its history
-     * @param {Object} trailData Trail data
-     */
-    updateParticleGeometry(trailData) {
-        const positions = trailData.positions;
-        const particleCount = trailData.config.particleCount;
-        const history = trailData.particleHistory;
-        
-        if (history.length === 0) return;
-        
-        // Add debugging for torpedo particle geometry updates
-        if (trailData.type === 'photon_torpedo' && history.length % 20 === 0) {
-            // Removed geometry update logging - too much spam for useful debugging
-            // console.log(`🎯 TORPEDO PARTICLE GEOMETRY UPDATE → ${particleCount} particles across ${history.length} history points`);
-        }
-        
-        // Distribute particles along the trail path
-        for (let i = 0; i < particleCount; i++) {
-            const t = i / (particleCount - 1); // 0 to 1
-            const historyIndex = Math.floor(t * (history.length - 1));
-            const historyPoint = history[historyIndex];
-            
-            if (historyPoint) {
-                positions[i * 3] = historyPoint.position.x;
-                positions[i * 3 + 1] = historyPoint.position.y;
-                positions[i * 3 + 2] = historyPoint.position.z;
-            }
-        }
-        
-        // Update GPU buffers
-        trailData.particleSystem.geometry.attributes.position.needsUpdate = true;
-        
-        // Update engine glow position if it exists
-        if (trailData.engineGlow && history.length > 0) {
-            const latestPos = history[0].position;
-            trailData.engineGlow.position.copy(latestPos);
-            
-            // Animate engine glow pulsing
-            const now = Date.now();
-            const pulseFactor = 0.8 + 0.2 * Math.sin(now * 0.01);
-            trailData.engineGlow.scale.setScalar(pulseFactor);
-        }
-    }
-    
-    /**
-     * Remove particle trail for a destroyed projectile
+     * Remove projectile trail for cleanup
      * @param {string} projectileId Projectile identifier
      */
     removeProjectileTrail(projectileId) {
-        if (this.fallbackMode) return;
-        
-        const trailData = this.particleTrails.get(projectileId);
-        if (!trailData) return;
-        
-        // Don't immediately remove trails - let them persist for minimum visibility time
+        const trailIndex = this.staticTrails.findIndex(trail => trail.id === projectileId);
+        if (trailIndex !== -1) {
+            const trail = this.staticTrails[trailIndex];
+            
+            // Stop following the projectile
+            if (trail.projectileObject) {
+                trail.projectileObject = null;
+            }
+            
+            // Start fade-out
+            trail.startTime = Date.now();
+            trail.fadeDuration = 1000; // 1 second fade for better visibility
+            
+            console.log(`🛑 Trail ${projectileId} stopping and fading out`);
+        }
+    }
+
+    /**
+     * IMPROVED: Update trails (both flight trails and static trails)
+     * @param {number} deltaTime Time elapsed in seconds
+     */
+    updateStaticTrails(deltaTime) {
         const currentTime = Date.now();
-        const trailAge = currentTime - trailData.creationTime;
-        const minimumPersistenceTime = 2000; // Minimum 2 seconds visibility
+        const trailsToRemove = [];
         
-        if (trailAge < minimumPersistenceTime) {
-            // Mark trail for delayed cleanup but don't remove immediately
-            trailData.pendingDestruction = true;
-            trailData.destructionTime = currentTime + (minimumPersistenceTime - trailAge);
-            // Removed torpedo trail delay logging to keep console clean
+        for (let i = 0; i < this.staticTrails.length; i++) {
+            const trail = this.staticTrails[i];
+            
+            // Active trail following projectile
+            if (trail.projectileObject && trail.projectileObject.position && trail.particleHistory !== undefined) {
+                // Only update every 50ms to reduce spam
+                if (currentTime - trail.lastUpdateTime > 50) {
+                    this.updateFlightTrail(trail, currentTime);
+                }
+            } else {
+                // Trail has stopped following projectile - start fading out the mesh spheres
+                const age = currentTime - trail.startTime;
+                const fadeTime = trail.fadeDuration || 1000; // 1 second fade for mesh trails
+                
+                if (age > fadeTime) {
+                    trailsToRemove.push(i);
+                    this.scene.remove(trail.system);
+                    
+                    // Clean up mesh spheres properly
+                    if (trail.spheres) {
+                        trail.spheres.forEach(sphere => {
+                            sphere.geometry.dispose();
+                            sphere.material.dispose();
+                        });
+                    }
+                } else {
+                    // Fade out all spheres in the trail
+                    const fadeProgress = age / fadeTime;
+                    if (trail.spheres) {
+                        trail.spheres.forEach(sphere => {
+                            sphere.material.opacity = 1.0 * (1 - fadeProgress);
+                        });
+                    }
+                }
+            }
+        }
+        
+        // Remove finished trails
+        for (let i = trailsToRemove.length - 1; i >= 0; i--) {
+            this.staticTrails.splice(trailsToRemove[i], 1);
+        }
+    }
+    
+    /**
+     * Update a flight trail that follows a projectile
+     * @param {Object} trail Trail data
+     * @param {number} currentTime Current timestamp
+     */
+    updateFlightTrail(trail, currentTime) {
+        if (!trail.projectileObject || !trail.projectileObject.position) {
             return;
         }
         
-        // Clean up trail data
-        this.particleTrails.delete(projectileId);
+        trail.lastUpdateTime = currentTime;
         
-        // Remove from particle systems array
-        this.particleSystems = this.particleSystems.filter(system => system.id !== projectileId);
+        // Add current position to history
+        trail.particleHistory.unshift({
+            position: trail.projectileObject.position.clone(),
+            time: currentTime
+        });
         
-        // Remove visual elements from scene
-        if (trailData.particleSystem && this.scene) {
-            this.scene.remove(trailData.particleSystem);
+        // Keep only recent history (1 second)
+        const maxHistoryTime = 1000;
+        trail.particleHistory = trail.particleHistory.filter(point => 
+            currentTime - point.time < maxHistoryTime
+        );
+        
+        // Update sphere positions along the trail
+        if (trail.spheres && trail.particleHistory.length > 0) {
+            const sphereCount = trail.spheres.length;
+            
+            for (let i = 0; i < sphereCount; i++) {
+                const t = i / (sphereCount - 1); // 0 to 1
+                const historyIndex = Math.floor(t * (trail.particleHistory.length - 1));
+                const historyPoint = trail.particleHistory[historyIndex];
+                
+                if (historyPoint && trail.spheres[i]) {
+                    trail.spheres[i].position.copy(historyPoint.position);
+                }
+            }
+            
+            // Optional: Log every 30 updates to reduce spam
+            if (trail.particleHistory.length % 30 === 0) {
+                console.log(`🔍 MESH TRAIL: Updated ${sphereCount} spheres for ${trail.id}`);
+            }
         }
-        if (trailData.engineGlow && this.scene) {
-            this.scene.remove(trailData.engineGlow);
-        }
-        
-        // Removed torpedo trail cleanup logging to keep console clean
     }
     
     /**
@@ -845,9 +763,14 @@ export class WeaponEffectsManager {
         // Update each active particle trail by getting position from its projectile object
         // FIXED: Iterate through this.particleTrails Map instead of this.particleSystems Array
         for (const [projectileId, trailData] of this.particleTrails) {
+            // Only update trail position if projectile object still exists and hasn't been cleaned up
             if (trailData.projectileObject && trailData.projectileObject.position) {
                 // Update trail with current projectile position
                 this.updateProjectileTrail(trailData.id, trailData.projectileObject.position);
+            } else if (trailData.projectileObject === null) {
+                // Projectile has been cleaned up - stop updating position but keep trail visible
+                // The trail will fade out naturally based on its age and persistence settings
+                // No further position updates needed
             }
         }
         
@@ -859,12 +782,10 @@ export class WeaponEffectsManager {
             }
         }
         
-        // Actually remove the trails that have waited long enough
-        trailsToDestroy.forEach(projectileId => {
+        // Actually destroy the trails that are ready for cleanup
+        for (const projectileId of trailsToDestroy) {
             const trailData = this.particleTrails.get(projectileId);
             if (trailData) {
-                // Removed torpedo delayed cleanup logging to keep console clean
-                
                 // Clean up trail data
                 this.particleTrails.delete(projectileId);
                 
@@ -878,16 +799,8 @@ export class WeaponEffectsManager {
                 if (trailData.engineGlow && this.scene) {
                     this.scene.remove(trailData.engineGlow);
                 }
-            }
-        });
-        
-        // Clean up trails for destroyed projectiles (if not using projectile objects)
-        for (const [projectileId, trailData] of this.particleTrails) {
-            // Check if projectile object still exists and is valid
-            if (trailData.projectileObject && trailData.projectileObject.hasDetonated) {
-                console.log(`🧹 Projectile ${projectileId} has detonated - marking trail for cleanup`);
-                // Don't immediately remove - let removeProjectileTrail handle the timing
-                this.removeProjectileTrail(projectileId);
+                
+                console.log(`🧹 Cleaned up delayed particle trail: ${projectileId}`);
             }
         }
     }
@@ -929,8 +842,8 @@ export class WeaponEffectsManager {
         // Update explosions
         this.updateExplosions(now, deltaTime);
         
-        // NEW: Update particle trails
-        this.updateParticleTrails(deltaTime);
+        // SIMPLIFIED: Update static trails instead of complex particle tracking
+        this.updateStaticTrails(deltaTime);
         
         // Clean up finished effects
         this.cleanupFinishedEffects();

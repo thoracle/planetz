@@ -517,7 +517,9 @@ export class PhysicsManager {
             
             this.entityMetadata.set(rigidBody, entityData);
 
-            console.log(`✅ Created ${shape} rigid body for ${entityType} (mass: ${mass}kg)`);
+            // Removed rigid body creation log to prevent console spam
+            // console.log(`✅ Created ${shape} rigid body for ${entityType} (mass: ${mass}kg)`);
+        
             return rigidBody;
 
         } catch (error) {
@@ -877,6 +879,12 @@ export class PhysicsManager {
             
             const numManifolds = this.dispatcher.getNumManifolds();
             
+            // Add periodic debug logging (every 5 seconds) to see if collision detection is working
+            if (!this.lastCollisionDebugTime || (Date.now() - this.lastCollisionDebugTime) > 5000) {
+                console.log(`🔍 DEBUG: Collision detection running - ${numManifolds} manifolds found`);
+                this.lastCollisionDebugTime = Date.now();
+            }
+            
             for (let i = 0; i < numManifolds; i++) {
                 const contactManifold = this.dispatcher.getManifoldByIndexInternal(i);
                 
@@ -890,28 +898,22 @@ export class PhysicsManager {
                 const projectile1 = body1?.projectileOwner;
                 
                 if (projectile0 || projectile1) {
+                    console.log(`🔍 DEBUG: Found projectile collision - projectile0:${!!projectile0}, projectile1:${!!projectile1}`);
+                    
                     const numContacts = contactManifold.getNumContacts();
                     
                     for (let j = 0; j < numContacts; j++) {
                         const contactPoint = contactManifold.getContactPoint(j);
                         
-                        // Try to get contact distance with fallback
-                        let distance = 0.0; // Default to collision assumption
-                        try {
-                            if (typeof contactPoint.getDistance === 'function') {
-                                distance = contactPoint.getDistance();
-                            } else {
-                                // Fallback: assume collision if contact point exists
-                                console.log('⚠️ contactPoint.getDistance not available, assuming collision');
-                                distance = -0.1; // Negative value indicates penetration/collision
-                            }
-                        } catch (error) {
-                            console.log('⚠️ Error getting contact distance, assuming collision:', error.message);
-                            distance = -0.1; // Assume collision
-                        }
+                        // Check if projectile is close enough to target for collision
+                        const distance = contactPoint.get_m_distance ? contactPoint.get_m_distance() : 
+                                        (contactPoint.getDistance ? contactPoint.getDistance() : 0.1);
                         
-                        // Only process contact if distance indicates actual collision
-                        if (distance <= 0.0) {
+                        console.log(`🔍 DEBUG: Contact distance: ${distance}`);
+                        
+                        // Only process contact if distance indicates actual collision (increased threshold for better detection)
+                        if (distance <= 0.5) {
+                            console.log(`🔍 DEBUG: Processing collision - distance: ${distance}`);
                             // Handle projectile collision
                             if (projectile0) {
                                 this.handleProjectileCollision(projectile0, contactPoint, body1);
@@ -1253,7 +1255,8 @@ export class PhysicsManager {
                     distance = contactPoint.getDistance();
                 } else {
                     // Fallback: assume moderate penetration for impulse calculation
-                    console.log('⚠️ contactPoint.getDistance not available for impulse calculation, using fallback');
+                    // Removed collision warning log to prevent console spam
+                    // console.log('⚠️ contactPoint.getDistance not available for impulse calculation, using fallback');
                     distance = -0.1;
                 }
             } catch (error) {

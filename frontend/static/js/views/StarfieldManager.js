@@ -1186,7 +1186,8 @@ export class StarfieldManager {
             // Handle Tab key for cycling targets
             if (event.key === 'Tab') {
                 event.preventDefault(); // Prevent Tab from changing focus
-                console.log('🎯 TAB key pressed for target cycling');
+                // Removed target cycling key press log to prevent console spam
+                // console.log('🎯 TAB key pressed for target cycling');
                 
                 // Block target cycling when docked
                 if (this.isDocked) {
@@ -1217,7 +1218,8 @@ export class StarfieldManager {
                     
                     if (targetComputer && targetComputer.canActivate(ship) && this.targetComputerEnabled) {
                         // Target computer is operational and activated - allow cycling
-                        console.log('🎯 Cycling target from TAB key press');
+                        // Removed target cycling call log to prevent console spam
+                        // console.log('🎯 Cycling target from TAB key press');
                         this.cycleTarget();
                         this.playCommandSound();
                     } else {
@@ -1275,7 +1277,7 @@ export class StarfieldManager {
                 }
                 return; // Exit early to prevent further processing
             }
-            
+
             const commandKey = event.key.toLowerCase();
 
             // Handle view changes - prevent fore/aft changes while docked

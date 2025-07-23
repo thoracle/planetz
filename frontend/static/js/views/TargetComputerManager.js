@@ -776,9 +776,10 @@ export class TargetComputerManager {
         const targetData = this.targetObjects[this.targetIndex];
         this.currentTarget = targetData.object;
         
-        console.log(`🔄 Target cycled: ${previousIndex} → ${this.targetIndex} (${targetData.name})`);
-        console.log(`🎯 Previous target: ${previousTarget?.userData?.ship?.shipName || 'none'}`);
-        console.log(`🎯 New target: ${targetData.name}`);
+        // Removed target cycling log to prevent console spam
+        // console.log(`🔄 Target cycled: ${previousIndex} → ${this.targetIndex} (${targetData.name})`);
+        // console.log(`🎯 Previous target: ${previousTarget?.userData?.ship?.shipName || 'none'}`);
+        // console.log(`🎯 New target: ${targetData.name}`);
 
         // Clean up existing wireframe before creating a new one
         if (this.targetWireframe) {

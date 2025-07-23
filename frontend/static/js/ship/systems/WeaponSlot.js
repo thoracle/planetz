@@ -91,25 +91,23 @@ export class WeaponSlot {
         // Calculate proper weapon firing position (especially important for projectiles)
         const weaponOrigin = this.calculateWeaponOrigin(ship);
         
-        // Add torpedo trajectory debugging
-        if (weapon.name.toLowerCase().includes('torpedo')) {
-            console.log(`🎯 TORPEDO LAUNCH DEBUG:`);
-            console.log(`   └ Origin: (${weaponOrigin.x.toFixed(1)}, ${weaponOrigin.y.toFixed(1)}, ${weaponOrigin.z.toFixed(1)})`);
-            if (target) {
-                const targetPos = target.position || target.threeObject?.position;
-                if (targetPos) {
-                    console.log(`   └ Target: ${target.ship?.shipName || target.name} at (${targetPos.x.toFixed(1)}, ${targetPos.y.toFixed(1)}, ${targetPos.z.toFixed(1)})`);
-                    const distance = Math.sqrt(
-                        Math.pow(targetPos.x - weaponOrigin.x, 2) + 
-                        Math.pow(targetPos.y - weaponOrigin.y, 2) + 
-                        Math.pow(targetPos.z - weaponOrigin.z, 2)
-                    );
-                    console.log(`   └ Distance: ${distance.toFixed(1)}m`);
-                }
-            } else {
-                console.log(`   └ Target: None (free-fire mode)`);
-            }
-        }
+        // Removed torpedo trajectory debugging to prevent console spam
+        // if (weapon.name.toLowerCase().includes('torpedo')) {
+        //     console.log(`🎯 TORPEDO LAUNCH DEBUG:`);
+        //     console.log(`   └ Origin: (${weaponOrigin.x.toFixed(1)}, ${weaponOrigin.y.toFixed(1)}, ${weaponOrigin.z.toFixed(1)})`);
+        //     if (target) {
+        //         const targetPos = target.position || target.threeObject?.position;
+        //         if (targetPos) {
+        //             console.log(`   └ Target: ${target.ship?.shipName || target.name} at (${targetPos.x.toFixed(1)}, ${targetPos.y.toFixed(1)}, ${targetPos.z.toFixed(1)})`);
+        //             const distance = Math.sqrt(
+        //                 Math.pow(weaponOrigin.x - targetPos.x, 2) +
+        //                 Math.pow(weaponOrigin.y - targetPos.y, 2) +
+        //                 Math.pow(weaponOrigin.z - targetPos.z, 2)
+        //             );
+        //             console.log(`   └ Distance: ${distance.toFixed(1)}m`);
+        //         }
+        //     }
+        // }
         
         // Fire the weapon with proper origin position
         const fireResult = weapon.fire(weaponOrigin, target);
@@ -129,7 +127,8 @@ export class WeaponSlot {
                 console.log(`Weapon fired: ${weapon.name} (no effects manager available)`);
             }
             
-            console.log(`Weapon slot ${this.slotIndex}: ${weapon.name} fired - ${fireResult.damage} damage`);
+            // Removed weapon firing log to prevent console spam
+        // console.log(`Weapon slot ${this.slotIndex}: ${weapon.name} fired - ${fireResult.damage} damage`);
             return true;
         }
         
