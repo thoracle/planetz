@@ -265,7 +265,7 @@ export default class DamageControlInterface {
         card.innerHTML = `
             <div class="system-header">
                 <span class="system-icon">${statusIcon}</span>
-                <span class="system-name">${this.formatSystemName(systemName)}</span>
+                <span class="system-name">${this.formatSystemName(systemName)} (Lvl ${systemStatus.level})</span>
             </div>
             <div class="system-info">
                 <div class="health-bar">
@@ -273,7 +273,6 @@ export default class DamageControlInterface {
                 </div>
                 <div class="system-stats">
                     <span class="health-text">${healthPercent}%</span>
-                    <span class="level-text">L${systemStatus.level}</span>
                 </div>
             </div>
             <div class="system-status">

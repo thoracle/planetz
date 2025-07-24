@@ -21,7 +21,7 @@ export class WeaponDefinitions {
                 damage: 60,
                 cooldownTime: 2.0, // seconds
                 range: 24000, // meters - increased 20% from 20000m (20km -> 24km)
-                autofireEnabled: false, // Only active weapon should fire in autofire mode
+                autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 0.95,
                 energyCost: 10,
                 targetLockRequired: false,
@@ -38,7 +38,7 @@ export class WeaponDefinitions {
                 damage: 85,
                 cooldownTime: 2.5, // seconds
                 range: 38400, // meters - increased 20% from 32000m (32km -> 38.4km)
-                autofireEnabled: false, // Only active weapon should fire in autofire mode
+                autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 0.80,
                 energyCost: 20,
                 targetLockRequired: false,
@@ -56,7 +56,7 @@ export class WeaponDefinitions {
                 damage: 75,
                 cooldownTime: 3.0, // seconds - doubled from 1.5s (burst fire)
                 range: 28800, // meters - increased 20% from 24000m (24km -> 28.8km)
-                autofireEnabled: false, // Only active weapon should fire in autofire mode
+                autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 0.90,
                 energyCost: 15,
                 targetLockRequired: false,
@@ -75,7 +75,7 @@ export class WeaponDefinitions {
                 damage: 90,
                 cooldownTime: 2.0, // seconds
                 range: 36000, // meters - increased 20% from 30000m (30km -> 36km)
-                autofireEnabled: false, // Only active weapon should fire in autofire mode
+                autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 0.88,
                 energyCost: 25,
                 targetLockRequired: false,
@@ -96,12 +96,12 @@ export class WeaponDefinitions {
                 damage: 200,
                 cooldownTime: 3.0, // seconds
                 range: 7200, // meters - increased 20% from 6000m (6km -> 7.2km)
-                autofireEnabled: false,
+                autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 1.0, // Missiles don't miss if fired properly
                 energyCost: 5, // Low energy cost, but limited by cooldown
                 blastRadius: 50, // meters
                 homingCapability: false,
-                targetLockRequired: true,
+                targetLockRequired: false, // CORRECTED: Non-homing projectiles fire toward crosshairs, no target lock needed
                 flightRange: 7200, // increased 20% from 6000m (6km -> 7.2km)
                 turnRate: 0, // No turning
                 specialProperties: {
@@ -139,12 +139,12 @@ export class WeaponDefinitions {
                 damage: 320,
                 cooldownTime: 4.0, // seconds
                 range: 20000, // meters - increased from 6000m to match targeting system crosshair range (20km)
-                autofireEnabled: false,
+                autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 1.0,
                 energyCost: 12,
                 blastRadius: 80, // meters
                 homingCapability: false,
-                targetLockRequired: true,
+                targetLockRequired: false, // CORRECTED: Torpedoes fire toward crosshairs, no target lock needed
                 flightRange: 20000, // increased from 6000m to match targeting system crosshair range (20km)
                 turnRate: 0, // No turning
                 specialProperties: {
@@ -161,7 +161,7 @@ export class WeaponDefinitions {
                 damage: 150,
                 cooldownTime: 3.5, // seconds
                 range: 1200, // deployment range - increased 20% from 1000m (1km -> 1.2km)
-                autofireEnabled: false,
+                autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 1.0,
                 energyCost: 3,
                 blastRadius: 80, // meters

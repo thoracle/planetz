@@ -304,20 +304,22 @@ export default class EnemyShip {
     }
     
     /**
-     * Apply damage to enemy ship (simplified damage model)
+     * Apply damage to enemy ship (enhanced damage model with shield/hull system)
      * @param {number} damage - Amount of damage to apply
-     * @param {string} damageType - Type of damage ('kinetic', 'energy', etc.)
-     * @param {string} targetSystem - Optional specific system to target (for sub-targeting)
+     * @param {string} damageType - Type of damage ('kinetic', 'energy', 'explosive', etc.)
+     * @param {string} targetSystem - Optional specific system to target (for sub-targeting - beam weapons only)
      */
     applyDamage(damage, damageType = 'kinetic', targetSystem = null) {
         const result = {
             totalDamage: damage,
+            shieldDamage: 0,
             hullDamage: 0,
             systemsDamaged: [],
-            isDestroyed: false
+            isDestroyed: false,
+            penetratedDefenses: false
         };
         
-        // Handle sub-targeting: apply damage to specific system only
+        // Handle sub-targeting: apply damage to specific system only (BEAM WEAPONS ONLY)
         if (targetSystem) {
             console.log(`🎯 SUB-TARGET DAMAGE: Applying ${damage} damage to ${targetSystem} system`);
             
@@ -350,30 +352,76 @@ export default class EnemyShip {
             }
         }
         
-        // Normal damage model: apply damage to hull
-        const actualDamage = Math.min(damage, this.currentHull);
-        this.currentHull -= actualDamage;
-        result.hullDamage = actualDamage;
+        // ENHANCED DAMAGE MODEL: Shields first, then hull, then random subsystem damage
+        let remainingDamage = damage;
         
-        // Check if ship is destroyed - use small threshold to handle floating-point precision
-        if (this.currentHull <= 0.001) {
-            this.currentHull = 0; // Ensure hull is exactly 0 for consistency
-            result.isDestroyed = true;
+        // Step 1: Apply damage to shields first (if ship has shields)
+        const shieldsSystem = this.systems.get('shields');
+        if (shieldsSystem && shieldsSystem.currentHealth > 0 && remainingDamage > 0) {
+            // Shields absorb damage first
+            const shieldCapacity = shieldsSystem.currentHealth;
+            const absorbedDamage = Math.min(remainingDamage, shieldCapacity);
+            
+            shieldsSystem.takeDamage(absorbedDamage);
+            result.shieldDamage = absorbedDamage;
+            remainingDamage -= absorbedDamage;
+            
+            console.log(`🛡️ Shields absorbed ${absorbedDamage} damage (${shieldsSystem.currentHealth}/${shieldsSystem.maxHealth} remaining)`);
         }
         
-        // Randomly damage systems when hull is damaged (only for non-sub-targeted damage)
-        if (actualDamage > 0 && this.systems.size > 0) {
+        // Step 2: Apply remaining damage to hull
+        if (remainingDamage > 0) {
+            const actualHullDamage = Math.min(remainingDamage, this.currentHull);
+            this.currentHull -= actualHullDamage;
+            result.hullDamage = actualHullDamage;
+            result.penetratedDefenses = true; // Damage penetrated shields/hull
+            
+            console.log(`💥 Hull took ${actualHullDamage} damage (${this.currentHull}/${this.maxHull} remaining)`);
+            
+            // Check if ship is destroyed - use small threshold to handle floating-point precision
+            if (this.currentHull <= 0.001) {
+                this.currentHull = 0; // Ensure hull is exactly 0 for consistency
+                result.isDestroyed = true;
+                console.log(`💀 ${this.shipName} DESTROYED!`);
+            }
+        }
+        
+        // Step 3: PROJECTILE WEAPONS - Random subsystem damage when damage penetrates defenses
+        if (result.penetratedDefenses && (damageType === 'explosive' || damageType === 'kinetic') && this.systems.size > 0) {
             const systemNames = Array.from(this.systems.keys());
-            const numSystemsToCheck = Math.min(2, systemNames.length);
+            const numSystemsToCheck = Math.min(3, systemNames.length); // Check up to 3 systems
+            
+            console.log(`🎲 PROJECTILE DAMAGE: Checking for random subsystem hits (${numSystemsToCheck} systems)...`);
             
             for (let i = 0; i < numSystemsToCheck; i++) {
                 const randomSystem = systemNames[Math.floor(Math.random() * systemNames.length)];
                 const system = this.systems.get(randomSystem);
                 
-                if (system && Math.random() < 0.3) { // 30% chance to damage each system
-                    const systemDamage = damage * 0.1; // 10% of total damage
+                // Enhanced random subsystem damage for projectiles (40% chance, increased from 30%)
+                if (system && Math.random() < 0.4) {
+                    // Scale subsystem damage based on penetrating damage (15-25% of penetrating damage)
+                    const penetratingDamage = result.hullDamage;
+                    const subsystemDamageRatio = 0.15 + Math.random() * 0.10; // 15-25%
+                    const systemDamage = penetratingDamage * subsystemDamageRatio;
+                    
+                    const healthBefore = system.healthPercentage;
                     system.takeDamage(systemDamage);
+                    const healthAfter = system.healthPercentage;
                     result.systemsDamaged.push(randomSystem);
+                    
+                    console.log(`🎯 LUCKY HIT: ${randomSystem} system took ${systemDamage.toFixed(1)} random damage (${(healthBefore * 100).toFixed(1)}% → ${(healthAfter * 100).toFixed(1)}%)`);
+                    
+                    // Check if subsystem was destroyed
+                    if (healthAfter === 0 && healthBefore > 0) {
+                        console.log(`💥 RANDOM SYSTEM DESTROYED: ${randomSystem} on ${this.shipName} disabled by projectile hit!`);
+                        
+                        // Play success sound for destroyed sub-system (30% duration for random hit)
+                        if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
+                            const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
+                            effectsManager.playSuccessSound(null, 0.4, 0.3); // Shorter sound for random hit
+                            console.log(`🎉 Playing random subsystem destruction sound (30% duration)`);
+                        }
+                    }
                 }
             }
         }

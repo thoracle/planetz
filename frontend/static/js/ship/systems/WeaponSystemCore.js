@@ -133,7 +133,12 @@ export class WeaponSystemCore {
         const weapon = activeSlot.equippedWeapon;
         if (!weapon) return false;
         
-        // Check if weapon level is 3 or higher
+        // UPDATED: Check weapon's autofireEnabled property first
+        if (weapon.autofireEnabled === false) {
+            return false;
+        }
+        
+        // Check if weapon level is 3 or higher (legacy requirement maintained)
         const weaponLevel = weapon.level || 1;
         if (weaponLevel < 3) {
             return false;
@@ -153,12 +158,19 @@ export class WeaponSystemCore {
             if (activeSlot && !activeSlot.isEmpty) {
                 const weapon = activeSlot.equippedWeapon;
                 const weaponLevel = weapon.level || 1;
-                const hudMessage = `Autofire unavailable: ${weapon.name} is Level ${weaponLevel} (requires Level 3+)`;
                 
-                console.log(`🎯 Autofire unavailable: ${weapon.name} is Level ${weaponLevel} (requires Level 3+)`);
+                // Determine specific reason for autofire unavailability
+                let reason = '';
+                if (weapon.autofireEnabled === false) {
+                    reason = `${weapon.name} does not support autofire`;
+                } else if (weaponLevel < 3) {
+                    reason = `${weapon.name} is Level ${weaponLevel} (requires Level 3+)`;
+                } else {
+                    reason = `${weapon.name} autofire unavailable`;
+                }
                 
-                // Show UI message using unified method
-                this.showMessage(hudMessage, 4000); // 4 seconds
+                console.log(`🎯 Autofire unavailable: ${reason}`);
+                this.showMessage(`Autofire unavailable: ${reason}`, 4000);
             } else {
                 console.log('🎯 Autofire unavailable: No weapon equipped');
                 this.showMessage('Autofire unavailable: No weapon equipped', 3000);
@@ -169,10 +181,32 @@ export class WeaponSystemCore {
         this.isAutofireOn = !this.isAutofireOn;
         
         const activeSlot = this.getActiveWeapon();
-        const weaponName = activeSlot?.equippedWeapon?.name || 'Unknown';
-        const weaponLevel = activeSlot?.equippedWeapon?.level || 1;
+        const weapon = activeSlot?.equippedWeapon;
+        const weaponName = weapon?.name || 'Unknown';
+        const weaponLevel = weapon?.level || 1;
         
-        console.log(`🎯 Autofire ${this.isAutofireOn ? 'ON' : 'OFF'} for ${weaponName} (Level ${weaponLevel})`);
+        // Enhanced autofire status message
+        const status = this.isAutofireOn ? 'ON' : 'OFF';
+        const weaponType = weapon?.homingCapability ? 'homing' : (weapon?.targetLockRequired ? 'guided' : 'direct-fire');
+        
+        console.log(`🎯 Autofire ${status} for ${weaponName} (Level ${weaponLevel}, ${weaponType})`);
+        
+        // Show user-friendly message
+        if (this.isAutofireOn) {
+            let autofireMessage = `Autofire enabled: ${weaponName}`;
+            
+            if (weapon?.targetLockRequired && weapon?.homingCapability) {
+                autofireMessage += ' (requires target lock)';
+            } else if (weapon?.targetLockRequired) {
+                autofireMessage += ' (guided weapon)';
+            } else {
+                autofireMessage += ' (free-aim)';
+            }
+            
+            this.showMessage(autofireMessage, 3000);
+        } else {
+            this.showMessage(`Autofire disabled: ${weaponName}`, 2000);
+        }
         
         // Update UI
         if (this.weaponHUD) {
@@ -243,23 +277,81 @@ export class WeaponSystemCore {
             }
         }
         
-        // Fire the weapon if conditions are met
-        if (this.lockedTarget) {
-            // For target-lock-required weapons (like missiles), only fire if we have a locked target
-            if (weapon.targetLockRequired && this.lockedTarget) {
+        // ENHANCED: Fire the weapon based on weapon type with proper validation
+        if (weapon.targetLockRequired && weapon.homingCapability) {
+            // HOMING MISSILES: Require valid target lock and additional validation
+            if (this.lockedTarget && this.validateHomingMissileTarget(weapon)) {
                 const fired = activeSlot.fire(this.ship, this.lockedTarget);
                 if (fired) {
-                    console.log(`🎯 AUTOFIRE: Fired ${weapon.name} at ${this.lockedTarget.name || 'target'}`);
+                    console.log(`🎯 AUTOFIRE: Fired homing ${weapon.name} at ${this.lockedTarget.name || 'target'}`);
                 }
+            } else {
+                // Homing missile can't fire - disable autofire and notify user
+                this.isAutofireOn = false;
+                if (this.weaponHUD) {
+                    this.weaponHUD.updateAutofireStatus(false);
+                }
+                
+                const reason = !this.lockedTarget ? 'no target lock' : 'target lost';
+                console.log(`🎯 Autofire disabled for ${weapon.name}: ${reason}`);
+                this.showMessage(`Autofire disabled: ${weapon.name} ${reason}`, 3000);
             }
-            // For direct-fire weapons (like lasers), fire at the target
-            else if (!weapon.targetLockRequired) {
-                const fired = activeSlot.fire(this.ship, this.lockedTarget);
-                if (fired) {
-                    console.log(`🎯 AUTOFIRE: Fired ${weapon.name} at ${this.lockedTarget.name || 'target'}`);
-                }
+        } else if (this.lockedTarget) {
+            // ALL OTHER WEAPONS: Fire at locked target (lasers, torpedoes, non-homing missiles)
+            const fired = activeSlot.fire(this.ship, this.lockedTarget);
+            if (fired) {
+                console.log(`🎯 AUTOFIRE: Fired ${weapon.name} at ${this.lockedTarget.name || 'target'}`);
+            }
+        } else if (!weapon.targetLockRequired) {
+            // FREE-AIM WEAPONS: Can fire without target (toward crosshairs)
+            const fired = activeSlot.fire(this.ship, null);
+            if (fired) {
+                console.log(`🎯 AUTOFIRE: Fired ${weapon.name} toward crosshairs (free-aim)`);
             }
         }
+    }
+    
+    /**
+     * Validate target for homing missiles during autofire
+     * @param {Object} weapon Homing missile weapon
+     * @returns {boolean} True if target is valid for homing missile
+     */
+    validateHomingMissileTarget(weapon) {
+        if (!this.lockedTarget) {
+            console.log(`🎯 Homing missile validation failed: No target locked`);
+            return false;
+        }
+        
+        // Check if target still exists in the game world
+        if (this.lockedTarget.ship) {
+            const targetStillExists = this.ship.starfieldManager?.dummyShipMeshes?.some(mesh => 
+                mesh.userData?.ship === this.lockedTarget.ship
+            );
+            
+            if (!targetStillExists) {
+                console.log(`🎯 Homing missile validation failed: Target no longer exists`);
+                return false;
+            }
+        }
+        
+        // Check if target is within range
+        const distanceToTarget = this.calculateDistanceToTarget(this.lockedTarget);
+        if (distanceToTarget > weapon.range) {
+            console.log(`🎯 Homing missile validation failed: Target out of range (${(distanceToTarget/1000).toFixed(1)}km > ${(weapon.range/1000).toFixed(1)}km)`);
+            return false;
+        }
+        
+        // Check if target is alive (has hull > 0)
+        if (this.lockedTarget.ship && this.lockedTarget.ship.currentHull <= 0) {
+            console.log(`🎯 Homing missile validation failed: Target destroyed (hull: ${this.lockedTarget.ship.currentHull})`);
+            return false;
+        }
+        
+        // Additional homing-specific checks can be added here
+        // e.g., line of sight, jamming resistance, etc.
+        
+        console.log(`✅ Homing missile target validation passed: ${this.lockedTarget.name || 'target'} at ${(distanceToTarget/1000).toFixed(1)}km`);
+        return true;
     }
     
     /**

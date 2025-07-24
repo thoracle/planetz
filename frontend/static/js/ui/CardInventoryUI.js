@@ -1017,6 +1017,15 @@ export default class CardInventoryUI {
             this.inventory.addCard(plasma);
         }
         
+        // Add multiple target computer cards for upgrading to Level 3+ for sub-targeting
+        // Level 1→2 needs 3 cards, Level 2→3 needs 6 cards = 9 total for Level 3
+        // Add 12 cards to allow for experimentation and future upgrades
+        console.log('Adding 12 target computer cards for sub-targeting upgrades...');
+        for (let i = 0; i < 12; i++) {
+            const targetComputer = this.inventory.generateSpecificCard('target_computer', 'common');
+            this.inventory.addCard(targetComputer);
+        }
+        
         console.log('Test data loaded with high-level upgrade capabilities');
     }
 

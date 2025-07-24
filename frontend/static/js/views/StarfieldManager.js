@@ -1684,38 +1684,10 @@ export class StarfieldManager {
             // Sub-targeting key bindings (< and > keys)
             if (event.key === '<' || event.key === ',') {
                 // Previous sub-target
-                if (!this.isDocked && this.targetComputerEnabled && this.currentTarget) {
-                    const ship = this.viewManager?.getShip();
-                    if (ship) {
-                        const targetComputer = ship.getSystem('target_computer');
-                        if (targetComputer && targetComputer.hasSubTargeting()) {
-                            // Check if there's only one target available
-                            if (targetComputer.availableSubTargets.length <= 1) {
-                                this.playCommandFailedSound();
-                            } else if (targetComputer.cycleSubTargetPrevious()) {
-                                this.playCommandSound();
-                                this.updateTargetDisplay(); // Update HUD display
-                            }
-                        }
-                    }
-                }
+                this.handleSubTargetingKey('previous');
             } else if (event.key === '>' || event.key === '.') {
                 // Next sub-target
-                if (!this.isDocked && this.targetComputerEnabled && this.currentTarget) {
-                    const ship = this.viewManager?.getShip();
-                    if (ship) {
-                        const targetComputer = ship.getSystem('target_computer');
-                        if (targetComputer && targetComputer.hasSubTargeting()) {
-                            // Check if there's only one target available
-                            if (targetComputer.availableSubTargets.length <= 1) {
-                                this.playCommandFailedSound();
-                            } else if (targetComputer.cycleSubTargetNext()) {
-                                this.playCommandSound();
-                                this.updateTargetDisplay(); // Update HUD display
-                            }
-                        }
-                    }
-                }
+                this.handleSubTargetingKey('next');
             }
 
             // Weapon key bindings
@@ -1887,8 +1859,21 @@ export class StarfieldManager {
     }
 
     updateTargetList() {
+        console.log(`🎯 StarfieldManager.updateTargetList() called`);
+        const targetBeforeUpdate = this.targetComputerManager.currentTarget;
+        const indexBeforeUpdate = this.targetComputerManager.targetIndex;
+        
         // Delegate to target computer manager
         this.targetComputerManager.updateTargetList();
+        
+        const targetAfterUpdate = this.targetComputerManager.currentTarget;
+        const indexAfterUpdate = this.targetComputerManager.targetIndex;
+        
+        if (targetBeforeUpdate !== targetAfterUpdate || indexBeforeUpdate !== indexAfterUpdate) {
+            console.log(`🎯 WARNING: Target changed during updateTargetList!`);
+            console.log(`🎯   Before: target=${targetBeforeUpdate?.userData?.ship?.shipName || 'unknown'}, index=${indexBeforeUpdate}`);
+            console.log(`🎯   After: target=${targetAfterUpdate?.userData?.ship?.shipName || 'unknown'}, index=${indexAfterUpdate}`);
+        }
         
         // Update local state to match
         this.targetObjects = this.targetComputerManager.targetObjects;
@@ -3552,6 +3537,9 @@ export class StarfieldManager {
      */
     async createTargetDummyShips(count = 3) {
         
+        // Set flag to prevent target changes during dummy creation
+        this.targetComputerManager.preventTargetChanges = true;
+        
         // Import EnemyShip class
         const { default: EnemyShip } = await import('../ship/EnemyShip.js');
         
@@ -3635,8 +3623,149 @@ export class StarfieldManager {
             }
         }
         
+        // Store current target data before updating list  
+        const previousTarget = this.targetComputerManager.currentTarget;
+        const previousTargetIndex = this.targetComputerManager.targetIndex;
+        const previousTargetData = this.targetComputerManager.getCurrentTargetData();
+        const previousTargetName = previousTargetData?.name || 'unknown';
+        
+        console.log(`🎯 Q-KEY: Before update - Target: ${previousTargetName}, Index: ${previousTargetIndex}`);
+        console.log(`🎯 Q-KEY: Previous target:`, previousTarget);
+        console.log(`🎯 Q-KEY: Previous target data:`, previousTargetData);
+        
+        // Store identifying characteristics to find the target after update
+        const targetIdentifier = previousTargetData ? {
+            name: previousTargetData.name,
+            type: previousTargetData.type,
+            shipName: previousTargetData.ship?.shipName,
+            position: previousTarget?.position ? {
+                x: Math.round(previousTarget.position.x * 1000) / 1000,
+                y: Math.round(previousTarget.position.y * 1000) / 1000, 
+                z: Math.round(previousTarget.position.z * 1000) / 1000
+            } : null
+        } : null;
+        
+        console.log(`🎯 Q-KEY: Target identifier:`, targetIdentifier);
+        
+        // FORCE COMPLETE WIREFRAME CLEANUP BEFORE ANY TARGET LIST CHANGES
+        console.log(`🎯 Q-KEY: Forcing complete wireframe cleanup BEFORE target list update`);
+        
+        // Clear StarfieldManager's outline system completely
+        if (this.targetOutline) {
+            console.log(`🎯 Q-KEY: Pre-cleanup - StarfieldManager targetOutline`);
+            this.scene.remove(this.targetOutline);
+            if (this.targetOutline.geometry) this.targetOutline.geometry.dispose();
+            if (this.targetOutline.material) this.targetOutline.material.dispose();
+            this.targetOutline = null;
+            this.targetOutlineObject = null;
+        }
+        
+        // Clear TargetComputerManager's wireframe system completely
+        if (this.targetComputerManager.targetWireframe) {
+            console.log(`🎯 Q-KEY: Pre-cleanup - TargetComputerManager targetWireframe`);
+            this.targetComputerManager.wireframeScene.remove(this.targetComputerManager.targetWireframe);
+            if (this.targetComputerManager.targetWireframe.geometry) {
+                this.targetComputerManager.targetWireframe.geometry.dispose();
+            }
+            if (this.targetComputerManager.targetWireframe.material) {
+                if (Array.isArray(this.targetComputerManager.targetWireframe.material)) {
+                    this.targetComputerManager.targetWireframe.material.forEach(material => material.dispose());
+                } else {
+                    this.targetComputerManager.targetWireframe.material.dispose();
+                }
+            }
+            this.targetComputerManager.targetWireframe = null;
+        }
+        
         // Update target list to include dummy ships
         this.updateTargetList();
+        
+        console.log(`🎯 Q-KEY: After update - Target: ${this.targetComputerManager.getCurrentTargetData()?.name || 'unknown'}, Index: ${this.targetComputerManager.targetIndex}`);
+        
+        // Try to restore previous target using the identifier or fallback methods
+        let foundIndex = -1;
+        let foundTarget = null;
+        
+        if (targetIdentifier) {
+            console.log(`🎯 Q-KEY: Searching for target using identifier...`);
+            
+            // Find target by identifying characteristics
+            for (let i = 0; i < this.targetComputerManager.targetObjects.length; i++) {
+                const targetData = this.targetComputerManager.targetObjects[i];
+                const target = targetData.object;
+                
+                // Match by name first (most reliable)
+                if (targetData.name === targetIdentifier.name) {
+                    // For ships, also check ship name if available
+                    if (targetIdentifier.shipName && targetData.ship?.shipName) {
+                        if (targetData.ship.shipName === targetIdentifier.shipName) {
+                            foundIndex = i;
+                            foundTarget = target;
+                            console.log(`🎯 Q-KEY: Found target by ship name match: ${targetData.name}`);
+                            break;
+                        }
+                    } else {
+                        // For celestial bodies or when ship name not available, use position check
+                        if (targetIdentifier.position && target?.position) {
+                            const posMatch = (
+                                Math.abs(target.position.x - targetIdentifier.position.x) < 0.01 &&
+                                Math.abs(target.position.y - targetIdentifier.position.y) < 0.01 &&
+                                Math.abs(target.position.z - targetIdentifier.position.z) < 0.01
+                            );
+                            if (posMatch) {
+                                foundIndex = i;
+                                foundTarget = target;
+                                console.log(`🎯 Q-KEY: Found target by position match: ${targetData.name}`);
+                                break;
+                            }
+                        } else {
+                            // Fallback to name match only
+                            foundIndex = i;
+                            foundTarget = target;
+                            console.log(`🎯 Q-KEY: Found target by name match: ${targetData.name}`);
+                            break;
+                        }
+                    }
+                }
+            }
+        } else {
+            // Fallback: try to find target by name if identifier failed
+            console.log(`🎯 Q-KEY: No identifier available, using fallback search by name: ${previousTargetName}`);
+            
+            for (let i = 0; i < this.targetComputerManager.targetObjects.length; i++) {
+                const targetData = this.targetComputerManager.targetObjects[i];
+                if (targetData.name === previousTargetName) {
+                    foundIndex = i;
+                    foundTarget = targetData.object;
+                    console.log(`🎯 Q-KEY: Found target by fallback name match: ${targetData.name}`);
+                    break;
+                }
+            }
+        }
+            
+        if (foundIndex >= 0 && foundTarget) {
+            this.targetComputerManager.targetIndex = foundIndex;
+            this.targetComputerManager.currentTarget = foundTarget;
+            
+            // Recreate wireframes for the restored target (cleanup already done above)
+            console.log(`🎯 Q-KEY: Recreating wireframes for restored target`);
+            this.targetComputerManager.createTargetWireframe();
+            this.targetComputerManager.updateTargetDisplay();
+            
+            // Force StarfieldManager outline recreation  
+            const currentTargetData = this.targetComputerManager.getCurrentTargetData();
+            if (currentTargetData) {
+                this.createTargetOutline(foundTarget, '#00ff41', currentTargetData);
+            }
+            
+            console.log(`🎯 Q-KEY: Restored previous target: ${currentTargetData.name} at index ${foundIndex}`);
+        } else {
+            console.log(`🎯 Q-KEY: Could not find target to restore, keeping current selection`);
+        }
+
+        
+        // Clear the flag to allow normal target changes again
+        this.targetComputerManager.preventTargetChanges = false;
         
     }
 
@@ -4045,77 +4174,9 @@ export class StarfieldManager {
         const targetComputer = ship?.getSystem('target_computer');
         let subTargetHTML = '';
         
-        // Add sub-target information if available
-        if (targetComputer && targetComputer.hasSubTargeting()) {
-            // For enemy ships, use actual sub-targeting
-            if (isEnemyShip && currentTargetData.ship) {
-                // Set the enemy ship as the current target for the targeting computer
-                targetComputer.currentTarget = currentTargetData.ship;
-                targetComputer.updateSubTargets();
-                
-                if (targetComputer.currentSubTarget) {
-                    const subTarget = targetComputer.currentSubTarget;
-                    const healthPercent = Math.round(subTarget.health * 100);
-                    
-                    // Get accuracy and damage bonuses
-                    const accuracyBonus = Math.round(targetComputer.getSubTargetAccuracyBonus() * 100);
-                    const damageBonus = Math.round(targetComputer.getSubTargetDamageBonus() * 100);
-                    
-                    // Create health bar display matching main hull health style
-                    const healthBarSection = `
-                        <div style="margin-top: 8px; padding: 4px 0;">
-                            <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">${subTarget.displayName}: ${healthPercent}%</div>
-                            <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
-                                <div style="background-color: white; height: 100%; width: ${healthPercent}%; transition: width 0.3s ease;"></div>
-                            </div>
-                        </div>`;
-                    
-                    subTargetHTML = `
-                        <div style="
-                            background-color: ${isEnemyShip ? '#ff0000' : diplomacyColor}; 
-                            color: ${isEnemyShip ? 'white' : '#000000'}; 
-                            padding: 6px; 
-                            border-radius: 4px; 
-                            margin-top: 4px;
-                            font-weight: bold;
-                        ">
-                            <div style="font-size: 12px; margin-bottom: 2px;">SYSTEM:</div>
-                            ${healthBarSection}
-                            <div style="font-size: 10px; opacity: 0.8; margin-top: 6px;">
-                                <span>Acc:</span> <span>+${accuracyBonus}%</span> • 
-                                <span>Dmg:</span> <span>+${damageBonus}%</span>
-                            </div>
-                            <div style="font-size: 9px; opacity: 0.6; margin-top: 2px;">
-                                &lt; &gt; to cycle sub-targets
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    // Show available sub-targets count
-                    const availableTargets = targetComputer.availableSubTargets.length;
-                    if (availableTargets > 0) {
-                        subTargetHTML = `
-                            <div style="
-                                background-color: ${diplomacyColor}; 
-                                color: #000000; 
-                                padding: 6px; 
-                                border-radius: 4px; 
-                                margin-top: 4px;
-                                font-weight: bold;
-                            ">
-                                <div style="font-size: 12px; margin-bottom: 2px;">SYSTEM:</div>
-                                <div style="font-size: 11px; opacity: 0.8;">
-                                    ${availableTargets} targetable systems detected
-                                </div>
-                                <div style="font-size: 9px; opacity: 0.6; margin-top: 2px;">
-                                    &lt; &gt; to cycle sub-targets
-                                </div>
-                            </div>
-                        `;
-                    }
-                }
-            }
-        }
+        // Enhanced sub-targeting display with weapon and level compatibility
+        const subTargetAvailability = this.getSubTargetAvailability(ship, targetComputer, isEnemyShip, currentTargetData);
+        subTargetHTML = subTargetAvailability.html;
 
         // Update target information display with colored background and black text
         let typeDisplay = info?.type || 'Unknown';
@@ -4212,21 +4273,23 @@ export class StarfieldManager {
             
             if (isBehindCamera) {
                 this.targetComputerManager.hideTargetReticle();
-            } else {
-                this.targetComputerManager.showTargetReticle();
-                this.targetComputerManager.setTargetReticlePosition(x, y);
-            }
-
-            // Update target information displays if reticle is visible
-            if (!isBehindCamera) {
-                this.updateReticleTargetInfo();
-            } else {
                 if (this.targetNameDisplay) {
                     this.targetNameDisplay.style.display = 'none';
                 }
                 if (this.targetDistanceDisplay) {
                     this.targetDistanceDisplay.style.display = 'none';
                 }
+            } else {
+                // RESTORED: Direct reticle positioning like original backup version
+                this.targetComputerManager.showTargetReticle();
+                const targetReticle = this.targetComputerManager.targetReticle;
+                if (targetReticle) {
+                    targetReticle.style.left = `${x}px`;
+                    targetReticle.style.top = `${y}px`;
+                }
+                
+                // Update target information displays if reticle is visible
+                this.updateReticleTargetInfo();
             }
         } else {
             this.targetComputerManager.hideTargetReticle();
@@ -5294,6 +5357,307 @@ export class StarfieldManager {
                 clearInterval(this.weaponHUDRetryInterval);
                 this.weaponHUDRetryInterval = null;
                 console.log('✅ WeaponHUD connected immediately, retry interval cleared');
+            }
+        }
+    }
+
+    /**
+     * Get sub-targeting availability and display information
+     * @param {Object} ship Current ship
+     * @param {Object} targetComputer Target computer system
+     * @param {boolean} isEnemyShip Whether target is an enemy ship
+     * @param {Object} currentTargetData Current target data
+     * @returns {Object} HTML and availability information
+     */
+    getSubTargetAvailability(ship, targetComputer, isEnemyShip, currentTargetData) {
+        let html = '';
+        
+        // Check basic requirements
+        if (!targetComputer) {
+            return { 
+                html: '',
+                available: false,
+                reason: 'No Target Computer'
+            };
+        }
+
+        // Determine target type and faction color using same logic as main target display
+        let diplomacyColor = '#D0D0D0'; // Default gray
+        let isCelestialBody = false;
+        
+        if (isEnemyShip) {
+            diplomacyColor = '#ff3333'; // Enemy ships are darker neon red
+        } else {
+            // Get celestial body info for non-ship targets
+            const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+            if (info) {
+                isCelestialBody = true; // Mark as celestial body
+                if (info.type === 'star') {
+                    diplomacyColor = '#ffff00'; // Stars are neutral yellow
+                } else if (info.diplomacy?.toLowerCase() === 'enemy') {
+                    diplomacyColor = '#ff3333'; // Darker neon red
+                } else if (info.diplomacy?.toLowerCase() === 'neutral') {
+                    diplomacyColor = '#ffff00';
+                } else if (info.diplomacy?.toLowerCase() === 'friendly') {
+                    diplomacyColor = '#00ff41';
+                }
+            }
+        }
+
+        const currentWeapon = ship?.weaponSystem?.getActiveWeapon();
+        const weaponCard = currentWeapon?.equippedWeapon;
+        let weaponType = weaponCard?.weaponType;
+        const weaponName = weaponCard?.name || 'No Weapon';
+        const tcLevel = targetComputer.level;
+        
+        // Fallback: If weaponType is not set, look it up from weapon definitions
+        if (!weaponType && weaponCard?.weaponId) {
+            // Common scan-hit weapons
+            const scanHitWeapons = ['laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array', 'disruptor_cannon', 'particle_beam'];
+            const splashDamageWeapons = ['standard_missile', 'homing_missile', 'photon_torpedo', 'proximity_mine'];
+            
+            if (scanHitWeapons.includes(weaponCard.weaponId)) {
+                weaponType = 'scan-hit';
+            } else if (splashDamageWeapons.includes(weaponCard.weaponId)) {
+                weaponType = 'splash-damage';
+            }
+        }
+        
+
+        
+        // Determine availability and reason
+        let available = true;
+        let reason = '';
+        let statusColor = diplomacyColor; // Use faction color for available
+        
+        if (!targetComputer.hasSubTargeting()) {
+            available = false;
+            reason = `Target Computer Level ${tcLevel} (requires Level 3+)`;
+            statusColor = '#ff3333';
+        } else if (isCelestialBody) {
+            available = false;
+            reason = 'Celestial bodies don\'t have subsystems';
+            statusColor = '#ff3333';
+        } else if (!isEnemyShip || !currentTargetData.ship) {
+            available = false;
+            reason = 'Target must be a ship with subsystems';
+            statusColor = '#ff3333';
+        } else if (!currentWeapon || currentWeapon.isEmpty) {
+            available = false;
+            reason = 'No weapon selected';
+            statusColor = '#ff3333';
+        } else if (weaponType !== 'scan-hit') {
+            available = false;
+            if (weaponType === 'splash-damage') {
+                reason = 'Projectile weapons don\'t support sub-targeting';
+            } else {
+                reason = 'Weapon type not compatible';
+            }
+            statusColor = '#ff3333';
+        }
+        
+        // Build the HTML display
+        if (available && targetComputer.hasSubTargeting() && isEnemyShip && currentTargetData.ship && !isCelestialBody) {
+            // Set the enemy ship as the current target for the targeting computer
+            targetComputer.currentTarget = currentTargetData.ship;
+            targetComputer.updateSubTargets();
+            
+            if (targetComputer.currentSubTarget) {
+                // Show active sub-targeting with current target
+                const subTarget = targetComputer.currentSubTarget;
+                const healthPercent = Math.round(subTarget.health * 100);
+                
+                // Get accuracy and damage bonuses
+                const accuracyBonus = Math.round(targetComputer.getSubTargetAccuracyBonus() * 100);
+                const damageBonus = Math.round(targetComputer.getSubTargetDamageBonus() * 100);
+                
+                // Create health bar display matching main hull health style
+                const healthBarSection = `
+                    <div style="margin-top: 8px; padding: 4px 0;">
+                        <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">${subTarget.displayName}: ${healthPercent}%</div>
+                        <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
+                            <div style="background-color: white; height: 100%; width: ${healthPercent}%; transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>`;
+                
+                // Determine text and background colors based on target faction
+                let textColor, backgroundColor;
+                if (isEnemyShip) {
+                    // White text on faction color background for hostile enemies
+                    textColor = 'white';
+                    backgroundColor = diplomacyColor;
+                } else {
+                    // Black text on faction color background for non-hostile targets
+                    textColor = 'black';
+                    backgroundColor = diplomacyColor;
+                }
+                
+                html = `
+                    <div style="
+                        background-color: ${backgroundColor}; 
+                        color: ${textColor}; 
+                        padding: 6px; 
+                        border-radius: 4px; 
+                        margin-top: 4px;
+                        font-weight: bold;
+                    ">
+                        <div style="font-size: 12px; margin-bottom: 2px;">SYSTEM:</div>
+                        ${healthBarSection}
+                        <div style="font-size: 10px; opacity: 0.8; margin-top: 6px;">
+                            <span>Acc:</span> <span>+${accuracyBonus}%</span> • 
+                            <span>Dmg:</span> <span>+${damageBonus}%</span>
+                        </div>
+                        <div style="font-size: 9px; opacity: 0.8; margin-top: 2px; color: ${statusColor};">
+                            ✓ &lt; &gt; to cycle sub-targets
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Show available sub-targets count
+                const availableTargets = targetComputer.availableSubTargets.length;
+                if (availableTargets > 0) {
+                    // Use same faction-based color logic for available targets display
+                    const textColor = isEnemyShip ? 'white' : 'black';
+                    
+                    html = `
+                        <div style="
+                            background-color: ${diplomacyColor}; 
+                            color: ${textColor}; 
+                            padding: 6px; 
+                            border-radius: 4px; 
+                            margin-top: 4px;
+                            font-weight: bold;
+                        ">
+                            <div style="font-size: 12px; margin-bottom: 2px;">SYSTEM:</div>
+                            <div style="font-size: 11px; opacity: 0.8;">
+                                ${availableTargets} targetable systems detected
+                            </div>
+                            <div style="font-size: 9px; opacity: 0.8; margin-top: 2px; color: ${statusColor};">
+                                ✓ &lt; &gt; to cycle sub-targets
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        } else {
+            // Show unavailable status with reason using faction colors
+            const textColor = isEnemyShip ? 'white' : 'black';
+            
+            html = `
+                <div style="
+                    background-color: ${diplomacyColor}; 
+                    color: ${textColor}; 
+                    padding: 6px; 
+                    border-radius: 4px; 
+                    margin-top: 4px;
+                    font-weight: bold;
+                    border: 1px solid ${diplomacyColor};
+                ">
+                    <div style="font-size: 12px; margin-bottom: 2px;">SUB-TARGETING:</div>
+                    <div style="font-size: 10px; opacity: 0.8;">
+                        ${available ? 'Available' : 'Unavailable'}
+                    </div>
+                    ${reason ? `<div style="font-size: 9px; opacity: 0.7; margin-top: 2px;">
+                        ${reason}
+                    </div>` : ''}
+                    ${available ? `<div style="font-size: 9px; opacity: 0.6; margin-top: 2px;">
+                        ✓ &lt; &gt; sub-targeting
+                    </div>` : ''}
+                </div>
+            `;
+        }
+        
+        return {
+            html,
+            available,
+            reason
+        };
+    }
+
+    /**
+     * Enhanced sub-targeting key handler with weapon type validation
+     * @param {string} direction 'previous' or 'next'
+     */
+    handleSubTargetingKey(direction) {
+        // Basic requirements check
+        if (this.isDocked || !this.targetComputerEnabled || !this.currentTarget) {
+            this.playCommandFailedSound();
+            return;
+        }
+
+        const ship = this.viewManager?.getShip();
+        if (!ship) {
+            this.playCommandFailedSound();
+            return;
+        }
+
+        const targetComputer = ship.getSystem('target_computer');
+        
+        // Check if target computer exists and supports sub-targeting (Level 3+)
+        if (!targetComputer) {
+            this.playCommandFailedSound();
+            ship.weaponSystem?.showMessage('No Target Computer Installed', 3000);
+            return;
+        }
+
+        if (!targetComputer.hasSubTargeting()) {
+            this.playCommandFailedSound();
+            const tcLevel = targetComputer.level;
+            ship.weaponSystem?.showMessage(`Target Computer Level ${tcLevel} - Sub-targeting requires Level 3+`, 4000);
+            return;
+        }
+
+        // Check current weapon compatibility
+        const currentWeapon = ship.weaponSystem?.getActiveWeapon();
+        if (!currentWeapon || currentWeapon.isEmpty) {
+            this.playCommandFailedSound();
+            ship.weaponSystem?.showMessage('No Weapon Selected', 3000);
+            return;
+        }
+
+        const weaponCard = currentWeapon.equippedWeapon;
+        const weaponType = weaponCard?.weaponType;
+        const weaponName = weaponCard?.name || 'Current Weapon';
+
+        // Debug weapon information
+        console.log(`🎯 Sub-targeting check for: ${weaponName}`);
+        console.log(`🎯 Weapon type: ${weaponType}`);
+        console.log(`🎯 Weapon card:`, weaponCard);
+
+        // Check if current weapon supports sub-targeting (scan-hit weapons only)
+        if (weaponType !== 'scan-hit') {
+            this.playCommandFailedSound();
+            
+            if (weaponType === 'splash-damage') {
+                ship.weaponSystem?.showMessage(`${weaponName}: Projectile weapons don't support sub-targeting`, 4000);
+            } else {
+                ship.weaponSystem?.showMessage(`${weaponName}: Sub-targeting not supported (type: ${weaponType})`, 4000);
+            }
+            return;
+        }
+
+        // All requirements met - proceed with sub-targeting
+        if (targetComputer.availableSubTargets.length <= 1) {
+            this.playCommandFailedSound();
+            ship.weaponSystem?.showMessage('No Additional Sub-targets Available', 3000);
+        } else {
+            // Cycle sub-target in the requested direction
+            let success = false;
+            if (direction === 'previous') {
+                success = targetComputer.cycleSubTargetPrevious();
+            } else {
+                success = targetComputer.cycleSubTargetNext();
+            }
+
+            if (success) {
+                this.playCommandSound();
+                this.updateTargetDisplay(); // Update HUD display
+                
+                // Show brief confirmation
+                const subTargetName = targetComputer.currentSubTarget?.displayName || 'Unknown';
+                ship.weaponSystem?.showMessage(`Targeting: ${subTargetName}`, 2000);
+            } else {
+                this.playCommandFailedSound();
             }
         }
     }

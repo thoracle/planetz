@@ -320,7 +320,7 @@ export default class SimplifiedDamageControl {
                 <div class="system-card ${statusClass}">
                     <div class="system-header">
                         <span class="system-icon">${statusIcon}</span>
-                        <span class="system-name">${formattedName}</span>
+                        <span class="system-name">${formattedName} (Lvl ${systemData.level || 1})</span>
                     </div>
                     <div class="health-bar">
                         <div class="health-fill ${this.getHealthBarClass(systemData.health)}" 

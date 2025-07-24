@@ -427,8 +427,8 @@ export class TargetComputerManager {
             this.targetHUD.style.display = 'block';
             
             this.updateTargetList();
-            // Only reset target index if we don't have a current target
-            if (!this.currentTarget) {
+            // Only reset target index if we don't have a current target AND target changes are allowed
+            if (!this.currentTarget && !this.preventTargetChanges) {
                 this.targetIndex = -1;
                 this.cycleTarget();
             } else {
@@ -750,6 +750,12 @@ export class TargetComputerManager {
             return;
         }
 
+        // Prevent target changes during dummy creation
+        if (this.preventTargetChanges) {
+            console.log(`🎯 Target change prevented during dummy creation`);
+            return;
+        }
+
         if (!this.targetComputerEnabled || this.targetObjects.length === 0) {
             return;
         }
@@ -783,6 +789,7 @@ export class TargetComputerManager {
 
         // Clean up existing wireframe before creating a new one
         if (this.targetWireframe) {
+            console.log(`🎯 WIREFRAME: Cleaning up existing wireframe`);
             this.wireframeScene.remove(this.targetWireframe);
             if (this.targetWireframe.geometry) {
                 this.targetWireframe.geometry.dispose();
@@ -795,6 +802,9 @@ export class TargetComputerManager {
                 }
             }
             this.targetWireframe = null;
+            console.log(`🎯 WIREFRAME: Existing wireframe cleaned up`);
+        } else {
+            console.log(`🎯 WIREFRAME: No existing wireframe to clean up`);
         }
 
         // Create new wireframe and update display
@@ -1290,9 +1300,12 @@ export class TargetComputerManager {
             const relativePos = this.currentTarget.position.clone().sub(this.camera.position);
             const isBehindCamera = relativePos.dot(cameraForward) < 0;
             
+            // RESTORED: Direct positioning like original working version
             this.targetReticle.style.display = isBehindCamera ? 'none' : 'block';
-            this.targetReticle.style.left = `${x}px`;
-            this.targetReticle.style.top = `${y}px`;
+            if (!isBehindCamera) {
+                this.targetReticle.style.left = `${x}px`;
+                this.targetReticle.style.top = `${y}px`;
+            }
         } else {
             this.targetReticle.style.display = 'none';
         }

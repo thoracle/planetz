@@ -274,8 +274,18 @@ export class ScanHitWeapon extends WeaponCard {
      * @returns {number} Distance
      */
     calculateDistanceToTarget(origin, target) {
-        // This would integrate with the existing distance calculation system
-        return 500; // placeholder
+        if (!origin || !target) {
+            return 0;
+        }
+        
+        // Extract position from target if it's an object with position property
+        const targetPos = target.position || target;
+        
+        return Math.sqrt(
+            Math.pow(origin.x - targetPos.x, 2) +
+            Math.pow(origin.y - targetPos.y, 2) +
+            Math.pow(origin.z - targetPos.z, 2)
+        );
     }
 }
 
@@ -299,18 +309,96 @@ export class SplashDamageWeapon extends WeaponCard {
      * Fire splash-damage weapon
      * @param {Object} origin Origin position
      * @param {Object} target Target object
+     * @param {Object} ship Ship instance for energy validation
      * @returns {Object} Fire result
      */
-    fire(origin, target = null) {
+    fire(origin, target = null, ship = null) {
         console.log(`🚨 SPLASH WEAPON CACHE TEST: ${this.name} firing (splash-damage) - TIMESTAMP: ${Date.now()}`);
         
-        // Splash-damage weapons typically require a target
-        if (this.targetLockRequired && !target) {
+        // ENHANCED: Comprehensive energy validation like laser weapons
+        if (ship && this.energyCost > 0) {
+            if (!ship.hasEnergy(this.energyCost)) {
+                const currentEnergy = Math.round(ship.currentEnergy);
+                const energyNeeded = this.energyCost;
+                const energyShortfall = energyNeeded - currentEnergy;
+                
+                console.warn(`🔋 ${this.name}: Insufficient energy (need ${energyNeeded}, have ${currentEnergy}, short ${energyShortfall})`);
+                
+                // Send HUD message for insufficient energy
+                if (window.starfieldManager?.weaponHUD) {
+                    window.starfieldManager.weaponHUD.showMessage(
+                        `Insufficient Energy: ${this.name}`,
+                        `Need ${energyNeeded} energy, have ${currentEnergy}`,
+                        3000
+                    );
+                }
+                
+                return {
+                    success: false,
+                    reason: `Insufficient energy (need ${energyNeeded}, have ${currentEnergy})`,
+                    damage: 0,
+                    energyShortfall: energyShortfall
+                };
+            }
+            
+            // Consume energy
+            ship.consumeEnergy(this.energyCost);
+            console.log(`🔋 ${this.name}: Consumed ${this.energyCost} energy (${Math.round(ship.currentEnergy)} remaining)`);
+        }
+        
+        // CORRECTED: Only homing weapons require target lock, non-homing projectiles can free-aim
+        if (this.targetLockRequired && this.homingCapability && !target) {
+            // Send HUD message for target lock required
+            if (window.starfieldManager?.weaponHUD) {
+                window.starfieldManager.weaponHUD.showMessage(
+                    `Target Lock Required: ${this.name}`,
+                    `Homing weapons require a locked target`,
+                    3000
+                );
+            }
+            
             return {
                 success: false,
-                reason: 'Target lock required',
+                reason: 'Target lock required for homing weapon',
                 damage: 0
             };
+        }
+        
+        // Non-homing projectiles (torpedoes, missiles) can fire without target lock toward crosshairs
+        if (!this.homingCapability) {
+            console.log(`🎯 ${this.name}: Non-homing projectile firing toward crosshairs (no target lock needed)`);
+        }
+        
+        // ENHANCED: Range validation for targeted shots (if target exists)
+        if (target && target.position && origin) {
+            const distance = this.calculateDistanceToTarget(origin, target.position);
+            const maxRange = this.range || 10000; // Default 10km if no range specified
+            
+            if (distance > maxRange) {
+                const distanceKm = (distance / 1000).toFixed(1);
+                const maxRangeKm = (maxRange / 1000).toFixed(1);
+                
+                console.warn(`🎯 ${this.name}: Target out of range (${distanceKm}km > ${maxRangeKm}km max)`);
+                
+                // Send HUD message for out of range
+                if (window.starfieldManager?.weaponHUD) {
+                    window.starfieldManager.weaponHUD.showMessage(
+                        `Target Out of Range: ${this.name}`,
+                        `Target at ${distanceKm}km, max range ${maxRangeKm}km`,
+                        3000
+                    );
+                }
+                
+                return {
+                    success: false,
+                    reason: `Target out of range (${distanceKm}km > ${maxRangeKm}km)`,
+                    damage: 0,
+                    distance: distance,
+                    maxRange: maxRange
+                };
+            }
+            
+            console.log(`🎯 ${this.name}: Target in range (${(distance / 1000).toFixed(1)}km / ${(maxRange / 1000).toFixed(1)}km max)`);
         }
         
         // Create and launch projectile
@@ -385,42 +473,114 @@ export class SplashDamageWeapon extends WeaponCard {
             console.log(`🔍 DEBUG: No camera or target available for ${this.name}, using default direction`);
         }
 
-        // Try to create physics-based projectile first
-        if (window.physicsManager && window.physicsManager.isReady()) {
-            try {
-                const physicsProjectile = new PhysicsProjectile({
+        // ENHANCED: Try to create physics-based projectile with comprehensive error handling
+        if (window.physicsManager) {
+            if (!window.physicsManager.isReady()) {
+                console.warn(`🔧 ${this.name}: PhysicsManager not ready, initializing...`);
+                
+                // Send HUD message about physics initialization
+                if (window.starfieldManager?.weaponHUD) {
+                    window.starfieldManager.weaponHUD.showMessage(
+                        `Physics Initializing: ${this.name}`,
+                        `Projectile physics loading, please wait...`,
+                        2000
+                    );
+                }
+                
+                // Try to initialize physics if possible
+                try {
+                    if (typeof window.physicsManager.initialize === 'function') {
+                        window.physicsManager.initialize();
+                    }
+                } catch (initError) {
+                    console.error(`❌ ${this.name}: Failed to initialize physics:`, initError);
+                }
+            }
+            
+            if (window.physicsManager.isReady()) {
+                try {
+                    console.log(`✅ ${this.name}: Creating physics-based projectile`);
+                    
+                    const physicsProjectile = new PhysicsProjectile({
+                        origin: origin,
+                        direction: direction,
+                        target: target,
+                        damage: this.damage,
+                        blastRadius: this.blastRadius,
+                        flightRange: this.flightRange,
+                        isHoming: this.homingCapability,
+                        turnRate: this.turnRate,
+                        weaponName: this.name,
+                        physicsManager: window.physicsManager,
+                        scene: window.scene
+                    });
+                    
+                    if (physicsProjectile && physicsProjectile.rigidBody) {
+                        console.log(`✅ ${this.name}: Physics projectile created successfully`);
+                        return physicsProjectile;
+                    } else {
+                        throw new Error('PhysicsProjectile created but missing rigid body');
+                    }
+                    
+                } catch (physicsError) {
+                    console.error(`❌ ${this.name}: Failed to create physics projectile:`, physicsError);
+                    
+                    // Send HUD message about physics failure
+                    if (window.starfieldManager?.weaponHUD) {
+                        window.starfieldManager.weaponHUD.showMessage(
+                            `Physics Error: ${this.name}`,
+                            `Using fallback mode - limited accuracy`,
+                            3000
+                        );
+                    }
+                }
+            }
+        } else {
+            console.warn(`⚠️ ${this.name}: PhysicsManager not available`);
+        }
+        
+        // ENHANCED: Fallback to simple projectile with user notification
+        console.warn(`⚠️ ${this.name}: Using fallback projectile system (reduced accuracy)`);
+        
+        // Send HUD message about fallback mode
+        if (window.starfieldManager?.weaponHUD) {
+            window.starfieldManager.weaponHUD.showMessage(
+                `Fallback Mode: ${this.name}`,
+                `Physics unavailable - using simplified projectile`,
+                2000
+            );
+        }
+        
+        try {
+            // Check if simple Projectile class exists
+            if (typeof Projectile !== 'undefined') {
+                return new Projectile({
                     origin: origin,
-                    direction: direction,
                     target: target,
                     damage: this.damage,
                     blastRadius: this.blastRadius,
                     flightRange: this.flightRange,
                     isHoming: this.homingCapability,
                     turnRate: this.turnRate,
-                    weaponName: this.name,
-                    physicsManager: window.physicsManager,
-                    scene: window.scene
+                    weaponName: this.name
                 });
-                
-                return physicsProjectile;
-                
-            } catch (error) {
-                console.warn('Failed to create physics projectile, falling back to simple projectile:', error);
+            } else {
+                throw new Error('Projectile class not available');
             }
+        } catch (fallbackError) {
+            console.error(`❌ ${this.name}: Complete projectile creation failure:`, fallbackError);
+            
+            // Send HUD error message
+            if (window.starfieldManager?.weaponHUD) {
+                window.starfieldManager.weaponHUD.showMessage(
+                    `Weapon System Error: ${this.name}`,
+                    `Unable to create projectile - system malfunction`,
+                    4000
+                );
+            }
+            
+            return null; // Complete failure
         }
-        
-        // Fallback to simple projectile if physics not available
-        console.log(`⚠️ Using fallback projectile for ${this.name}`);
-        return new Projectile({
-            origin: origin,
-            target: target,
-            damage: this.damage,
-            blastRadius: this.blastRadius,
-            flightRange: this.flightRange,
-            isHoming: this.homingCapability,
-            turnRate: this.turnRate,
-            weaponName: this.name
-        });
     }
     
     /**
@@ -490,6 +650,24 @@ export class SplashDamageWeapon extends WeaponCard {
             // Update projectile
             projectile.update(updateInterval);
         }, updateInterval);
+    }
+    
+    /**
+     * Calculate distance between two positions
+     * @param {Object} pos1 First position {x, y, z}
+     * @param {Object} pos2 Second position {x, y, z}
+     * @returns {number} Distance in meters
+     */
+    calculateDistanceToTarget(pos1, pos2) {
+        if (!pos1 || !pos2) {
+            return 0;
+        }
+        
+        return Math.sqrt(
+            Math.pow(pos1.x - pos2.x, 2) +
+            Math.pow(pos1.y - pos2.y, 2) +
+            Math.pow(pos1.z - pos2.z, 2)
+        );
     }
 }
 
@@ -1078,18 +1256,11 @@ export class PhysicsProjectile {
         console.log(`💥 DETONATE: ${this.weaponName} detonating at position:`, detonationPos);
         console.log(`💥 DETONATE: ${this.weaponName} damage=${this.damage}, blastRadius=${this.blastRadius}m`);
         
-        // Play explosion sound effect
-        if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
-            const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
-            const explosionPosition = detonationPos ? new THREE.Vector3(detonationPos.x, detonationPos.y, detonationPos.z) : null;
-            effectsManager.playSound('explosion', explosionPosition, 1.0);
-            console.log(`🔊 DETONATE: ${this.weaponName} playing explosion sound`);
-        }
-        
+        // NOTE: Explosion sound is played by createExplosionEffect() -> createExplosion() for consistent positioning
         console.log(`💥 DETONATE: ${this.weaponName} calling applyPhysicsSplashDamage()`);
         this.applyPhysicsSplashDamage(detonationPos);
         
-        console.log(`💥 DETONATE: ${this.weaponName} calling createExplosionEffect()`);
+        console.log(`💥 DETONATE: ${this.weaponName} calling createExplosionEffect() - this will handle explosion audio`);
         this.createExplosionEffect(detonationPos);
         
         console.log(`💥 DETONATE: ${this.weaponName} calling cleanup()`);
@@ -1279,12 +1450,25 @@ export class PhysicsProjectile {
                         }
                     }
                     
-                    // Apply damage if we found a valid target ship
+                    // Apply damage if we found a valid target ship (PROJECTILE WEAPONS - NO SUB-TARGETING)
                     if (targetShip) {
                         const wasAlreadyDestroyed = targetShip.currentHull <= 0.001;
                         console.log(`💥 ${this.weaponName}: Applying ${damage} explosive damage to ${targetShip.shipName || 'enemy ship'} (hull: ${targetShip.currentHull}/${targetShip.maxHull})`);
-                        const damageResult = targetShip.applyDamage(damage, 'explosive');
+                        
+                        // PROJECTILE WEAPONS: Apply damage without sub-targeting (3rd parameter = null)
+                        const damageResult = targetShip.applyDamage(damage, 'explosive', null);
                         console.log(`💥 ${this.weaponName}: After damage - hull: ${targetShip.currentHull}/${targetShip.maxHull}, destroyed: ${damageResult?.isDestroyed || false}`);
+                        
+                        // Log shield/hull breakdown for projectile weapons
+                        if (damageResult.shieldDamage > 0) {
+                            console.log(`🛡️ ${this.weaponName}: Shields absorbed ${damageResult.shieldDamage} damage`);
+                        }
+                        if (damageResult.hullDamage > 0) {
+                            console.log(`💥 ${this.weaponName}: Hull took ${damageResult.hullDamage} damage`);
+                        }
+                        if (damageResult.systemsDamaged.length > 0) {
+                            console.log(`🎯 ${this.weaponName}: Random subsystem hits: ${damageResult.systemsDamaged.join(', ')}`);
+                        }
                         
                         if (damageResult && damageResult.isDestroyed && !wasAlreadyDestroyed) {
                             console.log(`🔥 ${this.weaponName}: ${targetShip.shipName || 'Enemy ship'} DESTROYED by torpedo blast!`);
@@ -1342,14 +1526,20 @@ export class PhysicsProjectile {
      * @param {Object} position Explosion position
      */
     createExplosionEffect(position) {
-        // This will integrate with the existing effects system
-        if (window.effectsManager) {
+        // Use the same explosion system as laser weapons for consistency
+        if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
             try {
-                window.effectsManager.createExplosion(position, this.blastRadius, 'missile', position);
-                console.log(`✨ Created explosion effect at:`, position);
+                const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
+                const explosionPos = position ? new THREE.Vector3(position.x, position.y, position.z) : null;
+                
+                // Use 'damage' explosion type like lasers (not 'missile') and consistent positioning
+                effectsManager.createExplosion(explosionPos, this.blastRadius, 'damage', explosionPos);
+                console.log(`✨ Created explosion effect at:`, position, `with radius ${this.blastRadius}m`);
             } catch (error) {
                 console.warn('Failed to create explosion effect:', error);
             }
+        } else {
+            console.warn('No weapon effects manager available for explosion effect');
         }
     }
     
