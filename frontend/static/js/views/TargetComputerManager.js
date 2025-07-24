@@ -1034,7 +1034,10 @@ export class TargetComputerManager {
             if (isEnemyShip && currentTargetData.ship) {
                 // Set the enemy ship as the current target for the targeting computer
                 targetComputer.currentTarget = currentTargetData.ship;
-                targetComputer.updateSubTargets();
+                // Only update sub-targets if we're not preventing target changes
+                if (!this.preventTargetChanges) {
+                    targetComputer.updateSubTargets();
+                }
                 
                 if (targetComputer.currentSubTarget) {
                     const subTarget = targetComputer.currentSubTarget;

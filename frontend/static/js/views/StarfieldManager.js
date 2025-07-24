@@ -3536,9 +3536,51 @@ export class StarfieldManager {
      * @param {number} count - Number of dummy ships to create
      */
     async createTargetDummyShips(count = 3) {
+        console.log(`🎯 Creating ${count} target dummy ships...`);
         
-        // Set flag to prevent target changes during dummy creation
+        // Store current target information for restoration BEFORE any changes
+        const previousTarget = this.targetComputerManager.currentTarget;
+        const previousTargetIndex = this.targetComputerManager.targetIndex;
+        const previousTargetData = this.targetComputerManager.getCurrentTargetData();
+        
+        // Store identifying characteristics to find the target after update
+        const targetIdentifier = previousTargetData ? {
+            name: previousTargetData.name,
+            type: previousTargetData.type,
+            shipName: previousTargetData.ship?.shipName,
+            position: previousTarget?.position ? {
+                x: Math.round(previousTarget.position.x * 1000) / 1000,
+                y: Math.round(previousTarget.position.y * 1000) / 1000, 
+                z: Math.round(previousTarget.position.z * 1000) / 1000
+            } : null
+        } : null;
+        
+        // Enable flag to prevent automatic target changes during dummy creation
         this.targetComputerManager.preventTargetChanges = true;
+        
+        // Force complete wireframe cleanup before any target list changes
+        if (this.targetOutline) {
+            this.scene.remove(this.targetOutline);
+            if (this.targetOutline.geometry) this.targetOutline.geometry.dispose();
+            if (this.targetOutline.material) this.targetOutline.material.dispose();
+            this.targetOutline = null;
+            this.targetOutlineObject = null;
+        }
+        
+        if (this.targetComputerManager.targetWireframe) {
+            this.targetComputerManager.wireframeScene.remove(this.targetComputerManager.targetWireframe);
+            if (this.targetComputerManager.targetWireframe.geometry) {
+                this.targetComputerManager.targetWireframe.geometry.dispose();
+            }
+            if (this.targetComputerManager.targetWireframe.material) {
+                if (Array.isArray(this.targetComputerManager.targetWireframe.material)) {
+                    this.targetComputerManager.targetWireframe.material.forEach(material => material.dispose());
+                } else {
+                    this.targetComputerManager.targetWireframe.material.dispose();
+                }
+            }
+            this.targetComputerManager.targetWireframe = null;
+        }
         
         // Import EnemyShip class
         const { default: EnemyShip } = await import('../ship/EnemyShip.js');
@@ -3623,72 +3665,14 @@ export class StarfieldManager {
             }
         }
         
-        // Store current target data before updating list  
-        const previousTarget = this.targetComputerManager.currentTarget;
-        const previousTargetIndex = this.targetComputerManager.targetIndex;
-        const previousTargetData = this.targetComputerManager.getCurrentTargetData();
-        const previousTargetName = previousTargetData?.name || 'unknown';
-        
-        console.log(`🎯 Q-KEY: Before update - Target: ${previousTargetName}, Index: ${previousTargetIndex}`);
-        console.log(`🎯 Q-KEY: Previous target:`, previousTarget);
-        console.log(`🎯 Q-KEY: Previous target data:`, previousTargetData);
-        
-        // Store identifying characteristics to find the target after update
-        const targetIdentifier = previousTargetData ? {
-            name: previousTargetData.name,
-            type: previousTargetData.type,
-            shipName: previousTargetData.ship?.shipName,
-            position: previousTarget?.position ? {
-                x: Math.round(previousTarget.position.x * 1000) / 1000,
-                y: Math.round(previousTarget.position.y * 1000) / 1000, 
-                z: Math.round(previousTarget.position.z * 1000) / 1000
-            } : null
-        } : null;
-        
-        console.log(`🎯 Q-KEY: Target identifier:`, targetIdentifier);
-        
-        // FORCE COMPLETE WIREFRAME CLEANUP BEFORE ANY TARGET LIST CHANGES
-        console.log(`🎯 Q-KEY: Forcing complete wireframe cleanup BEFORE target list update`);
-        
-        // Clear StarfieldManager's outline system completely
-        if (this.targetOutline) {
-            console.log(`🎯 Q-KEY: Pre-cleanup - StarfieldManager targetOutline`);
-            this.scene.remove(this.targetOutline);
-            if (this.targetOutline.geometry) this.targetOutline.geometry.dispose();
-            if (this.targetOutline.material) this.targetOutline.material.dispose();
-            this.targetOutline = null;
-            this.targetOutlineObject = null;
-        }
-        
-        // Clear TargetComputerManager's wireframe system completely
-        if (this.targetComputerManager.targetWireframe) {
-            console.log(`🎯 Q-KEY: Pre-cleanup - TargetComputerManager targetWireframe`);
-            this.targetComputerManager.wireframeScene.remove(this.targetComputerManager.targetWireframe);
-            if (this.targetComputerManager.targetWireframe.geometry) {
-                this.targetComputerManager.targetWireframe.geometry.dispose();
-            }
-            if (this.targetComputerManager.targetWireframe.material) {
-                if (Array.isArray(this.targetComputerManager.targetWireframe.material)) {
-                    this.targetComputerManager.targetWireframe.material.forEach(material => material.dispose());
-                } else {
-                    this.targetComputerManager.targetWireframe.material.dispose();
-                }
-            }
-            this.targetComputerManager.targetWireframe = null;
-        }
-        
         // Update target list to include dummy ships
         this.updateTargetList();
-        
-        console.log(`🎯 Q-KEY: After update - Target: ${this.targetComputerManager.getCurrentTargetData()?.name || 'unknown'}, Index: ${this.targetComputerManager.targetIndex}`);
         
         // Try to restore previous target using the identifier or fallback methods
         let foundIndex = -1;
         let foundTarget = null;
         
         if (targetIdentifier) {
-            console.log(`🎯 Q-KEY: Searching for target using identifier...`);
-            
             // Find target by identifying characteristics
             for (let i = 0; i < this.targetComputerManager.targetObjects.length; i++) {
                 const targetData = this.targetComputerManager.targetObjects[i];
@@ -3701,7 +3685,6 @@ export class StarfieldManager {
                         if (targetData.ship.shipName === targetIdentifier.shipName) {
                             foundIndex = i;
                             foundTarget = target;
-                            console.log(`🎯 Q-KEY: Found target by ship name match: ${targetData.name}`);
                             break;
                         }
                     } else {
@@ -3715,40 +3698,24 @@ export class StarfieldManager {
                             if (posMatch) {
                                 foundIndex = i;
                                 foundTarget = target;
-                                console.log(`🎯 Q-KEY: Found target by position match: ${targetData.name}`);
                                 break;
                             }
                         } else {
                             // Fallback to name match only
                             foundIndex = i;
                             foundTarget = target;
-                            console.log(`🎯 Q-KEY: Found target by name match: ${targetData.name}`);
                             break;
                         }
                     }
                 }
             }
-        } else {
-            // Fallback: try to find target by name if identifier failed
-            console.log(`🎯 Q-KEY: No identifier available, using fallback search by name: ${previousTargetName}`);
-            
-            for (let i = 0; i < this.targetComputerManager.targetObjects.length; i++) {
-                const targetData = this.targetComputerManager.targetObjects[i];
-                if (targetData.name === previousTargetName) {
-                    foundIndex = i;
-                    foundTarget = targetData.object;
-                    console.log(`🎯 Q-KEY: Found target by fallback name match: ${targetData.name}`);
-                    break;
-                }
-            }
         }
-            
+        
         if (foundIndex >= 0 && foundTarget) {
             this.targetComputerManager.targetIndex = foundIndex;
             this.targetComputerManager.currentTarget = foundTarget;
             
-            // Recreate wireframes for the restored target (cleanup already done above)
-            console.log(`🎯 Q-KEY: Recreating wireframes for restored target`);
+            // Recreate wireframes for the restored target
             this.targetComputerManager.createTargetWireframe();
             this.targetComputerManager.updateTargetDisplay();
             
@@ -3757,16 +3724,12 @@ export class StarfieldManager {
             if (currentTargetData) {
                 this.createTargetOutline(foundTarget, '#00ff41', currentTargetData);
             }
-            
-            console.log(`🎯 Q-KEY: Restored previous target: ${currentTargetData.name} at index ${foundIndex}`);
-        } else {
-            console.log(`🎯 Q-KEY: Could not find target to restore, keeping current selection`);
         }
-
         
         // Clear the flag to allow normal target changes again
         this.targetComputerManager.preventTargetChanges = false;
         
+        console.log(`✅ Target dummy ships created successfully - target preserved`);
     }
 
     /**
@@ -4175,8 +4138,11 @@ export class StarfieldManager {
         let subTargetHTML = '';
         
         // Enhanced sub-targeting display with weapon and level compatibility
-        const subTargetAvailability = this.getSubTargetAvailability(ship, targetComputer, isEnemyShip, currentTargetData);
-        subTargetHTML = subTargetAvailability.html;
+        // Only update sub-targets if we're not preventing target changes (like during dummy creation)
+        if (!this.targetComputerManager?.preventTargetChanges) {
+            const subTargetAvailability = this.getSubTargetAvailability(ship, targetComputer, isEnemyShip, currentTargetData);
+            subTargetHTML = subTargetAvailability.html;
+        }
 
         // Update target information display with colored background and black text
         let typeDisplay = info?.type || 'Unknown';
@@ -5460,7 +5426,10 @@ export class StarfieldManager {
         if (available && targetComputer.hasSubTargeting() && isEnemyShip && currentTargetData.ship && !isCelestialBody) {
             // Set the enemy ship as the current target for the targeting computer
             targetComputer.currentTarget = currentTargetData.ship;
-            targetComputer.updateSubTargets();
+            // Only update sub-targets if we're not preventing target changes
+            if (!this.targetComputerManager?.preventTargetChanges) {
+                targetComputer.updateSubTargets();
+            }
             
             if (targetComputer.currentSubTarget) {
                 // Show active sub-targeting with current target

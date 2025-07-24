@@ -1128,7 +1128,7 @@ export class PhysicsProjectile {
         
         // Check collision delay - but allow trail cleanup regardless
         if (!this.canCollide) {
-            console.log(`🔍 DEBUG: Collision during delay period for ${this.weaponName} - allowing trail cleanup but no damage`);
+            
             
             // CRITICAL: Still do trail cleanup even during delay period
             if (this.trailData && this.trailData.projectileObject) {

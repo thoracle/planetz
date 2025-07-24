@@ -457,20 +457,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 // Force an immediate update of the target list to include celestial bodies
                 if (starfieldManager?.targetComputerManager) {
-                    console.log('🎯 Forcing target list update after star system generation...');
                     starfieldManager.targetComputerManager.updateTargetList();
                     
                     // Verify the target list was updated
                     const targetCount = starfieldManager.targetComputerManager.targetObjects?.length || 0;
-                    console.log(`🎯 Target list updated: ${targetCount} targets available`);
                     
                     // If no targets found, try again after a short delay
                     if (targetCount === 0) {
-                        console.log('🎯 No targets found, trying again in 500ms...');
                         setTimeout(() => {
                             starfieldManager.targetComputerManager.updateTargetList();
-                            const retryCount = starfieldManager.targetComputerManager.targetObjects?.length || 0;
-                            console.log(`🎯 Retry target list update: ${retryCount} targets available`);
                         }, 500);
                     }
                 }

@@ -4,11 +4,11 @@ You're joining the development of **Star F*ckers **, a fully functional 3D web-b
 
 ## 📁 Current Project State
 - **Branch**: `optimization` (up to date with origin)
-- **Latest Commit**: `521abef` - Ammo.js loading path fix and physics improvements
+- **Latest Work**: Debug cleanup and target preservation system completion
 - **Tech Stack**: Three.js, ES6+ modules, Flask/Python backend, HTML5/CSS3, Ammo.js physics
 - **Codebase**: 25,000+ lines, 150+ files, fully modular architecture
-- **Recent Fixes**: Ammo.js loading paths, physics initialization, target removal precision, TAB cycling duplicates
-- **Status**: Fully functional combat game with reliable physics engine and working target systems
+- **Recent Achievement**: ✅ Complete target preservation system for Q-key dummy creation with cleaned debug logs
+- **Status**: Production-ready combat game with robust physics and sophisticated target management
 
 ## 🏗️ Architecture Overview
 ```
@@ -27,212 +27,218 @@ planetz/
 ```
 
 ## 🎮 Current Game Features (All Working)
-- ✅ **Physics engine** - Ammo.js loading and initialization fully resolved
-- ✅ **Physics-based combat** - Ammo.js raycasting for lasers, hit detection
-- ✅ **Ship systems** - 5 ship types with modular upgrade systems
-- ✅ **Weapon systems** - 8 weapon types (laser, pulse, plasma, phaser arrays)
-- ✅ **Target computer** - Sub-system targeting with wireframe outlines
-- ✅ **Target cycling** - TAB key cycles through unique targets without duplicates
-- ✅ **Damage system** - Hull damage, subsystem damage, destruction sounds
-- ✅ **Target removal** - Destroyed ships properly removed from target lists
-- ✅ **Audio system** - Success sounds for ship/subsystem destruction
-- ✅ **Station docking** - Repair and upgrade interface
-- ✅ **Card-based upgrades** - Equipment management system
-- ✅ **Starfield navigation** - 40,000 star background with smooth movement
+- ✅ **Complete weapon system** - Lasers, torpedoes, missiles with physics and targeting
+- ✅ **Advanced targeting** - Sub-system targeting with faction-colored HUD
+- ✅ **Target preservation** - Q-key dummy creation preserves current target perfectly
+- ✅ **Universal autofire** - All weapons support autofire with intelligent target validation
+- ✅ **Physics projectiles** - Torpedo/missile physics with collision, range expiry, damage
+- ✅ **Sophisticated combat** - Beam vs projectile weapons, sub-targeting vs random damage
+- ✅ **Audio systems** - Consistent explosion audio, command feedback sounds
+- ✅ **Station docking** - Repair and upgrade interface with card system
+- ✅ **Visual systems** - Wireframe targeting, faction colors, damage control screens
 
-## 🔧 Key Files Recently Modified
-- `frontend/index.html` - Fixed Ammo.js dynamic loading with consistent static paths
-- `frontend/static/index.html` - Updated static file paths and Ammo.js loading
-- `frontend/static/js/PhysicsManager.js` - Enhanced physics initialization error handling
-- `frontend/static/js/views/TargetComputerManager.js` - Target list management and cycling logic
-- `frontend/static/js/app.js` - Physics engine initialization and event listener management
-- `frontend/static/js/ship/systems/WeaponSlot.js` - Weapon firing and destruction detection
-- `frontend/static/js/ship/EnemyShip.js` - Damage application and hull management
-- `frontend/static/js/views/StarfieldManager.js` - Target removal and cleanup
+## 🔧 Key Systems Recently Enhanced
 
-## 🐛 Recent Bug Fixes (Completed)
+### 1. **Target Preservation System** ⭐ LATEST ACHIEVEMENT
+- **Feature**: Pressing Q to create target dummies preserves current target selection
+- **Technology**: Identifier-based target restoration using name, position, shipName
+- **Capabilities**:
+  - ✅ Preserves target across array rebuilding during dummy creation
+  - ✅ Handles wireframe cleanup and recreation automatically
+  - ✅ Works with all target types (ships, celestial bodies, stars)
+  - ✅ Robust fallback matching system for edge cases
+- **Files**: `StarfieldManager.js`, `TargetComputerManager.js`
+- **Status**: ✅ COMPLETE - Production ready target management
 
-### 1. **Ammo.js Loading Path Issue** ⭐ LATEST FIX
-- **Problem**: `❌ Failed to load Ammo.js from static/lib/ammo.js` and physics initialization timeouts
-- **Root Cause**: Path resolution mismatch between Flask server (port 5001) and direct file serving
-- **Solution**: 
-  - Replaced conditional port-based paths with consistent `'static/lib/ammo.js'` for all servers
-  - Enhanced dynamic loading mechanism with comprehensive error handling
-  - Added loading status tracking and fallback mechanisms
-- **Files**: `frontend/index.html`, `frontend/static/index.html`, `PhysicsManager.js`
-- **Status**: ✅ COMPLETELY RESOLVED - Physics engine now initializes reliably
-- **Commit**: `521abef`
+### 2. **Enhanced Sub-Targeting System**
+- **HUD Integration**: Sub-targeting availability based on weapon type and target computer level
+- **Faction Colors**: All HUD elements respect target faction (red hostile, yellow neutral, green friendly)
+- **Smart Controls**: `<` and `>` keys only work for compatible weapons, plays error sound otherwise
+- **Weapon Compatibility**: Only beam weapons (scan-hit type) support sub-targeting
+- **Files**: `StarfieldManager.js`, `WeaponSystemCore.js`
 
-### 2. **Target removal precision** 
-- **Problem**: Ships showing 0% hull but remaining in target list
-- **Solution**: Changed destruction detection from `currentHull <= 0` to `currentHull <= 0.001` AND added defensive filtering in target list generation
-- **Files**: `WeaponSlot.js`, `EnemyShip.js`, `TargetComputerManager.js`
-- **Status**: ✅ COMPLETELY RESOLVED - Added hull filtering to all target list generation methods
+### 3. **Universal Autofire System**
+- **All Weapons**: Every weapon now supports autofire functionality
+- **Smart Validation**: Homing missiles validate target lock on each autofire cycle
+- **Energy Management**: Autofire respects energy requirements and cooldowns
+- **HUD Feedback**: Clear autofire status indicators and messages
+- **Files**: `WeaponSystemCore.js`, `WeaponDefinitions.js`
 
-### 3. **Physics hit detection** 
-- **Problem**: "Hit entity does not have a ship with applyDamage method"
-- **Solution**: Updated `PhysicsManager` to properly link ship objects to physics entities
-- **Files**: `PhysicsManager.js`
+### 4. **Advanced Projectile Physics**
+- **Realistic Flight**: Torpedoes and missiles use Ammo.js physics with proper velocity
+- **Collision System**: Robust hit detection with collision loop prevention
+- **Range Management**: Projectiles expire at weapon range, no infinite trails
+- **Damage Application**: Proper shield/hull damage with random subsystem effects
+- **Files**: `WeaponCard.js`, `PhysicsManager.js`, `EnemyShip.js`
 
-### 4. **Subsystem targeting** 
-- **Problem**: Sub-targeted damage was spilling to hull and other systems
-- **Solution**: Updated `applyDamage` to handle `targetSystem` parameter correctly
-- **Files**: `EnemyShip.js`
-
-### 5. **Success audio** 
-- **Problem**: Missing audio feedback when destroying subsystems
-- **Solution**: Added sound playback logic to `applyDamage` method
-- **Files**: `EnemyShip.js`
-
-### 6. **Duplicate TAB cycling** 
-- **Problem**: TAB key was processed multiple times due to duplicate event listeners AND duplicate target entries in target list
-- **Solution**: Removed duplicate TAB key event listeners in `app.js` AND fixed duplicate target population in `TargetComputerManager.js`
-- **Root Cause**: Both `updateTargetListWithPhysics()` and `addNonPhysicsTargets()` were adding the same dummy ships to the target list
-- **Files**: `app.js`, `TargetComputerManager.js`, `StarfieldManager.js`
-- **Status**: ✅ COMPLETELY RESOLVED - TAB now cycles correctly through unique targets without duplicates
+### 5. **Clean Debug Environment** 🧹 LATEST CLEANUP
+- **Removed**: 20+ verbose Q-KEY debug logs from target dummy creation
+- **Removed**: Collision delay debug messages from weapon system
+- **Removed**: Target list update spam from app initialization
+- **Preserved**: Essential functionality logs and error handling
+- **Result**: Clean console output focused on important information
+- **Files**: `StarfieldManager.js`, `WeaponCard.js`, `app.js`
 
 ## 🚀 How to Run the Game
 
-### Method 1: Flask Backend (Recommended)
+### Flask Backend (Recommended)
 ```bash
-# Terminal 1 - Backend (serves everything)
-cd backend && python3 app.py
+# Terminal - Backend (serves everything)
+cd backend && python app.py
 # Runs on http://127.0.0.1:5001
 
 # Browser
 open http://127.0.0.1:5001
 ```
 
-### Method 2: Separate Frontend/Backend
+### Quick Start Commands
 ```bash
-# Terminal 1 - Backend
-cd backend && python3 app.py
-# Runs on port 5001
-
-# Terminal 2 - Frontend  
-cd frontend && python -m http.server 8081
-# Serves on port 8081
-
-# Browser
-open http://localhost:8081
-```
-
-### Quick Start Commands (Flask Only)
-```bash
-# Single command startup
-cd backend && python3 app.py
+# Kill any existing server and start fresh
+pkill -f "python app.py" || true
+cd backend && python app.py
 
 # Browser
 open http://127.0.0.1:5001
 ```
 
-## 🎯 Current Gameplay
-- Physics engine initializes automatically without errors
-- Target dummy ships spawn automatically
-- Use **Tab** to cycle targets, **R** for sub-targeting
-- Weapons fire automatically when targeting (autofire)
-- Ships explode with success sounds when destroyed
-- Target computer automatically selects next target
-- Hull and subsystem damage is fully functional
-- All audio effects load and play correctly
+## 🎯 Current Gameplay Features
 
-## 🔍 Development Status
-The game is **fully functional** with working:
-- ✅ **Physics engine** - Ammo.js loads reliably without timeouts
-- ✅ **Physics-based weapon systems** - Raycasting and hit detection working
-- ✅ **Target acquisition** - Destruction with proper cycling and removal
-- ✅ **Audio feedback systems** - All sound effects loading correctly
-- ✅ **Ship upgrade mechanics** - Card-based equipment system
-- ✅ **Smooth 3D navigation** - 40K stars with seamless movement
-- ✅ **Robust target management** - Unique target lists, proper cycling
+### **Combat System**
+- **Beam Weapons**: Instant hit with sub-system targeting precision (+30% damage bonus)
+- **Projectile Weapons**: Physics-based flight with random subsystem damage on penetration
+- **Autofire**: All weapons support autofire with smart target validation
+- **Energy System**: Weapons consume energy, respect cooldowns and range limits
 
-### Latest Commit: `521abef` ⭐
-- **Fix**: Ammo.js loading path issue completely resolved
-- **Added**: Enhanced physics initialization with comprehensive error handling
-- **Improved**: Dynamic loading mechanism with consistent static paths
-- **Updated**: Both HTML entry points with improved loading reliability
-- **14 files changed**: 1,080 insertions, 394 deletions
+### **Targeting System**
+- **Target Computer**: Level-based functionality (Level 2+ for sub-targeting)
+- **Faction Colors**: Red (hostile), Yellow (neutral), Green (friendly) HUD elements  
+- **Sub-Targeting**: Precision damage to specific ship systems (beam weapons only)
+- **Target Preservation**: Q-key dummy creation maintains current target selection
 
-## 🧪 Testing Status
-### ✅ Verified Working
-- ✅ Ammo.js loading and physics initialization (NO MORE TIMEOUTS)
-- ✅ TAB target cycling (no duplicates)
-- ✅ Ship destruction and target removal
-- ✅ Physics-based weapon hits and damage
-- ✅ Sub-system targeting and damage
-- ✅ Audio feedback for destruction
-- ✅ Target wireframe outlines
-- ✅ Flask server static file serving
+### **Controls**
+- **Tab**: Cycle through available targets
+- **Q**: Create target dummy ships (preserves current target)
+- **R**: Fire weapons (autofire available)
+- **< / >**: Cycle sub-targets (beam weapons with Level 2+ target computer)
+- **A**: Toggle autofire for current weapon
 
-### 🔍 Areas to Monitor
-- Performance with large numbers of targets
-- Memory usage during extended play sessions
-- Physics simulation stability over time
+### **Audio Feedback**
+- **Success Sounds**: Ship destruction, subsystem damage
+- **Command Sounds**: Valid key presses, targeting changes
+- **Error Sounds**: Invalid commands, failed operations
+- **Explosion Audio**: Consistent positioning for all weapon types
+
+## 🔍 Development Status: PRODUCTION READY
+
+### ✅ Fully Completed Systems
+- ✅ **Target Preservation** - Q-key dummy creation with perfect target maintenance
+- ✅ **Universal Autofire** - All weapons with intelligent validation
+- ✅ **Advanced Sub-Targeting** - Faction-colored HUD with weapon compatibility
+- ✅ **Physics Projectiles** - Torpedoes/missiles with realistic flight and collision
+- ✅ **Weapon Balance** - Beam vs projectile mechanics properly differentiated
+- ✅ **Audio Systems** - Consistent sound effects with proper positioning
+- ✅ **Debug Cleanup** - Clean console output, removed development noise
+
+### 🏆 Technical Achievements
+- **Identifier-Based Target Restoration**: Robust system handles array rebuilding
+- **Sophisticated Damage Models**: Different mechanics for beam vs projectile weapons
+- **Smart HUD Management**: Faction colors, weapon compatibility, system availability
+- **Production Code Quality**: Clean, well-documented, minimal debug noise
 
 ## 🛠️ Potential Next Steps
-- Additional ship types or weapon varieties
-- Enhanced enemy AI behaviors
-- Trading and economy systems
-- Mission/quest system
-- Multiplayer networking
-- Performance optimizations
-- Visual effects improvements
 
-## 🚀 Physics Development Priorities (Arcade-Focused)
+### **Immediate Opportunities** (All systems ready)
+- **Enemy AI Enhancement**: Intelligent combat behaviors, evasion patterns
+- **Dynamic Economy**: Trading systems, market fluctuations, cargo management
+- **Mission Framework**: Quest system, objectives, story progression
+- **Fleet Combat**: Multiple ship battles, squadron management
+- **Environmental Hazards**: Asteroid fields, radiation zones, gravity wells
 
-The game uses **Star Raiders-style arcade movement** for immediate, responsive ship controls. Physics integration focuses on **spectacular effects and environmental interaction** while preserving the arcade feel.
+### **Advanced Features** (Foundation complete)
+- **Multiplayer Support**: Network architecture for PvP/coop
+- **Procedural Generation**: Star systems, missions, encounters
+- **Crafting Systems**: Ship customization, weapon modifications
+- **Territory Control**: Faction warfare, station capture
+- **Advanced Physics**: Orbital mechanics, gravitational effects
 
-### **Design Philosophy**
-- ✅ **Ship Movement**: Keep immediate and responsive (current camera-based system)
-- 🎆 **Physics Integration**: Add to everything else for visual spectacle and tactical depth
-- 🎯 **Goal**: Combine arcade responsiveness with realistic physics effects
+### **Polish & Content** (Core systems solid)
+- **Visual Effects**: Enhanced explosions, weapon effects, environmental details
+- **Audio Expansion**: Dynamic music, environmental sounds, voice acting
+- **UI/UX Improvements**: Better menus, tutorials, accessibility features
+- **Performance Optimization**: Rendering improvements, memory management
+- **Content Creation**: More ships, weapons, locations, storylines
 
-### **Priority 1: 🔧 Enhanced Projectile Physics** ⭐ *IN PROGRESS*
-- ✅ **COMPLETED**: Missing `createRigidBody()` and `createVector3()` methods implemented
-- ✅ **COMPLETED**: PhysicsProjectile integration working with proper rigid bodies
-- 🔄 **Next**: Physics-based missile trails and exhaust effects
-- 🔄 **Next**: Realistic projectile bouncing off asteroids/stations  
-- 🔄 **Next**: Multiple projectiles with proper collision detection
-- **Why**: Visual spectacle and tactical depth without affecting ship controls
+## 💡 Technical Architecture Notes
 
-### **Priority 2: 🌌 Environmental Physics Objects**
-- Destructible asteroids that create physics debris
-- Space wreckage that tumbles realistically
-- Physics-based pick-ups (cargo containers, power-ups)
-- **Why**: Dynamic environment that reacts to combat
+### **Target Management System**
+- **Preservation Mechanism**: Uses identifying characteristics (name, position, shipName)
+- **Wireframe Coordination**: Manages both TargetComputerManager and StarfieldManager systems
+- **Array Rebuilding**: Handles target list reconstruction without losing selection
+- **Fallback Systems**: Multiple matching strategies for robust restoration
 
-### **Priority 3: 💥 Enhanced Combat Physics**
-- Explosion shockwaves that affect nearby objects (not ships)
-- Debris from destroyed ships with physics simulation
-- Physics-based particle effects for weapons
-- **Why**: Spectacular visual feedback without changing core movement
+### **Weapon Systems Architecture**
+- **Type-Based Mechanics**: `weaponType` property determines targeting capabilities
+- **Energy Integration**: Weapons respect ship energy systems and consumption
+- **Physics Integration**: Projectiles use Ammo.js for realistic flight and collision
+- **Sound Management**: Centralized audio system with positional effects
 
-### **Priority 4: 🏗️ Interactive Structures**
-- Destructible space stations with collapsing sections
-- Rotating space habitats with physics simulation
-- Deployable objects (mines, sensor buoys) with physics
-- **Why**: Rich environment interaction while keeping ship movement arcade-style
-
-### **Priority 5: 🎮 Advanced Physics Features**
-- Enhanced collision callbacks and event systems
-- Physics-based tractor beams and gravitational effects
-- Realistic orbital mechanics for environmental objects
-- **Why**: Advanced gameplay mechanics without compromising core feel
-
-## 💡 Technical Notes
-- **Ammo.js**: Dynamically loaded via consistent `static/lib/ammo.js` path
-- **Three.js**: 3D rendering and scene management
-- **Architecture**: Modular ES6 with clean separation of concerns
-- **Flask Backend**: Serves configuration, game data, and static files
-- **Physics**: 1.2MB Ammo.js library loads reliably in ~200ms
-- **Static Serving**: Flask handles `/static/` prefix correctly for all assets
+### **HUD Color System**
+- **Faction-Based**: Colors determined by target diplomacy status
+- **Consistent Application**: Used across all HUD elements (wireframes, text, borders)
+- **Smart Defaults**: Fallback colors for unknown or neutral entities
+- **Visual Hierarchy**: Important information highlighted with appropriate colors
 
 ## 🎊 Current Project Health: EXCELLENT
-**The game is production-ready with robust physics engine!** All major systems are working reliably:
-- ✅ Physics engine loads without errors or timeouts
-- ✅ Combat systems are fully functional
-- ✅ Target management works flawlessly  
-- ✅ Audio systems load and play correctly
-- ✅ No critical bugs or blocking issues
 
-**Focus on gameplay features, balance, and content rather than core system fixes.** The foundation is solid and stable. 
+**The game is production-ready with sophisticated targeting and combat systems!** All major features are implemented and polished:
+
+- ✅ **Target Management**: Perfect preservation system with identifier-based restoration
+- ✅ **Combat Systems**: Complete weapon variety with proper mechanics differentiation  
+- ✅ **User Experience**: Intuitive controls with clear feedback and faction colors
+- ✅ **Code Quality**: Clean, maintainable codebase with minimal debug noise
+- ✅ **Audio/Visual**: Consistent effects with proper positioning and faction theming
+
+**Ready for content creation, gameplay features, and advanced systems.** The technical foundation is rock-solid with sophisticated target management, realistic combat mechanics, and professional code quality. Focus can now shift to gameplay content, enemy AI, missions, and advanced features rather than core system development.
+
+## 📝 Key Implementation Details
+
+### **Target Preservation Algorithm**
+```javascript
+// Store identifying characteristics
+const targetIdentifier = {
+    name: previousTargetData.name,
+    type: previousTargetData.type, 
+    shipName: previousTargetData.ship?.shipName,
+    position: {x, y, z} // rounded for reliability
+};
+
+// Restore using multiple matching strategies
+// 1. Ship name match (most reliable)
+// 2. Position match (celestial bodies)
+// 3. Name-only fallback
+```
+
+### **Weapon Type System**
+```javascript
+// Beam weapons (scan-hit type)
+weaponType: 'scan-hit'        // Supports sub-targeting
+targetLockRequired: false     // No lock needed
+homingCapability: false       // Instant hit
+
+// Projectile weapons  
+weaponType: 'splash-damage'   // Random subsystem damage
+targetLockRequired: varies    // Missiles need lock, torpedoes don't
+homingCapability: varies      // Missiles home, torpedoes fly straight
+```
+
+### **Faction Color Mapping**
+```javascript
+const factionColors = {
+    hostile: '#ff4444',    // Red
+    neutral: '#ffff44',    // Yellow  
+    friendly: '#44ff44',   // Green
+    unknown: '#ffffff'     // White fallback
+};
+```
+
+This foundation provides everything needed for expanding into advanced gameplay features while maintaining the robust, production-quality codebase we've built. 
