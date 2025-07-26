@@ -98,11 +98,11 @@ export class HelpInterface {
         if (ship.weaponSystem) {
             for (let i = 0; i < ship.weaponSystem.weaponSlots.length; i++) {
                 const slot = ship.weaponSystem.weaponSlots[i];
-                if (!slot.isEmpty && slot.weaponCard) {
+                if (!slot.isEmpty && slot.equippedWeapon) {
                     equippedWeapons.push({
-                        name: slot.weaponCard.name,
-                        type: slot.weaponCard.cardType,
-                        level: slot.weaponCard.level,
+                        name: slot.equippedWeapon.name,
+                        type: slot.equippedWeapon.cardType,
+                        level: slot.equippedWeapon.level,
                         slotIndex: i
                     });
                 }

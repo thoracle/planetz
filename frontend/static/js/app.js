@@ -8,6 +8,7 @@ import { ViewManager } from './views/ViewManager.js';
 import { StarfieldManager } from './views/StarfieldManager.js';
 import { SolarSystemManager } from './SolarSystemManager.js';
 import { WeaponEffectsManager } from './ship/systems/WeaponEffectsManager.js';
+import PhysicsManager from './PhysicsManager.js';
 
 // Global variables for warp control mode
 let warpControlMode = false;
@@ -21,6 +22,65 @@ let guiContainer = null;
 let viewManager = null;
 let solarSystemManager = null;
 let debugManager = null;
+let physicsManager = null;
+
+/**
+ * Check if Ammo.js is available for instant local loading
+ * @returns {boolean} True if Ammo.js is available, false otherwise
+ */
+function isAmmoAvailable() {
+    // Comprehensive Ammo.js detection with detailed debugging
+    console.log('🔍 Checking Ammo.js availability...');
+    console.log('   • typeof Ammo:', typeof Ammo);
+    console.log('   • typeof window.Ammo:', typeof window.Ammo);
+    console.log('   • window.Ammo exists:', !!window.Ammo);
+    console.log('   • window.AmmoLoaded:', window.AmmoLoaded);
+    
+    // Method 0: Check explicit load flag (most reliable)
+    if (window.AmmoLoaded === true && window.Ammo) {
+        console.log('✅ Method 0: Ammo.js confirmed loaded via AmmoLoaded flag');
+        return true;
+    }
+    
+    // Method 1: Direct global Ammo access
+    if (typeof Ammo !== 'undefined' && Ammo) {
+        console.log('✅ Method 1: Ammo.js found via global Ammo');
+        window.Ammo = Ammo; // Ensure it's on window object too
+        window.AmmoLoaded = true; // Set flag for future checks
+        return true;
+    }
+    
+    // Method 2: Window.Ammo access
+    if (typeof window.Ammo !== 'undefined' && window.Ammo) {
+        console.log('✅ Method 2: Ammo.js found via window.Ammo');
+        // Make it available as global Ammo too
+        if (typeof globalThis !== 'undefined') {
+            globalThis.Ammo = window.Ammo;
+        }
+        window.AmmoLoaded = true; // Set flag for future checks
+        return true;
+    }
+    
+    // Method 3: Try to access Ammo with error handling
+    try {
+        if (window.Ammo && typeof window.Ammo === 'function') {
+            console.log('✅ Method 3: Ammo.js found and is a function');
+            window.AmmoLoaded = true; // Set flag for future checks
+            return true;
+        }
+    } catch (error) {
+        console.warn('⚠️ Error accessing window.Ammo:', error.message);
+    }
+    
+    // All methods failed
+    console.warn('❌ Ammo.js not available - physics will be disabled');
+    console.warn('💡 Troubleshooting:');
+    console.warn('   • Check if static/lib/ammo.js loads without errors');
+    console.warn('   • Check browser network tab for failed requests');
+    console.warn('   • Verify ammo.js is accessible from the static server');
+    console.warn('   • Ensure script loading order: ammo.js before app.js');
+    return false;
+}
 
 // Function to update debug info
 function updateDebugInfo() {
@@ -294,6 +354,74 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.starfieldManagerReady = true;
     console.log('🌟 StarfieldManager exposed to global scope and ready for test scripts');
 
+    // Wait for the HTML-based Ammo.js loading to complete
+    console.log('🔄 Waiting for HTML-based Ammo.js loading...');
+    let ammoAvailable = false;
+    let attempts = 0;
+    const maxAttempts = 25; // 5 seconds with 200ms intervals
+    
+    while (!ammoAvailable && attempts < maxAttempts) {
+        attempts++;
+        
+        // Check if HTML loading completed successfully
+        if (window.AmmoLoaded === true && typeof window.Ammo !== 'undefined') {
+            ammoAvailable = true;
+            console.log(`✅ Ammo.js loaded by HTML loader on attempt ${attempts}`);
+            break;
+        }
+        
+        // Check if HTML loading explicitly failed
+        if (window.AmmoLoaded === false) {
+            console.log(`❌ HTML-based Ammo.js loading failed`);
+            break;
+        }
+        
+        // Still waiting...
+        if (attempts % 5 === 0) {
+            console.log(`⏳ Still waiting for Ammo.js loading... (attempt ${attempts}/${maxAttempts})`);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    
+    if (!ammoAvailable) {
+        console.error('❌ Ammo.js loading timed out or failed. Physics will be disabled.');
+        console.error('💡 Check browser console for Ammo.js loading errors.');
+        console.error('💡 Verify lib/ammo.js exists and is accessible.');
+    }
+    
+    if (ammoAvailable) {
+        console.log('🚀 Proceeding with PhysicsManager initialization...');
+        // Initialize PhysicsManager only if Ammo.js loaded successfully
+        physicsManager = new PhysicsManager();
+        
+        // Initialize the physics engine (async) and wait for completion
+        try {
+            const success = await physicsManager.initialize();
+            if (success) {
+                console.log('🚀 PhysicsManager initialized successfully');
+                window.physicsManager = physicsManager;
+                window.physicsManagerReady = true;
+            } else {
+                console.error('❌ Failed to initialize PhysicsManager - continuing without physics');
+                physicsManager = null;
+                window.physicsManager = null;
+                window.physicsManagerReady = false;
+            }
+        } catch (error) {
+            console.error('❌ PhysicsManager initialization error:', error, '- continuing without physics');
+            physicsManager = null;
+            window.physicsManager = null;
+            window.physicsManagerReady = false;
+        }
+    } else {
+        // Ammo.js failed to load - continue without physics
+        console.log('🎮 Continuing without physics engine - game will run in visual-only mode');
+        physicsManager = null;
+        window.physicsManager = null;
+        window.physicsManagerReady = false;
+    }
+
     // Initialize SolarSystemManager and connect it to StarfieldManager
     solarSystemManager = new SolarSystemManager(scene, camera);
     starfieldManager.setSolarSystemManager(solarSystemManager);
@@ -319,17 +447,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             // Generate initial star system for sector A0
+            console.log('🌟 Generating initial star system for sector A0...');
             const success = await solarSystemManager.generateStarSystem('A0');
             if (success) {
-                console.log('Star system generated successfully');
+                console.log('✅ Star system generated successfully');
+                
+                // Wait a moment to ensure all celestial bodies are fully created
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Force an immediate update of the target list to include celestial bodies
+                if (starfieldManager?.targetComputerManager) {
+                    starfieldManager.targetComputerManager.updateTargetList();
+                    
+                    // Verify the target list was updated
+                    const targetCount = starfieldManager.targetComputerManager.targetObjects?.length || 0;
+                    
+                    // If no targets found, try again after a short delay
+                    if (targetCount === 0) {
+                        setTimeout(() => {
+                            starfieldManager.targetComputerManager.updateTargetList();
+                        }, 500);
+                    }
+                }
             } else {
-                console.error('Failed to generate star system');
+                console.error('❌ Failed to generate star system');
             }
         } else {
-            console.error('Failed to fetch universe data');
+            console.error('❌ Failed to fetch universe data');
         }
     } catch (error) {
-        console.error('Error during initialization:', error);
+        console.error('❌ Error during initialization:', error);
     }
 
     // Set up GUI controls with fixed positioning
@@ -1106,26 +1253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateDebugInfo();
     }
     
-    // Add keyboard shortcuts
-    document.addEventListener('keydown', (event) => {
-        if (event.ctrlKey) {
-            if (event.key === 'd') {
-                event.preventDefault();
-                toggleDebugMode();
-            } else if (event.key === 'e') {
-                event.preventDefault();
-                toggleEditMode();
-            } else if (event.key === 'w') {
-                event.preventDefault();
-                toggleWarpControlMode();
-            }
-        } else if (editMode && event.key === 'Tab') {
-            event.preventDefault();
-            event.stopPropagation();
-            cycleCelestialBody();
-            return false;
-        }
-    }, true);
+    // Duplicate keyboard shortcuts removed - handled by global listener above
     
     console.log('Container dimensions:', {
         width: container.clientWidth,
@@ -1566,6 +1694,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         starfieldManager.update(deltaTime);
         solarSystemManager.update(deltaTime);
         debugManager.update();
+        
+        // Update physics simulation
+        if (physicsManager && physicsManager.initialized) {
+            physicsManager.update(deltaTime);
+        }
+        
+        // Update physics projectiles
+        if (window.activeProjectiles && window.activeProjectiles.length > 0) {
+            // Update and clean up projectiles
+            window.activeProjectiles = window.activeProjectiles.filter(projectile => {
+                if (projectile.isActive && typeof projectile.update === 'function') {
+                    try {
+                        projectile.update(deltaTime * 1000); // Convert to milliseconds
+                        return projectile.isActive(); // Keep active projectiles
+                    } catch (error) {
+                        console.error('Error updating projectile:', error);
+                        // Clean up failed projectile
+                        if (typeof projectile.cleanup === 'function') {
+                            projectile.cleanup();
+                        }
+                        return false; // Remove failed projectile
+                    }
+                } else {
+                    // Clean up inactive projectiles
+                    if (typeof projectile.cleanup === 'function') {
+                        projectile.cleanup();
+                    }
+                    return false; // Remove inactive projectile
+                }
+            });
+        }
         
         // Update wave animation if enabled
         if (oceanParams.enabled && oceanParams.wavesEnabled && planet.oceanMesh) {
@@ -2196,26 +2355,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Add keyboard shortcuts
-    document.addEventListener('keydown', (event) => {
-        if (event.ctrlKey) {
-            if (event.key === 'd') {
-                event.preventDefault();
-                toggleDebugMode();
-            } else if (event.key === 'e') {
-                event.preventDefault();
-                toggleEditMode();
-            } else if (event.key === 'w') {
-                event.preventDefault();
-                toggleWarpControlMode();
-            }
-        } else if (editMode && event.key === 'Tab') {
-            event.preventDefault();
-            event.stopPropagation();
-            cycleCelestialBody();
-            return false;
-        }
-    }, true);
+    // Duplicate keyboard shortcuts removed - handled by global listener above
 
     // Debug logging function for mouse events
     function logMouseEvent(type, event) {

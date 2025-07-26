@@ -1436,14 +1436,18 @@ export class ViewManager {
                     if (this.ship.cardSystemIntegration) {
                         this.ship.cardSystemIntegration.installedCards.clear();
                         
-                        // Install essential starter cards for ship operation
+                        // Install essential starter cards for ship operation with physics weapons
                         const starterCards = [
                             { slotId: 'engine_1', cardType: 'impulse_engines', level: 1 },
                             { slotId: 'power_1', cardType: 'energy_reactor', level: 1 },
                             { slotId: 'utility_1', cardType: 'target_computer', level: 1 },
                             { slotId: 'utility_2', cardType: 'long_range_scanner', level: 1 },
                             { slotId: 'utility_3', cardType: 'galactic_chart', level: 1 },
-                            { slotId: 'utility_4', cardType: 'hull_plating', level: 1 }
+                            { slotId: 'utility_4', cardType: 'hull_plating', level: 1 },
+                            { slotId: 'weapon_1', cardType: 'laser_cannon', level: 1 },
+                            { slotId: 'weapon_2', cardType: 'homing_missile', level: 1 },
+                            { slotId: 'weapon_3', cardType: 'photon_torpedo', level: 1 },
+                            { slotId: 'weapon_4', cardType: 'proximity_mine', level: 1 }
                         ];
                         
                         starterCards.forEach(({ slotId, cardType, level }) => {

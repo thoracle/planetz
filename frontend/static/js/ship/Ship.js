@@ -8,7 +8,7 @@ import * as THREE from 'three';
  * Simplified: Systems consume energy from shared pool when active (no separate power grid)
  */
 export default class Ship {
-    constructor(shipType = 'heavy_fighter') {
+    constructor(shipType = 'starter_ship') {
         // Ship identification
         this.shipType = shipType;
         this.shipConfig = getShipConfig(shipType);
@@ -813,6 +813,8 @@ export default class Ship {
      */
     async initializeWeaponSystem() {
         try {
+            console.log('🔫 Ship: Starting weapon system initialization...');
+            
             // Import WeaponSyncManager
             const { default: WeaponSyncManager } = await import('./WeaponSyncManager.js');
             
@@ -826,6 +828,17 @@ export default class Ship {
             this.weaponSystem = await this.weaponSyncManager.initializeWeapons();
             
             console.log('🔫 Ship: Weapon system initialized successfully using WeaponSyncManager');
+            
+            // Notify StarfieldManager that weapon system is ready
+            if (this.starfieldManager && typeof this.starfieldManager.onWeaponSystemReady === 'function') {
+                console.log('🔫 Ship: Calling onWeaponSystemReady callback...');
+                this.starfieldManager.onWeaponSystemReady();
+            } else {
+                console.warn('🔫 Ship: StarfieldManager callback not available:', {
+                    hasStarfieldManager: !!this.starfieldManager,
+                    hasCallback: !!(this.starfieldManager && typeof this.starfieldManager.onWeaponSystemReady === 'function')
+                });
+            }
             
         } catch (error) {
             console.error('🔫 Ship: Failed to initialize weapon system:', error);

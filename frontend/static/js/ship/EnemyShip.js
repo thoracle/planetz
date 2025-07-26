@@ -52,8 +52,12 @@ export default class EnemyShip {
         this.maxHull = 0;
         this.currentHull = 0;
         
+        // Track initialization state
+        this.isInitialized = false;
+        this.initializationPromise = null;
+        
         // Initialize enemy systems
-        this.initializeEnemySystemInstances();
+        this.initializationPromise = this.initializeEnemySystemInstances();
         
         console.log(`Enemy ship created: ${enemyShipType}`, this.shipConfig);
     }
@@ -144,11 +148,16 @@ export default class EnemyShip {
             this.currentEnergy = this.maxEnergy;
             this.currentHull = this.maxHull;
             
+            // Mark as fully initialized
+            this.isInitialized = true;
+            
             console.log(`Enemy ship systems initialized: ${this.systems.size} systems installed`);
+            console.log(`Enemy ship health: Hull=${this.currentHull}/${this.maxHull}, Energy=${this.currentEnergy}/${this.maxEnergy}`);
             console.log('Enemy ship systems:', Array.from(this.systems.keys()));
             
         } catch (error) {
             console.error('Failed to initialize enemy ship systems:', error);
+            this.isInitialized = false;
         }
     }
     
@@ -228,15 +237,23 @@ export default class EnemyShip {
      * Wait for systems to be fully initialized
      */
     async waitForSystemsInitialized() {
+        // Wait for the initialization promise to complete
+        if (this.initializationPromise) {
+            await this.initializationPromise;
+        }
+        
+        // Double-check that initialization actually completed
         return new Promise((resolve) => {
-            const checkSystems = () => {
-                if (this.systems.size > 0) {
+            const checkInitialization = () => {
+                if (this.isInitialized && this.systems.size > 0 && this.maxHull > 0 && this.currentHull > 0) {
+                    console.log(`✅ Enemy ship fully initialized: ${this.shipName} - Hull: ${this.currentHull}/${this.maxHull}`);
                     resolve();
                 } else {
-                    setTimeout(checkSystems, 10);
+                    console.log(`⏳ Waiting for enemy ship initialization: ${this.shipName} - Hull: ${this.currentHull}/${this.maxHull}, Systems: ${this.systems.size}`);
+                    setTimeout(checkInitialization, 10);
                 }
             };
-            checkSystems();
+            checkInitialization();
         });
     }
     
@@ -287,39 +304,124 @@ export default class EnemyShip {
     }
     
     /**
-     * Apply damage to enemy ship (simplified damage model)
+     * Apply damage to enemy ship (enhanced damage model with shield/hull system)
+     * @param {number} damage - Amount of damage to apply
+     * @param {string} damageType - Type of damage ('kinetic', 'energy', 'explosive', etc.)
+     * @param {string} targetSystem - Optional specific system to target (for sub-targeting - beam weapons only)
      */
-    applyDamage(damage, damageType = 'kinetic') {
+    applyDamage(damage, damageType = 'kinetic', targetSystem = null) {
         const result = {
             totalDamage: damage,
+            shieldDamage: 0,
             hullDamage: 0,
             systemsDamaged: [],
-            isDestroyed: false
+            isDestroyed: false,
+            penetratedDefenses: false
         };
         
-        // Simple damage model: apply damage to hull
-        const actualDamage = Math.min(damage, this.currentHull);
-        this.currentHull -= actualDamage;
-        result.hullDamage = actualDamage;
-        
-        // Check if ship is destroyed
-        if (this.currentHull <= 0) {
-            result.isDestroyed = true;
+        // Handle sub-targeting: apply damage to specific system only (BEAM WEAPONS ONLY)
+        if (targetSystem) {
+            console.log(`🎯 SUB-TARGET DAMAGE: Applying ${damage} damage to ${targetSystem} system`);
+            
+            const system = this.systems.get(targetSystem);
+            if (system) {
+                const healthBefore = system.healthPercentage;
+                system.takeDamage(damage);
+                const healthAfter = system.healthPercentage;
+                result.systemsDamaged.push(targetSystem);
+                console.log(`💥 ${targetSystem} system took ${damage} focused damage (health: ${(system.currentHealth / system.maxHealth * 100).toFixed(1)}%)`);
+                
+                // Check if subsystem was destroyed and play success sound
+                if (healthAfter === 0 && healthBefore > 0) {
+                    console.log(`💥 SYSTEM DESTROYED: ${targetSystem} on ${this.shipName} completely disabled!`);
+                    
+                    // Play success sound for destroyed sub-system (50% duration for shorter sound)
+                    if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
+                        const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
+                        // Play 50% duration success sound for sub-system destruction
+                        effectsManager.playSuccessSound(null, 0.6, 0.5); 
+                        console.log(`🎉 Playing sub-system destruction success sound (50% duration)`);
+                    }
+                }
+                
+                // No hull damage or spillover damage when sub-targeting
+                return result;
+            } else {
+                console.warn(`❌ Target system '${targetSystem}' not found, applying to hull instead`);
+                // Fall through to normal hull damage
+            }
         }
         
-        // Randomly damage systems when hull is damaged
-        if (actualDamage > 0 && this.systems.size > 0) {
+        // ENHANCED DAMAGE MODEL: Shields first, then hull, then random subsystem damage
+        let remainingDamage = damage;
+        
+        // Step 1: Apply damage to shields first (if ship has shields)
+        const shieldsSystem = this.systems.get('shields');
+        if (shieldsSystem && shieldsSystem.currentHealth > 0 && remainingDamage > 0) {
+            // Shields absorb damage first
+            const shieldCapacity = shieldsSystem.currentHealth;
+            const absorbedDamage = Math.min(remainingDamage, shieldCapacity);
+            
+            shieldsSystem.takeDamage(absorbedDamage);
+            result.shieldDamage = absorbedDamage;
+            remainingDamage -= absorbedDamage;
+            
+            console.log(`🛡️ Shields absorbed ${absorbedDamage} damage (${shieldsSystem.currentHealth}/${shieldsSystem.maxHealth} remaining)`);
+        }
+        
+        // Step 2: Apply remaining damage to hull
+        if (remainingDamage > 0) {
+            const actualHullDamage = Math.min(remainingDamage, this.currentHull);
+            this.currentHull -= actualHullDamage;
+            result.hullDamage = actualHullDamage;
+            result.penetratedDefenses = true; // Damage penetrated shields/hull
+            
+            console.log(`💥 Hull took ${actualHullDamage} damage (${this.currentHull}/${this.maxHull} remaining)`);
+            
+            // Check if ship is destroyed - use small threshold to handle floating-point precision
+            if (this.currentHull <= 0.001) {
+                this.currentHull = 0; // Ensure hull is exactly 0 for consistency
+                result.isDestroyed = true;
+                console.log(`💀 ${this.shipName} DESTROYED!`);
+            }
+        }
+        
+        // Step 3: PROJECTILE WEAPONS - Random subsystem damage when damage penetrates defenses
+        if (result.penetratedDefenses && (damageType === 'explosive' || damageType === 'kinetic') && this.systems.size > 0) {
             const systemNames = Array.from(this.systems.keys());
-            const numSystemsToCheck = Math.min(2, systemNames.length);
+            const numSystemsToCheck = Math.min(3, systemNames.length); // Check up to 3 systems
+            
+            console.log(`🎲 PROJECTILE DAMAGE: Checking for random subsystem hits (${numSystemsToCheck} systems)...`);
             
             for (let i = 0; i < numSystemsToCheck; i++) {
                 const randomSystem = systemNames[Math.floor(Math.random() * systemNames.length)];
                 const system = this.systems.get(randomSystem);
                 
-                if (system && Math.random() < 0.3) { // 30% chance to damage each system
-                    const systemDamage = damage * 0.1; // 10% of total damage
+                // Enhanced random subsystem damage for projectiles (40% chance, increased from 30%)
+                if (system && Math.random() < 0.4) {
+                    // Scale subsystem damage based on penetrating damage (15-25% of penetrating damage)
+                    const penetratingDamage = result.hullDamage;
+                    const subsystemDamageRatio = 0.15 + Math.random() * 0.10; // 15-25%
+                    const systemDamage = penetratingDamage * subsystemDamageRatio;
+                    
+                    const healthBefore = system.healthPercentage;
                     system.takeDamage(systemDamage);
+                    const healthAfter = system.healthPercentage;
                     result.systemsDamaged.push(randomSystem);
+                    
+                    console.log(`🎯 LUCKY HIT: ${randomSystem} system took ${systemDamage.toFixed(1)} random damage (${(healthBefore * 100).toFixed(1)}% → ${(healthAfter * 100).toFixed(1)}%)`);
+                    
+                    // Check if subsystem was destroyed
+                    if (healthAfter === 0 && healthBefore > 0) {
+                        console.log(`💥 RANDOM SYSTEM DESTROYED: ${randomSystem} on ${this.shipName} disabled by projectile hit!`);
+                        
+                        // Play success sound for destroyed sub-system (30% duration for random hit)
+                        if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
+                            const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
+                            effectsManager.playSuccessSound(null, 0.4, 0.3); // Shorter sound for random hit
+                            console.log(`🎉 Playing random subsystem destruction sound (30% duration)`);
+                        }
+                    }
                 }
             }
         }
@@ -365,8 +467,9 @@ export default class EnemyShip {
         this.currentHull = Math.max(0, this.currentHull - collateralDamage);
         console.log(`💥 Collateral hull damage: ${collateralDamage.toFixed(1)} (hull: ${this.currentHull.toFixed(1)}/${this.maxHull})`);
         
-        // Check if ship is destroyed due to hull damage
-        if (this.currentHull <= 0) {
+        // Check if ship is destroyed due to hull damage - use small threshold to handle floating-point precision
+        if (this.currentHull <= 0.001) {
+            this.currentHull = 0; // Ensure hull is exactly 0 for consistency
             console.log(`🔥 ${this.shipName} DESTROYED by collateral damage!`);
             
             // Play success sound for ship destruction (full duration)

@@ -31,33 +31,44 @@ def index():
         logger.error(f"Error serving index.html: {str(e)}")
         return "Error serving frontend application", 500
 
-@bp.route('/<path:path>')
-def serve_static(path):
+@bp.route('/static/<path:path>')
+def serve_static_files(path):
     """Serve static files with proper MIME types."""
     try:
         logger.info(f"Serving static file: {path}")
         
-        # Handle CSS, JS, and other static files
-        if path.startswith(('css/', 'js/', 'assets/', 'lib/')):
-            mime_type = get_mime_type(path)
-            response = send_from_directory(
-                current_app.static_folder,
-                path,
-                mimetype=mime_type
-            )
-            # Add headers for JavaScript files
-            if path.endswith('.js'):
-                response.headers['Content-Type'] = 'text/javascript'
-            
-            # Add cache control headers
-            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-            response.headers['Pragma'] = 'no-cache'
-            response.headers['Expires'] = '0'
-            
-            logger.info(f"Successfully served file: {path}")
-            return response
+        mime_type = get_mime_type(path)
+        response = send_from_directory(
+            current_app.static_folder,
+            path,
+            mimetype=mime_type
+        )
         
+        # Add headers for JavaScript files
+        if path.endswith('.js'):
+            response.headers['Content-Type'] = 'text/javascript'
+        
+        # Add cache control headers for development
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        logger.info(f"Successfully served static file: {path}")
+        return response
+    except Exception as e:
+        logger.error(f"Error serving static file {path}: {str(e)}")
+        return f"Error serving static file: {path}", 404
+
+@bp.route('/<path:path>')
+def serve_frontend_routes(path):
+    """Handle frontend routing - serve index.html for non-API routes."""
+    try:
+        # Skip API routes
+        if path.startswith('api/'):
+            return "API endpoint not found", 404
+            
         # For all other paths, serve index.html (for client-side routing)
+        logger.info(f"Serving index.html for route: {path}")
         return send_from_directory(current_app.static_folder, 'index.html', mimetype='text/html')
     except Exception as e:
         logger.error(f"Error serving file {path}: {str(e)}")

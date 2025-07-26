@@ -195,7 +195,7 @@ export class GalacticChart {
                 }
             } else {
                 // Fallback to raw data if no chart system (shouldn't happen)
-                console.warn('No operational Galactic Chart system found - using raw data');
+                console.log('🗺️ No Galactic Chart system installed - using basic navigation data');
                 this.universe = rawData;
             }
             

@@ -20,15 +20,18 @@ class PlayerData {
         this.credits = 50000;
         this.shipConfigurations = new Map(); // Store equipped cards for each ship
         
-        // Initialize starter ship with basic configuration
+        // Initialize starter ship with physics weapons configuration
         this.shipConfigurations.set('starter_ship', new Map([
             ['utility_1', { cardType: 'target_computer', level: 3 }], // Upgraded to level 3 for sub-targeting
+            ['utility_2', { cardType: 'hull_plating', level: 1 }],
+            ['utility_3', { cardType: 'long_range_scanner', level: 1 }],
+            ['utility_4', { cardType: 'galactic_chart', level: 1 }],
             ['engine_1', { cardType: 'impulse_engines', level: 1 }],
             ['power_1', { cardType: 'energy_reactor', level: 1 }],
             ['weapon_1', { cardType: 'laser_cannon', level: 1 }],
-            ['weapon_2', { cardType: 'pulse_cannon', level: 1 }],
-            ['weapon_3', { cardType: 'plasma_cannon', level: 1 }],
-            ['weapon_4', { cardType: 'phaser_array', level: 1 }]
+            ['weapon_2', { cardType: 'homing_missile', level: 1 }],
+            ['weapon_3', { cardType: 'photon_torpedo', level: 1 }],
+            ['weapon_4', { cardType: 'proximity_mine', level: 1 }]
         ]));
     }
     
@@ -168,29 +171,11 @@ export default class CardInventoryUI {
                 this.upgradeSound = new window.THREE.Audio(this.audioListener);
                 this.upgradeSoundLoaded = false;
                 
-                // Load upgrade sound
+                // Load upgrade sound with fallback paths
                 const audioLoader = new window.THREE.AudioLoader();
-                console.log('🎵 Loading upgrade sound...');
+                console.log('🎵 Loading upgrade sound with fallback path detection...');
                 
-                audioLoader.load(
-                    'static/audio/blurb.mp3', // Simplified path
-                    (buffer) => {
-                        console.log('✅ Upgrade sound loaded successfully');
-                        this.upgradeSound.setBuffer(buffer);
-                        this.upgradeSound.setVolume(0.7); // Set reasonable volume
-                        this.upgradeSoundLoaded = true;
-                        console.log('🎵 Upgrade sound initialization complete');
-                    },
-                    (progress) => {
-                        console.log(`🎵 Loading upgrade sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
-                    },
-                    (error) => {
-                        console.error('❌ Error loading upgrade sound:', error);
-                        this.upgradeSoundLoaded = false;
-                        // Try fallback HTML5 audio
-                        this.initializeFallbackAudio();
-                    }
-                );
+                this.loadAudio(audioLoader, 'static/audio/blurb.mp3');
             } else {
                 console.warn('⚠️ THREE.js not available for audio initialization, using fallback');
                 this.upgradeSoundLoaded = false;
@@ -206,11 +191,37 @@ export default class CardInventoryUI {
     }
 
     /**
+     * Load audio
+     */
+    loadAudio(audioLoader, audioPath) {
+        audioLoader.load(
+            audioPath,
+            (buffer) => {
+                console.log(`✅ Upgrade sound loaded from: ${audioPath}`);
+                this.upgradeSound.setBuffer(buffer);
+                this.upgradeSound.setVolume(0.7);
+                this.upgradeSoundLoaded = true;
+                console.log('🎵 Upgrade sound initialization complete');
+            },
+            (progress) => {
+                console.log(`🎵 Loading upgrade sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
+            },
+            (error) => {
+                console.error('❌ Error loading upgrade sound:', error);
+                this.upgradeSoundLoaded = false;
+                // Try fallback HTML5 audio
+                this.initializeFallbackAudio();
+            }
+        );
+    }
+
+    /**
      * Initialize fallback HTML5 audio
      */
     initializeFallbackAudio() {
-        console.log('🔄 Initializing fallback HTML5 audio...');
+        console.log('🔄 Initializing fallback HTML5 audio with path detection...');
         try {
+            // Use static audio directory path
             this.fallbackAudio = new Audio('static/audio/blurb.mp3');
             this.fallbackAudio.volume = 0.7;
             this.fallbackAudio.preload = 'auto';
@@ -222,9 +233,10 @@ export default class CardInventoryUI {
             this.audioElementUseCount = []; // Track usage for health monitoring
             this.maxUsesPerElement = 10; // Regenerate elements after this many uses
             
-            // Track user interaction for browser audio policies
-            this.userHasInteracted = false;
-            this.setupUserInteractionTracking();
+                    // Track user interaction for browser audio policies
+        this.userHasInteracted = false;
+        this.audioWarningShown = false; // Track if we've shown the audio warning
+        this.setupUserInteractionTracking();
             
             this.fallbackAudio.addEventListener('canplaythrough', () => {
                 console.log('✅ Fallback audio loaded successfully');
@@ -263,7 +275,9 @@ export default class CardInventoryUI {
      * Create a single audio element for the pool
      */
     createAudioElement(index) {
-        const audioClone = new Audio('static/audio/blurb.mp3');
+        // Use static audio directory path
+        const audioBasePath = 'static/audio/';
+        const audioClone = new Audio(`${audioBasePath}blurb.mp3`);
         audioClone.volume = 0.7;
         audioClone.preload = 'auto';
         this.audioElementUseCount[index] = 0;
@@ -279,7 +293,7 @@ export default class CardInventoryUI {
         
         audioClone.addEventListener('error', (e) => {
             console.error(`❌ Audio ${index} error:`, e);
-            // Immediately recreate this element
+            // Immediately recreate this element after a delay
             setTimeout(() => this.recreateAudioElement(index), 100);
         });
         
@@ -293,7 +307,7 @@ export default class CardInventoryUI {
         });
         
         this.audioPool[index] = audioClone;
-        console.log(`🔧 Created audio element ${index}`);
+        console.log(`🔧 Created audio element ${index} (dev path)`);
     }
 
     /**
@@ -380,24 +394,63 @@ export default class CardInventoryUI {
      * Set up user interaction tracking for browser audio policies
      */
     setupUserInteractionTracking() {
-        const trackInteraction = () => {
-            if (!this.userHasInteracted) {
-                this.userHasInteracted = true;
-                console.log('👆 User interaction detected - audio should work now');
-                
-                // Resume AudioContext if suspended
-                if (this.audioListener && this.audioListener.context && this.audioListener.context.state === 'suspended') {
-                    this.audioListener.context.resume().then(() => {
-                        console.log('🔊 AudioContext resumed after user interaction');
-                    });
+        // Check if StarfieldAudioManager is handling user interaction detection
+        const starfieldAudioManager = window.starfieldAudioManager;
+        if (starfieldAudioManager) {
+            // Use the global user interaction detection
+            console.log('🔗 Using global StarfieldAudioManager for user interaction detection');
+            
+            // Set up a periodic check to sync with the global state
+            const checkInteractionState = () => {
+                if (!this.userHasInteracted && starfieldAudioManager.hasUserInteracted()) {
+                    this.userHasInteracted = true;
+                    console.log('👆 User interaction detected via StarfieldAudioManager');
+                    
+                    // Resume AudioContext if suspended
+                    if (this.audioListener && this.audioListener.context && this.audioListener.context.state === 'suspended') {
+                        this.audioListener.context.resume().then(() => {
+                            console.log('🔊 AudioContext resumed after user interaction');
+                        });
+                    }
                 }
-            }
-        };
-        
-        // Track various user interactions
-        ['click', 'touchstart', 'keydown'].forEach(event => {
-            document.addEventListener(event, trackInteraction, { once: false });
-        });
+            };
+            
+            // Check immediately and then periodically
+            checkInteractionState();
+            this.interactionCheckInterval = setInterval(checkInteractionState, 100);
+        } else {
+            // Fallback to local user interaction detection if StarfieldAudioManager not available
+            console.log('⚠️ StarfieldAudioManager not available, using local user interaction detection');
+            
+            const trackInteraction = () => {
+                if (!this.userHasInteracted) {
+                    this.userHasInteracted = true;
+                    console.log('👆 User interaction detected - audio should work now');
+                    
+                    // Resume AudioContext if suspended
+                    if (this.audioListener && this.audioListener.context && this.audioListener.context.state === 'suspended') {
+                        this.audioListener.context.resume().then(() => {
+                            console.log('🔊 AudioContext resumed after user interaction');
+                        });
+                    }
+                }
+            };
+            
+            // Track various user interactions
+            ['click', 'touchstart', 'keydown'].forEach(event => {
+                document.addEventListener(event, trackInteraction, { once: false });
+            });
+        }
+    }
+
+    /**
+     * Clean up resources
+     */
+    dispose() {
+        if (this.interactionCheckInterval) {
+            clearInterval(this.interactionCheckInterval);
+            this.interactionCheckInterval = null;
+        }
     }
 
     /**
@@ -406,9 +459,17 @@ export default class CardInventoryUI {
     playUpgradeSound() {
         console.log('🎵 Attempting to play upgrade sound...');
         
-        // Check user interaction for browser policies
+        // Check user interaction for browser policies - only show warning once per session
         if (!this.userHasInteracted) {
-            console.warn('⚠️ No user interaction detected - sound may not play due to browser policy');
+            // Check if StarfieldAudioManager has already shown the warning
+            const starfieldAudioManager = window.starfieldAudioManager;
+            if (starfieldAudioManager && !starfieldAudioManager.hasWarningBeenShown()) {
+                console.warn('⚠️ No user interaction detected - sound may not play due to browser policy');
+                starfieldAudioManager.markWarningShown();
+            } else if (!starfieldAudioManager && !this.audioWarningShown) {
+                console.warn('⚠️ No user interaction detected - sound may not play due to browser policy');
+                this.audioWarningShown = true;
+            }
         }
         
         try {
@@ -597,7 +658,7 @@ export default class CardInventoryUI {
      * Try alternative audio playback methods
      */
     tryAlternativeAudioPlayback() {
-        console.log('🔄 Trying alternative audio playback...');
+        console.log('🔄 Trying alternative audio playback with path fallback...');
         
         try {
             // Method 1: Create fresh Audio instance
@@ -612,7 +673,6 @@ export default class CardInventoryUI {
                         console.log('✅ Emergency audio playback successful');
                     }).catch(err => {
                         console.error('❌ Emergency audio playback failed:', err);
-                        
                         // Method 2: Try Web Audio API if available
                         this.tryWebAudioPlayback();
                     });
@@ -630,12 +690,13 @@ export default class CardInventoryUI {
      */
     tryWebAudioPlayback() {
         if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
-            console.log('🔊 Trying Web Audio API...');
+            console.log('🔊 Trying Web Audio API with path fallback...');
             
             try {
                 const AudioCtx = AudioContext || webkitAudioContext;
                 const audioContext = new AudioCtx();
                 
+                // Load and play audio
                 fetch('static/audio/blurb.mp3')
                     .then(response => response.arrayBuffer())
                     .then(data => audioContext.decodeAudioData(data))
@@ -652,8 +713,8 @@ export default class CardInventoryUI {
                         source.start();
                         console.log('✅ Web Audio API playback successful');
                     })
-                    .catch(err => {
-                        console.error('❌ Web Audio API failed:', err);
+                    .catch(error => {
+                        console.error('❌ Web Audio API failed:', error);
                         console.warn('💔 All audio playback methods failed');
                     });
                     
@@ -954,6 +1015,15 @@ export default class CardInventoryUI {
             
             const plasma = this.inventory.generateSpecificCard('plasma_cannon', 'common');
             this.inventory.addCard(plasma);
+        }
+        
+        // Add multiple target computer cards for upgrading to Level 3+ for sub-targeting
+        // Level 1→2 needs 3 cards, Level 2→3 needs 6 cards = 9 total for Level 3
+        // Add 12 cards to allow for experimentation and future upgrades
+        console.log('Adding 12 target computer cards for sub-targeting upgrades...');
+        for (let i = 0; i < 12; i++) {
+            const targetComputer = this.inventory.generateSpecificCard('target_computer', 'common');
+            this.inventory.addCard(targetComputer);
         }
         
         console.log('Test data loaded with high-level upgrade capabilities');

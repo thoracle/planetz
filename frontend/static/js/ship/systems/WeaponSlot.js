@@ -88,8 +88,29 @@ export class WeaponSlot {
             return false;
         }
         
-        // Fire the weapon
-        const fireResult = weapon.fire(ship.position, target);
+        // Calculate proper weapon firing position (especially important for projectiles)
+        const weaponOrigin = this.calculateWeaponOrigin(ship);
+        
+        // Removed torpedo trajectory debugging to prevent console spam
+        // if (weapon.name.toLowerCase().includes('torpedo')) {
+        //     console.log(`🎯 TORPEDO LAUNCH DEBUG:`);
+        //     console.log(`   └ Origin: (${weaponOrigin.x.toFixed(1)}, ${weaponOrigin.y.toFixed(1)}, ${weaponOrigin.z.toFixed(1)})`);
+        //     if (target) {
+        //         const targetPos = target.position || target.threeObject?.position;
+        //         if (targetPos) {
+        //             console.log(`   └ Target: ${target.ship?.shipName || target.name} at (${targetPos.x.toFixed(1)}, ${targetPos.y.toFixed(1)}, ${targetPos.z.toFixed(1)})`);
+        //             const distance = Math.sqrt(
+        //                 Math.pow(weaponOrigin.x - targetPos.x, 2) +
+        //                 Math.pow(weaponOrigin.y - targetPos.y, 2) +
+        //                 Math.pow(weaponOrigin.z - targetPos.z, 2)
+        //             );
+        //             console.log(`   └ Distance: ${distance.toFixed(1)}m`);
+        //         }
+        //     }
+        // }
+        
+        // Fire the weapon with proper origin position
+        const fireResult = weapon.fire(weaponOrigin, target);
         
         if (fireResult.success) {
             // Set cooldown timer
@@ -106,11 +127,71 @@ export class WeaponSlot {
                 console.log(`Weapon fired: ${weapon.name} (no effects manager available)`);
             }
             
-            console.log(`Weapon slot ${this.slotIndex}: ${weapon.name} fired - ${fireResult.damage} damage`);
+            // Removed weapon firing log to prevent console spam
+        // console.log(`Weapon slot ${this.slotIndex}: ${weapon.name} fired - ${fireResult.damage} damage`);
             return true;
         }
         
         return false;
+    }
+    
+    /**
+     * Calculate weapon origin position for firing projectiles
+     * @param {Ship} ship Ship instance
+     * @returns {Object} Weapon origin position {x, y, z}
+     */
+    calculateWeaponOrigin(ship) {
+        // Get THREE reference
+        const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
+        if (!THREE) {
+            console.warn('THREE.js not available, using ship position as weapon origin');
+            return ship.position;
+        }
+        
+        // Try to get camera reference for proper positioning
+        let camera = null;
+        if (ship.starfieldManager?.camera) {
+            camera = ship.starfieldManager.camera;
+        } else if (ship.viewManager?.camera) {
+            camera = ship.viewManager.camera;
+        } else if (ship.camera) {
+            camera = ship.camera;
+        }
+        
+        if (!camera) {
+            console.warn('Camera not available, using ship position as weapon origin');
+            return ship.position;
+        }
+        
+        // Calculate weapon origin position using camera-relative positioning (like lasers)
+        const cameraPos = camera.position.clone();
+        
+        // Calculate camera's orientation vectors
+        const cameraRight = new THREE.Vector3(1, 0, 0);
+        const cameraDown = new THREE.Vector3(0, -1, 0);
+        const cameraForward = new THREE.Vector3(0, 0, -1);
+        
+        // Apply camera rotation to get actual orientation vectors
+        cameraRight.applyQuaternion(camera.quaternion);
+        cameraDown.applyQuaternion(camera.quaternion);
+        cameraForward.applyQuaternion(camera.quaternion);
+        
+        // Position weapon at bottom center of screen (like lasers but centered and lower)
+        const bottomOffset = 1.5; // Increased from 0.8 to make projectiles start lower
+        const forwardOffset = 0.5; // Slight forward offset from camera (same as lasers)
+        
+        // Create centered weapon position at bottom center (no variations)
+        const weaponPosition = cameraPos.clone()
+            .add(cameraDown.clone().multiplyScalar(bottomOffset))   // Down from center (more than lasers)
+            .add(cameraForward.clone().multiplyScalar(forwardOffset)); // Slightly forward
+        
+        console.log(`🚀 Projectile origin: Lower center screen position (unified for all weapons)`);
+        
+        return {
+            x: weaponPosition.x,
+            y: weaponPosition.y,
+            z: weaponPosition.z
+        };
     }
     
     /**
@@ -226,21 +307,111 @@ export class WeaponSlot {
     }
     
     /**
-     * Check if laser beam intersects with target along beam path
+     * Check if laser beam intersects with target using physics raycasting
+     * @param {Array} startPositions Array of beam start positions [left, right]
+     * @param {Array} endPositions Array of beam end positions [left, right]
+     * @param {Object} target Target object with position and optional radius (optional for area scanning)
+     * @param {number} weaponRange Maximum weapon range in meters
+     * @returns {Object} Hit result with {hit: boolean, position: Vector3|null, entity: object|null, distance: number}
+     */
+    checkLaserBeamHit(startPositions, endPositions, target, weaponRange) {
+        const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
+        if (!THREE) {
+            console.warn('THREE.js not available for laser physics raycast');
+            return { hit: false, position: null, entity: null, distance: 0 };
+        }
+
+        // Check if physics manager is available
+        if (!window.physicsManager || !window.physicsManager.initialized) {
+            console.warn('PhysicsManager not available - falling back to distance-based detection');
+            return this.checkLaserBeamHit_Fallback(startPositions, endPositions, target, weaponRange);
+        }
+
+        const physicsManager = window.physicsManager;
+        const weaponRangeInWorldUnits = weaponRange / 1000; // Convert meters to world units (km)
+
+        // Throttled range debugging
+        const now = Date.now();
+        if (now - this.lastDebugTime > this.debugInterval) {
+            const weaponRangeKm = (weaponRange / 1000).toFixed(1);
+            console.log(`🎯 PHYSICS RAYCAST: Max range ${weaponRangeKm}km`);
+            this.lastDebugTime = now;
+        }
+
+        // Perform raycast for each laser beam (left and right)
+        let closestHit = null;
+        let closestDistance = Infinity;
+
+        for (let i = 0; i < startPositions.length; i++) {
+            const startPos = startPositions[i];
+            const endPos = endPositions[i];
+            
+            // Calculate ray direction
+            const direction = new THREE.Vector3().subVectors(endPos, startPos).normalize();
+            
+            // Perform physics raycast
+            const hitResult = physicsManager.raycast(startPos, direction, weaponRangeInWorldUnits);
+            
+            if (hitResult && hitResult.hit) {
+                // Check if this hit is closer than previous hits
+                if (hitResult.distance < closestDistance) {
+                    closestDistance = hitResult.distance;
+                    closestHit = {
+                        hit: true,
+                        position: hitResult.point,
+                        entity: hitResult.entity,
+                        distance: hitResult.distance,
+                        normal: hitResult.normal,
+                        body: hitResult.body,
+                        beamIndex: i // Track which beam hit (0 = left, 1 = right)
+                    };
+                }
+                
+                console.log(`🎯 PHYSICS HIT: Beam ${i} hit entity ${hitResult.entity?.type || 'unknown'} at ${hitResult.distance.toFixed(2)}km`);
+            }
+        }
+
+        // If we have a specific target, validate that we hit the intended target
+        if (target && closestHit) {
+            // Check if the hit entity matches our intended target
+            const hitEntity = closestHit.entity;
+            if (hitEntity && hitEntity.threeObject) {
+                // Compare positions to see if we hit the intended target
+                const hitPos = hitEntity.threeObject.position;
+                const targetPos = new THREE.Vector3(target.position.x, target.position.y, target.position.z);
+                const positionDifference = hitPos.distanceTo(targetPos);
+                
+                if (positionDifference > 1.0) { // 1km tolerance
+                    console.log(`🎯 PHYSICS HIT: Hit different target than intended (${positionDifference.toFixed(2)}km difference)`);
+                }
+            }
+        }
+
+        if (closestHit) {
+            console.log(`💥 PHYSICS LASER HIT: ${closestHit.entity?.type || 'unknown'} at ${closestHit.distance.toFixed(2)}km`);
+            return closestHit;
+        } else {
+            console.log(`🎯 PHYSICS LASER MISS: No targets hit within ${weaponRangeInWorldUnits.toFixed(1)}km range`);
+            return { hit: false, position: null, entity: null, distance: 0 };
+        }
+    }
+
+    /**
+     * Fallback hit detection for when physics is not available
      * @param {Array} startPositions Array of beam start positions [left, right]
      * @param {Array} endPositions Array of beam end positions [left, right]
      * @param {Object} target Target object with position and optional radius
      * @param {number} weaponRange Maximum weapon range in meters
      * @returns {Object} Hit result with {hit: boolean, position: Vector3|null}
      */
-    checkLaserBeamHit(startPositions, endPositions, target, weaponRange) {
+    checkLaserBeamHit_Fallback(startPositions, endPositions, target, weaponRange) {
         if (!target || !target.position) {
-            return { hit: false, position: null };
+            return { hit: false, position: null, entity: null, distance: 0 };
         }
         
         const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
         if (!THREE) {
-            return { hit: false, position: null };
+            return { hit: false, position: null, entity: null, distance: 0 };
         }
         
         // Calculate distance from player to target center
@@ -251,47 +422,19 @@ export class WeaponSlot {
         // Convert weapon range from meters to world units (1 world unit = 1 kilometer = 1000 meters)
         const weaponRangeInWorldUnits = weaponRange / 1000;
         
-        // Throttled range debugging
-        const now = Date.now();
-        if (now - this.lastDebugTime > this.debugInterval) {
-            const distanceKm = distanceToTarget.toFixed(2);
-            const weaponRangeKm = (weaponRange / 1000).toFixed(1);
-            console.log(`🎯 RANGE CHECK: Target at ${distanceKm}km vs weapon range ${weaponRangeKm}km`);
-            this.lastDebugTime = now;
-        }
-        
         // Check if target center is within weapon range (using correct units)
         if (distanceToTarget > weaponRangeInWorldUnits) {
-            return { hit: false, position: null };
+            return { hit: false, position: null, entity: null, distance: distanceToTarget };
         }
         
-        // WIDENED HIT DETECTION for cockpit-style weapons
-        // Base target radius (convert from meters to world units)
+        // WIDENED HIT DETECTION for cockpit-style weapons (fallback mode)
         const baseTargetRadius = (target.radius || 50) / 1000; // Convert radius from meters to km
-        
-        // Add generous hit detection bonus for cockpit-mounted weapons
-        // This accounts for the fact that weapons fire from screen corners but should hit crosshair targets
         const cockpitHitBonus = Math.max(1.0, distanceToTarget * 0.05); // 5% of distance, minimum 1.0km
         const effectiveTargetRadius = (baseTargetRadius + cockpitHitBonus) * 2; // 2x bigger for balanced gameplay
         
-        console.log(`🎯 HIT DETECTION: Base radius ${baseTargetRadius.toFixed(3)}km + cockpit bonus ${cockpitHitBonus.toFixed(3)}km = effective radius ${effectiveTargetRadius.toFixed(3)}km (2x enlarged for cockpit weapons)`);
+        console.log(`🎯 FALLBACK HIT DETECTION: Distance ${distanceToTarget.toFixed(2)}km, effective radius ${effectiveTargetRadius.toFixed(3)}km`);
         
-        // DEBUG: Always show hit detection sphere when in debug mode (regardless of hit/miss)
-        console.log(`🐛 TRACE: About to check debug sphere creation - debugMode: ${this.starfieldManager?.debugMode}`);
-        console.log(`🐛 TRACE: StarfieldManager exists: ${!!this.starfieldManager}`);
-        if (this.starfieldManager) {
-            console.log(`🐛 TRACE: StarfieldManager.debugMode: ${this.starfieldManager.debugMode}`);
-            console.log(`🐛 TRACE: StarfieldManager.damageControlVisible: ${this.starfieldManager.damageControlVisible}`);
-        }
-        
-        if (this.starfieldManager?.debugMode) {
-            console.log(`🐛 TRACE: Calling createDebugHitSphere with radius ${effectiveTargetRadius}`);
-            this.createDebugHitSphere(targetPos, effectiveTargetRadius);
-        } else {
-            console.log(`🐛 TRACE: NOT creating debug sphere - debug mode not enabled`);
-        }
-        
-        // Check intersection with both laser beams using widened detection
+        // Check intersection with laser beams using widened detection
         for (let i = 0; i < startPositions.length; i++) {
             const startPos = startPositions[i];
             const endPos = endPositions[i];
@@ -300,26 +443,35 @@ export class WeaponSlot {
             const direction = new THREE.Vector3().subVectors(endPos, startPos).normalize();
             const ray = new THREE.Ray(startPos, direction);
             
-            // Calculate distance from ray to target center
+            // Check distance from ray to target center
             const distanceToRay = ray.distanceToPoint(targetPos);
             
-            // Check if ray intersects target sphere (using widened radius)
             if (distanceToRay <= effectiveTargetRadius) {
-                // Calculate intersection point along the ray
-                const closestPoint = ray.closestPointToPoint(targetPos, new THREE.Vector3());
+                // Hit detected - calculate intersection point
+                const intersectionPoint = new THREE.Vector3();
+                ray.closestPointToPoint(targetPos, intersectionPoint);
                 
-                // Verify intersection point is within beam length
-                const distanceAlongRay = startPos.distanceTo(closestPoint);
-                const beamLength = startPos.distanceTo(endPos);
-                
-                if (distanceAlongRay <= beamLength) {
-                    console.log(`🎯 HIT! Beam ${i + 1} hit target (distance to ray: ${distanceToRay.toFixed(3)}km <= effective radius: ${effectiveTargetRadius.toFixed(3)}km)`);
-                    return { hit: true, position: closestPoint };
-                }
+                                 console.log(`💥 FALLBACK LASER HIT: Beam ${i} hit target at distance ${distanceToRay.toFixed(3)}km from ray`);
+                 
+                 // Create proper entity structure for fallback mode
+                 const fallbackEntity = {
+                     type: target.type || 'fallback_target',
+                     threeObject: target.mesh || target,
+                     ship: target.ship,
+                     id: target.ship?.shipName || 'fallback_target'
+                 };
+                 
+                 return {
+                     hit: true,
+                     position: intersectionPoint,
+                     entity: fallbackEntity,
+                     distance: distanceToTarget,
+                     beamIndex: i
+                 };
             }
         }
         
-        return { hit: false, position: null };
+        return { hit: false, position: null, entity: null, distance: distanceToTarget };
     }
     
     /**
@@ -520,8 +672,8 @@ export class WeaponSlot {
             console.warn('🎯 Camera not found, using fallback ship-relative positioning');
         }
         
-        // Always create dual muzzle flashes with fixed 0.9s sound duration for lasers
-        const soundDuration = weapon.weaponType === 'scan-hit' ? 0.9 : undefined;
+        // Always create dual muzzle flashes with optimal sound duration
+        const soundDuration = weapon.weaponType === 'scan-hit' ? 0.5 : undefined;
         effectsManager.createMuzzleFlash(leftWeaponPos, aimDirection, weapon.cardType, soundDuration);
         effectsManager.createMuzzleFlash(rightWeaponPos, aimDirection, weapon.cardType, soundDuration);
         
@@ -550,163 +702,88 @@ export class WeaponSlot {
             effectsManager.createLaserBeam(leftWeaponPos, leftEndPosition, weapon.cardType);
             effectsManager.createLaserBeam(rightWeaponPos, rightEndPosition, weapon.cardType);
             
-            // Perform actual 3D hit detection along the beam path
-            // Check for hits against ALL enemy ships, not just the targeted one
+            // Perform physics-based laser hit detection
             if (fireResult.hit) {
                 let anyHit = false;
                 let hitTargets = [];
                 
-                // Get all enemy ships from StarfieldManager
-                const allEnemyTargets = [];
-                if (ship.starfieldManager?.dummyShipMeshes) {
-                    ship.starfieldManager.dummyShipMeshes.forEach(mesh => {
-                        if (mesh.userData?.ship && mesh.position) {
-                            allEnemyTargets.push({
-                                position: {
-                                    x: mesh.position.x,
-                                    y: mesh.position.y, 
-                                    z: mesh.position.z
-                                },
-                                radius: 50, // Default ship radius in meters
-                                ship: mesh.userData.ship,
-                                mesh: mesh
-                            });
-                        }
-                    });
-                }
+                // Use physics raycasting to detect hits (no need to manually iterate through all ships)
+                const physicsHitResult = this.checkLaserBeamHit(
+                    [leftWeaponPos, rightWeaponPos], 
+                    [leftEndPosition, rightEndPosition], 
+                    target, // Optional target for validation
+                    maxRange
+                );
                 
-                // If we have a specific target, add it to the list if not already included
-                if (target && target.position) {
-                    const alreadyIncluded = allEnemyTargets.some(enemyTarget => 
-                        enemyTarget.position.x === target.position.x &&
-                        enemyTarget.position.y === target.position.y &&
-                        enemyTarget.position.z === target.position.z
-                    );
-                    if (!alreadyIncluded) {
-                        allEnemyTargets.push({
-                            position: {
-                                x: target.position.x,
-                                y: target.position.y,
-                                z: target.position.z
-                            },
-                            radius: target.radius || 50,
-                            ship: target.ship,
-                            mesh: target.mesh || target
-                        });
-                    }
-                }
-                
-                // Check hit detection against all enemy ships
-                for (const enemyTarget of allEnemyTargets) {
-                    const targetHit = this.checkLaserBeamHit(
-                        [leftWeaponPos, rightWeaponPos], 
-                        [leftEndPosition, rightEndPosition], 
-                        enemyTarget, maxRange
-                    );
+                if (physicsHitResult.hit && physicsHitResult.entity) {
+                    // Physics raycast found a hit!
+                    const hitEntity = physicsHitResult.entity;
+                    const hitPosition = physicsHitResult.position;
+                    const hitDistance = physicsHitResult.distance;
                     
-                    if (targetHit.hit) {
-                        // Calculate effective radius for explosion (same logic as in checkLaserBeamHit)
-                        const playerPos = camera.position || new THREE.Vector3(0, 0, 0);
-                        const targetPos = new THREE.Vector3(enemyTarget.position.x, enemyTarget.position.y, enemyTarget.position.z);
-                        const distanceToTarget = playerPos.distanceTo(targetPos);
+                    console.log(`🎯 PHYSICS LASER HIT: Entity type ${hitEntity.type} at distance ${hitDistance.toFixed(2)}km`);
+                    
+                                         // Create explosion at the physics hit point
+                    const baseExplosionRadius = Math.min(weapon.damage * 2, 100); // 2 meters per damage point, max 100m
+                    const explosionRadiusMeters = baseExplosionRadius;
+                    
+                    // Create visual explosion effect
+                    effectsManager.createExplosion(hitPosition, explosionRadiusMeters, 'damage', hitPosition);
+                    
+                    // Apply damage to the hit entity
+                    if (hitEntity.ship && typeof hitEntity.ship.applyDamage === 'function') {
+                        // Check if we have sub-targeting for more precise damage
+                        const subTargetSystem = this.ship?.getSystem('target_computer')?.currentSubTarget;
                         
-                        const baseTargetRadius = (enemyTarget.radius || 50) / 1000; // Convert from meters to km
-                        const cockpitHitBonus = Math.max(1.0, distanceToTarget * 0.05); // 5% of distance, minimum 1.0km
-                        const effectiveTargetRadius = (baseTargetRadius + cockpitHitBonus) * 2; // 2x bigger for balanced gameplay
-                        
-                        // Create explosion at the intersection point
-                        // Use weapon damage for explosion size instead of hit detection radius
-                        const baseExplosionRadius = Math.min(weapon.damage * 2, 100); // 2 meters per damage point, max 100m
-                        const explosionRadiusMeters = baseExplosionRadius;
-                        effectsManager.createExplosion(targetHit.position, explosionRadiusMeters, 'damage', targetPos);
-                        
-                        // Apply damage to the hit enemy ship
-                        if (enemyTarget.ship && enemyTarget.ship.applyDamage) {
-                            // Check if we have a sub-target active for precision targeting
-                            const ship = this.starfieldManager?.viewManager?.getShip();
-                            const targetComputer = ship?.getSystem('target_computer');
+                        if (subTargetSystem) {
+                            // Sub-targeting - apply focused damage to specific system
+                            const subTargetDamage = weapon.damage * 1.3; // 30% bonus for sub-targeting
+                            console.log(`🎯 SUB-TARGET HIT: Targeting ${subTargetSystem.displayName} for ${subTargetDamage} focused damage`);
                             
-                            console.log(`🐛 DEBUG: Checking damage application for ${enemyTarget.ship.shipName || 'enemy ship'}`);
-                            console.log(`🐛 DEBUG: Has target computer: ${!!targetComputer}`);
-                            console.log(`🐛 DEBUG: Has sub-targeting: ${targetComputer ? targetComputer.hasSubTargeting() : false}`);
-                            console.log(`🐛 DEBUG: Current sub-target: ${targetComputer?.currentSubTarget?.displayName || 'none'}`);
+                            hitEntity.ship.applyDamage(subTargetDamage, 'energy', subTargetSystem.systemName);
+                            console.log(`💥 Sub-target hit: ${hitEntity.ship.shipName || 'Enemy ship'} ${subTargetSystem.displayName} took ${subTargetDamage} damage`);
+                        } else {
+                            // No sub-targeting - apply normal damage
+                            hitEntity.ship.applyDamage(weapon.damage, 'energy');
+                            console.log(`💥 Physics hit: ${hitEntity.ship.shipName || 'Enemy ship'} took ${weapon.damage} damage - hull: ${hitEntity.ship.currentHull}/${hitEntity.ship.maxHull}`);
+                        }
+                        
+                        // Check if target was destroyed
+                        if (hitEntity.ship.currentHull <= 0.001) { // Use small threshold instead of exact 0 to handle floating-point precision
+                            console.log(`🔥 ${hitEntity.ship.shipName || 'Enemy ship'} DESTROYED! (Hull: ${hitEntity.ship.currentHull})`);
                             
-                            // Check for active sub-targeting (must be valid target object, not null)
-                            if (targetComputer && 
-                                targetComputer.hasSubTargeting() && 
-                                targetComputer.currentSubTarget && 
-                                targetComputer.currentSubTarget !== null) {
-                                
-                                console.log(`🎯 SYSTEM: ${targetComputer.currentSubTarget.displayName} targeted with 30% damage bonus`);
-                                
-                                // Calculate enhanced damage for sub-targeting
-                                const enhancedDamage = weapon.damage * 1.3; // 30% bonus
-                                console.log(`💥 Enhanced damage: ${weapon.damage} → ${enhancedDamage.toFixed(1)} (+${(enhancedDamage - weapon.damage).toFixed(1)})`);
-                                
-                                // Apply enhanced damage to specific sub-target using systemName
-                                if (enemyTarget.ship.applySubTargetDamage) {
-                                    enemyTarget.ship.applySubTargetDamage(targetComputer.currentSubTarget.systemName, enhancedDamage, 'energy');
-                                    console.log(`🎯 Applied ${enhancedDamage.toFixed(1)} damage directly to ${targetComputer.currentSubTarget.displayName}`);
-                                    
-                                    // Check if target was destroyed by sub-target damage
-                                    if (enemyTarget.ship.currentHull <= 0) {
-                                        console.log(`🔥 ${enemyTarget.ship.shipName || 'Enemy ship'} DESTROYED by collateral damage!`);
-                                        
-                                        // Play success sound for ship destruction (full duration)
-                                        if (ship?.weaponEffectsManager) {
-                                            ship.weaponEffectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
-                                            console.log(`🎉 Playing ship destruction success sound (full duration)`);
-                                        }
-                                        
-                                        this.starfieldManager.removeDestroyedTarget(enemyTarget.ship);
-                                    }
-                                } else {
-                                    // Fallback: apply enhanced damage to hull
-                                    console.warn('Ship has no applySubTargetDamage method, applying to hull with bonus');
-                                    enemyTarget.ship.applyDamage(enhancedDamage, 'energy');
-                                    console.log(`💥 Enhanced hull hit: ${enemyTarget.ship.shipName || 'Enemy ship'} for ${enhancedDamage.toFixed(1)} damage - hull: ${enemyTarget.ship.currentHull}/${enemyTarget.ship.maxHull}`);
-                                }
-                                
-                                // Update sub-target system display if available
-                                if (targetComputer.currentSubTarget && enemyTarget.ship.getSystem) {
-                                    const subTargetSystem = enemyTarget.ship.getSystem(targetComputer.currentSubTarget.systemName);
-                                    if (subTargetSystem && subTargetSystem.health !== undefined) {
-                                        const healthPercent = (subTargetSystem.health * 100).toFixed(1);
-                                        console.log(`🎯 Sub-target system ${targetComputer.currentSubTarget.displayName} health: ${healthPercent}%`);
-                                    }
-                                }
-                                
-                            } else {
-                                // No sub-targeting - apply normal damage
-                                console.log(`🐛 DEBUG: No sub-targeting - applying normal damage`);
-                                enemyTarget.ship.applyDamage(weapon.damage, 'energy');
-                                console.log(`💥 Normal hit: ${enemyTarget.ship.shipName || 'Enemy ship'} for ${weapon.damage} damage - hull: ${enemyTarget.ship.currentHull}/${enemyTarget.ship.maxHull}`);
-                                
-                                // Check if target was destroyed
-                                if (enemyTarget.ship.currentHull <= 0) {
-                                    console.log(`🔥 ${enemyTarget.ship.shipName || 'Enemy ship'} DESTROYED!`);
-                                    
-                                    // Play success sound for ship destruction (full duration)
-                                    if (ship?.weaponEffectsManager) {
-                                        ship.weaponEffectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
-                                        console.log(`🎉 Playing ship destruction success sound (full duration)`);
-                                    }
-                                    
-                                    this.starfieldManager.removeDestroyedTarget(enemyTarget.ship);
-                                }
+                            // Ensure hull is exactly 0 for consistency
+                            hitEntity.ship.currentHull = 0;
+                            
+                            // Play success sound for ship destruction
+                            if (ship?.weaponEffectsManager) {
+                                ship.weaponEffectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
+                                console.log(`🎉 Playing ship destruction success sound (full duration)`);
+                            }
+                            
+                            // Remove destroyed ship from game
+                            if (this.starfieldManager && typeof this.starfieldManager.removeDestroyedTarget === 'function') {
+                                this.starfieldManager.removeDestroyedTarget(hitEntity.ship);
                             }
                         }
                         
-                        hitTargets.push(enemyTarget);
+                        // Track successful hit
+                        hitTargets.push(hitEntity);
                         anyHit = true;
                         
-                        console.log('💥 Laser beam hit enemy ship at', targetHit.position, `with explosion radius ${explosionRadiusMeters}m`);
+                        console.log(`💥 Physics laser beam hit confirmed with explosion radius ${explosionRadiusMeters}m`);
+                    } else {
+                        console.warn('Hit entity does not have a ship with applyDamage method:', hitEntity);
                     }
+                } else {
+                    console.log('🎯 Physics laser beams missed all targets');
                 }
                 
+                // Set hit status for weapon effects
                 if (!anyHit) {
-                    console.log('🎯 Laser beams missed all targets (no intersection along beam paths)');
+                    console.log('🎯 No physics hits detected - laser missed');
                 }
+
             }
             
         } else if (weapon.weaponType === 'splash-damage') {

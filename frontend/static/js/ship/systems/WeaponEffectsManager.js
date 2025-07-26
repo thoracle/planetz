@@ -12,22 +12,33 @@ export class WeaponEffectsManager {
         
         // Get THREE reference (use global pattern like other files)
         this.THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
+        console.log('🔍 DEBUG: Checking THREE.js availability');
+        console.log('🔍 DEBUG: window.THREE =', !!window.THREE);
+        console.log('🔍 DEBUG: global THREE =', typeof THREE !== 'undefined');
+        console.log('🔍 DEBUG: this.THREE =', !!this.THREE);
+        
         if (!this.THREE) {
-            const availableGlobals = {
-                windowTHREE: !!window.THREE,
-                globalTHREE: typeof THREE !== 'undefined',
-                scene: !!scene,
-                camera: !!camera
-            };
-            console.error('THREE.js not available for WeaponEffectsManager. Available globals:', availableGlobals);
+            console.error('THREE.js not available for WeaponEffectsManager');
             
-            // Instead of throwing, create a fallback mode
-            this.fallbackMode = true;
-            this.initializeFallbackMode();
-            return;
+            // Try to get THREE from scene if available
+            if (scene && scene.constructor && scene.constructor.name === 'Scene') {
+                console.log('🔍 DEBUG: Trying to get THREE from scene object');
+                // Scene exists, so THREE must be available somehow
+                this.THREE = window.THREE || THREE;
+                console.log('🔍 DEBUG: Retrieved THREE from scene context:', !!this.THREE);
+            }
+            
+            if (!this.THREE) {
+                // Instead of throwing, create a fallback mode
+                this.fallbackMode = true;
+                console.log('🎆 WeaponEffectsManager: Fallback mode active');
+                this.initializeFallbackMode();
+                return;
+            }
         }
         
         this.fallbackMode = false;
+        console.log('🎆 WeaponEffectsManager: Initialized successfully');
         this.initializeFullMode();
     }
     
@@ -53,6 +64,8 @@ export class WeaponEffectsManager {
      * Initialize in full mode when THREE.js is available
      */
     initializeFullMode() {
+        console.log('🎆 WeaponEffectsManager: Initializing full mode...');
+        
         // Effect collections
         this.muzzleFlashes = [];
         this.laserBeams = [];
@@ -60,10 +73,19 @@ export class WeaponEffectsManager {
         this.explosions = [];
         this.activeEffects = new Set();
         
+        // SIMPLIFIED: Basic particle trail system - no complex tracking
+        this.staticTrails = []; // Simple array of trail objects
+        
         // Audio system
         this.audioBuffers = new Map();
         this.audioSources = [];
         this.audioInitialized = false;
+        this.useFallbackAudio = false;
+        this.html5AudioWarningShown = false;
+        
+        // User interaction tracking for audio policy compliance
+        this.userHasInteracted = false;
+        this.setupUserInteractionDetection();
         
         // Performance settings
         this.maxEffectsPerType = 20;
@@ -74,23 +96,23 @@ export class WeaponEffectsManager {
             explosion: []
         };
         
-        // Effect configuration (will be exposed to ship editor)
+        // SIMPLIFIED: Basic effect configuration
         this.effectConfig = {
             muzzleFlash: {
-                duration: 0.08, // seconds - reduced from 0.15 for subtlety
-                scale: 0.4, // reduced from 1.0 for smaller flash
-                intensity: 0.3 // reduced from 1.0 for lower opacity
+                duration: 0.08,
+                scale: 0.4,
+                intensity: 0.3
             },
             laserBeam: {
-                duration: 0.8, // seconds - tunable
-                thickness: 0.02, // tunable
+                duration: 0.8,
+                thickness: 0.02,
                 intensity: 1.0,
                 fadeTime: 0.6
             },
-            missile: {
-                trailIntensity: 1.0, // tunable
-                trailDuration: 2.0,
-                particleCount: 15
+            projectileTrail: {
+                particleCount: 5, // Much fewer particles for simplicity
+                trailDuration: 1500, // Shorter duration - 1.5 seconds
+                fadeTime: 500 // Quick fade - 0.5 seconds
             },
             explosion: {
                 scale: 1.0,
@@ -99,49 +121,108 @@ export class WeaponEffectsManager {
         };
         
         // Initialize audio system
+        console.log('🎆 WeaponEffectsManager: Starting audio initialization...');
         this.initializeAudio();
         
         console.log('WeaponEffectsManager initialized in full mode');
     }
     
     /**
+     * Set up user interaction detection for browser audio policies
+     */
+    setupUserInteractionDetection() {
+        // Check if StarfieldAudioManager is handling user interaction detection
+        const starfieldAudioManager = window.starfieldAudioManager;
+        if (starfieldAudioManager) {
+            // Use the global user interaction detection
+            console.log('🔗 WeaponEffectsManager: Using global StarfieldAudioManager for user interaction detection');
+            
+            // Set up a periodic check to sync with the global state
+            const checkInteractionState = () => {
+                if (!this.userHasInteracted && starfieldAudioManager.hasUserInteracted()) {
+                    this.userHasInteracted = true;
+                    console.log('👆 WeaponEffectsManager: User interaction detected via StarfieldAudioManager');
+                    
+                    // Resume AudioContext if suspended
+                    this.ensureAudioContextResumed();
+                }
+            };
+            
+            // Check immediately and then periodically
+            checkInteractionState();
+            this.interactionCheckInterval = setInterval(checkInteractionState, 100);
+        } else {
+            // Fallback to local user interaction detection if StarfieldAudioManager not available
+            console.log('⚠️ WeaponEffectsManager: StarfieldAudioManager not available, using local user interaction detection');
+            
+            const trackInteraction = () => {
+                if (!this.userHasInteracted) {
+                    this.userHasInteracted = true;
+                    console.log('👆 WeaponEffectsManager: User interaction detected - weapon audio should work now');
+                    
+                    // Resume AudioContext if suspended
+                    this.ensureAudioContextResumed();
+                }
+            };
+            
+            // Track various user interactions
+            ['click', 'touchstart', 'keydown'].forEach(event => {
+                document.addEventListener(event, trackInteraction, { once: false });
+            });
+        }
+    }
+    
+    /**
      * Initialize audio system
      */
     async initializeAudio() {
+        console.log('🎵 WeaponEffectsManager: Starting audio initialization...');
+        
         try {
             if (!this.audioContext) {
                 console.warn('WeaponEffectsManager: No audio context available for weapon sounds');
+                console.log('🎵 Falling back to HTML5 audio...');
+                this.useFallbackAudio = true;
+                this.audioInitialized = true; // Mark as initialized to allow HTML5 fallback
                 return;
             }
 
             console.log('🎵 Loading weapon audio effects...');
+            console.log('🎵 AudioContext state:', this.audioContext.state);
 
             // Try to resume audio context
             await this.ensureAudioContextResumed();
 
-            // Load weapon sound files (corrected paths)
+            // Load weapon audio from static directory
+            const audioBasePath = 'static/audio/';
+            console.log(`🔍 Loading weapon audio from: ${audioBasePath}`);
             const soundFiles = [
-                { type: 'lasers', file: 'static/audio/lasers.wav' },
-                { type: 'photons', file: 'static/audio/photons.wav' },
-                { type: 'missiles', file: 'static/audio/missiles.wav' },
-                { type: 'mines', file: 'static/audio/mines.mp3' },
-                { type: 'explosion', file: 'static/audio/explosion.wav' },
-                { type: 'death', file: 'static/audio/death.wav' },
-                { type: 'success', file: 'static/audio/success.wav' }
+                { type: 'lasers', file: `${audioBasePath}lasers.wav` },
+                { type: 'photons', file: `${audioBasePath}photons.wav` },
+                { type: 'missiles', file: `${audioBasePath}missiles.wav` },
+                { type: 'mines', file: `${audioBasePath}mines.mp3` },
+                { type: 'explosion', file: `${audioBasePath}explosion.wav` },
+                { type: 'death', file: `${audioBasePath}death.wav` },
+                { type: 'success', file: `${audioBasePath}success.wav` }
             ];
+
+            console.log(`🎵 Loading weapon audio files...`);
 
             const loadPromises = soundFiles.map(sound => this.loadSound(sound.type, sound.file));
             await Promise.all(loadPromises);
             
-            console.log(`✅ Loaded ${Object.keys(this.audioBuffers).length} weapon audio effects - ready to fire!`);
+            console.log(`✅ Loaded ${this.audioBuffers.size} weapon audio effects - ready to fire!`);
             
             // Log sound duration configuration once
-            console.log(`🔊 WEAPON AUDIO CONFIG: Laser sound duration = 0.05s (reduced for very rapid fire)`);
+            console.log(`🔊 WEAPON AUDIO CONFIG: Laser sound duration = 0.5s (increased for full audibility)`);
             
             this.audioInitialized = true;
             
         } catch (error) {
             console.error('WeaponEffectsManager: Failed to initialize audio:', error);
+            console.log('🎵 Falling back to HTML5 audio due to initialization failure...');
+            this.useFallbackAudio = true;
+            this.audioInitialized = true; // Mark as initialized to allow HTML5 fallback
         }
     }
     
@@ -159,6 +240,8 @@ export class WeaponEffectsManager {
         }
     }
     
+
+
     /**
      * Load a single sound file
      * @param {string} type Sound type identifier
@@ -187,17 +270,27 @@ export class WeaponEffectsManager {
      * @param {number} durationPercentage Optional percentage of the full audio to play (0.0 - 1.0)
      */
     playSound(soundType, position = null, volume = 1.0, duration = null, durationPercentage = null) {
-        if (!this.audioInitialized || !this.audioContext || !this.audioBuffers.has(soundType)) {
-            // Only warn if we've been waiting for a while (not on immediate first fire)
-            if (this.audioInitialized === false && this.audioBuffers.size === 0) {
-                // Audio system is still loading, suppress warning on first few attempts
-                return;
-            }
-            console.warn(`Audio not available: initialized=${this.audioInitialized}, context=${!!this.audioContext}, buffer=${this.audioBuffers.has(soundType)}, type=${soundType}`);
+        // Removed audio call log to prevent console spam
+        // console.log(`🎵 WeaponEffectsManager.playSound called: ${soundType}, volume=${volume}`);
+        // Removed audio state logs to prevent console spam
+        // console.log(`🎵 System state: audioInitialized=${this.audioInitialized}, audioContext=${!!this.audioContext}, buffers=${this.audioBuffers.size}`);
+        // console.log(`🎵 Has buffer for ${soundType}: ${this.audioBuffers.has(soundType)}`);
+        // console.log(`🎵 User interaction detected: ${this.userHasInteracted}`);
+        
+        // Check user interaction for browser audio policies
+        if (!this.userHasInteracted) {
+            console.warn('⚠️ WeaponEffectsManager: No user interaction detected - sound may not play due to browser policy');
+        }
+        
+        // Use HTML5 audio fallback if Web Audio API isn't available or failed
+        if (this.useFallbackAudio || !this.audioInitialized || !this.audioContext || !this.audioBuffers.has(soundType)) {
+            console.log(`🎵 Using HTML5 fallback for ${soundType}: fallback=${this.useFallbackAudio}, initialized=${this.audioInitialized}, context=${!!this.audioContext}, hasBuffer=${this.audioBuffers.has(soundType)}`);
+            this.playHTML5Sound(soundType, volume);
             return;
         }
         
         try {
+            // Removed audio playback attempt log to prevent console spam  
             const audioBuffer = this.audioBuffers.get(soundType);
             const source = this.audioContext.createBufferSource();
             const gainNode = this.audioContext.createGain();
@@ -232,18 +325,22 @@ export class WeaponEffectsManager {
             // If durationPercentage is specified, calculate duration based on audio buffer length
             if (durationPercentage !== null && audioBuffer) {
                 actualDuration = audioBuffer.duration * Math.max(0, Math.min(1, durationPercentage));
-                console.log(`🎵 Playing ${(durationPercentage * 100).toFixed(0)}% of ${soundType} (${actualDuration.toFixed(2)}s of ${audioBuffer.duration.toFixed(2)}s)`);
+                // Removed duration calculation log to prevent console spam
             }
             
-            // For laser sounds, play only the first part (0.05 seconds - reduced for very rapid fire)
+            // For laser sounds, play only the first part (0.5 seconds - increased for full audibility)
             if (soundType === 'lasers') {
-                const laserDuration = actualDuration || 0.05; // Reduced from 0.125s to 0.05s for very rapid fire
+                const laserDuration = actualDuration || 0.5; // Increased from 0.2s for full audibility
+                // Removed laser audio logging to prevent console spam
                 source.start(0, 0, laserDuration);
+                // console.log(`🎵 Playing laser sound for ${laserDuration}s`);
             } else if (actualDuration !== null) {
                 // For other sounds with duration specified, play from start with duration limit
                 source.start(0, 0, actualDuration);
+                // Removed sound duration log to prevent console spam
             } else {
                 source.start();
+                // Removed full sound log to prevent console spam
             }
             
             // Clean up after sound finishes
@@ -253,9 +350,54 @@ export class WeaponEffectsManager {
             };
             
             this.audioSources.push(source);
+            // Removed audio playback log to prevent console spam
             
         } catch (error) {
-            console.warn(`Failed to play sound ${soundType}:`, error);
+            console.warn(`Failed to play sound ${soundType}, falling back to HTML5:`, error);
+            this.useFallbackAudio = true;
+            this.playHTML5Sound(soundType, volume);
+        }
+    }
+    
+    /**
+     * HTML5 Audio fallback for better compatibility
+     * @param {string} soundType Type of sound
+     * @param {number} volume Volume (0.0 - 1.0)
+     */
+    playHTML5Sound(soundType, volume = 0.5) {
+        console.log(`🎵 WeaponEffectsManager.playHTML5Sound called: ${soundType}, volume=${volume}`);
+        
+        try {
+            const audioBasePath = 'static/audio/';
+            const audioMap = {
+                'lasers': `${audioBasePath}lasers.wav`,
+                'photons': `${audioBasePath}photons.wav`,
+                'missiles': `${audioBasePath}missiles.wav`,
+                'explosion': `${audioBasePath}explosion.wav`,
+                'success': `${audioBasePath}success.wav`,
+                'mines': `${audioBasePath}mines.mp3`,
+                'death': `${audioBasePath}death.wav`
+            };
+            
+            if (audioMap[soundType]) {
+                console.log(`🎵 HTML5: Playing ${soundType} from: ${audioMap[soundType]}`);
+                
+                const audio = new Audio(audioMap[soundType]);
+                audio.volume = Math.max(0, Math.min(1, volume));
+                audio.play().then(() => {
+                    console.log(`✅ HTML5: Successfully played ${soundType}`);
+                }).catch(error => {
+                    // Only log error if this is the first failure
+                    if (!this.html5AudioWarningShown) {
+                        console.warn('HTML5 audio play failed (autoplay policy):', error.message);
+                        this.html5AudioWarningShown = true;
+                    }
+                });
+            } else {
+                console.warn(`🎵 HTML5: No audio mapping found for sound type: ${soundType}`);
+            }
+        } catch (error) {
+            console.warn(`HTML5 audio fallback failed for ${soundType}:`, error);
         }
     }
     
@@ -277,7 +419,13 @@ export class WeaponEffectsManager {
         
         // ALWAYS play audio even when visual muzzle flash is disabled
         const audioType = this.getAudioType(weaponType);
-        this.playSound(audioType, position, 0.7, soundDuration);
+        
+        // Removed weapon firing audio log to prevent console spam
+        // console.log(`🔫 WeaponEffectsManager: Firing ${weaponType} -> audio type: ${audioType}`);
+        // Removed audio system status log to prevent console spam  
+        // console.log(`🔫 Audio system status: initialized=${this.audioInitialized}, buffers=${this.audioBuffers.size}, fallback=${this.useFallbackAudio}`);
+        
+        this.playSound(audioType, position, 1.0, soundDuration);
         
         // DISABLED: Muzzle flash spheres temporarily disabled (but audio still plays above)
         return;
@@ -420,6 +568,244 @@ export class WeaponEffectsManager {
     }
     
     /**
+     * IMPROVED: Create simple projectile trail for flight (restored for simple trails)
+     * @param {string} projectileId Unique identifier for the projectile
+     * @param {string} projectileType Type of projectile ('homing_missile', 'photon_torpedo', 'proximity_mine')
+     * @param {Vector3} startPosition Starting position of the trail
+     * @param {Object} projectileObject Reference to the Three.js projectile object for position tracking
+     * @returns {Object} Particle trail data for updating
+     */
+    createProjectileTrail(projectileId, projectileType, startPosition, projectileObject) {
+        // MESH-BASED TRAIL: Use small spheres instead of particles
+        const timestamp = Date.now();
+        console.log(`🚀 MESH TRAIL v2.0 [${timestamp}]: Creating trail for ${projectileType} at position:`, startPosition);
+        
+        const colors = {
+            homing_missile: 0xff4444, // Red
+            photon_torpedo: 0x44ffff, // Cyan  
+            proximity_mine: 0xffff44  // Yellow
+        };
+        
+        const color = colors[projectileType] || colors.homing_missile;
+        const trailLength = 5; // Number of spheres in trail
+        
+        // Create a group to hold all trail spheres
+        const trailGroup = new this.THREE.Group();
+        const spheres = [];
+        
+        // Create small spheres for the trail
+        for (let i = 0; i < trailLength; i++) {
+            const sphereGeometry = new this.THREE.SphereGeometry(0.5, 8, 6); // Small sphere
+            const sphereMaterial = new this.THREE.MeshBasicMaterial({ 
+                color: color,
+                transparent: true,
+                opacity: 1.0 - (i * 0.2) // Fade along trail
+            });
+            
+            const sphere = new this.THREE.Mesh(sphereGeometry, sphereMaterial);
+            
+            // Position spheres at start position initially
+            sphere.position.copy(startPosition);
+            
+            trailGroup.add(sphere);
+            spheres.push(sphere);
+        }
+        
+        this.scene.add(trailGroup);
+        
+        console.log(`🚀 MESH TRAIL v2.0: Created ${trailLength} spheres with color ${color.toString(16)}`);
+        console.log(`🚀 MESH TRAIL v2.0: Group added to scene, scene children count:`, this.scene.children.length);
+        
+        const trailData = {
+            id: projectileId,
+            type: projectileType,
+            system: trailGroup, // Use group instead of particles
+            spheres: spheres,    // Store sphere references
+            projectileObject: projectileObject,
+            positions: [], // Will store position history
+            particleHistory: [],
+            startTime: Date.now(),
+            lastUpdateTime: Date.now()
+        };
+        
+        this.staticTrails.push(trailData);
+        console.log(`🎆 MESH TRAIL v2.0 CREATED for ${projectileType} with ${trailLength} spheres`);
+        return trailData;
+    }
+
+    /**
+     * Remove projectile trail for cleanup
+     * @param {string} projectileId Projectile identifier
+     */
+    removeProjectileTrail(projectileId) {
+        const trailIndex = this.staticTrails.findIndex(trail => trail.id === projectileId);
+        if (trailIndex !== -1) {
+            const trail = this.staticTrails[trailIndex];
+            
+            // Stop following the projectile
+            if (trail.projectileObject) {
+                trail.projectileObject = null;
+            }
+            
+            // Start fade-out
+            trail.startTime = Date.now();
+            trail.fadeDuration = 1000; // 1 second fade for better visibility
+            
+            console.log(`🛑 Trail ${projectileId} stopping and fading out`);
+        }
+    }
+
+    /**
+     * IMPROVED: Update trails (both flight trails and static trails)
+     * @param {number} deltaTime Time elapsed in seconds
+     */
+    updateStaticTrails(deltaTime) {
+        const currentTime = Date.now();
+        const trailsToRemove = [];
+        
+        for (let i = 0; i < this.staticTrails.length; i++) {
+            const trail = this.staticTrails[i];
+            
+            // Active trail following projectile
+            if (trail.projectileObject && trail.projectileObject.position && trail.particleHistory !== undefined) {
+                // Only update every 50ms to reduce spam
+                if (currentTime - trail.lastUpdateTime > 50) {
+                    this.updateFlightTrail(trail, currentTime);
+                }
+            } else {
+                // Trail has stopped following projectile - start fading out the mesh spheres
+                const age = currentTime - trail.startTime;
+                const fadeTime = trail.fadeDuration || 1000; // 1 second fade for mesh trails
+                
+                if (age > fadeTime) {
+                    trailsToRemove.push(i);
+                    this.scene.remove(trail.system);
+                    
+                    // Clean up mesh spheres properly
+                    if (trail.spheres) {
+                        trail.spheres.forEach(sphere => {
+                            sphere.geometry.dispose();
+                            sphere.material.dispose();
+                        });
+                    }
+                } else {
+                    // Fade out all spheres in the trail
+                    const fadeProgress = age / fadeTime;
+                    if (trail.spheres) {
+                        trail.spheres.forEach(sphere => {
+                            sphere.material.opacity = 1.0 * (1 - fadeProgress);
+                        });
+                    }
+                }
+            }
+        }
+        
+        // Remove finished trails
+        for (let i = trailsToRemove.length - 1; i >= 0; i--) {
+            this.staticTrails.splice(trailsToRemove[i], 1);
+        }
+    }
+    
+    /**
+     * Update a flight trail that follows a projectile
+     * @param {Object} trail Trail data
+     * @param {number} currentTime Current timestamp
+     */
+    updateFlightTrail(trail, currentTime) {
+        if (!trail.projectileObject || !trail.projectileObject.position) {
+            return;
+        }
+        
+        trail.lastUpdateTime = currentTime;
+        
+        // Add current position to history
+        trail.particleHistory.unshift({
+            position: trail.projectileObject.position.clone(),
+            time: currentTime
+        });
+        
+        // Keep only recent history (1 second)
+        const maxHistoryTime = 1000;
+        trail.particleHistory = trail.particleHistory.filter(point => 
+            currentTime - point.time < maxHistoryTime
+        );
+        
+        // Update sphere positions along the trail
+        if (trail.spheres && trail.particleHistory.length > 0) {
+            const sphereCount = trail.spheres.length;
+            
+            for (let i = 0; i < sphereCount; i++) {
+                const t = i / (sphereCount - 1); // 0 to 1
+                const historyIndex = Math.floor(t * (trail.particleHistory.length - 1));
+                const historyPoint = trail.particleHistory[historyIndex];
+                
+                if (historyPoint && trail.spheres[i]) {
+                    trail.spheres[i].position.copy(historyPoint.position);
+                }
+            }
+            
+            // Optional: Log every 30 updates to reduce spam
+            if (trail.particleHistory.length % 30 === 0) {
+                console.log(`🔍 MESH TRAIL: Updated ${sphereCount} spheres for ${trail.id}`);
+            }
+        }
+    }
+    
+    /**
+     * Update all active particle trails automatically
+     * @param {number} deltaTime Time elapsed in seconds
+     */
+    updateParticleTrails(deltaTime) {
+        if (this.fallbackMode) return;
+        
+        const currentTime = Date.now();
+        
+        // Update each active particle trail by getting position from its projectile object
+        // FIXED: Iterate through this.particleTrails Map instead of this.particleSystems Array
+        for (const [projectileId, trailData] of this.particleTrails) {
+            // Only update trail position if projectile object still exists and hasn't been cleaned up
+            if (trailData.projectileObject && trailData.projectileObject.position) {
+                // Update trail with current projectile position
+                this.updateProjectileTrail(trailData.id, trailData.projectileObject.position);
+            } else if (trailData.projectileObject === null) {
+                // Projectile has been cleaned up - stop updating position but keep trail visible
+                // The trail will fade out naturally based on its age and persistence settings
+                // No further position updates needed
+            }
+        }
+        
+        // Clean up trails marked for delayed destruction
+        const trailsToDestroy = [];
+        for (const [projectileId, trailData] of this.particleTrails) {
+            if (trailData.pendingDestruction && currentTime >= trailData.destructionTime) {
+                trailsToDestroy.push(projectileId);
+            }
+        }
+        
+        // Actually destroy the trails that are ready for cleanup
+        for (const projectileId of trailsToDestroy) {
+            const trailData = this.particleTrails.get(projectileId);
+            if (trailData) {
+                // Clean up trail data
+                this.particleTrails.delete(projectileId);
+                
+                // Remove from particle systems array
+                this.particleSystems = this.particleSystems.filter(system => system.id !== projectileId);
+                
+                // Remove visual elements from scene
+                if (trailData.particleSystem && this.scene) {
+                    this.scene.remove(trailData.particleSystem);
+                }
+                if (trailData.engineGlow && this.scene) {
+                    this.scene.remove(trailData.engineGlow);
+                }
+                
+                console.log(`🧹 Cleaned up delayed particle trail: ${projectileId}`);
+            }
+        }
+    }
+    
+    /**
      * Play success sound when an enemy is destroyed
      * @param {Vector3} position 3D position for spatial audio (optional)
      * @param {number} volume Volume multiplier (0.0 - 1.0)
@@ -455,6 +841,9 @@ export class WeaponEffectsManager {
         
         // Update explosions
         this.updateExplosions(now, deltaTime);
+        
+        // SIMPLIFIED: Update static trails instead of complex particle tracking
+        this.updateStaticTrails(deltaTime);
         
         // Clean up finished effects
         this.cleanupFinishedEffects();
@@ -571,7 +960,12 @@ export class WeaponEffectsManager {
             'standard_missile': 'missiles',
             'homing_missile': 'missiles',
             'heavy_torpedo': 'missiles',
-            'proximity_mine': 'mines'
+            'proximity_mine': 'mines',
+            'laser': 'lasers',
+            'pulse': 'lasers',
+            'plasma': 'photons',
+            'phaser': 'photons',
+            'scan-hit': 'lasers'
         };
         
         return audioMap[weaponType] || 'lasers'; // Default to lasers sound
@@ -736,6 +1130,12 @@ export class WeaponEffectsManager {
         });
         this.audioSources = [];
         
+        // Clean up interaction check interval
+        if (this.interactionCheckInterval) {
+            clearInterval(this.interactionCheckInterval);
+            this.interactionCheckInterval = null;
+        }
+        
         // Remove all effects from scene
         this.activeEffects.forEach(effect => {
             this.scene.remove(effect);
@@ -778,5 +1178,13 @@ export class WeaponEffectsManager {
      */
     isAudioReady() {
         return this.audioInitialized && this.audioContext && this.audioBuffers.size > 0;
+    }
+    
+    /**
+     * Check if user interaction has been detected
+     * @returns {boolean} True if user has interacted
+     */
+    hasUserInteracted() {
+        return this.userHasInteracted;
     }
 } 

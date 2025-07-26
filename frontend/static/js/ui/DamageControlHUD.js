@@ -466,7 +466,20 @@ export default class DamageControlHUD {
     
     getDisplayName(systemName) {
         // Use the standard system display name function
-        return getSystemDisplayName(systemName).toUpperCase();
+        const baseName = getSystemDisplayName(systemName).toUpperCase();
+        
+        // Get system level if available
+        try {
+            const system = this.ship.getSystem(systemName);
+            if (system && system.level) {
+                return `${baseName} (Lvl ${system.level})`;
+            }
+        } catch (error) {
+            // If we can't get the system level, just use the base name
+            console.debug(`Could not get level for system ${systemName}:`, error);
+        }
+        
+        return baseName;
     }
     
     /**

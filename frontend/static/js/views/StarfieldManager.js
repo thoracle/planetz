@@ -8,6 +8,9 @@ import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { WeaponSlot } from '../ship/systems/WeaponSlot.js';
 import SimplifiedDamageControl from '../ui/SimplifiedDamageControl.js';
 import DockingModal from '../ui/DockingModal.js';
+import { StarfieldAudioManager } from './StarfieldAudioManager.js';
+import { StarfieldRenderer } from './StarfieldRenderer.js';
+import { TargetComputerManager } from './TargetComputerManager.js';
 // SimplifiedDamageControl removed - damage control integrated into ship systems HUD
 
 export class StarfieldManager {
@@ -96,10 +99,10 @@ export class StarfieldManager {
         this.rotationDeceleration = 0.0012; // How quickly rotation slows down
         this.maxRotationSpeed = 0.025; // Maximum rotation speed
         
-        // Create starfield with quintuple density
+        // Create starfield renderer with quintuple density
         this.starCount = 40000;  // Increased from 8000 to 40000
-        this.starfield = this.createStarfield();
-        this.scene.add(this.starfield);
+        this.starfieldRenderer = new StarfieldRenderer(this.scene, this.THREE, this.starCount);
+        this.starfield = this.starfieldRenderer.initialize();
         
         // Create speed indicator
         this.createSpeedIndicator();
@@ -111,8 +114,11 @@ export class StarfieldManager {
         this.isDamageControlOpen = false; // Track if damage control is currently open
         this.shouldUpdateDamageControl = false; // Flag to control when to update
         
-        // Create target computer HUD
-        this.createTargetComputerHUD();
+        // Create target computer manager
+        this.targetComputerManager = new TargetComputerManager(
+            this.scene, this.camera, this.viewManager, this.THREE, this.solarSystemManager
+        );
+        this.targetComputerManager.initialize();
         
         // Add intel state
         this.intelVisible = false;
@@ -149,7 +155,7 @@ export class StarfieldManager {
         // Bind mouse events
         this.bindMouseEvents();
 
-        // Audio setup
+        // Audio setup - using new StarfieldAudioManager
         this.listener = new this.THREE.AudioListener();
         if (!this.camera) {
             console.error('No camera available for audio listener');
@@ -157,102 +163,14 @@ export class StarfieldManager {
         }
         this.camera.add(this.listener);
 
-        // Ensure AudioContext is running
-        this.ensureAudioContextRunning();
-
-        this.audioLoader = new this.THREE.AudioLoader();
-        this.engineSound = new this.THREE.Audio(this.listener);
-        this.commandSound = new this.THREE.Audio(this.listener);
-        this.commandFailedSound = new this.THREE.Audio(this.listener);
-        this.soundLoaded = false;
-        this.commandSoundLoaded = false;
-        this.commandFailedSoundLoaded = false;
-        this.engineState = 'stopped'; // 'stopped', 'starting', 'running', 'stopping'
-
-        // Add visibility change listener
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-                this.ensureAudioContextRunning();
-            }
-        });
-
-        // Load engine sound
-        this.audioLoader.load(
-            '/audio/engines.wav',
-            (buffer) => {
-                this.engineSound.setBuffer(buffer);
-                this.engineSound.setLoop(true);
-                
-                // Set loop points for the middle portion of the sound
-                const duration = buffer.duration;
-                const startupTime = duration * 0.25; // Increased from 15% to 25% to ensure we're at full volume
-                const shutdownTime = duration * 0.70; // Keep at 70% to avoid end tapering
-                
-                // Ensure the loop points are at consistent volume points
-                this.engineSound.setLoopStart(startupTime);
-                this.engineSound.setLoopEnd(shutdownTime);
-                
-                // Store these times for later use
-                this.engineTimes = {
-                    startup: startupTime,
-                    shutdown: shutdownTime,
-                    total: duration
-                };
-                
-                this.engineSound.setVolume(0.0);
-                this.soundLoaded = true;
-            },
-            (progress) => {
-            },
-            (error) => {
-                console.error('Error loading engine sound:', error);
-                console.error('Error details:', {
-                    message: error.message,
-                    stack: error.stack
-                });
-            }
-        );
-
-        // Load command sound
-        this.audioLoader.load(
-            '/audio/command.wav',
-            (buffer) => {
-                this.commandSound.setBuffer(buffer);
-                this.commandSound.setVolume(0.5); // Set a reasonable volume
-                this.commandSoundLoaded = true;
-            },
-            (progress) => {
-            },
-            (error) => {
-                console.error('Error loading command sound:', error);
-                console.error('Error details:', {
-                    message: error.message,
-                    stack: error.stack
-                });
-            }
-        );
-
-        // Load command failed sound
-        this.audioLoader.load(
-            '/audio/command_failed.mp3',
-            (buffer) => {
-                this.commandFailedSound.setBuffer(buffer);
-                this.commandFailedSound.setVolume(0.6); // Slightly louder than success sound
-                this.commandFailedSoundLoaded = true;
-            },
-            (progress) => {
-            },
-            (error) => {
-                console.error('Error loading command failed sound:', error);
-                console.error('Error details:', {
-                    message: error.message,
-                    stack: error.stack
-                });
-            }
-        );
+        // Initialize audio manager
+        this.audioManager = new StarfieldAudioManager(this.THREE, this.listener);
 
         // Make this instance globally available for button click handlers
         window.starfieldManager = this;
+        
+        // Make audio manager globally accessible for other audio systems
+        window.starfieldAudioManager = this.audioManager;
 
         // Add CSS for dock button
         const style = document.createElement('style');
@@ -430,171 +348,15 @@ export class StarfieldManager {
         }
     }
 
+    // Starfield creation methods now delegated to StarfieldRenderer
     createStarfield() {
-        try {
-            // Validate star count before proceeding
-            if (typeof this.starCount !== 'number' || isNaN(this.starCount)) {
-                console.warn('Invalid starCount:', this.starCount, 'falling back to 5000');
-                this.starCount = 5000;
-            }
-
-            // Ensure minimum and maximum values for star count
-            const validStarCount = Math.max(5000, Math.min(500000, Math.floor(this.starCount)));
-            if (validStarCount !== this.starCount) {
-                this.starCount = validStarCount;
-            }
-
-            const geometry = new this.THREE.BufferGeometry();
-            const positions = new Float32Array(validStarCount * 3);
-            const colors = new Float32Array(validStarCount * 3);
-            const sizes = new Float32Array(validStarCount);
-            
-            // Create sprite texture for stars
-            const canvas = document.createElement('canvas');
-            canvas.width = 32;
-            canvas.height = 32;
-            const ctx = canvas.getContext('2d');
-            
-            // Create radial gradient for glow effect
-            const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-            gradient.addColorStop(0.1, 'rgba(255, 255, 255, 0.8)');
-            gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
-            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 32, 32);
-            
-            const sprite = new this.THREE.Texture(canvas);
-            sprite.needsUpdate = true;
-
-            let validVertices = 0;
-            const minRadius = 100;
-            const maxRadius = 1000;
-            
-            // Create all star positions
-            for (let i = 0; i < validStarCount; i++) {
-                try {
-                    // Generate random spherical coordinates
-                    const radius = minRadius + Math.random() * (maxRadius - minRadius);
-                    const theta = Math.random() * Math.PI * 2;
-                    const phi = Math.acos((Math.random() * 2) - 1);
-                    
-                    // Convert to Cartesian coordinates
-                    const x = radius * Math.sin(phi) * Math.cos(theta);
-                    const y = radius * Math.sin(phi) * Math.sin(theta);
-                    const z = radius * Math.cos(phi);
-                    
-                    // Validate each coordinate
-                    if (!isFinite(x) || !isFinite(y) || !isFinite(z) ||
-                        isNaN(x) || isNaN(y) || isNaN(z)) {
-                        throw new Error('Invalid coordinate calculation');
-                    }
-                    
-                    // Store valid position
-                    positions[validVertices * 3] = x;
-                    positions[validVertices * 3 + 1] = y;
-                    positions[validVertices * 3 + 2] = z;
-                    
-                    // Set color (brighter white with slight blue tint)
-                    const brightness = 0.9 + Math.random() * 0.1;
-                    colors[validVertices * 3] = brightness;
-                    colors[validVertices * 3 + 1] = brightness;
-                    colors[validVertices * 3 + 2] = brightness + 0.1;
-                    
-                    // Set size
-                    sizes[validVertices] = (1 + Math.random() * 3) * 2;
-                    
-                    validVertices++;
-                } catch (error) {
-                    console.warn('Failed to create vertex', i, error);
-                    continue;
-                }
-            }
-            
-            // If we have no valid vertices, throw error
-            if (validVertices === 0) {
-                throw new Error('No valid vertices created');
-            }
-            
-            // Trim arrays to actual size if needed
-            if (validVertices < validStarCount) {
-                console.warn(`Created ${validVertices} valid stars out of ${validStarCount} attempted`);
-                const trimmedPositions = new Float32Array(positions.buffer, 0, validVertices * 3);
-                const trimmedColors = new Float32Array(colors.buffer, 0, validVertices * 3);
-                const trimmedSizes = new Float32Array(sizes.buffer, 0, validVertices);
-                
-                geometry.setAttribute('position', new this.THREE.BufferAttribute(trimmedPositions, 3));
-                geometry.setAttribute('color', new this.THREE.BufferAttribute(trimmedColors, 3));
-                geometry.setAttribute('size', new this.THREE.BufferAttribute(trimmedSizes, 1));
-            } else {
-                geometry.setAttribute('position', new this.THREE.BufferAttribute(positions, 3));
-                geometry.setAttribute('color', new this.THREE.BufferAttribute(colors, 3));
-                geometry.setAttribute('size', new this.THREE.BufferAttribute(sizes, 1));
-            }
-            
-            // Verify geometry before creating mesh
-            geometry.computeBoundingSphere();
-            if (!geometry.boundingSphere || isNaN(geometry.boundingSphere.radius)) {
-                throw new Error('Failed to compute valid bounding sphere');
-            }
-            
-            const material = new this.THREE.PointsMaterial({
-                size: 1,
-                vertexColors: true,
-                transparent: true,
-                opacity: 1,
-                sizeAttenuation: true,
-                blending: this.THREE.AdditiveBlending,
-                map: sprite,
-                depthWrite: false
-            });
-            
-            return new this.THREE.Points(geometry, material);
-            
-        } catch (error) {
-            console.error('Error in createStarfield:', error);
-            // Create a minimal fallback starfield
-            return this.createFallbackStarfield();
-        }
+        // Delegate to starfield renderer
+        return this.starfieldRenderer.createStarfield();
     }
 
     createFallbackStarfield() {
-        const geometry = new this.THREE.BufferGeometry();
-        const positions = new Float32Array(5000 * 3);
-        const colors = new Float32Array(5000 * 3);
-        const sizes = new Float32Array(5000);
-
-        // Create a simple cube distribution of stars
-        for (let i = 0; i < 5000; i++) {
-            // Position stars in a cube formation (-500 to 500 on each axis)
-            positions[i * 3] = (Math.random() - 0.5) * 1000;
-            positions[i * 3 + 1] = (Math.random() - 0.5) * 1000;
-            positions[i * 3 + 2] = (Math.random() - 0.5) * 1000;
-
-            // White color
-            colors[i * 3] = 1;
-            colors[i * 3 + 1] = 1;
-            colors[i * 3 + 2] = 1;
-
-            // Uniform size
-            sizes[i] = 2;
-        }
-
-        geometry.setAttribute('position', new this.THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('color', new this.THREE.BufferAttribute(colors, 3));
-        geometry.setAttribute('size', new this.THREE.BufferAttribute(sizes, 1));
-
-        const material = new this.THREE.PointsMaterial({
-            size: 1,
-            vertexColors: true,
-            transparent: true,
-            opacity: 1,
-            sizeAttenuation: true,
-            depthWrite: false
-        });
-
-        return new this.THREE.Points(geometry, material);
+        // Delegate to starfield renderer
+        return this.starfieldRenderer.createFallbackStarfield();
     }
 
     createSpeedIndicator() {
@@ -738,8 +500,8 @@ export class StarfieldManager {
         // Clear existing display
         this.systemsList.innerHTML = '';
         
-        // Only show damage control view now (no more original systems view)
-        this.updateDamageControlDisplay(shipStatus);
+        // Use the new DamageControlHUD system instead of deprecated method
+        // The damage control display is now handled by the DamageControlHUD component
     }
 
     /**
@@ -1165,292 +927,9 @@ export class StarfieldManager {
         this.viewBox.textContent = `View: ${this.view}`;
     }
 
-    createTargetComputerHUD() {
-        // Create target computer container
-        this.targetHUD = document.createElement('div');
-        this.targetHUD.style.cssText = `
-            position: fixed;
-            bottom: 80px;
-            left: 10px;
-            width: 200px;
-            height: auto;
-            border: 2px solid #00ff41;
-            background: rgba(0, 0, 0, 0.7);
-            color: #00ff41;
-            font-family: "Courier New", monospace;
-            font-size: 14px;
-            padding: 10px;
-            display: none;
-            pointer-events: auto;
-            z-index: 1000;
-            transition: border-color 0.3s ease;
-        `;
 
-        // Create direction arrows (one for each edge)
-        this.directionArrows = {
-            left: document.createElement('div'),
-            right: document.createElement('div'),
-            top: document.createElement('div'),
-            bottom: document.createElement('div')
-        };
 
-        // Style each arrow
-        Object.entries(this.directionArrows).forEach(([position, arrow]) => {
-            arrow.style.cssText = `
-                position: absolute;
-                width: 0;
-                height: 0;
-                display: none;
-                pointer-events: none;
-                z-index: 1001;
-            `;
-            document.body.appendChild(arrow); // Append to body, not HUD
-        });
 
-        // Create wireframe container with a renderer
-        this.wireframeContainer = document.createElement('div');
-        this.wireframeContainer.style.cssText = `
-            width: 100%;
-            height: 150px;
-            border: 1px solid #00ff41;
-            margin-bottom: 10px;
-            position: relative;
-            overflow: visible;
-            pointer-events: none;
-            z-index: 1001;
-        `;
-
-        // Create renderer for wireframe
-        this.wireframeRenderer = new this.THREE.WebGLRenderer({ alpha: true });
-        this.wireframeRenderer.setSize(200, 150);
-        this.wireframeRenderer.setClearColor(0x000000, 0);
-        
-        // Create scene and camera for wireframe
-        this.wireframeScene = new this.THREE.Scene();
-        this.wireframeCamera = new this.THREE.PerspectiveCamera(45, 200/150, 0.1, 1000);
-        this.wireframeCamera.position.z = 5;
-        
-        // Add lights to wireframe scene
-        const wireframeLight = new this.THREE.DirectionalLight(0x00ff41, 1);
-        wireframeLight.position.set(1, 1, 1);
-        this.wireframeScene.add(wireframeLight);
-        
-        const wireframeAmbient = new this.THREE.AmbientLight(0x00ff41, 0.4);
-        this.wireframeScene.add(wireframeAmbient);
-        
-        this.wireframeContainer.appendChild(this.wireframeRenderer.domElement);
-
-        // Create target info display
-        this.targetInfoDisplay = document.createElement('div');
-        this.targetInfoDisplay.style.cssText = `
-            width: 100%;
-            text-align: left;
-            margin-bottom: 10px;
-            pointer-events: none;
-            position: relative;
-            z-index: 1002;
-        `;
-
-        // Create status icons container
-        this.statusIconsContainer = document.createElement('div');
-        this.statusIconsContainer.style.cssText = `
-            width: 100%;
-            text-align: center;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            font-size: 16px;
-            position: relative;
-            z-index: 1003;
-        `;
-
-        // Create icons with tooltips
-        const createIcon = (symbol, tooltip) => {
-            const icon = document.createElement('div');
-            icon.style.cssText = `
-                cursor: help;
-                opacity: 0.8;
-                transition: all 0.2s ease;
-                position: relative;
-                width: 24px;
-                height: 24px;
-                border: 1px solid #00ff41;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-family: "Courier New", monospace;
-                font-size: 14px;
-                text-shadow: 0 0 4px #00ff41;
-                box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
-            `;
-            icon.innerHTML = symbol;
-            icon.title = tooltip;
-            
-            // Add hover effects
-            icon.addEventListener('mouseenter', () => {
-                icon.style.opacity = '1';
-                icon.style.transform = 'scale(1.1)';
-                icon.style.boxShadow = '0 0 8px rgba(0, 255, 65, 0.6)';
-            });
-            
-            icon.addEventListener('mouseleave', () => {
-                icon.style.opacity = '0.8';
-                icon.style.transform = 'scale(1)';
-                icon.style.boxShadow = '0 0 4px rgba(0, 255, 65, 0.4)';
-            });
-            
-            return icon;
-        };
-
-        // Create sci-fi style icons
-        this.governmentIcon = createIcon('⬡', 'Government'); // Hexagon for government/structure
-        this.economyIcon = createIcon('⬢', 'Economy');      // Filled hexagon for economy/resources
-        this.technologyIcon = createIcon('⬨', 'Technology'); // Diamond with dot for technology/advancement
-
-        // Create intel icon (initially hidden)
-        this.intelIcon = createIcon('ⓘ', 'Intel Available - Press I');
-        this.intelIcon.style.display = 'none';
-        this.intelIcon.style.cursor = 'pointer';
-        this.intelIcon.style.animation = 'pulse 2s infinite';
-        
-        // Add click handler for intel icon
-        this.intelIcon.addEventListener('click', () => {
-            if (this.intelAvailable && this.targetComputerEnabled && this.currentTarget) {
-                this.playCommandSound();
-                this.toggleIntel();
-            }
-        });
-
-        this.statusIconsContainer.appendChild(this.governmentIcon);
-        this.statusIconsContainer.appendChild(this.economyIcon);
-        this.statusIconsContainer.appendChild(this.technologyIcon);
-        this.statusIconsContainer.appendChild(this.intelIcon);
-
-        // Create action buttons container
-        this.actionButtonsContainer = document.createElement('div');
-        this.actionButtonsContainer.style.cssText = `
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            gap: 8px;
-            position: relative;
-            z-index: 1004;
-        `;
-
-        // Assemble the HUD
-        this.targetHUD.appendChild(this.wireframeContainer);
-        this.targetHUD.appendChild(this.targetInfoDisplay);
-        this.targetHUD.appendChild(this.statusIconsContainer);
-        this.targetHUD.appendChild(this.actionButtonsContainer);
-
-        document.body.appendChild(this.targetHUD);
-
-        // Create target reticle
-        this.createTargetReticle();
-    }
-
-    createTargetReticle() {
-        // Create target reticle corners
-        this.targetReticle = document.createElement('div');
-        this.targetReticle.style.cssText = `
-            position: fixed;
-            width: 40px;
-            height: 40px;
-            display: none;
-            pointer-events: none;
-            z-index: 999;
-            transform: translate(-50%, -50%);
-        `;
-
-        // Create corner elements
-        const corners = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
-        corners.forEach(corner => {
-            const el = document.createElement('div');
-            el.classList.add('reticle-corner');
-            el.style.cssText = `
-                position: absolute;
-                width: 10px;
-                height: 10px;
-                border: 2px solid #D0D0D0;
-                box-shadow: 0 0 2px #D0D0D0;
-            `;
-
-            // Position and style each corner
-            switch(corner) {
-                case 'topLeft':
-                    el.style.top = '0';
-                    el.style.left = '0';
-                    el.style.borderRight = 'none';
-                    el.style.borderBottom = 'none';
-                    break;
-                case 'topRight':
-                    el.style.top = '0';
-                    el.style.right = '0';
-                    el.style.borderLeft = 'none';
-                    el.style.borderBottom = 'none';
-                    break;
-                case 'bottomLeft':
-                    el.style.bottom = '0';
-                    el.style.left = '0';
-                    el.style.borderRight = 'none';
-                    el.style.borderTop = 'none';
-                    break;
-                case 'bottomRight':
-                    el.style.bottom = '0';
-                    el.style.right = '0';
-                    el.style.borderLeft = 'none';
-                    el.style.borderTop = 'none';
-                    break;
-            }
-
-            this.targetReticle.appendChild(el);
-        });
-
-        // Create target name display (above the reticle)
-        this.targetNameDisplay = document.createElement('div');
-        this.targetNameDisplay.className = 'target-name-display';
-        this.targetNameDisplay.style.cssText = `
-            position: absolute;
-            top: -25px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #D0D0D0;
-            text-shadow: 0 0 4px #D0D0D0;
-            font-family: 'Orbitron', monospace;
-            font-size: 12.1px;
-            font-weight: bold;
-            text-align: center;
-            white-space: nowrap;
-            pointer-events: none;
-            z-index: 1000;
-            display: none;
-        `;
-        this.targetReticle.appendChild(this.targetNameDisplay);
-
-        // Create target distance display (below the reticle)
-        this.targetDistanceDisplay = document.createElement('div');
-        this.targetDistanceDisplay.className = 'target-distance-display';
-        this.targetDistanceDisplay.style.cssText = `
-            position: absolute;
-            top: 45px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #D0D0D0;
-            text-shadow: 0 0 4px #D0D0D0;
-            font-family: 'Orbitron', monospace;
-            font-size: 11px;
-            font-weight: bold;
-            text-align: center;
-            white-space: nowrap;
-            pointer-events: none;
-            z-index: 1000;
-            display: none;
-        `;
-        this.targetReticle.appendChild(this.targetDistanceDisplay);
-
-        document.body.appendChild(this.targetReticle);
-    }
 
     createIntelHUD() {
         // Create intel HUD container
@@ -1526,18 +1005,52 @@ export class StarfieldManager {
 
     createWeaponHUD() {
         // Import and initialize WeaponHUD
+        console.log('🔫 StarfieldManager: Starting WeaponHUD creation...');
         import('../ui/WeaponHUD.js').then(({ WeaponHUD }) => {
+            console.log('🔫 StarfieldManager: WeaponHUD module loaded, creating instance...');
             this.weaponHUD = new WeaponHUD(document.body);
             
             // Initialize weapon slots display
             this.weaponHUD.initializeWeaponSlots(4);
+            console.log('🔫 StarfieldManager: WeaponHUD created and initialized');
             
             // Connect to weapon system if available
             this.connectWeaponHUDToSystem();
             
+            // Set up retry mechanism for connection
+            this.setupWeaponHUDConnectionRetry();
+            
         }).catch(error => {
-            console.error('Failed to initialize WeaponHUD:', error);
+            console.error('❌ StarfieldManager: Failed to initialize WeaponHUD:', error);
         });
+    }
+    
+    /**
+     * Set up retry mechanism for WeaponHUD connection
+     */
+    setupWeaponHUDConnectionRetry() {
+        // Retry connection every 500ms for up to 30 seconds
+        this.weaponHUDRetryCount = 0;
+        this.maxWeaponHUDRetries = 60; // 30 seconds at 500ms intervals
+        
+        this.weaponHUDRetryInterval = setInterval(() => {
+            this.weaponHUDRetryCount++;
+            
+            // Try to connect
+            this.connectWeaponHUDToSystem();
+            
+            // If connected or max retries reached, stop trying
+            if (this.weaponHUDConnected || this.weaponHUDRetryCount >= this.maxWeaponHUDRetries) {
+                clearInterval(this.weaponHUDRetryInterval);
+                this.weaponHUDRetryInterval = null;
+                
+                if (this.weaponHUDConnected) {
+                    console.log(`✅ WeaponHUD connected after ${this.weaponHUDRetryCount} attempts`);
+                } else {
+                    console.log(`🔍 WeaponHUD connection will retry later (${this.maxWeaponHUDRetries} attempts completed)`);
+                }
+            }
+        }, 500);
     }
     
     /**
@@ -1545,6 +1058,12 @@ export class StarfieldManager {
      */
     connectWeaponHUDToSystem() {
         const ship = this.viewManager?.getShip();
+        
+        console.log('🔗 Attempting to connect WeaponHUD to WeaponSystemCore...');
+        console.log('  - Ship available:', !!ship);
+        console.log('  - Ship weaponSystem available:', !!(ship?.weaponSystem));
+        console.log('  - WeaponHUD available:', !!this.weaponHUD);
+        
         if (ship && ship.weaponSystem && this.weaponHUD) {
             // Set HUD reference in weapon system
             ship.weaponSystem.setWeaponHUD(this.weaponHUD);
@@ -1553,8 +1072,14 @@ export class StarfieldManager {
             this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
             
             this.weaponHUDConnected = true;
+            console.log('✅ WeaponHUD successfully connected to WeaponSystemCore');
         } else {
             this.weaponHUDConnected = false;
+            // Use debug logging instead of warnings during startup
+            console.log('🔍 WeaponHUD connection pending:');
+            if (!ship) console.log('  - Ship initializing...');
+            if (!ship?.weaponSystem) console.log('  - WeaponSystem initializing...');
+            if (!this.weaponHUD) console.log('  - WeaponHUD initializing...');
         }
     }
 
@@ -1647,12 +1172,12 @@ export class StarfieldManager {
                 } else {
                     this.decelerating = false;
                     // Handle engine sounds for acceleration
-                    if (this.soundLoaded) {
-                        const volume = actualSpeed / this.maxSpeed;
-                        if (this.engineState === 'stopped') {
-                            this.playEngineStartup(volume);
-                        } else if (this.engineState === 'running') {
-                            this.engineSound.setVolume(volume);
+                    const sounds = this.audioManager.areSoundsLoaded();
+                    if (sounds.engine) {
+                        if (this.audioManager.getEngineState() === 'stopped') {
+                            this.audioManager.playEngineStartup();
+                        } else if (this.audioManager.getEngineState() === 'running') {
+                            this.audioManager.updateEngineVolume(actualSpeed, this.maxSpeed);
                         }
                     }
                 }
@@ -1661,6 +1186,8 @@ export class StarfieldManager {
             // Handle Tab key for cycling targets
             if (event.key === 'Tab') {
                 event.preventDefault(); // Prevent Tab from changing focus
+                // Removed target cycling key press log to prevent console spam
+                // console.log('🎯 TAB key pressed for target cycling');
                 
                 // Block target cycling when docked
                 if (this.isDocked) {
@@ -1691,6 +1218,8 @@ export class StarfieldManager {
                     
                     if (targetComputer && targetComputer.canActivate(ship) && this.targetComputerEnabled) {
                         // Target computer is operational and activated - allow cycling
+                        // Removed target cycling call log to prevent console spam
+                        // console.log('🎯 Cycling target from TAB key press');
                         this.cycleTarget();
                         this.playCommandSound();
                     } else {
@@ -1748,7 +1277,7 @@ export class StarfieldManager {
                 }
                 return; // Exit early to prevent further processing
             }
-            
+
             const commandKey = event.key.toLowerCase();
 
             // Handle view changes - prevent fore/aft changes while docked
@@ -2155,38 +1684,10 @@ export class StarfieldManager {
             // Sub-targeting key bindings (< and > keys)
             if (event.key === '<' || event.key === ',') {
                 // Previous sub-target
-                if (!this.isDocked && this.targetComputerEnabled && this.currentTarget) {
-                    const ship = this.viewManager?.getShip();
-                    if (ship) {
-                        const targetComputer = ship.getSystem('target_computer');
-                        if (targetComputer && targetComputer.hasSubTargeting()) {
-                            // Check if there's only one target available
-                            if (targetComputer.availableSubTargets.length <= 1) {
-                                this.playCommandFailedSound();
-                            } else if (targetComputer.cycleSubTargetPrevious()) {
-                                this.playCommandSound();
-                                this.updateTargetDisplay(); // Update HUD display
-                            }
-                        }
-                    }
-                }
+                this.handleSubTargetingKey('previous');
             } else if (event.key === '>' || event.key === '.') {
                 // Next sub-target
-                if (!this.isDocked && this.targetComputerEnabled && this.currentTarget) {
-                    const ship = this.viewManager?.getShip();
-                    if (ship) {
-                        const targetComputer = ship.getSystem('target_computer');
-                        if (targetComputer && targetComputer.hasSubTargeting()) {
-                            // Check if there's only one target available
-                            if (targetComputer.availableSubTargets.length <= 1) {
-                                this.playCommandFailedSound();
-                            } else if (targetComputer.cycleSubTargetNext()) {
-                                this.playCommandSound();
-                                this.updateTargetDisplay(); // Update HUD display
-                            }
-                        }
-                    }
-                }
+                this.handleSubTargetingKey('next');
             }
 
             // Weapon key bindings
@@ -2228,8 +1729,12 @@ export class StarfieldManager {
                 if (!this.isDocked) {
                     const ship = this.viewManager?.getShip();
                     if (ship && ship.weaponSystem) {
-                        const autofireState = ship.weaponSystem.toggleAutofire();
-                        this.playCommandSound();
+                        const autofireSuccess = ship.weaponSystem.toggleAutofire();
+                        if (autofireSuccess) {
+                            this.playCommandSound();
+                        } else {
+                            this.playCommandFailedSound();
+                        }
                     }
                 }
             }
@@ -2284,68 +1789,22 @@ export class StarfieldManager {
     }
 
     toggleTargetComputer() {
-        const ship = this.viewManager?.getShip();
-        if (!ship) {
-            console.warn('No ship available for target computer control');
-            return;
-        }
+        // Delegate to target computer manager
+        this.targetComputerManager.toggleTargetComputer();
         
-        const targetComputer = ship.getSystem('target_computer');
-        if (!targetComputer) {
-            console.warn('No target computer system found on ship');
-            return;
-        }
+        // Update local state to match
+        this.targetComputerEnabled = this.targetComputerManager.targetComputerEnabled;
+        this.currentTarget = this.targetComputerManager.currentTarget;
+        this.targetIndex = this.targetComputerManager.targetIndex;
+        this.targetObjects = this.targetComputerManager.targetObjects;
         
-        // Toggle the target computer system
-        if (targetComputer.isActive) {
-            targetComputer.deactivate();
-            this.targetComputerEnabled = false;
-        } else {
-            if (targetComputer.activate(ship)) {
-                this.targetComputerEnabled = true;
-            } else {
-                this.targetComputerEnabled = false;
-                console.warn('Failed to activate target computer - check system status and energy');
-                return;
-            }
-        }
-        
-
-        
+        // Handle intel visibility
         if (!this.targetComputerEnabled) {
-            this.targetHUD.style.display = 'none';
-            this.targetReticle.style.display = 'none';
-            
-            // Hide intel when target computer is disabled
             if (this.intelVisible) {
                 this.intelVisible = false;
                 this.intelHUD.style.display = 'none';
             }
             this.updateIntelIconDisplay();
-            
-            // Clear wireframe if it exists
-            if (this.targetWireframe) {
-                this.wireframeScene.remove(this.targetWireframe);
-                this.targetWireframe.geometry.dispose();
-                this.targetWireframe.material.dispose();
-                this.targetWireframe = null;
-            }
-            
-            // Clear 3D outline when target computer is disabled
-            this.clearTargetOutline();
-        } else {
-            // Show the HUD immediately when target computer is enabled
-            this.targetHUD.style.display = 'block';
-            
-            this.updateTargetList();
-            // Only reset target index if we don't have a current target
-            if (!this.currentTarget) {
-                this.targetIndex = -1;
-                this.cycleTarget();
-            } else {
-                // Just update the display with existing target
-                this.updateTargetDisplay();
-            }
         }
     }
 
@@ -2400,218 +1859,40 @@ export class StarfieldManager {
     }
 
     updateTargetList() {
+        console.log(`🎯 StarfieldManager.updateTargetList() called`);
+        const targetBeforeUpdate = this.targetComputerManager.currentTarget;
+        const indexBeforeUpdate = this.targetComputerManager.targetIndex;
         
-        let allTargets = [];
+        // Delegate to target computer manager
+        this.targetComputerManager.updateTargetList();
         
-        // Get celestial bodies from SolarSystemManager
-        if (this.solarSystemManager) {
-            const bodies = this.solarSystemManager.getCelestialBodies();
-            
-            const celestialBodies = Array.from(bodies.entries())
-                .map(([key, body]) => {
-                    const info = this.solarSystemManager.getCelestialBodyInfo(body);
-                    
-                    // Validate body position
-                    if (!body.position || 
-                        isNaN(body.position.x) || 
-                        isNaN(body.position.y) || 
-                        isNaN(body.position.z)) {
-                        console.warn('Invalid position detected for celestial body:', info.name);
-                        return null;
-                    }
-                    
-                    return {
-                        name: info.name,
-                        type: info.type,
-                        position: body.position.toArray(),
-                        isMoon: key.startsWith('moon_'),
-                        object: body,  // Store the actual THREE.js object
-                        isShip: false
-                    };
-                })
-                .filter(body => body !== null); // Remove any invalid bodies
-            
-            allTargets = allTargets.concat(celestialBodies);
+        const targetAfterUpdate = this.targetComputerManager.currentTarget;
+        const indexAfterUpdate = this.targetComputerManager.targetIndex;
+        
+        if (targetBeforeUpdate !== targetAfterUpdate || indexBeforeUpdate !== indexAfterUpdate) {
+            console.log(`🎯 WARNING: Target changed during updateTargetList!`);
+            console.log(`🎯   Before: target=${targetBeforeUpdate?.userData?.ship?.shipName || 'unknown'}, index=${indexBeforeUpdate}`);
+            console.log(`🎯   After: target=${targetAfterUpdate?.userData?.ship?.shipName || 'unknown'}, index=${indexAfterUpdate}`);
         }
         
-        // Add target dummy ships
-        const dummyShipTargets = this.dummyShipMeshes.map(mesh => {
-            const ship = mesh.userData.ship;
-            return {
-                name: ship.shipName,
-                type: 'enemy_ship',
-                position: mesh.position.toArray(),
-                isMoon: false,
-                object: mesh,  // Store the mesh as the target object
-                isShip: true,
-                ship: ship     // Store the ship instance for sub-targeting
-            };
-        });
-        
-        allTargets = allTargets.concat(dummyShipTargets);
-        
-        // Update target list
-        this.targetObjects = allTargets;
-        
-        // Sort targets by distance
-        this.sortTargetsByDistance();
-        
-        // Update target display
-        this.updateTargetDisplay();
-        
+        // Update local state to match
+        this.targetObjects = this.targetComputerManager.targetObjects;
     }
 
     cycleTarget(isManualCycle = true) {
-        // Prevent cycling targets while docked
-        if (this.isDocked) {
-            return;
-        }
-
-        // Prevent cycling targets immediately after undocking
-        if (this.undockCooldown && Date.now() < this.undockCooldown) {
-            return;
-        }
-
-        if (!this.targetComputerEnabled || this.targetObjects.length === 0) {
-            return;
-        }
-
-        // Hide reticle until new target is set
-        if (this.targetReticle) {
-            this.targetReticle.style.display = 'none';
-        }
-
-        // Keep target HUD visible
-        this.targetHUD.style.display = 'block';
-
-        // Cycle to next target
-        if (this.targetIndex === -1 || !this.currentTarget) {
-            this.targetIndex = 0;
-        } else {
-            this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
-        }
-
-        // Get the target object directly from our target list
-        const targetData = this.targetObjects[this.targetIndex];
-        this.currentTarget = targetData.object;
-
-        // Clean up existing wireframe before creating a new one
-        if (this.targetWireframe) {
-            this.wireframeScene.remove(this.targetWireframe);
-            if (this.targetWireframe.geometry) {
-                this.targetWireframe.geometry.dispose();
-            }
-            if (this.targetWireframe.material) {
-                if (Array.isArray(this.targetWireframe.material)) {
-                    this.targetWireframe.material.forEach(material => material.dispose());
-                } else {
-                    this.targetWireframe.material.dispose();
-                }
-            }
-            this.targetWireframe = null;
-        }
-
-        // Create new wireframe in the HUD
-        if (this.currentTarget) {
-            try {
-                // Get current target data to determine if it's a ship or celestial body
-                const currentTargetData = this.getCurrentTargetData();
-                let radius = 1;
-                let wireframeColor = 0x808080; // Default gray for unknown
-                let info = null;
-                
-                // Handle enemy ships differently from celestial bodies
-                if (currentTargetData?.isShip) {
-                    // For enemy ships, use a fixed radius and get info from ship data
-                    radius = 2; // Fixed radius for ship wireframes
-                    wireframeColor = 0xff3333; // Enemy ships are darker neon red
-                    info = { type: 'enemy_ship' };
-                } else {
-                    // For celestial bodies, get radius from geometry
-                    if (this.currentTarget.geometry?.boundingSphere) {
-                        this.currentTarget.geometry.computeBoundingSphere();
-                        radius = this.currentTarget.geometry.boundingSphere.radius || 1;
-                    }
-                    
-                    // Get celestial body info
-                    info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-                    
-                    // Determine wireframe color based on diplomacy
-                    if (info?.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
-                        wireframeColor = 0xffff00; // Stars are always yellow
-                    } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-                        wireframeColor = 0xff3333; // Darker neon red
-                    } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-                        wireframeColor = 0xffff00;
-                    } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-                        wireframeColor = 0x00ff41;
-                    }
-                }
-                
-                const wireframeMaterial = new this.THREE.LineBasicMaterial({ 
-                    color: wireframeColor,
-                    linewidth: 1,
-                    transparent: true,
-                    opacity: 0.8
-                });
-
-                if (info && (info.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name))) {
-                    // For stars, use the custom star geometry directly (it's already a line geometry)
-                    const starGeometry = this.createStarGeometry(radius);
-                    this.targetWireframe = new this.THREE.LineSegments(starGeometry, wireframeMaterial);
-                } else {
-                    // For other objects, create standard wireframes using EdgesGeometry
-                    let wireframeGeometry;
-                    if (info) {
-                        // Create different shapes based on object type
-                        if (info.type === 'enemy_ship') {
-                            // Use simple cube wireframe to match simplified target dummies
-                            wireframeGeometry = new this.THREE.BoxGeometry(radius, radius, radius);
-                        } else if (currentTargetData?.isMoon) {
-                            wireframeGeometry = new this.THREE.OctahedronGeometry(radius, 0);
-                        } else {
-                            wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
-                        }
-                    } else {
-                        wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 1);
-                    }
-                    
-                    const edgesGeometry = new this.THREE.EdgesGeometry(wireframeGeometry);
-                    this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
-                    
-                    // Clean up the temporary geometries
-                    wireframeGeometry.dispose();
-                    edgesGeometry.dispose();
-                }
-                
-                // Add sub-target visual indicators only for enemy ships
-                const targetData = this.getCurrentTargetData();
-                const isEnemyShip = targetData?.isShip && targetData?.ship;
-                if (isEnemyShip) {
-                    this.createSubTargetIndicators(radius, wireframeColor);
-                } else {
-                    // Clear sub-target indicators for celestial bodies
-                    this.createSubTargetIndicators(0, 0); // This will clear existing indicators
-                }
-                
-                this.targetWireframe.position.set(0, 0, 0);
-                this.wireframeScene.add(this.targetWireframe);
-                
-                this.wireframeCamera.position.z = radius * 3;
-                this.targetWireframe.rotation.set(0.5, 0, 0.3);
-            } catch (error) {
-                console.warn('Failed to create wireframe for target:', error);
-            }
-        }
-
-        // Create 3D world outline for the target (use updateTargetOutline for validation)
-        // Only create outline if manual cycle or if suppression is not active
+        // Delegate to target computer manager
+        this.targetComputerManager.cycleTarget(isManualCycle);
+        
+        // Update local state to match
+        this.currentTarget = this.targetComputerManager.currentTarget;
+        this.targetIndex = this.targetComputerManager.targetIndex;
+        this.targetObjects = this.targetComputerManager.targetObjects;
+        
+        // Handle outline suppression logic
         if (this.currentTarget && this.outlineEnabled && (isManualCycle || !this.outlineDisabledUntilManualCycle)) {
-            // Use updateTargetOutline instead of createTargetOutline to ensure validation
             this.updateTargetOutline(this.currentTarget, 0);
         }
         
-        // Only clear the destruction suppression flag for manual cycles
         if (isManualCycle) {
             this.outlineDisabledUntilManualCycle = false;
             console.log('🎯 Manual target cycle - outline suppression cleared');
@@ -2624,13 +1905,14 @@ export class StarfieldManager {
         if (ship && ship.weaponSystem) {
             ship.weaponSystem.setLockedTarget(this.currentTarget);
         }
-
-        // Update display after cycling target
-        this.updateTargetDisplay();
     }
 
     setSolarSystemManager(manager) {
         this.solarSystemManager = manager;
+        // Update target computer manager with new solar system manager
+        if (this.targetComputerManager) {
+            this.targetComputerManager.solarSystemManager = manager;
+        }
     }
 
     bindMouseEvents() {
@@ -2757,12 +2039,12 @@ export class StarfieldManager {
             }
             
             // Update engine sound
-            if (this.soundLoaded && this.engineState === 'running') {
+            if (this.audioManager.getEngineState() === 'running') {
                 const volume = this.currentSpeed / this.maxSpeed;
                 if (volume < 0.01) {
-                    this.playEngineShutdown();
+                    this.audioManager.playEngineShutdown();
                 } else {
-                    this.engineSound.setVolume(volume);
+                    this.audioManager.updateEngineVolume(this.currentSpeed, this.maxSpeed);
                 }
             }
         } else if (this.currentSpeed < this.targetSpeed) {
@@ -2904,23 +2186,9 @@ export class StarfieldManager {
             }
         }
         
-        // Render wireframe if target computer is enabled and we have a target
-        if (this.targetComputerEnabled && this.targetWireframe && this.wireframeScene && this.wireframeRenderer) {
-            try {
-                // Rotate wireframe continuously
-                if (this.targetWireframe) {
-                    this.targetWireframe.rotation.y += deltaTime * 0.5; // Increased rotation speed
-                    this.targetWireframe.rotation.x = 0.5 + Math.sin(Date.now() * 0.001) * 0.2; // Increased oscillation
-                }
-                
-                // Update sub-target visual indicators
-                this.updateSubTargetIndicators();
-                
-                // Render the wireframe scene
-                this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
-            } catch (error) {
-                console.warn('Error rendering wireframe:', error);
-            }
+        // Update target computer manager (handles wireframe rendering, reticles, etc.)
+        if (this.targetComputerEnabled) {
+            this.targetComputerManager.update(deltaTime);
         }
 
         // Update 3D world outline if target computer is enabled and we have a target
@@ -2937,10 +2205,8 @@ export class StarfieldManager {
         if (this.targetComputerEnabled && this.currentTarget) {
             this.updateDirectionArrow();
         } else {
-            // Hide all arrows
-            Object.values(this.directionArrows).forEach(arrow => {
-                arrow.style.display = 'none';
-            });
+            // Hide all arrows - delegate to target computer manager
+            this.targetComputerManager.hideAllDirectionArrows();
         }
         
         // Update weapon system
@@ -2948,13 +2214,14 @@ export class StarfieldManager {
         if (ship && ship.weaponSystem) {
             // Ensure WeaponHUD is connected (retry if needed)
             if (this.weaponHUD && !this.weaponHUDConnected) {
+                console.log('🔗 Attempting WeaponHUD connection during game loop...');
                 this.connectWeaponHUDToSystem();
             }
             
             ship.weaponSystem.updateAutofire(deltaTime);
             
             // Update weapon HUD if available
-            if (this.weaponHUD) {
+            if (this.weaponHUD && this.weaponHUDConnected) {
                 // Update the weapon slots display with current weapon system state
                 this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
                 
@@ -2979,8 +2246,8 @@ export class StarfieldManager {
             if (this.targetComputerEnabled) {
                 this.currentTarget = null;
                 this.targetIndex = -1;
-                this.targetHUD.style.display = 'none';
-                this.targetReticle.style.display = 'none';
+                this.targetComputerManager.hideTargetHUD();
+                this.targetComputerManager.hideTargetReticle();
                 
                 // Clear any existing wireframe
                 if (this.targetWireframe) {
@@ -3171,21 +2438,19 @@ export class StarfieldManager {
             clearInterval(this.repairUpdateInterval);
             this.repairUpdateInterval = null;
         }
+        
+        // Clean up WeaponHUD retry interval
+        if (this.weaponHUDRetryInterval) {
+            clearInterval(this.weaponHUDRetryInterval);
+            this.weaponHUDRetryInterval = null;
+        }
 
         // Clean up target dummy ships
         this.clearTargetDummyShips();
 
-        // Clean up starfield
-        if (this.starfield) {
-            this.scene.remove(this.starfield);
-            
-            // Dispose of geometry and material
-            if (this.starfield.geometry) {
-                this.starfield.geometry.dispose();
-            }
-            if (this.starfield.material) {
-                this.starfield.material.dispose();
-            }
+        // Clean up starfield renderer
+        if (this.starfieldRenderer) {
+            this.starfieldRenderer.dispose();
         }
 
         // Clean up wireframe and renderer
@@ -3207,31 +2472,17 @@ export class StarfieldManager {
             }
         }
 
-        // Clean up audio
-        if (this.engineSound) {
-            this.engineSound.stop();
-            if (this.engineSound.buffer) {
-                this.engineSound.setBuffer(null);
-            }
+        // Clean up audio manager
+        if (this.audioManager) {
+            this.audioManager.dispose();
         }
         
-        if (this.commandSound) {
-            this.commandSound.stop();
-            if (this.commandSound.buffer) {
-                this.commandSound.setBuffer(null);
-            }
-        }
-        
-        if (this.commandFailedSound) {
-            this.commandFailedSound.stop();
-            if (this.commandFailedSound.buffer) {
-                this.commandFailedSound.setBuffer(null);
-            }
-        }
-        
-        // Remove global reference
+        // Remove global references
         if (window.starfieldManager === this) {
             delete window.starfieldManager;
+        }
+        if (window.starfieldAudioManager === this.audioManager) {
+            delete window.starfieldAudioManager;
         }
         
         this.ship = null;
@@ -3239,24 +2490,10 @@ export class StarfieldManager {
         this.updateShipSystemsDisplay();
     }
 
-    // Add this method to create the star sprite texture
+    // Star sprite creation delegated to StarfieldRenderer
     createStarSprite() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 32;
-        canvas.height = 32;
-        const ctx = canvas.getContext('2d');
-        
-        // Create radial gradient for glow effect
-        const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-        gradient.addColorStop(0.1, 'rgba(255, 255, 255, 0.8)');
-        gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, 32, 32);
-        
-        return canvas;
+        // Delegate to starfield renderer
+        return this.starfieldRenderer.createStarSprite();
     }
 
     /**
@@ -3265,60 +2502,8 @@ export class StarfieldManager {
      * @returns {THREE.BufferGeometry} - The star geometry
      */
     createStarGeometry(radius) {
-        const geometry = new this.THREE.BufferGeometry();
-        const vertices = [];
-        
-        // Create a simpler 3D star with radiating lines from center
-        const numPoints = 8; // Number of star points
-        const center = [0, 0, 0];
-        
-        // Create star points radiating outward in multiple directions
-        const directions = [
-            // Primary axes
-            [1, 0, 0], [-1, 0, 0],    // X axis
-            [0, 1, 0], [0, -1, 0],    // Y axis  
-            [0, 0, 1], [0, 0, -1],    // Z axis
-            
-            // Diagonal directions for more star-like appearance
-            [0.707, 0.707, 0], [-0.707, -0.707, 0],     // XY diagonal
-            [0.707, 0, 0.707], [-0.707, 0, -0.707],     // XZ diagonal
-            [0, 0.707, 0.707], [0, -0.707, -0.707],     // YZ diagonal
-            
-            // Additional points for fuller star shape
-            [0.577, 0.577, 0.577], [-0.577, -0.577, -0.577],  // 3D diagonals
-            [0.577, -0.577, 0.577], [-0.577, 0.577, -0.577],
-        ];
-        
-        // Create lines from center to each star point
-        directions.forEach(direction => {
-            // Line from center to outer point
-            vertices.push(center[0], center[1], center[2]);
-            vertices.push(
-                direction[0] * radius,
-                direction[1] * radius, 
-                direction[2] * radius
-            );
-        });
-        
-        // Create some connecting lines between points for more complex star pattern
-        const outerPoints = directions.map(dir => [
-            dir[0] * radius,
-            dir[1] * radius,
-            dir[2] * radius
-        ]);
-        
-        // Connect some outer points to create star pattern
-        for (let i = 0; i < 6; i += 2) {
-            // Connect opposite primary axis points
-            vertices.push(outerPoints[i][0], outerPoints[i][1], outerPoints[i][2]);
-            vertices.push(outerPoints[i + 1][0], outerPoints[i + 1][1], outerPoints[i + 1][2]);
-        }
-        
-        // Convert vertices array to Float32Array and set as position attribute
-        const vertexArray = new Float32Array(vertices);
-        geometry.setAttribute('position', new this.THREE.BufferAttribute(vertexArray, 3));
-        
-        return geometry;
+        // Delegate to starfield renderer
+        return this.starfieldRenderer.createStarGeometry(radius);
     }
 
     /**
@@ -3327,108 +2512,16 @@ export class StarfieldManager {
      * @param {number} baseColor - The base color of the wireframe
      */
     createSubTargetIndicators(radius, baseColor) {
-        // Check if sub-targeting is available
-        const ship = this.viewManager?.getShip();
-        const targetComputer = ship?.getSystem('target_computer');
-        
-        // Always clear existing indicators first
-        if (this.subTargetIndicators) {
-            this.subTargetIndicators.forEach(indicator => {
-                this.wireframeScene.remove(indicator);
-                if (indicator.geometry) indicator.geometry.dispose();
-                if (indicator.material) indicator.material.dispose();
-            });
-        }
-        this.subTargetIndicators = [];
-        
-        // Only create new indicators if sub-targeting is available
-        if (!targetComputer || !targetComputer.hasSubTargeting()) {
-            return;
-        }
-
-        // Create targetable area indicators (simulating different systems/areas)
-        const targetableAreas = [
-            { name: 'Command Center', position: [0, radius * 0.7, 0], color: 0xff3333 },
-            { name: 'Power Core', position: [0, 0, 0], color: 0x44ff44 },
-            { name: 'Communications', position: [radius * 0.6, 0, 0], color: 0x4444ff },
-            { name: 'Defense Grid', position: [-radius * 0.6, 0, 0], color: 0xffff44 },
-            { name: 'Sensor Array', position: [0, -radius * 0.7, 0], color: 0xff44ff },
-            { name: 'Docking Bay', position: [0, 0, radius * 0.8], color: 0x44ffff }
-        ];
-
-        // Create indicators for each targetable area
-        targetableAreas.forEach((area, index) => {
-            // Create a small sphere to represent the targetable area
-            const indicatorGeometry = new this.THREE.SphereGeometry(radius * 0.15, 8, 6);
-            const indicatorMaterial = new this.THREE.MeshBasicMaterial({
-                color: area.color,
-                transparent: true,
-                opacity: 0.6,
-                wireframe: true
-            });
-            
-            const indicator = new this.THREE.Mesh(indicatorGeometry, indicatorMaterial);
-            indicator.position.set(area.position[0], area.position[1], area.position[2]);
-            
-            // Store area information for sub-targeting
-            indicator.userData = {
-                areaName: area.name,
-                areaIndex: index,
-                isTargetable: true
-            };
-            
-            this.wireframeScene.add(indicator);
-            this.subTargetIndicators.push(indicator);
-        });
-
-        // Store targetable areas for sub-targeting simulation
-        this.targetableAreas = targetableAreas;
+        // Delegate to target computer manager
+        this.targetComputerManager.createSubTargetIndicators(radius, baseColor);
     }
 
     /**
      * Update sub-target visual indicators based on current selection
      */
     updateSubTargetIndicators() {
-        if (!this.subTargetIndicators || !this.targetableAreas) {
-            return;
-        }
-
-        const ship = this.viewManager?.getShip();
-        const targetComputer = ship?.getSystem('target_computer');
-        
-        if (!targetComputer || !targetComputer.hasSubTargeting()) {
-            return;
-        }
-
-        // Get current sub-target index (simulate based on available areas)
-        const currentSubTargetIndex = targetComputer.subTargetIndex || 0;
-        const hasSubTarget = targetComputer.currentSubTarget !== null;
-
-        // Update each indicator based on selection state
-        this.subTargetIndicators.forEach((indicator, index) => {
-            const isSelected = hasSubTarget && (index === currentSubTargetIndex % this.targetableAreas.length);
-            
-            if (isSelected) {
-                // Highlight the selected sub-target
-                indicator.scale.setScalar(1.3); // Make it larger
-                
-                // Add pulsing effect
-                const time = Date.now() * 0.005;
-                const pulse = 0.8 + Math.sin(time) * 0.2;
-                indicator.material.opacity = pulse;
-                
-                // Make it brighter by setting color to white
-                indicator.material.color.setHex(0xffffff);
-            } else {
-                // Normal state for non-selected indicators
-                indicator.material.opacity = 0.6;
-                indicator.scale.setScalar(1.0);
-                
-                // Restore original color from targetable areas
-                const originalColor = this.targetableAreas[index]?.color || 0xffffff;
-                indicator.material.color.setHex(originalColor);
-            }
-        });
+        // Delegate to target computer manager
+        this.targetComputerManager.updateSubTargetIndicators();
     }
 
     // Update the setView method to handle view changes
@@ -3502,14 +2595,8 @@ export class StarfieldManager {
     }
 
     resetStar(star) {
-        // Reset star to a random position within the starfield radius
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.acos(2 * Math.random() - 1);
-        const radius = 1000 * Math.random();
-
-        star.position.x = radius * Math.sin(phi) * Math.cos(theta);
-        star.position.y = radius * Math.sin(phi) * Math.sin(theta);
-        star.position.z = radius * Math.cos(phi);
+        // Delegate to starfield renderer
+        this.starfieldRenderer.resetStar(star);
     }
 
     /**
@@ -3542,20 +2629,11 @@ export class StarfieldManager {
         this.updateIntelIconDisplay();
         
         // Hide HUD elements
-        if (this.targetHUD) {
-            this.targetHUD.style.display = 'none';
-        }
-        if (this.targetReticle) {
-            this.targetReticle.style.display = 'none';
-        }
+        this.targetComputerManager.hideTargetHUD();
+        this.targetComputerManager.hideTargetReticle();
         
         // Clear wireframe
-        if (this.targetWireframe) {
-            this.wireframeScene.remove(this.targetWireframe);
-            this.targetWireframe.geometry.dispose();
-            this.targetWireframe.material.dispose();
-            this.targetWireframe = null;
-        }
+        this.targetComputerManager.clearTargetWireframe();
         
         // Clear 3D outline
         this.clearTargetOutline();
@@ -3572,83 +2650,21 @@ export class StarfieldManager {
     }
 
     playEngineStartup(targetVolume) {
-        if (!this.soundLoaded) return;
-        
-        // Ensure AudioContext is running before playing sounds
-        this.ensureAudioContextRunning();
-        
-        // Reset the sound to the beginning for startup sound
-        this.engineSound.setLoop(false);
-        this.engineSound.offset = 0;
-        this.engineSound.setVolume(0); // Start silent
-        this.engineSound.play();
-        this.engineState = 'starting';
-        
-        // Gradually fade in during startup
-        const startupDuration = this.engineTimes.startup * 1000; // Convert to milliseconds
-        const fadeSteps = 20; // More steps for smoother transition
-        const fadeInterval = startupDuration / fadeSteps;
-        
-        let step = 0;
-        const fadeTimer = setInterval(() => {
-            step++;
-            if (step >= fadeSteps || this.engineState !== 'starting') {
-                clearInterval(fadeTimer);
-                if (this.engineState === 'starting') {
-                    // Transition to looping portion
-                    this.engineSound.stop();
-                    this.engineSound.offset = this.engineTimes.startup;
-                    this.engineSound.setLoop(true);
-                    this.engineSound.play();
-                    this.engineSound.setVolume(targetVolume);
-                    this.engineState = 'running';
-                }
-            } else {
-                // Smooth quadratic fade-in for more natural acceleration sound
-                const progress = step / fadeSteps;
-                const volume = targetVolume * (progress * progress);
-                this.engineSound.setVolume(volume);
-            }
-        }, fadeInterval);
+        // Delegate to audio manager
+        this.audioManager.playEngineStartup();
     }
 
     playEngineShutdown() {
-        if (!this.soundLoaded || this.engineState === 'stopped') return;
-        
-        // Play the shutdown portion
-        this.engineSound.setLoop(false);
-        this.engineSound.offset = this.engineTimes.shutdown;
-        this.engineState = 'stopping';
-        
-        // Gradually decrease volume during shutdown
-        const shutdownDuration = (this.engineTimes.total - this.engineTimes.shutdown) * 1000;
-        const startVolume = this.engineSound.getVolume();
-        const fadeSteps = 10;
-        const fadeInterval = shutdownDuration / fadeSteps;
-        
-        let step = 0;
-        const fadeTimer = setInterval(() => {
-            step++;
-            if (step >= fadeSteps || this.engineState !== 'stopping') {
-                clearInterval(fadeTimer);
-                if (this.engineState === 'stopping') {
-                    this.engineSound.stop();
-                    this.engineState = 'stopped';
-                }
-            } else {
-                const volume = startVolume * (1 - step / fadeSteps);
-                this.engineSound.setVolume(volume);
-            }
-        }, fadeInterval);
+        // Delegate to audio manager
+        this.audioManager.playEngineShutdown();
     }
 
     playCommandSound() {
-        if (this.commandSoundLoaded && !this.commandSound.isPlaying) {
-            // Ensure AudioContext is running before playing sounds
-            this.ensureAudioContextRunning();
-            this.commandSound.play();
-        } else if (!this.commandSoundLoaded) {
-            // Fallback: generate a success beep using Web Audio API
+        // Delegate to audio manager
+        if (this.audioManager) {
+            this.audioManager.playCommandSound();
+        } else {
+            // Fallback if audio manager is not available
             this.generateCommandSuccessBeep();
         }
     }
@@ -3691,14 +2707,8 @@ export class StarfieldManager {
     }
 
     playCommandFailedSound() {
-        if (this.commandFailedSoundLoaded && !this.commandFailedSound.isPlaying) {
-            // Ensure AudioContext is running before playing sounds
-            this.ensureAudioContextRunning();
-            this.commandFailedSound.play();
-        } else if (!this.commandFailedSoundLoaded) {
-            // Fallback: generate a low-pitched beep using Web Audio API
-            this.generateCommandFailedBeep();
-        }
+        // Delegate to audio manager
+        this.audioManager.playCommandFailedSound();
     }
 
     generateCommandFailedBeep() {
@@ -3740,30 +2750,9 @@ export class StarfieldManager {
 
     // Function to recreate the starfield with new density
     recreateStarfield() {
-        // Remove old starfield
-        if (this.starfield) {
-            this.scene.remove(this.starfield);
-            if (this.starfield.geometry) {
-                this.starfield.geometry.dispose();
-            }
-            if (this.starfield.material) {
-                this.starfield.material.dispose();
-            }
-        }
-        
-        // Create new starfield with updated star count
-        try {
-            this.starfield = this.createStarfield();
-            if (this.starfield) {
-                this.scene.add(this.starfield);
-            }
-        } catch (error) {
-            console.error('Error recreating starfield:', error);
-            // Fallback to minimum star count if there's an error
-            this.starCount = 5000;
-            this.starfield = this.createStarfield();
-            this.scene.add(this.starfield);
-        }
+        // Update starfield renderer's star count and recreate
+        this.starfieldRenderer.setStarCount(this.starCount);
+        this.starfield = this.starfieldRenderer.getStarfield();
     }
 
     toggleIntel() {
@@ -4144,16 +3133,11 @@ export class StarfieldManager {
             // Power down target computer UI (system is already powered down in shutdownAllSystems)
             if (this.targetComputerEnabled) {
                 this.targetComputerEnabled = false;
-                this.targetHUD.style.display = 'none';
-                this.targetReticle.style.display = 'none';
+                this.targetComputerManager.hideTargetHUD();
+                this.targetComputerManager.hideTargetReticle();
                 
-                // Clear wireframe if it exists
-                if (this.targetWireframe) {
-                    this.wireframeScene.remove(this.targetWireframe);
-                    this.targetWireframe.geometry.dispose();
-                    this.targetWireframe.material.dispose();
-                    this.targetWireframe = null;
-                }
+                // Clear wireframe through target computer manager
+                this.targetComputerManager.clearTargetWireframe();
             }
             
             // Close galactic chart if open
@@ -4320,7 +3304,7 @@ export class StarfieldManager {
                 this.weaponHUD.weaponSlotsDisplay.style.display = 'flex';
                 this.weaponHUD.autofireIndicator.style.display = 'none'; // Will be shown if autofire is on
                 this.weaponHUD.targetLockIndicator.style.display = 'none'; // Will be shown if locked
-                this.weaponHUD.messageDisplay.style.display = 'none'; // Will be shown when needed
+                // Don't force messageDisplay to be hidden - let WeaponHUD.showMessage() control it
                 console.log('🚀 Weapon HUD restored after launch');
                 
                 // Update weapon HUD with current weapon system state
@@ -4552,6 +3536,51 @@ export class StarfieldManager {
      * @param {number} count - Number of dummy ships to create
      */
     async createTargetDummyShips(count = 3) {
+        console.log(`🎯 Creating ${count} target dummy ships...`);
+        
+        // Store current target information for restoration BEFORE any changes
+        const previousTarget = this.targetComputerManager.currentTarget;
+        const previousTargetIndex = this.targetComputerManager.targetIndex;
+        const previousTargetData = this.targetComputerManager.getCurrentTargetData();
+        
+        // Store identifying characteristics to find the target after update
+        const targetIdentifier = previousTargetData ? {
+            name: previousTargetData.name,
+            type: previousTargetData.type,
+            shipName: previousTargetData.ship?.shipName,
+            position: previousTarget?.position ? {
+                x: Math.round(previousTarget.position.x * 1000) / 1000,
+                y: Math.round(previousTarget.position.y * 1000) / 1000, 
+                z: Math.round(previousTarget.position.z * 1000) / 1000
+            } : null
+        } : null;
+        
+        // Enable flag to prevent automatic target changes during dummy creation
+        this.targetComputerManager.preventTargetChanges = true;
+        
+        // Force complete wireframe cleanup before any target list changes
+        if (this.targetOutline) {
+            this.scene.remove(this.targetOutline);
+            if (this.targetOutline.geometry) this.targetOutline.geometry.dispose();
+            if (this.targetOutline.material) this.targetOutline.material.dispose();
+            this.targetOutline = null;
+            this.targetOutlineObject = null;
+        }
+        
+        if (this.targetComputerManager.targetWireframe) {
+            this.targetComputerManager.wireframeScene.remove(this.targetComputerManager.targetWireframe);
+            if (this.targetComputerManager.targetWireframe.geometry) {
+                this.targetComputerManager.targetWireframe.geometry.dispose();
+            }
+            if (this.targetComputerManager.targetWireframe.material) {
+                if (Array.isArray(this.targetComputerManager.targetWireframe.material)) {
+                    this.targetComputerManager.targetWireframe.material.forEach(material => material.dispose());
+                } else {
+                    this.targetComputerManager.targetWireframe.material.dispose();
+                }
+            }
+            this.targetComputerManager.targetWireframe = null;
+        }
         
         // Import EnemyShip class
         const { default: EnemyShip } = await import('../ship/EnemyShip.js');
@@ -4603,6 +3632,29 @@ export class StarfieldManager {
                 this.targetDummyShips.push(dummyShip);
                 this.dummyShipMeshes.push(shipMesh);
                 
+                // Add physics body for the ship (static body for target practice)
+                if (window.physicsManager && window.physicsManagerReady) {
+                    const physicsBody = window.physicsManager.createShipRigidBody(shipMesh, {
+                        mass: 0, // Static body - won't move when hit by projectiles
+                        width: 4.0,  // Ship dimensions based on mesh size (2.0 * 2 for buffer)
+                        height: 4.0,
+                        depth: 4.0,
+                        entityType: 'enemy_ship',
+                        entityId: `target_dummy_${i + 1}`,
+                        health: dummyShip.currentHull || 100
+                    });
+                    
+                    if (physicsBody) {
+                        console.log(`🚀 Physics body created for Target Dummy ${i + 1}`);
+                        // Store physics body reference in mesh userData
+                        shipMesh.userData.physicsBody = physicsBody;
+                    } else {
+                        console.warn(`❌ Failed to create physics body for Target Dummy ${i + 1}`);
+                    }
+                } else {
+                    console.warn('⚠️ PhysicsManager not ready - skipping physics body creation for ships');
+                }
+                
                 // Debug log actual distance from origin (where player should be)
                 const originPosition = new this.THREE.Vector3(0, 0, 0);
                 const actualDistance = originPosition.distanceTo(shipMesh.position);
@@ -4616,6 +3668,68 @@ export class StarfieldManager {
         // Update target list to include dummy ships
         this.updateTargetList();
         
+        // Try to restore previous target using the identifier or fallback methods
+        let foundIndex = -1;
+        let foundTarget = null;
+        
+        if (targetIdentifier) {
+            // Find target by identifying characteristics
+            for (let i = 0; i < this.targetComputerManager.targetObjects.length; i++) {
+                const targetData = this.targetComputerManager.targetObjects[i];
+                const target = targetData.object;
+                
+                // Match by name first (most reliable)
+                if (targetData.name === targetIdentifier.name) {
+                    // For ships, also check ship name if available
+                    if (targetIdentifier.shipName && targetData.ship?.shipName) {
+                        if (targetData.ship.shipName === targetIdentifier.shipName) {
+                            foundIndex = i;
+                            foundTarget = target;
+                            break;
+                        }
+                    } else {
+                        // For celestial bodies or when ship name not available, use position check
+                        if (targetIdentifier.position && target?.position) {
+                            const posMatch = (
+                                Math.abs(target.position.x - targetIdentifier.position.x) < 0.01 &&
+                                Math.abs(target.position.y - targetIdentifier.position.y) < 0.01 &&
+                                Math.abs(target.position.z - targetIdentifier.position.z) < 0.01
+                            );
+                            if (posMatch) {
+                                foundIndex = i;
+                                foundTarget = target;
+                                break;
+                            }
+                        } else {
+                            // Fallback to name match only
+                            foundIndex = i;
+                            foundTarget = target;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (foundIndex >= 0 && foundTarget) {
+            this.targetComputerManager.targetIndex = foundIndex;
+            this.targetComputerManager.currentTarget = foundTarget;
+            
+            // Recreate wireframes for the restored target
+            this.targetComputerManager.createTargetWireframe();
+            this.targetComputerManager.updateTargetDisplay();
+            
+            // Force StarfieldManager outline recreation  
+            const currentTargetData = this.targetComputerManager.getCurrentTargetData();
+            if (currentTargetData) {
+                this.createTargetOutline(foundTarget, '#00ff41', currentTargetData);
+            }
+        }
+        
+        // Clear the flag to allow normal target changes again
+        this.targetComputerManager.preventTargetChanges = false;
+        
+        console.log(`✅ Target dummy ships created successfully - target preserved`);
     }
 
     /**
@@ -4703,6 +3817,12 @@ export class StarfieldManager {
         // Remove meshes from scene
         this.dummyShipMeshes.forEach(mesh => {
             this.scene.remove(mesh);
+            
+            // Remove physics body if it exists
+            if (mesh.userData?.physicsBody && window.physicsManager) {
+                window.physicsManager.removeRigidBody(mesh);
+                console.log('🧹 Physics body removed for target dummy ship');
+            }
             
             // Dispose of geometries and materials
             mesh.traverse((child) => {
@@ -4902,8 +4022,8 @@ export class StarfieldManager {
     updateTargetDisplay() {
         // Don't show anything if targeting is completely disabled
         if (!this.targetComputerEnabled) {
-            this.targetHUD.style.display = 'none';
-            this.targetReticle.style.display = 'none';
+            this.targetComputerManager.hideTargetHUD();
+            this.targetComputerManager.hideTargetReticle();
             this.currentButtonState = {
                 hasDockButton: false,
                 isDocked: false,
@@ -4915,20 +4035,18 @@ export class StarfieldManager {
 
         // Handle galactic view
         if (this.viewManager.currentView === 'galactic') {
-            this.targetHUD.style.display = 'none';
+            this.targetComputerManager.hideTargetHUD();
             return;
         }
 
         // Keep target HUD visible as long as targeting is enabled
-        this.targetHUD.style.display = 'block';
+        this.targetComputerManager.showTargetHUD();
 
         // Handle case where there's no current target
         if (!this.currentTarget) {
-            this.targetReticle.style.display = 'none';
+            this.targetComputerManager.hideTargetReticle();
             // Clear any existing action buttons to prevent stale dock buttons
-            if (this.actionButtonsContainer) {
-                this.actionButtonsContainer.innerHTML = '';
-            }
+            this.targetComputerManager.clearActionButtons();
             // Reset button state
             this.currentButtonState = {
                 hasDockButton: false,
@@ -4948,11 +4066,9 @@ export class StarfieldManager {
         // Get the current target data
         const currentTargetData = this.getCurrentTargetData();
         if (!currentTargetData) {
-            this.targetReticle.style.display = 'none';
+            this.targetComputerManager.hideTargetReticle();
             // Clear any existing action buttons to prevent stale dock buttons
-            if (this.actionButtonsContainer) {
-                this.actionButtonsContainer.innerHTML = '';
-            }
+            this.targetComputerManager.clearActionButtons();
             // Reset button state
             this.currentButtonState = {
                 hasDockButton: false,
@@ -5009,7 +4125,7 @@ export class StarfieldManager {
         } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
             diplomacyColor = '#00ff41';
         }
-        this.targetHUD.style.borderColor = diplomacyColor;
+        this.targetComputerManager.setTargetHUDBorderColor(diplomacyColor);
         
         // Update wireframe container border color to match
         if (this.wireframeContainer) {
@@ -5021,76 +4137,11 @@ export class StarfieldManager {
         const targetComputer = ship?.getSystem('target_computer');
         let subTargetHTML = '';
         
-        // Add sub-target information if available
-        if (targetComputer && targetComputer.hasSubTargeting()) {
-            // For enemy ships, use actual sub-targeting
-            if (isEnemyShip && currentTargetData.ship) {
-                // Set the enemy ship as the current target for the targeting computer
-                targetComputer.currentTarget = currentTargetData.ship;
-                targetComputer.updateSubTargets();
-                
-                if (targetComputer.currentSubTarget) {
-                    const subTarget = targetComputer.currentSubTarget;
-                    const healthPercent = Math.round(subTarget.health * 100);
-                    
-                    // Get accuracy and damage bonuses
-                    const accuracyBonus = Math.round(targetComputer.getSubTargetAccuracyBonus() * 100);
-                    const damageBonus = Math.round(targetComputer.getSubTargetDamageBonus() * 100);
-                    
-                    // Create health bar display matching main hull health style
-                    const healthBarSection = `
-                        <div style="margin-top: 8px; padding: 4px 0;">
-                            <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">${subTarget.displayName}: ${healthPercent}%</div>
-                            <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
-                                <div style="background-color: white; height: 100%; width: ${healthPercent}%; transition: width 0.3s ease;"></div>
-                            </div>
-                        </div>`;
-                    
-                    subTargetHTML = `
-                        <div style="
-                            background-color: ${isEnemyShip ? '#ff0000' : diplomacyColor}; 
-                            color: ${isEnemyShip ? 'white' : '#000000'}; 
-                            padding: 6px; 
-                            border-radius: 4px; 
-                            margin-top: 4px;
-                            font-weight: bold;
-                        ">
-                            <div style="font-size: 12px; margin-bottom: 2px;">SYSTEM:</div>
-                            ${healthBarSection}
-                            <div style="font-size: 10px; opacity: 0.8; margin-top: 6px;">
-                                <span>Acc:</span> <span>+${accuracyBonus}%</span> • 
-                                <span>Dmg:</span> <span>+${damageBonus}%</span>
-                            </div>
-                            <div style="font-size: 9px; opacity: 0.6; margin-top: 2px;">
-                                &lt; &gt; to cycle sub-targets
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    // Show available sub-targets count
-                    const availableTargets = targetComputer.availableSubTargets.length;
-                    if (availableTargets > 0) {
-                        subTargetHTML = `
-                            <div style="
-                                background-color: ${diplomacyColor}; 
-                                color: #000000; 
-                                padding: 6px; 
-                                border-radius: 4px; 
-                                margin-top: 4px;
-                                font-weight: bold;
-                            ">
-                                <div style="font-size: 12px; margin-bottom: 2px;">SYSTEM:</div>
-                                <div style="font-size: 11px; opacity: 0.8;">
-                                    ${availableTargets} targetable systems detected
-                                </div>
-                                <div style="font-size: 9px; opacity: 0.6; margin-top: 2px;">
-                                    &lt; &gt; to cycle sub-targets
-                                </div>
-                            </div>
-                        `;
-                    }
-                }
-            }
+        // Enhanced sub-targeting display with weapon and level compatibility
+        // Only update sub-targets if we're not preventing target changes (like during dummy creation)
+        if (!this.targetComputerManager?.preventTargetChanges) {
+            const subTargetAvailability = this.getSubTargetAvailability(ship, targetComputer, isEnemyShip, currentTargetData);
+            subTargetHTML = subTargetAvailability.html;
         }
 
         // Update target information display with colored background and black text
@@ -5141,7 +4192,7 @@ export class StarfieldManager {
             backgroundColor = diplomacyColor;
         }
         
-        this.targetInfoDisplay.innerHTML = `
+        this.targetComputerManager.updateTargetInfoDisplay(`
             <div style="background-color: ${backgroundColor}; color: ${textColor}; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
                 <div style="font-weight: bold; font-size: 12px;">${info?.name || 'Unknown Target'}</div>
                 <div style="font-size: 10px;">${typeDisplay}</div>
@@ -5149,7 +4200,7 @@ export class StarfieldManager {
                 ${hullHealthSection}
             </div>
             ${subTargetHTML}
-        `;
+        `);
 
         // Update status icons with diplomacy color
         this.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info);
@@ -5158,13 +4209,13 @@ export class StarfieldManager {
         this.updateActionButtons(currentTargetData, info);
 
         // Display the reticle if we have a valid target
-        this.targetReticle.style.display = 'block';
+        this.targetComputerManager.showTargetReticle();
         this.updateReticlePosition();
     }
 
     updateReticlePosition() {
         if (!this.currentTarget || !this.targetComputerEnabled) {
-            this.targetReticle.style.display = 'none';
+            this.targetComputerManager.hideTargetReticle();
             if (this.targetNameDisplay) {
                 this.targetNameDisplay.style.display = 'none';
             }
@@ -5186,23 +4237,28 @@ export class StarfieldManager {
             const relativePos = this.currentTarget.position.clone().sub(this.camera.position);
             const isBehindCamera = relativePos.dot(cameraForward) < 0;
             
-            this.targetReticle.style.display = isBehindCamera ? 'none' : 'block';
-            this.targetReticle.style.left = `${x}px`;
-            this.targetReticle.style.top = `${y}px`;
-
-            // Update target information displays if reticle is visible
-            if (!isBehindCamera) {
-                this.updateReticleTargetInfo();
-            } else {
+            if (isBehindCamera) {
+                this.targetComputerManager.hideTargetReticle();
                 if (this.targetNameDisplay) {
                     this.targetNameDisplay.style.display = 'none';
                 }
                 if (this.targetDistanceDisplay) {
                     this.targetDistanceDisplay.style.display = 'none';
                 }
+            } else {
+                // RESTORED: Direct reticle positioning like original backup version
+                this.targetComputerManager.showTargetReticle();
+                const targetReticle = this.targetComputerManager.targetReticle;
+                if (targetReticle) {
+                    targetReticle.style.left = `${x}px`;
+                    targetReticle.style.top = `${y}px`;
+                }
+                
+                // Update target information displays if reticle is visible
+                this.updateReticleTargetInfo();
             }
         } else {
-            this.targetReticle.style.display = 'none';
+            this.targetComputerManager.hideTargetReticle();
             if (this.targetNameDisplay) {
                 this.targetNameDisplay.style.display = 'none';
             }
@@ -5264,7 +4320,7 @@ export class StarfieldManager {
         }
 
         // Update reticle corner colors
-        const corners = this.targetReticle.getElementsByClassName('reticle-corner');
+        const corners = this.targetComputerManager.getTargetReticleCorners();
         for (const corner of corners) {
             corner.style.borderColor = reticleColor;
             corner.style.boxShadow = `0 0 2px ${reticleColor}`;
@@ -5332,136 +4388,8 @@ export class StarfieldManager {
     }
 
     updateDirectionArrow() {
-        // Only proceed if we have a target and the target computer is enabled
-        if (!this.currentTarget || !this.targetComputerEnabled || !this.directionArrows) {
-            // Hide all arrows
-            Object.values(this.directionArrows).forEach(arrow => {
-                arrow.style.display = 'none';
-            });
-            return;
-        }
-
-        // Get target's world position relative to camera
-        const targetPosition = this.currentTarget.position.clone();
-        const screenPosition = targetPosition.clone().project(this.camera);
-        
-        // Check if target is off screen
-        const isOffScreen = Math.abs(screenPosition.x) > 1 || Math.abs(screenPosition.y) > 1;
-
-        if (isOffScreen) {
-            // Get camera's view direction and relative position
-            const cameraDirection = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-            const relativePosition = targetPosition.clone().sub(this.camera.position);
-            
-            // Get camera's right and up vectors
-            const cameraRight = new this.THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
-            const cameraUp = new this.THREE.Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion);
-            
-            // Project relative position onto camera's right and up vectors
-            const rightComponent = relativePosition.dot(cameraRight);
-            const upComponent = relativePosition.dot(cameraUp);
-
-            // Get target info for color
-            const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-            let arrowColor = '#D0D0D0'; // Default gray
-            if (info?.type === 'star') {
-                arrowColor = '#ffff00'; // Stars are neutral
-            } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-                arrowColor = '#ff3333'; // Darker neon red
-            } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-                arrowColor = '#ffff00';
-            } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-                arrowColor = '#00ff41';
-            }
-
-            // Hide all arrows first
-            Object.values(this.directionArrows).forEach(arrow => {
-                arrow.style.display = 'none';
-            });
-
-            // Get HUD position
-            const hudRect = this.targetHUD.getBoundingClientRect();
-
-            // Show and position the appropriate arrow
-            if (Math.abs(rightComponent) > Math.abs(upComponent)) {
-                if (rightComponent > 0) {
-                    // Right arrow
-                    const arrow = this.directionArrows.right;
-                    arrow.style.cssText = `
-                        position: fixed;
-                        left: ${hudRect.right + 5}px;
-                        top: ${hudRect.top + hudRect.height / 2}px;
-                        width: 0;
-                        height: 0;
-                        border-top: 8px solid transparent;
-                        border-bottom: 8px solid transparent;
-                        border-left: 12px solid ${arrowColor};
-                        transform: translateY(-50%);
-                        display: block;
-                        pointer-events: none;
-                        z-index: 1000;
-                    `;
-                } else {
-                    // Left arrow
-                    const arrow = this.directionArrows.left;
-                    arrow.style.cssText = `
-                        position: fixed;
-                        left: ${hudRect.left - 17}px;
-                        top: ${hudRect.top + hudRect.height / 2}px;
-                        width: 0;
-                        height: 0;
-                        border-top: 8px solid transparent;
-                        border-bottom: 8px solid transparent;
-                        border-right: 12px solid ${arrowColor};
-                        transform: translateY(-50%);
-                        display: block;
-                        pointer-events: none;
-                        z-index: 1000;
-                    `;
-                }
-            } else {
-                if (upComponent > 0) {
-                    // Top arrow
-                    const arrow = this.directionArrows.top;
-                    arrow.style.cssText = `
-                        position: fixed;
-                        left: ${hudRect.left + hudRect.width / 2}px;
-                        top: ${hudRect.top - 17}px;
-                        width: 0;
-                        height: 0;
-                        border-left: 8px solid transparent;
-                        border-right: 8px solid transparent;
-                        border-bottom: 12px solid ${arrowColor};
-                        transform: translateX(-50%);
-                        display: block;
-                        pointer-events: none;
-                        z-index: 1000;
-                    `;
-                } else {
-                    // Bottom arrow
-                    const arrow = this.directionArrows.bottom;
-                    arrow.style.cssText = `
-                        position: fixed;
-                        left: ${hudRect.left + hudRect.width / 2}px;
-                        top: ${hudRect.bottom + 5}px;
-                        width: 0;
-                        height: 0;
-                        border-left: 8px solid transparent;
-                        border-right: 8px solid transparent;
-                        border-top: 12px solid ${arrowColor};
-                        transform: translateX(-50%);
-                        display: block;
-                        pointer-events: none;
-                        z-index: 1000;
-                    `;
-                }
-            }
-        } else {
-            // Hide all arrows when target is on screen
-            Object.values(this.directionArrows).forEach(arrow => {
-                arrow.style.display = 'none';
-            });
-        }
+        // Delegate to target computer manager
+        this.targetComputerManager.updateDirectionArrow();
     }
 
     /**
@@ -5861,6 +4789,21 @@ export class StarfieldManager {
             
             if (ship?.weaponSystem) {
                 ship.weaponSystem.setLockedTarget(null);
+                
+                // Turn off autofire when main target is destroyed
+                // This doesn't apply to sub-targets, only when the entire ship is destroyed
+                if (ship.weaponSystem.isAutofireOn) {
+                    ship.weaponSystem.isAutofireOn = false;
+                    console.log('🎯 Autofire turned OFF - main target destroyed');
+                    
+                    // Update UI to reflect autofire is now off
+                    if (ship.weaponSystem.weaponHUD) {
+                        ship.weaponSystem.weaponHUD.updateAutofireStatus(false);
+                    }
+                    
+                    // Show message to player
+                    ship.weaponSystem.showMessage('Autofire disabled - target destroyed', 3000);
+                }
             }
             
             if (targetComputer) {
@@ -5901,16 +4844,33 @@ export class StarfieldManager {
                     this.targetWireframe = null;
                 }
                 
-                if (this.targetHUD) {
-                    this.targetHUD.style.display = 'none';
-                }
-                if (this.targetReticle) {
-                    this.targetReticle.style.display = 'none';
+                if (this.targetComputerManager) {
+                    this.targetComputerManager.hideTargetHUD();
+                    this.targetComputerManager.hideTargetReticle();
                 }
             }
             
         } else {
             console.log('🎯 Destroyed ship was not targeted by any system - minimal cleanup');
+            
+            // Check if autofire was targeting this ship even if not officially "targeted"
+            if (ship?.weaponSystem?.isAutofireOn && ship.weaponSystem.lockedTarget) {
+                // Check if the destroyed ship matches the autofire target
+                const autofireTargetShip = ship.weaponSystem.lockedTarget.ship;
+                if (autofireTargetShip === destroyedShip) {
+                    ship.weaponSystem.isAutofireOn = false;
+                    ship.weaponSystem.setLockedTarget(null);
+                    console.log('🎯 Autofire turned OFF - autofire target destroyed');
+                    
+                    // Update UI to reflect autofire is now off
+                    if (ship.weaponSystem.weaponHUD) {
+                        ship.weaponSystem.weaponHUD.updateAutofireStatus(false);
+                    }
+                    
+                    // Show message to player
+                    ship.weaponSystem.showMessage('Autofire disabled - target destroyed', 3000);
+                }
+            }
             
             // ALWAYS clear 3D outline when any ship is destroyed
             // Even if not "targeted", the outline might still be showing it
@@ -5937,11 +4897,9 @@ export class StarfieldManager {
                 this.targetIndex = -1;
                 this.clearTargetOutline();
                 
-                if (this.targetHUD) {
-                    this.targetHUD.style.display = 'none';
-                }
-                if (this.targetReticle) {
-                    this.targetReticle.style.display = 'none';
+                if (this.targetComputerManager) {
+                    this.targetComputerManager.hideTargetHUD();
+                    this.targetComputerManager.hideTargetReticle();
                 }
             }
         }
@@ -5958,41 +4916,11 @@ export class StarfieldManager {
     }
 
     updateStatusIcons(distance, diplomacyColor, isEnemyShip, info) {
-        // Update status icons with diplomacy color
-        this.governmentIcon.style.display = info?.government ? 'block' : 'none';
-        this.economyIcon.style.display = info?.economy ? 'block' : 'none';
-        this.technologyIcon.style.display = info?.technology ? 'block' : 'none';
+        // Delegate status icon updates to target computer manager
+        this.targetComputerManager.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info);
 
-        // Update icon colors and borders to match diplomacy
-        [this.governmentIcon, this.economyIcon, this.technologyIcon].forEach(icon => {
-            if (icon.style.display !== 'none') {
-                icon.style.borderColor = diplomacyColor;
-                icon.style.color = diplomacyColor;
-                icon.style.textShadow = `0 0 4px ${diplomacyColor}`;
-                icon.style.boxShadow = `0 0 4px ${diplomacyColor.replace(')', ', 0.4)')}`;
-            }
-        });
-
-        // Update intel icon display
+        // Update intel icon display (this is still handled by StarfieldManager)
         this.updateIntelIconDisplay();
-
-        // Update tooltips with current info
-        if (info?.government) {
-            this.governmentIcon.title = `Government: ${info.government}`;
-        }
-        if (info?.economy) {
-            this.economyIcon.title = `Economy: ${info.economy}`;
-        }
-        if (info?.technology) {
-            this.technologyIcon.title = `Technology: ${info.technology}`;
-        }
-
-        // Update reticle colors
-        const corners = this.targetReticle.getElementsByClassName('reticle-corner');
-        Array.from(corners).forEach(corner => {
-            corner.style.borderColor = diplomacyColor;
-            corner.style.boxShadow = `0 0 2px ${diplomacyColor}`;
-        });
     }
 
     updateActionButtons(currentTargetData, info) {
@@ -6000,7 +4928,7 @@ export class StarfieldManager {
         // which shows when conditions are met (distance, speed, etc.)
         
         // Clear existing buttons since we no longer show dock button
-        this.actionButtonsContainer.innerHTML = '';
+        this.targetComputerManager.clearActionButtons();
         
         // Reset button state
         this.currentButtonState = {
@@ -6297,7 +5225,7 @@ export class StarfieldManager {
         try {
             const ship = this.viewManager?.getShip();
             if (!ship) {
-                console.warn('    ⚠️ No ship available for weapon system initialization');
+                console.log('    🔍 Ship initializing - weapon system setup deferred');
                 return;
             }
 
@@ -6340,13 +5268,13 @@ export class StarfieldManager {
         
         const ship = this.viewManager?.getShip();
         if (!ship) {
-            console.warn('    ⚠️ No ship available for weapon UI update');
+            console.log('    🔍 Ship initializing - weapon UI updates deferred');
             return;
         }
         
         const weaponsSystem = ship.getSystem('weapons');
         if (!weaponsSystem) {
-            console.warn('    ⚠️ No weapons system found');
+            console.log('    🔍 No weapons system installed - weapon UI updates skipped');
             return;
         }
         
@@ -6377,6 +5305,330 @@ export class StarfieldManager {
             { name: 'Within Docking Range', met: true },
             { name: 'Ship Systems Operational', met: true }
         ];
+    }
+
+    /**
+     * Callback when weapon system is ready (called by Ship)
+     */
+    onWeaponSystemReady() {
+        console.log('🔫 StarfieldManager: Weapon system ready notification received');
+        
+        // Try to connect WeaponHUD immediately
+        if (this.weaponHUD && !this.weaponHUDConnected) {
+            console.log('🔗 Attempting immediate WeaponHUD connection...');
+            this.connectWeaponHUDToSystem();
+            
+            // If connection successful, clear the retry interval
+            if (this.weaponHUDConnected && this.weaponHUDRetryInterval) {
+                clearInterval(this.weaponHUDRetryInterval);
+                this.weaponHUDRetryInterval = null;
+                console.log('✅ WeaponHUD connected immediately, retry interval cleared');
+            }
+        }
+    }
+
+    /**
+     * Get sub-targeting availability and display information
+     * @param {Object} ship Current ship
+     * @param {Object} targetComputer Target computer system
+     * @param {boolean} isEnemyShip Whether target is an enemy ship
+     * @param {Object} currentTargetData Current target data
+     * @returns {Object} HTML and availability information
+     */
+    getSubTargetAvailability(ship, targetComputer, isEnemyShip, currentTargetData) {
+        let html = '';
+        
+        // Check basic requirements
+        if (!targetComputer) {
+            return { 
+                html: '',
+                available: false,
+                reason: 'No Target Computer'
+            };
+        }
+
+        // Determine target type and faction color using same logic as main target display
+        let diplomacyColor = '#D0D0D0'; // Default gray
+        let isCelestialBody = false;
+        
+        if (isEnemyShip) {
+            diplomacyColor = '#ff3333'; // Enemy ships are darker neon red
+        } else {
+            // Get celestial body info for non-ship targets
+            const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+            if (info) {
+                isCelestialBody = true; // Mark as celestial body
+                if (info.type === 'star') {
+                    diplomacyColor = '#ffff00'; // Stars are neutral yellow
+                } else if (info.diplomacy?.toLowerCase() === 'enemy') {
+                    diplomacyColor = '#ff3333'; // Darker neon red
+                } else if (info.diplomacy?.toLowerCase() === 'neutral') {
+                    diplomacyColor = '#ffff00';
+                } else if (info.diplomacy?.toLowerCase() === 'friendly') {
+                    diplomacyColor = '#00ff41';
+                }
+            }
+        }
+
+        const currentWeapon = ship?.weaponSystem?.getActiveWeapon();
+        const weaponCard = currentWeapon?.equippedWeapon;
+        let weaponType = weaponCard?.weaponType;
+        const weaponName = weaponCard?.name || 'No Weapon';
+        const tcLevel = targetComputer.level;
+        
+        // Fallback: If weaponType is not set, look it up from weapon definitions
+        if (!weaponType && weaponCard?.weaponId) {
+            // Common scan-hit weapons
+            const scanHitWeapons = ['laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array', 'disruptor_cannon', 'particle_beam'];
+            const splashDamageWeapons = ['standard_missile', 'homing_missile', 'photon_torpedo', 'proximity_mine'];
+            
+            if (scanHitWeapons.includes(weaponCard.weaponId)) {
+                weaponType = 'scan-hit';
+            } else if (splashDamageWeapons.includes(weaponCard.weaponId)) {
+                weaponType = 'splash-damage';
+            }
+        }
+        
+
+        
+        // Determine availability and reason
+        let available = true;
+        let reason = '';
+        let statusColor = diplomacyColor; // Use faction color for available
+        
+        if (!targetComputer.hasSubTargeting()) {
+            available = false;
+            reason = `Target Computer Level ${tcLevel} (requires Level 3+)`;
+            statusColor = '#ff3333';
+        } else if (isCelestialBody) {
+            available = false;
+            reason = 'Celestial bodies don\'t have subsystems';
+            statusColor = '#ff3333';
+        } else if (!isEnemyShip || !currentTargetData.ship) {
+            available = false;
+            reason = 'Target must be a ship with subsystems';
+            statusColor = '#ff3333';
+        } else if (!currentWeapon || currentWeapon.isEmpty) {
+            available = false;
+            reason = 'No weapon selected';
+            statusColor = '#ff3333';
+        } else if (weaponType !== 'scan-hit') {
+            available = false;
+            if (weaponType === 'splash-damage') {
+                reason = 'Projectile weapons don\'t support sub-targeting';
+            } else {
+                reason = 'Weapon type not compatible';
+            }
+            statusColor = '#ff3333';
+        }
+        
+        // Build the HTML display
+        if (available && targetComputer.hasSubTargeting() && isEnemyShip && currentTargetData.ship && !isCelestialBody) {
+            // Set the enemy ship as the current target for the targeting computer
+            targetComputer.currentTarget = currentTargetData.ship;
+            // Only update sub-targets if we're not preventing target changes
+            if (!this.targetComputerManager?.preventTargetChanges) {
+                targetComputer.updateSubTargets();
+            }
+            
+            if (targetComputer.currentSubTarget) {
+                // Show active sub-targeting with current target
+                const subTarget = targetComputer.currentSubTarget;
+                const healthPercent = Math.round(subTarget.health * 100);
+                
+                // Get accuracy and damage bonuses
+                const accuracyBonus = Math.round(targetComputer.getSubTargetAccuracyBonus() * 100);
+                const damageBonus = Math.round(targetComputer.getSubTargetDamageBonus() * 100);
+                
+                // Create health bar display matching main hull health style
+                const healthBarSection = `
+                    <div style="margin-top: 8px; padding: 4px 0;">
+                        <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">${subTarget.displayName}: ${healthPercent}%</div>
+                        <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
+                            <div style="background-color: white; height: 100%; width: ${healthPercent}%; transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>`;
+                
+                // Determine text and background colors based on target faction
+                let textColor, backgroundColor;
+                if (isEnemyShip) {
+                    // White text on faction color background for hostile enemies
+                    textColor = 'white';
+                    backgroundColor = diplomacyColor;
+                } else {
+                    // Black text on faction color background for non-hostile targets
+                    textColor = 'black';
+                    backgroundColor = diplomacyColor;
+                }
+                
+                html = `
+                    <div style="
+                        background-color: ${backgroundColor}; 
+                        color: ${textColor}; 
+                        padding: 6px; 
+                        border-radius: 4px; 
+                        margin-top: 4px;
+                        font-weight: bold;
+                    ">
+                        <div style="font-size: 12px; margin-bottom: 2px;">SYSTEM:</div>
+                        ${healthBarSection}
+                        <div style="font-size: 10px; opacity: 0.8; margin-top: 6px;">
+                            <span>Acc:</span> <span>+${accuracyBonus}%</span> • 
+                            <span>Dmg:</span> <span>+${damageBonus}%</span>
+                        </div>
+                        <div style="font-size: 9px; opacity: 0.8; margin-top: 2px; color: ${statusColor};">
+                            ✓ &lt; &gt; to cycle sub-targets
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Show available sub-targets count
+                const availableTargets = targetComputer.availableSubTargets.length;
+                if (availableTargets > 0) {
+                    // Use same faction-based color logic for available targets display
+                    const textColor = isEnemyShip ? 'white' : 'black';
+                    
+                    html = `
+                        <div style="
+                            background-color: ${diplomacyColor}; 
+                            color: ${textColor}; 
+                            padding: 6px; 
+                            border-radius: 4px; 
+                            margin-top: 4px;
+                            font-weight: bold;
+                        ">
+                            <div style="font-size: 12px; margin-bottom: 2px;">SYSTEM:</div>
+                            <div style="font-size: 11px; opacity: 0.8;">
+                                ${availableTargets} targetable systems detected
+                            </div>
+                            <div style="font-size: 9px; opacity: 0.8; margin-top: 2px; color: ${statusColor};">
+                                ✓ &lt; &gt; to cycle sub-targets
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        } else {
+            // Show unavailable status with reason using faction colors
+            const textColor = isEnemyShip ? 'white' : 'black';
+            
+            html = `
+                <div style="
+                    background-color: ${diplomacyColor}; 
+                    color: ${textColor}; 
+                    padding: 6px; 
+                    border-radius: 4px; 
+                    margin-top: 4px;
+                    font-weight: bold;
+                    border: 1px solid ${diplomacyColor};
+                ">
+                    <div style="font-size: 12px; margin-bottom: 2px;">SUB-TARGETING:</div>
+                    <div style="font-size: 10px; opacity: 0.8;">
+                        ${available ? 'Available' : 'Unavailable'}
+                    </div>
+                    ${reason ? `<div style="font-size: 9px; opacity: 0.7; margin-top: 2px;">
+                        ${reason}
+                    </div>` : ''}
+                    ${available ? `<div style="font-size: 9px; opacity: 0.6; margin-top: 2px;">
+                        ✓ &lt; &gt; sub-targeting
+                    </div>` : ''}
+                </div>
+            `;
+        }
+        
+        return {
+            html,
+            available,
+            reason
+        };
+    }
+
+    /**
+     * Enhanced sub-targeting key handler with weapon type validation
+     * @param {string} direction 'previous' or 'next'
+     */
+    handleSubTargetingKey(direction) {
+        // Basic requirements check
+        if (this.isDocked || !this.targetComputerEnabled || !this.currentTarget) {
+            this.playCommandFailedSound();
+            return;
+        }
+
+        const ship = this.viewManager?.getShip();
+        if (!ship) {
+            this.playCommandFailedSound();
+            return;
+        }
+
+        const targetComputer = ship.getSystem('target_computer');
+        
+        // Check if target computer exists and supports sub-targeting (Level 3+)
+        if (!targetComputer) {
+            this.playCommandFailedSound();
+            ship.weaponSystem?.showMessage('No Target Computer Installed', 3000);
+            return;
+        }
+
+        if (!targetComputer.hasSubTargeting()) {
+            this.playCommandFailedSound();
+            const tcLevel = targetComputer.level;
+            ship.weaponSystem?.showMessage(`Target Computer Level ${tcLevel} - Sub-targeting requires Level 3+`, 4000);
+            return;
+        }
+
+        // Check current weapon compatibility
+        const currentWeapon = ship.weaponSystem?.getActiveWeapon();
+        if (!currentWeapon || currentWeapon.isEmpty) {
+            this.playCommandFailedSound();
+            ship.weaponSystem?.showMessage('No Weapon Selected', 3000);
+            return;
+        }
+
+        const weaponCard = currentWeapon.equippedWeapon;
+        const weaponType = weaponCard?.weaponType;
+        const weaponName = weaponCard?.name || 'Current Weapon';
+
+        // Debug weapon information
+        console.log(`🎯 Sub-targeting check for: ${weaponName}`);
+        console.log(`🎯 Weapon type: ${weaponType}`);
+        console.log(`🎯 Weapon card:`, weaponCard);
+
+        // Check if current weapon supports sub-targeting (scan-hit weapons only)
+        if (weaponType !== 'scan-hit') {
+            this.playCommandFailedSound();
+            
+            if (weaponType === 'splash-damage') {
+                ship.weaponSystem?.showMessage(`${weaponName}: Projectile weapons don't support sub-targeting`, 4000);
+            } else {
+                ship.weaponSystem?.showMessage(`${weaponName}: Sub-targeting not supported (type: ${weaponType})`, 4000);
+            }
+            return;
+        }
+
+        // All requirements met - proceed with sub-targeting
+        if (targetComputer.availableSubTargets.length <= 1) {
+            this.playCommandFailedSound();
+            ship.weaponSystem?.showMessage('No Additional Sub-targets Available', 3000);
+        } else {
+            // Cycle sub-target in the requested direction
+            let success = false;
+            if (direction === 'previous') {
+                success = targetComputer.cycleSubTargetPrevious();
+            } else {
+                success = targetComputer.cycleSubTargetNext();
+            }
+
+            if (success) {
+                this.playCommandSound();
+                this.updateTargetDisplay(); // Update HUD display
+                
+                // Show brief confirmation
+                const subTargetName = targetComputer.currentSubTarget?.displayName || 'Unknown';
+                ship.weaponSystem?.showMessage(`Targeting: ${subTargetName}`, 2000);
+            } else {
+                this.playCommandFailedSound();
+            }
+        }
     }
 
 } 

@@ -79,10 +79,11 @@ export const SHIP_CONFIGS = {
             engine_1: { cardType: 'impulse_engines', level: 1 },
             power_1: { cardType: 'energy_reactor', level: 1 },
             weapon_1: { cardType: 'laser_cannon', level: 1 },
-            weapon_2: { cardType: 'pulse_cannon', level: 1 },
-            weapon_3: { cardType: 'plasma_cannon', level: 1 },
-            weapon_4: { cardType: 'phaser_array', level: 1 }
-            // Added 4 different weapons for testing the weapon system
+            weapon_2: { cardType: 'homing_missile', level: 1 },
+            weapon_3: { cardType: 'photon_torpedo', level: 1 },
+            weapon_4: { cardType: 'proximity_mine', level: 1 }
+            // Physics weapons testing loadout: laser (energy) + homing missiles + torpedoes + mines
+            // Perfect mix for testing both energy and physics projectile systems
             // Removed galactic_chart card - player must acquire from shop
             // Removed radio_1 - player must acquire subspace radio cards from the shop
         }
