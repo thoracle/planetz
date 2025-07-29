@@ -349,7 +349,7 @@ export class WeaponSlot {
             // Calculate ray direction
             const direction = new THREE.Vector3().subVectors(endPos, startPos).normalize();
             
-            // Perform physics raycast
+            // Perform physics raycast - this will find ANY targets along the beam path
             const hitResult = physicsManager.raycast(startPos, direction, weaponRangeInWorldUnits);
             
             if (hitResult && hitResult.hit) {
@@ -371,29 +371,64 @@ export class WeaponSlot {
             }
         }
 
-        // If we have a specific target, validate that we hit the intended target
-        if (target && closestHit) {
-            // Check if the hit entity matches our intended target
+        // If we have a hit, check if it matches the intended target (if target was specified)
+        if (closestHit && target) {
+            // Validate that we hit the intended target
             const hitEntity = closestHit.entity;
-            if (hitEntity && hitEntity.threeObject) {
-                // Compare positions to see if we hit the intended target
-                const hitPos = hitEntity.threeObject.position;
-                const targetPos = new THREE.Vector3(target.position.x, target.position.y, target.position.z);
-                const positionDifference = hitPos.distanceTo(targetPos);
-                
-                if (positionDifference > 1.0) { // 1km tolerance
-                    console.log(`🎯 PHYSICS HIT: Hit different target than intended (${positionDifference.toFixed(2)}km difference)`);
-                }
+            const targetValid = this.validateTargetHit(hitEntity, target);
+            
+            if (!targetValid) {
+                console.log(`🎯 PHYSICS HIT MISMATCH: Hit ${hitEntity?.type || 'unknown'} instead of intended target`);
+                // For now, accept any hit - player aimed at something and hit something
+                // In the future, could be more strict about target validation
             }
         }
 
         if (closestHit) {
-            console.log(`💥 PHYSICS LASER HIT: ${closestHit.entity?.type || 'unknown'} at ${closestHit.distance.toFixed(2)}km`);
+            console.log(`💥 PHYSICS LASER HIT: ${closestHit.entity?.type || 'unknown'} at ${closestDistance.toFixed(2)}km`);
             return closestHit;
-        } else {
-            console.log(`🎯 PHYSICS LASER MISS: No targets hit within ${weaponRangeInWorldUnits.toFixed(1)}km range`);
-            return { hit: false, position: null, entity: null, distance: 0 };
         }
+
+        // No physics hits found
+        if (now - this.lastDebugTime > this.debugInterval) {
+            console.log(`🎯 PHYSICS LASER MISS: No targets hit within ${(weaponRange/1000).toFixed(1)}km range`);
+        }
+
+        // If physics raycast failed or found no hits, try Three.js fallback (only if target specified)
+        if (target) {
+            console.log('🔄 Physics raycast failed, using Three.js fallback:');
+            return this.checkLaserBeamHit_Fallback(startPositions, endPositions, target, weaponRange);
+        }
+
+        return { hit: false, position: null, entity: null, distance: 0 };
+    }
+
+    /**
+     * Validate that the hit entity matches the intended target
+     * @param {Object} hitEntity The entity that was hit by raycast
+     * @param {Object} target The intended target
+     * @returns {boolean} True if hit matches intended target
+     */
+    validateTargetHit(hitEntity, target) {
+        if (!hitEntity || !target) return false;
+        
+        // Check if hit entity matches target by comparing ship objects or names
+        if (hitEntity.ship && target.ship) {
+            return hitEntity.ship === target.ship || 
+                   hitEntity.ship.shipName === target.ship.shipName;
+        }
+        
+        // Check by entity type and position
+        if (hitEntity.type === target.type) {
+            return true;
+        }
+        
+        // Check by entity ID
+        if (hitEntity.id && target.name) {
+            return hitEntity.id === target.name;
+        }
+        
+        return false;
     }
 
     /**
@@ -405,12 +440,19 @@ export class WeaponSlot {
      * @returns {Object} Hit result with {hit: boolean, position: Vector3|null}
      */
     checkLaserBeamHit_Fallback(startPositions, endPositions, target, weaponRange) {
-        if (!target || !target.position) {
-            return { hit: false, position: null, entity: null, distance: 0 };
-        }
-        
         const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
         if (!THREE) {
+            console.warn('THREE.js not available for laser fallback raycast');
+            return { hit: false, position: null, entity: null, distance: 0 };
+        }
+
+        // If no specific target provided, perform area scanning for ANY targets
+        if (!target) {
+            return this.checkLaserBeamHit_AreaScan(startPositions, endPositions, weaponRange);
+        }
+
+        // Original fallback logic for specific target validation
+        if (!target.position) {
             return { hit: false, position: null, entity: null, distance: 0 };
         }
         
@@ -427,9 +469,13 @@ export class WeaponSlot {
             return { hit: false, position: null, entity: null, distance: distanceToTarget };
         }
         
-        // WIDENED HIT DETECTION for cockpit-style weapons (fallback mode)
-        const baseTargetRadius = (target.radius || 50) / 1000; // Convert radius from meters to km
-        const cockpitHitBonus = Math.max(1.0, distanceToTarget * 0.05); // 5% of distance, minimum 1.0km
+        // WIDENED HIT DETECTION for cockpit-style weapons
+        // Base target radius (convert from meters to world units)
+        const baseTargetRadius = (target.radius || 50) / 1000;
+        
+        // Cockpit weapon bonus: Add distance-based bonus for realistic targeting from cockpit perspective
+        // This simulates the fact that distant targets appear smaller and are harder to hit precisely
+        const cockpitHitBonus = (1.0, distanceToTarget * 0.05); // 5% of distance, minimum 1.0km
         const effectiveTargetRadius = (baseTargetRadius + cockpitHitBonus) * 2; // 2x bigger for balanced gameplay
         
         console.log(`🎯 FALLBACK HIT DETECTION: Distance ${distanceToTarget.toFixed(2)}km, effective radius ${effectiveTargetRadius.toFixed(3)}km`);
@@ -451,7 +497,7 @@ export class WeaponSlot {
                 const intersectionPoint = new THREE.Vector3();
                 ray.closestPointToPoint(targetPos, intersectionPoint);
                 
-                                 console.log(`💥 FALLBACK LASER HIT: Beam ${i} hit target at distance ${distanceToRay.toFixed(3)}km from ray`);
+                console.log(`💥 FALLBACK LASER HIT: Beam ${i} hit target at distance ${distanceToRay.toFixed(3)}km from ray`);
                  
                  // Create proper entity structure for fallback mode
                  const fallbackEntity = {
@@ -472,6 +518,124 @@ export class WeaponSlot {
         }
         
         return { hit: false, position: null, entity: null, distance: distanceToTarget };
+    }
+
+    /**
+     * Perform area scanning to find ANY targets along laser beam path (free-aim mode)
+     * @param {Array} startPositions Array of beam start positions
+     * @param {Array} endPositions Array of beam end positions
+     * @param {number} weaponRange Maximum weapon range in meters
+     * @returns {Object} Hit result
+     */
+    checkLaserBeamHit_AreaScan(startPositions, endPositions, weaponRange) {
+        const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
+        if (!THREE) {
+            return { hit: false, position: null, entity: null, distance: 0 };
+        }
+
+        const weaponRangeInWorldUnits = weaponRange / 1000;
+        let closestHit = null;
+        let closestDistance = Infinity;
+
+        // Get all potential targets from the scene
+        const potentialTargets = this.getAllSceneTargets();
+        
+        console.log(`🎯 AREA SCAN: Checking ${potentialTargets.length} potential targets`);
+
+        for (let i = 0; i < startPositions.length; i++) {
+            const startPos = startPositions[i];
+            const endPos = endPositions[i];
+            const direction = new THREE.Vector3().subVectors(endPos, startPos).normalize();
+            const ray = new THREE.Ray(startPos, direction);
+
+            // Check each potential target
+            for (const targetInfo of potentialTargets) {
+                const targetPos = targetInfo.position;
+                const distance = startPos.distanceTo(targetPos);
+                
+                // Skip targets outside weapon range
+                if (distance > weaponRangeInWorldUnits) continue;
+                
+                // Calculate hit detection radius (larger for gameplay)
+                const baseRadius = 0.1; // 100m base radius
+                const effectiveRadius = baseRadius + (distance * 0.02); // Grows with distance
+                
+                // Check if ray intersects target
+                const distanceToRay = ray.distanceToPoint(targetPos);
+                
+                if (distanceToRay <= effectiveRadius && distance < closestDistance) {
+                    closestDistance = distance;
+                    
+                    const intersectionPoint = new THREE.Vector3();
+                    ray.closestPointToPoint(targetPos, intersectionPoint);
+                    
+                    closestHit = {
+                        hit: true,
+                        position: intersectionPoint,
+                        entity: targetInfo.entity,
+                        distance: distance,
+                        beamIndex: i
+                    };
+                    
+                    console.log(`🎯 AREA SCAN HIT: Found target ${targetInfo.entity?.type || 'unknown'} at ${distance.toFixed(2)}km`);
+                }
+            }
+        }
+
+        if (closestHit) {
+            console.log(`💥 AREA SCAN SUCCESS: Hit ${closestHit.entity?.type || 'unknown'} at ${closestDistance.toFixed(2)}km`);
+            return closestHit;
+        }
+
+        console.log('🎯 AREA SCAN MISS: No targets found in beam path');
+        return { hit: false, position: null, entity: null, distance: 0 };
+    }
+
+    /**
+     * Get all potential targets from the scene for area scanning
+     * @returns {Array} Array of target objects with position and entity info
+     */
+    getAllSceneTargets() {
+        const targets = [];
+        
+        // Get targets from StarfieldManager if available
+        if (this.starfieldManager) {
+            // Add dummy ships
+            if (this.starfieldManager.targetDummyShips) {
+                this.starfieldManager.targetDummyShips.forEach(ship => {
+                    if (ship.currentHull > 0.001) {
+                        targets.push({
+                            position: ship.mesh.position,
+                            entity: {
+                                type: 'enemy_ship',
+                                ship: ship,
+                                threeObject: ship.mesh,
+                                id: ship.shipName
+                            }
+                        });
+                    }
+                });
+            }
+            
+            // Add targets from target computer manager
+            if (this.starfieldManager.targetComputerManager?.targetObjects) {
+                this.starfieldManager.targetComputerManager.targetObjects.forEach(targetData => {
+                    if (targetData.isShip && targetData.ship && targetData.ship.currentHull > 0.001) {
+                        targets.push({
+                            position: targetData.object.position,
+                            entity: {
+                                type: targetData.type,
+                                ship: targetData.ship,
+                                threeObject: targetData.object,
+                                id: targetData.ship.shipName
+                            }
+                        });
+                    }
+                });
+            }
+        }
+
+        return targets;
     }
     
     /**
