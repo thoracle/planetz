@@ -338,6 +338,9 @@ export class WeaponSlot {
             this.lastDebugTime = now;
         }
 
+        // DEBUG MODE: Set this to true to disable fallback and force physics-only
+        const FORCE_PHYSICS_ONLY = false; // Change to true to debug physics issues
+
         // Perform raycast for each laser beam (left and right)
         let closestHit = null;
         let closestDistance = Infinity;
@@ -392,6 +395,12 @@ export class WeaponSlot {
         // No physics hits found
         if (now - this.lastDebugTime > this.debugInterval) {
             console.log(`🎯 PHYSICS LASER MISS: No targets hit within ${(weaponRange/1000).toFixed(1)}km range`);
+        }
+
+        // FORCE PHYSICS ONLY MODE: Skip fallback to debug physics issues
+        if (FORCE_PHYSICS_ONLY) {
+            console.log('🚫 FALLBACK DISABLED: Physics raycast must work - returning miss');
+            return { hit: false, position: null, entity: null, distance: 0 };
         }
 
         // If physics raycast failed or found no hits, try Three.js fallback (only if target specified)

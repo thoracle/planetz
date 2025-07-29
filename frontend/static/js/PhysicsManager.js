@@ -726,12 +726,33 @@ export class PhysicsManager {
                 return this.raycastFallback(origin, direction, maxDistance);
             }
 
+            // DEBUG: Log raycast details
+            console.log(`🔍 PHYSICS RAYCAST DEBUG:`);
+            console.log(`  Origin: (${origin.x.toFixed(2)}, ${origin.y.toFixed(2)}, ${origin.z.toFixed(2)})`);
+            console.log(`  Direction: (${direction.x.toFixed(3)}, ${direction.y.toFixed(3)}, ${direction.z.toFixed(3)})`);
+            console.log(`  Max Distance: ${maxDistance.toFixed(1)}km`);
+            console.log(`  Rigid Bodies in World: ${this.rigidBodies.size}`);
+
             const rayStart = new this.Ammo.btVector3(origin.x, origin.y, origin.z);
             const rayEnd = new this.Ammo.btVector3(
                 origin.x + direction.x * maxDistance,
                 origin.y + direction.y * maxDistance,
                 origin.z + direction.z * maxDistance
             );
+
+            console.log(`  Ray End: (${rayEnd.x().toFixed(2)}, ${rayEnd.y().toFixed(2)}, ${rayEnd.z().toFixed(2)})`);
+
+            // DEBUG: List all physics bodies and their positions
+            let bodyCount = 0;
+            for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
+                const metadata = this.entityMetadata.get(rigidBody);
+                const transform = new this.Ammo.btTransform();
+                rigidBody.getWorldTransform(transform);
+                const pos = transform.getOrigin();
+                
+                console.log(`  Body ${bodyCount}: ${metadata?.type || 'unknown'} at (${pos.x().toFixed(2)}, ${pos.y().toFixed(2)}, ${pos.z().toFixed(2)})`);
+                bodyCount++;
+            }
 
             const rayCallback = new this.Ammo.ClosestRayResultCallback(rayStart, rayEnd);
             this.physicsWorld.rayTest(rayStart, rayEnd, rayCallback);
@@ -741,6 +762,8 @@ export class PhysicsManager {
                 const hitPoint = rayCallback.get_m_hitPointWorld();
                 const hitNormal = rayCallback.get_m_hitNormalWorld();
                 const metadata = this.entityMetadata.get(hitBody);
+
+                console.log(`✅ PHYSICS RAYCAST HIT: ${metadata?.type || 'unknown'} at (${hitPoint.x().toFixed(2)}, ${hitPoint.y().toFixed(2)}, ${hitPoint.z().toFixed(2)})`);
 
                 const result = {
                     hit: true,
@@ -752,14 +775,21 @@ export class PhysicsManager {
                 };
 
                 this.Ammo.destroy(rayCallback);
+                this.Ammo.destroy(rayStart);
+                this.Ammo.destroy(rayEnd);
                 return result;
+            } else {
+                console.log(`❌ PHYSICS RAYCAST MISS: No hits detected (checked ${bodyCount} bodies)`);
             }
 
             this.Ammo.destroy(rayCallback);
+            this.Ammo.destroy(rayStart);
+            this.Ammo.destroy(rayEnd);
             return null;
 
         } catch (error) {
             console.log('🔄 Physics raycast failed, using Three.js fallback:', error.message);
+            console.error('Full physics raycast error:', error);
             return this.raycastFallback(origin, direction, maxDistance);
         }
     }
