@@ -767,12 +767,12 @@ export class PhysicsManager {
             this.physicsWorld.rayTest(rayStart, rayEnd, rayCallback);
 
             // Debug: Check what methods are available on rayCallback
-            console.log(`🔍 RAYCAST DEBUG: Available methods on rayCallback:`, 
-                Object.getOwnPropertyNames(rayCallback.__proto__).filter(name => 
-                    name.includes('Hit') || name.includes('Collision') || name.includes('Fraction') || name.includes('get') || name.includes('m_')
-                )
-            );
-            console.log(`🔍 RAYCAST DEBUG: ALL methods on rayCallback:`, Object.getOwnPropertyNames(rayCallback.__proto__));
+            // console.log(`🔍 RAYCAST DEBUG: Available methods on rayCallback:`, 
+            //     Object.getOwnPropertyNames(rayCallback.__proto__).filter(name => 
+            //         name.includes('Hit') || name.includes('Collision') || name.includes('Fraction') || name.includes('get') || name.includes('m_')
+            //     )
+            // );
+            // console.log(`🔍 RAYCAST DEBUG: ALL methods on rayCallback:`, Object.getOwnPropertyNames(rayCallback.__proto__));
 
             if (rayCallback.hasHit()) {
                 const hitBody = this.safeGetRaycastProperty(rayCallback, 'collisionObject');
@@ -811,17 +811,17 @@ export class PhysicsManager {
                         // Enhanced metadata lookup when Map fails
                         let entityInfo = metadata;
                         if (!entityInfo) {
-                            console.log(`🔍 METADATA LOOKUP FAILED - Trying alternative methods...`);
+                            // console.log(`🔍 METADATA LOOKUP FAILED - Trying alternative methods...`);
                             
                             // Method 1: Check userData property
                             if (hitBody.userData) {
-                                console.log(`✅ Found userData:`, hitBody.userData);
+                                // console.log(`✅ Found userData:`, hitBody.userData);
                                 entityInfo = hitBody.userData;
                             }
                             
                             // Method 2: Try to find matching physics body by iterating through stored bodies
                             if (!entityInfo) {
-                                console.log(`🔍 Searching through all stored rigid bodies...`);
+                                // console.log(`🔍 Searching through all stored rigid bodies...`);
                                 for (const [storedThreeObject, storedRigidBody] of this.rigidBodies.entries()) {
                                     // Check if this is the same physics body using various comparison methods
                                     if (storedRigidBody === hitBody || 
@@ -908,17 +908,17 @@ export class PhysicsManager {
                 // Enhanced metadata lookup when Map fails
                 let entityInfo = metadata;
                 if (!entityInfo) {
-                    console.log(`🔍 METADATA LOOKUP FAILED (regular path) - Trying alternative methods...`);
+                    // console.log(`🔍 METADATA LOOKUP FAILED (regular path) - Trying alternative methods...`);
                     
                     // Method 1: Check userData property
                     if (hitBody.userData) {
-                        console.log(`✅ Found userData:`, hitBody.userData);
+                        // console.log(`✅ Found userData:`, hitBody.userData);
                         entityInfo = hitBody.userData;
                     }
                     
                     // Method 2: Try to find matching physics body by iterating through stored bodies
                     if (!entityInfo) {
-                        console.log(`🔍 Searching through all stored rigid bodies...`);
+                        // console.log(`🔍 Searching through all stored rigid bodies...`);
                         for (const [storedThreeObject, storedRigidBody] of this.rigidBodies.entries()) {
                             // Check if this is the same physics body using various comparison methods
                             if (storedRigidBody === hitBody || 
