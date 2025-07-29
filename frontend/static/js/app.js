@@ -258,7 +258,7 @@ function toggleWarpControlMode() {
 document.addEventListener('keydown', (event) => {
     // Handle Ctrl/Cmd key combinations
     if (event.ctrlKey || event.metaKey) {
-        if (event.key === 'd') {
+        if (event.key === 'u') {
             event.preventDefault();
             toggleDebugMode();
         } else if (event.key === 'e') {
