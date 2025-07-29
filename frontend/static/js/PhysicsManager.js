@@ -766,10 +766,25 @@ export class PhysicsManager {
             const rayCallback = new this.Ammo.ClosestRayResultCallback(rayStart, rayEnd);
             this.physicsWorld.rayTest(rayStart, rayEnd, rayCallback);
 
+            // Debug: Check what methods are available on rayCallback
+            console.log(`🔍 RAYCAST DEBUG: Available methods on rayCallback:`, 
+                Object.getOwnPropertyNames(rayCallback.__proto__).filter(name => 
+                    name.includes('Hit') || name.includes('Collision') || name.includes('Fraction') || name.includes('get') || name.includes('m_')
+                )
+            );
+
             if (rayCallback.hasHit()) {
-                const hitBody = rayCallback.get_m_collisionObject();
-                const hitPoint = rayCallback.get_m_hitPointWorld();
-                const hitNormal = rayCallback.get_m_hitNormalWorld();
+                const hitBody = this.safeGetRaycastProperty(rayCallback, 'collisionObject');
+                const hitPoint = this.safeGetRaycastProperty(rayCallback, 'hitPointWorld');
+                const hitNormal = this.safeGetRaycastProperty(rayCallback, 'hitNormalWorld');
+                const hitFraction = this.safeGetRaycastProperty(rayCallback, 'closestHitFraction');
+
+                if (!hitBody || !hitPoint || !hitNormal || hitFraction === null) {
+                    console.error('❌ Could not access raycast hit data with current Ammo.js API');
+                    console.log(`🔍 Hit data: body=${!!hitBody}, point=${!!hitPoint}, normal=${!!hitNormal}, fraction=${hitFraction}`);
+                    throw new Error('Raycast hit data inaccessible');
+                }
+
                 const metadata = this.entityMetadata.get(hitBody);
 
                 console.log(`✅ PHYSICS RAYCAST HIT: ${metadata?.type || 'unknown'} at (${hitPoint.x().toFixed(2)}, ${hitPoint.y().toFixed(2)}, ${hitPoint.z().toFixed(2)})`);
@@ -779,7 +794,7 @@ export class PhysicsManager {
                     body: hitBody,
                     point: new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z()),
                     normal: new THREE.Vector3(hitNormal.x(), hitNormal.y(), hitNormal.z()),
-                    distance: rayCallback.get_m_closestHitFraction() * maxDistance,
+                    distance: hitFraction * maxDistance,
                     entity: metadata
                 };
 
@@ -1806,6 +1821,99 @@ export class PhysicsManager {
         } catch (error) {
             console.error('Error recreating rigid body:', error);
         }
+    }
+
+    /**
+     * Safely access raycast callback properties with API compatibility
+     * @param {*} rayCallback - The Ammo.js raycast callback object
+     * @param {string} property - The property to access
+     * @returns {*} The property value or null if not found
+     */
+    safeGetRaycastProperty(rayCallback, property) {
+        const methodVariations = {
+            'closestHitFraction': [
+                'get_m_closestHitFraction',
+                'm_closestHitFraction', 
+                'getClosestHitFraction',
+                'closestHitFraction',
+                'get_closestHitFraction',
+                'closest_hit_fraction'
+            ],
+            'collisionObject': [
+                'get_m_collisionObject',
+                'm_collisionObject',
+                'getCollisionObject', 
+                'collisionObject',
+                'get_collisionObject',
+                'collision_object'
+            ],
+            'hitPointWorld': [
+                'get_m_hitPointWorld',
+                'm_hitPointWorld',
+                'getHitPointWorld',
+                'hitPointWorld',
+                'get_hitPointWorld',
+                'hit_point_world'
+            ],
+            'hitNormalWorld': [
+                'get_m_hitNormalWorld', 
+                'm_hitNormalWorld',
+                'getHitNormalWorld',
+                'hitNormalWorld',
+                'get_hitNormalWorld',
+                'hit_normal_world'
+            ]
+        };
+
+        const variations = methodVariations[property];
+        if (!variations) {
+            console.warn(`Unknown raycast property: ${property}`);
+            return null;
+        }
+
+        // Try each variation until one works
+        for (const methodName of variations) {
+            try {
+                if (typeof rayCallback[methodName] === 'function') {
+                    const result = rayCallback[methodName]();
+                    console.log(`✅ RAYCAST API: ${property} accessed via ${methodName}() = ${result !== null && result !== undefined ? 'success' : 'null'}`);
+                    return result;
+                } else if (rayCallback[methodName] !== undefined) {
+                    const result = rayCallback[methodName];
+                    console.log(`✅ RAYCAST API: ${property} accessed via ${methodName} (property) = ${result !== null && result !== undefined ? 'success' : 'null'}`);
+                    return result;
+                }
+            } catch (error) {
+                console.log(`❌ RAYCAST API: ${property} failed via ${methodName}: ${error.message}`);
+                continue;
+            }
+        }
+
+        console.warn(`Could not access raycast property ${property} with any known method`);
+        console.log(`Available methods:`, Object.getOwnPropertyNames(rayCallback.__proto__).filter(name => 
+            name.includes('Hit') || name.includes('Collision') || name.includes('Fraction')
+        ));
+        
+        // Final fallback: try direct property access on the object itself
+        console.log(`🔍 Trying direct property access on rayCallback object...`);
+        const allProperties = Object.getOwnPropertyNames(rayCallback);
+        const relevantProps = allProperties.filter(name => 
+            name.toLowerCase().includes(property.toLowerCase().replace(/([A-Z])/g, '_$1').toLowerCase())
+        );
+        console.log(`🔍 Relevant properties found:`, relevantProps);
+        
+        if (relevantProps.length > 0) {
+            const prop = relevantProps[0];
+            try {
+                const result = rayCallback[prop];
+                console.log(`✅ RAYCAST FALLBACK: ${property} accessed via direct property ${prop}`);
+                return result;
+            } catch (error) {
+                console.error(`❌ RAYCAST FALLBACK failed for ${prop}:`, error);
+            }
+        }
+        
+        return null;
     }
 }
 
