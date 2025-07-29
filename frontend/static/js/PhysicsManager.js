@@ -808,30 +808,82 @@ export class PhysicsManager {
                         console.log(`🔍 METADATA DEBUG: entityMetadata map size:`, this.entityMetadata.size);
                         console.log(`🔍 METADATA DEBUG: metadata result:`, metadata);
                         
-                        // Try alternative metadata access through userData
+                        // Enhanced metadata lookup when Map fails
                         let entityInfo = metadata;
-                        if (!entityInfo && hitBody.userData) {
-                            console.log(`🔍 METADATA DEBUG: Trying hitBody.userData:`, hitBody.userData);
-                            entityInfo = hitBody.userData;
+                        if (!entityInfo) {
+                            console.log(`🔍 METADATA LOOKUP FAILED - Trying alternative methods...`);
+                            
+                            // Method 1: Check userData property
+                            if (hitBody.userData) {
+                                console.log(`✅ Found userData:`, hitBody.userData);
+                                entityInfo = hitBody.userData;
+                            }
+                            
+                            // Method 2: Try to find matching physics body by iterating through stored bodies
+                            if (!entityInfo) {
+                                console.log(`🔍 Searching through all stored rigid bodies...`);
+                                for (const [storedThreeObject, storedRigidBody] of this.rigidBodies.entries()) {
+                                    // Check if this is the same physics body using various comparison methods
+                                    if (storedRigidBody === hitBody || 
+                                        (storedRigidBody && hitBody && storedRigidBody.ptr === hitBody.ptr) ||
+                                        (storedRigidBody && hitBody && storedRigidBody.constructor === hitBody.constructor)) {
+                                        
+                                        const storedMetadata = this.entityMetadata.get(storedRigidBody);
+                                        if (storedMetadata) {
+                                            console.log(`✅ FOUND MATCHING BODY: ${storedMetadata.type} ${storedMetadata.id}`);
+                                            entityInfo = storedMetadata;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Method 3: Position-based matching (last resort)
+                            if (!entityInfo && hitPoint) {
+                                console.log(`🔍 Trying position-based entity identification...`);
+                                const hitPos = new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z());
+                                
+                                for (const [storedThreeObject, storedRigidBody] of this.rigidBodies.entries()) {
+                                    const objectPos = storedThreeObject.position;
+                                    const distance = hitPos.distanceTo(objectPos);
+                                    
+                                    console.log(`🔍 Checking object at (${objectPos.x.toFixed(2)}, ${objectPos.y.toFixed(2)}, ${objectPos.z.toFixed(2)}) - distance ${distance.toFixed(2)}`);
+                                    
+                                    if (distance < 10.0) { // Increased threshold to 10 units
+                                        const storedMetadata = this.entityMetadata.get(storedRigidBody);
+                                        if (storedMetadata) {
+                                            console.log(`✅ POSITION MATCH: ${storedMetadata.type} ${storedMetadata.id} at distance ${distance.toFixed(2)}`);
+                                            console.log(`🔍 Full metadata:`, storedMetadata);
+                                            
+                                            // Verify ship reference if it's an enemy_ship
+                                            if (storedMetadata.type === 'enemy_ship' && storedMetadata.ship) {
+                                                console.log(`✅ Ship reference found:`, storedMetadata.ship.shipName || 'Unknown ship');
+                                            }
+                                            
+                                            entityInfo = storedMetadata;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
                         }
                         
-                        // Log all stored metadata for comparison
-                        console.log(`🔍 METADATA DEBUG: All stored metadata entries:`);
-                        let metadataCount = 0;
-                        for (const [key, value] of this.entityMetadata.entries()) {
-                            console.log(`  Entry ${metadataCount++}: type=${value?.type}, id=${value?.id}`);
-                            if (metadataCount >= 10) break; // Limit output
+                        // Final debug output
+                        if (entityInfo) {
+                            console.log(`✅ ENTITY IDENTIFIED: ${entityInfo.type} ${entityInfo.id}`);
+                        } else {
+                            console.log(`❌ ENTITY IDENTIFICATION FAILED - using 'unknown'`);
                         }
 
-                        console.log(`✅ PHYSICS RAYCAST HIT: ${entityInfo?.type || 'unknown'} at (${hitPoint.x().toFixed(2)}, ${hitPoint.y().toFixed(2)}, ${hitPoint.z().toFixed(2)})`);
-
+                        // Build result with manual distance calculation
                         const result = {
                             hit: true,
                             body: hitBody,
                             point: new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z()),
                             normal: new THREE.Vector3(hitNormal.x(), hitNormal.y(), hitNormal.z()),
-                            distance: calculatedDistance, // Use calculated distance directly
-                            entity: entityInfo || metadata // Use fallback entity info
+                            distance: calculatedDistance,
+                            fraction: calculatedFraction,
+                            entity: entityInfo || { type: 'unknown', id: 'unknown' }
                         };
 
                         // Clean up Ammo.js objects
@@ -853,11 +905,71 @@ export class PhysicsManager {
                 console.log(`🔍 METADATA DEBUG (regular path): entityMetadata map size:`, this.entityMetadata.size);
                 console.log(`🔍 METADATA DEBUG (regular path): metadata result:`, metadata);
                 
-                // Try alternative metadata access through userData
+                // Enhanced metadata lookup when Map fails
                 let entityInfo = metadata;
-                if (!entityInfo && hitBody.userData) {
-                    console.log(`🔍 METADATA DEBUG (regular path): Trying hitBody.userData:`, hitBody.userData);
-                    entityInfo = hitBody.userData;
+                if (!entityInfo) {
+                    console.log(`🔍 METADATA LOOKUP FAILED (regular path) - Trying alternative methods...`);
+                    
+                    // Method 1: Check userData property
+                    if (hitBody.userData) {
+                        console.log(`✅ Found userData:`, hitBody.userData);
+                        entityInfo = hitBody.userData;
+                    }
+                    
+                    // Method 2: Try to find matching physics body by iterating through stored bodies
+                    if (!entityInfo) {
+                        console.log(`🔍 Searching through all stored rigid bodies...`);
+                        for (const [storedThreeObject, storedRigidBody] of this.rigidBodies.entries()) {
+                            // Check if this is the same physics body using various comparison methods
+                            if (storedRigidBody === hitBody || 
+                                (storedRigidBody && hitBody && storedRigidBody.ptr === hitBody.ptr) ||
+                                (storedRigidBody && hitBody && storedRigidBody.constructor === hitBody.constructor)) {
+                                
+                                const storedMetadata = this.entityMetadata.get(storedRigidBody);
+                                if (storedMetadata) {
+                                    console.log(`✅ FOUND MATCHING BODY: ${storedMetadata.type} ${storedMetadata.id}`);
+                                    entityInfo = storedMetadata;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Method 3: Position-based matching (last resort)
+                    if (!entityInfo && hitPoint) {
+                        console.log(`🔍 Trying position-based entity identification...`);
+                        const hitPos = new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z());
+                        
+                        for (const [storedThreeObject, storedRigidBody] of this.rigidBodies.entries()) {
+                            const objectPos = storedThreeObject.position;
+                            const distance = hitPos.distanceTo(objectPos);
+                            
+                            console.log(`🔍 Checking object at (${objectPos.x.toFixed(2)}, ${objectPos.y.toFixed(2)}, ${objectPos.z.toFixed(2)}) - distance ${distance.toFixed(2)}`);
+                            
+                            if (distance < 10.0) { // Increased threshold to 10 units
+                                const storedMetadata = this.entityMetadata.get(storedRigidBody);
+                                if (storedMetadata) {
+                                    console.log(`✅ POSITION MATCH: ${storedMetadata.type} ${storedMetadata.id} at distance ${distance.toFixed(2)}`);
+                                    console.log(`🔍 Full metadata:`, storedMetadata);
+                                    
+                                    // Verify ship reference if it's an enemy_ship
+                                    if (storedMetadata.type === 'enemy_ship' && storedMetadata.ship) {
+                                        console.log(`✅ Ship reference found:`, storedMetadata.ship.shipName || 'Unknown ship');
+                                    }
+                                    
+                                    entityInfo = storedMetadata;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Final debug output
+                if (entityInfo) {
+                    console.log(`✅ ENTITY IDENTIFIED (regular path): ${entityInfo.type} ${entityInfo.id}`);
+                } else {
+                    console.log(`❌ ENTITY IDENTIFICATION FAILED (regular path) - using 'unknown'`);
                 }
 
                 console.log(`✅ PHYSICS RAYCAST HIT: ${entityInfo?.type || 'unknown'} at (${hitPoint.x().toFixed(2)}, ${hitPoint.y().toFixed(2)}, ${hitPoint.z().toFixed(2)})`);
@@ -867,8 +979,9 @@ export class PhysicsManager {
                     body: hitBody,
                     point: new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z()),
                     normal: new THREE.Vector3(hitNormal.x(), hitNormal.y(), hitNormal.z()),
-                    distance: hitFraction * maxDistance,
-                    entity: entityInfo || metadata // Use fallback entity info
+                    distance: origin.distanceTo(new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z())),
+                    fraction: hitFraction,
+                    entity: entityInfo || { type: 'unknown', id: 'unknown' }
                 };
 
                 // Clean up Ammo.js objects
