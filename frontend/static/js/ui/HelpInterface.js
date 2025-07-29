@@ -402,12 +402,32 @@ export class HelpInterface {
                 <h3 class="section-header">[ ADVANCED OPERATIONS ]</h3>
                 <div class="control-grid">
                     <div class="control-entry">
-                        <span class="key-binding">Ctrl+Shift+D</span>
+                        <span class="key-binding">Q</span>
                         <span class="control-desc">Create Training Targets</span>
                     </div>
                     <div class="control-entry">
                         <span class="key-binding">Ctrl+Shift+B</span>
                         <span class="control-desc">Emergency Repair All</span>
+                    </div>
+                </div>
+                
+                <h4 class="subsection-header">[ DEBUG & DEVELOPER ]</h4>
+                <div class="control-grid">
+                    <div class="control-entry">
+                        <span class="key-binding">Ctrl+U</span>
+                        <span class="control-desc">Debug Mode (FPS stats, system info)</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Ctrl+P</span>
+                        <span class="control-desc">Weapon Debug (hit detection spheres)</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Ctrl+E</span>
+                        <span class="control-desc">Edit Mode (development)</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Ctrl+W</span>
+                        <span class="control-desc">Warp Control Mode</span>
                     </div>
                 </div>
                 
@@ -417,6 +437,7 @@ export class HelpInterface {
                     <div class="note-entry">• Damaged systems operate at reduced efficiency</div>
                     <div class="note-entry">• Energy consumption varies by system level</div>
                     <div class="note-entry">• Sub-targeting requires Level 2+ Target Computer</div>
+                    <div class="note-entry">• Debug modes are for development and testing</div>
                 </div>
             </div>
         `;
@@ -644,6 +665,17 @@ export class HelpInterface {
                 color: #ff4141;
                 text-shadow: 0 0 8px rgba(255, 65, 65, 0.6);
                 border-bottom-color: rgba(255, 65, 65, 0.5);
+            }
+
+            .subsection-header {
+                margin: 20px 0 12px 0;
+                color: #99ff99;
+                font-size: 14px;
+                font-weight: bold;
+                text-shadow: 0 0 6px rgba(153, 255, 153, 0.6);
+                border-bottom: 1px dotted rgba(153, 255, 153, 0.4);
+                padding-bottom: 6px;
+                letter-spacing: 0.5px;
             }
 
             .system-status {
