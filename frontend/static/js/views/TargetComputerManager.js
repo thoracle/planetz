@@ -625,7 +625,9 @@ export class TargetComputerManager {
      * Add targets that don't have physics bodies yet (fallback)
      */
     addNonPhysicsTargets(allTargets, maxRange) {
+        // Build sets for duplicate detection - check both names and ship objects
         const existingTargetIds = new Set(allTargets.map(t => t.physicsEntity?.id || t.name));
+        const existingShipObjects = new Set(allTargets.map(t => t.ship).filter(ship => ship));
         
         // Check for ships without physics bodies
         if (this.viewManager?.starfieldManager?.dummyShipMeshes) {
@@ -636,10 +638,11 @@ export class TargetComputerManager {
                 const ship = mesh.userData.ship;
                 const targetId = ship.shipName;
                 
-                console.log(`🎯 addNonPhysicsTargets: Checking dummy ship ${index}: ${targetId}, hull: ${ship.currentHull}, already exists: ${existingTargetIds.has(targetId)}`);
+                console.log(`🎯 addNonPhysicsTargets: Checking dummy ship ${index}: ${targetId}, hull: ${ship.currentHull}, already exists: ${existingTargetIds.has(targetId) || existingShipObjects.has(ship)}`);
                 
                 // Filter out destroyed ships and check if not already in target list
-                if (!existingTargetIds.has(targetId) && ship && ship.currentHull > 0.001) {
+                // Check both by ID/name and by ship object reference
+                if (!existingTargetIds.has(targetId) && !existingShipObjects.has(ship) && ship && ship.currentHull > 0.001) {
                     const distance = this.calculateDistance(this.camera.position, mesh.position);
                     if (distance <= maxRange) {
                         console.log(`🎯 addNonPhysicsTargets: Adding dummy ship: ${targetId}`);
@@ -658,34 +661,11 @@ export class TargetComputerManager {
                     }
                 } else if (ship && ship.currentHull <= 0.001) {
                     console.log(`🗑️ Fallback method filtering out destroyed ship: ${ship.shipName} (Hull: ${ship.currentHull})`);
-                } else if (existingTargetIds.has(targetId)) {
-                    console.log(`🎯 addNonPhysicsTargets: Skipping duplicate ship: ${targetId}`);
                 }
             });
         }
         
-        // Check for celestial bodies without physics bodies
-        if (this.solarSystemManager) {
-            const bodies = this.solarSystemManager.getCelestialBodies();
-            Array.from(bodies.entries()).forEach(([key, body]) => {
-                const info = this.solarSystemManager.getCelestialBodyInfo(body);
-                if (info && !existingTargetIds.has(info.name)) {
-                    const distance = this.calculateDistance(this.camera.position, body.position);
-                    if (distance <= maxRange && body.position) {
-                        allTargets.push({
-                            name: info.name,
-                            type: info.type,
-                            position: body.position.toArray(),
-                            isMoon: key.startsWith('moon_'),
-                            object: body,
-                            isShip: false,
-                            distance: distance,
-                            ...info
-                        });
-                    }
-                }
-            });
-        }
+        console.log(`🎯 addNonPhysicsTargets: Processing ${this.viewManager.starfieldManager.dummyShipMeshes?.length || 0} dummy ships`);
     }
 
     /**
