@@ -34,7 +34,14 @@ export default class CardSystemIntegration {
         // Clear existing cards to avoid duplicates
         this.installedCards.clear();
         
+        console.log('🃏 CARD LOADING DEBUG: Starting loadCards()');
+        console.log('  • cardInventoryUI exists:', !!this.cardInventoryUI);
+        console.log('  • cardInventoryUI.shipSlots exists:', !!(this.cardInventoryUI && this.cardInventoryUI.shipSlots));
+        
         if (this.cardInventoryUI && this.cardInventoryUI.shipSlots) {
+            console.log('  • shipSlots size:', this.cardInventoryUI.shipSlots.size);
+            console.log('  • shipSlots contents:', Array.from(this.cardInventoryUI.shipSlots.entries()));
+            
             // Load from cardInventoryUI if available
             for (const [slotId, card] of this.cardInventoryUI.shipSlots.entries()) {
                 if (card && card.cardType) {
@@ -42,6 +49,7 @@ export default class CardSystemIntegration {
                         cardType: card.cardType,
                         level: card.level || 1
                     });
+                    console.log(`  • Loaded card: ${card.cardType} (L${card.level || 1}) in slot ${slotId}`);
                 }
             }
         } else {
@@ -71,6 +79,10 @@ export default class CardSystemIntegration {
         if (this.installedCards.size > 0) {
             const installedCardTypes = Array.from(this.installedCards.values()).map(card => card.cardType);
             console.log(`🎯 CARDS LOADED: [${installedCardTypes.join(', ')}] (${this.installedCards.size} total)`);
+            
+            // DEBUG: Check specifically for shield cards
+            const shieldCards = Array.from(this.installedCards.values()).filter(card => card.cardType === 'shields');
+            console.log(`🛡️ SHIELD CARDS LOADED: ${shieldCards.length} shield cards found:`, shieldCards);
         } else {
             console.log(`❌ NO CARDS LOADED for ${this.ship.shipType}`);
         }

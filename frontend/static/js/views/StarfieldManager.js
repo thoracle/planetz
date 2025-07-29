@@ -1592,27 +1592,51 @@ export class StarfieldManager {
                     if (ship) {
                         const shields = ship.getSystem('shields');
                         
+                        // DEBUG: Add comprehensive shield debugging
+                        console.log('🛡️ SHIELD DEBUG - Analyzing shield system state:');
+                        console.log('  • Shields system object:', shields);
+                        console.log('  • Ship has cardSystemIntegration:', !!ship.cardSystemIntegration);
+                        
+                        if (ship.cardSystemIntegration) {
+                            const installedCards = Array.from(ship.cardSystemIntegration.installedCards.values());
+                            console.log('  • Total installed cards:', installedCards.length);
+                            console.log('  • Installed card types:', installedCards.map(card => `${card.cardType} (L${card.level})`));
+                            
+                            const shieldCards = installedCards.filter(card => card.cardType === 'shields');
+                            console.log('  • Shield cards found:', shieldCards.length, shieldCards);
+                            
+                            const hasSystemCardsResult = ship.cardSystemIntegration.hasSystemCardsSync('shields');
+                            console.log('  • hasSystemCardsSync result:', hasSystemCardsResult);
+                            
+                            const shipHasSystemCards = ship.hasSystemCardsSync('shields', true);
+                            console.log('  • ship.hasSystemCardsSync result:', shipHasSystemCards);
+                        }
+                        
                         if (shields && shields.canActivate(ship)) {
                             this.playCommandSound();
                             shields.toggleShields();
                         } else {
                             // System can't be activated - provide specific error message
                             if (!shields) {
+                                console.log('🛡️ SHIELD DEBUG: No shields system found');
                                 this.showHUDError(
                                     'SHIELDS UNAVAILABLE',
                                     'System not installed on this ship'
                                 );
                             } else if (!shields.isOperational()) {
+                                console.log('🛡️ SHIELD DEBUG: Shields system not operational');
                                 this.showHUDError(
                                     'SHIELDS DAMAGED',
                                     'Repair system to enable shield protection'
                                 );
                             } else if (!ship.hasSystemCardsSync('shields', true)) {
+                                console.log('🛡️ SHIELD DEBUG: Missing shield cards - this is the problem!');
                                 this.showHUDError(
                                     'SHIELDS MISSING',
                                     'Install shield card to enable protection'
                                 );
                             } else if (!ship.hasEnergy(25)) {
+                                console.log('🛡️ SHIELD DEBUG: Insufficient energy');
                                 this.showHUDError(
                                     'INSUFFICIENT ENERGY',
                                     'Need 25 energy units to activate shields'

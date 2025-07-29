@@ -48,6 +48,54 @@ export class SolarSystemManager {
             'Moons': Array.from(this.celestialBodies.keys()).filter(key => key.startsWith('moon_')).length
         };
 
+        // Add ships count section
+        if (window.starfieldManager) {
+            const starfieldManager = window.starfieldManager;
+            let totalShips = 0;
+            let enemyShips = 0;
+            let friendlyShips = 0;
+            let neutralShips = 0;
+            let unknownShips = 0;
+
+            // Count ships from targetObjects
+            if (starfieldManager.targetComputerManager && starfieldManager.targetComputerManager.targetObjects) {
+                const targetObjects = starfieldManager.targetComputerManager.targetObjects;
+                
+                targetObjects.forEach(targetData => {
+                    // Check if this is a ship (has isShip flag or is enemy_ship type)
+                    if (targetData.isShip || targetData.type === 'enemy_ship' || targetData.type === 'ship') {
+                        totalShips++;
+                        
+                        // Determine faction based on type and diplomacy
+                        if (targetData.type === 'enemy_ship' || (targetData.ship && targetData.ship.diplomacy === 'enemy')) {
+                            enemyShips++;
+                        } else if (targetData.ship && targetData.ship.diplomacy === 'friendly') {
+                            friendlyShips++;
+                        } else if (targetData.ship && targetData.ship.diplomacy === 'neutral') {
+                            neutralShips++;
+                        } else {
+                            unknownShips++;
+                        }
+                    }
+                });
+            }
+
+            // Count target dummy ships (these are training targets, treat as neutral)
+            if (starfieldManager.targetDummyShips && Array.isArray(starfieldManager.targetDummyShips)) {
+                const dummyCount = starfieldManager.targetDummyShips.length;
+                totalShips += dummyCount;
+                neutralShips += dummyCount; // Dummy ships are training targets, so neutral
+            }
+
+            // Add ship counts to debug info
+            info[''] = '--- SHIPS IN SYSTEM ---'; // Separator line
+            info['Total Ships'] = totalShips;
+            info['Enemy'] = enemyShips;
+            info['Friendly'] = friendlyShips;
+            info['Neutral'] = neutralShips;
+            info['Unknown'] = unknownShips;
+        }
+
         return info;
     }
 
