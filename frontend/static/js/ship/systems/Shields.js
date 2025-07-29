@@ -134,6 +134,7 @@ export default class Shields extends System {
     
     /**
      * Activate shields
+     * @returns {boolean} True if shields were activated
      */
     activateShields() {
         if (!this.isOperational()) {
@@ -145,6 +146,10 @@ export default class Shields extends System {
         this.isActive = true; // Start consuming energy
         this.applyScreenTint();
         console.log('Shields up - defensive screens activated');
+        
+        // Show HUD message for shield activation
+        this.showHUDMessage('🛡️ Shields Up - Defensive screens activated');
+        
         return true;
     }
     
@@ -156,6 +161,26 @@ export default class Shields extends System {
         this.isActive = false; // Stop consuming energy
         this.removeScreenTint();
         console.log('Shields down - defensive screens deactivated');
+        
+        // Show HUD message for shield deactivation
+        this.showHUDMessage('🛡️ Shields Down - Defensive screens deactivated');
+    }
+
+    /**
+     * Show HUD message for shield status
+     * @param {string} message - Message to display
+     */
+    showHUDMessage(message) {
+        // Try to access the WeaponHUD through StarfieldManager
+        if (window.starfieldManager && window.starfieldManager.weaponHUD) {
+            window.starfieldManager.weaponHUD.showMessage(message, 3000);
+        } else if (this.starfieldManager && this.starfieldManager.weaponHUD) {
+            // Fallback: try through system's starfieldManager reference
+            this.starfieldManager.weaponHUD.showMessage(message, 3000);
+        } else {
+            // Fallback: use console if HUD not available
+            console.log(`🛡️ Shield HUD Message: ${message}`);
+        }
     }
     
     /**
