@@ -13,11 +13,16 @@ export class PhysicsManager {
     constructor() {
         this.Ammo = null;
         this.physicsWorld = null;
-        this.rigidBodies = new Map(); // Map of Three.js objects to Ammo.js rigid bodies
-        this.entityMetadata = new Map(); // Map of rigid bodies to game entity data
+        this.rigidBodies = new Map(); // Three.js object -> rigid body
+        this.entityMetadata = new Map(); // rigid body -> entity data
         this.initialized = false;
         this.updateCallbacks = [];
         this.collisionCallbacks = [];
+        
+        // Physics debug visualization
+        this.debugMode = false;
+        this.debugWireframes = new Map(); // rigid body -> wireframe mesh
+        this.debugGroup = null; // Group to hold all debug wireframes
         
         // Collision detection
         this.collisionPairs = new Map(); // Track collision pairs to avoid duplicate processing
@@ -234,6 +239,10 @@ export class PhysicsManager {
             this.entityMetadata.set(rigidBody, entityData);
 
             console.log(`Created ship rigid body for ${entityType} ${entityId}`);
+            
+            // Create debug wireframe if debug mode is active
+            this.onRigidBodyCreated(rigidBody, threeObject);
+            
             return rigidBody;
 
         } catch (error) {
@@ -873,9 +882,12 @@ export class PhysicsManager {
         try {
             // Update physics world
             this.physicsWorld.stepSimulation(deltaTime, 10);
-            
-            // Handle collision detection for projectiles
-            this.handleCollisions();
+
+            // Update debug visualization
+            this.updateDebugVisualization();
+
+            // Process collisions manually (since automatic callbacks may not be available)
+            this.processCollisions();
 
             // Sync Three.js objects with physics bodies
             this.syncThreeJSWithPhysics();
@@ -1461,6 +1473,204 @@ export class PhysicsManager {
 
         this.initialized = false;
         console.log('PhysicsManager cleanup complete');
+    }
+
+    /**
+     * Toggle physics debug visualization
+     * @param {THREE.Scene} scene - Three.js scene to add debug wireframes to
+     */
+    toggleDebugMode(scene) {
+        this.debugMode = !this.debugMode;
+        
+        if (this.debugMode) {
+            this.enableDebugVisualization(scene);
+            console.log('🔍 Physics debug mode ENABLED - showing collision shapes');
+        } else {
+            this.disableDebugVisualization(scene);
+            console.log('🔍 Physics debug mode DISABLED - hiding collision shapes');
+        }
+        
+        return this.debugMode;
+    }
+
+    /**
+     * Enable physics debug visualization
+     * @param {THREE.Scene} scene - Three.js scene
+     */
+    enableDebugVisualization(scene) {
+        if (!scene || typeof THREE === 'undefined') {
+            console.warn('Scene or THREE.js not available for physics debug');
+            return;
+        }
+
+        // Create debug group if it doesn't exist
+        if (!this.debugGroup) {
+            this.debugGroup = new THREE.Group();
+            this.debugGroup.name = 'PhysicsDebugGroup';
+            scene.add(this.debugGroup);
+        }
+
+        // Create wireframes for all existing physics bodies
+        for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
+            this.createDebugWireframe(rigidBody, threeObject);
+        }
+    }
+
+    /**
+     * Disable physics debug visualization
+     * @param {THREE.Scene} scene - Three.js scene
+     */
+    disableDebugVisualization(scene) {
+        if (this.debugGroup && scene) {
+            // Remove all wireframes
+            this.debugWireframes.clear();
+            scene.remove(this.debugGroup);
+            this.debugGroup = null;
+        }
+    }
+
+    /**
+     * Create wireframe visualization for a physics body
+     * @param {object} rigidBody - Ammo.js rigid body
+     * @param {THREE.Object3D} threeObject - Associated Three.js object
+     */
+    createDebugWireframe(rigidBody, threeObject) {
+        if (!this.debugMode || !this.debugGroup || typeof THREE === 'undefined') {
+            return;
+        }
+
+        try {
+            const metadata = this.entityMetadata.get(rigidBody);
+            
+            // Get current physics body position and rotation
+            const transform = new this.Ammo.btTransform();
+            rigidBody.getWorldTransform(transform);
+            const position = transform.getOrigin();
+            const rotation = transform.getRotation();
+
+            // Create wireframe geometry based on collision shape
+            const collisionShape = rigidBody.getCollisionShape();
+            let geometry;
+            let material;
+
+            // Determine shape type and create appropriate wireframe
+            if (this.isBoxShape(collisionShape)) {
+                // Box shape
+                const halfExtents = collisionShape.getHalfExtentsWithMargin();
+                const width = halfExtents.x() * 2;
+                const height = halfExtents.y() * 2;
+                const depth = halfExtents.z() * 2;
+                
+                geometry = new THREE.BoxGeometry(width, height, depth);
+                material = new THREE.MeshBasicMaterial({ 
+                    color: metadata?.type === 'enemy_ship' ? 0xff0000 : 0x00ff00, 
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.7
+                });
+            } else if (this.isSphereShape(collisionShape)) {
+                // Sphere shape
+                const radius = collisionShape.getRadius();
+                geometry = new THREE.SphereGeometry(radius, 16, 12);
+                material = new THREE.MeshBasicMaterial({ 
+                    color: metadata?.type === 'enemy_ship' ? 0xff4444 : 0x44ff44, 
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.7
+                });
+            } else {
+                // Default box for unknown shapes
+                geometry = new THREE.BoxGeometry(2, 2, 2);
+                material = new THREE.MeshBasicMaterial({ 
+                    color: 0xffff00, 
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.5
+                });
+            }
+
+            // Create wireframe mesh
+            const wireframe = new THREE.Mesh(geometry, material);
+            wireframe.position.set(position.x(), position.y(), position.z());
+            wireframe.quaternion.set(rotation.x(), rotation.y(), rotation.z(), rotation.w());
+            
+            // Add debug info as userData
+            wireframe.userData = {
+                type: 'physics_debug',
+                entityType: metadata?.type || 'unknown',
+                entityId: metadata?.id || 'unknown',
+                rigidBody: rigidBody
+            };
+
+            // Add to debug group and store reference
+            this.debugGroup.add(wireframe);
+            this.debugWireframes.set(rigidBody, wireframe);
+
+            console.log(`🔍 Created debug wireframe for ${metadata?.type || 'unknown'} at (${position.x().toFixed(2)}, ${position.y().toFixed(2)}, ${position.z().toFixed(2)})`);
+
+        } catch (error) {
+            console.warn('Failed to create debug wireframe:', error);
+        }
+    }
+
+    /**
+     * Update debug wireframes to match current physics body positions
+     */
+    updateDebugVisualization() {
+        if (!this.debugMode || !this.debugGroup) {
+            return;
+        }
+
+        for (const [rigidBody, wireframe] of this.debugWireframes.entries()) {
+            try {
+                const transform = new this.Ammo.btTransform();
+                rigidBody.getWorldTransform(transform);
+                const position = transform.getOrigin();
+                const rotation = transform.getRotation();
+
+                wireframe.position.set(position.x(), position.y(), position.z());
+                wireframe.quaternion.set(rotation.x(), rotation.y(), rotation.z(), rotation.w());
+            } catch (error) {
+                console.warn('Failed to update debug wireframe:', error);
+            }
+        }
+    }
+
+    /**
+     * Check if collision shape is a box
+     * @param {object} collisionShape - Ammo.js collision shape
+     * @returns {boolean} True if box shape
+     */
+    isBoxShape(collisionShape) {
+        try {
+            return collisionShape.getShapeType() === 0; // BOX_SHAPE_PROXYTYPE
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Check if collision shape is a sphere
+     * @param {object} collisionShape - Ammo.js collision shape
+     * @returns {boolean} True if sphere shape
+     */
+    isSphereShape(collisionShape) {
+        try {
+            return collisionShape.getShapeType() === 8; // SPHERE_SHAPE_PROXYTYPE
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Add debug wireframe for newly created rigid body
+     * @param {object} rigidBody - Newly created rigid body
+     * @param {THREE.Object3D} threeObject - Associated Three.js object
+     */
+    onRigidBodyCreated(rigidBody, threeObject) {
+        if (this.debugMode) {
+            this.createDebugWireframe(rigidBody, threeObject);
+        }
     }
 }
 

@@ -1125,8 +1125,17 @@ export class StarfieldManager {
             // Debug mode toggle (Ctrl-P) for weapon hit detection
             if (event.ctrlKey && event.key.toLowerCase() === 'p') {
                 event.preventDefault();
+                
+                // Toggle weapon debug mode
                 this.toggleDebugMode();
-                return;
+                
+                // Toggle physics debug visualization
+                if (window.physicsManager && window.physicsManager.initialized) {
+                    const physicsDebugEnabled = window.physicsManager.toggleDebugMode(this.scene);
+                    console.log(`🔍 Physics debug visualization ${physicsDebugEnabled ? 'ENABLED' : 'DISABLED'}`);
+                } else {
+                    console.warn('⚠️ PhysicsManager not available for debug visualization');
+                }
             }
             
             if (this.keys.hasOwnProperty(event.key)) {
