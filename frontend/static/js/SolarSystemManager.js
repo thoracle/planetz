@@ -57,7 +57,7 @@ export class SolarSystemManager {
             let neutralShips = 0;
             let unknownShips = 0;
 
-            // Count ships from targetObjects
+            // Count ships from targetObjects (this already includes dummy ships via addNonPhysicsTargets)
             if (starfieldManager.targetComputerManager && starfieldManager.targetComputerManager.targetObjects) {
                 const targetObjects = starfieldManager.targetComputerManager.targetObjects;
                 
@@ -67,7 +67,10 @@ export class SolarSystemManager {
                         totalShips++;
                         
                         // Determine faction based on type and diplomacy
-                        if (targetData.type === 'enemy_ship' || (targetData.ship && targetData.ship.diplomacy === 'enemy')) {
+                        // Check if this is a target dummy first (should be neutral training targets)
+                        if (targetData.ship && targetData.ship.isTargetDummy) {
+                            neutralShips++;
+                        } else if (targetData.type === 'enemy_ship' || (targetData.ship && targetData.ship.diplomacy === 'enemy')) {
                             enemyShips++;
                         } else if (targetData.ship && targetData.ship.diplomacy === 'friendly') {
                             friendlyShips++;
@@ -78,13 +81,6 @@ export class SolarSystemManager {
                         }
                     }
                 });
-            }
-
-            // Count target dummy ships (these are training targets, treat as neutral)
-            if (starfieldManager.targetDummyShips && Array.isArray(starfieldManager.targetDummyShips)) {
-                const dummyCount = starfieldManager.targetDummyShips.length;
-                totalShips += dummyCount;
-                neutralShips += dummyCount; // Dummy ships are training targets, so neutral
             }
 
             // Add ship counts to debug info
