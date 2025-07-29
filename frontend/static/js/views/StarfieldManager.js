@@ -3704,8 +3704,16 @@ export class StarfieldManager {
                 
                 // CRITICAL: Update physics body position to match mesh position
                 if (window.physicsManager && window.physicsManager.initialized) {
-                    window.physicsManager.updateRigidBodyPosition(shipMesh);
-                    console.log(`🔄 Synced physics body position for Target Dummy ${i + 1}`);
+                    try {
+                        // Try transform update first
+                        window.physicsManager.updateRigidBodyPosition(shipMesh);
+                        console.log(`🔄 Synced physics body position for Target Dummy ${i + 1}`);
+                    } catch (error) {
+                        console.warn(`Transform update failed for Target Dummy ${i + 1}, trying recreation:`, error);
+                        // Fallback: recreate physics body at new position  
+                        window.physicsManager.recreateRigidBodyAtPosition(shipMesh);
+                        console.log(`🔄 Recreated physics body for Target Dummy ${i + 1}`);
+                    }
                 }
                 
             } catch (error) {

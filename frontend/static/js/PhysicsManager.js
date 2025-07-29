@@ -1058,27 +1058,55 @@ export class PhysicsManager {
             const position = threeObject.position;
             const quaternion = threeObject.quaternion;
 
-            // Update physics body transform
+            // Debug: Check what methods are available on the rigid body
+            console.log(`🔍 DEBUG: Available methods on rigidBody:`, Object.getOwnPropertyNames(rigidBody.__proto__).filter(name => name.includes('Transform') || name.includes('World')));
+
+            // Create new transform
             const transform = new this.Ammo.btTransform();
-            rigidBody.getWorldTransform(transform);
+            transform.setIdentity();
             
-            // Set new position and rotation
-            transform.setOrigin(new this.Ammo.btVector3(position.x, position.y, position.z));
-            transform.setRotation(new this.Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
+            // Set position
+            const btVector3 = new this.Ammo.btVector3(position.x, position.y, position.z);
+            transform.setOrigin(btVector3);
             
-            // Apply transform to rigid body
-            rigidBody.setWorldTransform(transform);
-            
-            // For kinematic bodies, also update motion state
-            const motionState = rigidBody.getMotionState();
-            if (motionState) {
-                motionState.setWorldTransform(transform);
+            // Set rotation  
+            const btQuaternion = new this.Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+            transform.setRotation(btQuaternion);
+
+            // Try different methods to set world transform
+            if (typeof rigidBody.setWorldTransform === 'function') {
+                rigidBody.setWorldTransform(transform);
+                console.log(`🔄 Updated physics body position using setWorldTransform for ${threeObject.name || 'object'} to (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+            } else if (typeof rigidBody.setCenterOfMassTransform === 'function') {
+                rigidBody.setCenterOfMassTransform(transform);
+                console.log(`🔄 Updated physics body position using setCenterOfMassTransform for ${threeObject.name || 'object'} to (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+            } else {
+                // Try getting and setting motion state instead
+                const motionState = rigidBody.getMotionState();
+                if (motionState && typeof motionState.setWorldTransform === 'function') {
+                    motionState.setWorldTransform(transform);
+                    console.log(`🔄 Updated physics body position using motionState.setWorldTransform for ${threeObject.name || 'object'} to (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+                } else {
+                    console.error(`❌ No suitable method found to update rigid body transform for ${threeObject.name || 'object'}`);
+                    console.log(`🔍 Available rigidBody methods:`, Object.getOwnPropertyNames(rigidBody.__proto__));
+                }
             }
 
-            console.log(`🔄 Updated physics body position for ${threeObject.name || 'object'} to (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+            // Activate the rigid body to ensure physics world recognizes the change
+            if (typeof rigidBody.activate === 'function') {
+                rigidBody.activate(true);
+            }
+
+            // Clean up temporary Ammo objects
+            this.Ammo.destroy(btVector3);
+            this.Ammo.destroy(btQuaternion);
+            this.Ammo.destroy(transform);
 
         } catch (error) {
             console.error('Error updating rigid body position:', error);
+            console.log(`🔍 RigidBody object:`, rigidBody);
+            console.log(`🔍 RigidBody type:`, typeof rigidBody);
+            console.log(`🔍 RigidBody constructor:`, rigidBody.constructor.name);
         }
     }
 
@@ -1089,12 +1117,22 @@ export class PhysicsManager {
         if (!this.initialized) return;
 
         let updateCount = 0;
+        let recreateCount = 0;
+        
         for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
-            this.updateRigidBodyPosition(threeObject);
-            updateCount++;
+            try {
+                // Try transform update first
+                this.updateRigidBodyPosition(threeObject);
+                updateCount++;
+            } catch (error) {
+                console.warn(`Transform update failed for ${threeObject.name || 'object'}, trying recreation:`, error);
+                // Fallback: recreate physics body at new position
+                this.recreateRigidBodyAtPosition(threeObject);
+                recreateCount++;
+            }
         }
 
-        console.log(`🔄 Updated ${updateCount} physics body positions`);
+        console.log(`🔄 Updated ${updateCount} physics body positions, recreated ${recreateCount} physics bodies`);
     }
 
     /**
@@ -1727,6 +1765,46 @@ export class PhysicsManager {
     onRigidBodyCreated(rigidBody, threeObject) {
         if (this.debugMode) {
             this.createDebugWireframe(rigidBody, threeObject);
+        }
+    }
+
+    /**
+     * Recreate physics body at new position (alternative to transform update)
+     * @param {THREE.Object3D} threeObject - The Three.js object
+     */
+    recreateRigidBodyAtPosition(threeObject) {
+        if (!this.initialized) return;
+
+        const oldRigidBody = this.rigidBodies.get(threeObject);
+        if (!oldRigidBody) return;
+
+        try {
+            // Get metadata from old rigid body
+            const metadata = this.entityMetadata.get(oldRigidBody);
+            if (!metadata) {
+                console.error('No metadata found for rigid body');
+                return;
+            }
+
+            // Remove old rigid body
+            this.physicsWorld.removeRigidBody(oldRigidBody);
+            this.rigidBodies.delete(threeObject);
+            this.entityMetadata.delete(oldRigidBody);
+
+            // Create new rigid body at current position
+            const newRigidBody = this.createShipRigidBody(
+                threeObject,
+                metadata.type,
+                metadata.id,
+                metadata.health
+            );
+
+            console.log(`🔄 Recreated physics body for ${threeObject.name || 'object'} at (${threeObject.position.x.toFixed(2)}, ${threeObject.position.y.toFixed(2)}, ${threeObject.position.z.toFixed(2)})`);
+
+            return newRigidBody;
+
+        } catch (error) {
+            console.error('Error recreating rigid body:', error);
         }
     }
 }
