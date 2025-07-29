@@ -1133,6 +1133,12 @@ export class StarfieldManager {
                 if (window.physicsManager && window.physicsManager.initialized) {
                     const physicsDebugEnabled = window.physicsManager.toggleDebugMode(this.scene);
                     console.log(`🔍 Physics debug visualization ${physicsDebugEnabled ? 'ENABLED' : 'DISABLED'}`);
+                    
+                    // If enabling debug mode, sync all physics body positions first
+                    if (physicsDebugEnabled) {
+                        console.log(`🔄 Syncing all physics body positions with mesh positions...`);
+                        window.physicsManager.updateAllRigidBodyPositions();
+                    }
                 } else {
                     console.warn('⚠️ PhysicsManager not available for debug visualization');
                 }
@@ -3695,6 +3701,12 @@ export class StarfieldManager {
                 const originPosition = new this.THREE.Vector3(0, 0, 0);
                 const actualDistance = originPosition.distanceTo(shipMesh.position);
                 console.log(`🎯 Target ${i + 1} positioned at ${(actualDistance / 1000).toFixed(1)}km (world coords: ${shipMesh.position.x}, ${shipMesh.position.y}, ${shipMesh.position.z})`);
+                
+                // CRITICAL: Update physics body position to match mesh position
+                if (window.physicsManager && window.physicsManager.initialized) {
+                    window.physicsManager.updateRigidBodyPosition(shipMesh);
+                    console.log(`🔄 Synced physics body position for Target Dummy ${i + 1}`);
+                }
                 
             } catch (error) {
                 console.error(`Failed to create target dummy ${i + 1}:`, error);

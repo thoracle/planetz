@@ -783,14 +783,17 @@ export class PhysicsManager {
                     entity: metadata
                 };
 
+                // Clean up Ammo.js objects
                 this.Ammo.destroy(rayCallback);
                 this.Ammo.destroy(rayStart);
                 this.Ammo.destroy(rayEnd);
+                
                 return result;
             } else {
                 console.log(`❌ PHYSICS RAYCAST MISS: No hits detected (checked ${bodyCount} bodies)`);
             }
 
+            // Clean up Ammo.js objects
             this.Ammo.destroy(rayCallback);
             this.Ammo.destroy(rayStart);
             this.Ammo.destroy(rayEnd);
@@ -1038,6 +1041,60 @@ export class PhysicsManager {
                 console.error('Error syncing object with physics:', error);
             }
         });
+    }
+
+    /**
+     * Update physics body position to match Three.js object position
+     * @param {THREE.Object3D} threeObject - The Three.js object
+     */
+    updateRigidBodyPosition(threeObject) {
+        if (!this.initialized) return;
+
+        const rigidBody = this.rigidBodies.get(threeObject);
+        if (!rigidBody) return;
+
+        try {
+            // Get current Three.js object position and rotation
+            const position = threeObject.position;
+            const quaternion = threeObject.quaternion;
+
+            // Update physics body transform
+            const transform = new this.Ammo.btTransform();
+            rigidBody.getWorldTransform(transform);
+            
+            // Set new position and rotation
+            transform.setOrigin(new this.Ammo.btVector3(position.x, position.y, position.z));
+            transform.setRotation(new this.Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
+            
+            // Apply transform to rigid body
+            rigidBody.setWorldTransform(transform);
+            
+            // For kinematic bodies, also update motion state
+            const motionState = rigidBody.getMotionState();
+            if (motionState) {
+                motionState.setWorldTransform(transform);
+            }
+
+            console.log(`🔄 Updated physics body position for ${threeObject.name || 'object'} to (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+
+        } catch (error) {
+            console.error('Error updating rigid body position:', error);
+        }
+    }
+
+    /**
+     * Update all physics body positions to match their Three.js objects
+     */
+    updateAllRigidBodyPositions() {
+        if (!this.initialized) return;
+
+        let updateCount = 0;
+        for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
+            this.updateRigidBodyPosition(threeObject);
+            updateCount++;
+        }
+
+        console.log(`🔄 Updated ${updateCount} physics body positions`);
     }
 
     /**

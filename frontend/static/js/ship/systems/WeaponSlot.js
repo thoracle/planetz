@@ -339,7 +339,7 @@ export class WeaponSlot {
         }
 
         // DEBUG MODE: Set this to true to disable fallback and force physics-only
-        const FORCE_PHYSICS_ONLY = false; // Change to true to debug physics issues
+        const FORCE_PHYSICS_ONLY = true; // Change to true to debug physics issues
 
         // Perform raycast for each laser beam (left and right)
         let closestHit = null;
