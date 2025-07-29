@@ -147,8 +147,11 @@ export default class Shields extends System {
         this.applyScreenTint();
         console.log('Shields up - defensive screens activated');
         
-        // Show HUD message for shield activation
-        this.showHUDMessage('🛡️ Shields Up - Defensive screens activated');
+        // Show HUD message for shield activation using the same system as other major ship systems
+        this.showHUDError(
+            'SHIELDS ACTIVATED',
+            `Defensive screens enabled - Energy consumption: ${this.getEnergyConsumptionRate()}/sec`
+        );
         
         return true;
     }
@@ -162,25 +165,11 @@ export default class Shields extends System {
         this.removeScreenTint();
         console.log('Shields down - defensive screens deactivated');
         
-        // Show HUD message for shield deactivation
-        this.showHUDMessage('🛡️ Shields Down - Defensive screens deactivated');
-    }
-
-    /**
-     * Show HUD message for shield status
-     * @param {string} message - Message to display
-     */
-    showHUDMessage(message) {
-        // Try to access the WeaponHUD through StarfieldManager
-        if (window.starfieldManager && window.starfieldManager.weaponHUD) {
-            window.starfieldManager.weaponHUD.showMessage(message, 3000);
-        } else if (this.starfieldManager && this.starfieldManager.weaponHUD) {
-            // Fallback: try through system's starfieldManager reference
-            this.starfieldManager.weaponHUD.showMessage(message, 3000);
-        } else {
-            // Fallback: use console if HUD not available
-            console.log(`🛡️ Shield HUD Message: ${message}`);
-        }
+        // Show HUD message for shield deactivation using the same system as other major ship systems
+        this.showHUDError(
+            'SHIELDS DEACTIVATED',
+            'Defensive screens disabled - No energy consumption'
+        );
     }
     
     /**
