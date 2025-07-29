@@ -3626,6 +3626,9 @@ export class StarfieldManager {
                 // Set ship name
                 dummyShip.shipName = `Target Dummy ${i + 1}`;
                 
+                // Mark as target dummy for classification purposes
+                dummyShip.isTargetDummy = true;
+                
                 // Add some random damage to systems for testing
                 this.addRandomDamageToShip(dummyShip);
                 
