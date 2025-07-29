@@ -84,7 +84,6 @@ export class SolarSystemManager {
             }
 
             // Add ship counts to debug info
-            info[''] = '--- SHIPS IN SYSTEM ---'; // Separator line
             info['Total Ships'] = totalShips;
             info['Enemy'] = enemyShips;
             info['Friendly'] = friendlyShips;
