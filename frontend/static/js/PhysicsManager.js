@@ -802,7 +802,28 @@ export class PhysicsManager {
                         // Proceed with manual distance - don't reassign hitFraction, use calculatedFraction
                         const metadata = this.entityMetadata.get(hitBody);
 
-                        console.log(`✅ PHYSICS RAYCAST HIT: ${metadata?.type || 'unknown'} at (${hitPoint.x().toFixed(2)}, ${hitPoint.y().toFixed(2)}, ${hitPoint.z().toFixed(2)})`);
+                        // Debug metadata lookup
+                        console.log(`🔍 METADATA DEBUG: hitBody object:`, hitBody);
+                        console.log(`🔍 METADATA DEBUG: hitBody constructor:`, hitBody?.constructor?.name);
+                        console.log(`🔍 METADATA DEBUG: entityMetadata map size:`, this.entityMetadata.size);
+                        console.log(`🔍 METADATA DEBUG: metadata result:`, metadata);
+                        
+                        // Try alternative metadata access through userData
+                        let entityInfo = metadata;
+                        if (!entityInfo && hitBody.userData) {
+                            console.log(`🔍 METADATA DEBUG: Trying hitBody.userData:`, hitBody.userData);
+                            entityInfo = hitBody.userData;
+                        }
+                        
+                        // Log all stored metadata for comparison
+                        console.log(`🔍 METADATA DEBUG: All stored metadata entries:`);
+                        let metadataCount = 0;
+                        for (const [key, value] of this.entityMetadata.entries()) {
+                            console.log(`  Entry ${metadataCount++}: type=${value?.type}, id=${value?.id}`);
+                            if (metadataCount >= 10) break; // Limit output
+                        }
+
+                        console.log(`✅ PHYSICS RAYCAST HIT: ${entityInfo?.type || 'unknown'} at (${hitPoint.x().toFixed(2)}, ${hitPoint.y().toFixed(2)}, ${hitPoint.z().toFixed(2)})`);
 
                         const result = {
                             hit: true,
@@ -810,7 +831,7 @@ export class PhysicsManager {
                             point: new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z()),
                             normal: new THREE.Vector3(hitNormal.x(), hitNormal.y(), hitNormal.z()),
                             distance: calculatedDistance, // Use calculated distance directly
-                            entity: metadata
+                            entity: entityInfo || metadata // Use fallback entity info
                         };
 
                         // Clean up Ammo.js objects
@@ -826,7 +847,20 @@ export class PhysicsManager {
 
                 const metadata = this.entityMetadata.get(hitBody);
 
-                console.log(`✅ PHYSICS RAYCAST HIT: ${metadata?.type || 'unknown'} at (${hitPoint.x().toFixed(2)}, ${hitPoint.y().toFixed(2)}, ${hitPoint.z().toFixed(2)})`);
+                // Debug metadata lookup (same as manual distance path)
+                console.log(`🔍 METADATA DEBUG (regular path): hitBody object:`, hitBody);
+                console.log(`🔍 METADATA DEBUG (regular path): hitBody constructor:`, hitBody?.constructor?.name);
+                console.log(`🔍 METADATA DEBUG (regular path): entityMetadata map size:`, this.entityMetadata.size);
+                console.log(`🔍 METADATA DEBUG (regular path): metadata result:`, metadata);
+                
+                // Try alternative metadata access through userData
+                let entityInfo = metadata;
+                if (!entityInfo && hitBody.userData) {
+                    console.log(`🔍 METADATA DEBUG (regular path): Trying hitBody.userData:`, hitBody.userData);
+                    entityInfo = hitBody.userData;
+                }
+
+                console.log(`✅ PHYSICS RAYCAST HIT: ${entityInfo?.type || 'unknown'} at (${hitPoint.x().toFixed(2)}, ${hitPoint.y().toFixed(2)}, ${hitPoint.z().toFixed(2)})`);
 
                 const result = {
                     hit: true,
@@ -834,7 +868,7 @@ export class PhysicsManager {
                     point: new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z()),
                     normal: new THREE.Vector3(hitNormal.x(), hitNormal.y(), hitNormal.z()),
                     distance: hitFraction * maxDistance,
-                    entity: metadata
+                    entity: entityInfo || metadata // Use fallback entity info
                 };
 
                 // Clean up Ammo.js objects
