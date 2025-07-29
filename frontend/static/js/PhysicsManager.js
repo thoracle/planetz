@@ -795,9 +795,30 @@ export class PhysicsManager {
                         console.log(`🔧 MANUAL DISTANCE: Hit Point (${hitPoint.x().toFixed(2)}, ${hitPoint.y().toFixed(2)}, ${hitPoint.z().toFixed(2)})`);
                         console.log(`🔧 MANUAL DISTANCE: Calculated distance = ${calculatedDistance.toFixed(2)}m`);
                         
-                        // Use calculated distance instead of fraction
-                        hitFraction = calculatedDistance / maxDistance; // Convert to fraction
-                        console.log(`✅ MANUAL DISTANCE: Using calculated fraction = ${hitFraction.toFixed(4)}`);
+                        // Create calculated fraction instead of reassigning readonly property
+                        const calculatedFraction = calculatedDistance / maxDistance;
+                        console.log(`✅ MANUAL DISTANCE: Using calculated fraction = ${calculatedFraction.toFixed(4)}`);
+                        
+                        // Proceed with manual distance - don't reassign hitFraction, use calculatedFraction
+                        const metadata = this.entityMetadata.get(hitBody);
+
+                        console.log(`✅ PHYSICS RAYCAST HIT: ${metadata?.type || 'unknown'} at (${hitPoint.x().toFixed(2)}, ${hitPoint.y().toFixed(2)}, ${hitPoint.z().toFixed(2)})`);
+
+                        const result = {
+                            hit: true,
+                            body: hitBody,
+                            point: new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z()),
+                            normal: new THREE.Vector3(hitNormal.x(), hitNormal.y(), hitNormal.z()),
+                            distance: calculatedDistance, // Use calculated distance directly
+                            entity: metadata
+                        };
+
+                        // Clean up Ammo.js objects
+                        this.Ammo.destroy(rayCallback);
+                        this.Ammo.destroy(rayStart);
+                        this.Ammo.destroy(rayEnd);
+                        
+                        return result;
                     } else {
                         throw new Error('Raycast hit data inaccessible');
                     }
