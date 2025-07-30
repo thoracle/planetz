@@ -34,6 +34,13 @@ export class PhysicsManager {
         this.spatialQueryDistance = 5000; // Units beyond which entities are deactivated
         this.physicsUpdateRate = 60; // Hz
         this.lastUpdateTime = 0;
+
+        // Debugging
+        this._warnedProperties = new Set();
+        this._successfulMethods = new Set();
+        this._lastFailureWarning = {};
+        this._debugLoggingEnabled = false; // Reduce console spam by default
+        this._silentMode = true; // Completely silent except for user commands
     }
 
     /**
@@ -735,13 +742,6 @@ export class PhysicsManager {
                 return this.raycastFallback(origin, direction, maxDistance);
             }
 
-            // DEBUG: Log raycast details
-            console.log(`🔍 PHYSICS RAYCAST DEBUG:`);
-            console.log(`  Origin: (${origin.x.toFixed(2)}, ${origin.y.toFixed(2)}, ${origin.z.toFixed(2)})`);
-            console.log(`  Direction: (${direction.x.toFixed(3)}, ${direction.y.toFixed(3)}, ${direction.z.toFixed(3)})`);
-            console.log(`  Max Distance: ${maxDistance.toFixed(1)}km`);
-            console.log(`  Rigid Bodies in World: ${this.rigidBodies.size}`);
-
             const rayStart = new this.Ammo.btVector3(origin.x, origin.y, origin.z);
             const rayEnd = new this.Ammo.btVector3(
                 origin.x + direction.x * maxDistance,
@@ -749,19 +749,25 @@ export class PhysicsManager {
                 origin.z + direction.z * maxDistance
             );
 
-            console.log(`  Ray End: (${rayEnd.x().toFixed(2)}, ${rayEnd.y().toFixed(2)}, ${rayEnd.z().toFixed(2)})`);
-
-            // DEBUG: List all physics bodies and their positions
-            let bodyCount = 0;
-            for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
-                const metadata = this.entityMetadata.get(rigidBody);
-                const transform = new this.Ammo.btTransform();
-                rigidBody.getWorldTransform(transform);
-                const pos = transform.getOrigin();
-                
-                console.log(`  Body ${bodyCount}: ${metadata?.type || 'unknown'} at (${pos.x().toFixed(2)}, ${pos.y().toFixed(2)}, ${pos.z().toFixed(2)})`);
-                bodyCount++;
-            }
+            // Verbose debug logging only when explicitly enabled (uncomment for troubleshooting)
+            // console.log(`🔍 PHYSICS RAYCAST DEBUG:`);
+            // console.log(`  Origin: (${origin.x.toFixed(2)}, ${origin.y.toFixed(2)}, ${origin.z.toFixed(2)})`);
+            // console.log(`  Direction: (${direction.x.toFixed(3)}, ${direction.y.toFixed(3)}, ${direction.z.toFixed(3)})`);
+            // console.log(`  Max Distance: ${maxDistance.toFixed(1)}km`);
+            // console.log(`  Rigid Bodies in World: ${this.rigidBodies.size}`);
+            // console.log(`  Ray End: (${rayEnd.x().toFixed(2)}, ${rayEnd.y().toFixed(2)}, ${rayEnd.z().toFixed(2)})`);
+            // 
+            // // List all physics bodies and their positions
+            // let bodyCount = 0;
+            // for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
+            //     const metadata = this.entityMetadata.get(rigidBody);
+            //     const transform = new this.Ammo.btTransform();
+            //     rigidBody.getWorldTransform(transform);
+            //     const pos = transform.getOrigin();
+            //     
+            //     console.log(`  Body ${bodyCount}: ${metadata?.type || 'unknown'} at (${pos.x().toFixed(2)}, ${pos.y().toFixed(2)}, ${pos.z().toFixed(2)})`);
+            //     bodyCount++;
+            // }
 
             const rayCallback = new this.Ammo.ClosestRayResultCallback(rayStart, rayEnd);
             this.physicsWorld.rayTest(rayStart, rayEnd, rayCallback);
@@ -780,33 +786,38 @@ export class PhysicsManager {
                 const hitNormal = this.safeGetRaycastProperty(rayCallback, 'hitNormalWorld');
                 const hitFraction = this.safeGetRaycastProperty(rayCallback, 'closestHitFraction');
 
-                if (!hitBody || !hitPoint || !hitNormal || hitFraction === null) {
-                    console.error('❌ Could not access raycast hit data with current Ammo.js API');
-                    console.log(`🔍 Hit data: body=${!!hitBody}, point=${!!hitPoint}, normal=${!!hitNormal}, fraction=${hitFraction}`);
+                // Check if we have essential hit data
+                if (!hitBody || !hitPoint || !hitNormal) {
+                    // Missing essential hit data - no hit detected
+                    if (!this._silentMode && this._debugLoggingEnabled) {
+                    console.log(`🔍 RAYCAST MISS: Missing essential hit data (body=${!!hitBody}, point=${!!hitPoint}, normal=${!!hitNormal})`);
+                }
                     
-                    // If we have hit point but no fraction, calculate distance manually
-                    if (hitBody && hitPoint && hitNormal && hitFraction === null) {
-                        console.log(`🔧 MANUAL DISTANCE: Calculating distance from hit point since fraction unavailable`);
+                    // Clean up Ammo.js objects
+                    this.Ammo.destroy(rayCallback);
+                    this.Ammo.destroy(rayStart);
+                    this.Ammo.destroy(rayEnd);
+                    
+                    return null;
+                }
+                
+                // We have essential hit data - check if we need manual distance calculation
+                if (hitFraction === null) {
+                    // Missing fraction but have essential data - use manual calculation
                         const hitVector = new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z());
                         const originVector = new THREE.Vector3(origin.x, origin.y, origin.z);
                         const calculatedDistance = originVector.distanceTo(hitVector);
                         
-                        console.log(`🔧 MANUAL DISTANCE: Origin (${origin.x.toFixed(2)}, ${origin.y.toFixed(2)}, ${origin.z.toFixed(2)})`);
-                        console.log(`🔧 MANUAL DISTANCE: Hit Point (${hitPoint.x().toFixed(2)}, ${hitPoint.y().toFixed(2)}, ${hitPoint.z().toFixed(2)})`);
-                        console.log(`🔧 MANUAL DISTANCE: Calculated distance = ${calculatedDistance.toFixed(2)}m`);
-                        
                         // Create calculated fraction instead of reassigning readonly property
                         const calculatedFraction = calculatedDistance / maxDistance;
-                        console.log(`✅ MANUAL DISTANCE: Using calculated fraction = ${calculatedFraction.toFixed(4)}`);
                         
                         // Proceed with manual distance - don't reassign hitFraction, use calculatedFraction
                         const metadata = this.entityMetadata.get(hitBody);
 
-                        // Debug metadata lookup
-                        console.log(`🔍 METADATA DEBUG: hitBody object:`, hitBody);
-                        console.log(`🔍 METADATA DEBUG: hitBody constructor:`, hitBody?.constructor?.name);
-                        console.log(`🔍 METADATA DEBUG: entityMetadata map size:`, this.entityMetadata.size);
-                        console.log(`🔍 METADATA DEBUG: metadata result:`, metadata);
+                        // Debug metadata lookup (only log if lookup fails)
+                        if (!metadata) {
+                                        // Metadata debug: checking hitBody properties
+                        }
                         
                         // Enhanced metadata lookup when Map fails
                         let entityInfo = metadata;
@@ -830,7 +841,7 @@ export class PhysicsManager {
                                         
                                         const storedMetadata = this.entityMetadata.get(storedRigidBody);
                                         if (storedMetadata) {
-                                            console.log(`✅ FOUND MATCHING BODY: ${storedMetadata.type} ${storedMetadata.id}`);
+                                            console.log(`✅ FALLBACK SUCCESS: Found matching body ${storedMetadata.type} ${storedMetadata.id}`);
                                             entityInfo = storedMetadata;
                                             break;
                                         }
@@ -840,14 +851,18 @@ export class PhysicsManager {
                             
                             // Method 3: Position-based matching (last resort)
                             if (!entityInfo && hitPoint) {
-                                console.log(`🔍 Trying position-based entity identification...`);
+                                if (!this._silentMode && this._debugLoggingEnabled) {
+                                    console.log(`🔍 Trying position-based entity identification...`);
+                                }
                                 const hitPos = new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z());
                                 
                                 for (const [storedThreeObject, storedRigidBody] of this.rigidBodies.entries()) {
                                     const objectPos = storedThreeObject.position;
                                     const distance = hitPos.distanceTo(objectPos);
                                     
-                                    console.log(`🔍 Checking object at (${objectPos.x.toFixed(2)}, ${objectPos.y.toFixed(2)}, ${objectPos.z.toFixed(2)}) - distance ${distance.toFixed(2)}`);
+                                    if (!this._silentMode && this._debugLoggingEnabled) {
+                                        console.log(`🔍 Checking object at (${objectPos.x.toFixed(2)}, ${objectPos.y.toFixed(2)}, ${objectPos.z.toFixed(2)}) - distance ${distance.toFixed(2)}`);
+                                    }
                                     
                                     if (distance < 10.0) { // Increased threshold to 10 units
                                         const storedMetadata = this.entityMetadata.get(storedRigidBody);
@@ -868,10 +883,10 @@ export class PhysicsManager {
                             }
                         }
                         
-                        // Final debug output
-                        if (entityInfo) {
-                            console.log(`✅ ENTITY IDENTIFIED: ${entityInfo.type} ${entityInfo.id}`);
-                        } else {
+                        // Final debug output (only if identification failed or used fallback)
+                        if (!metadata && entityInfo) {
+                            console.log(`✅ FALLBACK IDENTIFICATION: ${entityInfo.type} ${entityInfo.id}`);
+                        } else if (!entityInfo) {
                             console.log(`❌ ENTITY IDENTIFICATION FAILED - using 'unknown'`);
                         }
 
@@ -892,18 +907,14 @@ export class PhysicsManager {
                         this.Ammo.destroy(rayEnd);
                         
                         return result;
-                    } else {
-                        throw new Error('Raycast hit data inaccessible');
-                    }
                 }
 
                 const metadata = this.entityMetadata.get(hitBody);
 
-                // Debug metadata lookup (same as manual distance path)
-                console.log(`🔍 METADATA DEBUG (regular path): hitBody object:`, hitBody);
-                console.log(`🔍 METADATA DEBUG (regular path): hitBody constructor:`, hitBody?.constructor?.name);
-                console.log(`🔍 METADATA DEBUG (regular path): entityMetadata map size:`, this.entityMetadata.size);
-                console.log(`🔍 METADATA DEBUG (regular path): metadata result:`, metadata);
+                // Debug metadata lookup (only log if lookup fails)
+                if (!metadata) {
+                                    // Metadata debug (regular path): checking hitBody properties
+                }
                 
                 // Enhanced metadata lookup when Map fails
                 let entityInfo = metadata;
@@ -927,7 +938,7 @@ export class PhysicsManager {
                                 
                                 const storedMetadata = this.entityMetadata.get(storedRigidBody);
                                 if (storedMetadata) {
-                                    console.log(`✅ FOUND MATCHING BODY: ${storedMetadata.type} ${storedMetadata.id}`);
+                                    console.log(`✅ FALLBACK SUCCESS: Found matching body ${storedMetadata.type} ${storedMetadata.id}`);
                                     entityInfo = storedMetadata;
                                     break;
                                 }
@@ -937,42 +948,37 @@ export class PhysicsManager {
                     
                     // Method 3: Position-based matching (last resort)
                     if (!entityInfo && hitPoint) {
-                        console.log(`🔍 Trying position-based entity identification...`);
+                        if (!this._silentMode && this._debugLoggingEnabled) {
+                            console.log(`🔍 Trying position-based entity identification...`);
+                        }
                         const hitPos = new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z());
                         
                         for (const [storedThreeObject, storedRigidBody] of this.rigidBodies.entries()) {
-                            const objectPos = storedThreeObject.position;
-                            const distance = hitPos.distanceTo(objectPos);
-                            
-                            console.log(`🔍 Checking object at (${objectPos.x.toFixed(2)}, ${objectPos.y.toFixed(2)}, ${objectPos.z.toFixed(2)}) - distance ${distance.toFixed(2)}`);
-                            
-                            if (distance < 10.0) { // Increased threshold to 10 units
-                                const storedMetadata = this.entityMetadata.get(storedRigidBody);
-                                if (storedMetadata) {
-                                    console.log(`✅ POSITION MATCH: ${storedMetadata.type} ${storedMetadata.id} at distance ${distance.toFixed(2)}`);
-                                    console.log(`🔍 Full metadata:`, storedMetadata);
-                                    
-                                    // Verify ship reference if it's an enemy_ship
-                                    if (storedMetadata.type === 'enemy_ship' && storedMetadata.ship) {
-                                        console.log(`✅ Ship reference found:`, storedMetadata.ship.shipName || 'Unknown ship');
+                            if (storedRigidBody === hitBody) {
+                                const objectPos = storedThreeObject.position;
+                                const distance = objectPos.distanceTo(hitPos);
+                                
+                                if (!this._silentMode && this._debugLoggingEnabled) {
+                                    console.log(`🔍 Checking object at (${objectPos.x.toFixed(2)}, ${objectPos.y.toFixed(2)}, ${objectPos.z.toFixed(2)}) - distance ${distance.toFixed(2)}`);
+                                }
+                                
+                                if (distance < 50) { // Within reasonable distance
+                                    const storedMetadata = this.entityMetadata.get(storedRigidBody);
+                                    if (!this._silentMode && this._debugLoggingEnabled) {
+                                        console.log(`🔍 Full metadata:`, storedMetadata);
                                     }
-                                    
-                                    entityInfo = storedMetadata;
-                                    break;
                                 }
                             }
                         }
                     }
                 }
                 
-                // Final debug output
-                if (entityInfo) {
-                    console.log(`✅ ENTITY IDENTIFIED (regular path): ${entityInfo.type} ${entityInfo.id}`);
-                } else {
+                // Final debug output (only if identification failed or used fallback)
+                if (!metadata && entityInfo) {
+                    console.log(`✅ FALLBACK IDENTIFICATION: ${entityInfo.type} ${entityInfo.id}`);
+                } else if (!entityInfo) {
                     console.log(`❌ ENTITY IDENTIFICATION FAILED (regular path) - using 'unknown'`);
                 }
-
-                console.log(`✅ PHYSICS RAYCAST HIT: ${entityInfo?.type || 'unknown'} at (${hitPoint.x().toFixed(2)}, ${hitPoint.y().toFixed(2)}, ${hitPoint.z().toFixed(2)})`);
 
                 const result = {
                     hit: true,
@@ -991,7 +997,7 @@ export class PhysicsManager {
                 
                 return result;
             } else {
-                console.log(`❌ PHYSICS RAYCAST MISS: No hits detected (checked ${bodyCount} bodies)`);
+                console.log(`❌ PHYSICS RAYCAST MISS: No hits detected (checked ${this.rigidBodies.size} bodies)`);
             }
 
             // Clean up Ammo.js objects
@@ -1127,7 +1133,9 @@ export class PhysicsManager {
             
             // Add periodic debug logging (every 5 seconds) to see if collision detection is working
             if (!this.lastCollisionDebugTime || (Date.now() - this.lastCollisionDebugTime) > 5000) {
+                if (!this._silentMode && this._debugLoggingEnabled) {
                 console.log(`🔍 DEBUG: Collision detection running - ${numManifolds} manifolds found`);
+            }
                 this.lastCollisionDebugTime = Date.now();
             }
             
@@ -1144,7 +1152,9 @@ export class PhysicsManager {
                 const projectile1 = body1?.projectileOwner;
                 
                 if (projectile0 || projectile1) {
-                    console.log(`🔍 DEBUG: Found projectile collision - projectile0:${!!projectile0}, projectile1:${!!projectile1}`);
+                                            if (!this._silentMode && this._debugLoggingEnabled) {
+                            console.log(`🔍 DEBUG: Found projectile collision - projectile0:${!!projectile0}, projectile1:${!!projectile1}`);
+                        }
                     
                     const numContacts = contactManifold.getNumContacts();
                     
@@ -1155,11 +1165,15 @@ export class PhysicsManager {
                         const distance = contactPoint.get_m_distance ? contactPoint.get_m_distance() : 
                                         (contactPoint.getDistance ? contactPoint.getDistance() : 0.1);
                         
-                        console.log(`🔍 DEBUG: Contact distance: ${distance}`);
+                                                    if (!this._silentMode && this._debugLoggingEnabled) {
+                                console.log(`🔍 DEBUG: Contact distance: ${distance}`);
+                            }
                         
                         // Only process contact if distance indicates actual collision (increased threshold for better detection)
                         if (distance <= 0.5) {
-                            console.log(`🔍 DEBUG: Processing collision - distance: ${distance}`);
+                            if (!this._silentMode && this._debugLoggingEnabled) {
+                                console.log(`🔍 DEBUG: Processing collision - distance: ${distance}`);
+                            }
                             // Handle projectile collision
                             if (projectile0) {
                                 this.handleProjectileCollision(projectile0, contactPoint, body1);
@@ -1259,9 +1273,6 @@ export class PhysicsManager {
             const position = threeObject.position;
             const quaternion = threeObject.quaternion;
 
-            // Debug: Check what methods are available on the rigid body
-            console.log(`🔍 DEBUG: Available methods on rigidBody:`, Object.getOwnPropertyNames(rigidBody.__proto__).filter(name => name.includes('Transform') || name.includes('World')));
-
             // Create new transform
             const transform = new this.Ammo.btTransform();
             transform.setIdentity();
@@ -1277,37 +1288,25 @@ export class PhysicsManager {
             // Try different methods to set world transform
             if (typeof rigidBody.setWorldTransform === 'function') {
                 rigidBody.setWorldTransform(transform);
-                console.log(`🔄 Updated physics body position using setWorldTransform for ${threeObject.name || 'object'} to (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
             } else if (typeof rigidBody.setCenterOfMassTransform === 'function') {
                 rigidBody.setCenterOfMassTransform(transform);
-                console.log(`🔄 Updated physics body position using setCenterOfMassTransform for ${threeObject.name || 'object'} to (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
-            } else {
-                // Try getting and setting motion state instead
+            } else if (rigidBody.getMotionState && typeof rigidBody.getMotionState === 'function') {
                 const motionState = rigidBody.getMotionState();
                 if (motionState && typeof motionState.setWorldTransform === 'function') {
                     motionState.setWorldTransform(transform);
-                    console.log(`🔄 Updated physics body position using motionState.setWorldTransform for ${threeObject.name || 'object'} to (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
-                } else {
-                    console.error(`❌ No suitable method found to update rigid body transform for ${threeObject.name || 'object'}`);
-                    console.log(`🔍 Available rigidBody methods:`, Object.getOwnPropertyNames(rigidBody.__proto__));
                 }
+            } else {
+                throw new Error('No compatible transform method found on rigid body');
             }
 
-            // Activate the rigid body to ensure physics world recognizes the change
-            if (typeof rigidBody.activate === 'function') {
-                rigidBody.activate(true);
-            }
-
-            // Clean up temporary Ammo objects
+            // Cleanup Ammo objects
             this.Ammo.destroy(btVector3);
             this.Ammo.destroy(btQuaternion);
             this.Ammo.destroy(transform);
 
         } catch (error) {
-            console.error('Error updating rigid body position:', error);
-            console.log(`🔍 RigidBody object:`, rigidBody);
-            console.log(`🔍 RigidBody type:`, typeof rigidBody);
-            console.log(`🔍 RigidBody constructor:`, rigidBody.constructor.name);
+            console.error(`Error updating rigid body position:`, error);
+            throw error; // Re-throw for fallback handling
         }
     }
 
@@ -1317,23 +1316,48 @@ export class PhysicsManager {
     updateAllRigidBodyPositions() {
         if (!this.initialized) return;
 
+        console.log(`🔄 CTRL+P DEBUG: Syncing all physics body positions with mesh positions...`);
+        console.log(`📊 Physics World Status:`);
+        console.log(`   • Total rigid bodies registered: ${this.rigidBodies.size}`);
+        console.log(`   • Entity metadata entries: ${this.entityMetadata.size}`);
+        console.log(`   • Physics world initialized: ${this.initialized}`);
+        console.log(`   • Debug mode: ${this.debugMode ? 'ENABLED' : 'DISABLED'}`);
+        
+        console.log(`🔍 Physics Body Inventory:`);
         let updateCount = 0;
         let recreateCount = 0;
         
         for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
+            const metadata = this.entityMetadata.get(rigidBody);
+            const entityType = metadata ? metadata.type : 'unknown';
+            const position = threeObject.position;
+            console.log(`   • ${threeObject.name || 'unnamed'} (${entityType}) at (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+            
             try {
-                // Try transform update first
                 this.updateRigidBodyPosition(threeObject);
                 updateCount++;
             } catch (error) {
-                console.warn(`Transform update failed for ${threeObject.name || 'object'}, trying recreation:`, error);
-                // Fallback: recreate physics body at new position
-                this.recreateRigidBodyAtPosition(threeObject);
-                recreateCount++;
+                console.warn(`⚠️ Transform update failed for ${threeObject.name || 'object'}, trying recreation:`, error.message);
+                try {
+                    this.recreateRigidBodyAtPosition(threeObject);
+                    recreateCount++;
+                } catch (recreateError) {
+                    console.error(`Failed to recreate rigid body for ${threeObject.name || 'object'}:`, recreateError);
+                }
             }
         }
-
-        console.log(`🔄 Updated ${updateCount} physics body positions, recreated ${recreateCount} physics bodies`);
+        
+        console.log(`✅ CTRL+P SYNC COMPLETE:`);
+        console.log(`   • Successfully updated: ${updateCount} physics bodies`);
+        console.log(`   • Recreated: ${recreateCount} physics bodies`);
+        console.log(`   • Total processed: ${updateCount + recreateCount} bodies`);
+        if (this.debugMode) {
+            console.log(`🔍 Physics debug visualization is ACTIVE`);
+            
+            // Update debug wireframes to match new physics body positions
+            this.updateDebugVisualization();
+            console.log(`🔍 Debug wireframes updated to match physics body positions`);
+        }
     }
 
     /**
@@ -1345,10 +1369,38 @@ export class PhysicsManager {
 
         const rigidBody = this.rigidBodies.get(threeObject);
         if (rigidBody) {
+            // Clean up debug wireframe if it exists
+            this.removeDebugWireframe(rigidBody);
+            
             this.physicsWorld.removeRigidBody(rigidBody);
             this.rigidBodies.delete(threeObject);
             this.entityMetadata.delete(rigidBody);
             this.Ammo.destroy(rigidBody);
+            
+            console.log(`🧹 Removed rigid body and associated debug wireframe`);
+        }
+    }
+
+    /**
+     * Remove debug wireframe for a specific rigid body
+     * @param {object} rigidBody - Ammo.js rigid body
+     */
+    removeDebugWireframe(rigidBody) {
+        if (!rigidBody) return;
+        
+        const wireframe = this.debugWireframes.get(rigidBody);
+        if (wireframe && this.debugGroup) {
+            // Remove from scene
+            this.debugGroup.remove(wireframe);
+            
+            // Dispose geometry and material
+            if (wireframe.geometry) wireframe.geometry.dispose();
+            if (wireframe.material) wireframe.material.dispose();
+            
+            // Remove from tracking
+            this.debugWireframes.delete(rigidBody);
+            
+            console.log(`🧹 Removed debug wireframe for ${wireframe.userData?.entityType || 'unknown'} entity`);
         }
     }
 
@@ -1779,14 +1831,37 @@ export class PhysicsManager {
         this.debugMode = !this.debugMode;
         
         if (this.debugMode) {
+            console.log('🔍 Physics debug mode ENABLING - creating wireframes...');
             this.enableDebugVisualization(scene);
-            console.log('🔍 Physics debug mode ENABLED - showing collision shapes');
+            console.log(`🔍 Physics debug mode ENABLED - showing ${this.debugWireframes.size} collision shapes`);
         } else {
+            console.log('🔍 Physics debug mode DISABLING - removing wireframes...');
             this.disableDebugVisualization(scene);
             console.log('🔍 Physics debug mode DISABLED - hiding collision shapes');
         }
         
         return this.debugMode;
+    }
+
+    /**
+     * Disable physics debug visualization
+     * @param {THREE.Scene} scene - Three.js scene
+     */
+    disableDebugVisualization(scene) {
+        if (this.debugGroup && scene) {
+            // Properly dispose of all wireframes
+            for (const [rigidBody, wireframe] of this.debugWireframes.entries()) {
+                if (wireframe.geometry) wireframe.geometry.dispose();
+                if (wireframe.material) wireframe.material.dispose();
+            }
+            
+            // Remove all wireframes
+            this.debugWireframes.clear();
+            scene.remove(this.debugGroup);
+            this.debugGroup = null;
+            
+            console.log('🧹 Disabled physics debug visualization and cleaned up all wireframes');
+        }
     }
 
     /**
@@ -1799,30 +1874,60 @@ export class PhysicsManager {
             return;
         }
 
+        // Clear console to remove existing spam
+        console.clear();
+        console.log('🔍 Physics Debug Mode ENABLED - Console cleared');
+
         // Create debug group if it doesn't exist
         if (!this.debugGroup) {
             this.debugGroup = new THREE.Group();
             this.debugGroup.name = 'PhysicsDebugGroup';
+            this.debugGroup.renderOrder = 999; // Render last to ensure visibility
             scene.add(this.debugGroup);
+            if (!this._silentMode) {
+                console.log('📦 Created physics debug group');
+            }
         }
 
         // Create wireframes for all existing physics bodies
+        let wireframeCount = 0;
         for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
             this.createDebugWireframe(rigidBody, threeObject);
+            wireframeCount++;
         }
-    }
-
-    /**
-     * Disable physics debug visualization
-     * @param {THREE.Scene} scene - Three.js scene
-     */
-    disableDebugVisualization(scene) {
-        if (this.debugGroup && scene) {
-            // Remove all wireframes
-            this.debugWireframes.clear();
-            scene.remove(this.debugGroup);
-            this.debugGroup = null;
+        
+        // Force an immediate position update for all wireframes
+        if (!this._silentMode && this._debugLoggingEnabled) {
+            console.log(`🔍 Forcing immediate wireframe position update...`);
         }
+        this.updateDebugVisualization();
+        
+        if (!this._silentMode) {
+            console.log(`🔍 Created ${wireframeCount} debug wireframes for existing physics bodies`);
+            console.log(`👁️ PHYSICS DEBUG WIREFRAMES NOW VISIBLE: Look for colored wireframe outlines around objects`);
+        }
+        
+        // Expose debug methods globally for console access
+        window.testWireframes = () => this.testWireframeVisibility();
+        window.debugWireframes = () => this.debugWireframeInfo();
+        window.updateWireframes = () => this.updateDebugVisualization();
+        window.moveWireframesToCamera = () => this.moveWireframesToCamera();
+        window.enhanceWireframes = () => this.enhanceWireframeVisibility();
+        window.enableVerboseLogging = () => this.enableVerboseLogging();
+        window.disableVerboseLogging = () => this.disableVerboseLogging();
+        window.clearConsole = () => console.clear();
+        window.stopProjectileWireframes = () => { this._silentMode = true; console.log('🔇 Silent mode enabled - reduced logging'); };
+        
+        console.log(`💡 Physics Debug Console Commands:`);
+        console.log(`   • clearConsole() - Clear the console (recommended first step)`);
+        console.log(`   • debugWireframes() - Show wireframe status summary`);
+        console.log(`   • testWireframes() - Make wireframes extremely obvious`);
+        console.log(`   • moveWireframesToCamera() - Move all wireframes in front of camera`);
+        console.log(`   • enhanceWireframes() - Make wireframes more visible`);
+        console.log(`   • enableVerboseLogging() - Enable detailed debug logs`);
+        console.log(`   • disableVerboseLogging() - Disable detailed debug logs`);
+        console.log(`   • stopProjectileWireframes() - Enable silent mode`);
+        console.log(`   • updateWireframes() - Force update wireframe positions`);
     }
 
     /**
@@ -1831,23 +1936,38 @@ export class PhysicsManager {
      * @param {THREE.Object3D} threeObject - Associated Three.js object
      */
     createDebugWireframe(rigidBody, threeObject) {
-        if (!this.debugMode || !this.debugGroup || typeof THREE === 'undefined') {
+        if (!this.debugMode || !this.debugGroup || !rigidBody || this.debugWireframes.has(rigidBody)) {
             return;
         }
 
         try {
             const metadata = this.entityMetadata.get(rigidBody);
             
-            // Get current physics body position and rotation
+            // Skip projectiles to eliminate flashing wireframes
+            if (metadata?.type === 'projectile' || metadata?.id?.includes('projectile') || 
+                threeObject?.name?.includes('projectile') || threeObject?.userData?.type === 'projectile' ||
+                metadata?.id?.includes('laser') || metadata?.id?.includes('bullet') || 
+                metadata?.id?.includes('missile') || metadata?.id?.includes('torpedo')) {
+                // Only log if debug logging is enabled
+                if (this._debugLoggingEnabled && !this._silentMode) {
+                    console.log(`🚫 Skipping wireframe for projectile: ${metadata?.id || threeObject?.name || 'unnamed'}`);
+                }
+                return;
+            }
+
+            // Get collision shape and position
+            const collisionShape = rigidBody.getCollisionShape();
+            if (!collisionShape) return;
+
             const transform = new this.Ammo.btTransform();
             rigidBody.getWorldTransform(transform);
             const position = transform.getOrigin();
             const rotation = transform.getRotation();
 
             // Create wireframe geometry based on collision shape
-            const collisionShape = rigidBody.getCollisionShape();
             let geometry;
             let material;
+            let wireframe;
 
             // Determine shape type and create appropriate wireframe
             if (this.isBoxShape(collisionShape)) {
@@ -1857,36 +1977,50 @@ export class PhysicsManager {
                 const height = halfExtents.y() * 2;
                 const depth = halfExtents.z() * 2;
                 
-                geometry = new THREE.BoxGeometry(width, height, depth);
+                // Make wireframes slightly larger for better visibility
+                geometry = new THREE.BoxGeometry(width * 1.1, height * 1.1, depth * 1.1);
                 material = new THREE.MeshBasicMaterial({ 
-                    color: metadata?.type === 'enemy_ship' ? 0xff0000 : 0x00ff00, 
+                    color: metadata?.type === 'enemy_ship' ? 0xff00ff : 0x00ffff, // Magenta for enemies, cyan for others
                     wireframe: true,
                     transparent: true,
-                    opacity: 0.7
+                    opacity: 0.6,
+                    depthTest: false,
+                    depthWrite: false
                 });
             } else if (this.isSphereShape(collisionShape)) {
-                // Sphere shape
+                // Sphere shape  
                 const radius = collisionShape.getRadius();
-                geometry = new THREE.SphereGeometry(radius, 16, 12);
-                material = new THREE.MeshBasicMaterial({ 
-                    color: metadata?.type === 'enemy_ship' ? 0xff4444 : 0x44ff44, 
+                geometry = new THREE.SphereGeometry(radius * 1.1, 16, 16);
+                material = new THREE.MeshBasicMaterial({
+                    color: metadata?.type === 'planet' ? 0xffff00 : 
+                           metadata?.type === 'star' ? 0xff8800 : 0x00ff00,
                     wireframe: true,
                     transparent: true,
-                    opacity: 0.7
+                    opacity: 0.6,
+                    depthTest: false,
+                    depthWrite: false
                 });
             } else {
-                // Default box for unknown shapes
+                // Default to box for unknown shapes
                 geometry = new THREE.BoxGeometry(2, 2, 2);
-                material = new THREE.MeshBasicMaterial({ 
-                    color: 0xffff00, 
+                material = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
                     wireframe: true,
                     transparent: true,
-                    opacity: 0.5
+                    opacity: 0.6,
+                    depthTest: false,
+                    depthWrite: false
                 });
             }
 
             // Create wireframe mesh
-            const wireframe = new THREE.Mesh(geometry, material);
+            wireframe = new THREE.Mesh(geometry, material);
+            
+            // Force wireframes to always render on top
+            wireframe.renderOrder = 1000;
+            wireframe.material.depthTest = false;
+
+            // Set initial position and rotation from physics body
             wireframe.position.set(position.x(), position.y(), position.z());
             wireframe.quaternion.set(rotation.x(), rotation.y(), rotation.z(), rotation.w());
             
@@ -1902,10 +2036,21 @@ export class PhysicsManager {
             this.debugGroup.add(wireframe);
             this.debugWireframes.set(rigidBody, wireframe);
 
-            console.log(`🔍 Created debug wireframe for ${metadata?.type || 'unknown'} at (${position.x().toFixed(2)}, ${position.y().toFixed(2)}, ${position.z().toFixed(2)})`);
+            const entityName = metadata?.id || threeObject.name || 'unnamed';
+            const entityType = metadata?.type || 'unknown';
+            
+            // Only log if debug logging is enabled or for important entities
+            if (!this._silentMode && (this._debugLoggingEnabled || entityType === 'star' || entityType === 'planet')) {
+                const colorName = entityType === 'enemy_ship' ? 'MAGENTA' : 
+                                 entityType === 'planet' ? 'YELLOW' :
+                                 entityType === 'star' ? 'ORANGE' : 'CYAN';
+                console.log(`🔍 Created ${colorName} wireframe for ${entityName} (${entityType}) at (${position.x().toFixed(2)}, ${position.y().toFixed(2)}, ${position.z().toFixed(2)})`);
+            }
 
         } catch (error) {
-            console.warn('Failed to create debug wireframe:', error);
+            if (this._debugLoggingEnabled && !this._silentMode) {
+                console.warn('Failed to create debug wireframe:', error);
+            }
         }
     }
 
@@ -1917,18 +2062,44 @@ export class PhysicsManager {
             return;
         }
 
-        for (const [rigidBody, wireframe] of this.debugWireframes.entries()) {
-            try {
-                const transform = new this.Ammo.btTransform();
-                rigidBody.getWorldTransform(transform);
-                const position = transform.getOrigin();
-                const rotation = transform.getRotation();
+        let updateCount = 0;
+        const staleWireframes = [];
+        
+        // Update existing wireframes using Three.js object positions (more reliable)
+        for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
+            const wireframe = this.debugWireframes.get(rigidBody);
+            if (wireframe) {
+                try {
+                    // Use Three.js object position and rotation (this works correctly!)
+                    const position = threeObject.position;
+                    const quaternion = threeObject.quaternion;
 
-                wireframe.position.set(position.x(), position.y(), position.z());
-                wireframe.quaternion.set(rotation.x(), rotation.y(), rotation.z(), rotation.w());
-            } catch (error) {
-                console.warn('Failed to update debug wireframe:', error);
+                    // Apply position and rotation to wireframe
+                    wireframe.position.set(position.x, position.y, position.z);
+                    wireframe.quaternion.set(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+                    
+                    // Debug: Log position updates for first few wireframes to verify fix
+                    if (updateCount < 3 && !this._silentMode) {
+                        const metadata = this.entityMetadata.get(rigidBody);
+                        console.log(`🔍 FIXED: ${metadata?.id || 'unknown'} wireframe moved to (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+                    }
+                    
+                    updateCount++;
+                } catch (error) {
+                    console.warn('Failed to update debug wireframe - marking for removal:', error);
+                    staleWireframes.push(rigidBody);
+                }
             }
+        }
+        
+        // Clean up stale wireframes
+        staleWireframes.forEach(rigidBody => {
+            this.removeDebugWireframe(rigidBody);
+        });
+        
+        // Log summary if there were position updates
+        if (!this._silentMode && updateCount > 0) {
+            console.log(`🔍 POSITION UPDATE: Successfully repositioned ${updateCount} wireframes using Three.js object positions`);
         }
     }
 
@@ -2016,99 +2187,280 @@ export class PhysicsManager {
      * @returns {*} The property value or null if not found
      */
     safeGetRaycastProperty(rayCallback, property) {
-        const methodVariations = {
+        const propertyMethods = {
+            'collisionObject': [
+                'get_m_collisionObject',
+                'm_collisionObject', 
+                'getCollisionObject',
+                'collisionObject'
+            ],
             'closestHitFraction': [
                 'get_m_closestHitFraction',
-                'm_closestHitFraction', 
+                'm_closestHitFraction',
                 'getClosestHitFraction',
                 'closestHitFraction',
                 'get_closestHitFraction',
-                'closest_hit_fraction'
-            ],
-            'collisionObject': [
-                'get_m_collisionObject',
-                'm_collisionObject',
-                'getCollisionObject', 
-                'collisionObject',
-                'get_collisionObject',
-                'collision_object'
+                'hasHit' // Alternative method that exists on most raycast callbacks
             ],
             'hitPointWorld': [
                 'get_m_hitPointWorld',
                 'm_hitPointWorld',
                 'getHitPointWorld',
                 'hitPointWorld',
-                'get_hitPointWorld',
-                'hit_point_world'
+                'get_hitPointWorld'
             ],
             'hitNormalWorld': [
                 'get_m_hitNormalWorld', 
                 'm_hitNormalWorld',
                 'getHitNormalWorld',
                 'hitNormalWorld',
-                'get_hitNormalWorld',
-                'hit_normal_world'
+                'get_hitNormalWorld'
             ]
         };
 
-        const variations = methodVariations[property];
-        if (!variations) {
-            console.warn(`Unknown raycast property: ${property}`);
+        const methods = propertyMethods[property];
+        if (!methods) {
+            // Reduce console spam - only warn once per unknown property
+            if (!this._warnedProperties) this._warnedProperties = new Set();
+            if (!this._warnedProperties.has(property)) {
+                console.warn(`Unknown raycast property: ${property}`);
+                this._warnedProperties.add(property);
+            }
             return null;
         }
 
-        // Try each variation until one works
-        for (const methodName of variations) {
+        // Try each method in order
+        for (const methodName of methods) {
             try {
+                // Try as method call
                 if (typeof rayCallback[methodName] === 'function') {
                     const result = rayCallback[methodName]();
-                    if (result !== null && result !== undefined) {
+                    // Only log success on first successful access per property to reduce spam
+                    if (this._debugLoggingEnabled && !this._successfulMethods) this._successfulMethods = new Set();
+                    if (this._debugLoggingEnabled && !this._successfulMethods.has(`${property}_${methodName}`)) {
                         console.log(`✅ RAYCAST API: ${property} accessed via ${methodName}()`);
-                        return result;
+                        this._successfulMethods.add(`${property}_${methodName}`);
                     }
-                } else if (rayCallback[methodName] !== undefined) {
+                    return result;
+                }
+                
+                // Try as direct property
+                if (rayCallback[methodName] !== undefined) {
                     const result = rayCallback[methodName];
-                    if (result !== null && result !== undefined) {
+                    // Only log success on first successful access per property to reduce spam
+                    if (this._debugLoggingEnabled && !this._successfulMethods) this._successfulMethods = new Set();
+                    if (this._debugLoggingEnabled && !this._successfulMethods.has(`${property}_${methodName}`)) {
                         console.log(`✅ RAYCAST API: ${property} accessed via ${methodName} (property)`);
-                        return result;
+                        this._successfulMethods.add(`${property}_${methodName}`);
                     }
+                    return result;
                 }
             } catch (error) {
-                // Continue to next variation silently
+                // Silent catch - continue to next method
                 continue;
             }
         }
 
-        console.warn(`Could not access raycast property ${property} with any known method`);
-        
-        // Only show detailed debug info for closestHitFraction since it's the problematic one
+        // Special handling for closestHitFraction - try hasHit() and return 0.0 or 1.0
         if (property === 'closestHitFraction') {
-            console.log(`🔍 Available fraction-related methods:`, Object.getOwnPropertyNames(rayCallback.__proto__).filter(name => 
-                name.toLowerCase().includes('fraction') || name.toLowerCase().includes('distance')
-            ));
-            
-            // Final fallback: try direct property access on the object itself
-            console.log(`🔍 Trying direct property access for ${property}...`);
-            const allProperties = Object.getOwnPropertyNames(rayCallback);
-            const relevantProps = allProperties.filter(name => 
-                name.toLowerCase().includes('fraction') || name.toLowerCase().includes('distance')
-            );
-            console.log(`🔍 Relevant properties found:`, relevantProps);
-            
-            if (relevantProps.length > 0) {
-                const prop = relevantProps[0];
-                try {
-                    const result = rayCallback[prop];
-                    console.log(`✅ RAYCAST FALLBACK: ${property} accessed via direct property ${prop}`);
-                    return result;
-                } catch (error) {
-                    console.error(`❌ RAYCAST FALLBACK failed for ${prop}:`, error);
+            try {
+                if (typeof rayCallback.hasHit === 'function' && rayCallback.hasHit()) {
+                    return 0.5; // Return a reasonable hit fraction
                 }
+                // If no hit, return null instead of causing errors
+                return null;
+            } catch (error) {
+                // Final fallback - assume no hit to avoid errors
+                return null;
+            }
+        }
+
+        // Reduce console spam - only warn periodically for failed property access
+        if (!this._silentMode && !this._lastFailureWarning) this._lastFailureWarning = {};
+        const now = Date.now();
+        if (!this._silentMode && (!this._lastFailureWarning[property] || now - this._lastFailureWarning[property] > 5000)) {
+            console.warn(`Could not access raycast property ${property} with any known method`);
+            this._lastFailureWarning[property] = now;
+        }
+
+        return null;
+    }
+
+    /**
+     * Make all debug wireframes more visible (for debugging visibility issues)
+     */
+    enhanceWireframeVisibility() {
+        if (!this.debugMode || !this.debugGroup) {
+            console.log('❌ Debug mode not active - cannot enhance wireframes');
+            return;
+        }
+        
+        let enhancedCount = 0;
+        for (const [rigidBody, wireframe] of this.debugWireframes.entries()) {
+            if (wireframe && wireframe.material) {
+                // Make wireframes very visible
+                wireframe.material.color.setHex(0xff0000); // Bright red
+                wireframe.material.transparent = true;
+                wireframe.material.opacity = 0.8;
+                wireframe.material.depthTest = false;
+                wireframe.material.depthWrite = false;
+                wireframe.renderOrder = 9999;
+                wireframe.scale.set(1.5, 1.5, 1.5); // Make them bigger
+                enhancedCount++;
             }
         }
         
-        return null;
+        console.log(`🔍 Enhanced visibility for ${enhancedCount} wireframes - they should now be bright red and enlarged`);
+        
+        // Also log the debug group status
+        console.log(`🔍 Debug group status:`);
+        console.log(`   • Parent scene: ${!!this.debugGroup.parent}`);
+        console.log(`   • Children count: ${this.debugGroup.children.length}`);
+        console.log(`   • Visible: ${this.debugGroup.visible}`);
+        console.log(`   • Position: (${this.debugGroup.position.x}, ${this.debugGroup.position.y}, ${this.debugGroup.position.z})`);
+    }
+
+    /**
+     * Make wireframes extremely obvious for debugging (console command)
+     */
+    testWireframeVisibility() {
+        if (!this.debugMode || !this.debugGroup) {
+            console.log('❌ Debug mode not active');
+            return;
+        }
+        
+        console.log(`🔍 Testing wireframe visibility - making them extremely obvious...`);
+        
+        // First, force update all wireframe positions
+        console.log(`🔍 Force updating wireframe positions first...`);
+        this.updateDebugVisualization();
+        
+        let count = 0;
+        // Use the same iteration approach as the working physics inventory
+        for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
+            const wireframe = this.debugWireframes.get(rigidBody);
+            if (wireframe && wireframe.material) {
+                // Get position from Three.js object (this works!) instead of transform
+                const threePos = threeObject.position;
+                
+                // Set wireframe to match Three.js object position
+                wireframe.position.set(threePos.x, threePos.y, threePos.z);
+                
+                // Make them absolutely impossible to miss
+                wireframe.material.color.setHex(0xff0000); // Bright red
+                wireframe.material.transparent = false;
+                wireframe.material.opacity = 1.0;
+                wireframe.material.wireframe = false; // Solid, not wireframe
+                wireframe.material.depthTest = false;
+                wireframe.material.depthWrite = false;
+                wireframe.renderOrder = 99999;
+                wireframe.scale.set(3, 3, 3); // Make them 3x larger
+                wireframe.material.needsUpdate = true;
+                count++;
+                
+                const metadata = this.entityMetadata.get(rigidBody);
+                console.log(`🔍 Enhanced wireframe ${count}: ${metadata?.type || 'unknown'}`);
+                console.log(`   • Three.js position: (${threePos.x.toFixed(2)}, ${threePos.y.toFixed(2)}, ${threePos.z.toFixed(2)})`);
+                console.log(`   • Wireframe position: (${wireframe.position.x.toFixed(2)}, ${wireframe.position.y.toFixed(2)}, ${wireframe.position.z.toFixed(2)})`);
+                console.log(`   • Scale: (${wireframe.scale.x}, ${wireframe.scale.y}, ${wireframe.scale.z})`);
+                console.log(`   • Visible: ${wireframe.visible}`);
+                console.log(`   • Parent: ${!!wireframe.parent}`);
+            }
+        }
+        
+        console.log(`🔍 Made ${count} wireframes into BRIGHT RED SOLID SHAPES that are 3x larger`);
+        console.log(`🔍 All wireframes positioned using Three.js object positions (not physics transforms)`);
+    }
+
+    /**
+     * Print detailed debug information about wireframes
+     */
+    debugWireframeInfo() {
+        console.log(`🔍 === WIREFRAME DEBUG INFO ===`);
+        console.log(`🔍 Debug mode: ${this.debugMode}`);
+        console.log(`🔍 Debug group exists: ${!!this.debugGroup}`);
+        console.log(`🔍 Debug group parent: ${!!this.debugGroup?.parent}`);
+        console.log(`🔍 Debug group children: ${this.debugGroup?.children.length || 0}`);
+        console.log(`🔍 Wireframes in map: ${this.debugWireframes.size}`);
+        
+        console.log(`🔍 Physics bodies: ${this.rigidBodies.size}`);
+        
+        if (this.debugGroup && this.debugWireframes.size > 0) {
+            let visibleCount = 0;
+            this.debugWireframes.forEach((wireframe, rigidBody) => {
+                const metadata = this.entityMetadata.get(rigidBody);
+                const entityName = metadata?.id || 'unnamed';
+                const entityType = metadata?.type || 'unknown';
+                
+                if (wireframe.visible) visibleCount++;
+                
+                console.log(`🔍 ${entityName} (${entityType}):`);
+                console.log(`   • Visible: ${wireframe.visible}`);
+                console.log(`   • Position: (${wireframe.position.x.toFixed(2)}, ${wireframe.position.y.toFixed(2)}, ${wireframe.position.z.toFixed(2)})`);
+                console.log(`   • Color: #${wireframe.material.color.getHexString()}`);
+            });
+            
+            console.log(`🔍 Summary: ${visibleCount}/${this.debugWireframes.size} wireframes visible`);
+        }
+        
+        if (window.camera) {
+            console.log(`🔍 Camera position: (${window.camera.position.x.toFixed(2)}, ${window.camera.position.y.toFixed(2)}, ${window.camera.position.z.toFixed(2)})`);
+        }
+    }
+
+    /**
+     * Move all wireframes to camera position for testing
+     */
+    moveWireframesToCamera() {
+        if (!this.debugMode || !this.debugGroup || !window.camera) {
+            console.log('❌ Debug mode not active or no camera available');
+            return;
+        }
+        
+        console.log(`🔍 Moving all wireframes to camera position for visibility test...`);
+        
+        const cameraPos = window.camera.position;
+        const offsetDistance = 5; // Distance in front of camera
+        const cameraDirection = new THREE.Vector3(0, 0, -1);
+        cameraDirection.applyQuaternion(window.camera.quaternion);
+        
+        let movedCount = 0;
+        this.debugWireframes.forEach((wireframe, rigidBody) => {
+            const metadata = this.entityMetadata.get(rigidBody);
+            const entityName = metadata?.id || 'unnamed';
+            
+            // Position wireframe in front of camera in a line
+            const offset = new THREE.Vector3().copy(cameraDirection).multiplyScalar(offsetDistance + movedCount * 2);
+            wireframe.position.copy(cameraPos).add(offset);
+            
+            // Make them very obvious
+            wireframe.material.color.setHex(0xff0000); // Bright red
+            wireframe.material.wireframe = false; // Solid
+            wireframe.scale.set(0.5, 0.5, 0.5); // Smaller for testing
+            wireframe.material.needsUpdate = true;
+            
+            console.log(`🔍 Moved ${entityName} to camera front at distance ${offsetDistance + movedCount * 2}`);
+            movedCount++;
+        });
+        
+        console.log(`🔍 Moved ${movedCount} wireframes to camera position - you should see red cubes in front of you!`);
+    }
+
+    /**
+     * Enable verbose debug logging
+     */
+    enableVerboseLogging() {
+        this._debugLoggingEnabled = true;
+        console.log('🔍 Verbose physics debug logging ENABLED');
+    }
+
+    /**
+     * Disable verbose debug logging  
+     */
+    disableVerboseLogging() {
+        this._debugLoggingEnabled = false;
+        console.log('🔍 Verbose physics debug logging DISABLED');
     }
 }
 
-export default PhysicsManager; 
+export default PhysicsManager;

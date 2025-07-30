@@ -97,7 +97,8 @@ export default class System {
         // Level-specific stats (to be overridden by concrete systems)
         this.levelStats = this.initializeLevelStats();
         
-        console.log(`System created: ${this.displayName} (Level ${level}) - Energy consumption: ${this.energyConsumptionRate}/sec`);
+        // Remove verbose system creation logging - only log if there are issues
+        // console.log(`System created: ${this.displayName} (Level ${level}) - Energy consumption: ${this.energyConsumptionRate}/sec`);
     }
     
     /**

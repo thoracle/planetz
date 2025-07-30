@@ -26,7 +26,6 @@ class WarpEffects {
         this.ensureAudioContextRunning();
         
         // Load the warp sounds
-        console.log('Loading warp sounds...');
         this.loadWarpSound('static/audio/warp.wav', 'warp');
         this.loadWarpSound('static/audio/warp-redalert.wav', 'redalert');
 
@@ -316,7 +315,7 @@ class WarpEffects {
         this.audioLoader.load(
             audioPath,
             (buffer) => {
-                console.log(`${soundType === 'warp' ? 'Warp' : 'Red alert warp'} sound loaded successfully from: ${audioPath}`);
+                // Warp sound loaded
                 if (soundType === 'warp') {
                     this.warpSound.setBuffer(buffer);
                     this.warpSound.setLoop(false);
@@ -330,7 +329,7 @@ class WarpEffects {
                 }
             },
             (progress) => {
-                console.log(`Loading ${soundType === 'warp' ? 'warp' : 'red alert warp'} sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
+                // Loading progress
             },
             (error) => {
                 console.error(`Error loading ${soundType === 'warp' ? 'warp' : 'red alert warp'} sound:`, error);

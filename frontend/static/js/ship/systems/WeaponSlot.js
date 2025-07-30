@@ -7,10 +7,11 @@
 import { WeaponCard } from './WeaponCard.js';
 
 export class WeaponSlot {
-    constructor(weaponNumber, ship, starfieldManager) {
+    constructor(weaponNumber, ship, starfieldManager, weaponSystem = null) {
         this.weaponNumber = weaponNumber;
         this.ship = ship;
         this.starfieldManager = starfieldManager;
+        this.weaponSystem = weaponSystem; // Reference to WeaponSystemCore for HUD messaging
         this.weapon = null;
         this.lastFired = 0;
         this.effectsManager = null;
@@ -27,11 +28,8 @@ export class WeaponSlot {
         this.cooldownTimer = 0; // milliseconds
         this.isEmpty = true;
         
-        // Throttling for warning messages to prevent spam
-        this.lastInsufficientEnergyWarning = 0;
-        this.lastTargetLockWarning = 0;
-        this.lastOutOfRangeWarning = 0;
-        this.warningThrottleTime = 5000; // 5 seconds between warnings
+        // Remove warning throttling - weapons have cooldowns already
+        // Warning messages will show every time without throttling
         
         console.log(`WeaponSlot ${weaponNumber} initialized`);
     }
@@ -53,12 +51,16 @@ export class WeaponSlot {
         // Check energy requirements
         if (weapon.energyCost > 0) {
             if (!ship.hasEnergy(weapon.energyCost)) {
-                // Throttle insufficient energy warnings to prevent console spam
-                const now = Date.now();
-                if (now - this.lastInsufficientEnergyWarning > this.warningThrottleTime) {
-                    console.warn(`Weapon slot ${this.slotIndex}: Insufficient energy (need ${weapon.energyCost})`);
-                    this.lastInsufficientEnergyWarning = now;
+                console.warn(`Weapon slot ${this.slotIndex}: Insufficient energy (need ${weapon.energyCost})`);
+                
+                // Show HUD message through weapon system (no throttling)
+                if (this.weaponSystem && this.weaponSystem.showMessage) {
+                    this.weaponSystem.showMessage(
+                        `Insufficient Energy: ${weapon.name} needs ${weapon.energyCost} energy`,
+                        3000
+                    );
                 }
+                
                 return false;
             }
             
@@ -68,24 +70,50 @@ export class WeaponSlot {
         
         // Check target requirements for splash-damage weapons
         if (weapon.targetLockRequired && !target) {
-            // Throttle target lock warnings to prevent console spam
-            const now = Date.now();
-            if (now - this.lastTargetLockWarning > this.warningThrottleTime) {
-                console.warn(`Weapon slot ${this.slotIndex}: Target lock required`);
-                this.lastTargetLockWarning = now;
+            console.warn(`Weapon slot ${this.slotIndex}: Target lock required`);
+            
+            // Show HUD message through weapon system (no throttling)
+            if (this.weaponSystem && this.weaponSystem.showMessage) {
+                this.weaponSystem.showMessage(
+                    `Target Lock Required: ${weapon.name} needs a locked target`,
+                    3000
+                );
             }
+            
             return false;
         }
         
-        // Validate target range
-        if (target && !weapon.isValidTarget(target, this.calculateDistanceToTarget(target))) {
-            // Throttle out of range warnings to prevent console spam
-            const now = Date.now();
-            if (now - this.lastOutOfRangeWarning > this.warningThrottleTime) {
-                console.warn(`Weapon slot ${this.slotIndex}: Target out of range`);
-                this.lastOutOfRangeWarning = now;
+        // Range checking for both target-locked and free-aim modes
+        let distanceToTarget = null;
+        let isOutOfRange = false;
+        
+        if (target) {
+            // Target-locked mode: check distance to target
+            distanceToTarget = this.calculateDistanceToTarget(target);
+            isOutOfRange = !weapon.isValidTarget(target, distanceToTarget);
+        } else {
+            // Free-aim mode: check distance to crosshair intersection
+            distanceToTarget = this.calculateCrosshairDistance();
+            isOutOfRange = distanceToTarget > weapon.range;
+        }
+        
+        // Show range warning but allow firing (no throttling, always show message)
+        if (isOutOfRange) {
+            const distanceKm = (distanceToTarget / 1000).toFixed(1);
+            const maxRangeKm = (weapon.range / 1000).toFixed(1);
+            const modeText = target ? 'Target' : 'Crosshair';
+            
+            console.warn(`Weapon slot ${this.slotIndex}: ${modeText} out of range`);
+            
+            // Show HUD message through weapon system (every time, no throttling)
+            if (this.weaponSystem && this.weaponSystem.showMessage) {
+                this.weaponSystem.showMessage(
+                    `${modeText} Out of Range: ${weapon.name} - ${distanceKm}km > ${maxRangeKm}km max`,
+                    3000
+                );
             }
-            return false;
+            
+            // Continue firing anyway - don't return false
         }
         
         // Calculate proper weapon firing position (especially important for projectiles)
@@ -239,6 +267,14 @@ export class WeaponSlot {
         this.equippedWeapon = weaponCard;
         this.isEmpty = false; // Mark slot as not empty
         this.cooldownTimer = 0;
+        
+        // Set up showMessage callback for the weapon card to use the weapon system's HUD messaging
+        if (this.weaponSystem && this.weaponSystem.showMessage) {
+            weaponCard.showMessage = (message, duration = 3000) => {
+                this.weaponSystem.showMessage(message, duration);
+            };
+        }
+        
         console.log(`Weapon slot ${this.slotIndex}: Equipped ${weaponCard.name}`);
         
         // Log weapon configuration once
@@ -301,9 +337,80 @@ export class WeaponSlot {
      * @returns {number} Distance to target
      */
     calculateDistanceToTarget(target) {
-        // This would integrate with the existing targeting/distance calculation system
-        // For now, return a placeholder value
-        return 500; // meters
+        // Get ship position (origin)
+        const ship = this.ship;
+        let shipPosition = null;
+        
+        if (ship && ship.threeObject && ship.threeObject.position) {
+            shipPosition = ship.threeObject.position;
+        } else if (window.starfieldManager && window.starfieldManager.camera) {
+            // Fallback to camera position if ship position not available
+            shipPosition = window.starfieldManager.camera.position;
+        } else {
+            console.warn('Cannot calculate distance: no ship or camera position available');
+            return 0;
+        }
+        
+        // Get target position
+        let targetPosition = null;
+        
+        if (target && target.position) {
+            targetPosition = target.position;
+        } else if (target && target.threeObject && target.threeObject.position) {
+            targetPosition = target.threeObject.position;
+        } else if (target && target.ship && target.ship.threeObject && target.ship.threeObject.position) {
+            targetPosition = target.ship.threeObject.position;
+        } else {
+            console.warn('Cannot calculate distance: target position not available', target);
+            return 0;
+        }
+        
+        // Calculate 3D distance
+        const distance = Math.sqrt(
+            Math.pow(shipPosition.x - targetPosition.x, 2) +
+            Math.pow(shipPosition.y - targetPosition.y, 2) +
+            Math.pow(shipPosition.z - targetPosition.z, 2)
+        );
+        
+        // Convert from world units (km) to meters
+        const distanceInMeters = distance * 1000;
+        
+        return distanceInMeters;
+    }
+    
+    /**
+     * Calculate distance to where the crosshair is pointing (for free-aim mode)
+     * @returns {number} Distance to crosshair intersection in meters
+     */
+    calculateCrosshairDistance() {
+        // Ensure we have access to camera and physics
+        if (!window.starfieldManager?.camera || !window.physicsManager?.initialized) {
+            // If no physics or camera, assume weapon max range
+            return this.equippedWeapon?.range || 24000;
+        }
+        
+        const camera = window.starfieldManager.camera;
+        const physicsManager = window.physicsManager;
+        
+        // Get camera's forward direction (where crosshair is pointing)
+        const aimDirection = new THREE.Vector3(0, 0, -1);
+        aimDirection.applyQuaternion(camera.quaternion);
+        
+        // Cast a ray from camera position in aim direction
+        const weaponRange = this.equippedWeapon?.range || 24000;
+        const raycastResult = physicsManager.raycast(
+            camera.position,
+            aimDirection,
+            weaponRange / 1000 // Convert to world units (km)
+        );
+        
+        if (raycastResult && raycastResult.hit && raycastResult.distance) {
+            // Hit something - return actual distance in meters
+            return raycastResult.distance * 1000; // Convert from world units to meters
+        } else {
+            // No hit within range - return weapon max range
+            return weaponRange;
+        }
     }
     
     /**
@@ -334,7 +441,7 @@ export class WeaponSlot {
         const now = Date.now();
         if (now - this.lastDebugTime > this.debugInterval) {
             const weaponRangeKm = (weaponRange / 1000).toFixed(1);
-            console.log(`🎯 PHYSICS RAYCAST: Max range ${weaponRangeKm}km`);
+            // Physics raycast (max range ${weaponRangeKm}km)
             this.lastDebugTime = now;
         }
 
@@ -370,7 +477,7 @@ export class WeaponSlot {
                     };
                 }
                 
-                console.log(`🎯 PHYSICS HIT: Beam ${i} hit entity ${hitResult.entity?.type || 'unknown'} at ${hitResult.distance.toFixed(2)}km`);
+                                    // Physics hit detected
             }
         }
 
@@ -888,13 +995,13 @@ export class WeaponSlot {
                     maxRange
                 );
                 
-                if (physicsHitResult.hit && physicsHitResult.entity) {
+                if (physicsHitResult && physicsHitResult.hit && physicsHitResult.entity) {
                     // Physics raycast found a hit!
                     const hitEntity = physicsHitResult.entity;
                     const hitPosition = physicsHitResult.position;
                     const hitDistance = physicsHitResult.distance;
                     
-                    console.log(`🎯 PHYSICS LASER HIT: Entity type ${hitEntity.type} at distance ${hitDistance.toFixed(2)}km`);
+                    // Physics laser hit detected
                     
                                          // Create explosion at the physics hit point
                     const baseExplosionRadius = Math.min(weapon.damage * 2, 100); // 2 meters per damage point, max 100m
@@ -981,6 +1088,6 @@ export class WeaponSlot {
             cooldownTimer: this.cooldownTimer,
             cooldownPercentage: this.getCooldownPercentage(),
             remainingCooldownTime: this.getRemainingCooldownTime()
-        };
-    }
+                 };
+     }
 } 

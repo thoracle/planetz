@@ -369,7 +369,7 @@ export class SplashDamageWeapon extends WeaponCard {
             console.log(`🎯 ${this.name}: Non-homing projectile firing toward crosshairs (no target lock needed)`);
         }
         
-        // ENHANCED: Range validation for targeted shots (if target exists)
+        // Range validation for targeted shots (if target exists) - show message but allow firing
         if (target && target.position && origin) {
             const distance = this.calculateDistanceToTarget(origin, target.position);
             const maxRange = this.range || 10000; // Default 10km if no range specified
@@ -380,25 +380,22 @@ export class SplashDamageWeapon extends WeaponCard {
                 
                 console.warn(`🎯 ${this.name}: Target out of range (${distanceKm}km > ${maxRangeKm}km max)`);
                 
-                // Send HUD message for out of range
-                if (window.starfieldManager?.weaponHUD) {
-                    window.starfieldManager.weaponHUD.showMessage(
-                        `Target Out of Range: ${this.name}`,
-                        `Target at ${distanceKm}km, max range ${maxRangeKm}km`,
+                // Send HUD message for out of range using proper callback
+                if (this.showMessage && typeof this.showMessage === 'function') {
+                    this.showMessage(
+                        `Target Out of Range: ${this.name} - ${distanceKm}km > ${maxRangeKm}km max`,
                         3000
                     );
+                } else {
+                    // Fallback for when no callback is set (shouldn't happen in normal operation)
+                    console.warn(`🎯 No HUD message callback available for ${this.name}`);
                 }
                 
-                return {
-                    success: false,
-                    reason: `Target out of range (${distanceKm}km > ${maxRangeKm}km)`,
-                    damage: 0,
-                    distance: distance,
-                    maxRange: maxRange
-                };
+                // Continue firing anyway - don't return false
+                console.log(`🎯 ${this.name}: Firing anyway despite being out of range`);
+            } else {
+                console.log(`🎯 ${this.name}: Target in range (${(distance / 1000).toFixed(1)}km / ${(maxRange / 1000).toFixed(1)}km max)`);
             }
-            
-            console.log(`🎯 ${this.name}: Target in range (${(distance / 1000).toFixed(1)}km / ${(maxRange / 1000).toFixed(1)}km max)`);
         }
         
         // Create and launch projectile

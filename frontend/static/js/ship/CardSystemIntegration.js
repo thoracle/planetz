@@ -31,29 +31,39 @@ export default class CardSystemIntegration {
      * Load cards from the card inventory UI
      */
     async loadCards() {
-        // Clear existing cards to avoid duplicates
-        this.installedCards.clear();
+        // Remove excessive debug logging - only log if there are actual issues
         
-        console.log('🃏 CARD LOADING DEBUG: Starting loadCards()');
-        console.log('  • cardInventoryUI exists:', !!this.cardInventoryUI);
-        console.log('  • cardInventoryUI.shipSlots exists:', !!(this.cardInventoryUI && this.cardInventoryUI.shipSlots));
-        
-        if (this.cardInventoryUI && this.cardInventoryUI.shipSlots) {
-            console.log('  • shipSlots size:', this.cardInventoryUI.shipSlots.size);
-            console.log('  • shipSlots contents:', Array.from(this.cardInventoryUI.shipSlots.entries()));
-            
-            // Load from cardInventoryUI if available
-            for (const [slotId, card] of this.cardInventoryUI.shipSlots.entries()) {
-                if (card && card.cardType) {
-                    this.installedCards.set(slotId, {
-                        cardType: card.cardType,
-                        level: card.level || 1
-                    });
-                    console.log(`  • Loaded card: ${card.cardType} (L${card.level || 1}) in slot ${slotId}`);
-                }
+        if (!this.cardInventoryUI) {
+            console.warn('CardSystemIntegration: No card inventory UI available');
+            return;
+        }
+
+        if (!this.cardInventoryUI.shipSlots) {
+            console.warn('CardSystemIntegration: No ship slots available in card inventory');
+            return;
+        }
+
+        const installedCardTypes = [];
+        let loadedCount = 0;
+
+        for (const [slotId, card] of this.cardInventoryUI.shipSlots.entries()) {
+            if (card && card.cardType) {
+                this.installedCards.set(slotId, {
+                    cardType: card.cardType,
+                    level: card.level || 1
+                });
+                installedCardTypes.push(card.cardType);
+                loadedCount++;
             }
-        } else {
-            // Load from PlayerData as fallback
+        }
+
+        // Only log summary if cards were loaded
+        if (loadedCount > 0) {
+            console.log(`Loaded ${loadedCount} cards for ${this.ship.shipName}`);
+        }
+        
+        // Load from PlayerData as fallback
+        if (this.installedCards.size === 0) {
             try {
                 const { default: CardInventoryUI } = await import('../ui/CardInventoryUI.js');
                 const playerData = CardInventoryUI.getPlayerData();

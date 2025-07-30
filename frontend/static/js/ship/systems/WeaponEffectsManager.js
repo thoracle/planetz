@@ -181,21 +181,16 @@ export class WeaponEffectsManager {
         try {
             if (!this.audioContext) {
                 console.warn('WeaponEffectsManager: No audio context available for weapon sounds');
-                console.log('🎵 Falling back to HTML5 audio...');
                 this.useFallbackAudio = true;
                 this.audioInitialized = true; // Mark as initialized to allow HTML5 fallback
                 return;
             }
-
-            console.log('🎵 Loading weapon audio effects...');
-            console.log('🎵 AudioContext state:', this.audioContext.state);
 
             // Try to resume audio context
             await this.ensureAudioContextResumed();
 
             // Load weapon audio from static directory
             const audioBasePath = 'static/audio/';
-            console.log(`🔍 Loading weapon audio from: ${audioBasePath}`);
             const soundFiles = [
                 { type: 'lasers', file: `${audioBasePath}lasers.wav` },
                 { type: 'photons', file: `${audioBasePath}photons.wav` },
@@ -206,15 +201,13 @@ export class WeaponEffectsManager {
                 { type: 'success', file: `${audioBasePath}success.wav` }
             ];
 
-            console.log(`🎵 Loading weapon audio files...`);
-
             const loadPromises = soundFiles.map(sound => this.loadSound(sound.type, sound.file));
             await Promise.all(loadPromises);
             
-            console.log(`✅ Loaded ${this.audioBuffers.size} weapon audio effects - ready to fire!`);
-            
-            // Log sound duration configuration once
-            console.log(`🔊 WEAPON AUDIO CONFIG: Laser sound duration = 0.5s (increased for full audibility)`);
+            // Only log summary
+            if (this.audioBuffers.size > 0) {
+                console.log(`Weapon audio ready (${this.audioBuffers.size} effects)`);
+            }
             
             this.audioInitialized = true;
             
@@ -284,7 +277,6 @@ export class WeaponEffectsManager {
         
         // Use HTML5 audio fallback if Web Audio API isn't available or failed
         if (this.useFallbackAudio || !this.audioInitialized || !this.audioContext || !this.audioBuffers.has(soundType)) {
-            console.log(`🎵 Using HTML5 fallback for ${soundType}: fallback=${this.useFallbackAudio}, initialized=${this.audioInitialized}, context=${!!this.audioContext}, hasBuffer=${this.audioBuffers.has(soundType)}`);
             this.playHTML5Sound(soundType, volume);
             return;
         }
@@ -365,8 +357,6 @@ export class WeaponEffectsManager {
      * @param {number} volume Volume (0.0 - 1.0)
      */
     playHTML5Sound(soundType, volume = 0.5) {
-        console.log(`🎵 WeaponEffectsManager.playHTML5Sound called: ${soundType}, volume=${volume}`);
-        
         try {
             const audioBasePath = 'static/audio/';
             const audioMap = {
@@ -380,13 +370,9 @@ export class WeaponEffectsManager {
             };
             
             if (audioMap[soundType]) {
-                console.log(`🎵 HTML5: Playing ${soundType} from: ${audioMap[soundType]}`);
-                
                 const audio = new Audio(audioMap[soundType]);
                 audio.volume = Math.max(0, Math.min(1, volume));
-                audio.play().then(() => {
-                    console.log(`✅ HTML5: Successfully played ${soundType}`);
-                }).catch(error => {
+                audio.play().catch(error => {
                     // Only log error if this is the first failure
                     if (!this.html5AudioWarningShown) {
                         console.warn('HTML5 audio play failed (autoplay policy):', error.message);
@@ -394,7 +380,7 @@ export class WeaponEffectsManager {
                     }
                 });
             } else {
-                console.warn(`🎵 HTML5: No audio mapping found for sound type: ${soundType}`);
+                console.warn(`HTML5: No audio mapping found for sound type: ${soundType}`);
             }
         } catch (error) {
             console.warn(`HTML5 audio fallback failed for ${soundType}:`, error);

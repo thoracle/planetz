@@ -166,14 +166,13 @@ export default class CardInventoryUI {
         try {
             // Initialize THREE.js audio context if not already available
             if (typeof window.THREE !== 'undefined' && window.THREE.AudioListener) {
-                console.log('✅ THREE.js audio available');
+                // THREE.js audio available
                 this.audioListener = new window.THREE.AudioListener();
                 this.upgradeSound = new window.THREE.Audio(this.audioListener);
                 this.upgradeSoundLoaded = false;
                 
                 // Load upgrade sound with fallback paths
                 const audioLoader = new window.THREE.AudioLoader();
-                console.log('🎵 Loading upgrade sound with fallback path detection...');
                 
                 this.loadAudio(audioLoader, 'static/audio/blurb.mp3');
             } else {
@@ -197,14 +196,12 @@ export default class CardInventoryUI {
         audioLoader.load(
             audioPath,
             (buffer) => {
-                console.log(`✅ Upgrade sound loaded from: ${audioPath}`);
                 this.upgradeSound.setBuffer(buffer);
                 this.upgradeSound.setVolume(0.7);
                 this.upgradeSoundLoaded = true;
-                console.log('🎵 Upgrade sound initialization complete');
             },
             (progress) => {
-                console.log(`🎵 Loading upgrade sound: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
+                // Loading progress (silent)
             },
             (error) => {
                 console.error('❌ Error loading upgrade sound:', error);
@@ -552,7 +549,7 @@ export default class CardInventoryUI {
                         const playPromise = audioToPlay.play();
                         if (playPromise !== undefined) {
                             playPromise.then(() => {
-                                console.log(`✅ Playing upgrade success sound via HTML5 audio (pool ${currentPoolIndex})`);
+                                // Playing upgrade sound
                                 
                                 // Set up a corruption detection timeout
                                 setTimeout(() => {

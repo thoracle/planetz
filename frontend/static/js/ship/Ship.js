@@ -442,7 +442,13 @@ export default class Ship {
         // Calculate total stats
         this.calculateTotalStats();
         
-        console.log(`Added system: ${systemName} (${system.slotCost} slots) - ${this.availableSlots} slots remaining`);
+        // Add the system to our systems Map
+        this.systems.set(systemName, system);
+        this.availableSlots -= system.slotCost;
+        
+        // Remove verbose system addition logging
+        // console.log(`Added system: ${systemName} (${system.slotCost} slots) - ${this.availableSlots} slots remaining`);
+        
         return true;
     }
     

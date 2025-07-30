@@ -32,8 +32,6 @@ export class StarfieldAudioManager {
      * Initialize all audio systems
      */
     initializeAudio() {
-        console.log('🎵 Initializing StarfieldAudioManager...');
-        
         // Set up user interaction detection FIRST
         this.setupUserInteractionDetection();
         
@@ -42,7 +40,6 @@ export class StarfieldAudioManager {
         
         // Load audio files from static directory
         const audioBasePath = 'static/audio/';
-        console.log(`🔍 Loading audio from: ${audioBasePath}`);
         this.loadEngineAudio(`${audioBasePath}engines.wav`);
         this.loadCommandAudio(`${audioBasePath}command.wav`);
         this.loadCommandFailedAudio(`${audioBasePath}command_failed.mp3`);
@@ -88,7 +85,7 @@ export class StarfieldAudioManager {
         this.audioLoader.load(
             audioPath,
             (buffer) => {
-                console.log(`🎵 Engine sound loaded successfully from: ${audioPath}`);
+                // Engine sound loaded
                 this.engineSound.setBuffer(buffer);
                 this.engineSound.setLoop(true);
                 
@@ -128,7 +125,7 @@ export class StarfieldAudioManager {
         this.audioLoader.load(
             audioPath,
             (buffer) => {
-                console.log(`🎵 Command sound loaded successfully from: ${audioPath}`);
+                // Command sound loaded
                 this.commandSound.setBuffer(buffer);
                 this.commandSound.setVolume(0.5);
                 this.commandSoundLoaded = true;
@@ -152,7 +149,7 @@ export class StarfieldAudioManager {
         this.audioLoader.load(
             audioPath,
             (buffer) => {
-                console.log(`🎵 Command failed sound loaded successfully from: ${audioPath}`);
+                // Command failed sound loaded
                 this.commandFailedSound.setBuffer(buffer);
                 this.commandFailedSound.setVolume(0.6);
                 this.commandFailedSoundLoaded = true;

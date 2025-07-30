@@ -1126,21 +1126,54 @@ export class StarfieldManager {
             if (event.ctrlKey && event.key.toLowerCase() === 'p') {
                 event.preventDefault();
                 
+                console.log(`🎮 CTRL+P PRESSED: Toggling debug mode...`);
+                
                 // Toggle weapon debug mode
                 this.toggleDebugMode();
                 
                 // Toggle physics debug visualization
                 if (window.physicsManager && window.physicsManager.initialized) {
+                    console.log(`🔧 PhysicsManager Status: Initialized and ready`);
+                    console.log(`   • Current debug mode: ${window.physicsManager.debugMode ? 'ENABLED' : 'DISABLED'}`);
+                    
                     const physicsDebugEnabled = window.physicsManager.toggleDebugMode(this.scene);
                     console.log(`🔍 Physics debug visualization ${physicsDebugEnabled ? 'ENABLED' : 'DISABLED'}`);
                     
                     // If enabling debug mode, sync all physics body positions first
                     if (physicsDebugEnabled) {
-                        console.log(`🔄 Syncing all physics body positions with mesh positions...`);
                         window.physicsManager.updateAllRigidBodyPositions();
+                        console.log(`👁️ PHYSICS DEBUG WIREFRAMES NOW VISIBLE:`);
+                        console.log(`   • Enemy ships: MAGENTA wireframes`);
+                        console.log(`   • Celestial bodies: CYAN wireframes`);
+                        console.log(`   • Unknown objects: YELLOW wireframes`);
+                        console.log(`   • Look for bright colored wireframe outlines around objects`);
+                        console.log(`💡 TIP: Press Ctrl+Shift+P to enhance wireframe visibility if you can't see them`);
+                    } else {
+                        console.log(`🧹 Physics debug disabled - debug wireframes hidden`);
                     }
                 } else {
-                    console.warn('⚠️ PhysicsManager not available for debug visualization');
+                    console.warn(`⚠️ PhysicsManager not available for debug visualization`);
+                    if (window.physicsManager) {
+                        console.warn(`   • PhysicsManager exists but not initialized: ${window.physicsManager.initialized}`);
+                    } else {
+                        console.warn(`   • PhysicsManager is not loaded`);
+                    }
+                }
+                
+                console.log(`✅ CTRL+P DEBUG TOGGLE COMPLETE`);
+            }
+            
+            // Enhanced wireframe visibility toggle (Ctrl-Shift-P) for debugging wireframe issues
+            if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'p') {
+                event.preventDefault();
+                
+                console.log(`🎮 CTRL+SHIFT+P PRESSED: Enhancing wireframe visibility...`);
+                
+                if (window.physicsManager && window.physicsManager.initialized && window.physicsManager.debugMode) {
+                    window.physicsManager.enhanceWireframeVisibility();
+                } else {
+                    console.log(`❌ Cannot enhance wireframes - debug mode not active or physics manager not available`);
+                    console.log(`💡 Press Ctrl+P first to enable debug mode`);
                 }
             }
             
