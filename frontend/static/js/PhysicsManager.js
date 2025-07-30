@@ -555,6 +555,11 @@ export class PhysicsManager {
             }
             
             this.entityMetadata.set(rigidBody, entityData);
+            
+            // Debug: Track entity metadata additions
+            if (entityType === 'projectile') {
+                console.log(`📝 METADATA: Added ${entityType} ${entityId} to entityMetadata (new size: ${this.entityMetadata.size})`);
+            }
 
             // Log projectile creation for debugging collision issues
             if (entityType === 'projectile') {
@@ -1476,6 +1481,13 @@ export class PhysicsManager {
             this.physicsWorld.removeRigidBody(rigidBody);
             this.rigidBodies.delete(threeObject);
             this.entityMetadata.delete(rigidBody);
+            
+            // Debug: Track entity metadata removals
+            const entityType = metadata?.type || 'unknown';
+            if (entityType === 'projectile') {
+                console.log(`📝 METADATA: Removed ${entityType} ${entityId} from entityMetadata (new size: ${this.entityMetadata.size})`);
+            }
+            
             this.Ammo.destroy(rigidBody);
             
             // Clean up torpedo logging timestamp to prevent memory leaks
@@ -1604,11 +1616,28 @@ export class PhysicsManager {
                 } else {
                     // Only log when no collisions are detected if there are projectiles in the world
                     const hasProjectiles = Array.from(this.entityMetadata.values()).some(entity => entity.type === 'projectile');
+                    const hasProjectilesBodies = Array.from(this.rigidBodies.values()).some(body => {
+                        const entity = this.entityMetadata.get(body);
+                        return entity?.type === 'projectile';
+                    });
                     
-                    if (hasProjectiles && (!this._lastNoCollisionLog || Date.now() - this._lastNoCollisionLog > 5000)) {
+                    console.log(`🔍 DEBUG: hasProjectiles=${hasProjectiles}, hasProjectilesBodies=${hasProjectilesBodies}, metadata.size=${this.entityMetadata.size}, rigidBodies.size=${this.rigidBodies.size}`);
+                    
+                    if ((hasProjectiles || hasProjectilesBodies) && (!this._lastNoCollisionLog || Date.now() - this._lastNoCollisionLog > 5000)) {
                         console.log(`🔍 COLLISION DEBUG: No collisions detected. Current entities in physics world:`);
                         
                         const entityCount = {};
+                        console.log(`🔍 DEBUG: entityMetadata size: ${this.entityMetadata.size}, rigidBodies size: ${this.rigidBodies.size}`);
+                        
+                        if (this.entityMetadata.size === 0) {
+                            console.warn(`⚠️ CRITICAL: entityMetadata map is EMPTY! This will prevent collision processing.`);
+                            console.log(`🔍 DEBUG: rigidBodies map contents:`, Array.from(this.rigidBodies.entries()).map(([obj, body]) => ({
+                                hasThreeObject: !!obj,
+                                objectType: obj?.userData?.type,
+                                rigidBodyExists: !!body
+                            })));
+                        }
+                        
                         this.entityMetadata.forEach((entity, rigidBody) => {
                             const type = entity.type || 'unknown';
                             entityCount[type] = (entityCount[type] || 0) + 1;
@@ -1628,20 +1657,27 @@ export class PhysicsManager {
                     const bodyA = contactManifold.getBody0();
                     const bodyB = contactManifold.getBody1();
                     
+                    if (!this._silentMode) {
+                        console.log(`🔍 COLLISION DEBUG: Contact ${i}: ${numContacts} contact points between bodies`);
+                        console.log(`🔍 COLLISION DEBUG: bodyA exists: ${!!bodyA}, bodyB exists: ${!!bodyB}`);
+                        console.log(`🔍 COLLISION DEBUG: entityMetadata size: ${this.entityMetadata.size}`);
+                    }
+                    
                     const entityA = this.entityMetadata.get(bodyA);
                     const entityB = this.entityMetadata.get(bodyB);
 
                     // Debug: Log entity retrieval
                     if (!this._silentMode) {
                         console.log(`🔍 COLLISION DEBUG: Contact ${i}: entityA=${entityA?.type}(${entityA?.id}), entityB=${entityB?.type}(${entityB?.id})`);
+                        
+                        if (!entityA || !entityB) {
+                            console.warn(`⚠️ COLLISION DEBUG: Missing entity metadata - entityA=${!!entityA}, entityB=${!!entityB}`);
+                            console.log(`🔍 COLLISION DEBUG: All entities in metadata:`, Array.from(this.entityMetadata.values()).map(e => `${e.type}(${e.id})`));
+                        }
                     }
 
                     if (entityA && entityB) {
                         this.handleCollision(entityA, entityB, contactManifold);
-                    } else {
-                        if (!this._silentMode) {
-                            console.warn(`⚠️ COLLISION DEBUG: Missing entity metadata - entityA=${!!entityA}, entityB=${!!entityB}`);
-                        }
                     }
                 }
             }
