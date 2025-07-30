@@ -584,8 +584,11 @@ export class PhysicsManager {
                 }
                 
                 // Enable collision debugging for this session when projectiles are created
-                this._silentMode = false;
-                console.log(`🔍 COLLISION DEBUG: Enabled collision debugging due to projectile creation`);
+                if (this._silentMode) {
+                    this._silentMode = false;
+                    console.log(`🔍 COLLISION DEBUG: Enabled collision debugging due to projectile creation`);
+                    console.log(`💡 Use 'disableCollisionDebug()' to stop collision debugging`);
+                }
             }
         
             // Create debug wireframe if debug mode is active
@@ -1594,13 +1597,15 @@ export class PhysicsManager {
             const dispatcher = this.physicsWorld.getDispatcher();
             const numManifolds = dispatcher.getNumManifolds();
 
-            // Debug: Log collision detection activity and current entities
+            // Debug: Log collision detection activity and current entities (only when projectiles are active)
             if (!this._silentMode) {
                 if (numManifolds > 0) {
                     console.log(`🔍 COLLISION DEBUG: Found ${numManifolds} contact manifolds`);
                 } else {
-                    // Periodically log when no collisions are detected to help debug
-                    if (!this._lastNoCollisionLog || Date.now() - this._lastNoCollisionLog > 2000) {
+                    // Only log when no collisions are detected if there are projectiles in the world
+                    const hasProjectiles = Array.from(this.entityMetadata.values()).some(entity => entity.type === 'projectile');
+                    
+                    if (hasProjectiles && (!this._lastNoCollisionLog || Date.now() - this._lastNoCollisionLog > 5000)) {
                         console.log(`🔍 COLLISION DEBUG: No collisions detected. Current entities in physics world:`);
                         
                         const entityCount = {};
@@ -2165,6 +2170,7 @@ export class PhysicsManager {
         window.enhanceWireframes = () => this.enhanceWireframeVisibility();
         window.enableVerboseLogging = () => this.enableVerboseLogging();
         window.disableVerboseLogging = () => this.disableVerboseLogging();
+        window.disableCollisionDebug = () => this.disableCollisionDebug();
         window.clearConsole = () => console.clear();
         window.stopProjectileWireframes = () => { this._silentMode = true; console.log('🔇 Silent mode enabled - reduced logging'); };
         
@@ -2176,6 +2182,7 @@ export class PhysicsManager {
         console.log(`   • enhanceWireframes() - Make wireframes more visible`);
         console.log(`   • enableVerboseLogging() - Enable detailed debug logs`);
         console.log(`   • disableVerboseLogging() - Disable detailed debug logs`);
+        console.log(`   • disableCollisionDebug() - Stop collision debugging spam`);
         console.log(`   • stopProjectileWireframes() - Enable silent mode`);
         console.log(`   • updateWireframes() - Force update wireframe positions`);
     }
@@ -2440,9 +2447,12 @@ export class PhysicsManager {
             this.removeDebugWireframe(rigidBody);
         });
         
-        // Log summary if there were position updates
+        // Log summary if there were position updates (throttled to avoid spam)
         if (!this._silentMode && updateCount > 0) {
-            console.log(`🔍 POSITION UPDATE: Successfully repositioned ${updateCount} wireframes using Three.js object positions`);
+            if (!this._lastPositionUpdateLog || Date.now() - this._lastPositionUpdateLog > 5000) {
+                console.log(`🔍 POSITION UPDATE: Successfully repositioned ${updateCount} wireframes using Three.js object positions`);
+                this._lastPositionUpdateLog = Date.now();
+            }
         }
     }
 
@@ -2803,6 +2813,14 @@ export class PhysicsManager {
     disableVerboseLogging() {
         this._debugLoggingEnabled = false;
         console.log('🔍 Verbose physics debug logging DISABLED');
+    }
+
+    /**
+     * Disable collision debugging to reduce console spam
+     */
+    disableCollisionDebug() {
+        this._silentMode = true;
+        console.log('🔇 Collision debugging DISABLED - console spam reduced');
     }
 }
 
