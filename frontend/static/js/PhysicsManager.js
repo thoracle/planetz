@@ -495,25 +495,44 @@ export class PhysicsManager {
             );
             const rigidBody = new this.Ammo.btRigidBody(rbInfo);
 
-            // Set physics properties
-            rigidBody.setRestitution(restitution);
-            rigidBody.setFriction(friction);
-            
-            // Set appropriate damping for space environment
-            if (mass > 0) {
-                rigidBody.setDamping(0.1, 0.1); // Linear and angular damping
+            // Debug: Check if rigid body was created successfully
+            if (!rigidBody) {
+                console.error(`❌ PHYSICS: Failed to create rigid body for ${entityType} ${entityId}`);
+                return null;
             }
 
-            // Set user data for collision detection
-            rigidBody.userData = {
-                type: entityType,
-                id: entityId || `${entityType}_${Date.now()}`,
-                health: health,
-                threeObject: threeObject
-            };
+            // Set physics properties
+            try {
+                rigidBody.setRestitution(restitution);
+                rigidBody.setFriction(friction);
+                
+                // Set appropriate damping for space environment
+                if (mass > 0) {
+                    rigidBody.setDamping(0.1, 0.1); // Linear and angular damping
+                }
+
+                // Set user data for collision detection
+                rigidBody.userData = {
+                    type: entityType,
+                    id: entityId || `${entityType}_${Date.now()}`,
+                    health: health,
+                    threeObject: threeObject
+                };
+            } catch (error) {
+                console.error(`❌ PHYSICS: Failed to set properties on rigid body:`, error);
+                return null;
+            }
 
             // Add to physics world
-            this.physicsWorld.addRigidBody(rigidBody);
+            try {
+                this.physicsWorld.addRigidBody(rigidBody);
+                if (entityType === 'projectile') {
+                    console.log(`✅ PHYSICS: Successfully added projectile to physics world: ${entityId}`);
+                }
+            } catch (error) {
+                console.error(`❌ PHYSICS: Failed to add rigid body to physics world:`, error);
+                return null;
+            }
 
             // Store references
             this.rigidBodies.set(threeObject, rigidBody);
@@ -540,12 +559,29 @@ export class PhysicsManager {
             // Log projectile creation for debugging collision issues
             if (entityType === 'projectile') {
                 console.log(`🚀 PROJECTILE PHYSICS: Created ${shape} rigid body for ${entityType} ${entityId} (mass: ${mass}kg)`);
-                console.log(`🔧 PROJECTILE PHYSICS: Collision flags: ${rigidBody.getCollisionFlags()}, Activation state: ${rigidBody.getActivationState()}`);
                 
-                // Ensure projectile is active and can collide
-                rigidBody.setActivationState(1); // ACTIVE_TAG
-                rigidBody.forceActivationState(1);
-                console.log(`🔧 PROJECTILE PHYSICS: Forced activation state to ACTIVE`);
+                try {
+                    // Try to get collision flags and activation state if available
+                    const collisionFlags = typeof rigidBody.getCollisionFlags === 'function' ? rigidBody.getCollisionFlags() : 'unknown';
+                    const activationState = typeof rigidBody.getActivationState === 'function' ? rigidBody.getActivationState() : 'unknown';
+                    console.log(`🔧 PROJECTILE PHYSICS: Collision flags: ${collisionFlags}, Activation state: ${activationState}`);
+                    
+                    // Try to ensure projectile is active and can collide
+                    if (typeof rigidBody.setActivationState === 'function') {
+                        rigidBody.setActivationState(1); // ACTIVE_TAG
+                        console.log(`🔧 PROJECTILE PHYSICS: Set activation state to ACTIVE`);
+                    }
+                    if (typeof rigidBody.forceActivationState === 'function') {
+                        rigidBody.forceActivationState(1);
+                        console.log(`🔧 PROJECTILE PHYSICS: Forced activation state to ACTIVE`);
+                    }
+                    if (typeof rigidBody.activate === 'function') {
+                        rigidBody.activate();
+                        console.log(`🔧 PROJECTILE PHYSICS: Called activate() method`);
+                    }
+                } catch (error) {
+                    console.log(`🔧 PROJECTILE PHYSICS: Could not access activation methods:`, error.message);
+                }
                 
                 // Enable collision debugging for this session when projectiles are created
                 this._silentMode = false;
