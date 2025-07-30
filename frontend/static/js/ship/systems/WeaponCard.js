@@ -1275,9 +1275,22 @@ export class PhysicsProjectile {
             // Use physics spatial query to find all entities within blast radius
             const affectedEntities = this.physicsManager.spatialQuery(position, this.blastRadius);
             
-            console.log(`💥 ${this.weaponName}: Found ${affectedEntities.length} entities in ${this.blastRadius}m blast radius`);
+            // Log entity breakdown for better debugging
+            const entityTypes = {};
+            affectedEntities.forEach(entity => {
+                const type = entity.type || 'unknown';
+                entityTypes[type] = (entityTypes[type] || 0) + 1;
+            });
+            
+            console.log(`💥 ${this.weaponName}: Found ${affectedEntities.length} entities in ${this.blastRadius}m blast radius:`, entityTypes);
             
             affectedEntities.forEach(entity => {
+                // Skip projectiles (including the torpedo itself) - they shouldn't take splash damage
+                if (entity.type === 'projectile') {
+                    console.log(`🚫 ${this.weaponName}: Skipping projectile entity: ${entity.id} (projectiles don't take splash damage)`);
+                    return;
+                }
+                
                 // Get entity position from threeObject
                 let entityPosition = null;
                 if (entity.threeObject && entity.threeObject.position) {
