@@ -1600,6 +1600,12 @@ export class PhysicsManager {
         } else if ((entityA.type === 'enemy_ship' && entityB.type === 'station') ||
                    (entityB.type === 'enemy_ship' && entityA.type === 'station')) {
             this.handleShipToStationCollision(entityA, entityB, impulse);
+        } else if ((entityA.type === 'projectile' && entityB.type === 'enemy_ship') ||
+                   (entityB.type === 'projectile' && entityA.type === 'enemy_ship')) {
+            this.handleProjectileToShipCollision(entityA, entityB, impulse);
+        } else if ((entityA.type === 'projectile' && (entityB.type === 'planet' || entityB.type === 'moon' || entityB.type === 'star')) ||
+                   (entityB.type === 'projectile' && (entityA.type === 'planet' || entityA.type === 'moon' || entityA.type === 'star'))) {
+            this.handleProjectileToCelestialCollision(entityA, entityB, impulse);
         }
         
         // Notify collision callbacks
@@ -1679,6 +1685,92 @@ export class PhysicsManager {
         this.applyBouncingEffect(ship.threeObject, station.threeObject, impulse * 0.5);
         
         console.log(`🏭💥 Ship-to-station collision: ${ship.id} hit ${station.id}, took ${damage.toFixed(1)} damage`);
+    }
+
+    /**
+     * Handle projectile-to-ship collision
+     * @param {object} entityA - First entity
+     * @param {object} entityB - Second entity
+     * @param {number} impulse - Collision impulse
+     */
+    handleProjectileToShipCollision(entityA, entityB, impulse) {
+        // Determine which is the projectile and which is the ship
+        const projectile = entityA.type === 'projectile' ? entityA : entityB;
+        const ship = entityA.type === 'projectile' ? entityB : entityA;
+        
+        console.log(`🚀💥 Projectile collision: ${projectile.id} hit ${ship.id}`);
+        
+        // Find the projectile instance via the rigid body's projectileOwner property
+        let projectileInstance = null;
+        
+        // Get the rigid body from the three object
+        const rigidBody = this.rigidBodies.get(projectile.threeObject);
+        if (rigidBody && rigidBody.projectileOwner) {
+            projectileInstance = rigidBody.projectileOwner;
+            console.log(`🔍 Found projectile instance via rigidBody.projectileOwner for ${projectile.id}`);
+        } else {
+            console.warn(`🔍 No rigidBody.projectileOwner found for ${projectile.id}`, {
+                hasRigidBody: !!rigidBody,
+                hasProjectileOwner: !!rigidBody?.projectileOwner,
+                rigidBodyKeys: rigidBody ? Object.keys(rigidBody) : []
+            });
+        }
+        
+        if (projectileInstance && typeof projectileInstance.onCollision === 'function') {
+            console.log(`🔥 Calling projectile onCollision for ${projectile.id}`);
+            
+            // Create contact point data
+            const contactPoint = {
+                position: projectile.threeObject?.position || { x: 0, y: 0, z: 0 },
+                impulse: impulse
+            };
+            
+            // Call the projectile's collision handler
+            projectileInstance.onCollision(contactPoint, ship.threeObject);
+        } else {
+            console.warn(`⚠️ Could not find projectile instance with onCollision method for ${projectile.id}`);
+        }
+    }
+
+    /**
+     * Handle projectile-to-celestial collision  
+     * @param {object} entityA - First entity
+     * @param {object} entityB - Second entity
+     * @param {number} impulse - Collision impulse
+     */
+    handleProjectileToCelestialCollision(entityA, entityB, impulse) {
+        // Determine which is the projectile and which is the celestial body
+        const projectile = entityA.type === 'projectile' ? entityA : entityB;
+        const celestial = entityA.type === 'projectile' ? entityB : entityA;
+        
+        console.log(`🌍💥 Projectile-to-celestial collision: ${projectile.id} hit ${celestial.id}`);
+        
+        // Find the projectile instance via the rigid body's projectileOwner property
+        let projectileInstance = null;
+        
+        // Get the rigid body from the three object
+        const rigidBody = this.rigidBodies.get(projectile.threeObject);
+        if (rigidBody && rigidBody.projectileOwner) {
+            projectileInstance = rigidBody.projectileOwner;
+            console.log(`🔍 Found projectile instance via rigidBody.projectileOwner for ${projectile.id} (celestial collision)`);
+        } else {
+            console.warn(`🔍 No rigidBody.projectileOwner found for ${projectile.id} (celestial collision)`);
+        }
+        
+        if (projectileInstance && typeof projectileInstance.onCollision === 'function') {
+            console.log(`🔥 Calling projectile onCollision for ${projectile.id} (hit celestial body)`);
+            
+            // Create contact point data
+            const contactPoint = {
+                position: projectile.threeObject?.position || { x: 0, y: 0, z: 0 },
+                impulse: impulse
+            };
+            
+            // Call the projectile's collision handler
+            projectileInstance.onCollision(contactPoint, celestial.threeObject);
+        } else {
+            console.warn(`⚠️ Could not find projectile instance with onCollision method for ${projectile.id} (celestial collision)`);
+        }
     }
 
     /**
