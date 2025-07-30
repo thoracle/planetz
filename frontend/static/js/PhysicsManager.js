@@ -1613,6 +1613,7 @@ export class PhysicsManager {
             if (!this._silentMode) {
                 if (numManifolds > 0) {
                     console.log(`🔍 COLLISION DEBUG: Found ${numManifolds} contact manifolds`);
+                    console.log(`🔍 COLLISION DEBUG: dispatcher=${!!dispatcher}, physicsWorld=${!!this.physicsWorld}`);
                 } else {
                     // Only log when no collisions are detected if there are projectiles in the world
                     const hasProjectiles = Array.from(this.entityMetadata.values()).some(entity => entity.type === 'projectile');
@@ -1638,24 +1639,62 @@ export class PhysicsManager {
                             })));
                         }
                         
-                        this.entityMetadata.forEach((entity, rigidBody) => {
-                            const type = entity.type || 'unknown';
-                            entityCount[type] = (entityCount[type] || 0) + 1;
-                        });
+                        console.log(`🔍 DEBUG: About to iterate entityMetadata with size ${this.entityMetadata.size}`);
+                        let iterationCount = 0;
                         
+                        try {
+                            this.entityMetadata.forEach((entity, rigidBody) => {
+                                iterationCount++;
+                                console.log(`🔍 DEBUG: Iteration ${iterationCount}: entity=${entity?.type}(${entity?.id}), rigidBody=${!!rigidBody}`);
+                                const type = entity.type || 'unknown';
+                                entityCount[type] = (entityCount[type] || 0) + 1;
+                            });
+                        } catch (error) {
+                            console.error(`❌ DEBUG: Error during entityMetadata.forEach:`, error);
+                        }
+                        
+                        console.log(`🔍 DEBUG: Completed iteration - expected ${this.entityMetadata.size}, actual ${iterationCount}`);
                         console.log(`📊 Entity count:`, entityCount);
                         this._lastNoCollisionLog = Date.now();
                     }
                 }
             }
 
+            if (numManifolds > 0) {
+                console.log(`🔍 COLLISION PROCESSING: Starting loop for ${numManifolds} manifolds`);
+            }
+            
             for (let i = 0; i < numManifolds; i++) {
-                const contactManifold = dispatcher.getManifoldByIndexInternal(i);
-                const numContacts = contactManifold.getNumContacts();
+                console.log(`🔍 COLLISION PROCESSING: Processing manifold ${i}/${numManifolds}`);
+                
+                let contactManifold = null;
+                let numContacts = 0;
+                
+                try {
+                    contactManifold = dispatcher.getManifoldByIndexInternal(i);
+                    console.log(`🔍 COLLISION PROCESSING: Got manifold ${i}, exists: ${!!contactManifold}`);
+                    
+                    if (contactManifold) {
+                        numContacts = contactManifold.getNumContacts();
+                        console.log(`🔍 COLLISION PROCESSING: Manifold ${i} has ${numContacts} contacts`);
+                    }
+                } catch (error) {
+                    console.error(`❌ COLLISION PROCESSING: Error getting manifold ${i}:`, error);
+                    continue;
+                }
 
                 if (numContacts > 0) {
-                    const bodyA = contactManifold.getBody0();
-                    const bodyB = contactManifold.getBody1();
+                    console.log(`🔍 COLLISION PROCESSING: Processing ${numContacts} contacts for manifold ${i}`);
+                    
+                    let bodyA = null, bodyB = null;
+                    try {
+                        bodyA = contactManifold.getBody0();
+                        bodyB = contactManifold.getBody1();
+                        console.log(`🔍 COLLISION PROCESSING: Got bodies - bodyA: ${!!bodyA}, bodyB: ${!!bodyB}`);
+                    } catch (error) {
+                        console.error(`❌ COLLISION PROCESSING: Error getting bodies for manifold ${i}:`, error);
+                        continue;
+                    }
                     
                     if (!this._silentMode) {
                         console.log(`🔍 COLLISION DEBUG: Contact ${i}: ${numContacts} contact points between bodies`);
@@ -1663,8 +1702,15 @@ export class PhysicsManager {
                         console.log(`🔍 COLLISION DEBUG: entityMetadata size: ${this.entityMetadata.size}`);
                     }
                     
-                    const entityA = this.entityMetadata.get(bodyA);
-                    const entityB = this.entityMetadata.get(bodyB);
+                    let entityA = null, entityB = null;
+                    try {
+                        entityA = this.entityMetadata.get(bodyA);
+                        entityB = this.entityMetadata.get(bodyB);
+                        console.log(`🔍 COLLISION PROCESSING: Retrieved entities - entityA: ${!!entityA}, entityB: ${!!entityB}`);
+                    } catch (error) {
+                        console.error(`❌ COLLISION PROCESSING: Error retrieving entity metadata:`, error);
+                        continue;
+                    }
 
                     // Debug: Log entity retrieval
                     if (!this._silentMode) {
@@ -1677,10 +1723,21 @@ export class PhysicsManager {
                     }
 
                     if (entityA && entityB) {
-                        this.handleCollision(entityA, entityB, contactManifold);
+                        console.log(`🔍 COLLISION PROCESSING: Calling handleCollision for ${entityA.type} <-> ${entityB.type}`);
+                        try {
+                            this.handleCollision(entityA, entityB, contactManifold);
+                        } catch (error) {
+                            console.error(`❌ COLLISION PROCESSING: Error in handleCollision:`, error);
+                        }
+                    } else {
+                        console.warn(`⚠️ COLLISION PROCESSING: Skipping collision - missing entity data`);
                     }
+                } else {
+                    console.log(`🔍 COLLISION PROCESSING: Manifold ${i} has no contacts (${numContacts})`);
                 }
             }
+            
+            console.log(`🔍 COLLISION PROCESSING: Completed processing ${numManifolds} manifolds`);
         } catch (error) {
             console.error('Error processing collisions:', error);
         }
