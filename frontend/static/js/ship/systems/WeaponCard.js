@@ -1305,146 +1305,44 @@ export class PhysicsProjectile {
                 console.log(`🎯 ${this.weaponName}: Entity at ${distance.toFixed(1)}m distance, calculated ${damage} damage (max: ${maxDamage})`);
                 
                 if (damage > 0) {
-                    // Enhanced entity checking for torpedo damage application
+                    // FIXED: Use the entity found by spatial query (the actual target in blast radius)
                     let targetShip = null;
                     
-                    // PRIORITY: Check for ship reference by ID pattern (target_dummy_X)
-                    let dummyShips = null;
-                    
-                    // Try multiple paths to find dummy ships
-                    if (window.starfieldManager?.targetDummyShips) {
-                        dummyShips = window.starfieldManager.targetDummyShips;
-                        console.warn(`⚠️ ${this.weaponName}: Found ${dummyShips.length} dummy ships via starfieldManager.targetDummyShips`);
-                    } else if (window.starfieldManager?.targetComputerManager?.targetObjects) {
-                        // Try targetObjects array and filter for dummy ships
-                        const allTargets = window.starfieldManager.targetComputerManager.targetObjects;
-                        dummyShips = allTargets.filter(target => target && target.ship && target.shipName && target.shipName.includes('Target Dummy'));
-                        console.warn(`⚠️ ${this.weaponName}: Found ${dummyShips.length} dummy ships via filtering targetObjects array`);
-                    } else if (window.starfieldManager?.targetComputerManager?.dummyShips) {
-                        dummyShips = window.starfieldManager.targetComputerManager.dummyShips;
-                        console.warn(`⚠️ ${this.weaponName}: Found ${dummyShips.length} dummy ships via targetComputerManager.dummyShips`);
-                    } else if (window.starfieldManager?.targetComputerManager?.targets) {
-                        // Try targets array and filter for dummy ships
-                        const allTargets = window.starfieldManager.targetComputerManager.targets;
-                        dummyShips = allTargets.filter(target => target && target.shipName && target.shipName.includes('Target Dummy'));
-                        console.warn(`⚠️ ${this.weaponName}: Found ${dummyShips.length} dummy ships via filtering targets array`);
-                    } else if (window.starfieldManager?.targetComputerManager?.targetList) {
-                        // Try targetList array
-                        const targetList = window.starfieldManager.targetComputerManager.targetList;
-                        dummyShips = targetList.filter(target => target && target.shipName && target.shipName.includes('Target Dummy'));
-                        console.warn(`⚠️ ${this.weaponName}: Found ${dummyShips.length} dummy ships via filtering targetList array`);
+                    // Priority 1: Check if entity has ship reference (from physics metadata)
+                    if (entity.ship && typeof entity.ship.applyDamage === 'function') {
+                        targetShip = entity.ship;
+                        const shipName = entity.ship.shipName || entity.id || 'Unknown';
+                        console.log(`💥 ${this.weaponName}: Found target ship via entity.ship: ${shipName} (distance: ${distance.toFixed(1)}m)`);
                     }
                     
-                    if (dummyShips && dummyShips.length > 0) {
-                        // Show details of available dummy ships
-                        dummyShips.forEach((dummyShip, index) => {
-                            if (dummyShip) {
-                                // Handle different object structures - might be ship object directly or target object containing ship
-                                const ship = dummyShip.ship || dummyShip; // Could be target.ship or ship directly
-                                const shipName = ship.shipName || dummyShip.shipName || dummyShip.name;
-                                
-                                console.warn(`🔍 ${this.weaponName}: Dummy ship ${index}: ${shipName}, hull: ${ship.currentHull}/${ship.maxHull}, has applyDamage: ${typeof ship.applyDamage === 'function'}`);
-                                if (!targetShip && typeof ship.applyDamage === 'function') {
-                                    targetShip = ship;
-                                    console.log(`💥 ${this.weaponName}: Selected dummy ship for torpedo damage: ${shipName}`);
-                                }
-                            }
-                        });
-                    } else {
-                        console.error(`❌ ${this.weaponName}: No dummy ships found! Checking all possible paths:`, {
-                            starfieldManager: !!window.starfieldManager,
-                            targetDummyShips: !!window.starfieldManager?.targetDummyShips,
-                            targetDummyShipsLength: window.starfieldManager?.targetDummyShips?.length || 'N/A',
-                            targetComputerManager: !!window.starfieldManager?.targetComputerManager,
-                            targetObjects: !!window.starfieldManager?.targetComputerManager?.targetObjects,
-                            targetObjectsLength: window.starfieldManager?.targetComputerManager?.targetObjects?.length || 'N/A',
-                            dummyShips: !!window.starfieldManager?.targetComputerManager?.dummyShips,
-                            targets: !!window.starfieldManager?.targetComputerManager?.targets,
-                            targetList: !!window.starfieldManager?.targetComputerManager?.targetList,
-                            targetsLength: window.starfieldManager?.targetComputerManager?.targets?.length || 'N/A',
-                            targetListLength: window.starfieldManager?.targetComputerManager?.targetList?.length || 'N/A'
-                        });
-                    }
-                    
-                    // Fallback: Try multiple ways to find the ship object that can take damage
+                    // Priority 2: Try alternative paths to find ship reference from entity
                     if (!targetShip) {
-                        if (entity.ship && typeof entity.ship.applyDamage === 'function') {
-                            targetShip = entity.ship;
-                            console.log(`💥 ${this.weaponName}: Found ship via entity.ship`);
-                        } else if (entity.threeObject?.userData?.ship && typeof entity.threeObject.userData.ship.applyDamage === 'function') {
+                        if (entity.threeObject?.userData?.ship && typeof entity.threeObject.userData.ship.applyDamage === 'function') {
                             targetShip = entity.threeObject.userData.ship;
-                            console.log(`💥 ${this.weaponName}: Found ship via entity.threeObject.userData.ship`);
-                        } else if (entity.userData?.ship && typeof entity.userData.ship.applyDamage === 'function') {
-                            targetShip = entity.userData.ship;
-                            console.log(`💥 ${this.weaponName}: Found ship via entity.userData.ship`);
-                        } else if (entity.threeObject?.ship && typeof entity.threeObject.ship.applyDamage === 'function') {
-                            targetShip = entity.threeObject.ship;
-                            console.log(`💥 ${this.weaponName}: Found ship via entity.threeObject.ship`);
-                        } else if (entity.rigidBody?.userData?.ship && typeof entity.rigidBody.userData.ship.applyDamage === 'function') {
-                            targetShip = entity.rigidBody.userData.ship;
-                            console.log(`💥 ${this.weaponName}: Found ship via entity.rigidBody.userData.ship`);
-                        } else if (entity.physicsBody?.userData?.ship && typeof entity.physicsBody.userData.ship.applyDamage === 'function') {
-                            targetShip = entity.physicsBody.userData.ship;
-                            console.log(`💥 ${this.weaponName}: Found ship via entity.physicsBody.userData.ship`);
-                        } else {
-                            // NEW: Check if entity itself has applyDamage method (direct ship object)
-                            if (typeof entity.applyDamage === 'function') {
-                                targetShip = entity;
-                                console.log(`💥 ${this.weaponName}: Found ship as direct entity`);
-                            } else {
-                                // Check all properties for ship objects
-                                const entityKeys = Object.keys(entity);
-                                for (const key of entityKeys) {
-                                    const prop = entity[key];
-                                    if (prop && typeof prop === 'object' && typeof prop.applyDamage === 'function') {
-                                        targetShip = prop;
-                                        console.log(`💥 ${this.weaponName}: Found ship via entity.${key}`);
-                                        break;
-                                    }
-                                }
-                            }
-                            
-                            if (!targetShip) {
-                                // Try common userData property names for ship references
-                                const userData = entity.threeObject?.userData;
-                                const shipPropertyNames = ['ship', 'enemyShip', 'target', 'entity', 'obj', 'owner', 'reference'];
-                                for (const propName of shipPropertyNames) {
-                                    const shipRef = userData?.[propName];
-                                    if (shipRef && typeof shipRef.applyDamage === 'function') {
-                                        targetShip = shipRef;
-                                        console.log(`💥 ${this.weaponName}: Found ship via userData.${propName}`);
-                                        break;
-                                    }
-                                }
-                                
-                                if (!targetShip) {
-                                    // ENHANCED DEBUG: Try to find ANY ship in the vicinity
-                                    console.warn(`⚠️ ${this.weaponName}: No ship found in entity. Searching all dummy ships...`);
-                                    if (window.starfieldManager?.targetComputerManager?.dummyShips) {
-                                        const dummyShips = window.starfieldManager.targetComputerManager.dummyShips;
-                                        console.warn(`⚠️ ${this.weaponName}: Found ${dummyShips.length} dummy ships, attempting closest match...`);
-                                        
-                                        // Show details of available dummy ships
-                                        dummyShips.forEach((ship, index) => {
-                                            if (ship) {
-                                                console.log(`🔍 ${this.weaponName}: Dummy ship ${index}: ${ship.shipName || 'Unknown'}, hull: ${ship.currentHull}/${ship.maxHull}, has applyDamage: ${typeof ship.applyDamage === 'function'}`);
-                                            }
-                                        });
-                                        
-                                        // Try to damage the first available dummy ship as fallback
-                                        const availableShip = dummyShips.find(ship => ship && typeof ship.applyDamage === 'function');
-                                        if (availableShip) {
-                                            targetShip = availableShip;
-                                            console.log(`💥 ${this.weaponName}: Using fallback ship: ${availableShip.shipName || 'Unknown'} (Hull: ${availableShip.currentHull}/${availableShip.maxHull})`);
-                                        } else {
-                                            console.error(`❌ ${this.weaponName}: No dummy ships with applyDamage method found!`);
-                                        }
-                                    } else {
-                                        console.error(`❌ ${this.weaponName}: No dummy ships array found in targetComputerManager!`);
-                                    }
-                                }
-                            }
+                            const shipName = entity.threeObject.userData.ship.shipName || entity.id || 'Unknown';
+                            console.log(`💥 ${this.weaponName}: Found ship via threeObject.userData.ship: ${shipName}`);
+                        } else if (typeof entity.applyDamage === 'function') {
+                            // Entity itself is the ship object
+                            targetShip = entity;
+                            const shipName = entity.shipName || entity.id || 'Unknown';
+                            console.log(`💥 ${this.weaponName}: Entity is direct ship object: ${shipName}`);
                         }
+                    }
+                    
+                    // Final fallback: If spatial query entity doesn't have ship reference, log for debugging
+                    if (!targetShip) {
+                        console.warn(`⚠️ ${this.weaponName}: Spatial query found entity at ${distance.toFixed(1)}m but no ship reference found. Entity type: ${entity.type}, ID: ${entity.id}`);
+                        console.warn(`🔍 Entity structure:`, {
+                            hasShip: !!entity.ship,
+                            hasApplyDamage: typeof entity.applyDamage === 'function',
+                            hasThreeObject: !!entity.threeObject,
+                            hasUserData: !!entity.threeObject?.userData,
+                            hasUserDataShip: !!entity.threeObject?.userData?.ship,
+                            entityKeys: Object.keys(entity)
+                        });
+                        
+                        // Skip applying damage if we can't find the ship - this is better than hitting wrong targets
+                        return;
                     }
                     
                     // Apply damage if we found a valid target ship (PROJECTILE WEAPONS - NO SUB-TARGETING)
