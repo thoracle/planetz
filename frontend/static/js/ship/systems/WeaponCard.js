@@ -918,20 +918,16 @@ export class PhysicsProjectile {
         // IMPROVED: Create simple trail during flight that stops on collision
         this.initializeSimpleTrail();
         
-        console.log(`🚀 Launched ${this.weaponName} projectile`);
+        // Silent projectile launch
         
-        // Set up collision delay to prevent immediate impacts
-        this.canCollide = false;
-        this.collisionDelay = 0.3; // Reduced from 1.0s since torpedoes are now 4x faster
+        // Allow immediate collisions - fallback system is precise enough
+        this.canCollide = true; // Enable collisions immediately
+        this.collisionDelay = 0; // No delay needed
+        this.launchTime = Date.now(); // Track launch time for debugging
         this.lastCollisionTime = null;
-        this.collisionProcessed = false; // Flag to prevent multiple collision processing
+        this.collisionProcessed = false;
         
-        console.log(`⏰ ${this.weaponName}: Collision disabled for ${this.collisionDelay}s to allow travel`);
-        
-        setTimeout(() => {
-            this.canCollide = true;
-            console.log(`✅ ${this.weaponName}: Collision enabled after delay`);
-        }, this.collisionDelay * 1000);
+        // No setTimeout needed - immediate collision allowed
         
         // Add range checking - projectile expires when it travels beyond weapon range
         this.rangeCheckInterval = setInterval(() => {
@@ -948,14 +944,13 @@ export class PhysicsProjectile {
                 Math.pow(currentPos.z - this.startPosition.z, 2)
             );
             
-            // Add periodic debug logging for range checking
-            if (Math.floor(Date.now() / 1000) % 2 === 0) { // Log every 2 seconds
-                console.log(`📏 RANGE CHECK: ${this.weaponName} traveled ${distanceTraveled.toFixed(1)}m / ${this.flightRange}m`);
-            }
+            // Silent range checking - no periodic logging to reduce spam
             
             // Check if projectile has exceeded weapon range
             if (distanceTraveled > this.flightRange) {
-                console.log(`⏰ ${this.weaponName}: Expired after traveling ${distanceTraveled.toFixed(1)}m (max range: ${this.flightRange}m)`);
+                if (window.physicsManager && window.physicsManager._debugLoggingEnabled) {
+                    console.log(`⏰ ${this.weaponName}: Max range reached`);
+                }
                 this.expireOutOfRange();
                 clearInterval(this.rangeCheckInterval);
             }
@@ -1025,7 +1020,7 @@ export class PhysicsProjectile {
             this.rigidBody = this.physicsManager.createRigidBody(this.threeObject, bodyConfig);
             
             if (this.rigidBody) {
-                console.log(`✅ DEBUG: Physics rigid body created successfully for ${this.weaponName}`);
+                // Silent rigid body creation
                 
                 // Calculate velocity based on direction and weapon speed
                 const speed = this.isHoming ? 8000 : 10000; // Doubled from 4000/5000 to 8000/10000 for ultra-fast torpedoes
@@ -1115,13 +1110,13 @@ export class PhysicsProjectile {
         console.log(`🔥 COLLISION DEBUG: ${this.weaponName} onCollision called`);
         console.log(`🔥 COLLISION DEBUG: hasDetonated=${this.hasDetonated}, collisionProcessed=${this.collisionProcessed}, canCollide=${this.canCollide}`);
         
-        // CRITICAL: Immediate detonation flag to prevent collision loops
+        // CRITICAL: Prevent collision loops
         if (this.hasDetonated || this.collisionProcessed) {
             console.log(`🔥 COLLISION DEBUG: Early return - already processed`);
             return;
         }
-        this.hasDetonated = true;
         this.collisionProcessed = true;
+        // NOTE: hasDetonated will be set by detonate() method after damage application
         
         // Check collision delay - but allow trail cleanup regardless
         if (!this.canCollide) {
@@ -1211,7 +1206,7 @@ export class PhysicsProjectile {
             );
             
             if (distance >= this.flightRange) {
-                console.log(`📏 ${this.weaponName} reached max range (${this.flightRange}m)`);
+                // Silent max range reached
                 this.detonate();
                 return false;
             }
@@ -1233,12 +1228,16 @@ export class PhysicsProjectile {
      * @param {Object} position Optional detonation position
      */
     detonate(position = null) {
+        console.error(`😨 CRITICAL DEBUG: DETONATE METHOD CALLED FOR ${this.weaponName}`);
+        console.error(`😨 hasDetonated: ${this.hasDetonated}`);
+        
         if (this.hasDetonated) {
-            console.log(`⚠️ DETONATE: ${this.weaponName} already detonated, skipping`);
+            console.error(`⚠️ DETONATE: ${this.weaponName} already detonated, skipping`);
             return;
         }
         
-        this.hasDetonated = true;
+        console.error(`💥 DETONATE: ${this.weaponName} starting detonation sequence - NEW CODE LOADED`);
+        console.error(`💥 Position:`, position);
         
         // Get detonation position
         let detonationPos = position;
@@ -1250,17 +1249,17 @@ export class PhysicsProjectile {
             };
         }
         
-        console.log(`💥 DETONATE: ${this.weaponName} detonating at position:`, detonationPos);
-        console.log(`💥 DETONATE: ${this.weaponName} damage=${this.damage}, blastRadius=${this.blastRadius}m`);
+        // Silent detonation
         
         // NOTE: Explosion sound is played by createExplosionEffect() -> createExplosion() for consistent positioning
-        console.log(`💥 DETONATE: ${this.weaponName} calling applyPhysicsSplashDamage()`);
+        console.log(`💥 ${this.weaponName}: Starting damage application at position:`, detonationPos);
         this.applyPhysicsSplashDamage(detonationPos);
         
-        console.log(`💥 DETONATE: ${this.weaponName} calling createExplosionEffect() - this will handle explosion audio`);
         this.createExplosionEffect(detonationPos);
         
-        console.log(`💥 DETONATE: ${this.weaponName} calling cleanup()`);
+        // Mark as detonated AFTER damage application
+        this.hasDetonated = true;
+        
         this.cleanup();
     }
     
@@ -1282,6 +1281,7 @@ export class PhysicsProjectile {
                 entityTypes[type] = (entityTypes[type] || 0) + 1;
             });
             
+            // Always log splash damage results for debugging
             console.log(`💥 ${this.weaponName}: Found ${affectedEntities.length} entities in ${this.blastRadius}m blast radius:`, entityTypes);
             
             affectedEntities.forEach(entity => {
@@ -1489,7 +1489,7 @@ export class PhysicsProjectile {
                 this.threeObject = null;
             }
             
-            console.log(`🧹 Cleaned up ${this.weaponName} - simple trail system`);
+            // Silent cleanup
             
         } catch (error) {
             console.error('Error cleaning up physics projectile:', error);
@@ -1514,7 +1514,7 @@ export class PhysicsProjectile {
         // Stop trail updates immediately
         if (this.trailData && this.trailData.projectileObject) {
             this.trailData.projectileObject = null;
-            console.log(`🛑 Trail ${this.weaponName}_${this.launchTime} stopping and fading out`);
+            // Silent trail stopping
             
             // CRITICAL: Immediately call removeProjectileTrail to start fade-out
             if (this.trailId && window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {

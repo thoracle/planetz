@@ -1147,6 +1147,7 @@ export class StarfieldManager {
                         console.log(`   • Celestial bodies: CYAN wireframes`);
                         console.log(`   • Unknown objects: YELLOW wireframes`);
                         console.log(`   • Look for bright colored wireframe outlines around objects`);
+                        console.log(`💡 TIP: Fire torpedoes to see their bright collision shapes in motion!`);
                         console.log(`💡 TIP: Press Ctrl+Shift+P to enhance wireframe visibility if you can't see them`);
                     } else {
                         console.log(`🧹 Physics debug disabled - debug wireframes hidden`);

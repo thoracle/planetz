@@ -41,6 +41,7 @@ export class PhysicsManager {
         this._lastFailureWarning = {};
         this._debugLoggingEnabled = false; // Reduce console spam by default
         this._silentMode = true; // Completely silent except for user commands
+        this._lastCollisionDebugTime = 0; // Track debug spam timing
     }
 
     /**
@@ -409,6 +410,59 @@ export class PhysicsManager {
     }
 
     /**
+     * Disable collision debugging to reduce console spam
+     */
+    disableCollisionDebug() {
+        this._silentMode = true;
+        this._debugLoggingEnabled = false;
+        console.log('🔇 Collision debugging disabled - console spam reduced');
+    }
+
+    /**
+     * Enable collision debugging
+     */
+    enableCollisionDebug() {
+        this._silentMode = false;
+        this._debugLoggingEnabled = true;
+        console.log('🔊 Collision debugging enabled');
+    }
+
+    /**
+     * Completely disable all physics debug output (for clean console)
+     */
+    setSilentMode() {
+        this._silentMode = true;
+        this._debugLoggingEnabled = false;
+        console.log('🔇 Physics debugging completely disabled - console will be clean');
+    }
+
+    /**
+     * Ultimate silence - disable ALL debug output from physics system
+     */
+    setUltraSilentMode() {
+        this._silentMode = true;
+        this._debugLoggingEnabled = false;
+        
+        // Override console methods for physics-related logs only
+        const originalLog = console.log;
+        console.log = (...args) => {
+            const message = args.join(' ');
+            // Skip physics, collision, torpedo, and projectile logs
+            if (message.includes('🚀') || message.includes('💥') || 
+                message.includes('🔍') || message.includes('🎯') ||
+                message.includes('✅') || message.includes('🔧') ||
+                message.includes('📋') || message.includes('TORPEDO') ||
+                message.includes('PROJECTILE') || message.includes('COLLISION') ||
+                message.includes('Physics') || message.includes('manifolds')) {
+                return; // Skip these logs
+            }
+            originalLog.apply(console, args);
+        };
+        
+        console.log('🤐 ULTRA SILENT MODE: All physics debug output completely suppressed');
+    }
+
+    /**
      * Generic method to create a rigid body with configurable shape
      * @param {THREE.Object3D} threeObject - The Three.js object
      * @param {object} config - Configuration object
@@ -523,11 +577,25 @@ export class PhysicsManager {
                 return null;
             }
 
-            // Add to physics world
+            // Add to physics world with collision groups for projectiles
             try {
-                this.physicsWorld.addRigidBody(rigidBody);
                 if (entityType === 'projectile') {
-                    console.log(`✅ PHYSICS: Successfully added projectile to physics world: ${entityId}`);
+                    // Define collision groups for better projectile collision detection
+                    const projectileGroup = 1;
+                    const allGroup = -1; // Collide with everything
+                    this.physicsWorld.addRigidBody(rigidBody, projectileGroup, allGroup);
+                    
+                    // Enable Continuous Collision Detection for fast projectiles (silent)
+                    if (typeof rigidBody.setCcdMotionThreshold === 'function') {
+                        rigidBody.setCcdMotionThreshold(1.0);
+                    }
+                    if (typeof rigidBody.setCcdSweptSphereRadius === 'function') {
+                        rigidBody.setCcdSweptSphereRadius(0.5);
+                    }
+                    
+                    // Silent projectile addition
+                } else {
+                    this.physicsWorld.addRigidBody(rigidBody);
                 }
             } catch (error) {
                 console.error(`❌ PHYSICS: Failed to add rigid body to physics world:`, error);
@@ -556,44 +624,27 @@ export class PhysicsManager {
             
             this.entityMetadata.set(rigidBody, entityData);
             
-            // Debug: Track entity metadata additions
-            if (entityType === 'projectile') {
-                console.log(`📝 METADATA: Added ${entityType} ${entityId} to entityMetadata (new size: ${this.entityMetadata.size})`);
-            }
+            // Silent metadata tracking
 
             // Log projectile creation for debugging collision issues
+            // Silent projectile setup
             if (entityType === 'projectile') {
-                console.log(`🚀 PROJECTILE PHYSICS: Created ${shape} rigid body for ${entityType} ${entityId} (mass: ${mass}kg)`);
-                
                 try {
-                    // Try to get collision flags and activation state if available
-                    const collisionFlags = typeof rigidBody.getCollisionFlags === 'function' ? rigidBody.getCollisionFlags() : 'unknown';
-                    const activationState = typeof rigidBody.getActivationState === 'function' ? rigidBody.getActivationState() : 'unknown';
-                    console.log(`🔧 PROJECTILE PHYSICS: Collision flags: ${collisionFlags}, Activation state: ${activationState}`);
-                    
-                    // Try to ensure projectile is active and can collide
+                    // Silently ensure projectile is active and can collide
                     if (typeof rigidBody.setActivationState === 'function') {
-                        rigidBody.setActivationState(1); // ACTIVE_TAG
-                        console.log(`🔧 PROJECTILE PHYSICS: Set activation state to ACTIVE`);
+                        rigidBody.setActivationState(1);
                     }
                     if (typeof rigidBody.forceActivationState === 'function') {
                         rigidBody.forceActivationState(1);
-                        console.log(`🔧 PROJECTILE PHYSICS: Forced activation state to ACTIVE`);
                     }
                     if (typeof rigidBody.activate === 'function') {
                         rigidBody.activate();
-                        console.log(`🔧 PROJECTILE PHYSICS: Called activate() method`);
                     }
                 } catch (error) {
-                    console.log(`🔧 PROJECTILE PHYSICS: Could not access activation methods:`, error.message);
+                    // Silent error handling
                 }
                 
-                // Enable collision debugging for this session when projectiles are created
-                if (this._silentMode) {
-                    this._silentMode = false;
-                    console.log(`🔍 COLLISION DEBUG: Enabled collision debugging due to projectile creation`);
-                    console.log(`💡 Use 'disableCollisionDebug()' to stop collision debugging`);
-                }
+                // Don't auto-enable debugging - stay silent
             }
         
             // Create debug wireframe if debug mode is active
@@ -1159,6 +1210,9 @@ export class PhysicsManager {
             // Process collisions manually (since automatic callbacks may not be available)
             this.processCollisions();
 
+            // CRITICAL: Call fallback collision detection for torpedoes
+            this.handleCollisionsFallback();
+            
             // Sync Three.js objects with physics bodies FIRST
             this.syncThreeJSWithPhysics();
 
@@ -1258,9 +1312,82 @@ export class PhysicsManager {
      * Fallback collision detection using simple distance checks
      */
     handleCollisionsFallback() {
-        // For now, skip complex collision detection
-        // This would be implemented later when we add projectiles
-        // console.log('🔍 Using basic collision detection (manifolds not available)');
+        // Manual collision detection for when Ammo.js callbacks aren't available
+        const projectiles = [];
+        const targets = [];
+        
+        // Collect projectiles and potential targets
+        this.entityMetadata.forEach((entity, rigidBody) => {
+            if (entity.type === 'projectile') {
+                projectiles.push({entity, rigidBody});
+            } else if (entity.type === 'enemy_ship' || entity.type === 'planet' || entity.type === 'moon' || entity.type === 'star') {
+                targets.push({entity, rigidBody});
+            }
+        });
+        
+        // Debug: Log projectile/target counts periodically 
+        if (!this._lastFallbackLog || (Date.now() - this._lastFallbackLog > 5000)) {
+            if (projectiles.length > 0) {
+                console.log(`🔍 FALLBACK CHECK: ${projectiles.length} projectiles, ${targets.length} targets`);
+                this._lastFallbackLog = Date.now();
+            }
+        }
+        
+        // Check distance-based collisions between projectiles and targets
+        for (const projectile of projectiles) {
+            if (!projectile.entity.threeObject) continue;
+            
+            const projectilePos = projectile.entity.threeObject.position;
+            
+            for (const target of targets) {
+                if (!target.entity.threeObject) continue;
+                
+                const targetPos = target.entity.threeObject.position;
+                const distance = projectilePos.distanceTo(targetPos);
+                
+                // Collision threshold based on object sizes
+                let collisionThreshold = 20; // Base threshold
+                if (target.entity.type === 'enemy_ship') collisionThreshold = 25; // Target for torpedoes
+                if (target.entity.type === 'planet') collisionThreshold = 15; // Reduced - planets shouldn't be easy torpedo targets
+                if (target.entity.type === 'moon') collisionThreshold = 15; // Reduced - moons shouldn't be easy torpedo targets
+                if (target.entity.type === 'star') collisionThreshold = 5; // Very small - stars shouldn't be torpedo targets
+                
+                // Debug: Log close approaches for torpedoes (only to ships)
+                if (projectile.entity.id.includes('Torpedo') && target.entity.type === 'enemy_ship' && distance < 100) {
+                    console.log(`🎯 TORPEDO CLOSE APPROACH: ${projectile.entity.id} -> ${target.entity.id} distance: ${distance.toFixed(1)}m (threshold: ${collisionThreshold}m)`);
+                }
+                
+                if (distance <= collisionThreshold) {
+                    // No collision delay needed - fallback system is precise enough
+                    // Skip check removed - allow immediate collisions
+                    
+                    console.log(`💥 FALLBACK COLLISION: ${projectile.entity.id} hit ${target.entity.id} (distance: ${distance.toFixed(2)}m, threshold: ${collisionThreshold}m)`);
+                    
+                    // Trigger projectile collision handler if available
+                    if (projectile.rigidBody && projectile.rigidBody.projectileOwner && 
+                        typeof projectile.rigidBody.projectileOwner.onCollision === 'function') {
+                        
+                        const contactPoint = {
+                            position: projectilePos.clone(),
+                            impulse: 1.0
+                        };
+                        
+                        projectile.rigidBody.projectileOwner.onCollision(contactPoint, target.entity.threeObject);
+                    }
+                    
+                    // Remove projectile from physics world to prevent multiple collisions
+                    try {
+                        this.physicsWorld.removeRigidBody(projectile.rigidBody);
+                        this.rigidBodies.delete(projectile.entity.threeObject);
+                        this.entityMetadata.delete(projectile.rigidBody);
+                    } catch (error) {
+                        console.error('Error removing projectile after fallback collision:', error);
+                    }
+                    
+                    break; // Exit target loop for this projectile
+                }
+            }
+        }
     }
     
     /**
@@ -1482,11 +1609,8 @@ export class PhysicsManager {
             this.rigidBodies.delete(threeObject);
             this.entityMetadata.delete(rigidBody);
             
-            // Debug: Track entity metadata removals
+            // Silent metadata removal
             const entityType = metadata?.type || 'unknown';
-            if (entityType === 'projectile') {
-                console.log(`📝 METADATA: Removed ${entityType} ${entityId} from entityMetadata (new size: ${this.entityMetadata.size})`);
-            }
             
             this.Ammo.destroy(rigidBody);
             
@@ -1609,135 +1733,58 @@ export class PhysicsManager {
             const dispatcher = this.physicsWorld.getDispatcher();
             const numManifolds = dispatcher.getNumManifolds();
 
-            // Debug: Log collision detection activity and current entities (only when projectiles are active)
-            if (!this._silentMode) {
-                if (numManifolds > 0) {
-                    console.log(`🔍 COLLISION DEBUG: Found ${numManifolds} contact manifolds`);
-                    console.log(`🔍 COLLISION DEBUG: dispatcher=${!!dispatcher}, physicsWorld=${!!this.physicsWorld}`);
-                } else {
-                    // Only log when no collisions are detected if there are projectiles in the world
-                    const hasProjectiles = Array.from(this.entityMetadata.values()).some(entity => entity.type === 'projectile');
-                    const hasProjectilesBodies = Array.from(this.rigidBodies.values()).some(body => {
-                        const entity = this.entityMetadata.get(body);
-                        return entity?.type === 'projectile';
-                    });
-                    
-                    console.log(`🔍 DEBUG: hasProjectiles=${hasProjectiles}, hasProjectilesBodies=${hasProjectilesBodies}, metadata.size=${this.entityMetadata.size}, rigidBodies.size=${this.rigidBodies.size}`);
-                    
-                    if ((hasProjectiles || hasProjectilesBodies) && (!this._lastNoCollisionLog || Date.now() - this._lastNoCollisionLog > 5000)) {
-                        console.log(`🔍 COLLISION DEBUG: No collisions detected. Current entities in physics world:`);
-                        
-                        const entityCount = {};
-                        console.log(`🔍 DEBUG: entityMetadata size: ${this.entityMetadata.size}, rigidBodies size: ${this.rigidBodies.size}`);
-                        
-                        if (this.entityMetadata.size === 0) {
-                            console.warn(`⚠️ CRITICAL: entityMetadata map is EMPTY! This will prevent collision processing.`);
-                            console.log(`🔍 DEBUG: rigidBodies map contents:`, Array.from(this.rigidBodies.entries()).map(([obj, body]) => ({
-                                hasThreeObject: !!obj,
-                                objectType: obj?.userData?.type,
-                                rigidBodyExists: !!body
-                            })));
-                        }
-                        
-                        console.log(`🔍 DEBUG: About to iterate entityMetadata with size ${this.entityMetadata.size}`);
-                        let iterationCount = 0;
-                        
-                        try {
-                            this.entityMetadata.forEach((entity, rigidBody) => {
-                                iterationCount++;
-                                console.log(`🔍 DEBUG: Iteration ${iterationCount}: entity=${entity?.type}(${entity?.id}), rigidBody=${!!rigidBody}`);
-                                const type = entity.type || 'unknown';
-                                entityCount[type] = (entityCount[type] || 0) + 1;
-                            });
-                        } catch (error) {
-                            console.error(`❌ DEBUG: Error during entityMetadata.forEach:`, error);
-                        }
-                        
-                        console.log(`🔍 DEBUG: Completed iteration - expected ${this.entityMetadata.size}, actual ${iterationCount}`);
-                        console.log(`📊 Entity count:`, entityCount);
-                        this._lastNoCollisionLog = Date.now();
-                    }
-                }
-            }
+            // Silent collision detection - no logging during normal operation
 
-            if (numManifolds > 0) {
-                console.log(`🔍 COLLISION PROCESSING: Starting loop for ${numManifolds} manifolds`);
-            }
-            
+            // Process manifolds silently unless there are actual contacts
             for (let i = 0; i < numManifolds; i++) {
-                console.log(`🔍 COLLISION PROCESSING: Processing manifold ${i}/${numManifolds}`);
-                
                 let contactManifold = null;
                 let numContacts = 0;
                 
                 try {
                     contactManifold = dispatcher.getManifoldByIndexInternal(i);
-                    console.log(`🔍 COLLISION PROCESSING: Got manifold ${i}, exists: ${!!contactManifold}`);
-                    
                     if (contactManifold) {
                         numContacts = contactManifold.getNumContacts();
-                        console.log(`🔍 COLLISION PROCESSING: Manifold ${i} has ${numContacts} contacts`);
                     }
                 } catch (error) {
-                    console.error(`❌ COLLISION PROCESSING: Error getting manifold ${i}:`, error);
+                    if (this._debugLoggingEnabled) {
+                        console.error(`❌ Error getting manifold ${i}:`, error);
+                    }
                     continue;
                 }
 
                 if (numContacts > 0) {
-                    console.log(`🔍 COLLISION PROCESSING: Processing ${numContacts} contacts for manifold ${i}`);
+                    if (this._debugLoggingEnabled) {
+                        console.log(`💥 Processing ${numContacts} contacts for manifold ${i}`);
+                    }
                     
                     let bodyA = null, bodyB = null;
                     try {
                         bodyA = contactManifold.getBody0();
                         bodyB = contactManifold.getBody1();
-                        console.log(`🔍 COLLISION PROCESSING: Got bodies - bodyA: ${!!bodyA}, bodyB: ${!!bodyB}`);
                     } catch (error) {
-                        console.error(`❌ COLLISION PROCESSING: Error getting bodies for manifold ${i}:`, error);
-                        continue;
-                    }
-                    
-                    if (!this._silentMode) {
-                        console.log(`🔍 COLLISION DEBUG: Contact ${i}: ${numContacts} contact points between bodies`);
-                        console.log(`🔍 COLLISION DEBUG: bodyA exists: ${!!bodyA}, bodyB exists: ${!!bodyB}`);
-                        console.log(`🔍 COLLISION DEBUG: entityMetadata size: ${this.entityMetadata.size}`);
-                    }
-                    
-                    let entityA = null, entityB = null;
-                    try {
-                        entityA = this.entityMetadata.get(bodyA);
-                        entityB = this.entityMetadata.get(bodyB);
-                        console.log(`🔍 COLLISION PROCESSING: Retrieved entities - entityA: ${!!entityA}, entityB: ${!!entityB}`);
-                    } catch (error) {
-                        console.error(`❌ COLLISION PROCESSING: Error retrieving entity metadata:`, error);
-                        continue;
-                    }
-
-                    // Debug: Log entity retrieval
-                    if (!this._silentMode) {
-                        console.log(`🔍 COLLISION DEBUG: Contact ${i}: entityA=${entityA?.type}(${entityA?.id}), entityB=${entityB?.type}(${entityB?.id})`);
-                        
-                        if (!entityA || !entityB) {
-                            console.warn(`⚠️ COLLISION DEBUG: Missing entity metadata - entityA=${!!entityA}, entityB=${!!entityB}`);
-                            console.log(`🔍 COLLISION DEBUG: All entities in metadata:`, Array.from(this.entityMetadata.values()).map(e => `${e.type}(${e.id})`));
+                        if (this._debugLoggingEnabled) {
+                            console.error(`❌ Error getting bodies:`, error);
                         }
+                        continue;
                     }
+                    
+                    let entityA = this.entityMetadata.get(bodyA);
+                    let entityB = this.entityMetadata.get(bodyB);
 
                     if (entityA && entityB) {
-                        console.log(`🔍 COLLISION PROCESSING: Calling handleCollision for ${entityA.type} <-> ${entityB.type}`);
+                        if (this._debugLoggingEnabled) {
+                            console.log(`💥 COLLISION: ${entityA.type} <-> ${entityB.type}`);
+                        }
                         try {
                             this.handleCollision(entityA, entityB, contactManifold);
                         } catch (error) {
-                            console.error(`❌ COLLISION PROCESSING: Error in handleCollision:`, error);
+                            console.error(`❌ Error in handleCollision:`, error);
                         }
-                    } else {
-                        console.warn(`⚠️ COLLISION PROCESSING: Skipping collision - missing entity data`);
                     }
-                } else {
-                    console.log(`🔍 COLLISION PROCESSING: Manifold ${i} has no contacts (${numContacts})`);
                 }
             }
             
-            console.log(`🔍 COLLISION PROCESSING: Completed processing ${numManifolds} manifolds`);
+            // Silent collision processing - no logging
         } catch (error) {
             console.error('Error processing collisions:', error);
         }
@@ -2242,7 +2289,7 @@ export class PhysicsManager {
         this.updateDebugVisualization();
         
         if (!this._silentMode) {
-            console.log(`🔍 Created ${wireframeCount} debug wireframes for existing physics bodies`);
+            // Silent wireframe creation
             console.log(`👁️ PHYSICS DEBUG WIREFRAMES NOW VISIBLE: Look for colored wireframe outlines around objects`);
             console.log(`   • Enemy ships: MAGENTA wireframes`);
             console.log(`   • Celestial bodies (stars): ORANGE wireframes`);
@@ -2317,10 +2364,7 @@ export class PhysicsManager {
                 return;
             }
             
-            // Allow wireframes for important projectiles (torpedoes, missiles, etc.)
-            if (entityType === 'projectile' && entityId.includes('Torpedo') && !this._silentMode) {
-                console.log(`🚀 Creating torpedo wireframe: ${entityId}`);
-            }
+            // Silent wireframe creation for projectiles
 
             // Get collision shape and position
             const collisionShape = rigidBody.getCollisionShape();
@@ -2410,7 +2454,7 @@ export class PhysicsManager {
             // Make projectile wireframes MUCH bigger for visibility
             if (entityType === 'projectile') {
                 wireframe.scale.set(10, 10, 10); // 10x larger for torpedoes!
-                console.log(`🎯 SUPER-SIZED torpedo wireframe: 10x scale for ${entityId}`);
+                // Silent torpedo wireframe creation
             }
             
             // Force wireframes to always render on top
@@ -2498,11 +2542,7 @@ export class PhysicsManager {
                         const now = Date.now();
                         const lastLogTime = this._torpedoLogTimestamps.get(entityId);
                         
-                        // Only log once per second per torpedo to avoid spam
-                        if (!lastLogTime || now - lastLogTime > 1000) {
-                            console.log(`🚀 TORPEDO WIREFRAME: ${entityId} at (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
-                            this._torpedoLogTimestamps.set(entityId, now);
-                        }
+                        // Completely silent torpedo wireframe updates
                     }
                     
                     updateCount++;
@@ -2521,11 +2561,7 @@ export class PhysicsManager {
                     // Keep torpedo wireframes at their final detonation position
                     wireframe.position.set(data.position.x, data.position.y, data.position.z);
                     
-                    // Only log once per second per torpedo to avoid spam
-                    if (!this._silentMode && (!data.lastLogTime || now - data.lastLogTime > 1000)) {
-                        console.log(`🎯 DELAYED TORPEDO WIREFRAME: ${data.entityId} held at final position (${data.position.x.toFixed(1)}, ${data.position.y.toFixed(1)}, ${data.position.z.toFixed(1)})`);
-                        data.lastLogTime = now;
-                    }
+                    // Silent delayed wireframes - no spam
                     
                     updateCount++;
                 } catch (error) {
@@ -2540,13 +2576,7 @@ export class PhysicsManager {
             this.removeDebugWireframe(rigidBody);
         });
         
-        // Log summary if there were position updates (throttled to avoid spam)
-        if (!this._silentMode && updateCount > 0) {
-            if (!this._lastPositionUpdateLog || Date.now() - this._lastPositionUpdateLog > 5000) {
-                console.log(`🔍 POSITION UPDATE: Successfully repositioned ${updateCount} wireframes using Three.js object positions`);
-                this._lastPositionUpdateLog = Date.now();
-            }
-        }
+        // Silent position updates - no logging
     }
 
     /**
@@ -2913,7 +2943,8 @@ export class PhysicsManager {
      */
     disableCollisionDebug() {
         this._silentMode = true;
-        console.log('🔇 Collision debugging DISABLED - console spam reduced');
+        this._debugLoggingEnabled = false;
+        console.log('🔇 Collision debugging disabled');
     }
 }
 

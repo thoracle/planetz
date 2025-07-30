@@ -564,7 +564,7 @@ export class WeaponEffectsManager {
     createProjectileTrail(projectileId, projectileType, startPosition, projectileObject) {
         // MESH-BASED TRAIL: Use small spheres instead of particles
         const timestamp = Date.now();
-        console.log(`🚀 MESH TRAIL v2.0 [${timestamp}]: Creating trail for ${projectileType} at position:`, startPosition);
+        // Silent trail creation
         
         const colors = {
             homing_missile: 0xff4444, // Red
@@ -599,8 +599,7 @@ export class WeaponEffectsManager {
         
         this.scene.add(trailGroup);
         
-        console.log(`🚀 MESH TRAIL v2.0: Created ${trailLength} spheres with color ${color.toString(16)}`);
-        console.log(`🚀 MESH TRAIL v2.0: Group added to scene, scene children count:`, this.scene.children.length);
+        // Silent mesh trail creation
         
         const trailData = {
             id: projectileId,
@@ -615,7 +614,7 @@ export class WeaponEffectsManager {
         };
         
         this.staticTrails.push(trailData);
-        console.log(`🎆 MESH TRAIL v2.0 CREATED for ${projectileType} with ${trailLength} spheres`);
+        // Trail created silently
         return trailData;
     }
 
@@ -637,7 +636,7 @@ export class WeaponEffectsManager {
             trail.startTime = Date.now();
             trail.fadeDuration = 1000; // 1 second fade for better visibility
             
-            console.log(`🛑 Trail ${projectileId} stopping and fading out`);
+            // Silent trail stopping
         }
     }
 
@@ -786,7 +785,7 @@ export class WeaponEffectsManager {
                     this.scene.remove(trailData.engineGlow);
                 }
                 
-                console.log(`🧹 Cleaned up delayed particle trail: ${projectileId}`);
+                // Silent cleanup
             }
         }
     }
