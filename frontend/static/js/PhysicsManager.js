@@ -395,7 +395,11 @@ export class PhysicsManager {
                 threeObject: threeObject
             });
 
-            console.log(`Created planet rigid body for ${entityType} ${entityId}`);
+            console.log(`Created planet rigid body for ${entityType} ${entityId || 'unnamed'}`);
+            
+            // Create debug wireframe if debug mode is active
+            this.onRigidBodyCreated(rigidBody, threeObject);
+            
             return rigidBody;
 
         } catch (error) {
@@ -536,6 +540,9 @@ export class PhysicsManager {
             // Removed rigid body creation log to prevent console spam
             // console.log(`✅ Created ${shape} rigid body for ${entityType} (mass: ${mass}kg)`);
         
+            // Create debug wireframe if debug mode is active
+            this.onRigidBodyCreated(rigidBody, threeObject);
+            
             return rigidBody;
 
         } catch (error) {
@@ -1093,14 +1100,14 @@ export class PhysicsManager {
             // Update physics world
             this.physicsWorld.stepSimulation(deltaTime, 10);
 
-            // Update debug visualization
-            this.updateDebugVisualization();
-
             // Process collisions manually (since automatic callbacks may not be available)
             this.processCollisions();
 
-            // Sync Three.js objects with physics bodies
+            // Sync Three.js objects with physics bodies FIRST
             this.syncThreeJSWithPhysics();
+
+            // Update debug visualization AFTER sync (so wireframes use correct positions)
+            this.updateDebugVisualization();
 
             // Call update callbacks
             this.updateCallbacks.forEach(callback => {
@@ -1369,15 +1376,58 @@ export class PhysicsManager {
 
         const rigidBody = this.rigidBodies.get(threeObject);
         if (rigidBody) {
-            // Clean up debug wireframe if it exists
-            this.removeDebugWireframe(rigidBody);
+            // Check if this is a torpedo - delay wireframe removal to see tracking
+            const metadata = this.entityMetadata.get(rigidBody);
+            const entityId = metadata?.id || '';
+            const isTorpedo = entityId.includes('Torpedo');
+            
+            if (isTorpedo && this.debugMode) {
+                console.log(`🎯 TORPEDO CLEANUP: Preserving wireframe tracking for ${entityId}`);
+                
+                // Create a separate tracking entry for the torpedo wireframe
+                const wireframe = this.debugWireframes.get(rigidBody);
+                if (wireframe && threeObject && threeObject.position) {
+                    // Initialize delayed wireframes map if it doesn't exist
+                    if (!this.delayedWireframes) {
+                        this.delayedWireframes = new Map();
+                    }
+                    
+                    // Store the final position for the wireframe
+                    const finalPosition = {
+                        x: threeObject.position.x,
+                        y: threeObject.position.y,
+                        z: threeObject.position.z
+                    };
+                    
+                    this.delayedWireframes.set(wireframe, {
+                        entityId: entityId,
+                        position: finalPosition,
+                        timestamp: Date.now()
+                    });
+                    
+                    console.log(`🎯 TORPEDO WIREFRAME: Stored final position (${finalPosition.x.toFixed(1)}, ${finalPosition.y.toFixed(1)}, ${finalPosition.z.toFixed(1)}) for ${entityId}`);
+                }
+                
+                // Delay wireframe removal for torpedoes so we can see them
+                setTimeout(() => {
+                    this.removeDebugWireframe(rigidBody);
+                    // Clean up from delayed tracking
+                    if (this.delayedWireframes && wireframe) {
+                        this.delayedWireframes.delete(wireframe);
+                    }
+                    console.log(`🧹 DELAYED: Removed torpedo wireframe for ${entityId}`);
+                }, 3000); // 3 second delay
+            } else {
+                // Clean up debug wireframe immediately for non-torpedoes
+                this.removeDebugWireframe(rigidBody);
+            }
             
             this.physicsWorld.removeRigidBody(rigidBody);
             this.rigidBodies.delete(threeObject);
             this.entityMetadata.delete(rigidBody);
             this.Ammo.destroy(rigidBody);
             
-            console.log(`🧹 Removed rigid body and associated debug wireframe`);
+            console.log(`🧹 Removed rigid body${isTorpedo ? ' (wireframe delayed)' : ' and wireframe'}`);
         }
     }
 
@@ -1855,6 +1905,16 @@ export class PhysicsManager {
                 if (wireframe.material) wireframe.material.dispose();
             }
             
+            // Clean up delayed torpedo wireframes
+            if (this.delayedWireframes) {
+                for (const [wireframe, data] of this.delayedWireframes.entries()) {
+                    if (wireframe.geometry) wireframe.geometry.dispose();
+                    if (wireframe.material) wireframe.material.dispose();
+                }
+                this.delayedWireframes.clear();
+                console.log('🧹 Cleaned up delayed torpedo wireframes');
+            }
+            
             // Remove all wireframes
             this.debugWireframes.clear();
             scene.remove(this.debugGroup);
@@ -1905,6 +1965,15 @@ export class PhysicsManager {
         if (!this._silentMode) {
             console.log(`🔍 Created ${wireframeCount} debug wireframes for existing physics bodies`);
             console.log(`👁️ PHYSICS DEBUG WIREFRAMES NOW VISIBLE: Look for colored wireframe outlines around objects`);
+            console.log(`   • Enemy ships: MAGENTA wireframes`);
+            console.log(`   • Celestial bodies (stars): ORANGE wireframes`);
+            console.log(`   • Celestial bodies (planets): YELLOW wireframes`);
+            console.log(`   • Torpedo projectiles: BRIGHT MAGENTA/RED-PINK wireframes`);
+            console.log(`   • Missile projectiles: BRIGHT ORANGE/RED-ORANGE wireframes`);
+            console.log(`   • Other projectiles: CYAN/GREEN wireframes`);
+            console.log(`   • Unknown objects: WHITE wireframes`);
+            console.log(`💡 TIP: Fire torpedoes to see their bright collision shapes in motion!`);
+            console.log(`💡 TIP: Press Ctrl+Shift+P to enhance wireframe visibility if you can't see them`);
         }
         
         // Expose debug methods globally for console access
@@ -1943,16 +2012,33 @@ export class PhysicsManager {
         try {
             const metadata = this.entityMetadata.get(rigidBody);
             
-            // Skip projectiles to eliminate flashing wireframes
-            if (metadata?.type === 'projectile' || metadata?.id?.includes('projectile') || 
-                threeObject?.name?.includes('projectile') || threeObject?.userData?.type === 'projectile' ||
-                metadata?.id?.includes('laser') || metadata?.id?.includes('bullet') || 
-                metadata?.id?.includes('missile') || metadata?.id?.includes('torpedo')) {
+            // Skip less important projectiles to eliminate flashing wireframes, but allow torpedoes/missiles
+            const entityType = metadata?.type || 'unknown';
+            const entityId = metadata?.id || '';
+            const objectName = threeObject?.name || '';
+            const userDataType = threeObject?.userData?.type || '';
+            
+            // Filter out small/fast projectiles (lasers, bullets) but keep important ones (torpedoes, missiles)
+            const isFilteredProjectile = 
+                entityId.includes('laser') || entityId.includes('Laser') ||
+                entityId.includes('bullet') || entityId.includes('Bullet') ||
+                objectName.includes('laser') || objectName.includes('bullet') ||
+                (entityType === 'projectile' && (
+                    entityId.includes('laser') || entityId.includes('bullet') ||
+                    entityId.includes('beam') || entityId.includes('ray')
+                ));
+            
+            if (isFilteredProjectile) {
                 // Only log if debug logging is enabled
                 if (this._debugLoggingEnabled && !this._silentMode) {
-                    console.log(`🚫 Skipping wireframe for projectile: ${metadata?.id || threeObject?.name || 'unnamed'}`);
+                    console.log(`🚫 Skipping wireframe for filtered projectile: ${entityId || objectName || 'unnamed'}`);
                 }
                 return;
+            }
+            
+            // Allow wireframes for important projectiles (torpedoes, missiles, etc.)
+            if (entityType === 'projectile' && entityId.includes('Torpedo') && !this._silentMode) {
+                console.log(`🚀 Creating torpedo wireframe: ${entityId}`);
             }
 
             // Get collision shape and position
@@ -1979,11 +2065,23 @@ export class PhysicsManager {
                 
                 // Make wireframes slightly larger for better visibility
                 geometry = new THREE.BoxGeometry(width * 1.1, height * 1.1, depth * 1.1);
+                
+                // Enhanced colors for different entity types
+                let wireframeColor;
+                if (entityType === 'projectile') {
+                    // Bright colors for projectiles to make them stand out
+                    wireframeColor = entityId.includes('torpedo') ? 0xff00ff : // Bright magenta for torpedoes
+                                    entityId.includes('missile') ? 0xff8800 : // Bright orange for missiles
+                                    0x00ffff; // Cyan for other projectiles
+                } else {
+                    wireframeColor = entityType === 'enemy_ship' ? 0xff00ff : 0x00ffff; // Magenta for enemies, cyan for others
+                }
+                
                 material = new THREE.MeshBasicMaterial({ 
-                    color: metadata?.type === 'enemy_ship' ? 0xff00ff : 0x00ffff, // Magenta for enemies, cyan for others
+                    color: wireframeColor,
                     wireframe: true,
                     transparent: true,
-                    opacity: 0.6,
+                    opacity: entityType === 'projectile' ? 0.9 : 0.6, // Higher opacity for projectiles
                     depthTest: false,
                     depthWrite: false
                 });
@@ -1991,12 +2089,24 @@ export class PhysicsManager {
                 // Sphere shape  
                 const radius = collisionShape.getRadius();
                 geometry = new THREE.SphereGeometry(radius * 1.1, 16, 16);
+                
+                // Enhanced colors for different entity types
+                let wireframeColor;
+                if (entityType === 'projectile') {
+                    // Bright, distinctive colors for projectiles
+                    wireframeColor = entityId.includes('torpedo') ? 0xff0044 : // Bright red-pink for torpedoes
+                                    entityId.includes('missile') ? 0xff4400 : // Bright red-orange for missiles
+                                    0x44ff00; // Bright green for other projectiles
+                } else {
+                    wireframeColor = entityType === 'planet' ? 0xffff00 : 
+                                    entityType === 'star' ? 0xff8800 : 0x00ff00;
+                }
+                
                 material = new THREE.MeshBasicMaterial({
-                    color: metadata?.type === 'planet' ? 0xffff00 : 
-                           metadata?.type === 'star' ? 0xff8800 : 0x00ff00,
+                    color: wireframeColor,
                     wireframe: true,
                     transparent: true,
-                    opacity: 0.6,
+                    opacity: entityType === 'projectile' ? 1.0 : 0.6, // Full opacity for projectiles
                     depthTest: false,
                     depthWrite: false
                 });
@@ -2004,10 +2114,10 @@ export class PhysicsManager {
                 // Default to box for unknown shapes
                 geometry = new THREE.BoxGeometry(2, 2, 2);
                 material = new THREE.MeshBasicMaterial({
-                    color: 0xffffff,
+                    color: entityType === 'projectile' ? 0xffffff : 0xffffff, // White for unknown projectiles
                     wireframe: true,
                     transparent: true,
-                    opacity: 0.6,
+                    opacity: entityType === 'projectile' ? 1.0 : 0.6, // Full opacity for projectiles
                     depthTest: false,
                     depthWrite: false
                 });
@@ -2015,6 +2125,12 @@ export class PhysicsManager {
 
             // Create wireframe mesh
             wireframe = new THREE.Mesh(geometry, material);
+            
+            // Make projectile wireframes MUCH bigger for visibility
+            if (entityType === 'projectile') {
+                wireframe.scale.set(10, 10, 10); // 10x larger for torpedoes!
+                console.log(`🎯 SUPER-SIZED torpedo wireframe: 10x scale for ${entityId}`);
+            }
             
             // Force wireframes to always render on top
             wireframe.renderOrder = 1000;
@@ -2037,13 +2153,24 @@ export class PhysicsManager {
             this.debugWireframes.set(rigidBody, wireframe);
 
             const entityName = metadata?.id || threeObject.name || 'unnamed';
-            const entityType = metadata?.type || 'unknown';
             
             // Only log if debug logging is enabled or for important entities
-            if (!this._silentMode && (this._debugLoggingEnabled || entityType === 'star' || entityType === 'planet')) {
-                const colorName = entityType === 'enemy_ship' ? 'MAGENTA' : 
-                                 entityType === 'planet' ? 'YELLOW' :
-                                 entityType === 'star' ? 'ORANGE' : 'CYAN';
+            if (!this._silentMode && (this._debugLoggingEnabled || entityType === 'star' || entityType === 'planet' || entityType === 'projectile')) {
+                let colorName;
+                if (entityType === 'projectile') {
+                    if (entityId.includes('torpedo')) {
+                        colorName = 'BRIGHT MAGENTA/RED-PINK';
+                    } else if (entityId.includes('missile')) {
+                        colorName = 'BRIGHT ORANGE/RED-ORANGE';
+                    } else {
+                        colorName = 'CYAN/GREEN';
+                    }
+                } else {
+                    colorName = entityType === 'enemy_ship' ? 'MAGENTA' : 
+                               entityType === 'planet' ? 'YELLOW' :
+                               entityType === 'star' ? 'ORANGE' : 'CYAN';
+                }
+                
                 console.log(`🔍 Created ${colorName} wireframe for ${entityName} (${entityType}) at (${position.x().toFixed(2)}, ${position.y().toFixed(2)}, ${position.z().toFixed(2)})`);
             }
 
@@ -2078,16 +2205,32 @@ export class PhysicsManager {
                     wireframe.position.set(position.x, position.y, position.z);
                     wireframe.quaternion.set(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
                     
-                    // Debug: Log position updates for first few wireframes to verify fix
-                    if (updateCount < 3 && !this._silentMode) {
-                        const metadata = this.entityMetadata.get(rigidBody);
-                        console.log(`🔍 FIXED: ${metadata?.id || 'unknown'} wireframe moved to (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+                    // Debug: Log position updates for torpedoes specifically (force logging)
+                    const metadata = this.entityMetadata.get(rigidBody);
+                    const entityId = metadata?.id || 'unknown';
+                    if (entityId.includes('Torpedo')) {
+                        console.log(`🚀 TORPEDO WIREFRAME: ${entityId} at (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
                     }
                     
                     updateCount++;
                 } catch (error) {
                     console.warn('Failed to update debug wireframe - marking for removal:', error);
                     staleWireframes.push(rigidBody);
+                }
+            }
+        }
+        
+        // Update delayed torpedo wireframes (for torpedoes that have been cleaned up but wireframes are still visible)
+        if (this.delayedWireframes && this.delayedWireframes.size > 0) {
+            for (const [wireframe, data] of this.delayedWireframes.entries()) {
+                try {
+                    // Keep torpedo wireframes at their final detonation position
+                    wireframe.position.set(data.position.x, data.position.y, data.position.z);
+                    console.log(`🎯 DELAYED TORPEDO WIREFRAME: ${data.entityId} held at final position (${data.position.x.toFixed(1)}, ${data.position.y.toFixed(1)}, ${data.position.z.toFixed(1)})`);
+                    updateCount++;
+                } catch (error) {
+                    console.warn('Failed to update delayed torpedo wireframe:', error);
+                    this.delayedWireframes.delete(wireframe);
                 }
             }
         }
