@@ -1427,6 +1427,11 @@ export class PhysicsManager {
             this.entityMetadata.delete(rigidBody);
             this.Ammo.destroy(rigidBody);
             
+            // Clean up torpedo logging timestamp to prevent memory leaks
+            if (isTorpedo && this._torpedoLogTimestamps) {
+                this._torpedoLogTimestamps.delete(entityId);
+            }
+            
             console.log(`🧹 Removed rigid body${isTorpedo ? ' (wireframe delayed)' : ' and wireframe'}`);
         }
     }
@@ -1915,6 +1920,12 @@ export class PhysicsManager {
                 console.log('🧹 Cleaned up delayed torpedo wireframes');
             }
             
+            // Clean up torpedo logging timestamps
+            if (this._torpedoLogTimestamps) {
+                this._torpedoLogTimestamps.clear();
+                console.log('🧹 Cleaned up torpedo logging timestamps');
+            }
+            
             // Remove all wireframes
             this.debugWireframes.clear();
             scene.remove(this.debugGroup);
@@ -2205,11 +2216,23 @@ export class PhysicsManager {
                     wireframe.position.set(position.x, position.y, position.z);
                     wireframe.quaternion.set(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
                     
-                    // Debug: Log position updates for torpedoes specifically (force logging)
+                    // Debug: Log position updates for torpedoes (throttled to avoid spam)
                     const metadata = this.entityMetadata.get(rigidBody);
                     const entityId = metadata?.id || 'unknown';
-                    if (entityId.includes('Torpedo')) {
-                        console.log(`🚀 TORPEDO WIREFRAME: ${entityId} at (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+                    if (entityId.includes('Torpedo') && !this._silentMode) {
+                        // Initialize torpedo logging timestamps if not exists
+                        if (!this._torpedoLogTimestamps) {
+                            this._torpedoLogTimestamps = new Map();
+                        }
+                        
+                        const now = Date.now();
+                        const lastLogTime = this._torpedoLogTimestamps.get(entityId);
+                        
+                        // Only log once per second per torpedo to avoid spam
+                        if (!lastLogTime || now - lastLogTime > 1000) {
+                            console.log(`🚀 TORPEDO WIREFRAME: ${entityId} at (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+                            this._torpedoLogTimestamps.set(entityId, now);
+                        }
                     }
                     
                     updateCount++;
@@ -2222,11 +2245,18 @@ export class PhysicsManager {
         
         // Update delayed torpedo wireframes (for torpedoes that have been cleaned up but wireframes are still visible)
         if (this.delayedWireframes && this.delayedWireframes.size > 0) {
+            const now = Date.now();
             for (const [wireframe, data] of this.delayedWireframes.entries()) {
                 try {
                     // Keep torpedo wireframes at their final detonation position
                     wireframe.position.set(data.position.x, data.position.y, data.position.z);
-                    console.log(`🎯 DELAYED TORPEDO WIREFRAME: ${data.entityId} held at final position (${data.position.x.toFixed(1)}, ${data.position.y.toFixed(1)}, ${data.position.z.toFixed(1)})`);
+                    
+                    // Only log once per second per torpedo to avoid spam
+                    if (!this._silentMode && (!data.lastLogTime || now - data.lastLogTime > 1000)) {
+                        console.log(`🎯 DELAYED TORPEDO WIREFRAME: ${data.entityId} held at final position (${data.position.x.toFixed(1)}, ${data.position.y.toFixed(1)}, ${data.position.z.toFixed(1)})`);
+                        data.lastLogTime = now;
+                    }
+                    
                     updateCount++;
                 } catch (error) {
                     console.warn('Failed to update delayed torpedo wireframe:', error);
