@@ -537,8 +537,20 @@ export class PhysicsManager {
             
             this.entityMetadata.set(rigidBody, entityData);
 
-            // Removed rigid body creation log to prevent console spam
-            // console.log(`✅ Created ${shape} rigid body for ${entityType} (mass: ${mass}kg)`);
+            // Log projectile creation for debugging collision issues
+            if (entityType === 'projectile') {
+                console.log(`🚀 PROJECTILE PHYSICS: Created ${shape} rigid body for ${entityType} ${entityId} (mass: ${mass}kg)`);
+                console.log(`🔧 PROJECTILE PHYSICS: Collision flags: ${rigidBody.getCollisionFlags()}, Activation state: ${rigidBody.getActivationState()}`);
+                
+                // Ensure projectile is active and can collide
+                rigidBody.setActivationState(1); // ACTIVE_TAG
+                rigidBody.forceActivationState(1);
+                console.log(`🔧 PROJECTILE PHYSICS: Forced activation state to ACTIVE`);
+                
+                // Enable collision debugging for this session when projectiles are created
+                this._silentMode = false;
+                console.log(`🔍 COLLISION DEBUG: Enabled collision debugging due to projectile creation`);
+            }
         
             // Create debug wireframe if debug mode is active
             this.onRigidBodyCreated(rigidBody, threeObject);
@@ -1546,6 +1558,27 @@ export class PhysicsManager {
             const dispatcher = this.physicsWorld.getDispatcher();
             const numManifolds = dispatcher.getNumManifolds();
 
+            // Debug: Log collision detection activity and current entities
+            if (!this._silentMode) {
+                if (numManifolds > 0) {
+                    console.log(`🔍 COLLISION DEBUG: Found ${numManifolds} contact manifolds`);
+                } else {
+                    // Periodically log when no collisions are detected to help debug
+                    if (!this._lastNoCollisionLog || Date.now() - this._lastNoCollisionLog > 2000) {
+                        console.log(`🔍 COLLISION DEBUG: No collisions detected. Current entities in physics world:`);
+                        
+                        const entityCount = {};
+                        this.entityMetadata.forEach((entity, rigidBody) => {
+                            const type = entity.type || 'unknown';
+                            entityCount[type] = (entityCount[type] || 0) + 1;
+                        });
+                        
+                        console.log(`📊 Entity count:`, entityCount);
+                        this._lastNoCollisionLog = Date.now();
+                    }
+                }
+            }
+
             for (let i = 0; i < numManifolds; i++) {
                 const contactManifold = dispatcher.getManifoldByIndexInternal(i);
                 const numContacts = contactManifold.getNumContacts();
@@ -1557,8 +1590,17 @@ export class PhysicsManager {
                     const entityA = this.entityMetadata.get(bodyA);
                     const entityB = this.entityMetadata.get(bodyB);
 
+                    // Debug: Log entity retrieval
+                    if (!this._silentMode) {
+                        console.log(`🔍 COLLISION DEBUG: Contact ${i}: entityA=${entityA?.type}(${entityA?.id}), entityB=${entityB?.type}(${entityB?.id})`);
+                    }
+
                     if (entityA && entityB) {
                         this.handleCollision(entityA, entityB, contactManifold);
+                    } else {
+                        if (!this._silentMode) {
+                            console.warn(`⚠️ COLLISION DEBUG: Missing entity metadata - entityA=${!!entityA}, entityB=${!!entityB}`);
+                        }
                     }
                 }
             }
