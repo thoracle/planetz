@@ -928,14 +928,9 @@ export class PhysicsProjectile {
         
         // Silent projectile launch
         
-        // Allow immediate collisions - fallback system is precise enough
-        this.canCollide = true; // Enable collisions immediately
-        this.collisionDelay = 0; // No delay needed
-        this.launchTime = Date.now(); // Track launch time for debugging
-        this.lastCollisionTime = null;
+        // Native collision detection - no delay needed
+        this.launchTime = Date.now();
         this.collisionProcessed = false;
-        
-        // No setTimeout needed - immediate collision allowed
         
         // Add range checking - projectile expires when it travels beyond weapon range
         this.rangeCheckInterval = setInterval(() => {
@@ -1116,7 +1111,7 @@ export class PhysicsProjectile {
     onCollision(contactPoint, otherObject) {
         // Add detailed collision debugging
         console.log(`🔥 COLLISION DEBUG: ${this.weaponName} onCollision called`);
-        console.log(`🔥 COLLISION DEBUG: hasDetonated=${this.hasDetonated}, collisionProcessed=${this.collisionProcessed}, canCollide=${this.canCollide}`);
+        console.log(`🔥 COLLISION DEBUG: hasDetonated=${this.hasDetonated}, collisionProcessed=${this.collisionProcessed}`);
         
         // CRITICAL: Prevent collision loops
         if (this.hasDetonated || this.collisionProcessed) {
@@ -1126,26 +1121,7 @@ export class PhysicsProjectile {
         this.collisionProcessed = true;
         // NOTE: hasDetonated will be set by detonate() method after damage application
         
-        // Check collision delay - but allow trail cleanup regardless
-        if (!this.canCollide) {
-            
-            
-            // CRITICAL: Still do trail cleanup even during delay period
-            if (this.trailData && this.trailData.projectileObject) {
-                this.trailData.projectileObject = null;
-                console.log(`🛑 TRAIL: ${this.weaponName} trail stopped (during delay)`);
-                
-                // CRITICAL: Immediately call removeProjectileTrail to start fade-out
-                if (this.trailId && window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
-                    const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
-                    effectsManager.removeProjectileTrail(this.trailId);
-                    console.log(`🧹 TRAIL: Started fade-out for ${this.weaponName} trail (during delay)`);
-                }
-            }
-            
-            // Skip damage/explosion effects but trail cleanup is done
-            return;
-        }
+        // Native collision detection - process collision immediately
         
         console.log(`🛑 COLLISION: ${this.weaponName} hit target - starting cleanup and damage application`);
         
