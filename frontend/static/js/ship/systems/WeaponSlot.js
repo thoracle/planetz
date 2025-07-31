@@ -53,8 +53,15 @@ export class WeaponSlot {
             if (!ship.hasEnergy(weapon.energyCost)) {
                 console.log(`Weapon slot ${this.slotIndex}: Insufficient energy (need ${weapon.energyCost})`);
                 
-                // Show HUD message through weapon system (no throttling)
-                if (this.weaponSystem && this.weaponSystem.showMessage) {
+                // Show HUD feedback for insufficient energy
+                if (this.weaponSystem && this.weaponSystem.weaponHUD) {
+                    const currentEnergy = ship.systems ? ship.systems.energyReactor?.currentEnergy || 0 : 0;
+                    this.weaponSystem.weaponHUD.showInsufficientEnergyFeedback(
+                        weapon.name, 
+                        weapon.energyCost, 
+                        currentEnergy
+                    );
+                } else if (this.weaponSystem && this.weaponSystem.showMessage) {
                     this.weaponSystem.showMessage(
                         `Insufficient Energy: ${weapon.name} needs ${weapon.energyCost} energy`,
                         3000
@@ -105,8 +112,14 @@ export class WeaponSlot {
             
             console.log(`Weapon slot ${this.slotIndex}: ${modeText} out of range`);
             
-            // Show HUD message through weapon system (every time, no throttling)
-            if (this.weaponSystem && this.weaponSystem.showMessage) {
+            // Show HUD feedback for out of range
+            if (this.weaponSystem && this.weaponSystem.weaponHUD) {
+                this.weaponSystem.weaponHUD.showOutOfRangeFeedback(
+                    weapon.name,
+                    distanceToTarget,
+                    weapon.range
+                );
+            } else if (this.weaponSystem && this.weaponSystem.showMessage) {
                 this.weaponSystem.showMessage(
                     `${modeText} Out of Range: ${weapon.name} - ${distanceKm}km > ${maxRangeKm}km max`,
                     3000

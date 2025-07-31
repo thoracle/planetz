@@ -347,6 +347,47 @@ export class WeaponHUD {
     }
     
     /**
+     * Show out of range feedback
+     * @param {string} weaponName Name of weapon
+     * @param {number} targetDistance Distance to target
+     * @param {number} weaponRange Maximum weapon range
+     */
+    showOutOfRangeFeedback(weaponName, targetDistance, weaponRange) {
+        const distanceKm = (targetDistance / 1000).toFixed(1);
+        const rangeKm = (weaponRange / 1000).toFixed(1);
+        this.showMessage(`${weaponName}: Out of range (${distanceKm}km > ${rangeKm}km)`, 4000);
+    }
+    
+    /**
+     * Show damage dealt feedback
+     * @param {string} weaponName Name of weapon that dealt damage
+     * @param {number} damageAmount Amount of damage dealt
+     * @param {string} targetName Name of target hit
+     */
+    showDamageFeedback(weaponName, damageAmount, targetName) {
+        this.showMessage(`${weaponName}: ${damageAmount} damage to ${targetName}`, 3000);
+    }
+    
+    /**
+     * Show insufficient energy feedback
+     * @param {string} weaponName Name of weapon
+     * @param {number} required Required energy
+     * @param {number} available Available energy
+     */
+    showInsufficientEnergyFeedback(weaponName, required, available) {
+        this.showMessage(`${weaponName}: Insufficient energy (${required}/${available})`, 3000);
+    }
+    
+    /**
+     * Show weapon malfunction feedback
+     * @param {string} weaponName Name of weapon
+     * @param {string} reason Reason for malfunction
+     */
+    showWeaponMalfunctionFeedback(weaponName, reason) {
+        this.showMessage(`${weaponName}: ${reason}`, 4000);
+    }
+    
+    /**
      * Show general message
      * @param {string} message Message to display
      * @param {number} duration Duration in milliseconds (default: 3000)

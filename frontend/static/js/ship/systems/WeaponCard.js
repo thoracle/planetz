@@ -264,6 +264,37 @@ export class ScanHitWeapon extends WeaponCard {
         // This would integrate with the combat/damage system
         if (target.takeDamage) {
             target.takeDamage(damage);
+            
+            // Show damage feedback on HUD
+            this.showDamageFeedback(target, damage);
+        }
+    }
+    
+    /**
+     * Show damage feedback on weapon HUD
+     * @param {Object} target Target that took damage
+     * @param {number} damage Damage amount dealt
+     */
+    showDamageFeedback(target, damage) {
+        try {
+            // Try to get weapon HUD reference through various paths
+            let weaponHUD = null;
+            
+            // Path 1: Through ship's weapon system
+            if (window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD) {
+                weaponHUD = window.starfieldManager.viewManager.ship.weaponSystem.weaponHUD;
+            }
+            // Path 2: Through global ship reference
+            else if (window.ship?.weaponSystem?.weaponHUD) {
+                weaponHUD = window.ship.weaponSystem.weaponHUD;
+            }
+            
+            if (weaponHUD) {
+                const targetName = target.shipName || target.name || 'Target';
+                weaponHUD.showDamageFeedback(this.name, damage, targetName);
+            }
+        } catch (error) {
+            console.log('Failed to show damage feedback:', error.message);
         }
     }
     
@@ -835,6 +866,9 @@ export class Projectile {
             
             if (distance > 0 && this.target.takeDamage) {
                 this.target.takeDamage(distance);
+                
+                // Show damage feedback on HUD
+                this.showDamageFeedback(this.target, distance);
             }
         }
     }
@@ -1379,6 +1413,9 @@ export class PhysicsProjectile {
                         const damageResult = targetShip.applyDamage(damage, 'explosive', null);
                         console.log(`💥 ${this.weaponName}: After damage - hull: ${targetShip.currentHull}/${targetShip.maxHull}, destroyed: ${damageResult?.isDestroyed || false}`);
                         
+                        // Show damage feedback on HUD
+                        this.showDamageFeedback(targetShip, damage);
+                        
                         // Play splash damage explosion sound for each target hit
                         if (damage > 0 && window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
                             const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
@@ -1454,6 +1491,34 @@ export class PhysicsProjectile {
             Math.pow(pos1.y - pos2.y, 2) +
             Math.pow(pos1.z - pos2.z, 2)
         );
+    }
+    
+    /**
+     * Show damage feedback on weapon HUD
+     * @param {Object} target Target that took damage
+     * @param {number} damage Damage amount dealt
+     */
+    showDamageFeedback(target, damage) {
+        try {
+            // Try to get weapon HUD reference through various paths
+            let weaponHUD = null;
+            
+            // Path 1: Through ship's weapon system
+            if (window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD) {
+                weaponHUD = window.starfieldManager.viewManager.ship.weaponSystem.weaponHUD;
+            }
+            // Path 2: Through global ship reference
+            else if (window.ship?.weaponSystem?.weaponHUD) {
+                weaponHUD = window.ship.weaponSystem.weaponHUD;
+            }
+            
+            if (weaponHUD) {
+                const targetName = target.shipName || target.name || 'Target';
+                weaponHUD.showDamageFeedback(this.weaponName, damage, targetName);
+            }
+        } catch (error) {
+            console.log('Failed to show damage feedback:', error.message);
+        }
     }
     
     /**
