@@ -1259,11 +1259,22 @@ export class PhysicsProjectile {
         console.log(`💥 DETONATE: ${this.weaponName} starting detonation sequence`);
         console.log(`💥 Position:`, position);
         
-        // Get detonation position with validation
+        // Get detonation position with validation and debugging
         let detonationPos = position;
         if (!detonationPos && this.threeObject && this.threeObject.position) {
             // Clone position to avoid corruption when object is removed
             const clonedPos = this.threeObject.position.clone();
+            console.log(`🎯 ${this.weaponName}: Using threeObject position for detonation:`, clonedPos);
+            console.log(`🎯 ${this.weaponName}: Start position was:`, this.startPosition);
+            
+            // Calculate distance traveled for debugging
+            const distanceTraveled = Math.sqrt(
+                Math.pow(clonedPos.x - this.startPosition.x, 2) +
+                Math.pow(clonedPos.y - this.startPosition.y, 2) +
+                Math.pow(clonedPos.z - this.startPosition.z, 2)
+            );
+            console.log(`🎯 ${this.weaponName}: Distance traveled: ${distanceTraveled.toFixed(1)}m (max: ${this.flightRange}m)`);
+            
             // Validate position is not at origin (indicates corruption)
             if (clonedPos.x !== 0 || clonedPos.y !== 0 || clonedPos.z !== 0) {
                 detonationPos = {

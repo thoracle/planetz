@@ -150,6 +150,24 @@ export class WeaponSlot {
         //     }
         // }
         
+        // Debug: Log weapon firing details for projectiles
+        if (weapon.weaponType === 'splash-damage') {
+            console.log(`🚀 ${weapon.name}: Firing projectile from origin:`, weaponOrigin);
+            if (target) {
+                const targetPos = target.position || target.threeObject?.position;
+                if (targetPos) {
+                    const distance = Math.sqrt(
+                        Math.pow(weaponOrigin.x - targetPos.x, 2) +
+                        Math.pow(weaponOrigin.y - targetPos.y, 2) +
+                        Math.pow(weaponOrigin.z - targetPos.z, 2)
+                    );
+                    console.log(`🎯 ${weapon.name}: Target at distance ${distance.toFixed(1)}m:`, targetPos);
+                }
+            } else {
+                console.log(`🎯 ${weapon.name}: Free-aim mode (no target lock)`);
+            }
+        }
+        
         // Fire the weapon with proper origin position
         const fireResult = weapon.fire(weaponOrigin, target);
         
