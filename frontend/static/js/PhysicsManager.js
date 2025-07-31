@@ -117,15 +117,19 @@ export class PhysicsManager {
             console.log('✅ Gravity set to zero');
             
             // Enable collision detection
-            console.log('🔧 Configuring collision detection...');
+            console.log('🔧 Configuring native collision detection...');
             try {
-                // Try different ways to set CCD penetration
+                // Configure native collision detection with complete build
                 const dispatchInfo = this.physicsWorld.getDispatchInfo();
-                console.log('🔍 DispatchInfo methods:', Object.getOwnPropertyNames(dispatchInfo));
                 
+                // Enable CCD properly with complete build
+                dispatchInfo.set_m_useContinuous(true);
+                dispatchInfo.set_m_useConvexConservativeDistanceUtil(true);
+                
+                // Set CCD penetration threshold  
                 if (typeof dispatchInfo.set_m_allowedCcdPenetration === 'function') {
                     dispatchInfo.set_m_allowedCcdPenetration(0.0001);
-                    console.log('✅ Used set_m_allowedCcdPenetration');
+                    console.log('✅ CCD penetration configured via set_m_allowedCcdPenetration');
                 } else if (typeof dispatchInfo.m_allowedCcdPenetration !== 'undefined') {
                     dispatchInfo.m_allowedCcdPenetration = 0.0001;
                     console.log('✅ Used direct property assignment');
@@ -580,18 +584,13 @@ export class PhysicsManager {
             // Add to physics world with collision groups for projectiles
             try {
                 if (entityType === 'projectile') {
-                    // Define collision groups for better projectile collision detection
-                    const projectileGroup = 1;
-                    const allGroup = -1; // Collide with everything
-                    this.physicsWorld.addRigidBody(rigidBody, projectileGroup, allGroup);
+                    // Native collision group configuration with complete build
+                    const collisionGroup = config.collisionGroup || 1;
+                    const collisionMask = config.collisionMask || -1; // Collide with everything by default
+                    this.physicsWorld.addRigidBody(rigidBody, collisionGroup, collisionMask);
                     
-                    // Enable Continuous Collision Detection for fast projectiles (silent)
-                    if (typeof rigidBody.setCcdMotionThreshold === 'function') {
-                        rigidBody.setCcdMotionThreshold(1.0);
-                    }
-                    if (typeof rigidBody.setCcdSweptSphereRadius === 'function') {
-                        rigidBody.setCcdSweptSphereRadius(0.5);
-                    }
+                    // Enable Continuous Collision Detection for fast projectiles
+                    this.configureProjectilePhysics(rigidBody);
                     
                     // Silent projectile addition
                 } else {
@@ -1210,8 +1209,8 @@ export class PhysicsManager {
             // Process collisions manually (since automatic callbacks may not be available)
             this.processCollisions();
 
-            // CRITICAL: Call fallback collision detection for torpedoes
-            this.handleCollisionsFallback();
+                    // NATIVE: Use Ammo.js collision detection
+        this.processNativeCollisions();
             
             // Sync Three.js objects with physics bodies FIRST
             this.syncThreeJSWithPhysics();
@@ -1243,7 +1242,7 @@ export class PhysicsManager {
             // Check if collision manifold detection is available
             if (!this.dispatcher || typeof this.dispatcher.getNumManifolds !== 'function') {
                 // Use fallback collision detection
-                return this.handleCollisionsFallback();
+                return this.processNativeCollisions();
             }
             
             const numManifolds = this.dispatcher.getNumManifolds();
@@ -1304,8 +1303,85 @@ export class PhysicsManager {
             }
         } catch (error) {
             console.log('⚠️ Collision detection failed, using basic mode:', error.message);
+            this.processNativeCollisions();
+        }
+    }
+
+    /**
+     * Configure projectile physics with proper CCD (no fallback needed)
+     */
+    configureProjectilePhysics(rigidBody) {
+        try {
+            // Native CCD configuration
+            rigidBody.setCcdMotionThreshold(1.0);
+            rigidBody.setCcdSweptSphereRadius(0.5);
+            
+            // Enable continuous collision detection flag
+            const currentFlags = rigidBody.getCollisionFlags();
+            rigidBody.setCollisionFlags(currentFlags | 4); // CF_CONTINUOUS_COLLISION_DETECTION
+            
+            console.log('✅ Projectile CCD configured with complete Ammo.js build');
+        } catch (error) {
+            console.warn('⚠️ CCD configuration failed:', error.message);
+        }
+    }
+
+    /**
+     * Native Ammo.js collision detection using collision manifolds
+     */
+    processNativeCollisions() {
+        try {
+            const dispatcher = this.physicsWorld.getDispatcher();
+            const numManifolds = dispatcher.getNumManifolds();
+            
+            for (let i = 0; i < numManifolds; i++) {
+                const contactManifold = dispatcher.getManifoldByIndexInternal(i);
+                const numContacts = contactManifold.getNumContacts();
+                
+                if (numContacts > 0) {
+                    this.handleNativeCollision(contactManifold);
+                }
+            }
+        } catch (error) {
+            console.log('⚠️ Native collision detection failed, using fallback:', error.message);
             this.handleCollisionsFallback();
         }
+    }
+
+    /**
+     * Handle native collision manifold
+     */
+    handleNativeCollision(contactManifold) {
+        const rigidBody0 = Ammo.castObject(contactManifold.getBody0(), Ammo.btRigidBody);
+        const rigidBody1 = Ammo.castObject(contactManifold.getBody1(), Ammo.btRigidBody);
+        
+        const entity0 = this.entityMetadata.get(rigidBody0);
+        const entity1 = this.entityMetadata.get(rigidBody1);
+        
+        if (!entity0 || !entity1) return;
+        
+        // Determine projectile and target
+        let projectile = null;
+        let target = null;
+        
+        if (entity0.type === 'projectile' && entity1.type !== 'projectile') {
+            projectile = entity0;
+            target = entity1;
+        } else if (entity1.type === 'projectile' && entity0.type !== 'projectile') {
+            projectile = entity1;
+            target = entity0;
+        } else {
+            return; // Not a projectile collision
+        }
+        
+        // Get contact point from manifold
+        const contactPoint = contactManifold.getContactPoint(0);
+        const worldPos = contactPoint.getPositionWorldOnB();
+        const contactPosThree = new THREE.Vector3(worldPos.x(), worldPos.y(), worldPos.z());
+        
+        // Process the collision with proper signature
+        const targetRigidBody = target.type === 'projectile' ? rigidBody0 : rigidBody1;
+        this.handleProjectileCollision(projectile, contactPosThree, targetRigidBody);
     }
 
     /**
