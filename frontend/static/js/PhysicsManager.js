@@ -1209,8 +1209,8 @@ export class PhysicsManager {
             // Process collisions manually (since automatic callbacks may not be available)
             this.processCollisions();
 
-                    // NATIVE: Use Ammo.js collision detection
-        this.processNativeCollisions();
+            // NATIVE: Try native collision detection first, fallback to distance-based
+            this.processCollisionsWithFallback();
             
             // Sync Three.js objects with physics bodies FIRST
             this.syncThreeJSWithPhysics();
@@ -1242,7 +1242,7 @@ export class PhysicsManager {
             // Check if collision manifold detection is available
             if (!this.dispatcher || typeof this.dispatcher.getNumManifolds !== 'function') {
                 // Use fallback collision detection
-                return this.processNativeCollisions();
+                return this.handleCollisionsFallback();
             }
             
             const numManifolds = this.dispatcher.getNumManifolds();
@@ -1302,8 +1302,8 @@ export class PhysicsManager {
                 }
             }
         } catch (error) {
-            console.log('⚠️ Collision detection failed, using basic mode:', error.message);
-            this.processNativeCollisions();
+            console.log('⚠️ Collision detection failed, using fallback mode:', error.message);
+            this.handleCollisionsFallback();
         }
     }
 
@@ -1324,6 +1324,42 @@ export class PhysicsManager {
         } catch (error) {
             console.warn('⚠️ CCD configuration failed:', error.message);
         }
+    }
+
+    /**
+     * Process collisions with native detection first, fallback to distance-based
+     */
+    processCollisionsWithFallback() {
+        let nativeCollisionsFound = 0;
+        
+        try {
+            // Try native collision detection first
+            const dispatcher = this.physicsWorld.getDispatcher();
+            const numManifolds = dispatcher.getNumManifolds();
+            
+            for (let i = 0; i < numManifolds; i++) {
+                const contactManifold = dispatcher.getManifoldByIndexInternal(i);
+                const numContacts = contactManifold.getNumContacts();
+                
+                if (numContacts > 0) {
+                    this.handleNativeCollision(contactManifold);
+                    nativeCollisionsFound++;
+                }
+            }
+            
+            // If native detection found collisions, we're done
+            if (nativeCollisionsFound > 0) {
+                console.log(`✅ Native collision detection found ${nativeCollisionsFound} collisions`);
+                return;
+            }
+            
+        } catch (error) {
+            console.log('⚠️ Native collision detection failed:', error.message);
+        }
+        
+        // Always run fallback detection for projectiles (native often misses fast-moving objects)
+        console.log('🔄 Running fallback collision detection (native found 0 collisions)');
+        this.handleCollisionsFallback();
     }
 
     /**
