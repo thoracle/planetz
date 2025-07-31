@@ -197,6 +197,7 @@ export class WeaponEffectsManager {
                 { type: 'missiles', file: `${audioBasePath}missiles.wav` },
                 { type: 'mines', file: `${audioBasePath}mines.mp3` },
                 { type: 'explosion', file: `${audioBasePath}explosion.wav` },
+                { type: 'torpedo-explosion', file: `${audioBasePath}explosion-01.mp3` },
                 { type: 'death', file: `${audioBasePath}death.wav` },
                 { type: 'success', file: `${audioBasePath}success.wav` }
             ];
@@ -364,6 +365,7 @@ export class WeaponEffectsManager {
                 'photons': `${audioBasePath}photons.wav`,
                 'missiles': `${audioBasePath}missiles.wav`,
                 'explosion': `${audioBasePath}explosion.wav`,
+                'torpedo-explosion': `${audioBasePath}explosion-01.mp3`,
                 'success': `${audioBasePath}success.wav`,
                 'mines': `${audioBasePath}mines.mp3`,
                 'death': `${audioBasePath}death.wav`
@@ -546,8 +548,13 @@ export class WeaponEffectsManager {
         
         this.activeEffects.add(explosion);
         
-        // Play corresponding sound
-        const soundType = explosionType === 'death' ? 'death' : 'explosion';
+        // Play corresponding sound based on explosion type
+        let soundType = 'explosion'; // Default
+        if (explosionType === 'death') {
+            soundType = 'death';
+        } else if (explosionType === 'torpedo') {
+            soundType = 'torpedo-explosion';
+        }
         this.playSound(soundType, position);
         
         console.log(`Created ${explosionType} explosion at`, position, `radius: ${(radius * 0.00625).toFixed(3)} (25% larger)`);

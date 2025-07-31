@@ -1155,12 +1155,41 @@ export class TargetComputerManager {
      * Get current target data
      */
     getCurrentTargetData() {
-        if (!this.currentTarget || this.targetIndex < 0 || this.targetIndex >= this.targetObjects.length) {
+        if (!this.currentTarget) {
             return null;
         }
 
-        const targetData = this.targetObjects[this.targetIndex];
-        if (!targetData || targetData.object !== this.currentTarget) {
+        // First, check if the current targetIndex is valid
+        if (this.targetIndex >= 0 && this.targetIndex < this.targetObjects.length) {
+            const targetData = this.targetObjects[this.targetIndex];
+            if (targetData && targetData.object === this.currentTarget) {
+                return this.processTargetData(targetData);
+            }
+        }
+
+        // Fallback: Search for the current target in the target list
+        for (let i = 0; i < this.targetObjects.length; i++) {
+            const targetData = this.targetObjects[i];
+            if (targetData && targetData.object === this.currentTarget) {
+                // Update the index to match the found target
+                this.targetIndex = i;
+                console.log(`🔧 Fixed target index mismatch: set to ${i} for target ${targetData.name}`);
+                
+                // Process and return the target data
+                return this.processTargetData(targetData);
+            }
+        }
+
+        // If we still can't find the target, it might have been destroyed
+        console.log(`⚠️ Current target not found in target list - may have been destroyed`);
+        return null;
+    }
+
+    /**
+     * Process target data and return standardized format
+     */
+    processTargetData(targetData) {
+        if (!targetData) {
             return null;
         }
 
@@ -1739,6 +1768,9 @@ export class TargetComputerManager {
         if (anySystemTargeting) {
             console.log('🗑️ Destroyed ship was targeted - performing full synchronization cleanup');
 
+            // Store the previous target index for smart target selection
+            const previousTargetIndex = this.targetIndex;
+
             // Clear ALL targeting system references
             this.currentTarget = null;
             this.targetIndex = -1;
@@ -1759,19 +1791,42 @@ export class TargetComputerManager {
             // Update target list to remove destroyed ship
             this.updateTargetList();
 
-            // Select new target using proper cycling logic
+            // Smart target selection after destruction
             if (this.targetObjects && this.targetObjects.length > 0) {
-                console.log(`🔄 Cycling to new target from ${this.targetObjects.length} available targets`);
+                console.log(`🔄 Selecting new target from ${this.targetObjects.length} available targets`);
 
                 // Prevent outlines from appearing automatically after destruction
                 if (this.viewManager?.starfieldManager) {
                     this.viewManager.starfieldManager.outlineDisabledUntilManualCycle = true;
                 }
 
-                // Cycle to next target without creating outline (automatic cycle)
-                this.cycleTarget(false);
+                // Smart target index selection - try to stay close to previous position
+                let newTargetIndex = 0;
+                if (previousTargetIndex >= 0 && previousTargetIndex < this.targetObjects.length) {
+                    // Use the same index if still valid
+                    newTargetIndex = previousTargetIndex;
+                } else if (previousTargetIndex >= this.targetObjects.length) {
+                    // If previous index is now beyond array bounds, use the last target
+                    newTargetIndex = this.targetObjects.length - 1;
+                }
 
-                console.log('🎯 Target cycled after destruction - outline disabled until next manual cycle');
+                // Set the new target directly instead of cycling
+                this.targetIndex = newTargetIndex;
+                const targetData = this.targetObjects[this.targetIndex];
+                this.currentTarget = targetData?.object || null;
+
+                if (this.currentTarget) {
+                    console.log(`🎯 Selected new target: ${targetData.name} (index ${this.targetIndex})`);
+                    
+                    // Update UI for new target
+                    this.updateTargetDisplay();
+                    this.updateReticleTargetInfo();
+                } else {
+                    console.log('❌ Failed to select valid target after destruction');
+                    this.targetIndex = -1;
+                }
+
+                console.log('🎯 Target selection complete - outline disabled until next manual cycle');
             } else {
                 console.log('📭 No targets remaining after destruction');
 

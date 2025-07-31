@@ -42,7 +42,7 @@ export class WeaponSlot {
      */
     fire(ship, target = null) {
         if (!this.canFire()) {
-            console.warn(`Weapon slot ${this.slotIndex}: Cannot fire`);
+            console.log(`Weapon slot ${this.slotIndex}: Cannot fire`);
             return false;
         }
         
@@ -51,7 +51,7 @@ export class WeaponSlot {
         // Check energy requirements
         if (weapon.energyCost > 0) {
             if (!ship.hasEnergy(weapon.energyCost)) {
-                console.warn(`Weapon slot ${this.slotIndex}: Insufficient energy (need ${weapon.energyCost})`);
+                console.log(`Weapon slot ${this.slotIndex}: Insufficient energy (need ${weapon.energyCost})`);
                 
                 // Show HUD message through weapon system (no throttling)
                 if (this.weaponSystem && this.weaponSystem.showMessage) {
@@ -70,7 +70,7 @@ export class WeaponSlot {
         
         // Check target requirements for splash-damage weapons
         if (weapon.targetLockRequired && !target) {
-            console.warn(`Weapon slot ${this.slotIndex}: Target lock required`);
+            console.log(`Weapon slot ${this.slotIndex}: Target lock required`);
             
             // Show HUD message through weapon system (no throttling)
             if (this.weaponSystem && this.weaponSystem.showMessage) {
@@ -103,7 +103,7 @@ export class WeaponSlot {
             const maxRangeKm = (weapon.range / 1000).toFixed(1);
             const modeText = target ? 'Target' : 'Crosshair';
             
-            console.warn(`Weapon slot ${this.slotIndex}: ${modeText} out of range`);
+            console.log(`Weapon slot ${this.slotIndex}: ${modeText} out of range`);
             
             // Show HUD message through weapon system (every time, no throttling)
             if (this.weaponSystem && this.weaponSystem.showMessage) {
@@ -149,7 +149,7 @@ export class WeaponSlot {
                 try {
                     this.triggerWeaponEffects(ship, weapon, target, fireResult);
                 } catch (error) {
-                    console.warn('Failed to trigger weapon effects:', error);
+                    console.log('Failed to trigger weapon effects:', error);
                 }
             } else {
                 console.log(`Weapon fired: ${weapon.name} (no effects manager available)`);
@@ -172,7 +172,7 @@ export class WeaponSlot {
         // Get THREE reference
         const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
         if (!THREE) {
-            console.warn('THREE.js not available, using ship position as weapon origin');
+            console.log('THREE.js not available, using ship position as weapon origin');
             return ship.position;
         }
         
@@ -187,7 +187,7 @@ export class WeaponSlot {
         }
         
         if (!camera) {
-            console.warn('Camera not available, using ship position as weapon origin');
+            console.log('Camera not available, using ship position as weapon origin');
             return ship.position;
         }
         
@@ -205,13 +205,30 @@ export class WeaponSlot {
         cameraForward.applyQuaternion(camera.quaternion);
         
         // Position weapon at bottom center of screen (like lasers but centered and lower)
-        const bottomOffset = 1.5; // Increased from 0.8 to make projectiles start lower
-        const forwardOffset = 0.5; // Slight forward offset from camera (same as lasers)
+        // For close-range shots, reduce the offset to minimize visual trajectory mismatch
+        let distanceToNearestTarget = -1;
+        try {
+            const targetComputer = this.ship?.getSystem('target_computer');
+            if (targetComputer && targetComputer.currentTarget && targetComputer.currentTarget.threeObject) {
+                const targetPos = targetComputer.currentTarget.threeObject.position;
+                distanceToNearestTarget = cameraPos.distanceTo(targetPos);
+            }
+        } catch (error) {
+            // Ignore errors, use default offset
+        }
+        const isCloseRange = distanceToNearestTarget > 0 && distanceToNearestTarget < 5000; // Less than 5km
+        
+        const bottomOffset = isCloseRange ? 0.3 : 1.5; // Reduce offset for close range
+        const forwardOffset = isCloseRange ? 0.1 : 0.5; // Reduce forward offset for close range
+        
+        if (isCloseRange) {
+            console.log(`🎯 CLOSE RANGE: Reduced spawn offset for target at ${(distanceToNearestTarget/1000).toFixed(1)}km`);
+        }
         
         // Create centered weapon position at bottom center (no variations)
         const weaponPosition = cameraPos.clone()
-            .add(cameraDown.clone().multiplyScalar(bottomOffset))   // Down from center (more than lasers)
-            .add(cameraForward.clone().multiplyScalar(forwardOffset)); // Slightly forward
+            .add(cameraDown.clone().multiplyScalar(bottomOffset))   // Down from center (reduced for close range)
+            .add(cameraForward.clone().multiplyScalar(forwardOffset)); // Slightly forward (reduced for close range)
         
         console.log(`🚀 Projectile origin: Lower center screen position (unified for all weapons)`);
         
@@ -347,7 +364,7 @@ export class WeaponSlot {
             // Fallback to camera position if ship position not available
             shipPosition = window.starfieldManager.camera.position;
         } else {
-            console.warn('Cannot calculate distance: no ship or camera position available');
+            console.log('Cannot calculate distance: no ship or camera position available');
             return 0;
         }
         
@@ -361,7 +378,7 @@ export class WeaponSlot {
         } else if (target && target.ship && target.ship.threeObject && target.ship.threeObject.position) {
             targetPosition = target.ship.threeObject.position;
         } else {
-            console.warn('Cannot calculate distance: target position not available', target);
+            console.log('Cannot calculate distance: target position not available', target);
             return 0;
         }
         
@@ -372,10 +389,8 @@ export class WeaponSlot {
             Math.pow(shipPosition.z - targetPosition.z, 2)
         );
         
-        // Convert from world units (km) to meters
-        const distanceInMeters = distance * 1000;
-        
-        return distanceInMeters;
+        // World coordinates are already in meters, no conversion needed
+        return distance;
     }
     
     /**
@@ -424,13 +439,13 @@ export class WeaponSlot {
     checkLaserBeamHit(startPositions, endPositions, target, weaponRange) {
         const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
         if (!THREE) {
-            console.warn('THREE.js not available for laser physics raycast');
+            console.log('THREE.js not available for laser physics raycast');
             return { hit: false, position: null, entity: null, distance: 0 };
         }
 
         // Check if physics manager is available
         if (!window.physicsManager || !window.physicsManager.initialized) {
-            console.warn('PhysicsManager not available - falling back to distance-based detection');
+            console.log('PhysicsManager not available - falling back to distance-based detection');
             return this.checkLaserBeamHit_Fallback(startPositions, endPositions, target, weaponRange);
         }
 
@@ -558,7 +573,7 @@ export class WeaponSlot {
     checkLaserBeamHit_Fallback(startPositions, endPositions, target, weaponRange) {
         const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
         if (!THREE) {
-            console.warn('THREE.js not available for laser fallback raycast');
+            console.log('THREE.js not available for laser fallback raycast');
             return { hit: false, position: null, entity: null, distance: 0 };
         }
 
@@ -762,7 +777,7 @@ export class WeaponSlot {
     createDebugHitSphere(targetPos, radius) {
         const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
         if (!THREE) {
-            console.warn('🐛 DEBUG: THREE.js not available for debug sphere');
+            console.log('DEBUG: THREE.js not available for debug sphere');
             return;
         }
         
@@ -802,7 +817,7 @@ export class WeaponSlot {
             this.starfieldManager.scene.add(debugSphere);
             console.log('🐛 DEBUG: Added debug sphere to scene');
         } else {
-            console.warn('🐛 DEBUG: No scene available to add debug sphere');
+            console.log('DEBUG: No scene available to add debug sphere');
         }
         
         // Keep visible longer when in debug mode - 5 seconds instead of 2
@@ -889,7 +904,7 @@ export class WeaponSlot {
         // Get THREE reference (use global pattern like other files)
         const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
         if (!THREE) {
-            console.warn('THREE.js not available for weapon effects');
+            console.log('THREE.js not available for weapon effects');
             return;
         }
         
@@ -949,7 +964,7 @@ export class WeaponSlot {
             // Fallback to ship-relative positioning if no camera available
             leftWeaponPos = weaponPosition.clone().add(new THREE.Vector3(-2.5, -1.5, 1.0));
             rightWeaponPos = weaponPosition.clone().add(new THREE.Vector3(2.5, -1.5, 1.0));
-            console.warn('🎯 Camera not found, using fallback ship-relative positioning');
+            console.log('Camera not found, using fallback ship-relative positioning');
         }
         
         // Always create dual muzzle flashes with optimal sound duration
@@ -1053,7 +1068,7 @@ export class WeaponSlot {
                         
                         console.log(`💥 Physics laser beam hit confirmed with explosion radius ${explosionRadiusMeters}m`);
                     } else {
-                        console.warn('Hit entity does not have a ship with applyDamage method:', hitEntity);
+                        console.log('Hit entity does not have a ship with applyDamage method:', hitEntity);
                     }
                 } else {
                     console.log('🎯 Physics laser beams missed all targets');

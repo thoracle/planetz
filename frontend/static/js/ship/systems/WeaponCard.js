@@ -46,7 +46,7 @@ export class WeaponCard {
         }
         
         // Base implementation - should be overridden by specific weapon types
-        console.warn(`Base WeaponCard.fire() called for ${this.name} - should be overridden`);
+        console.log(`Base WeaponCard.fire() called for ${this.name} - should be overridden`);
         
         return {
             success: false,
@@ -156,7 +156,7 @@ export class WeaponCard {
                 return physicsProjectile;
                 
             } catch (error) {
-                console.warn('Failed to create physics projectile, falling back to simple projectile:', error);
+                console.log('Failed to create physics projectile, falling back to simple projectile:', error);
             }
         } else {
             console.log(`🔍 DEBUG: PhysicsManager not ready for ${this.name}, using fallback`);
@@ -322,7 +322,7 @@ export class SplashDamageWeapon extends WeaponCard {
                 const energyNeeded = this.energyCost;
                 const energyShortfall = energyNeeded - currentEnergy;
                 
-                console.warn(`🔋 ${this.name}: Insufficient energy (need ${energyNeeded}, have ${currentEnergy}, short ${energyShortfall})`);
+                console.log(`🔋 ${this.name}: Insufficient energy (need ${energyNeeded}, have ${currentEnergy}, short ${energyShortfall})`);
                 
                 // Send HUD message for insufficient energy
                 if (window.starfieldManager?.weaponHUD) {
@@ -378,7 +378,7 @@ export class SplashDamageWeapon extends WeaponCard {
                 const distanceKm = (distance / 1000).toFixed(1);
                 const maxRangeKm = (maxRange / 1000).toFixed(1);
                 
-                console.warn(`🎯 ${this.name}: Target out of range (${distanceKm}km > ${maxRangeKm}km max)`);
+                console.log(`🎯 ${this.name}: Target out of range (${distanceKm}km > ${maxRangeKm}km max)`);
                 
                 // Send HUD message for out of range using proper callback
                 if (this.showMessage && typeof this.showMessage === 'function') {
@@ -388,7 +388,7 @@ export class SplashDamageWeapon extends WeaponCard {
                     );
                 } else {
                     // Fallback for when no callback is set (shouldn't happen in normal operation)
-                    console.warn(`🎯 No HUD message callback available for ${this.name}`);
+                    console.log(`🎯 No HUD message callback available for ${this.name}`);
                 }
                 
                 // Continue firing anyway - don't return false
@@ -473,7 +473,7 @@ export class SplashDamageWeapon extends WeaponCard {
         // ENHANCED: Try to create physics-based projectile with comprehensive error handling
         if (window.physicsManager) {
             if (!window.physicsManager.isReady()) {
-                console.warn(`🔧 ${this.name}: PhysicsManager not ready, initializing...`);
+                console.log(`🔧 ${this.name}: PhysicsManager not ready, initializing...`);
                 
                 // Send HUD message about physics initialization
                 if (window.starfieldManager?.weaponHUD) {
@@ -533,11 +533,11 @@ export class SplashDamageWeapon extends WeaponCard {
                 }
             }
         } else {
-            console.warn(`⚠️ ${this.name}: PhysicsManager not available`);
+                            console.log(`${this.name}: PhysicsManager not available`);
         }
         
         // ENHANCED: Fallback to simple projectile with user notification
-        console.warn(`⚠️ ${this.name}: Using fallback projectile system (reduced accuracy)`);
+        console.log(`${this.name}: Using fallback projectile system (reduced accuracy)`);
         
         // Send HUD message about fallback mode
         if (window.starfieldManager?.weaponHUD) {
@@ -581,7 +581,7 @@ export class SplashDamageWeapon extends WeaponCard {
     }
     
     /**
-     * Calculate splash damage based on distance from blast center
+     * Calculate splash damage based on distance from blast center using inverse-square law
      * @param {number} distance Distance from blast center
      * @returns {number} Damage amount
      */
@@ -590,9 +590,17 @@ export class SplashDamageWeapon extends WeaponCard {
             return 0; // Outside blast radius
         }
         
-        // Linear falloff from center to edge
-        const falloffFactor = 1 - (distance / this.blastRadius);
-        return this.damage * falloffFactor;
+        // Apply inverse-square law for realistic explosion physics
+        // damage = maxDamage * (radius² / (distance² + epsilon))
+        const epsilon = 0.1; // Small value to prevent division by zero
+        const radiusSquared = this.blastRadius * this.blastRadius;
+        const distanceSquared = distance * distance + epsilon;
+        
+        // Calculate damage using inverse-square law, capped at maxDamage
+        let damage = Math.round(this.damage * (radiusSquared / distanceSquared));
+        damage = Math.min(damage, this.damage); // Cap at maximum damage
+        
+        return damage;
     }
     
     /**
@@ -904,7 +912,7 @@ export class PhysicsProjectile {
         this.threeObject = null;
         this.hasDetonated = false;
         this.distanceTraveled = 0;
-        this.startPosition = { ...config.origin };
+        this.startPosition = new THREE.Vector3(config.origin.x, config.origin.y, config.origin.z);
         
         // Visual properties
         this.scene = config.scene || window.scene;
@@ -964,7 +972,7 @@ export class PhysicsProjectile {
      */
     initializePhysicsBody(origin, direction = {x: 0, y: 0, z: 1}) {
         if (!this.physicsManager || !this.physicsManager.isReady()) {
-            console.warn('PhysicsManager not ready - falling back to simple projectile');
+            console.log('PhysicsManager not ready - falling back to simple projectile');
             return;
         }
         
@@ -1176,10 +1184,12 @@ export class PhysicsProjectile {
             console.log(`🎯 COLLISION: ${this.weaponName} collision position:`, position);
         } catch (error) {
             console.log('Using fallback position for collision');
+            // Clone position to avoid corruption when object is removed
+            const clonedPos = this.threeObject.position.clone();
             position = {
-                x: this.threeObject.position.x,
-                y: this.threeObject.position.y,
-                z: this.threeObject.position.z
+                x: clonedPos.x,
+                y: clonedPos.y,
+                z: clonedPos.z
             };
             console.log(`🎯 COLLISION: ${this.weaponName} fallback position:`, position);
         }
@@ -1228,25 +1238,40 @@ export class PhysicsProjectile {
      * @param {Object} position Optional detonation position
      */
     detonate(position = null) {
-        console.error(`😨 CRITICAL DEBUG: DETONATE METHOD CALLED FOR ${this.weaponName}`);
-        console.error(`😨 hasDetonated: ${this.hasDetonated}`);
+        console.log(`DETONATE METHOD CALLED FOR ${this.weaponName}`);
+        console.log(`hasDetonated: ${this.hasDetonated}`);
         
         if (this.hasDetonated) {
-            console.error(`⚠️ DETONATE: ${this.weaponName} already detonated, skipping`);
+            console.log(`DETONATE: ${this.weaponName} already detonated, skipping`);
             return;
         }
         
-        console.error(`💥 DETONATE: ${this.weaponName} starting detonation sequence - NEW CODE LOADED`);
-        console.error(`💥 Position:`, position);
+        console.log(`💥 DETONATE: ${this.weaponName} starting detonation sequence`);
+        console.log(`💥 Position:`, position);
         
-        // Get detonation position
+        // Get detonation position with validation
         let detonationPos = position;
-        if (!detonationPos && this.threeObject) {
-            detonationPos = {
-                x: this.threeObject.position.x,
-                y: this.threeObject.position.y,
-                z: this.threeObject.position.z
-            };
+        if (!detonationPos && this.threeObject && this.threeObject.position) {
+            // Clone position to avoid corruption when object is removed
+            const clonedPos = this.threeObject.position.clone();
+            // Validate position is not at origin (indicates corruption)
+            if (clonedPos.x !== 0 || clonedPos.y !== 0 || clonedPos.z !== 0) {
+                detonationPos = {
+                    x: clonedPos.x,
+                    y: clonedPos.y,
+                    z: clonedPos.z
+                };
+            } else {
+                console.warn(`⚠️ ${this.weaponName}: Projectile position corrupted (0,0,0), skipping visualization`);
+            }
+        }
+        
+        // If we still don't have a valid position, skip visualization but continue with cleanup
+        if (!detonationPos) {
+            console.warn(`⚠️ ${this.weaponName}: No valid detonation position available, skipping damage and visualization`);
+            this.hasDetonated = true;
+            this.cleanup();
+            return;
         }
         
         // Silent detonation
@@ -1254,6 +1279,11 @@ export class PhysicsProjectile {
         // NOTE: Explosion sound is played by createExplosionEffect() -> createExplosion() for consistent positioning
         console.log(`💥 ${this.weaponName}: Starting damage application at position:`, detonationPos);
         this.applyPhysicsSplashDamage(detonationPos);
+        
+        // Show collision visualization spheres for all detonations (hits and misses)
+        if (this.physicsManager && detonationPos) {
+            this.physicsManager.createCollisionVisualization(detonationPos, detonationPos, this.blastRadius);
+        }
         
         this.createExplosionEffect(detonationPos);
         
@@ -1264,7 +1294,7 @@ export class PhysicsProjectile {
     }
     
     /**
-     * Apply splash damage using physics spatial queries
+     * Apply splash damage using physics spatial queries with inverse-square law
      * @param {Object} position Explosion center position
      */
     applyPhysicsSplashDamage(position) {
@@ -1298,24 +1328,30 @@ export class PhysicsProjectile {
                 } else if (entity.position) {
                     entityPosition = entity.position;
                 } else {
-                    console.warn('Entity has no position, skipping damage application');
+                    console.log('Entity has no position, skipping damage application');
                     return;
                 }
                 
-                // Calculate distance from explosion center
+                // Calculate 3D distance from explosion center (simple Euclidean distance)
                 const distance = Math.sqrt(
                     Math.pow(position.x - entityPosition.x, 2) +
                     Math.pow(position.y - entityPosition.y, 2) +
                     Math.pow(position.z - entityPosition.z, 2)
                 );
                 
-                // Calculate damage based on distance (inverse square law with minimum damage)
+                // Apply inverse-square law for realistic explosion physics
+                // damage = maxDamage * (radius² / (distance² + epsilon))
+                // epsilon prevents division by zero for direct hits
+                const epsilon = 0.1; // Small value to prevent division by zero
                 const maxDamage = this.damage;
-                const minDamage = maxDamage * 0.1; // 10% minimum damage at blast edge
-                const damageRatio = Math.max(0, (this.blastRadius - distance) / this.blastRadius);
-                const damage = Math.round(minDamage + (maxDamage - minDamage) * damageRatio * damageRatio);
+                const radiusSquared = this.blastRadius * this.blastRadius;
+                const distanceSquared = distance * distance + epsilon;
                 
-                console.log(`🎯 ${this.weaponName}: Entity at ${distance.toFixed(1)}m distance, calculated ${damage} damage (max: ${maxDamage})`);
+                // Calculate damage using inverse-square law, capped at maxDamage
+                let damage = Math.round(maxDamage * (radiusSquared / distanceSquared));
+                damage = Math.min(damage, maxDamage); // Cap at maximum damage
+                
+                console.log(`🎯 ${this.weaponName}: Entity at ${distance.toFixed(1)}m distance, calculated ${damage} damage (max: ${maxDamage}) [inverse-square law]`);
                 
                 if (damage > 0) {
                     // FIXED: Use the entity found by spatial query (the actual target in blast radius)
@@ -1344,8 +1380,8 @@ export class PhysicsProjectile {
                     
                     // Final fallback: If spatial query entity doesn't have ship reference, log for debugging
                     if (!targetShip) {
-                        console.warn(`⚠️ ${this.weaponName}: Spatial query found entity at ${distance.toFixed(1)}m but no ship reference found. Entity type: ${entity.type}, ID: ${entity.id}`);
-                        console.warn(`🔍 Entity structure:`, {
+                        console.log(`${this.weaponName}: Spatial query found entity at ${distance.toFixed(1)}m but no ship reference found. Entity type: ${entity.type}, ID: ${entity.id}`);
+                        console.log(`🔍 Entity structure:`, {
                             hasShip: !!entity.ship,
                             hasApplyDamage: typeof entity.applyDamage === 'function',
                             hasThreeObject: !!entity.threeObject,
@@ -1366,6 +1402,13 @@ export class PhysicsProjectile {
                         // PROJECTILE WEAPONS: Apply damage without sub-targeting (3rd parameter = null)
                         const damageResult = targetShip.applyDamage(damage, 'explosive', null);
                         console.log(`💥 ${this.weaponName}: After damage - hull: ${targetShip.currentHull}/${targetShip.maxHull}, destroyed: ${damageResult?.isDestroyed || false}`);
+                        
+                        // Play splash damage explosion sound for each target hit
+                        if (damage > 0 && window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
+                            const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
+                            const targetPos = new THREE.Vector3(entityPosition.x, entityPosition.y, entityPosition.z);
+                            effectsManager.playSound('explosion', targetPos, 0.5); // Lower volume for splash damage hits
+                        }
                         
                         // Log shield/hull breakdown for projectile weapons
                         if (damageResult.shieldDamage > 0) {
@@ -1401,7 +1444,7 @@ export class PhysicsProjectile {
     }
     
     /**
-     * Calculate damage at specific distance from blast center
+     * Calculate damage at specific distance from blast center using inverse-square law
      * @param {number} distance Distance from blast center in meters
      * @returns {number} Damage amount
      */
@@ -1410,9 +1453,17 @@ export class PhysicsProjectile {
             return 0;
         }
         
-        // Exponential falloff for more realistic blast damage
-        const falloffFactor = Math.pow(1 - (distance / this.blastRadius), 2);
-        return Math.round(this.damage * falloffFactor);
+        // Apply inverse-square law for realistic explosion physics
+        // damage = maxDamage * (radius² / (distance² + epsilon))
+        const epsilon = 0.1; // Small value to prevent division by zero
+        const radiusSquared = this.blastRadius * this.blastRadius;
+        const distanceSquared = distance * distance + epsilon;
+        
+        // Calculate damage using inverse-square law, capped at maxDamage
+        let damage = Math.round(this.damage * (radiusSquared / distanceSquared));
+        damage = Math.min(damage, this.damage); // Cap at maximum damage
+        
+        return damage;
     }
     
     /**
@@ -1440,14 +1491,14 @@ export class PhysicsProjectile {
                 const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
                 const explosionPos = position ? new THREE.Vector3(position.x, position.y, position.z) : null;
                 
-                // Use 'damage' explosion type like lasers (not 'missile') and consistent positioning
-                effectsManager.createExplosion(explosionPos, this.blastRadius, 'damage', explosionPos);
+                // Use 'torpedo' explosion type for torpedo-specific explosion sound (explosion-01.mp3)
+                effectsManager.createExplosion(explosionPos, this.blastRadius, 'torpedo', explosionPos);
                 console.log(`✨ Created explosion effect at:`, position, `with radius ${this.blastRadius}m`);
             } catch (error) {
-                console.warn('Failed to create explosion effect:', error);
+                console.log('Failed to create explosion effect:', error);
             }
         } else {
-            console.warn('No weapon effects manager available for explosion effect');
+            console.log('No weapon effects manager available for explosion effect');
         }
     }
     

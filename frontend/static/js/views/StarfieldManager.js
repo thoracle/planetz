@@ -4822,6 +4822,14 @@ export class StarfieldManager {
                 console.log(`🗑️ Removing ${destroyedShip.shipName} mesh from scene`);
                 this.scene.remove(mesh);
                 
+                // CRITICAL: Remove physics rigid body for destroyed ship
+                if (window.physicsManager && typeof window.physicsManager.removeRigidBody === 'function') {
+                    console.log(`🗑️ Removing ${destroyedShip.shipName} rigid body from physics world`);
+                    window.physicsManager.removeRigidBody(mesh);
+                } else {
+                    console.warn(`⚠️ Physics manager not available - rigid body for ${destroyedShip.shipName} not removed`);
+                }
+                
                 // Clean up mesh resources
                 if (mesh.geometry) {
                     mesh.geometry.dispose();

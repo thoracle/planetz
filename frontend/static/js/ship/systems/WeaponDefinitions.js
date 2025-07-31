@@ -142,7 +142,7 @@ export class WeaponDefinitions {
                 autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 1.0,
                 energyCost: 12,
-                blastRadius: 80, // meters
+                blastRadius: 20, // meters (reduced by 75% from original 80m)
                 homingCapability: false,
                 targetLockRequired: false, // CORRECTED: Torpedoes fire toward crosshairs, no target lock needed
                 flightRange: 20000, // increased from 6000m to match targeting system crosshair range (20km)
@@ -164,7 +164,7 @@ export class WeaponDefinitions {
                 autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 1.0,
                 energyCost: 3,
-                blastRadius: 80, // meters
+                blastRadius: 20, // meters (reduced by 75% from original 80m)
                 homingCapability: false,
                 targetLockRequired: false, // Mines don't need target lock
                 flightRange: 0, // Deployed in place

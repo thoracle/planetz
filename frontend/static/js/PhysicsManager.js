@@ -158,7 +158,7 @@ export class PhysicsManager {
      */
     createShipRigidBody(threeObject, options = {}) {
         if (!this.initialized) {
-            console.error('PhysicsManager not initialized');
+            console.log('PhysicsManager not initialized');
             return null;
         }
 
@@ -267,7 +267,7 @@ export class PhysicsManager {
      */
     createStationRigidBody(threeObject, options = {}) {
         if (!this.initialized) {
-            console.error('PhysicsManager not initialized');
+            console.log('PhysicsManager not initialized');
             return null;
         }
 
@@ -342,7 +342,7 @@ export class PhysicsManager {
      */
     createPlanetRigidBody(threeObject, options = {}) {
         if (!this.initialized) {
-            console.error('PhysicsManager not initialized');
+            console.log('PhysicsManager not initialized');
             return null;
         }
 
@@ -470,7 +470,7 @@ export class PhysicsManager {
      */
     createRigidBody(threeObject, config = {}) {
         if (!this.initialized) {
-            console.error('PhysicsManager not initialized');
+            console.log('PhysicsManager not initialized');
             return null;
         }
 
@@ -510,7 +510,7 @@ export class PhysicsManager {
                     );
                     break;
                 default:
-                    console.warn(`Unknown shape type: ${shape}, defaulting to box`);
+                    console.log(`Unknown shape type: ${shape}, defaulting to box`);
                     ammoShape = new this.Ammo.btBoxShape(
                         new this.Ammo.btVector3(width / 2, height / 2, depth / 2)
                     );
@@ -551,7 +551,7 @@ export class PhysicsManager {
 
             // Debug: Check if rigid body was created successfully
             if (!rigidBody) {
-                console.error(`❌ PHYSICS: Failed to create rigid body for ${entityType} ${entityId}`);
+                console.log(`PHYSICS: Failed to create rigid body for ${entityType} ${entityId}`);
                 return null;
             }
 
@@ -667,14 +667,14 @@ export class PhysicsManager {
      */
     createVector3(x, y, z) {
         if (!this.initialized) {
-            console.error('PhysicsManager not initialized');
+            console.log('PhysicsManager not initialized');
             return null;
         }
 
         try {
             return new this.Ammo.btVector3(x, y, z);
         } catch (error) {
-            console.error('Error creating btVector3:', error);
+            console.log('Error creating btVector3:', error);
             return null;
         }
     }
@@ -714,7 +714,7 @@ export class PhysicsManager {
             threeObject.updateMatrixWorld();
             
         } catch (error) {
-            console.error('Error syncing Three.js object with physics body:', error);
+            console.log('Error syncing Three.js object with physics body:', error);
         }
     }
 
@@ -749,7 +749,7 @@ export class PhysicsManager {
             rigidBody.setWorldTransform(transform);
             
         } catch (error) {
-            console.error('Error syncing physics body with Three.js object:', error);
+            console.log('Error syncing physics body with Three.js object:', error);
         }
     }
 
@@ -761,7 +761,7 @@ export class PhysicsManager {
      */
     spatialQuery(position, radius = 1000) {
         if (!this.initialized) {
-            console.error('PhysicsManager not initialized');
+            console.log('PhysicsManager not initialized');
             return [];
         }
 
@@ -844,7 +844,7 @@ export class PhysicsManager {
      */
     raycast(origin, direction, maxDistance = 1000) {
         if (!this.initialized) {
-            console.error('PhysicsManager not initialized');
+            console.log('PhysicsManager not initialized');
             return null;
         }
 
@@ -1325,6 +1325,11 @@ export class PhysicsManager {
             }
         });
         
+        // Track recent collision checks to prevent multiple checks for same projectile-target pairs
+        if (!this._recentCollisionChecks) {
+            this._recentCollisionChecks = new Map();
+        }
+        
         // Debug: Log projectile/target counts periodically 
         if (!this._lastFallbackLog || (Date.now() - this._lastFallbackLog > 5000)) {
             if (projectiles.length > 0) {
@@ -1337,54 +1342,156 @@ export class PhysicsManager {
         for (const projectile of projectiles) {
             if (!projectile.entity.threeObject) continue;
             
-            const projectilePos = projectile.entity.threeObject.position;
+            const projectilePos = projectile.entity.threeObject.position.clone();
             
             for (const target of targets) {
                 if (!target.entity.threeObject) continue;
                 
-                const targetPos = target.entity.threeObject.position;
+                const targetPos = target.entity.threeObject.position.clone();
                 const distance = projectilePos.distanceTo(targetPos);
                 
-                // Collision threshold based on object sizes
-                let collisionThreshold = 20; // Base threshold
-                if (target.entity.type === 'enemy_ship') collisionThreshold = 25; // Target for torpedoes
-                if (target.entity.type === 'planet') collisionThreshold = 15; // Reduced - planets shouldn't be easy torpedo targets
-                if (target.entity.type === 'moon') collisionThreshold = 15; // Reduced - moons shouldn't be easy torpedo targets
-                if (target.entity.type === 'star') collisionThreshold = 5; // Very small - stars shouldn't be torpedo targets
+                // Collision threshold based on projectile hit detection (not visual size!)
+                // This determines how close a projectile needs to get to "hit" a target
+                let collisionThreshold = 100; // Base threshold for most objects (100m)
+                if (target.entity.type === 'enemy_ship') collisionThreshold = 500; // Ships: 500m hit detection radius 
+                if (target.entity.type === 'planet') collisionThreshold = 200; // Planets: 200m hit radius
+                if (target.entity.type === 'moon') collisionThreshold = 150; // Moons: 150m hit radius  
+                if (target.entity.type === 'star') collisionThreshold = 50; // Stars: 50m hit radius
                 
                 // Debug: Log close approaches for torpedoes (only to ships)
-                if (projectile.entity.id.includes('Torpedo') && target.entity.type === 'enemy_ship' && distance < 100) {
+                if (projectile.entity.id.includes('Torpedo') && target.entity.type === 'enemy_ship' && distance < 1000) {
                     console.log(`🎯 TORPEDO CLOSE APPROACH: ${projectile.entity.id} -> ${target.entity.id} distance: ${distance.toFixed(1)}m (threshold: ${collisionThreshold}m)`);
                 }
                 
                 if (distance <= collisionThreshold) {
-                    // No collision delay needed - fallback system is precise enough
-                    // Skip check removed - allow immediate collisions
+                    // Prevent multiple rapid collision checks for same projectile-target pair
+                    const checkKey = `${projectile.entity.id}->${target.entity.id}`;
+                    const now = Date.now();
+                    const lastCheck = this._recentCollisionChecks.get(checkKey);
                     
-                    console.log(`💥 FALLBACK COLLISION: ${projectile.entity.id} hit ${target.entity.id} (distance: ${distance.toFixed(2)}m, threshold: ${collisionThreshold}m)`);
+                    if (lastCheck && (now - lastCheck < 50)) { // Skip if checked within last 50ms
+                        continue;
+                    }
+                    this._recentCollisionChecks.set(checkKey, now);
                     
-                    // Trigger projectile collision handler if available
-                    if (projectile.rigidBody && projectile.rigidBody.projectileOwner && 
-                        typeof projectile.rigidBody.projectileOwner.onCollision === 'function') {
-                        
-                        const contactPoint = {
-                            position: projectilePos.clone(),
-                            impulse: 1.0
-                        };
-                        
-                        projectile.rigidBody.projectileOwner.onCollision(contactPoint, target.entity.threeObject);
+                    // Clean up old check records (older than 1 second)
+                    if (Math.random() < 0.1) { // Clean up occasionally
+                        for (const [key, timestamp] of this._recentCollisionChecks.entries()) {
+                            if (now - timestamp > 1000) {
+                                this._recentCollisionChecks.delete(key);
+                            }
+                        }
                     }
                     
-                    // Remove projectile from physics world to prevent multiple collisions
+                    // Check if projectile is actually heading toward the target
                     try {
-                        this.physicsWorld.removeRigidBody(projectile.rigidBody);
-                        this.rigidBodies.delete(projectile.entity.threeObject);
-                        this.entityMetadata.delete(projectile.rigidBody);
+                        const projectileVelocity = projectile.rigidBody.getLinearVelocity();
+                        const velocityVector = new THREE.Vector3(projectileVelocity.x(), projectileVelocity.y(), projectileVelocity.z());
+                        const directionToTarget = targetPos.clone().sub(projectilePos).normalize();
+                        
+                        // Calculate dot product to check if moving toward target
+                        const dotProduct = velocityVector.normalize().dot(directionToTarget);
+                        
+                        // Only trigger collision if projectile is moving toward target
+                        // Minimal requirements - essentially disabled for close combat
+                        const minimumTravelDistance = 0.1; // Very small travel requirement (unused)
+                        const minimumTimeDelay = 1; // Essentially disabled - 1ms minimum
+                        const projectileOwner = projectile.rigidBody.projectileOwner;
+                        let hasTraveledEnough = true;
+                        let hasWaitedEnough = true;
+                        
+                        if (projectileOwner) {
+                            // Simplified: Only check time delay, skip travel distance for close combat
+                            if (projectileOwner.launchTime) {
+                                const timeElapsed = Date.now() - projectileOwner.launchTime;
+                                hasWaitedEnough = timeElapsed >= minimumTimeDelay;
+                                
+                                // Debug logging for time issues
+                                if (!hasWaitedEnough) {
+                                    console.log(`🚫 TRAJECTORY CHECK: ${projectile.entity.id} too soon after launch (${timeElapsed}ms < ${minimumTimeDelay}ms)`);
+                                }
+                            }
+                            
+                            // Always allow travel distance check to pass
+                            hasTraveledEnough = true;
+                        }
+                        
+                        // Always log trajectory checks for debugging
+                        const velocityMagnitude = velocityVector.length();
+                        const timeElapsed = projectileOwner?.launchTime ? Date.now() - projectileOwner.launchTime : 'unknown';
+                        const traveledDistance = projectileOwner?.startPosition ? projectilePos.distanceTo(projectileOwner.startPosition) : 'unknown';
+                        console.log(`🎯 TRAJECTORY: ${projectile.entity.id} -> ${target.entity.id}: dot=${dotProduct.toFixed(2)}, vel=${velocityMagnitude.toFixed(1)}, travel=${hasTraveledEnough} (always), time=${hasWaitedEnough} (${timeElapsed}ms), distance=${distance.toFixed(1)}m`);
+                        
+                        // Adjust trajectory requirements based on distance
+                        // Much stricter for close combat - require precise aim
+                        const requiredDotProduct = distance < 15 ? 0.98 : (distance < 25 ? 0.9 : 0.8);
+                        console.log(`🎯 DEBUG: distance=${distance.toFixed(1)}m, requiredDot=${requiredDotProduct.toFixed(2)}`);
+                        
+                        if (dotProduct > requiredDotProduct && (hasTraveledEnough || hasWaitedEnough)) {
+                            console.log(`💥 FALLBACK COLLISION: ${projectile.entity.id} hit ${target.entity.id} (distance: ${distance.toFixed(2)}m, trajectory: ${dotProduct.toFixed(2)})`);
+                            
+                            // Visual debugging: Create a temporary collision visualization
+                            if (window.starfieldManager?.scene && target.entity.type === 'enemy_ship') {
+                                this.createCollisionVisualization(projectilePos, targetPos, collisionThreshold);
+                            }
+                            
+                            // Trigger projectile collision handler if available
+                            if (projectile.rigidBody && projectile.rigidBody.projectileOwner && 
+                                typeof projectile.rigidBody.projectileOwner.onCollision === 'function') {
+                                
+                                // CRITICAL: Use projectile position at collision moment, not target center
+                                const contactPoint = {
+                                    get_m_positionWorldOnA: () => ({
+                                        x: () => projectilePos.x,
+                                        y: () => projectilePos.y,
+                                        z: () => projectilePos.z
+                                    }),
+                                    position: projectilePos.clone(),
+                                    impulse: 1.0
+                                };
+                                
+                                projectile.rigidBody.projectileOwner.onCollision(contactPoint, target.entity.threeObject);
+                            }
+                            
+                            // Remove projectile from physics world to prevent multiple collisions
+                            try {
+                                this.physicsWorld.removeRigidBody(projectile.rigidBody);
+                                this.rigidBodies.delete(projectile.entity.threeObject);
+                                this.entityMetadata.delete(projectile.rigidBody);
+                            } catch (error) {
+                                console.log('Error removing projectile after fallback collision:', error);
+                            }
+                            
+                            break; // Exit target loop for this projectile
+                        } else {
+                            console.log(`🚫 TRAJECTORY CHECK: ${projectile.entity.id} not heading toward ${target.entity.id} (dot: ${dotProduct.toFixed(2)} < ${requiredDotProduct.toFixed(1)} req, travel: ${hasTraveledEnough}, time: ${hasWaitedEnough})`);
+                        }
                     } catch (error) {
-                        console.error('Error removing projectile after fallback collision:', error);
+                        console.log(`Error in trajectory checking for ${projectile.entity.id}:`, error);
+                        // Fallback to old behavior if trajectory checking fails
+                        console.log(`💥 FALLBACK COLLISION (no trajectory check): ${projectile.entity.id} hit ${target.entity.id} (distance: ${distance.toFixed(2)}m)`);
+                        
+                        if (projectile.rigidBody && projectile.rigidBody.projectileOwner && 
+                            typeof projectile.rigidBody.projectileOwner.onCollision === 'function') {
+                            
+                            const contactPoint = {
+                                position: projectilePos.clone(),
+                                impulse: 1.0
+                            };
+                            
+                            projectile.rigidBody.projectileOwner.onCollision(contactPoint, target.entity.threeObject);
+                        }
+                        
+                        try {
+                            this.physicsWorld.removeRigidBody(projectile.rigidBody);
+                            this.rigidBodies.delete(projectile.entity.threeObject);
+                            this.entityMetadata.delete(projectile.rigidBody);
+                        } catch (removeError) {
+                                                            console.log('Error removing projectile after fallback collision:', removeError);
+                        }
+                        
+                        break;
                     }
-                    
-                    break; // Exit target loop for this projectile
                 }
             }
         }
@@ -1418,7 +1525,7 @@ export class PhysicsManager {
             }
             
         } catch (error) {
-            console.error('Error handling projectile collision:', error);
+                            console.log('Error handling projectile collision:', error);
         }
     }
 
@@ -1443,7 +1550,7 @@ export class PhysicsManager {
                     }
                 }
             } catch (error) {
-                console.error('Error syncing object with physics:', error);
+                console.log('Error syncing object with physics:', error);
             }
         });
     }
@@ -1495,7 +1602,7 @@ export class PhysicsManager {
             this.Ammo.destroy(transform);
 
         } catch (error) {
-            console.error(`Error updating rigid body position:`, error);
+                            console.log(`Error updating rigid body position:`, error);
             throw error; // Re-throw for fallback handling
         }
     }
@@ -1527,7 +1634,7 @@ export class PhysicsManager {
                 this.updateRigidBodyPosition(threeObject);
                 updateCount++;
             } catch (error) {
-                console.warn(`⚠️ Transform update failed for ${threeObject.name || 'object'}, trying recreation:`, error.message);
+                console.log(`Transform update failed for ${threeObject.name || 'object'}, trying recreation:`, error.message);
                 try {
                     this.recreateRigidBodyAtPosition(threeObject);
                     recreateCount++;
@@ -1562,7 +1669,7 @@ export class PhysicsManager {
             // Check if this is a torpedo - delay wireframe removal to see tracking
             const metadata = this.entityMetadata.get(rigidBody);
             const entityId = metadata?.id || '';
-            const isTorpedo = entityId.includes('Torpedo');
+            const isTorpedo = false; // Disable torpedo wireframe preservation to fix collision shapes around ship
             
             if (isTorpedo && this.debugMode) {
                 console.log(`🎯 TORPEDO CLEANUP: Preserving wireframe tracking for ${entityId}`);
@@ -1585,7 +1692,8 @@ export class PhysicsManager {
                     this.delayedWireframes.set(wireframe, {
                         entityId: entityId,
                         position: finalPosition,
-                        timestamp: Date.now()
+                        timestamp: Date.now(),
+                        detonated: true // Mark as properly detonated
                     });
                     
                     console.log(`🎯 TORPEDO WIREFRAME: Stored final position (${finalPosition.x.toFixed(1)}, ${finalPosition.y.toFixed(1)}, ${finalPosition.z.toFixed(1)}) for ${entityId}`);
@@ -1932,7 +2040,7 @@ export class PhysicsManager {
             projectileInstance = rigidBody.projectileOwner;
             console.log(`🔍 Found projectile instance via rigidBody.projectileOwner for ${projectile.id}`);
         } else {
-            console.warn(`🔍 No rigidBody.projectileOwner found for ${projectile.id}`, {
+            console.log(`No rigidBody.projectileOwner found for ${projectile.id}`, {
                 hasRigidBody: !!rigidBody,
                 hasProjectileOwner: !!rigidBody?.projectileOwner,
                 rigidBodyKeys: rigidBody ? Object.keys(rigidBody) : []
@@ -1942,16 +2050,16 @@ export class PhysicsManager {
         if (projectileInstance && typeof projectileInstance.onCollision === 'function') {
             console.log(`🔥 Calling projectile onCollision for ${projectile.id}`);
             
-            // Create contact point data
+            // Create contact point data with cloned position to avoid corruption
             const contactPoint = {
-                position: projectile.threeObject?.position || { x: 0, y: 0, z: 0 },
+                position: projectile.threeObject?.position.clone() || { x: 0, y: 0, z: 0 },
                 impulse: impulse
             };
             
             // Call the projectile's collision handler
             projectileInstance.onCollision(contactPoint, ship.threeObject);
         } else {
-            console.warn(`⚠️ Could not find projectile instance with onCollision method for ${projectile.id}`);
+            console.log(`Could not find projectile instance with onCollision method for ${projectile.id}`);
         }
     }
 
@@ -1977,7 +2085,7 @@ export class PhysicsManager {
             projectileInstance = rigidBody.projectileOwner;
             console.log(`🔍 Found projectile instance via rigidBody.projectileOwner for ${projectile.id} (celestial collision)`);
         } else {
-            console.warn(`🔍 No rigidBody.projectileOwner found for ${projectile.id} (celestial collision)`);
+            console.log(`No rigidBody.projectileOwner found for ${projectile.id} (celestial collision)`);
         }
         
         if (projectileInstance && typeof projectileInstance.onCollision === 'function') {
@@ -1992,7 +2100,7 @@ export class PhysicsManager {
             // Call the projectile's collision handler
             projectileInstance.onCollision(contactPoint, celestial.threeObject);
         } else {
-            console.warn(`⚠️ Could not find projectile instance with onCollision method for ${projectile.id} (celestial collision)`);
+            console.log(`Could not find projectile instance with onCollision method for ${projectile.id} (celestial collision)`);
         }
     }
 
@@ -2256,7 +2364,7 @@ export class PhysicsManager {
      */
     enableDebugVisualization(scene) {
         if (!scene || typeof THREE === 'undefined') {
-            console.warn('Scene or THREE.js not available for physics debug');
+            console.log('Scene or THREE.js not available for physics debug');
             return;
         }
 
@@ -2501,7 +2609,7 @@ export class PhysicsManager {
 
         } catch (error) {
             if (this._debugLoggingEnabled && !this._silentMode) {
-                console.warn('Failed to create debug wireframe:', error);
+                                    console.log('Failed to create debug wireframe:', error);
             }
         }
     }
@@ -2547,7 +2655,7 @@ export class PhysicsManager {
                     
                     updateCount++;
                 } catch (error) {
-                    console.warn('Failed to update debug wireframe - marking for removal:', error);
+                    console.log('Failed to update debug wireframe - marking for removal:', error);
                     staleWireframes.push(rigidBody);
                 }
             }
@@ -2558,14 +2666,24 @@ export class PhysicsManager {
             const now = Date.now();
             for (const [wireframe, data] of this.delayedWireframes.entries()) {
                 try {
-                    // Keep torpedo wireframes at their final detonation position
-                    wireframe.position.set(data.position.x, data.position.y, data.position.z);
+                    // Only lock wireframes at their final position if they have actually detonated
+                    // Otherwise, these wireframes should have been removed when the torpedo was cleaned up
+                    if (data.detonated && data.position) {
+                        wireframe.position.set(data.position.x, data.position.y, data.position.z);
+                    }
                     
-                    // Silent delayed wireframes - no spam
+                    // Clean up wireframes that have been displayed long enough
+                    if (now - data.timestamp > 3000) { // Remove after 3 seconds
+                        this.delayedWireframes.delete(wireframe);
+                        if (wireframe.parent) {
+                            wireframe.parent.remove(wireframe);
+                        }
+                        continue;
+                    }
                     
                     updateCount++;
                 } catch (error) {
-                    console.warn('Failed to update delayed torpedo wireframe:', error);
+                    console.log('Failed to update delayed torpedo wireframe:', error);
                     this.delayedWireframes.delete(wireframe);
                 }
             }
@@ -2630,7 +2748,7 @@ export class PhysicsManager {
             // Get metadata from old rigid body
             const metadata = this.entityMetadata.get(oldRigidBody);
             if (!metadata) {
-                console.error('No metadata found for rigid body');
+                console.log('No metadata found for rigid body');
                 return;
             }
 
@@ -2699,7 +2817,7 @@ export class PhysicsManager {
             // Reduce console spam - only warn once per unknown property
             if (!this._warnedProperties) this._warnedProperties = new Set();
             if (!this._warnedProperties.has(property)) {
-                console.warn(`Unknown raycast property: ${property}`);
+                console.log(`Unknown raycast property: ${property}`);
                 this._warnedProperties.add(property);
             }
             return null;
@@ -2755,7 +2873,7 @@ export class PhysicsManager {
         if (!this._silentMode && !this._lastFailureWarning) this._lastFailureWarning = {};
         const now = Date.now();
         if (!this._silentMode && (!this._lastFailureWarning[property] || now - this._lastFailureWarning[property] > 5000)) {
-            console.warn(`Could not access raycast property ${property} with any known method`);
+            console.log(`Could not access raycast property ${property} with any known method`);
             this._lastFailureWarning[property] = now;
         }
 
@@ -2945,6 +3063,60 @@ export class PhysicsManager {
         this._silentMode = true;
         this._debugLoggingEnabled = false;
         console.log('🔇 Collision debugging disabled');
+    }
+
+    /**
+     * Create a visual indicator for collision detection
+     * @param {THREE.Vector3} projectilePos - Position of the projectile
+     * @param {THREE.Vector3} targetPos - Position of the target
+     * @param {number} collisionThreshold - The collision detection radius
+     */
+    createCollisionVisualization(projectilePos, targetPos, collisionThreshold) {
+        if (!window.starfieldManager?.scene) return;
+        
+        // Create three damage zone spheres at projectile detonation point
+        const damageZones = [
+            { radius: 1, color: 0xff0000, name: 'close hits' },      // 1m - Red
+            { radius: 10, color: 0xff6600, name: 'medium range' },   // 10m - Orange  
+            { radius: 20, color: 0xffff00, name: 'edge hits' }       // 20m - Yellow
+        ];
+        
+        const spheres = [];
+        
+        damageZones.forEach(zone => {
+            const geometry = new THREE.SphereGeometry(zone.radius, 16, 12);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: zone.color,
+                wireframe: true, 
+                transparent: true, 
+                opacity: 0.7 
+            });
+            
+            const sphere = new THREE.Mesh(geometry, material);
+            // Ensure proper position setting for THREE.js
+            if (projectilePos.isVector3) {
+                sphere.position.copy(projectilePos);
+            } else {
+                sphere.position.set(projectilePos.x, projectilePos.y, projectilePos.z);
+            }
+            console.log(`🔍 SPHERE ${zone.name}: Set position to (${sphere.position.x.toFixed(1)}, ${sphere.position.y.toFixed(1)}, ${sphere.position.z.toFixed(1)})`);
+            
+            window.starfieldManager.scene.add(sphere);
+            spheres.push({ sphere, geometry, material });
+        });
+        
+        // Remove all visualization spheres after 3 seconds
+        setTimeout(() => {
+            if (window.starfieldManager?.scene) {
+                spheres.forEach(({ sphere, geometry, material }) => {
+                    window.starfieldManager.scene.remove(sphere);
+                    geometry.dispose();
+                    material.dispose();
+                });
+            }
+        }, 3000);
+        
+        console.log(`👁️ Created collision visualization showing damage zones at detonation point: ${projectilePos.x.toFixed(1)}, ${projectilePos.y.toFixed(1)}, ${projectilePos.z.toFixed(1)}`);
     }
 }
 
