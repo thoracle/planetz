@@ -1382,8 +1382,6 @@ export class ViewManager {
                 
                 // Clamp between reasonable limits
                 baseSize = Math.max(30, Math.min(baseSize, 120));
-                
-                console.log(`🎯 Dynamic reticle: ${weapon.name} - Range: ${rangeKm}km, Blast: ${weapon.blastRadius}m, Size: ${baseSize}px`);
             }
         }
         
