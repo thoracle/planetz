@@ -95,9 +95,7 @@ export class WeaponCard {
         // IMPROVED: Use camera aim direction for free-aim shooting instead of target-based
         let direction = { x: 0, y: 0, z: 1 }; // Default forward
         
-        console.log(`🔍 DEBUG: Checking camera for ${this.name}`);
-        console.log(`🔍 DEBUG: window.starfieldManager exists:`, !!window.starfieldManager);
-        console.log(`🔍 DEBUG: window.starfieldManager.camera exists:`, !!(window.starfieldManager && window.starfieldManager.camera));
+        // Check camera availability for direction calculation
         
         if (window.starfieldManager && window.starfieldManager.camera) {
             const camera = window.starfieldManager.camera;
@@ -112,7 +110,7 @@ export class WeaponCard {
                 z: cameraForward.z
             };
             
-            console.log(`🎯 Using camera aim direction for ${this.name}:`, direction);
+            // Using camera aim direction
         } else if (target && target.position) {
             // Fallback to target-based aiming if camera not available
             const dirVector = {
@@ -128,7 +126,7 @@ export class WeaponCard {
                     z: dirVector.z / magnitude
                 };
             }
-            console.log(`🎯 Fallback: Using target-based direction for ${this.name}:`, direction);
+            // Using target-based direction as fallback
         } else {
             console.log(`🔍 DEBUG: No camera or target available for ${this.name}, using default direction`);
         }
@@ -463,9 +461,7 @@ export class SplashDamageWeapon extends WeaponCard {
         // IMPROVED: Use camera aim direction for free-aim shooting instead of target-based
         let direction = { x: 0, y: 0, z: 1 }; // Default forward
         
-        console.log(`🔍 DEBUG: Checking camera for ${this.name}`);
-        console.log(`🔍 DEBUG: window.starfieldManager exists:`, !!window.starfieldManager);
-        console.log(`🔍 DEBUG: window.starfieldManager.camera exists:`, !!(window.starfieldManager && window.starfieldManager.camera));
+        // Check camera availability for direction calculation
         
         if (window.starfieldManager && window.starfieldManager.camera) {
             const camera = window.starfieldManager.camera;
@@ -480,7 +476,7 @@ export class SplashDamageWeapon extends WeaponCard {
                 z: cameraForward.z
             };
             
-            console.log(`🎯 Using camera aim direction for ${this.name}:`, direction);
+            // Using camera aim direction
         } else if (target && target.position) {
             // Fallback to target-based aiming if camera not available
             const dirVector = {
@@ -496,7 +492,7 @@ export class SplashDamageWeapon extends WeaponCard {
                     z: dirVector.z / magnitude
                 };
             }
-            console.log(`🎯 Fallback: Using target-based direction for ${this.name}:`, direction);
+            // Using target-based direction as fallback
         } else {
             console.log(`🔍 DEBUG: No camera or target available for ${this.name}, using default direction`);
         }
