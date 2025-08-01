@@ -20,7 +20,7 @@ export class WeaponDefinitions {
                 weaponType: 'scan-hit',
                 damage: 60,
                 cooldownTime: 2.0, // seconds
-                range: 24000, // meters - increased 20% from 20000m (20km -> 24km)
+                range: 18000, // meters - reduced for proper range hierarchy (18km)
                 autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 0.95,
                 energyCost: 10,
@@ -95,19 +95,20 @@ export class WeaponDefinitions {
                 weaponType: 'projectile',
                 damage: 150,
                 cooldownTime: 2.5, // seconds
-                range: 12000, // meters - good medium range
+                range: 30000, // meters - medium-long range (30km), between lasers and torpedos
                 autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 1.0, // Missiles don't miss if fired properly
                 energyCost: 8, // Moderate energy cost
                 blastRadius: 0, // NO SPLASH DAMAGE - direct hit only
                 homingCapability: false,
                 targetLockRequired: false, // CORRECTED: Non-homing projectiles fire toward crosshairs, no target lock needed
-                flightRange: 12000, // meters - good medium range
+                flightRange: 30000, // meters - medium-long range (30km), between lasers and torpedos
                 turnRate: 0, // No turning
                 specialProperties: {
                     explosionType: 'kinetic',
                     armorPiercing: true,
-                    directHitOnly: true // Flag to indicate this is direct-hit projectile
+                    directHitOnly: true, // Flag to indicate this is direct-hit projectile
+                    projectileSpeed: 6000 // m/s - 5 second travel time to max range for realistic feel
                 }
             },
             
@@ -139,19 +140,20 @@ export class WeaponDefinitions {
                 weaponType: 'splash-damage',
                 damage: 320,
                 cooldownTime: 4.0, // seconds
-                range: 20000, // meters - increased from 6000m to match targeting system crosshair range (20km)
+                range: 45000, // meters - longest range heavy weapon (45km)
                 autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 1.0,
                 energyCost: 12,
                 blastRadius: 20, // meters (reduced by 75% from original 80m)
                 homingCapability: false,
                 targetLockRequired: false, // CORRECTED: Torpedoes fire toward crosshairs, no target lock needed
-                flightRange: 20000, // increased from 6000m to match targeting system crosshair range (20km)
+                flightRange: 45000, // meters - longest range heavy weapon (45km)
                 turnRate: 0, // No turning
                 specialProperties: {
                     explosionType: 'photon',
                     armorPiercing: true,
-                    shieldPiercing: true // Photon torpedoes pierce shields
+                    shieldPiercing: true, // Photon torpedoes pierce shields
+                    projectileSpeed: 7500 // m/s - 6 second travel time to max range
                 }
             },
             

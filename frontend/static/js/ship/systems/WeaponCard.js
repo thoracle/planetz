@@ -146,6 +146,7 @@ export class WeaponCard {
                     isHoming: this.homingCapability,
                     turnRate: this.turnRate,
                     weaponName: this.name,
+                    weaponData: this, // Pass entire weapon data for speed lookup
                     physicsManager: window.physicsManager,
                     scene: window.scene
                 });
@@ -536,6 +537,7 @@ export class SplashDamageWeapon extends WeaponCard {
                         isHoming: this.homingCapability,
                         turnRate: this.turnRate,
                         weaponName: this.name,
+                        weaponData: this, // Pass entire weapon data for speed lookup
                         physicsManager: window.physicsManager,
                         scene: window.scene
                     });
@@ -929,6 +931,7 @@ export class PhysicsProjectile {
     constructor(config) {
         // Basic projectile properties  
         this.weaponName = config.weaponName || 'Physics Projectile';
+        this.weaponData = config.weaponData; // Store weapon data for speed lookup
         this.damage = config.damage || 100;
         this.blastRadius = config.blastRadius !== undefined ? config.blastRadius : 50;
         this.flightRange = config.flightRange || 3000;
@@ -1056,8 +1059,13 @@ export class PhysicsProjectile {
             if (this.rigidBody) {
                 // Silent rigid body creation
                 
-                // Calculate velocity based on direction and weapon speed
-                const speed = this.isHoming ? 8000 : 10000; // Doubled from 4000/5000 to 8000/10000 for ultra-fast torpedoes
+                // Calculate velocity based on direction and weapon-specific speed
+                // Use weapon-defined speed if available, otherwise defaults
+                let speed = this.isHoming ? 8000 : 10000; // Default speeds
+                if (this.weaponData?.specialProperties?.projectileSpeed) {
+                    speed = this.weaponData.specialProperties.projectileSpeed;
+                    console.log(`🚀 ${this.weaponName}: Using weapon-specific speed: ${speed} m/s`);
+                }
                 this.velocity = {
                     x: direction.x * speed,
                     y: direction.y * speed,
