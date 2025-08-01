@@ -550,9 +550,6 @@ export class WeaponSlot {
             console.log(`🎯 PHYSICS LASER MISS: No targets hit within ${(weaponRange/1000).toFixed(1)}km range`);
         }
 
-        // Show miss feedback on HUD
-        this.showMissFeedback();
-
         // FORCE PHYSICS ONLY MODE: Skip fallback to debug physics issues
         if (FORCE_PHYSICS_ONLY) {
             console.log('🚫 FALLBACK DISABLED: Physics raycast must work - returning miss');
@@ -565,9 +562,7 @@ export class WeaponSlot {
             return this.checkLaserBeamHit_Fallback(startPositions, endPositions, target, weaponRange);
         }
 
-        // Show miss feedback for final miss case
-        this.showMissFeedback();
-        
+        // Final miss case - no physics hit and no target for fallback
         return { hit: false, position: null, entity: null, distance: 0 };
     }
 
@@ -1115,17 +1110,16 @@ export class WeaponSlot {
                     }
                 } else {
                     console.log('🎯 Physics laser beams missed all targets');
-                    // Show miss feedback
-                    this.showMissFeedback(weapon.name);
-                }
-                
-                // Set hit status for weapon effects
-                if (!anyHit) {
-                    console.log('🎯 No physics hits detected - laser missed');
-                    // Show miss feedback if not already shown above
-                    if (physicsHitResult) {
+                    // Show miss feedback only if we haven't already shown it
+                    if (!anyHit) {
                         this.showMissFeedback(weapon.name);
                     }
+                }
+                
+                // Handle case where no physics result was obtained at all
+                if (!physicsHitResult && !anyHit) {
+                    console.log('🎯 No physics result - laser missed');
+                    this.showMissFeedback(weapon.name);
                 }
 
             }
