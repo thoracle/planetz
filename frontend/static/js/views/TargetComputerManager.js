@@ -665,6 +665,34 @@ export class TargetComputerManager {
             });
         }
         
+        // CRITICAL FIX: Add celestial bodies to fallback system
+        // When spatial query fails, this ensures planets/moons/stars still appear in targeting
+        if (this.solarSystemManager?.celestialBodies) {
+            console.log(`🎯 addNonPhysicsTargets: Processing celestial bodies as fallback`);
+            
+            for (const [key, body] of this.solarSystemManager.celestialBodies.entries()) {
+                if (!body || !body.position) continue;
+                
+                const distance = this.calculateDistance(this.camera.position, body.position);
+                if (distance <= maxRange) {
+                    const info = this.solarSystemManager.getCelestialBodyInfo(body);
+                    if (info && !existingTargetIds.has(info.name)) {
+                        console.log(`🎯 addNonPhysicsTargets: Adding celestial body: ${info.name} (${info.type})`);
+                        allTargets.push({
+                            name: info.name,
+                            type: info.type,
+                            position: body.position.toArray(),
+                            isMoon: key.startsWith('moon_'),
+                            object: body,
+                            isShip: false,
+                            distance: distance,
+                            ...info
+                        });
+                    }
+                }
+            }
+        }
+        
         console.log(`🎯 addNonPhysicsTargets: Processing ${this.viewManager.starfieldManager.dummyShipMeshes?.length || 0} dummy ships`);
     }
 
