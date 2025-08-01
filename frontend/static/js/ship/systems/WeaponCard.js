@@ -1139,8 +1139,20 @@ export class PhysicsProjectile {
      * @param {Object} otherObject The object we collided with
      */
     onCollision(contactPoint, otherObject) {
-        // Store collision target for direct hit weapons
-        this.collisionTarget = otherObject;
+        // Store collision target for direct hit weapons (otherObject is threeObject)
+        // Need to find the entity metadata from the threeObject
+        if (this.physicsManager && otherObject) {
+            const rigidBody = this.physicsManager.rigidBodies.get(otherObject);
+            if (rigidBody) {
+                this.collisionTarget = this.physicsManager.entityMetadata.get(rigidBody);
+                console.log(`🎯 COLLISION: Stored collision target:`, this.collisionTarget?.id || 'Unknown');
+            } else {
+                console.log(`⚠️ COLLISION: Could not find rigid body for collision target`);
+                this.collisionTarget = otherObject; // Fallback to threeObject
+            }
+        } else {
+            this.collisionTarget = otherObject; // Fallback to threeObject
+        }
         // Add detailed collision debugging
         console.log(`🔥 COLLISION DEBUG: ${this.weaponName} onCollision called`);
         console.log(`🔥 COLLISION DEBUG: hasDetonated=${this.hasDetonated}, collisionProcessed=${this.collisionProcessed}`);
@@ -1307,9 +1319,11 @@ export class PhysicsProjectile {
             this.applyPhysicsSplashDamage(detonationPos);
         }
         
-        // Show collision visualization spheres for all detonations (hits and misses)
-        if (this.physicsManager && detonationPos) {
+        // Show collision visualization spheres for splash damage weapons only
+        if (this.physicsManager && detonationPos && this.blastRadius > 0) {
             this.physicsManager.createCollisionVisualization(detonationPos, detonationPos, this.blastRadius);
+        } else if (this.blastRadius === 0) {
+            console.log(`🎯 ${this.weaponName}: Direct hit weapon - no blast visualization needed`);
         }
         
         this.createExplosionEffect(detonationPos);
