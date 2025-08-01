@@ -240,6 +240,10 @@ export class ViewManager {
                 50% { opacity: 0.6; }
                 100% { opacity: 0.9; }
             }
+            @keyframes rotate {
+                0% { transform: translate(-50%, -50%) rotate(0deg); }
+                100% { transform: translate(-50%, -50%) rotate(360deg); }
+            }
         `;
         document.head.appendChild(style);
         
@@ -1145,27 +1149,23 @@ export class ViewManager {
         // Apply different crosshair shapes based on target state
         switch(state) {
             case 'none':
-                // No target - standard + crosshair with weapon range hint
+                // No target - standard + crosshair (range now shown in weapon HUD)
                 this.setCrosshairShape(container, 'standard', baseColor, 0.6);
-                this.addWeaponRangeIndicator(container, baseColor);
                 break;
                 
             case 'inRange':
-                // Target in range - bright targeting reticle
-                this.setCrosshairShape(container, 'inRange', baseColor, 1.0);
-                this.addRangeStatusIndicator(container, 'IN RANGE', '#00ff00');
+                // Target in range - dynamic circular reticle based on weapon
+                this.setCrosshairShape(container, 'dynamicTarget', '#00ff00', 1.0);
                 break;
                 
             case 'closeRange':
-                // Target close to range - amber warning
-                this.setCrosshairShape(container, 'standard', '#ffaa00', 0.9);
-                this.addRangeStatusIndicator(container, 'NEAR RANGE', '#ffaa00');
+                // Target close to range - amber circular warning
+                this.setCrosshairShape(container, 'dynamicTarget', '#ffaa00', 0.9);
                 break;
                 
             case 'outRange':
-                // Target out of range - red warning
-                this.setCrosshairShape(container, 'standard', '#ff3333', 0.8);
-                this.addRangeStatusIndicator(container, 'OUT OF RANGE', '#ff3333');
+                // Target out of range - red circular warning
+                this.setCrosshairShape(container, 'dynamicTarget', '#ff3333', 0.8);
                 break;
         }
     }
@@ -1315,6 +1315,25 @@ export class ViewManager {
                     `;
                 }
                 break;
+                
+            case 'dynamicTarget':
+                // Dynamic circular reticle that scales based on active weapon properties
+                const weaponCircleSize = this.calculateWeaponCircleSize();
+                const innerDotSize = Math.max(4, weaponCircleSize / 10);
+                
+                container.innerHTML += `
+                    <div class="crosshair-element" style="${baseStyle}
+                        top: 50%; left: 50%; width: ${weaponCircleSize}px; height: ${weaponCircleSize}px;
+                        border: 2px dashed ${color}; border-radius: 50%;
+                        transform: translate(-50%, -50%); box-shadow: 0 0 8px ${color};
+                        background: transparent; animation: rotate 3s linear infinite;
+                    "></div>
+                    <div class="crosshair-element" style="${baseStyle}
+                        top: 50%; left: 50%; width: ${innerDotSize}px; height: ${innerDotSize}px; border-radius: 50%;
+                        transform: translate(-50%, -50%); box-shadow: 0 0 8px ${color};
+                    "></div>
+                `;
+                break;
         }
         
         // Update the elements array reference
@@ -1323,6 +1342,52 @@ export class ViewManager {
         } else if (container === this.aftCrosshair) {
             this.aftCrosshairElements = Array.from(container.querySelectorAll('.crosshair-element'));
         }
+    }
+    
+    /**
+     * Calculate circle size for dynamic target reticle based on active weapon
+     * @returns {number} Circle diameter in pixels
+     */
+    calculateWeaponCircleSize() {
+        // Default size if no weapon
+        let baseSize = 40;
+        
+        if (this.ship?.weaponSystem?.getActiveWeapon) {
+            const activeWeapon = this.ship.weaponSystem.getActiveWeapon();
+            if (activeWeapon?.equippedWeapon) {
+                const weapon = activeWeapon.equippedWeapon;
+                
+                // Base size calculation on weapon range (primary factor)
+                const rangeKm = weapon.range / 1000;
+                const rangeFactor = Math.min(rangeKm / 50, 2.0); // Scale up to 2x for long range weapons
+                
+                // Add blast radius factor for splash weapons
+                let blastFactor = 1.0;
+                if (weapon.blastRadius && weapon.blastRadius > 0) {
+                    blastFactor = 1.0 + (weapon.blastRadius / 100); // Scale up based on blast radius
+                }
+                
+                // Weapon type factor for visual distinction
+                let typeFactor = 1.0;
+                if (weapon.weaponType === 'scan-hit') {
+                    typeFactor = 0.8; // Smaller for energy weapons (precise)
+                } else if (weapon.blastRadius > 0) {
+                    typeFactor = 1.4; // Larger for splash weapons
+                } else {
+                    typeFactor = 1.1; // Medium for direct-hit projectiles
+                }
+                
+                // Calculate final size: base * range * blast * type factors
+                baseSize = Math.round(40 * rangeFactor * blastFactor * typeFactor);
+                
+                // Clamp between reasonable limits
+                baseSize = Math.max(30, Math.min(baseSize, 120));
+                
+                console.log(`🎯 Dynamic reticle: ${weapon.name} - Range: ${rangeKm}km, Blast: ${weapon.blastRadius}m, Size: ${baseSize}px`);
+            }
+        }
+        
+        return baseSize;
     }
     
     /**

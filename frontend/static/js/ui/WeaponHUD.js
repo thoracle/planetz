@@ -239,6 +239,28 @@ export class WeaponHUD {
             typeIndicator.title = indicatorTitle;
             slotElement.appendChild(typeIndicator);
             
+            // Add weapon range display for active weapon
+            if (isActive) {
+                const rangeDisplay = document.createElement('div');
+                rangeDisplay.className = 'weapon-range-display';
+                const rangeKm = (slot.equippedWeapon.range / 1000).toFixed(1);
+                rangeDisplay.textContent = `${rangeKm}km`;
+                rangeDisplay.style.cssText = `
+                    position: absolute;
+                    bottom: -16px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    font-size: 8px;
+                    color: #00ff00;
+                    font-weight: bold;
+                    text-align: center;
+                    white-space: nowrap;
+                    text-shadow: 0 0 2px #00ff00;
+                    pointer-events: none;
+                `;
+                slotElement.appendChild(rangeDisplay);
+            }
+            
             // Cooldown bar
             if (slot.isInCooldown()) {
                 const cooldownBar = this.createCooldownBar(slot);
