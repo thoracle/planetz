@@ -818,18 +818,27 @@ export class PhysicsManager {
         const overlaps = [];
         const radiusSquared = radius * radius;
         
+        // Debug: Log what we're searching for
+        console.log(`🔍 SPATIAL QUERY: Searching for entities within ${radius}m of position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+        console.log(`🔍 SPATIAL QUERY: Checking ${this.rigidBodies.size} rigid bodies and ${this.entityMetadata.size} metadata entries`);
+        
         // Check all registered rigid bodies
         for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
             if (threeObject.position) {
-                const distanceSquared = threeObject.position.distanceToSquared(position);
-                if (distanceSquared <= radiusSquared) {
+                const distance = threeObject.position.distanceTo(position);
+                if (distance <= radius) {
                     const metadata = this.entityMetadata.get(rigidBody);
                     if (metadata) {
+                        console.log(`✅ SPATIAL QUERY: Found entity '${metadata.id}' (${metadata.type}) at ${distance.toFixed(1)}m`);
                         overlaps.push(metadata);
+                    } else {
+                        console.log(`⚠️ SPATIAL QUERY: RigidBody at ${distance.toFixed(1)}m has no metadata`);
                     }
                 }
             }
         }
+        
+        console.log(`🔍 SPATIAL QUERY: Found ${overlaps.length} entities within ${radius}m radius`);
         
         return overlaps;
     }
@@ -3184,11 +3193,11 @@ export class PhysicsManager {
     createCollisionVisualization(projectilePos, targetPos, collisionThreshold) {
         if (!window.starfieldManager?.scene) return;
         
-        // Create three damage zone spheres at projectile detonation point
+        // Create damage zone spheres - scaled appropriately for distance
         const damageZones = [
-            { radius: 1, color: 0xff0000, name: 'close hits' },      // 1m - Red
-            { radius: 10, color: 0xff6600, name: 'medium range' },   // 10m - Orange  
-            { radius: 20, color: 0xffff00, name: 'edge hits' }       // 20m - Yellow
+            { radius: 0.5, color: 0xff0000, name: 'close hits' },      // 0.5m - Red (direct hit)
+            { radius: 2, color: 0xff6600, name: 'medium range' },      // 2m - Orange (close)  
+            { radius: 5, color: 0xffff00, name: 'edge hits' }          // 5m - Yellow (edge damage)
         ];
         
         const spheres = [];
