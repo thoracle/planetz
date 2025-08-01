@@ -250,7 +250,7 @@ export class WeaponHUD {
                     bottom: -16px;
                     left: 50%;
                     transform: translateX(-50%);
-                    font-size: 16px;
+                    font-size: 12px;
                     color: #00ff00;
                     font-weight: bold;
                     text-align: center;
