@@ -1147,6 +1147,7 @@ export class ViewManager {
         existingIndicators.forEach(indicator => indicator.remove());
         
         // Apply different crosshair shapes based on target state
+        // Use faction color for all states to preserve faction-based identification
         switch(state) {
             case 'none':
                 // No target - standard + crosshair (range now shown in weapon HUD)
@@ -1154,18 +1155,18 @@ export class ViewManager {
                 break;
                 
             case 'inRange':
-                // Target in range - dynamic circular reticle based on weapon
-                this.setCrosshairShape(container, 'dynamicTarget', '#00ff00', 1.0);
+                // Target in range - dynamic circular reticle using faction color
+                this.setCrosshairShape(container, 'dynamicTarget', baseColor, 1.0);
                 break;
                 
             case 'closeRange':
-                // Target close to range - amber circular warning
-                this.setCrosshairShape(container, 'dynamicTarget', '#ffaa00', 0.9);
+                // Target close to range - dynamic reticle using faction color, slightly dimmed
+                this.setCrosshairShape(container, 'dynamicTarget', baseColor, 0.9);
                 break;
                 
             case 'outRange':
-                // Target out of range - red circular warning
-                this.setCrosshairShape(container, 'dynamicTarget', '#ff3333', 0.8);
+                // Target out of range - dynamic reticle using faction color, more dimmed
+                this.setCrosshairShape(container, 'dynamicTarget', baseColor, 0.7);
                 break;
         }
     }

@@ -1030,98 +1030,96 @@ export class WeaponSlot {
             effectsManager.createLaserBeam(rightWeaponPos, rightEndPosition, weapon.cardType);
             
             // Perform physics-based laser hit detection
-            if (fireResult.hit) {
-                let anyHit = false;
-                let hitTargets = [];
+            // For scan-hit weapons (lasers), physics raycast determines hit, not accuracy roll
+            let anyHit = false;
+            let hitTargets = [];
+            
+            // Use physics raycasting to detect hits (no need to manually iterate through all ships)
+            const physicsHitResult = this.checkLaserBeamHit(
+                [leftWeaponPos, rightWeaponPos], 
+                [leftEndPosition, rightEndPosition], 
+                target, // Optional target for validation
+                maxRange
+            );
+            
+            if (physicsHitResult && physicsHitResult.hit && physicsHitResult.entity) {
+                // Physics raycast found a hit!
+                const hitEntity = physicsHitResult.entity;
+                const hitPosition = physicsHitResult.position;
+                const hitDistance = physicsHitResult.distance;
                 
-                // Use physics raycasting to detect hits (no need to manually iterate through all ships)
-                const physicsHitResult = this.checkLaserBeamHit(
-                    [leftWeaponPos, rightWeaponPos], 
-                    [leftEndPosition, rightEndPosition], 
-                    target, // Optional target for validation
-                    maxRange
-                );
+                // Physics laser hit detected
                 
-                if (physicsHitResult && physicsHitResult.hit && physicsHitResult.entity) {
-                    // Physics raycast found a hit!
-                    const hitEntity = physicsHitResult.entity;
-                    const hitPosition = physicsHitResult.position;
-                    const hitDistance = physicsHitResult.distance;
+                // Create explosion at the physics hit point
+                const baseExplosionRadius = Math.min(weapon.damage * 2, 100); // 2 meters per damage point, max 100m
+                const explosionRadiusMeters = baseExplosionRadius;
+                
+                // Create visual explosion effect
+                effectsManager.createExplosion(hitPosition, explosionRadiusMeters, 'damage', hitPosition);
+                
+                // Apply damage to the hit entity
+                if (hitEntity.ship && typeof hitEntity.ship.applyDamage === 'function') {
+                    // Check if we have sub-targeting for more precise damage
+                    const subTargetSystem = this.ship?.getSystem('target_computer')?.currentSubTarget;
                     
-                    // Physics laser hit detected
-                    
-                                         // Create explosion at the physics hit point
-                    const baseExplosionRadius = Math.min(weapon.damage * 2, 100); // 2 meters per damage point, max 100m
-                    const explosionRadiusMeters = baseExplosionRadius;
-                    
-                    // Create visual explosion effect
-                    effectsManager.createExplosion(hitPosition, explosionRadiusMeters, 'damage', hitPosition);
-                    
-                    // Apply damage to the hit entity
-                    if (hitEntity.ship && typeof hitEntity.ship.applyDamage === 'function') {
-                        // Check if we have sub-targeting for more precise damage
-                        const subTargetSystem = this.ship?.getSystem('target_computer')?.currentSubTarget;
+                    if (subTargetSystem) {
+                        // Sub-targeting - apply focused damage to specific system
+                        const subTargetDamage = weapon.damage * 1.3; // 30% bonus for sub-targeting
+                        console.log(`🎯 SUB-TARGET HIT: Targeting ${subTargetSystem.displayName} for ${subTargetDamage} focused damage`);
                         
-                        if (subTargetSystem) {
-                            // Sub-targeting - apply focused damage to specific system
-                            const subTargetDamage = weapon.damage * 1.3; // 30% bonus for sub-targeting
-                            console.log(`🎯 SUB-TARGET HIT: Targeting ${subTargetSystem.displayName} for ${subTargetDamage} focused damage`);
-                            
-                            hitEntity.ship.applyDamage(subTargetDamage, 'energy', subTargetSystem.systemName);
-                            console.log(`💥 Sub-target hit: ${hitEntity.ship.shipName || 'Enemy ship'} ${subTargetSystem.displayName} took ${subTargetDamage} damage`);
-                            
-                            // Show damage feedback for sub-targeting
-                            this.showWeaponFeedback(weapon.name, subTargetDamage, hitEntity.ship);
-                        } else {
-                            // No sub-targeting - apply normal damage
-                            hitEntity.ship.applyDamage(weapon.damage, 'energy');
-                            console.log(`💥 Physics hit: ${hitEntity.ship.shipName || 'Enemy ship'} took ${weapon.damage} damage - hull: ${hitEntity.ship.currentHull}/${hitEntity.ship.maxHull}`);
-                            
-                            // Show damage feedback for normal hit
-                            this.showWeaponFeedback(weapon.name, weapon.damage, hitEntity.ship);
-                        }
+                        hitEntity.ship.applyDamage(subTargetDamage, 'energy', subTargetSystem.systemName);
+                        console.log(`💥 Sub-target hit: ${hitEntity.ship.shipName || 'Enemy ship'} ${subTargetSystem.displayName} took ${subTargetDamage} damage`);
                         
-                        // Check if target was destroyed
-                        if (hitEntity.ship.currentHull <= 0.001) { // Use small threshold instead of exact 0 to handle floating-point precision
-                            console.log(`🔥 ${hitEntity.ship.shipName || 'Enemy ship'} DESTROYED! (Hull: ${hitEntity.ship.currentHull})`);
-                            
-                            // Ensure hull is exactly 0 for consistency
-                            hitEntity.ship.currentHull = 0;
-                            
-                            // Play success sound for ship destruction
-                            if (ship?.weaponEffectsManager) {
-                                ship.weaponEffectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
-                                console.log(`🎉 Playing ship destruction success sound (full duration)`);
-                            }
-                            
-                            // Remove destroyed ship from game
-                            if (this.starfieldManager && typeof this.starfieldManager.removeDestroyedTarget === 'function') {
-                                this.starfieldManager.removeDestroyedTarget(hitEntity.ship);
-                            }
-                        }
-                        
-                        // Track successful hit
-                        hitTargets.push(hitEntity);
-                        anyHit = true;
-                        
-                        console.log(`💥 Physics laser beam hit confirmed with explosion radius ${explosionRadiusMeters}m`);
+                        // Show damage feedback for sub-targeting
+                        this.showWeaponFeedback(weapon.name, subTargetDamage, hitEntity.ship);
                     } else {
-                        console.log('Hit entity does not have a ship with applyDamage method:', hitEntity);
+                        // No sub-targeting - apply normal damage
+                        hitEntity.ship.applyDamage(weapon.damage, 'energy');
+                        console.log(`💥 Physics hit: ${hitEntity.ship.shipName || 'Enemy ship'} took ${weapon.damage} damage - hull: ${hitEntity.ship.currentHull}/${hitEntity.ship.maxHull}`);
+                        
+                        // Show damage feedback for normal hit
+                        this.showWeaponFeedback(weapon.name, weapon.damage, hitEntity.ship);
                     }
+                    
+                    // Check if target was destroyed
+                    if (hitEntity.ship.currentHull <= 0.001) { // Use small threshold instead of exact 0 to handle floating-point precision
+                        console.log(`🔥 ${hitEntity.ship.shipName || 'Enemy ship'} DESTROYED! (Hull: ${hitEntity.ship.currentHull})`);
+                        
+                        // Ensure hull is exactly 0 for consistency
+                        hitEntity.ship.currentHull = 0;
+                        
+                        // Play success sound for ship destruction
+                        if (ship?.weaponEffectsManager) {
+                            ship.weaponEffectsManager.playSuccessSound(null, 0.8); // Full duration, 80% volume
+                            console.log(`🎉 Playing ship destruction success sound (full duration)`);
+                        }
+                        
+                        // Remove destroyed ship from game
+                        if (this.starfieldManager && typeof this.starfieldManager.removeDestroyedTarget === 'function') {
+                            this.starfieldManager.removeDestroyedTarget(hitEntity.ship);
+                        }
+                    }
+                    
+                    // Track successful hit
+                    hitTargets.push(hitEntity);
+                    anyHit = true;
+                    
+                    console.log(`💥 Physics laser beam hit confirmed with explosion radius ${explosionRadiusMeters}m`);
                 } else {
-                    console.log('🎯 Physics laser beams missed all targets');
-                    // Show miss feedback only if we haven't already shown it
-                    if (!anyHit) {
-                        this.showMissFeedback(weapon.name);
-                    }
+                    console.log('Hit entity does not have a ship with applyDamage method:', hitEntity);
                 }
-                
-                // Handle case where no physics result was obtained at all
-                if (!physicsHitResult && !anyHit) {
-                    console.log('🎯 No physics result - laser missed');
+            } else {
+                console.log('🎯 Physics laser beams missed all targets');
+                // Show miss feedback only if we haven't already shown it
+                if (!anyHit) {
                     this.showMissFeedback(weapon.name);
                 }
-
+            }
+            
+            // Handle case where no physics result was obtained at all
+            if (!physicsHitResult && !anyHit) {
+                console.log('🎯 No physics result - laser missed');
+                this.showMissFeedback(weapon.name);
             }
             
         } else if (weapon.weaponType === 'splash-damage') {
