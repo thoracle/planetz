@@ -534,9 +534,9 @@ export class WeaponSlot {
             const targetValid = this.validateTargetHit(hitEntity, target);
             
             if (!targetValid) {
-                console.log(`🎯 PHYSICS HIT MISMATCH: Hit ${hitEntity?.type || 'unknown'} instead of intended target`);
-                // For now, accept any hit - player aimed at something and hit something
-                // In the future, could be more strict about target validation
+                console.log(`🎯 PHYSICS HIT MISMATCH: Hit ${hitEntity?.type || 'unknown'} instead of intended target - REJECTING HIT`);
+                // Reject hits on non-target entities (like celestial bodies)
+                closestHit = null;
             }
         }
 
