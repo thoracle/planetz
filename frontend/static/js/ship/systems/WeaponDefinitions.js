@@ -87,12 +87,12 @@ export class WeaponDefinitions {
                 }
             },
             
-            // Splash-Damage Weapons (Projectile-Based)
+            // Direct-Hit Weapons (Projectile-Based)  
             // No ammo required - work like laser weapons with cooldowns
             standard_missile: {
                 weaponId: 'standard_missile',
                 name: 'Standard Missile',
-                weaponType: 'splash-damage',
+                weaponType: 'projectile',
                 damage: 150,
                 cooldownTime: 2.5, // seconds
                 range: 12000, // meters - good medium range

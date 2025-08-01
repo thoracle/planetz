@@ -342,7 +342,8 @@ export class SplashDamageWeapon extends WeaponCard {
      * @returns {Object} Fire result
      */
     fire(origin, target = null, ship = null) {
-        console.log(`🚨 SPLASH WEAPON CACHE TEST: ${this.name} firing (splash-damage) - TIMESTAMP: ${Date.now()}`);
+        const weaponTypeDisplay = this.blastRadius > 0 ? 'splash-damage' : 'direct-hit';
+        console.log(`🚨 WEAPON CACHE TEST: ${this.name} firing (${weaponTypeDisplay}) - TIMESTAMP: ${Date.now()}`);
         
         // ENHANCED: Comprehensive energy validation like laser weapons
         if (ship && this.energyCost > 0) {
@@ -712,7 +713,7 @@ export class Projectile {
         this.velocity = { x: 0, y: 0, z: 0 };
         this.target = config.target;
         this.damage = config.damage || 100;
-        this.blastRadius = config.blastRadius || 50;
+        this.blastRadius = config.blastRadius !== undefined ? config.blastRadius : 50;
         this.flightRange = config.flightRange || 3000;
         this.isHoming = config.isHoming || false;
         this.turnRate = config.turnRate || 90; // degrees per second
@@ -929,7 +930,7 @@ export class PhysicsProjectile {
         // Basic projectile properties  
         this.weaponName = config.weaponName || 'Physics Projectile';
         this.damage = config.damage || 100;
-        this.blastRadius = config.blastRadius || 50;
+        this.blastRadius = config.blastRadius !== undefined ? config.blastRadius : 50;
         this.flightRange = config.flightRange || 3000;
         this.isHoming = config.isHoming || false;
         this.turnRate = config.turnRate || 90; // degrees per second
