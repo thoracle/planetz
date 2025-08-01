@@ -13,6 +13,8 @@ export class WeaponHUD {
         this.targetLockIndicator = null;
         this.messageDisplay = null;
         this.messageTimeout = null; // Track message display timeout
+        this.weaponFeedbackDisplay = null; // Hit/Miss/Splash feedback
+        this.feedbackTimeout = null; // Track feedback display timeout
         
         this.createHUDElements();
         
@@ -95,6 +97,29 @@ export class WeaponHUD {
             pointer-events: none !important;
         `;
         this.hudContainer.appendChild(this.messageDisplay);
+
+        // Create weapon feedback display (hit/miss/splash)
+        this.weaponFeedbackDisplay = document.createElement('div');
+        this.weaponFeedbackDisplay.className = 'weapon-feedback-display';
+        this.weaponFeedbackDisplay.style.cssText = `
+            position: fixed;
+            bottom: 50px;
+            right: 20px;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1000;
+            display: none;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 8px;
+            border-radius: 3px;
+            border: 1px solid #666;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            min-width: 60px;
+            text-align: center;
+        `;
+        this.hudContainer.appendChild(this.weaponFeedbackDisplay);
     }
     
     /**
@@ -477,6 +502,123 @@ export class WeaponHUD {
     }
     
     /**
+     * Show weapon feedback (hit/miss/splash)
+     * @param {string} type - 'hit', 'miss', 'splash', or 'out-of-range'
+     * @param {string} weaponName - Name of the weapon
+     * @param {number} damage - Damage dealt (for hits)
+     * @param {number} distance - Distance to target
+     */
+    showWeaponFeedback(type, weaponName, damage = 0, distance = 0) {
+        if (!this.weaponFeedbackDisplay) return;
+
+        // Clear any existing timeout
+        if (this.feedbackTimeout) {
+            clearTimeout(this.feedbackTimeout);
+            this.feedbackTimeout = null;
+        }
+
+        let text = '';
+        let color = '#ffffff';
+        let borderColor = '#666';
+
+        switch (type) {
+            case 'hit':
+                text = `HIT! ${damage} DMG`;
+                color = '#00ff00';
+                borderColor = '#00aa00';
+                break;
+            case 'splash':
+                text = `SPLASH! ${damage} DMG`;
+                color = '#ff8800';
+                borderColor = '#cc6600';
+                break;
+            case 'miss':
+                text = 'MISS';
+                color = '#ff4444';
+                borderColor = '#cc3333';
+                break;
+            case 'out-of-range':
+                const distanceKm = (distance / 1000).toFixed(1);
+                text = `OUT OF RANGE\n${distanceKm}km`;
+                color = '#ffff00';
+                borderColor = '#cccc00';
+                break;
+            default:
+                text = type.toUpperCase();
+        }
+
+        // Update display
+        this.weaponFeedbackDisplay.textContent = text;
+        this.weaponFeedbackDisplay.style.color = color;
+        this.weaponFeedbackDisplay.style.borderColor = borderColor;
+        this.weaponFeedbackDisplay.style.display = 'block';
+        this.weaponFeedbackDisplay.style.opacity = '1';
+
+        // Auto-hide after 2 seconds
+        this.feedbackTimeout = setTimeout(() => {
+            this.weaponFeedbackDisplay.style.opacity = '0';
+            setTimeout(() => {
+                this.weaponFeedbackDisplay.style.display = 'none';
+            }, 300); // Fade out duration
+        }, 2000);
+    }
+
+    /**
+     * Show hit feedback
+     * @param {string} weaponName - Name of the weapon
+     * @param {number} damage - Damage dealt
+     */
+    showHitFeedback(weaponName, damage) {
+        this.showWeaponFeedback('hit', weaponName, damage);
+    }
+
+    /**
+     * Show splash damage feedback
+     * @param {string} weaponName - Name of the weapon
+     * @param {number} damage - Total splash damage dealt
+     */
+    showSplashFeedback(weaponName, damage) {
+        this.showWeaponFeedback('splash', weaponName, damage);
+    }
+
+    /**
+     * Show miss feedback
+     * @param {string} weaponName - Name of the weapon
+     */
+    showMissFeedback(weaponName) {
+        this.showWeaponFeedback('miss', weaponName);
+    }
+
+    /**
+     * Show out of range feedback with distance
+     * @param {string} weaponName - Name of the weapon
+     * @param {number} distance - Distance to target
+     * @param {number} maxRange - Maximum weapon range
+     */
+    showOutOfRangeFeedback(weaponName, distance, maxRange) {
+        this.showWeaponFeedback('out-of-range', weaponName, 0, distance);
+    }
+
+    /**
+     * Show damage feedback (called by weapon systems)
+     * @param {string} weaponName - Name of the weapon
+     * @param {number} damage - Damage dealt
+     * @param {string} targetName - Name of the target
+     */
+    showDamageFeedback(weaponName, damage, targetName) {
+        // Determine if this is splash damage by checking weapon name/type
+        const isSplashWeapon = weaponName.toLowerCase().includes('torpedo') || 
+                               weaponName.toLowerCase().includes('missile') ||
+                               weaponName.toLowerCase().includes('mine');
+        
+        if (isSplashWeapon) {
+            this.showSplashFeedback(weaponName, damage);
+        } else {
+            this.showHitFeedback(weaponName, damage);
+        }
+    }
+    
+    /**
      * Clean up HUD elements
      */
     dispose() {
@@ -491,6 +633,14 @@ export class WeaponHUD {
         }
         if (this.messageDisplay) {
             this.messageDisplay.remove();
+        }
+        if (this.weaponFeedbackDisplay) {
+            this.weaponFeedbackDisplay.remove();
+        }
+        
+        // Clear timeouts
+        if (this.feedbackTimeout) {
+            clearTimeout(this.feedbackTimeout);
         }
         
         this.cooldownBars = [];

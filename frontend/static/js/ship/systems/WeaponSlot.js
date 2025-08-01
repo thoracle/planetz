@@ -550,6 +550,9 @@ export class WeaponSlot {
             console.log(`🎯 PHYSICS LASER MISS: No targets hit within ${(weaponRange/1000).toFixed(1)}km range`);
         }
 
+        // Show miss feedback on HUD
+        this.showMissFeedback();
+
         // FORCE PHYSICS ONLY MODE: Skip fallback to debug physics issues
         if (FORCE_PHYSICS_ONLY) {
             console.log('🚫 FALLBACK DISABLED: Physics raycast must work - returning miss');
@@ -562,6 +565,9 @@ export class WeaponSlot {
             return this.checkLaserBeamHit_Fallback(startPositions, endPositions, target, weaponRange);
         }
 
+        // Show miss feedback for final miss case
+        this.showMissFeedback();
+        
         return { hit: false, position: null, entity: null, distance: 0 };
     }
 
@@ -1116,6 +1122,23 @@ export class WeaponSlot {
             // For projectile weapons, the projectile will handle its own trail effects
             // The explosion will be handled when the projectile detonates
             console.log(`Projectile launched: ${weapon.name} (effects will be handled by projectile)`);
+        }
+    }
+    
+    /**
+     * Show miss feedback on weapon HUD
+     */
+    showMissFeedback() {
+        try {
+            // Get weapon name
+            const weaponName = this.isEmpty ? 'Unknown Weapon' : this.equippedWeapon.name;
+            
+            // Try to get weapon HUD reference through weapon system
+            if (this.weaponSystem && this.weaponSystem.weaponHUD) {
+                this.weaponSystem.weaponHUD.showMissFeedback(weaponName);
+            }
+        } catch (error) {
+            console.log('Failed to show miss feedback:', error.message);
         }
     }
     
