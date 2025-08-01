@@ -93,20 +93,21 @@ export class WeaponDefinitions {
                 weaponId: 'standard_missile',
                 name: 'Standard Missile',
                 weaponType: 'splash-damage',
-                damage: 200,
-                cooldownTime: 3.0, // seconds
-                range: 7200, // meters - increased 20% from 6000m (6km -> 7.2km)
+                damage: 150,
+                cooldownTime: 2.5, // seconds
+                range: 12000, // meters - good medium range
                 autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 1.0, // Missiles don't miss if fired properly
-                energyCost: 5, // Low energy cost, but limited by cooldown
-                blastRadius: 50, // meters
+                energyCost: 8, // Moderate energy cost
+                blastRadius: 0, // NO SPLASH DAMAGE - direct hit only
                 homingCapability: false,
                 targetLockRequired: false, // CORRECTED: Non-homing projectiles fire toward crosshairs, no target lock needed
-                flightRange: 7200, // increased 20% from 6000m (6km -> 7.2km)
+                flightRange: 12000, // meters - good medium range
                 turnRate: 0, // No turning
                 specialProperties: {
                     explosionType: 'kinetic',
-                    armorPiercing: false
+                    armorPiercing: true,
+                    directHitOnly: true // Flag to indicate this is direct-hit projectile
                 }
             },
             

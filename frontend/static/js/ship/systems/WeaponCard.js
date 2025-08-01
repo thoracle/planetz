@@ -1139,6 +1139,8 @@ export class PhysicsProjectile {
      * @param {Object} otherObject The object we collided with
      */
     onCollision(contactPoint, otherObject) {
+        // Store collision target for direct hit weapons
+        this.collisionTarget = otherObject;
         // Add detailed collision debugging
         console.log(`🔥 COLLISION DEBUG: ${this.weaponName} onCollision called`);
         console.log(`🔥 COLLISION DEBUG: hasDetonated=${this.hasDetonated}, collisionProcessed=${this.collisionProcessed}`);
@@ -1295,7 +1297,15 @@ export class PhysicsProjectile {
         
         // NOTE: Explosion sound is played by createExplosionEffect() -> createExplosion() for consistent positioning
         console.log(`💥 ${this.weaponName}: Starting damage application at position:`, detonationPos);
-        this.applyPhysicsSplashDamage(detonationPos);
+        
+        // Check if this is a direct-hit weapon (zero blast radius)
+        if (this.blastRadius === 0) {
+            console.log(`🎯 ${this.weaponName}: Direct hit weapon - applying damage to collision target only`);
+            this.applyDirectHitDamage(detonationPos);
+        } else {
+            console.log(`💥 ${this.weaponName}: Splash damage weapon - applying area effect`);
+            this.applyPhysicsSplashDamage(detonationPos);
+        }
         
         // Show collision visualization spheres for all detonations (hits and misses)
         if (this.physicsManager && detonationPos) {
@@ -1308,6 +1318,75 @@ export class PhysicsProjectile {
         this.hasDetonated = true;
         
         this.cleanup();
+    }
+    
+    /**
+     * Apply direct hit damage to the collision target only
+     * @param {Object} position Collision position
+     */
+    applyDirectHitDamage(position) {
+        if (!this.collisionTarget || !position) {
+            console.log(`⚠️ ${this.weaponName}: No collision target for direct hit damage`);
+            return;
+        }
+        
+        console.log(`🎯 ${this.weaponName}: Applying direct hit damage to collision target`);
+        
+        // Find the ship object from the collision target
+        let targetShip = null;
+        
+        // Check if collision target has ship reference
+        if (this.collisionTarget.ship && typeof this.collisionTarget.ship.applyDamage === 'function') {
+            targetShip = this.collisionTarget.ship;
+            console.log(`🎯 ${this.weaponName}: Found target ship via collision target:`, targetShip.shipName || 'Unknown');
+        } else if (this.collisionTarget.threeObject?.userData?.ship && typeof this.collisionTarget.threeObject.userData.ship.applyDamage === 'function') {
+            targetShip = this.collisionTarget.threeObject.userData.ship;
+            console.log(`🎯 ${this.weaponName}: Found target ship via threeObject:`, targetShip.shipName || 'Unknown');
+        } else if (typeof this.collisionTarget.applyDamage === 'function') {
+            targetShip = this.collisionTarget;
+            console.log(`🎯 ${this.weaponName}: Collision target is ship object:`, targetShip.shipName || 'Unknown');
+        }
+        
+        if (!targetShip) {
+            console.log(`⚠️ ${this.weaponName}: Could not find ship object for collision target`);
+            console.log(`🔍 Collision target structure:`, {
+                hasShip: !!this.collisionTarget.ship,
+                hasApplyDamage: typeof this.collisionTarget.applyDamage === 'function',
+                hasThreeObject: !!this.collisionTarget.threeObject,
+                hasUserData: !!this.collisionTarget.threeObject?.userData,
+                hasUserDataShip: !!this.collisionTarget.threeObject?.userData?.ship,
+                type: this.collisionTarget.type,
+                id: this.collisionTarget.id
+            });
+            return;
+        }
+        
+        // Apply full damage (no distance falloff for direct hits)
+        const damage = this.damage;
+        console.log(`💥 ${this.weaponName}: Applying ${damage} direct hit damage to ${targetShip.shipName || 'enemy ship'}`);
+        
+        const damageResult = targetShip.applyDamage(damage, 'kinetic', null);
+        console.log(`💥 ${this.weaponName}: After damage - hull: ${targetShip.currentHull}/${targetShip.maxHull}, destroyed: ${damageResult?.isDestroyed || false}`);
+        
+        // Show damage feedback on HUD
+        this.showDamageFeedback(targetShip, damage);
+        
+        // Play hit sound
+        if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
+            const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
+            const targetPos = new THREE.Vector3(position.x, position.y, position.z);
+            effectsManager.playSound('impact', targetPos, 0.7);
+        }
+        
+        // Check for destruction
+        if (damageResult && damageResult.isDestroyed) {
+            console.log(`🔥 ${this.weaponName}: ${targetShip.shipName || 'Enemy ship'} DESTROYED by direct hit!`);
+            
+            if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
+                const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
+                effectsManager.playSuccessSound(null, 0.8);
+            }
+        }
     }
     
     /**
