@@ -1349,7 +1349,6 @@ export class PhysicsManager {
             
             // If native detection found collisions, we're done
             if (nativeCollisionsFound > 0) {
-                console.log(`✅ Native collision detection found ${nativeCollisionsFound} collisions`);
                 return;
             }
             
@@ -1358,7 +1357,6 @@ export class PhysicsManager {
         }
         
         // Always run fallback detection for projectiles (native often misses fast-moving objects)
-        console.log('🔄 Running fallback collision detection (native found 0 collisions)');
         this.handleCollisionsFallback();
     }
 
