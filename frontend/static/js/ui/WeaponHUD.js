@@ -163,17 +163,53 @@ export class WeaponHUD {
             `;
             slotElement.appendChild(emptyText);
         } else {
-            // Weapon icon/name
+            // Weapon icon/name with full name on hover
             const weaponName = document.createElement('div');
             weaponName.className = 'weapon-name-display';
             weaponName.textContent = this.getWeaponAbbreviation(slot.equippedWeapon.name);
+            weaponName.title = slot.equippedWeapon.name; // Tooltip with full name
             weaponName.style.cssText = `
                 font-size: 10px;
                 font-weight: bold;
                 text-align: center;
                 color: ${isActive ? '#00ff00' : '#ffffff'};
+                cursor: help;
             `;
             slotElement.appendChild(weaponName);
+            
+            // Add weapon type indicator  
+            const typeIndicator = document.createElement('div');
+            typeIndicator.className = 'weapon-type-indicator';
+            
+            let indicatorColor, indicatorTitle;
+            if (slot.equippedWeapon.weaponType === 'scan-hit') {
+                indicatorColor = '#00ff00'; // Green for energy weapons
+                indicatorTitle = 'Energy Beam';
+            } else if (slot.equippedWeapon.weaponType === 'splash-damage') {
+                if (slot.equippedWeapon.blastRadius > 0) {
+                    indicatorColor = '#ff6600'; // Orange for splash damage
+                    indicatorTitle = 'Splash Damage';
+                } else {
+                    indicatorColor = '#00ffff'; // Cyan for direct hit projectiles
+                    indicatorTitle = 'Direct Hit';
+                }
+            } else {
+                indicatorColor = '#666666'; // Gray for unknown
+                indicatorTitle = 'Unknown Type';
+            }
+            
+            typeIndicator.style.cssText = `
+                position: absolute;
+                bottom: 2px;
+                right: 2px;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background-color: ${indicatorColor};
+                border: 1px solid rgba(255,255,255,0.3);
+            `;
+            typeIndicator.title = indicatorTitle;
+            slotElement.appendChild(typeIndicator);
             
             // Cooldown bar
             if (slot.isInCooldown()) {
@@ -233,9 +269,10 @@ export class WeaponHUD {
             'Plasma Cannon': 'PLA',
             'Pulse Cannon': 'PUL',
             'Phaser Array': 'PHA',
-            'Standard Missile': 'MIS',
+            'Standard Missile': 'STD',
             'Homing Missile': 'HOM',
-            'Heavy Torpedo': 'TOR',
+            'Photon Torpedo': 'TOR',
+            'Heavy Torpedo': 'HVY',
             'Proximity Mine': 'MIN',
             'Cluster Missile': 'CLU',
             'Guided Torpedo': 'GUI'
