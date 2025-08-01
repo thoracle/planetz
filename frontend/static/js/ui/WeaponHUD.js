@@ -193,6 +193,9 @@ export class WeaponHUD {
                     indicatorColor = '#00ffff'; // Cyan for direct hit projectiles
                     indicatorTitle = 'Direct Hit';
                 }
+            } else if (slot.equippedWeapon.weaponType === 'projectile') {
+                indicatorColor = '#00ffff'; // Cyan for direct hit projectiles  
+                indicatorTitle = 'Direct Hit';
             } else {
                 indicatorColor = '#666666'; // Gray for unknown
                 indicatorTitle = 'Unknown Type';
@@ -269,7 +272,7 @@ export class WeaponHUD {
             'Plasma Cannon': 'PLA',
             'Pulse Cannon': 'PUL',
             'Phaser Array': 'PHA',
-            'Standard Missile': 'STD',
+            'Standard Missile': 'MIS',
             'Homing Missile': 'HOM',
             'Photon Torpedo': 'TOR',
             'Heavy Torpedo': 'HVY',
