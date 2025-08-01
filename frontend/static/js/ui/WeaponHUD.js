@@ -628,10 +628,24 @@ export class WeaponHUD {
      * @param {string} targetName - Name of the target
      */
     showDamageFeedback(weaponName, damage, targetName) {
-        // Determine if this is splash damage by checking weapon name/type
-        const isSplashWeapon = weaponName.toLowerCase().includes('torpedo') || 
-                               weaponName.toLowerCase().includes('missile') ||
-                               weaponName.toLowerCase().includes('mine');
+        // Determine if this is splash damage by checking the actual weapon properties
+        // We need to check if the weapon actually has blast radius > 0
+        let isSplashWeapon = false;
+        
+        // Try to get the actual weapon data to check blast radius
+        if (window.starfieldManager?.viewManager?.ship?.weaponSystem) {
+            const weaponSystem = window.starfieldManager.viewManager.ship.weaponSystem;
+            const activeWeapon = weaponSystem.getActiveWeapon();
+            if (activeWeapon?.equippedWeapon && activeWeapon.equippedWeapon.name === weaponName) {
+                isSplashWeapon = activeWeapon.equippedWeapon.blastRadius > 0;
+                console.log(`🎯 FEEDBACK: ${weaponName} blastRadius: ${activeWeapon.equippedWeapon.blastRadius}, isSplash: ${isSplashWeapon}`);
+            }
+        }
+        
+        // Fallback to name checking only for true splash weapons (torpedoes with blast radius)
+        if (!isSplashWeapon && weaponName.toLowerCase().includes('torpedo')) {
+            isSplashWeapon = true; // Torpedoes are typically splash
+        }
         
         if (isSplashWeapon) {
             this.showSplashFeedback(weaponName, damage);

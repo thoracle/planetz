@@ -1074,10 +1074,16 @@ export class WeaponSlot {
                             
                             hitEntity.ship.applyDamage(subTargetDamage, 'energy', subTargetSystem.systemName);
                             console.log(`💥 Sub-target hit: ${hitEntity.ship.shipName || 'Enemy ship'} ${subTargetSystem.displayName} took ${subTargetDamage} damage`);
+                            
+                            // Show damage feedback for sub-targeting
+                            this.showWeaponFeedback(weapon.name, subTargetDamage, hitEntity.ship);
                         } else {
                             // No sub-targeting - apply normal damage
                             hitEntity.ship.applyDamage(weapon.damage, 'energy');
                             console.log(`💥 Physics hit: ${hitEntity.ship.shipName || 'Enemy ship'} took ${weapon.damage} damage - hull: ${hitEntity.ship.currentHull}/${hitEntity.ship.maxHull}`);
+                            
+                            // Show damage feedback for normal hit
+                            this.showWeaponFeedback(weapon.name, weapon.damage, hitEntity.ship);
                         }
                         
                         // Check if target was destroyed
@@ -1109,11 +1115,17 @@ export class WeaponSlot {
                     }
                 } else {
                     console.log('🎯 Physics laser beams missed all targets');
+                    // Show miss feedback
+                    this.showMissFeedback(weapon.name);
                 }
                 
                 // Set hit status for weapon effects
                 if (!anyHit) {
                     console.log('🎯 No physics hits detected - laser missed');
+                    // Show miss feedback if not already shown above
+                    if (physicsHitResult) {
+                        this.showMissFeedback(weapon.name);
+                    }
                 }
 
             }
@@ -1156,7 +1168,76 @@ export class WeaponSlot {
             isInCooldown: this.isInCooldown(),
             cooldownTimer: this.cooldownTimer,
             cooldownPercentage: this.getCooldownPercentage(),
-            remainingCooldownTime: this.getRemainingCooldownTime()
-                 };
-     }
+                        remainingCooldownTime: this.getRemainingCooldownTime()
+        };
+    }
+    
+    /**
+     * Show weapon feedback through HUD system
+     * @param {string} weaponName - Name of the weapon
+     * @param {number} damage - Damage dealt
+     * @param {Object} target - Target that was hit
+     */
+    showWeaponFeedback(weaponName, damage, target) {
+        try {
+            // Try to get weapon HUD reference through various paths
+            let weaponHUD = null;
+            
+            // Path 1: Through weapon system
+            if (this.weaponSystem?.weaponHUD) {
+                weaponHUD = this.weaponSystem.weaponHUD;
+            }
+            // Path 2: Through starfield manager
+            else if (window.starfieldManager?.weaponHUD) {
+                weaponHUD = window.starfieldManager.weaponHUD;
+            }
+            // Path 3: Through ship's weapon system
+            else if (this.ship?.weaponSystem?.weaponHUD) {
+                weaponHUD = this.ship.weaponSystem.weaponHUD;
+            }
+            
+            if (weaponHUD) {
+                const targetName = target.shipName || target.name || 'Target';
+                console.log(`🎯 LASER FEEDBACK: ${weaponName} calling showDamageFeedback (${damage} dmg)`);
+                weaponHUD.showDamageFeedback(weaponName, damage, targetName);
+            } else {
+                console.log(`🎯 LASER FEEDBACK: No weaponHUD found for ${weaponName}`);
+            }
+        } catch (error) {
+            console.log('Failed to show weapon feedback:', error.message);
+        }
+    }
+    
+    /**
+     * Show miss feedback through HUD system
+     * @param {string} weaponName - Name of the weapon
+     */
+    showMissFeedback(weaponName) {
+        try {
+            // Try to get weapon HUD reference through various paths
+            let weaponHUD = null;
+            
+            // Path 1: Through weapon system
+            if (this.weaponSystem?.weaponHUD) {
+                weaponHUD = this.weaponSystem.weaponHUD;
+            }
+            // Path 2: Through starfield manager
+            else if (window.starfieldManager?.weaponHUD) {
+                weaponHUD = window.starfieldManager.weaponHUD;
+            }
+            // Path 3: Through ship's weapon system
+            else if (this.ship?.weaponSystem?.weaponHUD) {
+                weaponHUD = this.ship.weaponSystem.weaponHUD;
+            }
+            
+            if (weaponHUD) {
+                console.log(`🎯 LASER FEEDBACK: ${weaponName} showing miss feedback`);
+                weaponHUD.showWeaponFeedback('miss', weaponName);
+            } else {
+                console.log(`🎯 LASER FEEDBACK: No weaponHUD found for ${weaponName} miss`);
+            }
+        } catch (error) {
+            console.log('Failed to show miss feedback:', error.message);
+        }
+    }
 } 
