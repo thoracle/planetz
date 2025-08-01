@@ -90,7 +90,8 @@ export class WeaponCard {
      * @returns {Projectile} Projectile instance
      */
     createProjectile(origin, target) {
-        console.log(`🚨 SPLASH PROJECTILE: Creating projectile for ${this.name} - TIMESTAMP: ${Date.now()}`);
+        const projectileType = this.blastRadius > 0 ? 'splash-damage' : 'direct-hit';
+        console.log(`🚀 PROJECTILE: Creating ${projectileType} projectile for ${this.name} - TIMESTAMP: ${Date.now()}`);
         
         // IMPROVED: Use camera aim direction for free-aim shooting instead of target-based
         let direction = { x: 0, y: 0, z: 1 }; // Default forward
@@ -458,7 +459,8 @@ export class SplashDamageWeapon extends WeaponCard {
      * @returns {Projectile} Projectile instance
      */
     createProjectile(origin, target) {
-        console.log(`🚨 SPLASH PROJECTILE: Creating projectile for ${this.name} - TIMESTAMP: ${Date.now()}`);
+        const projectileType = this.blastRadius > 0 ? 'splash-damage' : 'direct-hit';
+        console.log(`🚀 PROJECTILE: Creating ${projectileType} projectile for ${this.name} - TIMESTAMP: ${Date.now()}`);
         
         // IMPROVED: Use camera aim direction for free-aim shooting instead of target-based
         let direction = { x: 0, y: 0, z: 1 }; // Default forward
