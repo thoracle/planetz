@@ -1318,8 +1318,10 @@ export class PhysicsProjectile {
         if (!this.physicsManager || !position) return;
         
         try {
-            // Use physics spatial query to find all entities within blast radius
-            const affectedEntities = this.physicsManager.spatialQuery(position, this.blastRadius);
+                    // Use physics spatial query to find all entities within blast radius
+        console.log(`🔍 SPATIAL QUERY DEBUG: Position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}), radius: ${this.blastRadius}m`);
+        const affectedEntities = this.physicsManager.spatialQuery(position, this.blastRadius);
+        console.log(`🔍 SPATIAL QUERY RESULT: Found ${affectedEntities.length} entities, expected to find enemy ships within ${this.blastRadius}m`);
             
             // Log entity breakdown for better debugging
             const entityTypes = {};
