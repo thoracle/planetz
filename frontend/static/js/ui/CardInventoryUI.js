@@ -29,9 +29,9 @@ class PlayerData {
             ['engine_1', { cardType: 'impulse_engines', level: 1 }],
             ['power_1', { cardType: 'energy_reactor', level: 1 }],
             ['weapon_1', { cardType: 'laser_cannon', level: 1 }],
-            ['weapon_2', { cardType: 'homing_missile', level: 1 }],
+            ['weapon_2', { cardType: 'standard_missile', level: 1 }],
             ['weapon_3', { cardType: 'photon_torpedo', level: 1 }],
-            ['weapon_4', { cardType: 'proximity_mine', level: 1 }]
+            ['weapon_4', { cardType: 'homing_missile', level: 1 }]
         ]));
     }
     
