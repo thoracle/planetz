@@ -1562,8 +1562,8 @@ export class PhysicsManager {
                             
                             console.log(`💥 FALLBACK COLLISION: ${projectile.entity.id} hit ${target.entity.id} (distance: ${distance.toFixed(2)}m, trajectory: ${dotProduct.toFixed(2)})`);
                             
-                            // Visual debugging: Create a temporary collision visualization
-                            if (window.starfieldManager?.scene) {
+                            // Visual debugging: Create collision visualization only for splash damage weapons
+                            if (window.starfieldManager?.scene && projectile.rigidBody?.projectileOwner?.blastRadius > 0) {
                                 this.createCollisionVisualization(projectilePos, targetPos, collisionThreshold);
                             }
                             

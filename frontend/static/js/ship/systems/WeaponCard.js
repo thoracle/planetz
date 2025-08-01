@@ -1401,6 +1401,11 @@ export class PhysicsProjectile {
                 const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
                 effectsManager.playSuccessSound(null, 0.8);
             }
+            
+            // CRITICAL FIX: Remove destroyed ship from game world (was missing!)
+            if (window.starfieldManager && typeof window.starfieldManager.removeDestroyedTarget === 'function') {
+                window.starfieldManager.removeDestroyedTarget(targetShip);
+            }
         }
     }
     
