@@ -1541,16 +1541,29 @@ export class PhysicsManager {
                         const traveledDistance = projectileOwner?.startPosition ? projectilePos.distanceTo(projectileOwner.startPosition) : 'unknown';
                         console.log(`🎯 TRAJECTORY: ${projectile.entity.id} -> ${target.entity.id}: dot=${dotProduct.toFixed(2)}, vel=${velocityMagnitude.toFixed(1)}, travel=${hasTraveledEnough} (always), time=${hasWaitedEnough} (${timeElapsed}ms), distance=${distance.toFixed(1)}m`);
                         
-                        // Adjust trajectory requirements based on distance
-                        // Much stricter for close combat - require precise aim
-                        const requiredDotProduct = distance < 15 ? 0.98 : (distance < 25 ? 0.9 : 0.8);
-                        console.log(`🎯 DEBUG: distance=${distance.toFixed(1)}m, requiredDot=${requiredDotProduct.toFixed(2)}`);
+                        // Adjust trajectory requirements based on distance AND target type
+                        // Prioritize enemy ships with more forgiving trajectory requirements
+                        let requiredDotProduct;
+                        if (target.entity.type === 'enemy_ship') {
+                            // More forgiving for enemy ships (intended targets)
+                            requiredDotProduct = distance < 15 ? 0.90 : (distance < 25 ? 0.80 : 0.70);
+                        } else {
+                            // Very strict for celestial bodies (unintended targets)
+                            requiredDotProduct = distance < 15 ? 0.99 : (distance < 25 ? 0.95 : 0.90);
+                        }
+                        console.log(`🎯 DEBUG: ${target.entity.type} at ${distance.toFixed(1)}m, requiredDot=${requiredDotProduct.toFixed(2)}`);
                         
                         if (dotProduct > requiredDotProduct && (hasTraveledEnough || hasWaitedEnough)) {
+                            // Priority filtering: Only allow enemy ships to cause collisions
+                            if (target.entity.type !== 'enemy_ship') {
+                                console.log(`🚫 SKIPPING: ${target.entity.id} (${target.entity.type}) - only targeting enemy ships`);
+                                return; // Skip this target, function will continue with other logic
+                            }
+                            
                             console.log(`💥 FALLBACK COLLISION: ${projectile.entity.id} hit ${target.entity.id} (distance: ${distance.toFixed(2)}m, trajectory: ${dotProduct.toFixed(2)})`);
                             
                             // Visual debugging: Create a temporary collision visualization
-                            if (window.starfieldManager?.scene && target.entity.type === 'enemy_ship') {
+                            if (window.starfieldManager?.scene) {
                                 this.createCollisionVisualization(projectilePos, targetPos, collisionThreshold);
                             }
                             
