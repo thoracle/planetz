@@ -1596,7 +1596,7 @@ export class PhysicsManager {
                             
                             break; // Exit target loop for this projectile
                         } else {
-                            console.log(`🚫 TRAJECTORY CHECK: ${projectile.entity.id} not heading toward ${target.entity.id} (dot: ${dotProduct.toFixed(2)} < ${requiredDotProduct.toFixed(1)} req, travel: ${hasTraveledEnough}, time: ${hasWaitedEnough})`);
+                            console.log(`🚫 TRAJECTORY CHECK: ${projectile.entity.id} not heading toward ${target.entity.id} (dot: ${dotProduct.toFixed(2)} < ${requiredDotProduct.toFixed(2)} req, travel: ${hasTraveledEnough}, time: ${hasWaitedEnough})`);
                         }
                     } catch (error) {
                         console.log(`Error in trajectory checking for ${projectile.entity.id}:`, error);
