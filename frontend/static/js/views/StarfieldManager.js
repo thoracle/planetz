@@ -2301,6 +2301,11 @@ export class StarfieldManager {
                 // Ensure the highlighting is correct
                 this.weaponHUD.updateActiveWeaponHighlight(ship.weaponSystem.activeSlotIndex);
             }
+            
+            // Update crosshair display to reflect active weapon range and target status
+            if (this.viewManager && typeof this.viewManager.updateCrosshairDisplay === 'function') {
+                this.viewManager.updateCrosshairDisplay();
+            }
         }
     }
 

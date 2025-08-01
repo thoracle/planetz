@@ -51,6 +51,9 @@ export class WeaponSystemCore {
             this.activeSlotIndex = newIndex;
             this.updateActiveWeaponHighlight();
             this.showWeaponSelectFeedback();
+            
+            // Update crosshair display to reflect new active weapon range
+            this.updateCrosshairForActiveWeapon();
             return true;
         }
         
@@ -80,6 +83,9 @@ export class WeaponSystemCore {
             this.activeSlotIndex = newIndex;
             this.updateActiveWeaponHighlight();
             this.showWeaponSelectFeedback();
+            
+            // Update crosshair display to reflect new active weapon range
+            this.updateCrosshairForActiveWeapon();
             return true;
         }
         
@@ -550,6 +556,21 @@ export class WeaponSystemCore {
     updateActiveWeaponHighlight() {
         if (this.weaponHUD) {
             this.weaponHUD.updateActiveWeaponHighlight(this.activeSlotIndex);
+        }
+    }
+    
+    /**
+     * Update crosshair display to reflect active weapon range
+     */
+    updateCrosshairForActiveWeapon() {
+        try {
+            // Get the ViewManager through the ship reference
+            const viewManager = this.ship?.starfieldManager?.viewManager;
+            if (viewManager && typeof viewManager.updateCrosshairDisplay === 'function') {
+                viewManager.updateCrosshairDisplay();
+            }
+        } catch (error) {
+            console.log('Failed to update crosshair for active weapon:', error.message);
         }
     }
     

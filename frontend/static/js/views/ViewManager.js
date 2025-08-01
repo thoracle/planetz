@@ -989,16 +989,23 @@ export class ViewManager {
             return;
         }
         
-        // Get current weapon range from the active weapon slot
+        // Get current weapon range from the ACTIVE weapon slot (not first available)
         let currentWeaponRange = 0;
-        if (this.ship.weaponSystem && this.ship.weaponSystem.weaponSlots) {
-            for (const slot of this.ship.weaponSystem.weaponSlots) {
-                if (slot.equippedWeapon && slot.canFire()) {
-                    // Convert from meters to kilometers for comparison
-                    currentWeaponRange = slot.equippedWeapon.range / 1000;
-                    break; // Use first available weapon
-                }
+        let activeWeaponName = 'No Weapon';
+        
+        if (this.ship.weaponSystem && this.ship.weaponSystem.getActiveWeapon) {
+            const activeWeapon = this.ship.weaponSystem.getActiveWeapon();
+            if (activeWeapon && activeWeapon.equippedWeapon) {
+                // Convert from meters to kilometers for comparison
+                currentWeaponRange = activeWeapon.equippedWeapon.range / 1000;
+                activeWeaponName = activeWeapon.equippedWeapon.name;
             }
+        }
+        
+        // Debug log for crosshair-weapon sync (only on weapon change to avoid spam)
+        if (!this.lastLoggedWeapon || this.lastLoggedWeapon !== activeWeaponName) {
+            this.lastLoggedWeapon = activeWeaponName;
+            console.log(`🎯 CROSSHAIR SYNC: Active weapon "${activeWeaponName}" range: ${currentWeaponRange.toFixed(1)}km`);
         }
         
         // Default state - no target in sights
@@ -1138,23 +1145,27 @@ export class ViewManager {
         // Apply different crosshair shapes based on target state
         switch(state) {
             case 'none':
-                // No target - standard + crosshair
+                // No target - standard + crosshair with weapon range hint
                 this.setCrosshairShape(container, 'standard', baseColor, 0.6);
+                this.addWeaponRangeIndicator(container, baseColor);
                 break;
                 
             case 'inRange':
-                // Target in range - dashed circle with center dot for precision targeting
+                // Target in range - bright targeting reticle
                 this.setCrosshairShape(container, 'inRange', baseColor, 1.0);
+                this.addRangeStatusIndicator(container, 'IN RANGE', '#00ff00');
                 break;
                 
             case 'closeRange':
-                // Target close to range - use standard crosshair for now (complex version disabled)
-                this.setCrosshairShape(container, 'standard', baseColor, 0.9);
+                // Target close to range - amber warning
+                this.setCrosshairShape(container, 'standard', '#ffaa00', 0.9);
+                this.addRangeStatusIndicator(container, 'NEAR RANGE', '#ffaa00');
                 break;
                 
             case 'outRange':
-                // Target out of range - use standard crosshair for now (special version disabled)
-                this.setCrosshairShape(container, 'standard', baseColor, 0.8);
+                // Target out of range - red warning
+                this.setCrosshairShape(container, 'standard', '#ff3333', 0.8);
+                this.addRangeStatusIndicator(container, 'OUT OF RANGE', '#ff3333');
                 break;
         }
     }
@@ -1312,6 +1323,73 @@ export class ViewManager {
         } else if (container === this.aftCrosshair) {
             this.aftCrosshairElements = Array.from(container.querySelectorAll('.crosshair-element'));
         }
+    }
+    
+    /**
+     * Add weapon range indicator when no target is present
+     * @param {HTMLElement} container - Crosshair container
+     * @param {string} color - Color for the indicator
+     */
+    addWeaponRangeIndicator(container, color) {
+        // Get active weapon info
+        let weaponInfo = 'No Weapon';
+        if (this.ship?.weaponSystem?.getActiveWeapon) {
+            const activeWeapon = this.ship.weaponSystem.getActiveWeapon();
+            if (activeWeapon?.equippedWeapon) {
+                const rangeKm = (activeWeapon.equippedWeapon.range / 1000).toFixed(1);
+                weaponInfo = `${activeWeapon.equippedWeapon.name} (${rangeKm}km)`;
+            }
+        }
+        
+        const indicator = document.createElement('div');
+        indicator.className = 'range-indicator';
+        indicator.style.cssText = `
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: ${color};
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            text-align: center;
+            opacity: 0.7;
+            pointer-events: none;
+            white-space: nowrap;
+            text-shadow: 0 0 3px ${color};
+        `;
+        indicator.textContent = weaponInfo;
+        container.appendChild(indicator);
+    }
+    
+    /**
+     * Add range status indicator for targets
+     * @param {HTMLElement} container - Crosshair container  
+     * @param {string} status - Status text
+     * @param {string} color - Color for the indicator
+     */
+    addRangeStatusIndicator(container, status, color) {
+        const indicator = document.createElement('div');
+        indicator.className = 'range-indicator';
+        indicator.style.cssText = `
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: ${color};
+            font-family: 'Courier New', monospace;
+            font-size: 9px;
+            font-weight: bold;
+            text-align: center;
+            opacity: 0.9;
+            pointer-events: none;
+            white-space: nowrap;
+            text-shadow: 0 0 4px ${color};
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px 4px;
+            border-radius: 2px;
+        `;
+        indicator.textContent = status;
+        container.appendChild(indicator);
     }
     
     /**
