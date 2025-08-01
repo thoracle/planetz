@@ -764,6 +764,8 @@ export class PhysicsManager {
             return [];
         }
 
+        console.log(`🔍 SPATIAL QUERY: Called with position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}), radius: ${radius}m`);
+
         try {
             // Check if ghost objects are available
             if (!this.Ammo.btGhostObject) {
