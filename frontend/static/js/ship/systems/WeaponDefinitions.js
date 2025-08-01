@@ -199,6 +199,9 @@ export class WeaponDefinitions {
             return new ScanHitWeapon(weaponDef);
         } else if (weaponDef.weaponType === 'splash-damage') {
             return new SplashDamageWeapon(weaponDef);
+        } else if (weaponDef.weaponType === 'projectile') {
+            // Direct-hit projectiles use splash damage weapon class but with blastRadius=0
+            return new SplashDamageWeapon(weaponDef);
         }
         
         console.error(`Unknown weapon type: ${weaponDef.weaponType}`);
