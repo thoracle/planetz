@@ -1542,14 +1542,14 @@ export class PhysicsManager {
                         console.log(`🎯 TRAJECTORY: ${projectile.entity.id} -> ${target.entity.id}: dot=${dotProduct.toFixed(2)}, vel=${velocityMagnitude.toFixed(1)}, travel=${hasTraveledEnough} (always), time=${hasWaitedEnough} (${timeElapsed}ms), distance=${distance.toFixed(1)}m`);
                         
                         // Adjust trajectory requirements based on distance AND target type
-                        // Prioritize enemy ships with more forgiving trajectory requirements
+                        // Much stricter requirements for realistic torpedo targeting
                         let requiredDotProduct;
                         if (target.entity.type === 'enemy_ship') {
-                            // More forgiving for enemy ships (intended targets)
-                            requiredDotProduct = distance < 15 ? 0.90 : (distance < 25 ? 0.80 : 0.70);
+                            // Strict targeting for enemy ships - torpedoes need good aim
+                            requiredDotProduct = distance < 15 ? 0.98 : (distance < 25 ? 0.95 : 0.90);
                         } else {
-                            // Very strict for celestial bodies (unintended targets)
-                            requiredDotProduct = distance < 15 ? 0.99 : (distance < 25 ? 0.95 : 0.90);
+                            // Very strict for celestial bodies (unintended targets)  
+                            requiredDotProduct = distance < 15 ? 0.995 : (distance < 25 ? 0.98 : 0.95);
                         }
                         console.log(`🎯 DEBUG: ${target.entity.type} at ${distance.toFixed(1)}m, requiredDot=${requiredDotProduct.toFixed(2)}`);
                         
