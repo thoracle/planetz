@@ -980,15 +980,15 @@ export class PhysicsProjectile {
             
             // Silent range checking - no periodic logging to reduce spam
             
-            // Check if projectile has exceeded weapon range
-            if (distanceTraveled > this.flightRange) {
+            // Check if projectile has exceeded weapon range (with small buffer for precision)
+            if (distanceTraveled > this.flightRange - 50) { // Stop 50m before max range to prevent overshoot
                 if (window.physicsManager && window.physicsManager._debugLoggingEnabled) {
-                    console.log(`⏰ ${this.weaponName}: Max range reached`);
+                    console.log(`⏰ ${this.weaponName}: Max range reached (${distanceTraveled.toFixed(1)}m / ${this.flightRange}m)`);
                 }
                 this.expireOutOfRange();
                 clearInterval(this.rangeCheckInterval);
             }
-        }, 100); // Check every 100ms
+        }, 10); // Check every 10ms for better precision
     }
     
     /**
@@ -1236,7 +1236,7 @@ export class PhysicsProjectile {
                 Math.pow(currentPos.z - this.startPosition.z, 2)
             );
             
-            if (distance >= this.flightRange) {
+            if (distance >= this.flightRange - 50) { // Stop 50m before max range to prevent overshoot
                 // Silent max range reached
                 this.detonate();
                 return false;
@@ -1608,21 +1608,36 @@ export class PhysicsProjectile {
      */
     showDamageFeedback(target, damage) {
         try {
+            console.log(`🎯 FEEDBACK DEBUG: ${this.weaponName} trying to show damage feedback (${damage} dmg)`);
+            
             // Try to get weapon HUD reference through various paths
             let weaponHUD = null;
             
             // Path 1: Through ship's weapon system
             if (window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.starfieldManager.viewManager.ship.weaponSystem.weaponHUD;
+                console.log(`🎯 FEEDBACK DEBUG: Found weaponHUD via ship.weaponSystem`);
             }
             // Path 2: Through global ship reference
             else if (window.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.ship.weaponSystem.weaponHUD;
+                console.log(`🎯 FEEDBACK DEBUG: Found weaponHUD via global ship`);
+            }
+            // Path 3: Through StarfieldManager directly
+            else if (window.starfieldManager?.weaponHUD) {
+                weaponHUD = window.starfieldManager.weaponHUD;
+                console.log(`🎯 FEEDBACK DEBUG: Found weaponHUD via StarfieldManager`);
             }
             
             if (weaponHUD) {
                 const targetName = target.shipName || target.name || 'Target';
+                console.log(`🎯 FEEDBACK DEBUG: Calling showDamageFeedback on weaponHUD`);
                 weaponHUD.showDamageFeedback(this.weaponName, damage, targetName);
+            } else {
+                console.log(`🎯 FEEDBACK DEBUG: No weaponHUD found - checking paths:
+                  starfieldManager.viewManager.ship.weaponSystem.weaponHUD: ${!!window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD}
+                  ship.weaponSystem.weaponHUD: ${!!window.ship?.weaponSystem?.weaponHUD}
+                  starfieldManager.weaponHUD: ${!!window.starfieldManager?.weaponHUD}`);
             }
         } catch (error) {
             console.log('Failed to show damage feedback:', error.message);

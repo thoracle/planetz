@@ -1184,6 +1184,7 @@ export class TargetComputerManager {
      */
     getCurrentTargetData() {
         if (!this.currentTarget) {
+            console.log(`🎯 DEBUG: getCurrentTargetData() - no current target`);
             return null;
         }
 
@@ -1191,6 +1192,7 @@ export class TargetComputerManager {
         if (this.targetIndex >= 0 && this.targetIndex < this.targetObjects.length) {
             const targetData = this.targetObjects[this.targetIndex];
             if (targetData && targetData.object === this.currentTarget) {
+                console.log(`🎯 DEBUG: getCurrentTargetData() - valid target data found for ${targetData.name}`);
                 return this.processTargetData(targetData);
             }
         }
@@ -1210,6 +1212,8 @@ export class TargetComputerManager {
 
         // If we still can't find the target, it might have been destroyed
         console.log(`⚠️ Current target not found in target list - may have been destroyed`);
+        console.log(`🎯 DEBUG: Current target object:`, this.currentTarget?.userData?.ship?.shipName || 'no ship name');
+        console.log(`🎯 DEBUG: Available targets:`, this.targetObjects.map(t => t?.name || 'unnamed'));
         return null;
     }
 
@@ -1383,10 +1387,12 @@ export class TargetComputerManager {
                 shipType: currentTargetData.ship.shipType
             };
             targetName = info.name || 'Enemy Ship';
+            console.log(`🎯 DEBUG: updateReticleTargetInfo() - Enemy ship target: ${targetName}, diplomacy: ${info.diplomacy}`);
         } else {
             // Get celestial body info
             info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
             targetName = info?.name || 'Unknown Target';
+            console.log(`🎯 DEBUG: updateReticleTargetInfo() - Celestial body target: ${targetName}, type: ${info?.type || 'unknown'}`);
         }
         
         // Determine reticle color based on diplomacy using faction color rules
