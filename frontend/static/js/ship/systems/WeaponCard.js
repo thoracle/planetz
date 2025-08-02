@@ -559,16 +559,16 @@ export class SplashDamageWeapon extends WeaponCard {
                 }
                 
                 // REALISTIC TOLERANCE: Scale with distance for long-range targeting
-                // Close range (<1km): 5m tolerance
-                // Medium range (1-5km): 10-50m tolerance  
-                // Long range (>5km): 50-200m tolerance
+                // Close range (<1km): 150m tolerance (generous for close combat)
+                // Medium range (1-5km): 150-200m tolerance  
+                // Long range (>5km): 200-300m tolerance (increased from 200m max)
                 let aimToleranceMeters;
                 if (targetDistance < 1) {
-                    aimToleranceMeters = 5; // 5m for close combat
+                    aimToleranceMeters = 150; // 150m for close combat (was 5m - too strict!)
                 } else if (targetDistance < 5) {
-                    aimToleranceMeters = 10 + (targetDistance - 1) * 10; // 10-50m for medium range
+                    aimToleranceMeters = 150 + (targetDistance - 1) * 12.5; // 150-200m for medium range
                 } else {
-                    aimToleranceMeters = 50 + Math.min((targetDistance - 5) * 15, 150); // 50-200m for long range
+                    aimToleranceMeters = 200 + Math.min((targetDistance - 5) * 20, 100); // 200-300m for long range
                 }
                 const aimTolerance = aimToleranceMeters / 1000; // Convert to km units
                 

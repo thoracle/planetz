@@ -1059,12 +1059,12 @@ export class ViewManager {
                             const targetDistance = camera.position.distanceTo(enemyPos);
                             let aimToleranceMeters;
                             if (targetDistance < 1) {
-                                aimToleranceMeters = 5; // 5m for close combat
+                                aimToleranceMeters = 150; // 150m for close combat (was 5m - too strict!)
                             } else if (targetDistance < 5) {
-                                aimToleranceMeters = 10 + (targetDistance - 1) * 10; // 10-50m for medium range
-                            } else {
-                                aimToleranceMeters = 50 + Math.min((targetDistance - 5) * 15, 150); // 50-200m for long range
-                            }
+                    aimToleranceMeters = 150 + (targetDistance - 1) * 12.5; // 150-200m for medium range
+                } else {
+                    aimToleranceMeters = 200 + Math.min((targetDistance - 5) * 20, 100); // 200-300m for long range
+                }
                             const aimTolerance = aimToleranceMeters / 1000; // Convert to km units
                             if (distanceToAimLine <= aimTolerance) {
                                 // Only consider if within extended range (4x weapon range for out-of-range detection)
