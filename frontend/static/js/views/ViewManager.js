@@ -1172,8 +1172,8 @@ export class ViewManager {
                 break;
                 
             case 'outRange':
-                // Target out of range - dynamic reticle using faction color, more dimmed
-                this.setCrosshairShape(container, 'dynamicTarget', baseColor, 0.7);
+                // Target out of range - show standard crosshair (no target circle)
+                this.setCrosshairShape(container, 'standard', baseColor, 0.6);
                 break;
         }
     }
