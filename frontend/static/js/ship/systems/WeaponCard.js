@@ -379,6 +379,47 @@ export class ScanHitWeapon extends WeaponCard {
             console.log('Failed to show miss feedback:', error.message);
         }
     }
+    
+    /**
+     * Show target destruction feedback through HUD system
+     * @param {Object} targetShip The destroyed target ship
+     */
+    showTargetDestructionFeedback(targetShip) {
+        try {
+            const targetName = targetShip.shipName || 'ENEMY SHIP';
+            const message = `${targetName.toUpperCase()} DESTROYED`;
+            
+            console.log(`🎯 TARGET DESTRUCTION FEEDBACK: ${this.name} destroyed ${targetName}`);
+            
+            // Try to get weapon HUD reference through various paths
+            let weaponHUD = null;
+            
+            // Path 1: Through ship's weapon system
+            if (window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD) {
+                weaponHUD = window.starfieldManager.viewManager.ship.weaponSystem.weaponHUD;
+                console.log(`🎯 TARGET DESTRUCTION: Found weaponHUD via ship.weaponSystem`);
+            }
+            // Path 2: Through global ship reference
+            else if (window.ship?.weaponSystem?.weaponHUD) {
+                weaponHUD = window.ship.weaponSystem.weaponHUD;
+                console.log(`🎯 TARGET DESTRUCTION: Found weaponHUD via global ship`);
+            }
+            // Path 3: Through StarfieldManager directly
+            else if (window.starfieldManager?.weaponHUD) {
+                weaponHUD = window.starfieldManager.weaponHUD;
+                console.log(`🎯 TARGET DESTRUCTION: Found weaponHUD via StarfieldManager`);
+            }
+            
+            if (weaponHUD) {
+                console.log(`🎯 TARGET DESTRUCTION: Calling showWeaponFeedback('target-destroyed') on weaponHUD`);
+                weaponHUD.showWeaponFeedback('target-destroyed', message);
+            } else {
+                console.log(`🎯 TARGET DESTRUCTION: No weaponHUD found for target destruction feedback`);
+            }
+        } catch (error) {
+            console.log('Failed to show target destruction feedback:', error.message);
+        }
+    }
 }
 
 /**
@@ -1015,6 +1056,7 @@ export class SplashDamageWeapon extends WeaponCard {
             console.log('Failed to show target destruction feedback:', error.message);
         }
     }
+    
 }
 
 /**
