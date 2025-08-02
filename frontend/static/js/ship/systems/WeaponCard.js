@@ -1811,8 +1811,9 @@ export class PhysicsProjectile {
             effectsManager.playSound('impact', targetPos, 0.7);
         }
         
-        // Check for destruction
-        if (damageResult && damageResult.isDestroyed) {
+        // Check for destruction - either freshly destroyed this hit OR already at 0 hull
+        const isDestroyed = (damageResult && damageResult.isDestroyed) || (targetShip.currentHull <= 0.001);
+        if (isDestroyed) {
             console.log(`🔥 ${this.weaponName}: ${targetShip.shipName || 'Enemy ship'} DESTROYED by direct hit!`);
             
             // Show target destruction feedback on weapon HUD
@@ -1970,7 +1971,9 @@ export class PhysicsProjectile {
                             console.log(`🎯 ${this.weaponName}: Random subsystem hits: ${damageResult.systemsDamaged.join(', ')}`);
                         }
                         
-                        if (damageResult && damageResult.isDestroyed && !wasAlreadyDestroyed) {
+                        // Check for destruction - either freshly destroyed this hit OR newly at 0 hull
+                        const isNowDestroyed = (damageResult && damageResult.isDestroyed) || (targetShip.currentHull <= 0.001);
+                        if (isNowDestroyed && !wasAlreadyDestroyed) {
                             console.log(`🔥 ${this.weaponName}: ${targetShip.shipName || 'Enemy ship'} DESTROYED by torpedo blast!`);
                             targetShip.currentHull = 0;
                             
