@@ -93,27 +93,34 @@ export class WeaponCard {
         const projectileType = this.blastRadius > 0 ? 'splash-damage' : 'direct-hit';
         console.log(`🚀 PROJECTILE: Creating ${projectileType} projectile for ${this.name} - TIMESTAMP: ${Date.now()}`);
         
-        // IMPROVED: Use camera aim direction for free-aim shooting instead of target-based
+        // FIXED: Use target-based aiming for physics projectiles, camera direction as fallback
         let direction = { x: 0, y: 0, z: 1 }; // Default forward
         
-        // Check camera availability for direction calculation
-        
+        // FIXED: Use camera direction to eliminate parallax error
         if (window.starfieldManager && window.starfieldManager.camera) {
+            // Use camera direction for accurate crosshair alignment
             const camera = window.starfieldManager.camera;
-            
-            // Get camera's forward direction (where crosshairs are pointing)
-            const cameraForward = new THREE.Vector3(0, 0, -1);
-            cameraForward.applyQuaternion(camera.quaternion);
+            const cameraDirection = new window.THREE.Vector3(0, 0, -1);
+            cameraDirection.applyQuaternion(camera.quaternion);
             
             direction = {
-                x: cameraForward.x,
-                y: cameraForward.y,
-                z: cameraForward.z
+                x: cameraDirection.x,
+                y: cameraDirection.y,
+                z: cameraDirection.z
             };
+            console.log(`🎯 ${this.name}: Using camera direction for crosshair alignment`);
             
-            // Using camera aim direction
+            // DEBUG: Still log target info for reference
+            if (target && target.position) {
+                const distance = Math.sqrt(
+                    Math.pow(target.position.x - origin.x, 2) +
+                    Math.pow(target.position.y - origin.y, 2) +
+                    Math.pow(target.position.z - origin.z, 2)
+                );
+                console.log(`🔍 DEBUG ${this.name}: Target at distance ${distance.toFixed(2)}m`);
+            }
         } else if (target && target.position) {
-            // Fallback to target-based aiming if camera not available
+            // Fallback to target-based aiming if no camera available
             const dirVector = {
                 x: target.position.x - origin.x,
                 y: target.position.y - origin.y,
@@ -126,10 +133,24 @@ export class WeaponCard {
                     y: dirVector.y / magnitude,
                     z: dirVector.z / magnitude
                 };
+                console.log(`🎯 ${this.name}: Using target-based direction (camera fallback)`);
             }
-            // Using target-based direction as fallback
+        } else if (window.starfieldManager && window.starfieldManager.camera) {
+            // Final fallback to camera direction
+            const camera = window.starfieldManager.camera;
+            
+            // Get camera's forward direction (where crosshairs are pointing)
+            const cameraForward = new THREE.Vector3(0, 0, -1);
+            cameraForward.applyQuaternion(camera.quaternion);
+            
+            direction = {
+                x: cameraForward.x,
+                y: cameraForward.y,
+                z: cameraForward.z
+            };
+            console.log(`🎯 ${this.name}: Using camera direction (no target available)`);
         } else {
-            console.log(`🔍 DEBUG: No camera or target available for ${this.name}, using default direction`);
+            console.log(`🔍 DEBUG: No target or camera available for ${this.name}, using default direction`);
         }
 
         // Try to create physics-based projectile first
@@ -453,6 +474,106 @@ export class SplashDamageWeapon extends WeaponCard {
     }
     
     /**
+     * Get target under crosshairs using same logic as ViewManager crosshair system
+     * @param {THREE.Camera} camera - Camera for raycasting
+     * @returns {Object|null} Target object if valid crosshair target found, null otherwise
+     */
+    getCrosshairTarget(camera) {
+        if (!window.starfieldManager?.dummyShipMeshes) return null;
+        
+        // Use same raycaster logic as ViewManager.updateCrosshairTarget()
+        const raycaster = new window.THREE.Raycaster();
+        const cameraForward = new window.THREE.Vector3(0, 0, -1);
+        cameraForward.applyQuaternion(camera.quaternion);
+        
+        raycaster.set(camera.position, cameraForward);
+        
+        // Get weapon range for validation
+        const currentWeaponRange = (this.range || 30000) / 1000; // Convert meters to kilometers (world units)
+        
+        let closestEnemyDistance = null;
+        let closestEnemyShip = null;
+        let closestEnemyMesh = null;
+        
+        // Check all enemy ships - ALL must pass tolerance check (no direct intersection bypass)
+        const dummyShips = window.starfieldManager.dummyShipMeshes || [];
+        for (const enemyMesh of dummyShips) {
+            if (enemyMesh && enemyMesh.userData?.ship) {
+                // Check if enemy center is close to the aim line with distance-based tolerance
+                const enemyPos = enemyMesh.position;
+                const distanceToAimLine = raycaster.ray.distanceToPoint(enemyPos);
+                const targetDistance = camera.position.distanceTo(enemyPos);
+                
+                // DEBUG: Log raw calculation values to diagnose scale issues
+                console.log(`🔍 AIM DEBUG ${this.name}: Camera pos: (${camera.position.x.toFixed(1)}, ${camera.position.y.toFixed(1)}, ${camera.position.z.toFixed(1)})`);
+                console.log(`🔍 AIM DEBUG ${this.name}: Enemy pos: (${enemyPos.x.toFixed(1)}, ${enemyPos.y.toFixed(1)}, ${enemyPos.z.toFixed(1)})`);
+                console.log(`🔍 AIM DEBUG ${this.name}: Target distance: ${targetDistance.toFixed(3)}km`);
+                console.log(`🔍 AIM DEBUG ${this.name}: Raw distanceToPoint: ${raycaster.ray.distanceToPoint(enemyPos).toFixed(6)}`);
+                console.log(`🔍 AIM DEBUG ${this.name}: Ray origin: (${raycaster.ray.origin.x.toFixed(3)}, ${raycaster.ray.origin.y.toFixed(3)}, ${raycaster.ray.origin.z.toFixed(3)})`);
+                console.log(`🔍 AIM DEBUG ${this.name}: Ray direction: (${raycaster.ray.direction.x.toFixed(3)}, ${raycaster.ray.direction.y.toFixed(3)}, ${raycaster.ray.direction.z.toFixed(3)})`);
+                
+                // POTENTIAL FIX: Check if distanceToPoint is returning correct units
+                const rawDistance = raycaster.ray.distanceToPoint(enemyPos);
+                if (rawDistance > 1000) {
+                    console.log(`🚨 AIM DEBUG ${this.name}: Suspiciously large distance detected: ${rawDistance} - possible scale issue`);
+                }
+                
+                // REALISTIC TOLERANCE: Scale with distance for long-range targeting
+                // Close range (<1km): 5m tolerance
+                // Medium range (1-5km): 10-50m tolerance  
+                // Long range (>5km): 50-200m tolerance
+                let aimToleranceMeters;
+                if (targetDistance < 1) {
+                    aimToleranceMeters = 5; // 5m for close combat
+                } else if (targetDistance < 5) {
+                    aimToleranceMeters = 10 + (targetDistance - 1) * 10; // 10-50m for medium range
+                } else {
+                    aimToleranceMeters = 50 + Math.min((targetDistance - 5) * 15, 150); // 50-200m for long range
+                }
+                const aimTolerance = aimToleranceMeters / 1000; // Convert to km units
+                
+                console.log(`🔍 DEBUG ${this.name}: Distance to aim line: ${distanceToAimLine.toFixed(4)}km (tolerance: ${aimTolerance.toFixed(4)}km = ${aimToleranceMeters.toFixed(0)}m at ${targetDistance.toFixed(1)}km range)`);
+                if (distanceToAimLine <= aimTolerance) {
+                    const distance = targetDistance; // Use already calculated distance
+                    
+                    // Only consider if within extended range (4x weapon range)
+                    if (distance <= currentWeaponRange * 4) {
+                        if (closestEnemyDistance === null || distance < closestEnemyDistance) {
+                            closestEnemyDistance = distance;
+                            closestEnemyShip = enemyMesh.userData.ship;
+                            closestEnemyMesh = enemyMesh;
+                            console.log(`🎯 DEBUG ${this.name}: VALID target found: ${distanceToAimLine.toFixed(4)}km from aim line`);
+                        }
+                    }
+                } else {
+                    console.log(`❌ DEBUG ${this.name}: Target rejected: ${distanceToAimLine.toFixed(4)}km > ${aimTolerance}km tolerance`);
+                }
+            }
+        }
+        
+        // Validate target is within weapon range (same logic as ViewManager)
+        if (closestEnemyDistance !== null && closestEnemyShip && closestEnemyMesh) {
+            const rangeRatio = closestEnemyDistance / currentWeaponRange;
+            
+            if (rangeRatio <= 1.0) {
+                // Target is within range - return target with MESH position (not ship position)
+                return {
+                    ship: closestEnemyShip,
+                    position: {
+                        x: closestEnemyMesh.position.x,
+                        y: closestEnemyMesh.position.y,
+                        z: closestEnemyMesh.position.z
+                    },
+                    distance: closestEnemyDistance,
+                    name: closestEnemyShip.name || 'target'
+                };
+            }
+        }
+        
+        return null; // No valid target under crosshairs
+    }
+
+    /**
      * Create projectile for splash-damage weapon
      * @param {Object} origin Origin position
      * @param {Object} target Target object
@@ -462,43 +583,109 @@ export class SplashDamageWeapon extends WeaponCard {
         const projectileType = this.blastRadius > 0 ? 'splash-damage' : 'direct-hit';
         console.log(`🚀 PROJECTILE: Creating ${projectileType} projectile for ${this.name} - TIMESTAMP: ${Date.now()}`);
         
-        // IMPROVED: Use camera aim direction for free-aim shooting instead of target-based
+        // FIXED: Use target-based aiming for physics projectiles, camera direction as fallback
         let direction = { x: 0, y: 0, z: 1 }; // Default forward
         
-        // Check camera availability for direction calculation
-        
+        // Use crosshair targeting validation like ViewManager crosshair system
         if (window.starfieldManager && window.starfieldManager.camera) {
             const camera = window.starfieldManager.camera;
+            const crosshairTarget = this.getCrosshairTarget(camera);
             
-            // Get camera's forward direction (where crosshairs are pointing)
-            const cameraForward = new THREE.Vector3(0, 0, -1);
-            cameraForward.applyQuaternion(camera.quaternion);
-            
-            direction = {
-                x: cameraForward.x,
-                y: cameraForward.y,
-                z: cameraForward.z
-            };
-            
-            // Using camera aim direction
-        } else if (target && target.position) {
-            // Fallback to target-based aiming if camera not available
-            const dirVector = {
-                x: target.position.x - origin.x,
-                y: target.position.y - origin.y,
-                z: target.position.z - origin.z
-            };
-            const magnitude = Math.sqrt(dirVector.x * dirVector.x + dirVector.y * dirVector.y + dirVector.z * dirVector.z);
-            if (magnitude > 0) {
+            if (crosshairTarget) {
+                // VALIDATED TARGET: Aim directly at target position for accurate hit
+                const targetPos = crosshairTarget.position;
+                const originPos = origin;
+                
+                // Calculate direction from origin to target
+                const dx = targetPos.x - originPos.x;
+                const dy = targetPos.y - originPos.y;
+                const dz = targetPos.z - originPos.z;
+                const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                
                 direction = {
-                    x: dirVector.x / magnitude,
-                    y: dirVector.y / magnitude,
-                    z: dirVector.z / magnitude
+                    x: dx / distance,
+                    y: dy / distance,
+                    z: dz / distance
                 };
+                
+                console.log(`🔍 DEBUG ${this.name}: Expected direction to target: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
+                console.log(`🎯 ${this.name}: Firing at validated crosshair target: ${crosshairTarget.name} (${crosshairTarget.distance.toFixed(1)}km) - direct target trajectory`);
+                target = crosshairTarget; // Enable collision tracking
+            } else {
+                // NO TARGET: Use camera direction to ensure consistent trajectory (parallax-free)
+                const cameraDirection = new window.THREE.Vector3(0, 0, -1);
+                cameraDirection.applyQuaternion(camera.quaternion);
+                
+                direction = {
+                    x: cameraDirection.x,
+                    y: cameraDirection.y,
+                    z: cameraDirection.z
+                };
+                
+                console.log(`🔍 DEBUG ${this.name}: Camera direction vector: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
+                console.log(`🎯 ${this.name}: No valid crosshair target - firing in camera direction (expected miss)`);
+                target = null; // Disable collision tracking
+                console.log(`🔍 DEBUG ${this.name}: Target cleared - now null`);
+                
+                // DEBUG: Calculate where this trajectory will take the missile
+                const projectedPos = {
+                    x: origin.x + direction.x * 1000,
+                    y: origin.y + direction.y * 1000, 
+                    z: origin.z + direction.z * 1000
+                };
+                console.log(`🔍 MISS DEBUG ${this.name}: Missile will fly toward: (${projectedPos.x.toFixed(1)}, ${projectedPos.y.toFixed(1)}, ${projectedPos.z.toFixed(1)})`);
+                
+                // DEBUG: Check how close this trajectory passes to any targets
+                if (window.starfieldManager?.dummyShipMeshes) {
+                    const dummyShips = window.starfieldManager.dummyShipMeshes;
+                    for (const enemyMesh of dummyShips) {
+                        if (enemyMesh && enemyMesh.position) {
+                            const enemyPos = enemyMesh.position;
+                            const toEnemy = {
+                                x: enemyPos.x - origin.x,
+                                y: enemyPos.y - origin.y,
+                                z: enemyPos.z - origin.z
+                            };
+                            const distanceToEnemy = Math.sqrt(toEnemy.x*toEnemy.x + toEnemy.y*toEnemy.y + toEnemy.z*toEnemy.z);
+                            
+                            // Calculate closest approach distance using vector projection
+                            const dotProduct = toEnemy.x*direction.x + toEnemy.y*direction.y + toEnemy.z*direction.z;
+                            const projectionLength = Math.max(0, dotProduct); // Don't go backward
+                            const closestPoint = {
+                                x: origin.x + direction.x * projectionLength,
+                                y: origin.y + direction.y * projectionLength,
+                                z: origin.z + direction.z * projectionLength
+                            };
+                            const missDistance = Math.sqrt(
+                                Math.pow(enemyPos.x - closestPoint.x, 2) +
+                                Math.pow(enemyPos.y - closestPoint.y, 2) +
+                                Math.pow(enemyPos.z - closestPoint.z, 2)
+                            );
+                            
+                            const shipName = enemyMesh.userData?.ship?.shipName || 'Enemy';
+                            console.log(`🔍 MISS DEBUG ${this.name}: Will pass ${missDistance.toFixed(3)}km from ${shipName} (collision radius: 0.05m = 0.00005km)`);
+                            
+                            if (missDistance < 0.001) { // Less than 1m
+                                console.log(`🚨 MISS DEBUG ${this.name}: WARNING - Very close pass to ${shipName}! Possible accidental hit!`);
+                            }
+                        }
+                    }
+                }
             }
-            // Using target-based direction as fallback
+            
+            // DEBUG: Log firing details
+            if (target && target.position) {
+                console.log(`🔍 DEBUG ${this.name}: Target position: x=${target.position.x}, y=${target.position.y}, z=${target.position.z}`);
+                console.log(`🔍 DEBUG ${this.name}: Origin position: x=${origin.x}, y=${origin.y}, z=${origin.z}`);
+                const distance = Math.sqrt(
+                    Math.pow(target.position.x - origin.x, 2) +
+                    Math.pow(target.position.y - origin.y, 2) +
+                    Math.pow(target.position.z - origin.z, 2)
+                );
+                console.log(`🔍 DEBUG ${this.name}: Distance to target: ${distance.toFixed(2)}km`);
+            }
         } else {
-            console.log(`🔍 DEBUG: No camera or target available for ${this.name}, using default direction`);
+            console.log(`🔍 DEBUG: No camera available for ${this.name}, using default direction`);
         }
 
         // ENHANCED: Try to create physics-based projectile with comprehensive error handling
@@ -528,6 +715,7 @@ export class SplashDamageWeapon extends WeaponCard {
             if (window.physicsManager.isReady()) {
                 try {
                     console.log(`✅ ${this.name}: Creating physics-based projectile`);
+                    console.log(`🔍 DEBUG ${this.name}: Target being passed to physics: ${target ? target.name || 'unnamed target' : 'NULL'}`);
                     
                     const physicsProjectile = new PhysicsProjectile({
                         origin: origin,
@@ -1044,13 +1232,34 @@ export class PhysicsProjectile {
                 this.scene.add(this.threeObject);
             }
             
-            // Create physics rigid body
+            // SMART COLLISION RADIUS: Scale with target distance for realistic hit detection
+            let collisionRadius;
+            if (this.target && this.target.distance) {
+                const targetDistance = this.target.distance;
+                // Distance-based collision radius for realistic long-range combat
+                // Close range (<1km): 0.5m radius (precise)
+                // Medium range (1-5km): 0.5-2m radius  
+                // Long range (>5km): 2-8m radius (accounts for trajectory errors)
+                if (targetDistance < 1) {
+                    collisionRadius = 0.5; // Precise close combat
+                } else if (targetDistance < 5) {
+                    collisionRadius = 0.5 + (targetDistance - 1) * 0.375; // 0.5-2m scaling
+                } else {
+                    collisionRadius = 2 + Math.min((targetDistance - 5) * 0.6, 6); // 2-8m scaling
+                }
+                console.log(`🎯 ${this.weaponName}: Collision radius: ${collisionRadius.toFixed(2)}m for ${targetDistance.toFixed(1)}km target`);
+            } else {
+                collisionRadius = 0.05; // ULTRA-PRECISE: 5cm radius for expected misses to prevent accidental hits  
+                console.log(`🎯 ${this.weaponName}: Ultra-precise collision radius: ${collisionRadius}m (no target - expected miss)`);
+            }
+            
+            // Create physics rigid body with distance-appropriate collision radius
             const bodyConfig = {
                 mass: 10.0,
                 restitution: 0.0, // SIMPLIFIED: No bouncing at all
                 friction: 0.3,
                 shape: 'sphere',
-                radius: 2.0,
+                radius: collisionRadius, // SMART RADIUS: Scales with target distance for realistic hit detection
                 entityType: 'projectile',
                 entityId: `${this.weaponName}_${Date.now()}`,
                 health: 1
@@ -1082,7 +1291,24 @@ export class PhysicsProjectile {
                 );
                 this.rigidBody.setLinearVelocity(physicsVelocity);
                 
-                console.log(`🚀 ${this.weaponName}: Set velocity to ${speed} units/s in direction:`, direction);
+                console.log(`🚀 ${this.weaponName}: Set velocity to ${speed} units/s in direction:`, {
+                    x: direction.x.toFixed(3), 
+                    y: direction.y.toFixed(3), 
+                    z: direction.z.toFixed(3)
+                });
+                
+                // DEBUG: Also log where this will take the projectile
+                const projectedEndPos = {
+                    x: (origin.x + direction.x * 1000).toFixed(1),
+                    y: (origin.y + direction.y * 1000).toFixed(1), 
+                    z: (origin.z + direction.z * 1000).toFixed(1)
+                };
+                console.log(`🎯 ${this.weaponName}: Will fly toward position:`, projectedEndPos);
+                
+                // DEBUG: Direction is now properly calculated to aim at validated targets
+                if (this.target && this.target.position) {
+                    console.log(`🔍 DEBUG ${this.weaponName}: Missile trajectory aimed directly at target position`);
+                }
                 
                 // Set up collision callback
                 this.setupCollisionCallback();
@@ -1601,7 +1827,7 @@ export class PhysicsProjectile {
      * Calculate distance between two positions
      * @param {Object} pos1 First position {x, y, z}
      * @param {Object} pos2 Second position {x, y, z} 
-     * @returns {number} Distance in meters
+     * @returns {number} Distance in kilometers (1 world unit = 1km)
      */
     calculateDistance(pos1, pos2) {
         return Math.sqrt(
@@ -1701,8 +1927,8 @@ export class PhysicsProjectile {
             }
             
             // Remove from physics world
-            if (this.rigidBody && this.physicsManager) {
-                this.physicsManager.removeRigidBody(this.rigidBody);
+            if (this.rigidBody && this.physicsManager && this.threeObject) {
+                this.physicsManager.removeRigidBody(this.threeObject);
                 this.rigidBody = null;
             }
             

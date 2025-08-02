@@ -32,6 +32,17 @@ Replace the current incomplete Ammo.js build (1.2MB, missing critical features) 
 4. **Better performance** - Native C++ physics vs JavaScript fallback
 5. **Reduced codebase complexity** - Remove 300+ lines of fallback code
 
+## Collision Detection in Ammo.js reference
+
+part 1:
+https://medium.com/@bluemagnificent/intro-to-javascript-3d-physics-using-ammo-js-and-three-js-dd48df81f591
+
+part 2:
+https://medium.com/@bluemagnificent/moving-objects-in-javascript-3d-physics-using-ammo-js-and-three-js-6e39eff6d9e5
+
+part 3:
+https://medium.com/@bluemagnificent/collision-detection-in-javascript-3d-physics-using-ammo-js-and-three-js-31a5569291ef
+
 ## Implementation Plan
 
 ### Phase 1: Assessment and Preparation (1-2 hours)

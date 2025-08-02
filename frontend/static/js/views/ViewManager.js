@@ -1055,15 +1055,22 @@ export class ViewManager {
                             const enemyPos = enemyMesh.position;
                             const distanceToAimLine = raycaster.ray.distanceToPoint(enemyPos);
                             
-                            // Consider enemy "under crosshairs" if within 2km of aim line
-                            const aimTolerance = 2.0; // 2km tolerance
+                            // REALISTIC TOLERANCE: Scale with distance to match weapon system
+                            const targetDistance = camera.position.distanceTo(enemyPos);
+                            let aimToleranceMeters;
+                            if (targetDistance < 1) {
+                                aimToleranceMeters = 5; // 5m for close combat
+                            } else if (targetDistance < 5) {
+                                aimToleranceMeters = 10 + (targetDistance - 1) * 10; // 10-50m for medium range
+                            } else {
+                                aimToleranceMeters = 50 + Math.min((targetDistance - 5) * 15, 150); // 50-200m for long range
+                            }
+                            const aimTolerance = aimToleranceMeters / 1000; // Convert to km units
                             if (distanceToAimLine <= aimTolerance) {
-                                const distance = camera.position.distanceTo(enemyPos);
-                                
                                 // Only consider if within extended range (4x weapon range for out-of-range detection)
-                                if (distance <= currentWeaponRange * 4) {
-                                    if (closestEnemyDistance === null || distance < closestEnemyDistance) {
-                                        closestEnemyDistance = distance;
+                                if (targetDistance <= currentWeaponRange * 4) {
+                                    if (closestEnemyDistance === null || targetDistance < closestEnemyDistance) {
+                                        closestEnemyDistance = targetDistance;
                                         closestEnemyShip = enemyMesh.userData.ship;
                                     }
                                 }

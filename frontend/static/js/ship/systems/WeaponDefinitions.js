@@ -108,7 +108,7 @@ export class WeaponDefinitions {
                     explosionType: 'kinetic',
                     armorPiercing: true,
                     directHitOnly: true, // Flag to indicate this is direct-hit projectile
-                    projectileSpeed: 6000 // m/s - 5 second travel time to max range for realistic feel
+                    projectileSpeed: 1500 // m/s - Reduced from 6000 to prevent physics tunneling at long range
                 }
             },
             
@@ -153,7 +153,7 @@ export class WeaponDefinitions {
                     explosionType: 'photon',
                     armorPiercing: true,
                     shieldPiercing: true, // Photon torpedoes pierce shields
-                    projectileSpeed: 7500 // m/s - 6 second travel time to max range
+                    projectileSpeed: 2000 // m/s - Reduced from 7500 to prevent physics tunneling, still faster than standard missiles
                 }
             },
             

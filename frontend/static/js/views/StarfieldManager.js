@@ -3716,13 +3716,14 @@ export class StarfieldManager {
                 // Add physics body for the ship (static body for target practice)
                 if (window.physicsManager && window.physicsManagerReady) {
                     const physicsBody = window.physicsManager.createShipRigidBody(shipMesh, {
-                        mass: 0, // Static body - won't move when hit by projectiles
+                        mass: 1000, // Dynamic body with mass for better collision detection (was 0)
                         width: 4.0,  // Ship dimensions based on mesh size (2.0 * 2 for buffer)
                         height: 4.0,
                         depth: 4.0,
                         entityType: 'enemy_ship',
                         entityId: `target_dummy_${i + 1}`,
-                        health: dummyShip.currentHull || 100
+                        health: dummyShip.currentHull || 100,
+                        damping: 0.99 // High damping to keep ships mostly stationary despite having mass
                     });
                     
                     if (physicsBody) {

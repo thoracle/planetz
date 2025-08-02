@@ -576,13 +576,13 @@ export class WeaponHUD {
         this.weaponFeedbackDisplay.style.display = 'block';
         this.weaponFeedbackDisplay.style.opacity = '1';
 
-        // Auto-hide after 2 seconds
+        // Auto-hide after 6 seconds (3x longer than original)
         this.feedbackTimeout = setTimeout(() => {
             this.weaponFeedbackDisplay.style.opacity = '0';
             setTimeout(() => {
                 this.weaponFeedbackDisplay.style.display = 'none';
             }, 300); // Fade out duration
-        }, 2000);
+        }, 6000);
     }
 
     /**
