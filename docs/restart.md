@@ -111,8 +111,8 @@ planetz/
 
 ### Flask Backend (Recommended)
 ```bash
-# Terminal - Backend (serves everything from project root)
-python app.py
+# Terminal - Backend (from backend directory)
+cd backend && python app.py
 # Runs on http://127.0.0.1:5001
 
 # Browser
@@ -123,7 +123,7 @@ open http://127.0.0.1:5001
 ```bash
 # Kill any existing server and start fresh
 pkill -f "python app.py" || true
-python app.py
+cd backend && python app.py
 
 # Browser  
 open http://127.0.0.1:5001
@@ -131,9 +131,9 @@ open http://127.0.0.1:5001
 
 ### Alternative: With Virtual Environment
 ```bash
-# If using virtual environment
+# If using virtual environment (from project root)
 source .venv/bin/activate
-python app.py
+cd backend && python app.py
 ```
 
 ## 🎯 Current Gameplay Features

@@ -1268,10 +1268,10 @@ export class PhysicsProjectile {
                 console.log(`🎯 ${this.weaponName}: Ultra-precise collision radius: ${collisionRadius}m (no target - expected miss)`);
             }
             
-            // Get projectile speed for physics configuration
-            let projectileSpeed = this.isHoming ? 8000 : 10000; // Default speeds
+            // Get projectile velocity for weapon configuration
+            let weaponVelocity = this.isHoming ? 8000 : 10000; // Default speeds
             if (this.weaponData?.specialProperties?.projectileSpeed) {
-                projectileSpeed = this.weaponData.specialProperties.projectileSpeed;
+                weaponVelocity = this.weaponData.specialProperties.projectileSpeed;
             }
             
             // Create physics rigid body with distance-appropriate collision radius
@@ -1284,7 +1284,7 @@ export class PhysicsProjectile {
                 entityType: 'projectile',
                 entityId: `${this.weaponName}_${Date.now()}`,
                 health: 1,
-                projectileSpeed: projectileSpeed // SPEED DATA: For enhanced CCD configuration
+                projectileSpeed: weaponVelocity // SPEED DATA: For enhanced CCD configuration
             };
             
             this.rigidBody = this.physicsManager.createRigidBody(this.threeObject, bodyConfig);
@@ -1293,11 +1293,11 @@ export class PhysicsProjectile {
                 // Silent rigid body creation
                 
                 // Calculate velocity based on direction and weapon-specific speed
-                console.log(`🚀 ${this.weaponName}: Using weapon-specific speed: ${projectileSpeed} m/s`);
+                console.log(`🚀 ${this.weaponName}: Using weapon-specific speed: ${weaponVelocity} m/s`);
                 this.velocity = {
-                    x: direction.x * projectileSpeed,
-                    y: direction.y * projectileSpeed,
-                    z: direction.z * projectileSpeed
+                    x: direction.x * weaponVelocity,
+                    y: direction.y * weaponVelocity,
+                    z: direction.z * weaponVelocity
                 };
                 
                 // Apply velocity to the physics rigid body
@@ -1308,7 +1308,7 @@ export class PhysicsProjectile {
                 );
                 this.rigidBody.setLinearVelocity(physicsVelocity);
                 
-                console.log(`🚀 ${this.weaponName}: Set velocity to ${projectileSpeed} units/s in direction:`, {
+                console.log(`🚀 ${this.weaponName}: Set velocity to ${weaponVelocity} units/s in direction:`, {
                     x: direction.x.toFixed(3), 
                     y: direction.y.toFixed(3), 
                     z: direction.z.toFixed(3)
