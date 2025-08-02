@@ -585,15 +585,7 @@ export class SplashDamageWeapon extends WeaponCard {
                 const distanceToAimLine = raycaster.ray.distanceToPoint(enemyPos);
                 const targetDistance = camera.position.distanceTo(enemyPos);
                 
-                // DEBUG: Log raw calculation values to diagnose scale issues
-                console.log(`🔍 AIM DEBUG ${this.name}: Camera pos: (${camera.position.x.toFixed(1)}, ${camera.position.y.toFixed(1)}, ${camera.position.z.toFixed(1)})`);
-                console.log(`🔍 AIM DEBUG ${this.name}: Enemy pos: (${enemyPos.x.toFixed(1)}, ${enemyPos.y.toFixed(1)}, ${enemyPos.z.toFixed(1)})`);
-                console.log(`🔍 AIM DEBUG ${this.name}: Target distance: ${targetDistance.toFixed(3)}km`);
-                console.log(`🔍 AIM DEBUG ${this.name}: Raw distanceToPoint: ${raycaster.ray.distanceToPoint(enemyPos).toFixed(6)}`);
-                console.log(`🔍 AIM DEBUG ${this.name}: Ray origin: (${raycaster.ray.origin.x.toFixed(3)}, ${raycaster.ray.origin.y.toFixed(3)}, ${raycaster.ray.origin.z.toFixed(3)})`);
-                console.log(`🔍 AIM DEBUG ${this.name}: Ray direction: (${raycaster.ray.direction.x.toFixed(3)}, ${raycaster.ray.direction.y.toFixed(3)}, ${raycaster.ray.direction.z.toFixed(3)})`);
-                
-                // POTENTIAL FIX: Check if distanceToPoint is returning correct units
+                // Removed AIM DEBUG spam - only log scale issues if detected
                 const rawDistance = raycaster.ray.distanceToPoint(enemyPos);
                 if (rawDistance > 1000) {
                     console.log(`🚨 AIM DEBUG ${this.name}: Suspiciously large distance detected: ${rawDistance} - possible scale issue`);
@@ -623,11 +615,11 @@ export class SplashDamageWeapon extends WeaponCard {
                             closestEnemyDistance = distance;
                             closestEnemyShip = enemyMesh.userData.ship;
                             closestEnemyMesh = enemyMesh;
-                            console.log(`🎯 DEBUG ${this.name}: VALID target found: ${distanceToAimLine.toFixed(4)}km from aim line`);
+                            // Removed VALID target debug spam
                         }
                     }
                 } else {
-                    console.log(`❌ DEBUG ${this.name}: Target rejected: ${distanceToAimLine.toFixed(4)}km > ${aimTolerance}km tolerance`);
+                    // Removed target rejection debug spam
                 }
             }
         }
@@ -754,17 +746,7 @@ export class SplashDamageWeapon extends WeaponCard {
                 }
             }
             
-            // DEBUG: Log firing details
-            if (target && target.position) {
-                console.log(`🔍 DEBUG ${this.name}: Target position: x=${target.position.x}, y=${target.position.y}, z=${target.position.z}`);
-                console.log(`🔍 DEBUG ${this.name}: Origin position: x=${origin.x}, y=${origin.y}, z=${origin.z}`);
-                const distance = Math.sqrt(
-                    Math.pow(target.position.x - origin.x, 2) +
-                    Math.pow(target.position.y - origin.y, 2) +
-                    Math.pow(target.position.z - origin.z, 2)
-                );
-                console.log(`🔍 DEBUG ${this.name}: Distance to target: ${distance.toFixed(2)}km`);
-            }
+            // Removed firing details debug spam
         } else {
             console.log(`🔍 DEBUG: No camera available for ${this.name}, using default direction`);
         }
@@ -1572,13 +1554,8 @@ export class PhysicsProjectile {
         } else {
             this.collisionTarget = otherObject; // Fallback to threeObject
         }
-        // Add detailed collision debugging
-        console.log(`🔥 COLLISION DEBUG: ${this.weaponName} onCollision called`);
-        console.log(`🔥 COLLISION DEBUG: hasDetonated=${this.hasDetonated}, collisionProcessed=${this.collisionProcessed}`);
-        
         // CRITICAL: Prevent collision loops
         if (this.hasDetonated || this.collisionProcessed) {
-            console.log(`🔥 COLLISION DEBUG: Early return - already processed`);
             return;
         }
         this.collisionProcessed = true;
@@ -1847,19 +1824,8 @@ export class PhysicsProjectile {
         
         try {
                     // Use physics spatial query to find all entities within blast radius
-        console.log(`🔍 SPATIAL QUERY DEBUG: Position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}), radius: ${this.blastRadius}m`);
         const affectedEntities = this.physicsManager.spatialQuery(position, this.blastRadius);
-        console.log(`🔍 SPATIAL QUERY RESULT: Found ${affectedEntities.length} entities, expected to find enemy ships within ${this.blastRadius}m`);
-            
-            // Log entity breakdown for better debugging
-            const entityTypes = {};
-            affectedEntities.forEach(entity => {
-                const type = entity.type || 'unknown';
-                entityTypes[type] = (entityTypes[type] || 0) + 1;
-            });
-            
-            // Always log splash damage results for debugging
-            console.log(`💥 ${this.weaponName}: Found ${affectedEntities.length} entities in ${this.blastRadius}m blast radius:`, entityTypes);
+        // Removed spatial query debug spam
             
             affectedEntities.forEach(entity => {
                 // Skip projectiles (including the torpedo itself) - they shouldn't take splash damage

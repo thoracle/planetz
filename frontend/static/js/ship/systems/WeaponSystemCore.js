@@ -289,7 +289,7 @@ export class WeaponSystemCore {
             if (this.lockedTarget && this.validateHomingMissileTarget(weapon)) {
                 const fired = activeSlot.fire(this.ship, this.lockedTarget);
                 if (fired) {
-                    console.log(`🎯 AUTOFIRE: Fired homing ${weapon.name} at ${this.lockedTarget.name || 'target'}`);
+                                                // Removed autofire spam
                 }
             } else {
                 // Homing missile can't fire - disable autofire and notify user
@@ -306,13 +306,13 @@ export class WeaponSystemCore {
             // ALL OTHER WEAPONS: Fire at locked target (lasers, torpedoes, non-homing missiles)
             const fired = activeSlot.fire(this.ship, this.lockedTarget);
             if (fired) {
-                console.log(`🎯 AUTOFIRE: Fired ${weapon.name} at ${this.lockedTarget.name || 'target'}`);
+                                        // Removed autofire spam
             }
         } else if (!weapon.targetLockRequired) {
             // FREE-AIM WEAPONS: Can fire without target (toward crosshairs)
             const fired = activeSlot.fire(this.ship, null);
             if (fired) {
-                console.log(`🎯 AUTOFIRE: Fired ${weapon.name} toward crosshairs (free-aim)`);
+                // Removed autofire spam
             }
         }
     }

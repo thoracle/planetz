@@ -314,7 +314,7 @@ export default class Weapons extends System {
             timestamp: this.lastFireTime
         };
         
-        console.log(`Weapons fired: ${damage.toFixed(1)} damage, ${energyCost.toFixed(1)} energy consumed`);
+        // Removed weapon firing spam
         
         return fireResult;
     }

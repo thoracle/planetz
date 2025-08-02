@@ -228,7 +228,7 @@ export class WeaponSystem extends System {
             range: this.getCurrentRange()
         };
         
-        console.log(`${this.displayName} fired - Hit: ${hit}, Damage: ${result.damage}, Energy: ${energyCost}`);
+        // Removed weapon firing spam
         
         return result;
     }
