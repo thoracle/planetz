@@ -411,6 +411,9 @@ export default class EnemyShip {
                     
                     console.log(`🎯 LUCKY HIT: ${randomSystem} system took ${systemDamage.toFixed(1)} random damage (${(healthBefore * 100).toFixed(1)}% → ${(healthAfter * 100).toFixed(1)}%)`);
                     
+                    // Show weapon HUD feedback for lucky hit
+                    this.showLuckyHitFeedback(randomSystem, systemDamage, healthBefore, healthAfter);
+                    
                     // Check if subsystem was destroyed
                     if (healthAfter === 0 && healthBefore > 0) {
                         console.log(`💥 RANDOM SYSTEM DESTROYED: ${randomSystem} on ${this.shipName} disabled by projectile hit!`);
@@ -483,5 +486,51 @@ export default class EnemyShip {
         }
         
         return true;
+    }
+    
+    /**
+     * Show weapon HUD feedback for lucky hits on sub-systems
+     * @param {string} systemName Name of the affected system
+     * @param {number} damage Damage dealt to the system
+     * @param {number} healthBefore Health percentage before damage
+     * @param {number} healthAfter Health percentage after damage
+     */
+    showLuckyHitFeedback(systemName, damage, healthBefore, healthAfter) {
+        try {
+            const systemDisplayName = systemName.replace(/_/g, ' ').toUpperCase();
+            const beforePercent = (healthBefore * 100).toFixed(0);
+            const afterPercent = (healthAfter * 100).toFixed(0);
+            const message = `LUCKY HIT! ${systemDisplayName} ${beforePercent}%→${afterPercent}%`;
+            
+            console.log(`🎯 LUCKY HIT FEEDBACK: Showing feedback for ${systemName} damage`);
+            
+            // Try to get weapon HUD reference through various paths
+            let weaponHUD = null;
+            
+            // Path 1: Through ship's weapon system
+            if (window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD) {
+                weaponHUD = window.starfieldManager.viewManager.ship.weaponSystem.weaponHUD;
+                console.log(`🎯 LUCKY HIT: Found weaponHUD via ship.weaponSystem`);
+            }
+            // Path 2: Through global ship reference
+            else if (window.ship?.weaponSystem?.weaponHUD) {
+                weaponHUD = window.ship.weaponSystem.weaponHUD;
+                console.log(`🎯 LUCKY HIT: Found weaponHUD via global ship`);
+            }
+            // Path 3: Through StarfieldManager directly
+            else if (window.starfieldManager?.weaponHUD) {
+                weaponHUD = window.starfieldManager.weaponHUD;
+                console.log(`🎯 LUCKY HIT: Found weaponHUD via StarfieldManager`);
+            }
+            
+            if (weaponHUD) {
+                console.log(`🎯 LUCKY HIT: Calling showWeaponFeedback('lucky-hit') on weaponHUD`);
+                weaponHUD.showWeaponFeedback('lucky-hit', message);
+            } else {
+                console.log(`🎯 LUCKY HIT: No weaponHUD found for lucky hit feedback`);
+            }
+        } catch (error) {
+            console.log('Failed to show lucky hit feedback:', error.message);
+        }
     }
 } 

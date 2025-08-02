@@ -580,6 +580,11 @@ export class WeaponHUD {
                 color = '#00ff88';
                 borderColor = '#00aa66';
                 break;
+            case 'lucky-hit':
+                text = weaponName; // weaponName contains the full message (e.g., "LUCKY HIT! IMPULSE ENGINES 100%→75%")
+                color = '#ffaa00';
+                borderColor = '#cc8800';
+                break;
             default:
                 text = type.toUpperCase();
         }
