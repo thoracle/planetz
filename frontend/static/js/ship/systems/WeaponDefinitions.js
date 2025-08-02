@@ -102,7 +102,7 @@ export class WeaponDefinitions {
                 blastRadius: 0, // NO SPLASH DAMAGE - direct hit only
                 homingCapability: false,
                 targetLockRequired: false, // CORRECTED: Non-homing projectiles fire toward crosshairs, no target lock needed
-                flightRange: 30000, // meters - medium-long range (30km), between lasers and torpedos
+                flightRange: 10000, // meters - reduced for faster miss feedback (10km), hits still instant
                 turnRate: 0, // No turning
                 specialProperties: {
                     explosionType: 'kinetic',
@@ -147,7 +147,7 @@ export class WeaponDefinitions {
                 blastRadius: 20, // meters (reduced by 75% from original 80m)
                 homingCapability: false,
                 targetLockRequired: false, // CORRECTED: Torpedoes fire toward crosshairs, no target lock needed
-                flightRange: 45000, // meters - longest range heavy weapon (45km)
+                flightRange: 15000, // meters - reduced for faster miss feedback (15km), still long-range
                 turnRate: 0, // No turning
                 specialProperties: {
                     explosionType: 'photon',
