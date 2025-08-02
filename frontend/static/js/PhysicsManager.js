@@ -1671,7 +1671,11 @@ export class PhysicsManager {
             }
             
         } catch (error) {
-                            console.log('Error handling projectile collision:', error);
+            console.log('Error handling projectile collision:', error.message);
+            console.log('Error stack:', error.stack);
+            console.log('Projectile:', projectile?.weaponName);
+            console.log('Contact point:', contactPoint);
+            console.log('Other body exists:', !!otherBody);
         }
     }
 

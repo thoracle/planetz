@@ -1782,8 +1782,15 @@ export class PhysicsProjectile {
             }
             
             // CRITICAL FIX: Remove destroyed ship from game world (was missing!)
+            // Defer removal to next frame to avoid interfering with ongoing collision processing
             if (window.starfieldManager && typeof window.starfieldManager.removeDestroyedTarget === 'function') {
-                window.starfieldManager.removeDestroyedTarget(targetShip);
+                setTimeout(() => {
+                    try {
+                        window.starfieldManager.removeDestroyedTarget(targetShip);
+                    } catch (error) {
+                        console.log('Error during target removal:', error.message);
+                    }
+                }, 0);
             }
         }
     }
@@ -1930,8 +1937,15 @@ export class PhysicsProjectile {
                                 effectsManager.playSuccessSound(null, 0.8);
                             }
                             
+                            // Defer removal to next frame to avoid interfering with ongoing collision processing
                             if (window.starfieldManager && typeof window.starfieldManager.removeDestroyedTarget === 'function') {
-                                window.starfieldManager.removeDestroyedTarget(targetShip);
+                                setTimeout(() => {
+                                    try {
+                                        window.starfieldManager.removeDestroyedTarget(targetShip);
+                                    } catch (error) {
+                                        console.log('Error during splash damage target removal:', error.message);
+                                    }
+                                }, 0);
                             }
                         }
                     }

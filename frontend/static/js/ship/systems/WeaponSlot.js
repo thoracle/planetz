@@ -1095,8 +1095,15 @@ export class WeaponSlot {
                         }
                         
                         // Remove destroyed ship from game
+                        // Defer removal to next frame to avoid interfering with ongoing collision processing
                         if (this.starfieldManager && typeof this.starfieldManager.removeDestroyedTarget === 'function') {
-                            this.starfieldManager.removeDestroyedTarget(hitEntity.ship);
+                            setTimeout(() => {
+                                try {
+                                    this.starfieldManager.removeDestroyedTarget(hitEntity.ship);
+                                } catch (error) {
+                                    console.log('Error during laser hit target removal:', error.message);
+                                }
+                            }, 0);
                         }
                     }
                     
