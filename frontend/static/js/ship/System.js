@@ -246,8 +246,57 @@ export default class System {
     onStateChanged(fromState, toState) {
         console.log(`${this.displayName} state changed: ${fromState} -> ${toState}`);
         
+        // Show weapon HUD feedback for sub-system destruction/damage
+        this.showSubSystemFeedback(fromState, toState);
+        
         // Trigger cascading effects based on state changes
         this.handleStateEffects(toState);
+    }
+    
+    /**
+     * Show weapon HUD feedback for sub-system state changes
+     * @param {string} fromState Previous state
+     * @param {string} toState New state
+     */
+    showSubSystemFeedback(fromState, toState) {
+        try {
+            // Only show feedback for significant state changes (not minor damage)
+            if (toState === 'disabled' || toState === 'critical') {
+                let message = '';
+                let feedbackType = 'subsystem-damage';
+                
+                if (toState === 'disabled') {
+                    message = `${this.displayName.toUpperCase()} DESTROYED`;
+                    feedbackType = 'subsystem-destroyed';
+                } else if (toState === 'critical') {
+                    message = `${this.displayName.toUpperCase()} CRITICAL`;
+                    feedbackType = 'subsystem-critical';
+                }
+                
+                // Try to get weapon HUD reference
+                let weaponHUD = null;
+                
+                // Path 1: Through ship's weapon system
+                if (window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD) {
+                    weaponHUD = window.starfieldManager.viewManager.ship.weaponSystem.weaponHUD;
+                }
+                // Path 2: Through global ship reference
+                else if (window.ship?.weaponSystem?.weaponHUD) {
+                    weaponHUD = window.ship.weaponSystem.weaponHUD;
+                }
+                // Path 3: Through StarfieldManager directly
+                else if (window.starfieldManager?.weaponHUD) {
+                    weaponHUD = window.starfieldManager.weaponHUD;
+                }
+                
+                if (weaponHUD) {
+                    console.log(`🎯 SUB-SYSTEM FEEDBACK: Showing ${feedbackType} for ${this.displayName}`);
+                    weaponHUD.showWeaponFeedback(feedbackType, message);
+                }
+            }
+        } catch (error) {
+            console.log('Failed to show sub-system feedback:', error.message);
+        }
     }
     
     /**

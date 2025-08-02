@@ -565,6 +565,21 @@ export class WeaponHUD {
                 color = '#ffff00';
                 borderColor = '#cccc00';
                 break;
+            case 'subsystem-destroyed':
+                text = weaponName; // weaponName contains the full message (e.g., "IMPULSE ENGINES DESTROYED")
+                color = '#ff0000';
+                borderColor = '#aa0000';
+                break;
+            case 'subsystem-critical':
+                text = weaponName; // weaponName contains the full message (e.g., "SHIELDS CRITICAL")
+                color = '#ff8800';
+                borderColor = '#cc6600';
+                break;
+            case 'target-destroyed':
+                text = weaponName; // weaponName contains the full message (e.g., "TARGET DUMMY 1 DESTROYED")
+                color = '#00ff88';
+                borderColor = '#00aa66';
+                break;
             default:
                 text = type.toUpperCase();
         }
