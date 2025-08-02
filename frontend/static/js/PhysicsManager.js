@@ -594,7 +594,8 @@ export class PhysicsManager {
                     this.physicsWorld.addRigidBody(rigidBody, collisionGroup, collisionMask);
                     
                     // Enable Continuous Collision Detection for fast projectiles with proper radius
-                    this.configureProjectilePhysics(rigidBody, config.radius);
+                    const projectileSpeed = config.projectileSpeed || 1500; // Default projectile speed
+                    this.configureProjectilePhysics(rigidBody, config.radius, projectileSpeed);
                     
                     // Silent projectile addition
                 } else {
@@ -1320,19 +1321,26 @@ export class PhysicsManager {
     }
 
     /**
-     * Configure projectile physics with proper CCD (no fallback needed)
+     * Configure projectile physics with enhanced CCD for high-speed projectiles
      */
-    configureProjectilePhysics(rigidBody, collisionRadius = 0.4) {
+    configureProjectilePhysics(rigidBody, collisionRadius = 0.4, projectileSpeed = 1500) {
         try {
-            // Native CCD configuration - matched to projectile collision radius
-            rigidBody.setCcdMotionThreshold(1.0);
-            rigidBody.setCcdSweptSphereRadius(collisionRadius); // SMART PRECISION: Match actual collision radius for each projectile
+            // ENHANCED CCD: More aggressive settings for high-speed projectiles
+            const physicsStepDistance = projectileSpeed / 240; // Distance per physics step
+            
+            // CCD Motion Threshold: Lower = more sensitive collision detection
+            const ccdThreshold = Math.min(0.1, collisionRadius * 0.25); // Very sensitive for fast projectiles
+            rigidBody.setCcdMotionThreshold(ccdThreshold);
+            
+            // CCD Swept Sphere: Larger than collision radius for tunneling prevention
+            const sweptRadius = Math.max(collisionRadius * 1.5, physicsStepDistance * 0.75);
+            rigidBody.setCcdSweptSphereRadius(sweptRadius);
             
             // Enable continuous collision detection flag
             const currentFlags = rigidBody.getCollisionFlags();
             rigidBody.setCollisionFlags(currentFlags | 4); // CF_CONTINUOUS_COLLISION_DETECTION
             
-            console.log(`✅ Projectile CCD configured with ${collisionRadius.toFixed(2)}m collision radius`);
+            console.log(`✅ Enhanced CCD: collision=${collisionRadius.toFixed(2)}m, swept=${sweptRadius.toFixed(2)}m, threshold=${ccdThreshold.toFixed(3)}m, speed=${projectileSpeed}m/s`);
         } catch (error) {
             console.warn('⚠️ CCD configuration failed:', error.message);
         }

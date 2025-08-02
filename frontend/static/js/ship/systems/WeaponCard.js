@@ -1232,25 +1232,46 @@ export class PhysicsProjectile {
                 this.scene.add(this.threeObject);
             }
             
-            // SMART COLLISION RADIUS: Scale with target distance for realistic hit detection
+            // ENHANCED COLLISION RADIUS: Prevents physics tunneling at high speeds
             let collisionRadius;
+            
+            // Get projectile speed for physics calculations
+            const projectileSpeed = this.weaponData?.specialProperties?.projectileSpeed || 1500; // m/s
+            const physicsStepDistance = (projectileSpeed / 240); // Distance per physics step (240 FPS)
+            const minRadiusForSpeed = Math.max(8.0, physicsStepDistance * 1.5); // Prevent tunneling
+            
             if (this.target && this.target.distance) {
                 const targetDistance = this.target.distance;
-                // Distance-based collision radius for realistic long-range combat
-                // Close range (<1km): 0.5m radius (precise)
-                // Medium range (1-5km): 0.5-2m radius  
-                // Long range (>5km): 2-8m radius (accounts for trajectory errors)
+                
+                // BASE RADIUS: Distance-based scaling
+                let baseRadius;
                 if (targetDistance < 1) {
-                    collisionRadius = 0.5; // Precise close combat
+                    baseRadius = 8.0; // INCREASED: Minimum for close combat
                 } else if (targetDistance < 5) {
-                    collisionRadius = 0.5 + (targetDistance - 1) * 0.375; // 0.5-2m scaling
+                    baseRadius = 8.0 + (targetDistance - 1) * 1.0; // 8-12m scaling
                 } else {
-                    collisionRadius = 2 + Math.min((targetDistance - 5) * 0.6, 6); // 2-8m scaling
+                    baseRadius = 12 + Math.min((targetDistance - 5) * 0.8, 8); // 12-20m scaling
                 }
-                console.log(`🎯 ${this.weaponName}: Collision radius: ${collisionRadius.toFixed(2)}m for ${targetDistance.toFixed(1)}km target`);
+                
+                // SPEED COMPENSATION: Ensure collision radius handles projectile velocity
+                collisionRadius = Math.max(baseRadius, minRadiusForSpeed);
+                
+                // CLOSE RANGE BOOST: Extra protection for close combat tunneling
+                if (targetDistance < 10) {
+                    collisionRadius = Math.max(collisionRadius, 10.0);
+                    console.log(`🎯 ${this.weaponName}: Close-range enhanced radius: ${collisionRadius.toFixed(2)}m for ${targetDistance.toFixed(1)}km target`);
+                } else {
+                    console.log(`🎯 ${this.weaponName}: Collision radius: ${collisionRadius.toFixed(2)}m for ${targetDistance.toFixed(1)}km target`);
+                }
             } else {
                 collisionRadius = 0.05; // ULTRA-PRECISE: 5cm radius for expected misses to prevent accidental hits  
                 console.log(`🎯 ${this.weaponName}: Ultra-precise collision radius: ${collisionRadius}m (no target - expected miss)`);
+            }
+            
+            // Get projectile speed for physics configuration
+            let projectileSpeed = this.isHoming ? 8000 : 10000; // Default speeds
+            if (this.weaponData?.specialProperties?.projectileSpeed) {
+                projectileSpeed = this.weaponData.specialProperties.projectileSpeed;
             }
             
             // Create physics rigid body with distance-appropriate collision radius
@@ -1262,7 +1283,8 @@ export class PhysicsProjectile {
                 radius: collisionRadius, // SMART RADIUS: Scales with target distance for realistic hit detection
                 entityType: 'projectile',
                 entityId: `${this.weaponName}_${Date.now()}`,
-                health: 1
+                health: 1,
+                projectileSpeed: projectileSpeed // SPEED DATA: For enhanced CCD configuration
             };
             
             this.rigidBody = this.physicsManager.createRigidBody(this.threeObject, bodyConfig);
@@ -1271,16 +1293,11 @@ export class PhysicsProjectile {
                 // Silent rigid body creation
                 
                 // Calculate velocity based on direction and weapon-specific speed
-                // Use weapon-defined speed if available, otherwise defaults
-                let speed = this.isHoming ? 8000 : 10000; // Default speeds
-                if (this.weaponData?.specialProperties?.projectileSpeed) {
-                    speed = this.weaponData.specialProperties.projectileSpeed;
-                    console.log(`🚀 ${this.weaponName}: Using weapon-specific speed: ${speed} m/s`);
-                }
+                console.log(`🚀 ${this.weaponName}: Using weapon-specific speed: ${projectileSpeed} m/s`);
                 this.velocity = {
-                    x: direction.x * speed,
-                    y: direction.y * speed,
-                    z: direction.z * speed
+                    x: direction.x * projectileSpeed,
+                    y: direction.y * projectileSpeed,
+                    z: direction.z * projectileSpeed
                 };
                 
                 // Apply velocity to the physics rigid body
@@ -1291,7 +1308,7 @@ export class PhysicsProjectile {
                 );
                 this.rigidBody.setLinearVelocity(physicsVelocity);
                 
-                console.log(`🚀 ${this.weaponName}: Set velocity to ${speed} units/s in direction:`, {
+                console.log(`🚀 ${this.weaponName}: Set velocity to ${projectileSpeed} units/s in direction:`, {
                     x: direction.x.toFixed(3), 
                     y: direction.y.toFixed(3), 
                     z: direction.z.toFixed(3)
@@ -1309,6 +1326,8 @@ export class PhysicsProjectile {
                 if (this.target && this.target.position) {
                     console.log(`🔍 DEBUG ${this.weaponName}: Missile trajectory aimed directly at target position`);
                 }
+                
+                // Enhanced CCD configuration handled automatically by PhysicsManager via bodyConfig.projectileSpeed
                 
                 // Set up collision callback
                 this.setupCollisionCallback();
