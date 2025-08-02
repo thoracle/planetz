@@ -627,6 +627,9 @@ export class SplashDamageWeapon extends WeaponCard {
                 target = null; // Disable collision tracking
                 console.log(`🔍 DEBUG ${this.name}: Target cleared - now null`);
                 
+                // Show immediate miss feedback for inaccurate shots
+                this.showMissFeedback();
+                
                 // DEBUG: Calculate where this trajectory will take the missile
                 const projectedPos = {
                     x: origin.x + direction.x * 1000,
@@ -1900,6 +1903,46 @@ export class PhysicsProjectile {
     }
     
     /**
+     * Show miss feedback through HUD system
+     */
+    showMissFeedback() {
+        try {
+            console.log(`🎯 MISS FEEDBACK: ${this.weaponName} showing miss notification`);
+            
+            // Try to get weapon HUD reference through various paths
+            let weaponHUD = null;
+            
+            // Path 1: Through ship's weapon system
+            if (window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD) {
+                weaponHUD = window.starfieldManager.viewManager.ship.weaponSystem.weaponHUD;
+                console.log(`🎯 MISS FEEDBACK: Found weaponHUD via ship.weaponSystem`);
+            }
+            // Path 2: Through global ship reference
+            else if (window.ship?.weaponSystem?.weaponHUD) {
+                weaponHUD = window.ship.weaponSystem.weaponHUD;
+                console.log(`🎯 MISS FEEDBACK: Found weaponHUD via global ship`);
+            }
+            // Path 3: Through StarfieldManager directly
+            else if (window.starfieldManager?.weaponHUD) {
+                weaponHUD = window.starfieldManager.weaponHUD;
+                console.log(`🎯 MISS FEEDBACK: Found weaponHUD via StarfieldManager`);
+            }
+            
+            if (weaponHUD) {
+                console.log(`🎯 MISS FEEDBACK: Calling showWeaponFeedback('miss') on weaponHUD`);
+                weaponHUD.showWeaponFeedback('miss', this.weaponName);
+            } else {
+                console.log(`🎯 MISS FEEDBACK: No weaponHUD found - checking paths:
+                  starfieldManager.viewManager.ship.weaponSystem.weaponHUD: ${!!window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD}
+                  ship.weaponSystem.weaponHUD: ${!!window.ship?.weaponSystem?.weaponHUD}
+                  starfieldManager.weaponHUD: ${!!window.starfieldManager?.weaponHUD}`);
+            }
+        } catch (error) {
+            console.log('Failed to show miss feedback:', error.message);
+        }
+    }
+    
+    /**
      * Create visual explosion effect
      * @param {Object} position Explosion position
      */
@@ -2002,6 +2045,9 @@ export class PhysicsProjectile {
                 console.error('Error removing expired projectile from physics:', error);
             }
         }
+        
+        // Show miss feedback for out-of-range expiry
+        this.showMissFeedback();
         
         // Clean up immediately without explosion effects
         this.cleanup();
