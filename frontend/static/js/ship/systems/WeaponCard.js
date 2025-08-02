@@ -37,7 +37,7 @@ export class WeaponCard {
      * @returns {Object} Fire result
      */
     fire(origin, target = null) {
-        console.log(`🚨 CACHE TEST: WeaponCard.js fire() method called for ${this.name} - TIMESTAMP: ${Date.now()}`);
+        // Cache test logging removed for production
         
         // Check cooldown
         const currentTime = Date.now();

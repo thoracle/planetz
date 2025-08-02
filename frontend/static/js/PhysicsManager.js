@@ -39,8 +39,8 @@ export class PhysicsManager {
         this._warnedProperties = new Set();
         this._successfulMethods = new Set();
         this._lastFailureWarning = {};
-        this._debugLoggingEnabled = true; // TEMPORARY: Enable collision debug logging
-        this._silentMode = false; // TEMPORARY: Enable debug output for collision troubleshooting
+        this._debugLoggingEnabled = false; // Production: Disable collision debug logging
+        this._silentMode = true; // Production: Disable debug output for performance
         this._lastCollisionDebugTime = 0; // Track debug spam timing
         this.lastPhysicsDebugTime = 0; // Track physics debug spam timing
     }
@@ -1225,11 +1225,7 @@ export class PhysicsManager {
             const maxSubSteps = Math.ceil(deltaTime / fixedTimeStep); // Dynamic substeps based on frame time
             this.physicsWorld.stepSimulation(deltaTime, maxSubSteps, fixedTimeStep);
             
-            // Only log physics debug every 2 seconds to prevent spam
-            if (!this.lastPhysicsDebugTime || (Date.now() - this.lastPhysicsDebugTime) > 2000) {
-                console.log(`🔧 PHYSICS DEBUG: deltaTime=${(deltaTime*1000).toFixed(1)}ms, substeps=${maxSubSteps}, fixedStep=${(fixedTimeStep*1000).toFixed(1)}ms`);
-                this.lastPhysicsDebugTime = Date.now();
-            }
+            // Physics debug logging disabled in production for performance
 
             // Use native collision detection for projectiles (this was already working!)
             this.handleCollisions();
