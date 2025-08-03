@@ -1055,16 +1055,16 @@ export class ViewManager {
                             const enemyPos = enemyMesh.position;
                             const distanceToAimLine = raycaster.ray.distanceToPoint(enemyPos);
                             
-                            // REALISTIC TOLERANCE: Scale with distance to match weapon system
+                            // GAMEPLAY-FRIENDLY TOLERANCE: Match weapon system's forgiving aiming tolerance
                             const targetDistance = camera.position.distanceTo(enemyPos);
                             let aimToleranceMeters;
-                            if (targetDistance < 1) {
-                                aimToleranceMeters = 150; // 150m for close combat (was 5m - too strict!)
-                            } else if (targetDistance < 5) {
-                    aimToleranceMeters = 150 + (targetDistance - 1) * 12.5; // 150-200m for medium range
-                } else {
-                    aimToleranceMeters = 200 + Math.min((targetDistance - 5) * 20, 100); // 200-300m for long range
-                }
+                            if (targetDistance < 2) {
+                                aimToleranceMeters = 1000; // 1km tolerance for close combat (matches weapon system!)
+                            } else if (targetDistance < 10) {
+                                aimToleranceMeters = 1000 + (targetDistance - 2) * 125; // 1000-2000m for medium range
+                            } else {
+                                aimToleranceMeters = 2000 + Math.min((targetDistance - 10) * 50, 1000); // 2000-3000m for long range
+                            }
                             const aimTolerance = aimToleranceMeters / 1000; // Convert to km units
                             if (distanceToAimLine <= aimTolerance) {
                                 // Only consider if within extended range (4x weapon range for out-of-range detection)
