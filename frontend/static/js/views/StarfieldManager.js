@@ -3718,11 +3718,12 @@ export class StarfieldManager {
                     // Calculate actual mesh size: 2.0m base * 0.75 scale = 1.5m
                     const baseMeshSize = 2.0;
                     const meshScale = 0.75; // From createDummyShipMesh()
-                    const actualMeshSize = baseMeshSize * meshScale; // 1.5m
+                    const actualMeshSize = baseMeshSize * meshScale; // 1.5m visual size
                     
-                    // Use realistic collision size matching visual mesh (can be toggled with window.useRealisticCollision = false)
+                    // Use gameplay-friendly collision size (larger than visual for better hit detection)
                     const useRealistic = window.useRealisticCollision !== false; // Default to realistic
-                    const collisionSize = useRealistic ? actualMeshSize : 4.0; // Fallback to old 4m if needed
+                    const gameplaySize = window.targetDummyCollisionSize || 3.0; // Configurable size, larger than visual (1.5m)
+                    const collisionSize = useRealistic ? gameplaySize : 4.0; // Gameplay-friendly or weapon-friendly
                     
                     const physicsBody = window.physicsManager.createShipRigidBody(shipMesh, {
                         mass: 1000, // Dynamic body with mass for better collision detection (was 0)
@@ -3735,7 +3736,7 @@ export class StarfieldManager {
                         damping: 0.99 // High damping to keep ships mostly stationary despite having mass
                     });
                     
-                    console.log(`🎯 Target dummy collision: Visual=${actualMeshSize}m, Physics=${collisionSize}m (realistic=${useRealistic})`);
+                    console.log(`🎯 Target dummy collision: Visual=${actualMeshSize}m, Physics=${collisionSize}m (gameplay-friendly, realistic=${useRealistic})`);
                     
                     if (physicsBody) {
                         console.log(`🚀 Physics body created for Target Dummy ${i + 1}`);
@@ -3843,7 +3844,7 @@ export class StarfieldManager {
      * Create a visual mesh for a target dummy ship - simple wireframe cube
      * 
      * Visual Size: 2.0m base geometry × 0.75 scale = 1.5m × 1.5m × 1.5m final size
-     * Physics Collision: Matches visual size (1.5m) when useRealisticCollision=true
+     * Physics Collision: 3.0m (gameplay-friendly) for better hit detection vs 1.5m visual
      * 
      * @param {number} index - Ship index for color variation
      * @returns {THREE.Mesh} Simple wireframe cube mesh (1.5m actual size)
