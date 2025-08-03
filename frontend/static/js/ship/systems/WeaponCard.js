@@ -591,17 +591,17 @@ export class SplashDamageWeapon extends WeaponCard {
                     console.log(`🚨 AIM DEBUG ${this.name}: Suspiciously large distance detected: ${rawDistance} - possible scale issue`);
                 }
                 
-                // ENHANCED TOLERANCE: More forgiving aiming to match visual crosshair feedback
-                // Close range (<2km): 400m tolerance (very generous for close combat)
-                // Medium range (2-8km): 400-600m tolerance (forgiving for mid-range)  
-                // Long range (8km+): 600-800m tolerance (realistic for long shots)
+                // GAMEPLAY-FRIENDLY TOLERANCE: Much more forgiving aiming to make combat fun
+                // Close range (<2km): 1000m tolerance (very generous for close combat)
+                // Medium range (2-10km): 1000-2000m tolerance (forgiving for mid-range)  
+                // Long range (10km+): 2000-3000m tolerance (realistic for long shots)
                 let aimToleranceMeters;
                 if (targetDistance < 2) {
-                    aimToleranceMeters = 400; // 400m for close combat (much more forgiving!)
-                } else if (targetDistance < 8) {
-                    aimToleranceMeters = 400 + (targetDistance - 2) * 33.33; // 400-600m for medium range
+                    aimToleranceMeters = 1000; // 1km tolerance for close combat (very forgiving!)
+                } else if (targetDistance < 10) {
+                    aimToleranceMeters = 1000 + (targetDistance - 2) * 125; // 1000-2000m for medium range
                 } else {
-                    aimToleranceMeters = 600 + Math.min((targetDistance - 8) * 25, 200); // 600-800m for long range
+                    aimToleranceMeters = 2000 + Math.min((targetDistance - 10) * 50, 1000); // 2000-3000m for long range
                 }
                 const aimTolerance = aimToleranceMeters / 1000; // Convert to km units
                 
@@ -665,24 +665,18 @@ export class SplashDamageWeapon extends WeaponCard {
             const crosshairTarget = this.getCrosshairTarget(camera);
             
             if (crosshairTarget) {
-                // VALIDATED TARGET: Aim directly at target position for accurate hit
-                const targetPos = crosshairTarget.position;
-                const originPos = origin;
-                
-                // Calculate direction from origin to target
-                const dx = targetPos.x - originPos.x;
-                const dy = targetPos.y - originPos.y;
-                const dz = targetPos.z - originPos.z;
-                const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                // VALIDATED TARGET: Use camera direction for intuitive crosshair-following trajectory
+                const cameraDirection = new window.THREE.Vector3(0, 0, -1);
+                cameraDirection.applyQuaternion(camera.quaternion);
                 
                 direction = {
-                    x: dx / distance,
-                    y: dy / distance,
-                    z: dz / distance
+                    x: cameraDirection.x,
+                    y: cameraDirection.y,
+                    z: cameraDirection.z
                 };
                 
-                console.log(`🔍 DEBUG ${this.name}: Expected direction to target: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
-                console.log(`🎯 ${this.name}: Firing at validated crosshair target: ${crosshairTarget.name} (${crosshairTarget.distance.toFixed(1)}km) - direct target trajectory`);
+                console.log(`🔍 DEBUG ${this.name}: Camera direction to target: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
+                console.log(`🎯 ${this.name}: Firing at validated crosshair target: ${crosshairTarget.name} (${crosshairTarget.distance.toFixed(1)}km) - crosshair trajectory`);
                 target = crosshairTarget; // Enable collision tracking
             } else {
                 // NO TARGET: Use camera direction to ensure consistent trajectory (parallax-free)
