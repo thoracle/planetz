@@ -218,7 +218,7 @@ export class SolarSystemManager {
             // Add physics body for the star
             if (window.physicsManager && window.physicsManagerReady) {
                 const physicsBody = window.physicsManager.createPlanetRigidBody(star, {
-                    radius: Math.min(starSize, 10.0), // Cap collision radius at 10m to avoid blocking weapon fire
+                    radius: Math.min(starSize, 0.5), // Cap collision radius at 0.5m to avoid blocking weapon fire
                     entityType: 'star',
                     entityId: this.starSystem.star_name || 'Unknown Star',
                     health: 50000 // Stars are essentially indestructible
@@ -363,7 +363,7 @@ export class SolarSystemManager {
             // Add physics body for the planet
             if (window.physicsManager && window.physicsManagerReady) {
                 const physicsBody = window.physicsManager.createPlanetRigidBody(planet, {
-                    radius: Math.min(planetSize, 5.0), // Cap collision radius at 5m to avoid blocking weapon fire
+                    radius: Math.min(planetSize, 0.5), // Cap collision radius at 0.5m to avoid blocking weapon fire
                     entityType: 'planet',
                     entityId: planetData.planet_name || `Planet ${index}`,
                     health: 20000 // Planets are very durable
@@ -467,7 +467,7 @@ export class SolarSystemManager {
             // Add physics body for the moon
             if (window.physicsManager && window.physicsManagerReady) {
                 const physicsBody = window.physicsManager.createPlanetRigidBody(moon, {
-                    radius: Math.min(moonSize, 2.0), // Cap collision radius at 2m to avoid blocking weapon fire
+                    radius: Math.min(moonSize, 0.1), // Cap collision radius at 0.1m to avoid blocking weapon fire
                     entityType: 'moon',
                     entityId: moonData.moon_name || `Moon ${moonIndex} of Planet ${planetIndex}`,
                     health: 10000 // Moons are durable but less than planets
