@@ -1785,7 +1785,7 @@ export class PhysicsProjectile {
         if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
             const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
             const targetPos = new THREE.Vector3(position.x, position.y, position.z);
-            effectsManager.playSound('impact', targetPos, 0.7);
+            effectsManager.playSound('explosion', targetPos, 0.7);
         }
         
         // Check for destruction - either freshly destroyed this hit OR already at 0 hull
