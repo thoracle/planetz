@@ -3715,19 +3715,18 @@ export class StarfieldManager {
                 
                 // Add physics body for the ship (static body for target practice)
                 if (window.physicsManager && window.physicsManagerReady) {
-                    // Calculate actual mesh size: 2.0m base * 0.75 scale = 1.5m
+                    // Calculate actual mesh size: 2.0m base * 1.5 scale = 3.0m
                     const baseMeshSize = 2.0;
-                    const meshScale = 0.75; // From createDummyShipMesh()
-                    const actualMeshSize = baseMeshSize * meshScale; // 1.5m visual size
+                    const meshScale = 1.5; // From createDummyShipMesh()
+                    const actualMeshSize = baseMeshSize * meshScale; // 3.0m visual size
                     
-                    // Use gameplay-friendly collision size (larger than visual for better hit detection)
+                    // Use collision size that matches visual mesh (what you see is what you get)
                     const useRealistic = window.useRealisticCollision !== false; // Default to realistic
-                    const gameplaySize = window.targetDummyCollisionSize || 3.0; // Configurable size, larger than visual (1.5m)
-                    const collisionSize = useRealistic ? gameplaySize : 4.0; // Gameplay-friendly or weapon-friendly
+                    const collisionSize = useRealistic ? actualMeshSize : 4.0; // Match visual or weapon-friendly
                     
                     const physicsBody = window.physicsManager.createShipRigidBody(shipMesh, {
                         mass: 1000, // Dynamic body with mass for better collision detection (was 0)
-                        width: collisionSize,  // Match actual visual mesh size (1.5m) instead of oversized 4m
+                        width: collisionSize,  // Match actual visual mesh size (3.0m) for honest hit detection
                         height: collisionSize,
                         depth: collisionSize,
                         entityType: 'enemy_ship',
@@ -3736,7 +3735,7 @@ export class StarfieldManager {
                         damping: 0.99 // High damping to keep ships mostly stationary despite having mass
                     });
                     
-                    console.log(`🎯 Target dummy collision: Visual=${actualMeshSize}m, Physics=${collisionSize}m (gameplay-friendly, realistic=${useRealistic})`);
+                    console.log(`🎯 Target dummy collision: Visual=${actualMeshSize}m, Physics=${collisionSize}m (what you see is what you get, realistic=${useRealistic})`);
                     
                     if (physicsBody) {
                         console.log(`🚀 Physics body created for Target Dummy ${i + 1}`);
@@ -3843,11 +3842,11 @@ export class StarfieldManager {
     /**
      * Create a visual mesh for a target dummy ship - simple wireframe cube
      * 
-     * Visual Size: 2.0m base geometry × 0.75 scale = 1.5m × 1.5m × 1.5m final size
-     * Physics Collision: 3.0m (gameplay-friendly) for better hit detection vs 1.5m visual
+     * Visual Size: 2.0m base geometry × 1.5 scale = 3.0m × 3.0m × 3.0m final size
+     * Physics Collision: 3.0m (matches visual mesh exactly - what you see is what you get)
      * 
      * @param {number} index - Ship index for color variation
-     * @returns {THREE.Mesh} Simple wireframe cube mesh (1.5m actual size)
+     * @returns {THREE.Mesh} Simple wireframe cube mesh (3.0m actual size)
      */
     createDummyShipMesh(index) {
         // Create simple cube geometry
@@ -3881,8 +3880,8 @@ export class StarfieldManager {
         cube.rotation.x = (Math.random() * 0.2 - 0.1);
         cube.rotation.z = (Math.random() * 0.2 - 0.1);
         
-        // Scale the cube 50% smaller than before (was 1.5, now 0.75)
-        cube.scale.setScalar(0.75);
+        // Scale the cube to match collision box size: 2.0m base * 1.5 scale = 3.0m final size
+        cube.scale.setScalar(1.5);
         
         return cube;
     }

@@ -2592,7 +2592,7 @@ export class PhysicsManager {
         console.log(`💡 Collision Mode Toggle Commands:`);
         console.log(`   • window.useRealisticCollision = true  - Match collision sizes to visual meshes (default)`);
         console.log(`   • window.useRealisticCollision = false - Use small collision sizes (weapon-friendly)`);
-        console.log(`   • window.targetDummyCollisionSize = 3.0 - Set target dummy collision size (default: 3.0m)`);
+        console.log(`   • Target dummies: Visual and collision sizes now match (3.0m) for honest hit detection`);
         console.log(`   • moveWireframesToCamera() - Move all wireframes in front of camera`);
         console.log(`   • enhanceWireframes() - Make wireframes more visible`);
         console.log(`   • enableVerboseLogging() - Enable detailed debug logs`);
