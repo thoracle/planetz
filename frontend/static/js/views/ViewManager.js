@@ -1000,8 +1000,8 @@ export class ViewManager {
         if (this.ship.weaponSystem && this.ship.weaponSystem.getActiveWeapon) {
             const activeWeapon = this.ship.weaponSystem.getActiveWeapon();
             if (activeWeapon && activeWeapon.equippedWeapon) {
-                // Convert from meters to kilometers for comparison
-                currentWeaponRange = activeWeapon.equippedWeapon.range / 1000;
+                // Convert from meters to kilometers for comparison (with weapon system fallback)
+                currentWeaponRange = (activeWeapon.equippedWeapon.range || 30000) / 1000;
                 activeWeaponName = activeWeapon.equippedWeapon.name;
             }
         }
@@ -1055,11 +1055,11 @@ export class ViewManager {
                             const enemyPos = enemyMesh.position;
                             const distanceToAimLine = raycaster.ray.distanceToPoint(enemyPos);
                             
-                            // GAMEPLAY-FRIENDLY TOLERANCE: Match weapon system's forgiving aiming tolerance
+                            // ENHANCED TOLERANCE: Match weapon system's enhanced forgiving aiming tolerance
                             const targetDistance = camera.position.distanceTo(enemyPos);
                             let aimToleranceMeters;
                             if (targetDistance < 2) {
-                                aimToleranceMeters = 1000; // 1km tolerance for close combat (matches weapon system!)
+                                aimToleranceMeters = 1000; // 1km tolerance for close combat (very forgiving!)
                             } else if (targetDistance < 10) {
                                 aimToleranceMeters = 1000 + (targetDistance - 2) * 125; // 1000-2000m for medium range
                             } else {
