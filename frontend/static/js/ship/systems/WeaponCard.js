@@ -1351,14 +1351,11 @@ export class PhysicsProjectile {
             // Create visual representation - larger and more visible
             const geometry = new THREE.SphereGeometry(5.0, 8, 6); // Increased from 2.0 to 5.0 for better visibility
             const material = new THREE.MeshBasicMaterial({ 
-                color: this.isHoming ? 0xff6666 : 0x66ff66, // Brighter colors  
+                color: this.isHoming ? 0xff6666 : 0x66ff66, // Brighter colors - already self-illuminated  
                 transparent: false, // Fully opaque for maximum visibility
                 opacity: 1.0
+                // Note: MeshBasicMaterial is already self-illuminated, no emissive properties needed
             });
-            
-            // Add glowing effect for better visibility in space
-            material.emissive = new THREE.Color(this.isHoming ? 0xff2222 : 0x22ff22);
-            material.emissiveIntensity = 0.3;
             
             this.threeObject = new THREE.Mesh(geometry, material);
             this.threeObject.position.set(adjustedOrigin.x, adjustedOrigin.y, adjustedOrigin.z);
