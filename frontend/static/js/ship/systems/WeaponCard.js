@@ -170,7 +170,7 @@ export class WeaponCard {
                     weaponName: this.name,
                     weaponData: this, // Pass entire weapon data for speed lookup
                     physicsManager: window.physicsManager,
-                    scene: window.scene
+                    scene: window.starfieldManager?.scene || window.scene
                 });
                 
                 console.log(`✅ DEBUG: PhysicsProjectile created successfully for ${this.name}`);
@@ -786,7 +786,7 @@ export class SplashDamageWeapon extends WeaponCard {
                         weaponName: this.name,
                         weaponData: this, // Pass entire weapon data for speed lookup
                         physicsManager: window.physicsManager,
-                        scene: window.scene
+                        scene: window.starfieldManager?.scene || window.scene
                     });
                     
                     if (physicsProjectile && physicsProjectile.rigidBody) {
@@ -1278,7 +1278,7 @@ export class PhysicsProjectile {
         this.startPosition = new THREE.Vector3(config.origin.x, config.origin.y, config.origin.z);
         
         // Visual properties
-        this.scene = config.scene || window.scene;
+        this.scene = config.scene || window.starfieldManager?.scene || window.scene;
         
         // SIMPLIFIED: No complex trail tracking - we'll create static trails on impact
         this.trailCreated = false;
@@ -1374,7 +1374,15 @@ export class PhysicsProjectile {
                 this.scene.add(this.threeObject);
                 console.log(`🎯 ${this.weaponName}: Visual missile mesh created and added to scene (radius: 5.0m, glowing)`);
             } else {
-                console.warn(`⚠️ ${this.weaponName}: No scene available for visual mesh`);
+                // Try alternative scene sources
+                const fallbackScene = window.starfieldManager?.scene || window.scene;
+                if (fallbackScene) {
+                    fallbackScene.add(this.threeObject);
+                    this.scene = fallbackScene; // Store for cleanup
+                    console.log(`🎯 ${this.weaponName}: Visual missile mesh added using fallback scene reference`);
+                } else {
+                    console.warn(`⚠️ ${this.weaponName}: No scene available for visual mesh - starfieldManager: ${!!window.starfieldManager}, window.scene: ${!!window.scene}`);
+                }
             }
             
             // ENHANCED COLLISION RADIUS: Prevents physics tunneling at high speeds
