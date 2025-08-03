@@ -243,7 +243,11 @@ export class PhysicsManager {
                 type: entityType,
                 id: entityId,
                 health: health,
-                threeObject: threeObject
+                threeObject: threeObject,
+                shapeType: 'box', // Store shape type for wireframe creation
+                shapeWidth: width,
+                shapeHeight: height,
+                shapeDepth: depth
             };
             
             // Add ship reference if it exists in userData
@@ -401,7 +405,9 @@ export class PhysicsManager {
                 type: entityType,
                 id: entityId,
                 health: health,
-                threeObject: threeObject
+                threeObject: threeObject,
+                shapeType: 'sphere', // Store shape type for wireframe creation
+                shapeRadius: radius  // Store radius for wireframe sizing
             });
 
             console.log(`Created planet rigid body for ${entityType} ${entityId || 'unnamed'}`);
@@ -613,7 +619,12 @@ export class PhysicsManager {
                 type: entityType,
                 id: entityId || `${entityType}_${Date.now()}`,
                 health: health,
-                threeObject: threeObject
+                threeObject: threeObject,
+                shapeType: shape, // Store shape type for wireframe creation
+                shapeRadius: radius,
+                shapeWidth: width,
+                shapeHeight: height,
+                shapeDepth: depth
             };
             
             // Add additional references if available
@@ -2639,39 +2650,51 @@ export class PhysicsManager {
             let wireframe;
 
             // Determine shape type and create appropriate wireframe
-            if (this.isBoxShape(collisionShape)) {
-                // Box shape
-                const halfExtents = collisionShape.getHalfExtentsWithMargin();
-                const width = halfExtents.x() * 2;
-                const height = halfExtents.y() * 2;
-                const depth = halfExtents.z() * 2;
-                
-                // Make wireframes slightly larger for better visibility
-                geometry = new THREE.BoxGeometry(width * 1.1, height * 1.1, depth * 1.1);
+            console.log(`🔍 WIREFRAME DEBUG: Creating wireframe for ${entityType} "${entityId}"`);
+            
+            // Use stored shape information instead of trying to detect from corrupted collision shapes
+            const storedShapeType = metadata?.shapeType;
+            const storedRadius = metadata?.shapeRadius;
+            
+            console.log(`   • Stored shape type: ${storedShapeType}`);
+            console.log(`   • Stored radius: ${storedRadius}`);
+            
+                        if (storedShapeType === 'sphere') {
+                // Sphere shape using stored radius
+                console.log(`   • Creating SPHERE wireframe`);
+                const radius = storedRadius || 1.0; // Use stored radius or fallback
+                console.log(`   • Using stored radius: ${radius}m`);
+                geometry = new THREE.SphereGeometry(radius * 1.1, 16, 16);
                 
                 // Enhanced colors for different entity types
                 let wireframeColor;
                 if (entityType === 'projectile') {
                     // Bright colors for projectiles to make them stand out
-                    wireframeColor = entityId.includes('torpedo') ? 0xff00ff : // Bright magenta for torpedoes
-                                    entityId.includes('missile') ? 0xff8800 : // Bright orange for missiles
-                                    0x00ffff; // Cyan for other projectiles
+                    wireframeColor = entityId.includes('torpedo') ? 0xff0044 : // Bright red-pink for torpedoes
+                                    entityId.includes('missile') ? 0xff4400 : // Bright red-orange for missiles
+                                    0x44ff00; // Bright green for other projectiles
                 } else {
-                    wireframeColor = entityType === 'enemy_ship' ? 0xff00ff : 0x00ffff; // Magenta for enemies, cyan for others
+                    wireframeColor = entityType === 'planet' ? 0xffff00 : 
+                                    entityType === 'star' ? 0xff8800 : 
+                                    entityType === 'moon' ? 0x88ffff : 0x00ff00;
                 }
                 
-                material = new THREE.MeshBasicMaterial({ 
+                material = new THREE.MeshBasicMaterial({
                     color: wireframeColor,
                     wireframe: true,
                     transparent: true,
-                    opacity: entityType === 'projectile' ? 0.9 : 0.6, // Higher opacity for projectiles
+                    opacity: entityType === 'projectile' ? 1.0 : 0.6, // Full opacity for projectiles
                     depthTest: false,
                     depthWrite: false
                 });
-            } else if (this.isSphereShape(collisionShape)) {
-                // Sphere shape  
-                const radius = collisionShape.getRadius();
-                geometry = new THREE.SphereGeometry(radius * 1.1, 16, 16);
+            } else if (storedShapeType === 'box') {
+                // Box shape using stored dimensions
+                console.log(`   • Creating BOX wireframe`);
+                const width = metadata?.shapeWidth || 2;
+                const height = metadata?.shapeHeight || 2;
+                const depth = metadata?.shapeDepth || 2;
+                console.log(`   • Using stored dimensions: ${width}x${height}x${depth}`);
+                geometry = new THREE.BoxGeometry(width * 1.1, height * 1.1, depth * 1.1);
                 
                 // Enhanced colors for different entity types
                 let wireframeColor;
@@ -2693,8 +2716,36 @@ export class PhysicsManager {
                     depthTest: false,
                     depthWrite: false
                 });
+            } else if (storedShapeType === 'capsule') {
+                // Capsule shape using stored dimensions
+                console.log(`   • Creating CAPSULE wireframe (approximated as cylinder)`);
+                const radius = metadata?.shapeRadius || 1;
+                const height = metadata?.shapeHeight || 2;
+                console.log(`   • Using stored capsule dimensions: radius=${radius}, height=${height}`);
+                geometry = new THREE.CylinderGeometry(radius * 1.1, radius * 1.1, height * 1.1, 16);
+                
+                // Enhanced colors for different entity types
+                let wireframeColor;
+                if (entityType === 'projectile') {
+                    wireframeColor = entityId.includes('torpedo') ? 0xff0044 : 
+                                    entityId.includes('missile') ? 0xff4400 : 0x44ff00;
+                } else {
+                    wireframeColor = entityType === 'planet' ? 0xffff00 : 
+                                    entityType === 'star' ? 0xff8800 : 
+                                    entityType === 'moon' ? 0x88ffff : 0x00ff00;
+                }
+                
+                material = new THREE.MeshBasicMaterial({
+                    color: wireframeColor,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: entityType === 'projectile' ? 1.0 : 0.6,
+                    depthTest: false,
+                    depthWrite: false
+                });
             } else {
                 // Default to box for unknown shapes
+                console.log(`   • Creating DEFAULT BOX wireframe (unknown shape type: ${storedShapeType})`);
                 geometry = new THREE.BoxGeometry(2, 2, 2);
                 material = new THREE.MeshBasicMaterial({
                     color: entityType === 'projectile' ? 0xffffff : 0xffffff, // White for unknown projectiles
