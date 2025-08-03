@@ -2060,9 +2060,16 @@ export class PhysicsProjectile {
                 const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
                 const explosionPos = position ? new THREE.Vector3(position.x, position.y, position.z) : null;
                 
-                // Use 'torpedo' explosion type for torpedo-specific explosion sound (explosion-01.mp3)
-                effectsManager.createExplosion(explosionPos, this.blastRadius, 'torpedo', explosionPos);
-                console.log(`✨ Created explosion effect at:`, position, `with radius ${this.blastRadius}m`);
+                // Only play explosion sound if missile hit something (collisionTarget exists)
+                if (this.collisionTarget) {
+                    // Use 'torpedo' explosion type for torpedo-specific explosion sound (explosion-01.mp3)
+                    effectsManager.createExplosion(explosionPos, this.blastRadius, 'torpedo', explosionPos);
+                    console.log(`✨ Created explosion effect with sound at:`, position, `with radius ${this.blastRadius}m`);
+                } else {
+                    // Create visual explosion only (no sound) for misses
+                    effectsManager.createExplosion(explosionPos, this.blastRadius, 'silent', explosionPos);
+                    console.log(`✨ Created silent explosion effect at:`, position, `with radius ${this.blastRadius}m (miss - no sound)`);
+                }
             } catch (error) {
                 console.log('Failed to create explosion effect:', error);
             }

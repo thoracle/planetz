@@ -548,14 +548,16 @@ export class WeaponEffectsManager {
         
         this.activeEffects.add(explosion);
         
-        // Play corresponding sound based on explosion type
-        let soundType = 'explosion'; // Default
-        if (explosionType === 'death') {
-            soundType = 'death';
-        } else if (explosionType === 'torpedo') {
-            soundType = 'torpedo-explosion';
+        // Play corresponding sound based on explosion type (skip for silent explosions)
+        if (explosionType !== 'silent') {
+            let soundType = 'explosion'; // Default
+            if (explosionType === 'death') {
+                soundType = 'death';
+            } else if (explosionType === 'torpedo') {
+                soundType = 'torpedo-explosion';
+            }
+            this.playSound(soundType, position);
         }
-        this.playSound(soundType, position);
         
         console.log(`Created ${explosionType} explosion at`, position, `radius: ${(radius * 0.00625).toFixed(3)} (25% larger)`);
     }
