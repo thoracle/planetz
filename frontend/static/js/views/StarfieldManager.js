@@ -2171,7 +2171,7 @@ export class StarfieldManager {
                 }
             }
             
-            // Calculate speed multiplier with reduced speeds for impulse 1, 2, and 3
+            // Calculate speed multiplier with reduced speeds for impulse 1, 2, 3, and 4
             let speedMultiplier = this.currentSpeed * 0.3; // Base multiplier
             
             // Apply speed reductions for lower impulse levels
@@ -2179,6 +2179,11 @@ export class StarfieldManager {
                 // Exponential reduction for impulse 1-3
                 const reductionFactor = Math.pow(0.15, 4 - this.currentSpeed); // Changed from 0.3 to 0.15 to reduce impulse 1 speed by 50%
                 speedMultiplier *= reductionFactor;
+            } else if (this.currentSpeed === 4) {
+                // Impulse 4: 25% faster than impulse 3 (reduced from previous speed)
+                const impulse3Speed = 3 * 0.3 * 0.15; // 0.135
+                const targetSpeed = impulse3Speed * 1.25; // 25% faster = 0.16875
+                speedMultiplier = targetSpeed;
             }
             
             // Calculate actual movement based on current speed
