@@ -2582,9 +2582,11 @@ export class PhysicsManager {
         window.disableCollisionDebug = () => this.disableCollisionDebug();
         window.clearConsole = () => console.clear();
         window.stopProjectileWireframes = () => { this._silentMode = true; console.log('🔇 Silent mode enabled - reduced logging'); };
+        window.checkAllPhysicsShapes = () => this.checkAllPhysicsShapes();
         
         console.log(`💡 Physics Debug Console Commands:`);
         console.log(`   • clearConsole() - Clear the console (recommended first step)`);
+        console.log(`   • checkAllPhysicsShapes() - Audit all physics objects and their shape metadata`);
         console.log(`   • debugWireframes() - Show wireframe status summary`);
         console.log(`   • testWireframes() - Make wireframes extremely obvious`);
         console.log(`   • moveWireframesToCamera() - Move all wireframes in front of camera`);
@@ -3318,6 +3320,91 @@ export class PhysicsManager {
         }, 3000);
         
         console.log(`👁️ Created collision visualization showing damage zones at detonation point: ${projectilePos.x.toFixed(1)}, ${projectilePos.y.toFixed(1)}, ${projectilePos.z.toFixed(1)}`);
+    }
+
+    /**
+     * Check all physics objects and their shape metadata for debugging
+     */
+    checkAllPhysicsShapes() {
+        console.log("=== PHYSICS SHAPE METADATA AUDIT ===");
+        console.log(`📊 Total rigid bodies: ${this.rigidBodies.size}`);
+        console.log(`📊 Total entity metadata: ${this.entityMetadata.size}\n`);
+
+        let sphereCount = 0;
+        let boxCount = 0;
+        let capsuleCount = 0;
+        let unknownCount = 0;
+        let missingMetadataCount = 0;
+
+        for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
+            const metadata = this.entityMetadata.get(rigidBody);
+            
+            if (!metadata) {
+                console.log(`❌ MISSING METADATA: ${threeObject.name || 'unnamed'}`);
+                missingMetadataCount++;
+                continue;
+            }
+
+            const { type, id, shapeType, shapeRadius, shapeWidth, shapeHeight, shapeDepth } = metadata;
+            
+            console.log(`🔍 ${type} "${id || 'unnamed'}":`);
+            console.log(`   • Shape: ${shapeType || 'MISSING'}`);
+            
+            switch (shapeType) {
+                case 'sphere':
+                    console.log(`   • Radius: ${shapeRadius || 'MISSING'}m`);
+                    sphereCount++;
+                    break;
+                case 'box':
+                    console.log(`   • Dimensions: ${shapeWidth || '?'}x${shapeHeight || '?'}x${shapeDepth || '?'}`);
+                    boxCount++;
+                    break;
+                case 'capsule':
+                    console.log(`   • Radius: ${shapeRadius || 'MISSING'}m, Height: ${shapeHeight || 'MISSING'}m`);
+                    capsuleCount++;
+                    break;
+                default:
+                    console.log(`   • ❌ UNKNOWN SHAPE TYPE: ${shapeType}`);
+                    unknownCount++;
+            }
+            
+            // Check for missing required properties
+            const issues = [];
+            if (!shapeType) issues.push('shapeType');
+            if (shapeType === 'sphere' && !shapeRadius) issues.push('shapeRadius');
+            if (shapeType === 'box' && (!shapeWidth || !shapeHeight || !shapeDepth)) {
+                issues.push('box dimensions');
+            }
+            if (shapeType === 'capsule' && (!shapeRadius || !shapeHeight)) {
+                issues.push('capsule dimensions');
+            }
+            
+            if (issues.length > 0) {
+                console.log(`   • ⚠️  MISSING: ${issues.join(', ')}`);
+            } else {
+                console.log(`   • ✅ Shape metadata complete`);
+            }
+            console.log('');
+        }
+
+        console.log("=== SUMMARY ===");
+        console.log(`✅ Spheres: ${sphereCount}`);
+        console.log(`✅ Boxes: ${boxCount}`);
+        console.log(`✅ Capsules: ${capsuleCount}`);
+        console.log(`❌ Unknown shapes: ${unknownCount}`);
+        console.log(`❌ Missing metadata: ${missingMetadataCount}`);
+        
+        const total = sphereCount + boxCount + capsuleCount + unknownCount;
+        const healthyCount = sphereCount + boxCount + capsuleCount;
+        const healthyPercentage = total > 0 ? ((healthyCount / total) * 100).toFixed(1) : '0';
+        
+        console.log(`\n🎯 Overall Health: ${healthyPercentage}% (${healthyCount}/${total} objects have proper shape metadata)`);
+        
+        if (unknownCount > 0 || missingMetadataCount > 0) {
+            console.log(`\n⚠️  ISSUES FOUND: ${unknownCount + missingMetadataCount} objects need attention`);
+        } else {
+            console.log(`\n🎉 ALL PHYSICS OBJECTS HAVE PROPER SHAPE METADATA!`);
+        }
     }
 }
 
