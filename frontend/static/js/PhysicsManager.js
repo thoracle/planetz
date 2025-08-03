@@ -2589,6 +2589,9 @@ export class PhysicsManager {
         console.log(`   • checkAllPhysicsShapes() - Audit all physics objects and their shape metadata`);
         console.log(`   • debugWireframes() - Show wireframe status summary`);
         console.log(`   • testWireframes() - Make wireframes extremely obvious`);
+        console.log(`💡 Collision Mode Toggle Commands:`);
+        console.log(`   • window.useRealisticCollision = true  - Match collision sizes to visual meshes (default)`);
+        console.log(`   • window.useRealisticCollision = false - Use small collision sizes (weapon-friendly)`);
         console.log(`   • moveWireframesToCamera() - Move all wireframes in front of camera`);
         console.log(`   • enhanceWireframes() - Make wireframes more visible`);
         console.log(`   • enableVerboseLogging() - Enable detailed debug logs`);

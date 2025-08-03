@@ -3,6 +3,16 @@ import PlanetGenerator from './planetGenerator.js';
 import { Atmosphere } from './Atmosphere.js';
 import { Cloud } from './Cloud.js';
 
+/**
+ * SolarSystemManager - Manages celestial body creation and physics
+ * 
+ * COLLISION MODES:
+ * • Realistic (default): Collision spheres match visual mesh sizes for accurate physics
+ * • Weapon-friendly: Small collision spheres to prevent blocking weapon fire
+ * 
+ * Toggle with: window.useRealisticCollision = true/false
+ * Note: Changes require regenerating the star system to take effect
+ */
 export class SolarSystemManager {
     constructor(scene, camera) {
         this.scene = scene;
@@ -217,12 +227,18 @@ export class SolarSystemManager {
 
             // Add physics body for the star
             if (window.physicsManager && window.physicsManagerReady) {
+                // Use realistic collision size matching visual mesh (can be toggled with window.useRealisticCollision = false)
+                const useRealistic = window.useRealisticCollision !== false; // Default to realistic
+                const collisionRadius = useRealistic ? starSize : Math.min(starSize, 0.5);
+                
                 const physicsBody = window.physicsManager.createPlanetRigidBody(star, {
-                    radius: Math.min(starSize, 0.5), // Cap collision radius at 0.5m to avoid blocking weapon fire
+                    radius: collisionRadius, // Match visual mesh size for realistic collision detection
                     entityType: 'star',
                     entityId: this.starSystem.star_name || 'Unknown Star',
                     health: 50000 // Stars are essentially indestructible
                 });
+                
+                console.log(`🌟 Star collision: Visual=${starSize}m, Physics=${collisionRadius}m (realistic=${useRealistic})`);
                 
                 if (physicsBody) {
                     console.log('🌟 Physics body created for star');
@@ -362,12 +378,18 @@ export class SolarSystemManager {
             
             // Add physics body for the planet
             if (window.physicsManager && window.physicsManagerReady) {
+                // Use realistic collision size matching visual mesh (can be toggled with window.useRealisticCollision = false)
+                const useRealistic = window.useRealisticCollision !== false; // Default to realistic
+                const collisionRadius = useRealistic ? planetSize : Math.min(planetSize, 0.5);
+                
                 const physicsBody = window.physicsManager.createPlanetRigidBody(planet, {
-                    radius: Math.min(planetSize, 0.5), // Cap collision radius at 0.5m to avoid blocking weapon fire
+                    radius: collisionRadius, // Match visual mesh size for realistic collision detection
                     entityType: 'planet',
                     entityId: planetData.planet_name || `Planet ${index}`,
                     health: 20000 // Planets are very durable
                 });
+                
+                console.log(`🌍 Planet collision: Visual=${planetSize}m, Physics=${collisionRadius}m (realistic=${useRealistic})`);
                 
                 if (physicsBody) {
                     console.log(`🌍 Physics body created for planet ${planetData.planet_name || index}`);
@@ -466,12 +488,18 @@ export class SolarSystemManager {
             
             // Add physics body for the moon
             if (window.physicsManager && window.physicsManagerReady) {
+                // Use realistic collision size matching visual mesh (can be toggled with window.useRealisticCollision = false)
+                const useRealistic = window.useRealisticCollision !== false; // Default to realistic
+                const collisionRadius = useRealistic ? moonSize : Math.min(moonSize, 0.1);
+                
                 const physicsBody = window.physicsManager.createPlanetRigidBody(moon, {
-                    radius: Math.min(moonSize, 0.1), // Cap collision radius at 0.1m to avoid blocking weapon fire
+                    radius: collisionRadius, // Match visual mesh size for realistic collision detection
                     entityType: 'moon',
                     entityId: moonData.moon_name || `Moon ${moonIndex} of Planet ${planetIndex}`,
                     health: 10000 // Moons are durable but less than planets
                 });
+                
+                console.log(`🌙 Moon collision: Visual=${moonSize}m, Physics=${collisionRadius}m (realistic=${useRealistic})`);
                 
                 if (physicsBody) {
                     console.log(`🌙 Physics body created for moon ${moonData.moon_name || `${planetIndex}_${moonIndex}`}`);
