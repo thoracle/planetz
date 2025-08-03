@@ -103,7 +103,7 @@ export class WeaponHUD {
         this.weaponFeedbackDisplay.className = 'weapon-feedback-display';
         this.weaponFeedbackDisplay.style.cssText = `
             position: fixed;
-            bottom: 50px;
+            bottom: 20px;
             right: 20px;
             color: #ffffff;
             font-family: 'Courier New', monospace;
