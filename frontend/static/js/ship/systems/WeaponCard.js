@@ -1348,14 +1348,17 @@ export class PhysicsProjectile {
                 z: origin.z
             };
             
-            // Create visual representation
-            const geometry = new THREE.SphereGeometry(2.0, 8, 6);
-            const material = new THREE.MeshLambertMaterial({ 
-                color: this.isHoming ? 0xff4444 : 0x44ff44,
-                emissive: this.isHoming ? 0x440000 : 0x004400,
-                transparent: true,
-                opacity: 0.9
+            // Create visual representation - larger and more visible
+            const geometry = new THREE.SphereGeometry(5.0, 8, 6); // Increased from 2.0 to 5.0 for better visibility
+            const material = new THREE.MeshBasicMaterial({ 
+                color: this.isHoming ? 0xff6666 : 0x66ff66, // Brighter colors  
+                transparent: false, // Fully opaque for maximum visibility
+                opacity: 1.0
             });
+            
+            // Add glowing effect for better visibility in space
+            material.emissive = new THREE.Color(this.isHoming ? 0xff2222 : 0x22ff22);
+            material.emissiveIntensity = 0.3;
             
             this.threeObject = new THREE.Mesh(geometry, material);
             this.threeObject.position.set(adjustedOrigin.x, adjustedOrigin.y, adjustedOrigin.z);
@@ -1369,6 +1372,9 @@ export class PhysicsProjectile {
             // Add to scene
             if (this.scene) {
                 this.scene.add(this.threeObject);
+                console.log(`🎯 ${this.weaponName}: Visual missile mesh created and added to scene (radius: 5.0m, glowing)`);
+            } else {
+                console.warn(`⚠️ ${this.weaponName}: No scene available for visual mesh`);
             }
             
             // ENHANCED COLLISION RADIUS: Prevents physics tunneling at high speeds
