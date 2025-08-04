@@ -231,13 +231,35 @@ export class WeaponSlot {
         } catch (error) {
             // Ignore errors, use default offset
         }
-        const isCloseRange = distanceToNearestTarget > 0 && distanceToNearestTarget < 5000; // Less than 5km
+        // PROGRESSIVE OFFSET REDUCTION: Eliminate parallax at close range
+        let bottomOffset, forwardOffset;
         
-        const bottomOffset = isCloseRange ? 0.3 : 1.5; // Reduce offset for close range
-        const forwardOffset = isCloseRange ? 0.1 : 0.5; // Reduce forward offset for close range
+        if (distanceToNearestTarget > 0) {
+            if (distanceToNearestTarget < 1000) {
+                // Very close (<1km): Minimal offset to prevent upward trajectory
+                bottomOffset = 0.05;
+                forwardOffset = 0.02;
+            } else if (distanceToNearestTarget < 3000) {
+                // Close (1-3km): Small offset
+                bottomOffset = 0.15;
+                forwardOffset = 0.05;
+            } else if (distanceToNearestTarget < 8000) {
+                // Medium (3-8km): Moderate offset 
+                bottomOffset = 0.5;
+                forwardOffset = 0.2;
+            } else {
+                // Long range (8km+): Full offset for visual effect
+                bottomOffset = 1.5;
+                forwardOffset = 0.5;
+            }
+        } else {
+            // No target distance available: Use moderate offset
+            bottomOffset = 0.5;
+            forwardOffset = 0.2;
+        }
         
-        if (isCloseRange) {
-            console.log(`🎯 CLOSE RANGE: Reduced spawn offset for target at ${(distanceToNearestTarget/1000).toFixed(1)}km`);
+        if (distanceToNearestTarget > 0 && distanceToNearestTarget < 8000) {
+            console.log(`🎯 RANGE-ADAPTIVE: Offset reduction for target at ${(distanceToNearestTarget/1000).toFixed(1)}km - bottom: ${bottomOffset}, forward: ${forwardOffset}`);
         }
         
         // Create centered weapon position at bottom center (no variations)

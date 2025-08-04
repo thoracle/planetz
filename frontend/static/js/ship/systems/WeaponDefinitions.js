@@ -102,7 +102,7 @@ export class WeaponDefinitions {
                 blastRadius: 0, // NO SPLASH DAMAGE - direct hit only
                 homingCapability: false,
                 targetLockRequired: false, // CORRECTED: Non-homing projectiles fire toward crosshairs, no target lock needed
-                flightRange: 10000, // meters - reduced for faster miss feedback (10km), hits still instant
+                flightRange: 30000, // meters - match weapon range (30km) to reach all valid targets
                 turnRate: 0, // No turning
                 specialProperties: {
                     explosionType: 'kinetic',

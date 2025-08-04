@@ -11,10 +11,9 @@ export class WeaponHUD {
         this.cooldownBars = [];
         this.autofireIndicator = null;
         this.targetLockIndicator = null;
-        this.messageDisplay = null;
-        this.messageTimeout = null; // Track message display timeout
-        this.weaponFeedbackDisplay = null; // Hit/Miss/Splash feedback
-        this.feedbackTimeout = null; // Track feedback display timeout
+        this.unifiedDisplay = null; // Combined message and feedback display
+        this.displayTimeout = null; // Track display timeout
+        this.currentMessagePriority = 0; // Track message priority (higher = more important)
         
         this.createHUDElements();
         
@@ -72,36 +71,10 @@ export class WeaponHUD {
         this.targetLockIndicator.textContent = 'TARGET LOCK';
         this.hudContainer.appendChild(this.targetLockIndicator);
         
-        // Create message display
-        this.messageDisplay = document.createElement('div');
-        this.messageDisplay.className = 'weapon-message-display';
-        this.messageDisplay.style.cssText = `
-            position: fixed !important;
-            bottom: 20px !important;
-            right: 20px !important;
-            color: #00ff00 !important;
-            font-family: 'Courier New', monospace !important;
-            font-size: 12px !important;
-            font-weight: normal !important;
-            z-index: 1000 !important;
-            display: none !important;
-            opacity: 1 !important;
-            background: rgba(0, 20, 0, 0.8) !important;
-            padding: 5px 10px !important;
-            border-radius: 3px !important;
-            border: 1px solid #00aa00 !important;
-            text-shadow: 0 0 5px #00ff00 !important;
-            max-width: 250px !important;
-            word-wrap: break-word !important;
-            text-align: left !important;
-            pointer-events: none !important;
-        `;
-        this.hudContainer.appendChild(this.messageDisplay);
-
-        // Create weapon feedback display (hit/miss/splash)
-        this.weaponFeedbackDisplay = document.createElement('div');
-        this.weaponFeedbackDisplay.className = 'weapon-feedback-display';
-        this.weaponFeedbackDisplay.style.cssText = `
+        // Create unified message/feedback display
+        this.unifiedDisplay = document.createElement('div');
+        this.unifiedDisplay.className = 'weapon-unified-display';
+        this.unifiedDisplay.style.cssText = `
             position: fixed;
             bottom: 20px;
             right: 20px;
@@ -109,17 +82,22 @@ export class WeaponHUD {
             font-family: 'Courier New', monospace;
             font-size: 14px;
             font-weight: bold;
-            z-index: 1000;
+            z-index: 1001;
             display: none;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 4px 8px;
-            border-radius: 3px;
-            border: 1px solid #666;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-            min-width: 60px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 2px solid #666;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
+            min-width: 100px;
+            max-width: 300px;
             text-align: center;
+            box-shadow: 0 0 15px rgba(0,0,0,0.6);
+            word-wrap: break-word;
+            pointer-events: none;
+            transition: all 0.2s ease;
         `;
-        this.hudContainer.appendChild(this.weaponFeedbackDisplay);
+        this.hudContainer.appendChild(this.unifiedDisplay);
     }
     
     /**
@@ -475,34 +453,59 @@ export class WeaponHUD {
     }
     
     /**
-     * Show general message
+     * Show unified message with priority system
+     * @param {string} text Message text
+     * @param {number} duration Duration in milliseconds (default: 3000)
+     * @param {number} priority Priority level (higher = more important, default: 1)
+     * @param {string} color Text color (default: #ffffff)
+     * @param {string} borderColor Border color (default: #666)
+     * @param {string} backgroundColor Background color (default: rgba(0, 0, 0, 0.85))
+     */
+    showUnifiedMessage(text, duration = 3000, priority = 1, color = '#ffffff', borderColor = '#666', backgroundColor = 'rgba(0, 0, 0, 0.85)') {
+        if (!this.unifiedDisplay) return;
+
+        // Check if current message has higher priority
+        if (this.currentMessagePriority > priority) {
+            console.log(`🎯 MESSAGE PRIORITY: Skipping lower priority message (${priority} vs ${this.currentMessagePriority})`);
+            return;
+        }
+
+        // Clear existing timeout
+        if (this.displayTimeout) {
+            clearTimeout(this.displayTimeout);
+            this.displayTimeout = null;
+        }
+
+        // Update current priority
+        this.currentMessagePriority = priority;
+
+        // Apply styling and content
+        this.unifiedDisplay.textContent = text;
+        this.unifiedDisplay.style.color = color;
+        this.unifiedDisplay.style.borderColor = borderColor;
+        this.unifiedDisplay.style.backgroundColor = backgroundColor;
+        this.unifiedDisplay.style.display = 'block';
+        this.unifiedDisplay.style.opacity = '1';
+
+        console.log(`🎯 UNIFIED DISPLAY: "${text}" (priority: ${priority}, duration: ${duration}ms)`);
+
+        // Hide after duration and reset priority
+        this.displayTimeout = setTimeout(() => {
+            this.unifiedDisplay.style.opacity = '0';
+            setTimeout(() => {
+                this.unifiedDisplay.style.display = 'none';
+                this.currentMessagePriority = 0; // Reset priority when hidden
+            }, 200); // Fade out duration
+        }, duration);
+    }
+
+    /**
+     * Show general message (legacy compatibility)
      * @param {string} message Message to display
      * @param {number} duration Duration in milliseconds (default: 3000)
      */
     showMessage(message, duration = 3000) {
-        console.log(`🎯 WeaponHUD.showMessage called with: "${message}" (duration: ${duration}ms)`);
-        console.log(`🎯 messageDisplay element:`, this.messageDisplay);
-        console.log(`🎯 messageDisplay current style:`, this.messageDisplay.style.cssText);
-        
-        this.messageDisplay.textContent = message;
-        this.messageDisplay.style.display = 'block';
-        this.messageDisplay.style.opacity = '1'; // Ensure message is visible
-        
-        console.log(`🎯 messageDisplay after setting display=block:`, this.messageDisplay.style.cssText);
-        console.log(`🎯 messageDisplay visible in DOM:`, this.messageDisplay.offsetHeight > 0);
-        
-        // Clear any existing timeout
-        if (this.messageTimeout) {
-            clearTimeout(this.messageTimeout);
-        }
-        
-        // Hide after specified duration
-        this.messageTimeout = setTimeout(() => {
-            this.messageDisplay.style.display = 'none';
-            this.messageDisplay.style.opacity = '0';
-            this.messageTimeout = null;
-            console.log(`🎯 WeaponHUD message hidden after ${duration}ms`);
-        }, duration);
+        this.showUnifiedMessage(message, duration, 1, '#00ff00', '#00aa00', 'rgba(0, 20, 0, 0.8)');
     }
     
     /**
@@ -531,78 +534,74 @@ export class WeaponHUD {
      * @param {number} distance - Distance to target
      */
     showWeaponFeedback(type, weaponName, damage = 0, distance = 0) {
-        if (!this.weaponFeedbackDisplay) return;
-
-        // Clear any existing timeout
-        if (this.feedbackTimeout) {
-            clearTimeout(this.feedbackTimeout);
-            this.feedbackTimeout = null;
-        }
-
         let text = '';
         let color = '#ffffff';
         let borderColor = '#666';
+        let priority = 2; // Default priority for weapon feedback
+        let duration = 4000; // Default duration
 
         switch (type) {
             case 'hit':
                 text = `HIT! ${damage} DMG`;
                 color = '#00ff00';
                 borderColor = '#00aa00';
+                priority = 3; // High priority for hits
                 break;
             case 'splash':
                 text = `SPLASH! ${damage} DMG`;
                 color = '#ff8800';
                 borderColor = '#cc6600';
+                priority = 3; // High priority for splash hits
                 break;
             case 'miss':
                 text = 'MISS';
                 color = '#ff4444';
                 borderColor = '#cc3333';
+                priority = 2; // Medium priority for misses
+                duration = 2000; // Shorter duration for misses
                 break;
             case 'out-of-range':
                 const distanceKm = (distance / 1000).toFixed(1);
                 text = `OUT OF RANGE\n${distanceKm}km`;
                 color = '#ffff00';
                 borderColor = '#cccc00';
+                priority = 2;
                 break;
             case 'subsystem-destroyed':
-                text = weaponName; // weaponName contains the full message (e.g., "IMPULSE ENGINES DESTROYED")
+                text = weaponName; // weaponName contains the full message
                 color = '#ff0000';
                 borderColor = '#aa0000';
+                priority = 5; // Very high priority for system destruction
+                duration = 6000;
                 break;
             case 'subsystem-critical':
-                text = weaponName; // weaponName contains the full message (e.g., "SHIELDS CRITICAL")
+                text = weaponName; // weaponName contains the full message
                 color = '#ff8800';
                 borderColor = '#cc6600';
+                priority = 4; // High priority for critical systems
+                duration = 5000;
                 break;
             case 'target-destroyed':
-                text = weaponName; // weaponName contains the full message (e.g., "TARGET DUMMY 1 DESTROYED")
+                text = weaponName; // weaponName contains the full message
                 color = '#00ff88';
                 borderColor = '#00aa66';
+                priority = 6; // Highest priority for target destruction
+                duration = 8000;
                 break;
             case 'lucky-hit':
-                text = weaponName; // weaponName contains the full message (e.g., "LUCKY HIT! IMPULSE ENGINES 100%→75%")
+                text = weaponName; // weaponName contains the full message
                 color = '#ffaa00';
                 borderColor = '#cc8800';
+                priority = 4; // High priority for lucky hits
+                duration = 5000;
                 break;
             default:
                 text = type.toUpperCase();
+                priority = 1;
         }
 
-        // Update display
-        this.weaponFeedbackDisplay.textContent = text;
-        this.weaponFeedbackDisplay.style.color = color;
-        this.weaponFeedbackDisplay.style.borderColor = borderColor;
-        this.weaponFeedbackDisplay.style.display = 'block';
-        this.weaponFeedbackDisplay.style.opacity = '1';
-
-        // Auto-hide after 6 seconds (3x longer than original)
-        this.feedbackTimeout = setTimeout(() => {
-            this.weaponFeedbackDisplay.style.opacity = '0';
-            setTimeout(() => {
-                this.weaponFeedbackDisplay.style.display = 'none';
-            }, 300); // Fade out duration
-        }, 6000);
+        // Use unified display with appropriate priority
+        this.showUnifiedMessage(text, duration, priority, color, borderColor);
     }
 
     /**
@@ -649,7 +648,6 @@ export class WeaponHUD {
      */
     showDamageFeedback(weaponName, damage, targetName) {
         // Determine if this is splash damage by checking the actual weapon properties
-        // We need to check if the weapon actually has blast radius > 0
         let isSplashWeapon = false;
         
         // Try to get the actual weapon data to check blast radius
@@ -667,10 +665,11 @@ export class WeaponHUD {
             isSplashWeapon = true; // Torpedoes are typically splash
         }
         
+        // Use the unified feedback system
         if (isSplashWeapon) {
-            this.showSplashFeedback(weaponName, damage);
+            this.showWeaponFeedback('splash', weaponName, damage);
         } else {
-            this.showHitFeedback(weaponName, damage);
+            this.showWeaponFeedback('hit', weaponName, damage);
         }
     }
     
@@ -687,16 +686,13 @@ export class WeaponHUD {
         if (this.targetLockIndicator) {
             this.targetLockIndicator.remove();
         }
-        if (this.messageDisplay) {
-            this.messageDisplay.remove();
-        }
-        if (this.weaponFeedbackDisplay) {
-            this.weaponFeedbackDisplay.remove();
+        if (this.unifiedDisplay) {
+            this.unifiedDisplay.remove();
         }
         
         // Clear timeouts
-        if (this.feedbackTimeout) {
-            clearTimeout(this.feedbackTimeout);
+        if (this.displayTimeout) {
+            clearTimeout(this.displayTimeout);
         }
         
         this.cooldownBars = [];

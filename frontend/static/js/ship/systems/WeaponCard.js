@@ -369,6 +369,11 @@ export class ScanHitWeapon extends WeaponCard {
             if (weaponHUD) {
                 console.log(`🎯 MISS FEEDBACK: Calling showWeaponFeedback('miss') on weaponHUD`);
                 weaponHUD.showWeaponFeedback('miss', this.name);
+                
+                // Also show unified miss feedback
+                if (typeof weaponHUD.showUnifiedMessage === 'function') {
+                    weaponHUD.showUnifiedMessage('MISS', 1500, 2, '#ff4444', '#cc3333', 'rgba(40, 0, 0, 0.9)');
+                }
             } else {
                 console.log(`🎯 MISS FEEDBACK: No weaponHUD found - checking paths:
                   starfieldManager.viewManager.ship.weaponSystem.weaponHUD: ${!!window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD}
@@ -665,7 +670,7 @@ export class SplashDamageWeapon extends WeaponCard {
             const crosshairTarget = this.getCrosshairTarget(camera);
             
             if (crosshairTarget) {
-                // VALIDATED TARGET: Use camera direction for intuitive crosshair-following trajectory
+                // SIMPLE AIM: Use camera direction for intuitive crosshair-following trajectory
                 const cameraDirection = new window.THREE.Vector3(0, 0, -1);
                 cameraDirection.applyQuaternion(camera.quaternion);
                 
@@ -675,11 +680,12 @@ export class SplashDamageWeapon extends WeaponCard {
                     z: cameraDirection.z
                 };
                 
-                console.log(`🔍 DEBUG ${this.name}: Camera direction to target: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
-                console.log(`🎯 ${this.name}: Firing at validated crosshair target: ${crosshairTarget.name} (${crosshairTarget.distance.toFixed(1)}km) - crosshair trajectory`);
+                console.log(`🎯 ${this.name}: Camera direction to target: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
+                console.log(`🎯 ${this.name}: Firing at validated crosshair target: ${crosshairTarget.name} (${crosshairTarget.distance.toFixed(1)}km) - camera trajectory`);
                 target = crosshairTarget; // Enable collision tracking
             } else {
-                // NO TARGET: Use camera direction to ensure consistent trajectory (parallax-free)
+                // NO TARGET: Use simple camera direction for consistent trajectory
+                const camera = window.starfieldManager.camera;
                 const cameraDirection = new window.THREE.Vector3(0, 0, -1);
                 cameraDirection.applyQuaternion(camera.quaternion);
                 
@@ -689,7 +695,7 @@ export class SplashDamageWeapon extends WeaponCard {
                     z: cameraDirection.z
                 };
                 
-                console.log(`🔍 DEBUG ${this.name}: Camera direction vector: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
+                console.log(`🎯 ${this.name}: Camera direction vector: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
                 console.log(`🎯 ${this.name}: No valid crosshair target - firing in camera direction (will check for miss on expiry)`);
                 target = null; // Disable collision tracking
                 console.log(`🔍 DEBUG ${this.name}: Target cleared - now null`);
@@ -981,6 +987,11 @@ export class SplashDamageWeapon extends WeaponCard {
             if (weaponHUD) {
                 console.log(`🎯 MISS FEEDBACK: Calling showWeaponFeedback('miss') on weaponHUD`);
                 weaponHUD.showWeaponFeedback('miss', this.name);
+                
+                // Also show unified miss feedback
+                if (typeof weaponHUD.showUnifiedMessage === 'function') {
+                    weaponHUD.showUnifiedMessage('MISS', 1500, 2, '#ff4444', '#cc3333', 'rgba(40, 0, 0, 0.9)');
+                }
             } else {
                 console.log(`🎯 MISS FEEDBACK: No weaponHUD found - checking paths:
                   starfieldManager.viewManager.ship.weaponSystem.weaponHUD: ${!!window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD}
@@ -1283,17 +1294,19 @@ export class PhysicsProjectile {
         // SIMPLIFIED: No complex trail tracking - we'll create static trails on impact
         this.trailCreated = false;
         
+        // COLLISION DELAY: Prevent instant collision on launch (MUST BE BEFORE PHYSICS INIT)
+        this.launchTime = Date.now();
+        this.collisionProcessed = false;
+        this.collisionDelayMs = 15; // 15ms delay to allow visible travel before collision detection
+        this.allowCollisionAfter = this.launchTime + this.collisionDelayMs;
+        
         // Initialize physics body
         this.initializePhysicsBody(config.origin, config.direction);
         
-        // IMPROVED: Create simple trail during flight that stops on collision
-        this.initializeSimpleTrail();
+        // TRAIL DISABLED: Temporarily disabled to eliminate visual artifacts
+        // this.initializeSimpleTrail();
         
         // Silent projectile launch
-        
-        // Native collision detection - no delay needed
-        this.launchTime = Date.now();
-        this.collisionProcessed = false;
         
         // Add range checking - projectile expires when it travels beyond weapon range
         this.rangeCheckInterval = setInterval(() => {
@@ -1382,40 +1395,34 @@ export class PhysicsProjectile {
                 }
             }
             
-            // ENHANCED COLLISION RADIUS: Prevents physics tunneling at high speeds
+            // FIXED COLLISION RADIUS: Realistic collision detection for visual consistency
             let collisionRadius;
             
             // Get projectile speed for physics calculations
             const projectileSpeed = this.weaponData?.specialProperties?.projectileSpeed || 1500; // m/s
             const physicsStepDistance = (projectileSpeed / 240); // Distance per physics step (240 FPS)
-            const minRadiusForSpeed = Math.max(8.0, physicsStepDistance * 1.5); // Prevent tunneling
+            const minRadiusForTunneling = Math.max(1.0, physicsStepDistance * 0.5); // Minimal tunneling prevention
             
             if (this.target && this.target.distance) {
                 const targetDistance = this.target.distance;
                 
-                // BASE RADIUS: Distance-based scaling
+                // BALANCED RADIUS: Now that missiles pass through each other, we can use reasonable sizes
                 let baseRadius;
                 if (targetDistance < 1) {
-                    baseRadius = 8.0; // INCREASED: Minimum for close combat
-                } else if (targetDistance < 5) {
-                    baseRadius = 8.0 + (targetDistance - 1) * 1.0; // 8-12m scaling
+                    baseRadius = 2.5; // Reasonable for close combat
+                } else if (targetDistance < 10) {
+                    baseRadius = 3.0; // Good for medium range
                 } else {
-                    baseRadius = 12 + Math.min((targetDistance - 5) * 0.8, 8); // 12-20m scaling
+                    baseRadius = 3.5; // Reliable for long range
                 }
                 
-                // SPEED COMPENSATION: Ensure collision radius handles projectile velocity
-                collisionRadius = Math.max(baseRadius, minRadiusForSpeed);
+                // SPEED COMPENSATION: Ensure reliable hit detection
+                collisionRadius = Math.max(baseRadius, minRadiusForTunneling);
                 
-                // CLOSE RANGE BOOST: Extra protection for close combat tunneling
-                if (targetDistance < 10) {
-                    collisionRadius = Math.max(collisionRadius, 10.0);
-                    console.log(`🎯 ${this.weaponName}: Close-range enhanced radius: ${collisionRadius.toFixed(2)}m for ${targetDistance.toFixed(1)}km target`);
-                } else {
-                    console.log(`🎯 ${this.weaponName}: Collision radius: ${collisionRadius.toFixed(2)}m for ${targetDistance.toFixed(1)}km target`);
-                }
+                console.log(`🎯 ${this.weaponName}: Balanced collision radius: ${collisionRadius.toFixed(2)}m for ${targetDistance.toFixed(1)}km target`);
             } else {
-                collisionRadius = 0.05; // ULTRA-PRECISE: 5cm radius for expected misses to prevent accidental hits  
-                console.log(`🎯 ${this.weaponName}: Ultra-precise collision radius: ${collisionRadius}m (no target - expected miss)`);
+                collisionRadius = 2.0; // Reasonable for misses since missiles now pass through each other
+                console.log(`🎯 ${this.weaponName}: Miss collision radius: ${collisionRadius}m (no target)`);
             }
             
             // Get projectile velocity for weapon configuration
@@ -1430,16 +1437,19 @@ export class PhysicsProjectile {
                 restitution: 0.0, // SIMPLIFIED: No bouncing at all
                 friction: 0.3,
                 shape: 'sphere',
-                radius: collisionRadius, // SMART RADIUS: Scales with target distance for realistic hit detection
+                radius: collisionRadius, // BALANCED RADIUS: Allows hits but prevents instant collision
                 entityType: 'projectile',
                 entityId: `${this.weaponName}_${Date.now()}`,
                 health: 1,
                 projectileSpeed: weaponVelocity // SPEED DATA: For enhanced CCD configuration
             };
             
+            console.log(`🔍 PHYSICS SETUP: ${this.weaponName} - collision radius: ${collisionRadius}m, speed: ${weaponVelocity}m/s, delay: ${this.collisionDelayMs}ms`);
+            
             this.rigidBody = this.physicsManager.createRigidBody(this.threeObject, bodyConfig);
             
             if (this.rigidBody) {
+                console.log(`✅ PHYSICS BODY CREATED: ${this.weaponName} rigid body created successfully`);
                 // Silent rigid body creation
                 
                 // Calculate velocity based on direction and weapon-specific speed
@@ -1458,7 +1468,7 @@ export class PhysicsProjectile {
                 );
                 this.rigidBody.setLinearVelocity(physicsVelocity);
                 
-                console.log(`🚀 ${this.weaponName}: Set velocity to ${weaponVelocity} units/s in direction:`, {
+                                console.log(`🚀 ${this.weaponName}: Set velocity to ${weaponVelocity} units/s in direction:`, {
                     x: direction.x.toFixed(3), 
                     y: direction.y.toFixed(3), 
                     z: direction.z.toFixed(3)
@@ -1467,10 +1477,13 @@ export class PhysicsProjectile {
                 // DEBUG: Also log where this will take the projectile
                 const projectedEndPos = {
                     x: (origin.x + direction.x * 1000).toFixed(1),
-                    y: (origin.y + direction.y * 1000).toFixed(1), 
+                    y: (origin.y + direction.y * 1000).toFixed(1),
                     z: (origin.z + direction.z * 1000).toFixed(1)
                 };
                 console.log(`🎯 ${this.weaponName}: Will fly toward position:`, projectedEndPos);
+                
+                // DEBUG: Track projectile for collision detection
+                console.log(`🔍 COLLISION TRACKING: ${this.weaponName} will accept collisions after ${this.collisionDelayMs}ms delay`);
                 
                 // DEBUG: Direction is now properly calculated to aim at validated targets
                 if (this.target && this.target.position) {
@@ -1521,8 +1534,9 @@ export class PhysicsProjectile {
         this.trailId = `${this.weaponName}_${this.launchTime}`;
         
         const startPos = new THREE.Vector3(this.startPosition.x, this.startPosition.y, this.startPosition.z);
-        console.log('🔍 DEBUG: Calling createProjectileTrail with:', this.trailId, particleType, startPos);
-        this.trailData = effectsManager.createProjectileTrail(this.trailId, particleType, startPos, this.threeObject);
+        // TRAIL DISABLED: Temporarily disabled to eliminate visual artifacts
+        // console.log('🔍 DEBUG: Calling createProjectileTrail with:', this.trailId, particleType, startPos);
+        // this.trailData = effectsManager.createProjectileTrail(this.trailId, particleType, startPos, this.threeObject);
     }
 
     /**
@@ -1545,13 +1559,48 @@ export class PhysicsProjectile {
      * @param {Object} otherObject The object we collided with
      */
     onCollision(contactPoint, otherObject) {
+        console.log(`🚀 COLLISION EVENT: ${this.weaponName} collision detected!`);
+        
+        // COLLISION DELAY: Prevent instant collision on launch
+        const currentTime = Date.now();
+        const flightTime = currentTime - this.launchTime;
+        if (currentTime < this.allowCollisionAfter) {
+            console.log(`⏰ COLLISION DELAY: ${this.weaponName} collision blocked (${flightTime}ms flight, need ${this.collisionDelayMs}ms)`);
+            return; // Ignore collision during delay period
+        }
+        
+        console.log(`🎯 COLLISION ACCEPTED: ${this.weaponName} after ${flightTime}ms flight time`);
+        
         // Store collision target for direct hit weapons (otherObject is threeObject)
         // Need to find the entity metadata from the threeObject
         if (this.physicsManager && otherObject) {
             const rigidBody = this.physicsManager.rigidBodies.get(otherObject);
             if (rigidBody) {
                 this.collisionTarget = this.physicsManager.entityMetadata.get(rigidBody);
-                console.log(`🎯 COLLISION: Stored collision target:`, this.collisionTarget?.id || 'Unknown');
+                
+                // SIMPLE RULE: Missiles ignore collisions with other projectiles entirely
+                if (this.collisionTarget && 
+                    (this.collisionTarget.type === 'projectile' || 
+                     this.collisionTarget.id?.includes('Standard Missile') ||
+                     this.collisionTarget.id?.includes('Missile') ||
+                     this.collisionTarget.id?.includes('Torpedo'))) {
+                    console.log(`🚫 PROJECTILE PASS-THROUGH: ${this.weaponName} ignoring collision with projectile ${this.collisionTarget.id} (type: ${this.collisionTarget.type})`);
+                    return; // Missiles pass through other missiles
+                }
+                
+                // TARGET VALIDATION: Relaxed - only block obvious wrong targets
+                if (this.target && this.collisionTarget) {
+                    const hitEntityType = this.collisionTarget.type || 'unknown';
+                    const intendedTargetType = this.target.type || 'enemy_ship';
+                    
+                    // Only skip very large celestial bodies when clearly aiming at ships
+                    if (intendedTargetType === 'enemy_ship' && hitEntityType === 'star') {
+                        console.log(`🚫 TARGET VALIDATION: Skipping ${hitEntityType} collision - intended target was ${intendedTargetType}`);
+                        return; // Only block star collisions, allow planets/moons
+                    }
+                }
+                
+                console.log(`🎯 COLLISION: Stored collision target:`, this.collisionTarget?.id || 'Unknown', `(type: ${this.collisionTarget?.type || 'unknown'})`);
             } else {
                 console.log(`⚠️ COLLISION: Could not find rigid body for collision target`);
                 this.collisionTarget = otherObject; // Fallback to threeObject
@@ -1783,8 +1832,14 @@ export class PhysicsProjectile {
         const damageResult = targetShip.applyDamage(damage, 'kinetic', null);
         console.log(`💥 ${this.weaponName}: After damage - hull: ${targetShip.currentHull}/${targetShip.maxHull}, destroyed: ${damageResult?.isDestroyed || false}`);
         
-        // Show damage feedback on HUD
+        // Show damage feedback on HUD using unified display
         this.showDamageFeedback(targetShip, damage);
+        
+        // Also show hit feedback with unified display
+        if (window.starfieldManager?.viewManager?.getShip()?.weaponSystem?.weaponHUD) {
+            const weaponHUD = window.starfieldManager.viewManager.getShip().weaponSystem.weaponHUD;
+            weaponHUD.showUnifiedMessage(`HIT! ${damage} DMG`, 2000, 3, '#00ff00', '#00aa00', 'rgba(0, 40, 0, 0.9)');
+        }
         
         // Play hit sound
         if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {

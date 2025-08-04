@@ -1311,8 +1311,9 @@ export class PhysicsManager {
                         
                         console.log(`📏 COLLISION DEBUG: Contact distance: ${distance}`);
                         
-                        // Only process contact if distance indicates actual collision (increased threshold for better detection)
-                        if (distance <= 0.5) {
+                        // More permissive collision processing - allow wider range of distances
+                        // Negative distances = penetration, positive = close proximity
+                        if (distance <= 5.0) { // Increased from 0.5 to 5.0 units for better collision detection
                             console.log(`✅ COLLISION DEBUG: Processing collision - distance: ${distance}`);
                             // Handle projectile collision
                             if (projectile0) {
@@ -1321,6 +1322,8 @@ export class PhysicsManager {
                             if (projectile1) {
                                 this.handleProjectileCollision(projectile1, contactPoint, body0);
                             }
+                        } else {
+                            console.log(`❌ COLLISION DEBUG: Collision rejected - distance too large: ${distance} (threshold: 5.0)`);
                         }
                     }
                 }
