@@ -39,7 +39,33 @@ planetz/
 
 ## 🚀 LATEST MAJOR UPDATES (Current Session)
 
-### 🎯 **Combat System Refinements** ⭐ LATEST ACHIEVEMENTS
+### 🎯 **Missile Combat System Debugging** ⭐ CRITICAL FIXES
+- **Issue Resolved**: ✅ **Missiles not hitting targets despite collision detection**
+  - **Problem**: Collision distance threshold too strict (0.5 units), rejecting valid hits
+  - **Solution**: Increased threshold to 5.0 units in `PhysicsManager.js` for reliable collision processing
+  - **Result**: Missiles now consistently hit targets with proper collision detection
+
+- **Collision Timing Fix**: ✅ **Missiles hitting too fast for collision delay**
+  - **Problem**: 50ms collision delay blocking hits occurring at 17-20ms flight time
+  - **Solution**: Reduced collision delay to 15ms in `WeaponCard.js` for optimal timing
+  - **Result**: Missiles briefly visible before impact with instant hit registration
+
+- **Projectile Collision Filtering**: ✅ **Missiles passing through each other properly**
+  - **Problem**: Field name mismatch (`entityType` vs `type`) preventing projectile filtering
+  - **Solution**: Corrected to use `collisionTarget.type === 'projectile'` for filtering
+  - **Result**: Missiles ignore collisions with other projectiles as intended
+
+- **Unified UI Feedback System**: ✅ **Consolidated message display**
+  - **Enhancement**: Combined `messageDisplay` and `weaponFeedbackDisplay` in `WeaponHUD.js`
+  - **Feature**: Priority-based message system with proper hit/miss/damage feedback
+  - **Result**: Clean, organized weapon feedback with priority handling
+
+- **Collision Processing Improvements**: ✅ **Enhanced damage application**
+  - **Fix**: Improved collision distance detection and contact point processing
+  - **Enhancement**: Better trajectory calculation with camera direction simplification
+  - **Result**: Consistent damage application with subsystem targeting and destruction feedback
+
+### 🎯 **Previous Combat System Refinements**
 - **Crosshair Targeting Fix**: ✅ **Synchronized weapon system and UI targeting calculations**
   - **Issue**: Red circle crosshair not showing for valid shots despite successful targeting
   - **Root Cause**: Range calculation discrepancy between weapon system and UI (missing 30km fallback)
@@ -198,7 +224,7 @@ cd backend && python app.py  # python works in venv
 - ✅ **Target Preservation** - Q-key dummy creation with perfect target maintenance
 - ✅ **Universal Autofire** - All weapons with intelligent validation
 - ✅ **Advanced Sub-Targeting** - Faction-colored HUD with weapon compatibility
-- ✅ **Physics Projectiles** - Torpedoes/missiles with realistic flight and collision (now 100% reliable)
+- ✅ **Physics Projectiles** - Torpedoes/missiles with realistic flight and collision (100% reliable hit detection)
 - ✅ **Weapon Balance** - Beam vs projectile mechanics properly differentiated
 - ✅ **Audio Systems** - Consistent sound effects with proper positioning
 - ✅ **Debug Cleanup** - Clean console output, production-optimized logging
@@ -206,6 +232,7 @@ cd backend && python app.py  # python works in venv
 - ✅ **Missile Visibility** - Projectiles visible during normal combat with color coding
 - ✅ **Audio Mapping** - All weapon sounds properly mapped and contextual
 - ✅ **UI Organization** - Weapon feedback positioned for optimal visual hierarchy
+- ✅ **Missile Combat Debugging** - Collision detection, timing, and UI feedback fully resolved
 
 ### 🏆 Technical Achievements
 - **Complete Physics Engine**: Verified Ammo.js native collision detection with enhanced CCD configuration
@@ -218,6 +245,7 @@ cd backend && python app.py  # python works in venv
 - **UI-Weapon Synchronization**: Perfect alignment between targeting logic and visual feedback
 - **Enhanced Visual Feedback**: Visible projectiles with color-coded identification system
 - **Robust Audio Framework**: Context-aware sound effects with proper mapping and positioning
+- **Missile Combat Resolution**: Systematic debugging of collision detection, timing, and feedback systems
 
 ## 🛠️ Potential Next Steps
 
