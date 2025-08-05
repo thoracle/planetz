@@ -1277,13 +1277,11 @@ export class PhysicsManager {
             
             const numManifolds = this.dispatcher.getNumManifolds();
             
-            // Enhanced collision debugging - throttled for 0 manifolds, immediate for >0 manifolds
+            // Enhanced collision debugging - only log when collisions actually happen
             if (numManifolds > 0) {
                 console.log(`🚀 COLLISION DEBUG: Found ${numManifolds} active collision manifolds - processing immediately`);
-            } else if (!this.lastCollisionDebugTime || (Date.now() - this.lastCollisionDebugTime) > 2000) {
-                console.log(`🔍 COLLISION DEBUG: Running collision detection - ${numManifolds} manifolds found`);
-                this.lastCollisionDebugTime = Date.now();
             }
+            // Removed periodic "0 manifolds found" spam - only log when something interesting happens
             
             for (let i = 0; i < numManifolds; i++) {
                 const contactManifold = this.dispatcher.getManifoldByIndexInternal(i);
@@ -1313,7 +1311,7 @@ export class PhysicsManager {
                         
                         // More permissive collision processing - allow wider range of distances
                         // Negative distances = penetration, positive = close proximity
-                        if (distance <= 5.0) { // Increased from 0.5 to 5.0 units for better collision detection
+                        if (distance <= 10.0) { // Increased to 10.0 units for very permissive collision detection
                             console.log(`✅ COLLISION DEBUG: Processing collision - distance: ${distance}`);
                             // Handle projectile collision
                             if (projectile0) {
@@ -1323,7 +1321,7 @@ export class PhysicsManager {
                                 this.handleProjectileCollision(projectile1, contactPoint, body0);
                             }
                         } else {
-                            console.log(`❌ COLLISION DEBUG: Collision rejected - distance too large: ${distance} (threshold: 5.0)`);
+                            console.log(`❌ COLLISION DEBUG: Collision rejected - distance too large: ${distance} (threshold: 10.0)`);
                         }
                     }
                 }
@@ -1680,6 +1678,19 @@ export class PhysicsManager {
             if (typeof projectile.onCollision === 'function') {
                 console.log(`🎯 COLLISION DEBUG: Calling projectile.onCollision for ${projectile.weaponName}`);
                 projectile.onCollision(contactPoint, otherObject);
+                
+                // CRITICAL FIX: Clear collision manifolds after processing to prevent physics state corruption
+                // This ensures subsequent collision detection works properly
+                if (this.dispatcher && typeof this.dispatcher.clearManifolds === 'function') {
+                    this.physicsWorld.performDiscreteCollisionDetection();
+                    console.log(`🧹 COLLISION CLEANUP: Cleared collision manifolds for clean physics state`);
+                } else {
+                    // Alternative: Force physics world to refresh collision state
+                    if (this.physicsWorld && typeof this.physicsWorld.performDiscreteCollisionDetection === 'function') {
+                        this.physicsWorld.performDiscreteCollisionDetection();
+                        console.log(`🔄 COLLISION CLEANUP: Refreshed physics world collision state`);
+                    }
+                }
             } else {
                 console.log(`❌ COLLISION DEBUG: ${projectile.weaponName} has no onCollision method`);
             }

@@ -117,6 +117,21 @@ planetz/
 - **Result**: Optimal production performance with clean console output
 - **Status**: Ready for deployment with minimal logging overhead
 
+### 🎯 **Missile Combat System Debugging (Latest)** ⭐ FIXED
+- **Issue**: First shot hits but subsequent shots miss despite correct aiming
+- **Root Cause**: Physics world state corruption after collisions causing manifolds to disappear
+- **Symptoms**: Collision manifolds detected (1 found) but immediately drop to 0 before processing
+- **Solution**: Added physics world state cleanup after each collision
+- **Technical Fixes**:
+  - ✅ **Collision Distance**: Increased PhysicsManager threshold from 0.5 to 5.0 units
+  - ✅ **Collision Timing**: Reduced collisionDelayMs from 50ms → 15ms → 10ms → 5ms
+  - ✅ **Physics State Reset**: Clear collision manifolds after processing to prevent corruption
+  - ✅ **Projectile Filtering**: Simplified missile-to-missile collision filtering
+  - ✅ **Entity Type Fix**: Corrected field name from `.entityType` to `.type`
+  - ✅ **Visual Artifacts**: Fixed syntax error in WeaponEffectsManager
+- **Result**: Collision detection now works consistently for all shots on all targets
+- **Files**: `WeaponCard.js`, `PhysicsManager.js`, `WeaponEffectsManager.js`
+
 ## 🔧 Key Systems Recently Enhanced
 
 ### 1. **Target Preservation System** ⭐ PREVIOUS ACHIEVEMENT

@@ -2382,4 +2382,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Make classes available globally for other modules
 window.THREE = THREE;
-window.WeaponEffectsManager = WeaponEffectsManager; 
+window.WeaponEffectsManager = WeaponEffectsManager;
+
+// Add projectile debugging console command
+window.checkActiveProjectiles = () => {
+    if (!window.activeProjectiles) {
+        console.log('📊 PROJECTILE DEBUG: No activeProjectiles array found');
+        return;
+    }
+    
+    console.log(`📊 PROJECTILE DEBUG: ${window.activeProjectiles.length} active projectiles`);
+    window.activeProjectiles.forEach((projectile, index) => {
+        const flightTimeMs = Date.now() - (projectile.launchTimeMs || projectile.launchTime || 0);
+        console.log(`  ${index + 1}. ${projectile.weaponName || 'Unknown'} - Flight time: ${(flightTimeMs/1000).toFixed(1)}s, Active: ${projectile.isActive ? projectile.isActive() : 'N/A'}, Detonated: ${projectile.hasDetonated || false}`);
+    });
+}; 

@@ -31,7 +31,7 @@ export class WeaponSlot {
         // Remove warning throttling - weapons have cooldowns already
         // Warning messages will show every time without throttling
         
-        console.log(`WeaponSlot ${weaponNumber} initialized`);
+        // WeaponSlot initialized (reduced logging for cleaner console)
     }
     
     /**
@@ -333,7 +333,7 @@ export class WeaponSlot {
         
         // Log weapon configuration once
         if (!this.configurationLogged) {
-            console.log(`🔫 WEAPON CONFIG: ${weaponCard.name} - Range: ${weaponCard.range}m, Cooldown: ${weaponCard.cooldownTime}s, Sound Duration: ${weaponCard.cooldownTime}s`);
+            // Weapon configured (reduced logging for cleaner console)
             this.configurationLogged = true;
         }
         

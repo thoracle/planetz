@@ -543,7 +543,7 @@ export default class CardSystemIntegration {
                 // Add the system to the ship
                 if (this.ship.addSystem(systemName, system)) {
                     systemsCreated++;
-                    console.log(`✅ CREATED: ${systemName} (Level ${cardData.level}) from card`);
+                    // System created from card (reduced logging for cleaner console)
                 } else {
                     console.log(`❌ FAILED TO ADD: ${systemName} - insufficient slots or other error`);
                 }

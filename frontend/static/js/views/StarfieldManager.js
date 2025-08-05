@@ -3753,9 +3753,9 @@ export class StarfieldManager {
                     console.warn('⚠️ PhysicsManager not ready - skipping physics body creation for ships');
                 }
                 
-                // Debug log actual distance from origin (where player should be)
-                const originPosition = new this.THREE.Vector3(0, 0, 0);
-                const actualDistance = originPosition.distanceTo(shipMesh.position);
+                // Debug log actual distance from player position
+                const playerPosition = this.camera ? this.camera.position : new this.THREE.Vector3(0, 0, 0);
+                const actualDistance = playerPosition.distanceTo(shipMesh.position);
                 console.log(`🎯 Target ${i + 1} positioned at ${(actualDistance / 1000).toFixed(1)}km (world coords: ${shipMesh.position.x}, ${shipMesh.position.y}, ${shipMesh.position.z})`);
                 
                 // CRITICAL: Update physics body position to match mesh position

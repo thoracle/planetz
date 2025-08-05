@@ -4,6 +4,9 @@
  * Implements Scan-Hit and Splash-Damage weapon types
  */
 
+import { CrosshairTargeting } from '../../utils/CrosshairTargeting.js';
+import { targetingService } from '../../services/TargetingService.js';
+
 export class WeaponCard {
     constructor(weaponData) {
         // Basic weapon properties
@@ -560,95 +563,19 @@ export class SplashDamageWeapon extends WeaponCard {
     }
     
     /**
-     * Get target under crosshairs using same logic as ViewManager crosshair system
+     * Get target under crosshairs using unified targeting service
      * @param {THREE.Camera} camera - Camera for raycasting
      * @returns {Object|null} Target object if valid crosshair target found, null otherwise
      */
     getCrosshairTarget(camera) {
-        if (!window.starfieldManager?.dummyShipMeshes) return null;
+        const targetingResult = targetingService.getCurrentTarget({
+            camera: camera,
+            weaponRange: this.range || 30000,
+            requestedBy: this.name,
+            enableFallback: false // Only precise crosshair targeting
+        });
         
-        // Use same raycaster logic as ViewManager.updateCrosshairTarget()
-        const raycaster = new window.THREE.Raycaster();
-        const cameraForward = new window.THREE.Vector3(0, 0, -1);
-        cameraForward.applyQuaternion(camera.quaternion);
-        
-        raycaster.set(camera.position, cameraForward);
-        
-        // Get weapon range for validation
-        const currentWeaponRange = (this.range || 30000) / 1000; // Convert meters to kilometers (world units)
-        
-        let closestEnemyDistance = null;
-        let closestEnemyShip = null;
-        let closestEnemyMesh = null;
-        
-        // Check all enemy ships - ALL must pass tolerance check (no direct intersection bypass)
-        const dummyShips = window.starfieldManager.dummyShipMeshes || [];
-        for (const enemyMesh of dummyShips) {
-            if (enemyMesh && enemyMesh.userData?.ship) {
-                // Check if enemy center is close to the aim line with distance-based tolerance
-                const enemyPos = enemyMesh.position;
-                const distanceToAimLine = raycaster.ray.distanceToPoint(enemyPos);
-                const targetDistance = camera.position.distanceTo(enemyPos);
-                
-                // Removed AIM DEBUG spam - only log scale issues if detected
-                const rawDistance = raycaster.ray.distanceToPoint(enemyPos);
-                if (rawDistance > 1000) {
-                    console.log(`🚨 AIM DEBUG ${this.name}: Suspiciously large distance detected: ${rawDistance} - possible scale issue`);
-                }
-                
-                // GAMEPLAY-FRIENDLY TOLERANCE: Much more forgiving aiming to make combat fun
-                // Close range (<2km): 1000m tolerance (very generous for close combat)
-                // Medium range (2-10km): 1000-2000m tolerance (forgiving for mid-range)  
-                // Long range (10km+): 2000-3000m tolerance (realistic for long shots)
-                let aimToleranceMeters;
-                if (targetDistance < 2) {
-                    aimToleranceMeters = 1000; // 1km tolerance for close combat (very forgiving!)
-                } else if (targetDistance < 10) {
-                    aimToleranceMeters = 1000 + (targetDistance - 2) * 125; // 1000-2000m for medium range
-                } else {
-                    aimToleranceMeters = 2000 + Math.min((targetDistance - 10) * 50, 1000); // 2000-3000m for long range
-                }
-                const aimTolerance = aimToleranceMeters / 1000; // Convert to km units
-                
-                console.log(`🔍 DEBUG ${this.name}: Distance to aim line: ${distanceToAimLine.toFixed(4)}km (tolerance: ${aimTolerance.toFixed(4)}km = ${aimToleranceMeters.toFixed(0)}m at ${targetDistance.toFixed(1)}km range)`);
-                if (distanceToAimLine <= aimTolerance) {
-                    const distance = targetDistance; // Use already calculated distance
-                    
-                    // Only consider if within extended range (4x weapon range)
-                    if (distance <= currentWeaponRange * 4) {
-                        if (closestEnemyDistance === null || distance < closestEnemyDistance) {
-                            closestEnemyDistance = distance;
-                            closestEnemyShip = enemyMesh.userData.ship;
-                            closestEnemyMesh = enemyMesh;
-                            // Removed VALID target debug spam
-                        }
-                    }
-                } else {
-                    // Removed target rejection debug spam
-                }
-            }
-        }
-        
-        // Validate target is within weapon range (same logic as ViewManager)
-        if (closestEnemyDistance !== null && closestEnemyShip && closestEnemyMesh) {
-            const rangeRatio = closestEnemyDistance / currentWeaponRange;
-            
-            if (rangeRatio <= 1.0) {
-                // Target is within range - return target with MESH position (not ship position)
-                return {
-                    ship: closestEnemyShip,
-                    position: {
-                        x: closestEnemyMesh.position.x,
-                        y: closestEnemyMesh.position.y,
-                        z: closestEnemyMesh.position.z
-                    },
-                    distance: closestEnemyDistance,
-                    name: closestEnemyShip.name || 'target'
-                };
-            }
-        }
-        
-        return null; // No valid target under crosshairs
+        return targetingResult.hasTarget ? targetingResult.target : null;
     }
 
     /**
@@ -664,25 +591,41 @@ export class SplashDamageWeapon extends WeaponCard {
         // FIXED: Use target-based aiming for physics projectiles, camera direction as fallback
         let direction = { x: 0, y: 0, z: 1 }; // Default forward
         
-        // Use crosshair targeting validation like ViewManager crosshair system
+        // UNIFIED TARGETING: Use TargetingService for consistent targeting across all systems
         if (window.starfieldManager && window.starfieldManager.camera) {
             const camera = window.starfieldManager.camera;
-            const crosshairTarget = this.getCrosshairTarget(camera);
             
-            if (crosshairTarget) {
-                // SIMPLE AIM: Use camera direction for intuitive crosshair-following trajectory
-                const cameraDirection = new window.THREE.Vector3(0, 0, -1);
-                cameraDirection.applyQuaternion(camera.quaternion);
+            // Get unified targeting result that matches crosshair display logic exactly
+            const targetingResult = targetingService.getCurrentTarget({
+                camera: camera,
+                weaponRange: this.range,
+                requestedBy: this.name,
+                enableFallback: true
+            });
+            
+            const finalTarget = targetingResult.hasTarget ? targetingResult.target : null;
+            
+            if (finalTarget) {
+                // MOVEMENT FIX: Calculate direct trajectory to target position when we have a valid target
+                const weaponPos = new window.THREE.Vector3(origin.x, origin.y, origin.z);
+                const targetPos = new window.THREE.Vector3(
+                    finalTarget.position.x,
+                    finalTarget.position.y,
+                    finalTarget.position.z
+                );
+                
+                // Calculate direct vector from weapon to target
+                const directVector = targetPos.sub(weaponPos).normalize();
                 
                 direction = {
-                    x: cameraDirection.x,
-                    y: cameraDirection.y,
-                    z: cameraDirection.z
+                    x: directVector.x,
+                    y: directVector.y,
+                    z: directVector.z
                 };
                 
-                console.log(`🎯 ${this.name}: Camera direction to target: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
-                console.log(`🎯 ${this.name}: Firing at validated crosshair target: ${crosshairTarget.name} (${crosshairTarget.distance.toFixed(1)}km) - camera trajectory`);
-                target = crosshairTarget; // Enable collision tracking
+                console.log(`🎯 ${this.name}: Direct trajectory to target: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
+                console.log(`🎯 ${this.name}: Firing at ${targetingResult.acquisitionMethod} target: ${finalTarget.name} (${finalTarget.distance.toFixed(1)}km) - direct trajectory`);
+                target = finalTarget; // Enable collision tracking
             } else {
                 // NO TARGET: Use simple camera direction for consistent trajectory
                 const camera = window.starfieldManager.camera;
@@ -1297,7 +1240,7 @@ export class PhysicsProjectile {
         // COLLISION DELAY: Prevent instant collision on launch (MUST BE BEFORE PHYSICS INIT)
         this.launchTime = Date.now();
         this.collisionProcessed = false;
-        this.collisionDelayMs = 15; // 15ms delay to allow visible travel before collision detection
+        this.collisionDelayMs = 3; // Reduced to 3ms - very short delay for fast projectiles
         this.allowCollisionAfter = this.launchTime + this.collisionDelayMs;
         
         // Initialize physics body
@@ -1309,9 +1252,24 @@ export class PhysicsProjectile {
         // Silent projectile launch
         
         // Add range checking - projectile expires when it travels beyond weapon range
+        // ENHANCED: Add time-based cleanup as a backup (20 seconds max flight time for any projectile)
+        this.launchTimeMs = Date.now();
+        const maxFlightTimeMs = 20000; // 20 seconds maximum flight time as backup cleanup
+        
         this.rangeCheckInterval = setInterval(() => {
             if (this.hasDetonated || !this.threeObject) {
                 clearInterval(this.rangeCheckInterval);
+                this.rangeCheckInterval = null;
+                return;
+            }
+            
+            // Time-based cleanup (backup mechanism)
+            const flightTimeMs = Date.now() - this.launchTimeMs;
+            if (flightTimeMs > maxFlightTimeMs) {
+                console.log(`⏰ ${this.weaponName}: Expired after ${(flightTimeMs/1000).toFixed(1)}s flight time (max: ${maxFlightTimeMs/1000}s)`);
+                this.expireOutOfRange();
+                clearInterval(this.rangeCheckInterval);
+                this.rangeCheckInterval = null;
                 return;
             }
             
@@ -1323,17 +1281,14 @@ export class PhysicsProjectile {
                 Math.pow(currentPos.z - this.startPosition.z, 2)
             );
             
-            // Silent range checking - no periodic logging to reduce spam
-            
             // Check if projectile has exceeded weapon range (with small buffer for precision)
             if (distanceTraveled > this.flightRange - 50) { // Stop 50m before max range to prevent overshoot
-                if (window.physicsManager && window.physicsManager._debugLoggingEnabled) {
-                    console.log(`⏰ ${this.weaponName}: Max range reached (${distanceTraveled.toFixed(1)}m / ${this.flightRange}m)`);
-                }
+                console.log(`⏰ ${this.weaponName}: Max range reached (${distanceTraveled.toFixed(1)}m / ${this.flightRange}m) after ${(flightTimeMs/1000).toFixed(1)}s`);
                 this.expireOutOfRange();
                 clearInterval(this.rangeCheckInterval);
+                this.rangeCheckInterval = null;
             }
-        }, 10); // Check every 10ms for better precision
+        }, 250); // Check every 250ms (reduced frequency to improve performance)
     }
     
     /**
@@ -1398,8 +1353,12 @@ export class PhysicsProjectile {
             // FIXED COLLISION RADIUS: Realistic collision detection for visual consistency
             let collisionRadius;
             
-            // Get projectile speed for physics calculations
-            const projectileSpeed = this.weaponData?.specialProperties?.projectileSpeed || 1500; // m/s
+            // Get projectile speed - unified calculation for all physics
+            let projectileSpeed = this.isHoming ? 8000 : 10000; // Default speeds
+            if (this.weaponData?.specialProperties?.projectileSpeed) {
+                projectileSpeed = this.weaponData.specialProperties.projectileSpeed;
+            }
+            
             const physicsStepDistance = (projectileSpeed / 240); // Distance per physics step (240 FPS)
             const minRadiusForTunneling = Math.max(1.0, physicsStepDistance * 0.5); // Minimal tunneling prevention
             
@@ -1421,14 +1380,10 @@ export class PhysicsProjectile {
                 
                 console.log(`🎯 ${this.weaponName}: Balanced collision radius: ${collisionRadius.toFixed(2)}m for ${targetDistance.toFixed(1)}km target`);
             } else {
-                collisionRadius = 2.0; // Reasonable for misses since missiles now pass through each other
+                // PRECISION FIX: Use much smaller collision radius for missiles without specific targets
+                // This ensures missiles only hit when they're actually aimed properly
+                collisionRadius = Math.max(2.0, minRadiusForTunneling); // Small 2m radius - if crosshair says miss, it should miss
                 console.log(`🎯 ${this.weaponName}: Miss collision radius: ${collisionRadius}m (no target)`);
-            }
-            
-            // Get projectile velocity for weapon configuration
-            let weaponVelocity = this.isHoming ? 8000 : 10000; // Default speeds
-            if (this.weaponData?.specialProperties?.projectileSpeed) {
-                weaponVelocity = this.weaponData.specialProperties.projectileSpeed;
             }
             
             // Create physics rigid body with distance-appropriate collision radius
@@ -1441,10 +1396,10 @@ export class PhysicsProjectile {
                 entityType: 'projectile',
                 entityId: `${this.weaponName}_${Date.now()}`,
                 health: 1,
-                projectileSpeed: weaponVelocity // SPEED DATA: For enhanced CCD configuration
+                projectileSpeed: projectileSpeed // SPEED DATA: For enhanced CCD configuration
             };
             
-            console.log(`🔍 PHYSICS SETUP: ${this.weaponName} - collision radius: ${collisionRadius}m, speed: ${weaponVelocity}m/s, delay: ${this.collisionDelayMs}ms`);
+            console.log(`🔍 PHYSICS SETUP: ${this.weaponName} - collision radius: ${collisionRadius}m, speed: ${projectileSpeed}m/s, delay: ${this.collisionDelayMs}ms`);
             
             this.rigidBody = this.physicsManager.createRigidBody(this.threeObject, bodyConfig);
             
@@ -1453,11 +1408,11 @@ export class PhysicsProjectile {
                 // Silent rigid body creation
                 
                 // Calculate velocity based on direction and weapon-specific speed
-                console.log(`🚀 ${this.weaponName}: Using weapon-specific speed: ${weaponVelocity} m/s`);
+                console.log(`🚀 ${this.weaponName}: Using weapon-specific speed: ${projectileSpeed} m/s`);
                 this.velocity = {
-                    x: direction.x * weaponVelocity,
-                    y: direction.y * weaponVelocity,
-                    z: direction.z * weaponVelocity
+                    x: direction.x * projectileSpeed,
+                    y: direction.y * projectileSpeed,
+                    z: direction.z * projectileSpeed
                 };
                 
                 // Apply velocity to the physics rigid body
@@ -1468,7 +1423,7 @@ export class PhysicsProjectile {
                 );
                 this.rigidBody.setLinearVelocity(physicsVelocity);
                 
-                                console.log(`🚀 ${this.weaponName}: Set velocity to ${weaponVelocity} units/s in direction:`, {
+                                console.log(`🚀 ${this.weaponName}: Set velocity to ${projectileSpeed} units/s in direction:`, {
                     x: direction.x.toFixed(3), 
                     y: direction.y.toFixed(3), 
                     z: direction.z.toFixed(3)
@@ -1535,8 +1490,8 @@ export class PhysicsProjectile {
         
         const startPos = new THREE.Vector3(this.startPosition.x, this.startPosition.y, this.startPosition.z);
         // TRAIL DISABLED: Temporarily disabled to eliminate visual artifacts
-        // console.log('🔍 DEBUG: Calling createProjectileTrail with:', this.trailId, particleType, startPos);
-        // this.trailData = effectsManager.createProjectileTrail(this.trailId, particleType, startPos, this.threeObject);
+        console.log('🔍 DEBUG: Calling createProjectileTrail with:', this.trailId, particleType, startPos);
+        this.trailData = effectsManager.createProjectileTrail(this.trailId, particleType, startPos, this.threeObject);
     }
 
     /**
@@ -1580,10 +1535,7 @@ export class PhysicsProjectile {
                 
                 // SIMPLE RULE: Missiles ignore collisions with other projectiles entirely
                 if (this.collisionTarget && 
-                    (this.collisionTarget.type === 'projectile' || 
-                     this.collisionTarget.id?.includes('Standard Missile') ||
-                     this.collisionTarget.id?.includes('Missile') ||
-                     this.collisionTarget.id?.includes('Torpedo'))) {
+                    this.collisionTarget.type === 'projectile') {
                     console.log(`🚫 PROJECTILE PASS-THROUGH: ${this.weaponName} ignoring collision with projectile ${this.collisionTarget.id} (type: ${this.collisionTarget.type})`);
                     return; // Missiles pass through other missiles
                 }
@@ -2139,14 +2091,26 @@ export class PhysicsProjectile {
     }
     
     /**
-     * SIMPLIFIED: Clean up physics resources immediately
+     * ENHANCED: Clean up physics resources immediately with complete tracking removal
      */
     cleanup() {
         try {
+            console.log(`🧹 CLEANUP: Starting cleanup for ${this.weaponName}`);
+            
             // Clear range checking interval to prevent memory leaks
             if (this.rangeCheckInterval) {
                 clearInterval(this.rangeCheckInterval);
                 this.rangeCheckInterval = null;
+                console.log(`🧹 CLEANUP: Cleared range check interval for ${this.weaponName}`);
+            }
+            
+            // CRITICAL: Remove from global projectile tracking array to prevent memory leaks
+            if (window.activeProjectiles) {
+                const index = window.activeProjectiles.indexOf(this);
+                if (index > -1) {
+                    window.activeProjectiles.splice(index, 1);
+                    console.log(`🧹 CLEANUP: Removed ${this.weaponName} from global tracking (${window.activeProjectiles.length} remaining)`);
+                }
             }
             
             // IMPROVED: Clean up simple trail system
@@ -2160,12 +2124,14 @@ export class PhysicsProjectile {
                 
                 // Remove the trail after a short delay to let it fade
                 effectsManager.removeProjectileTrail(this.trailId);
+                console.log(`🧹 CLEANUP: Removed trail for ${this.weaponName}`);
             }
             
             // Remove from physics world
             if (this.rigidBody && this.physicsManager && this.threeObject) {
                 this.physicsManager.removeRigidBody(this.threeObject);
                 this.rigidBody = null;
+                console.log(`🧹 CLEANUP: Removed rigid body for ${this.weaponName}`);
             }
             
             // Remove from visual scene
@@ -2174,28 +2140,36 @@ export class PhysicsProjectile {
                 this.threeObject.geometry?.dispose();
                 this.threeObject.material?.dispose();
                 this.threeObject = null;
+                console.log(`🧹 CLEANUP: Removed visual mesh for ${this.weaponName}`);
             }
             
-            // Silent cleanup
+            console.log(`✅ CLEANUP: Completed cleanup for ${this.weaponName}`);
             
         } catch (error) {
-            console.error('Error cleaning up physics projectile:', error);
+            console.error(`❌ CLEANUP ERROR: Failed to clean up ${this.weaponName}:`, error);
         }
     }
 
     /**
-     * Expire the projectile when it travels beyond weapon range
+     * ENHANCED: Expire the projectile when it travels beyond weapon range
      * Clean removal without explosion effects
      */
     expireOutOfRange() {
-        if (this.hasDetonated) return;
+        if (this.hasDetonated) {
+            console.log(`⚠️ ${this.weaponName}: Already detonated, skipping expireOutOfRange`);
+            return;
+        }
+        
+        console.log(`💨 ${this.weaponName}: Expiring after reaching maximum range or flight time`);
+        
+        // CRITICAL: Set detonated flag FIRST to prevent double cleanup
         this.hasDetonated = true;
         
-        console.log(`💨 ${this.weaponName}: Fading out after reaching maximum range`);
-        
-        // Clear range checking interval
+        // Clear range checking interval immediately
         if (this.rangeCheckInterval) {
             clearInterval(this.rangeCheckInterval);
+            this.rangeCheckInterval = null;
+            console.log(`🧹 EXPIRE: Cleared range check interval for ${this.weaponName}`);
         }
         
         // Stop trail updates immediately

@@ -12,6 +12,8 @@ import GalacticChartSystem from '../ship/systems/GalacticChartSystem.js';
 import SubspaceRadioSystem from '../ship/systems/SubspaceRadioSystem.js';
 // import DamageControlInterface from '../ui/DamageControlInterface.js'; // DISABLED - using SimplifiedDamageControl instead
 import SubspaceRadio from '../ui/SubspaceRadio.js';
+import { CrosshairTargeting } from '../utils/CrosshairTargeting.js';
+import { targetingService } from '../services/TargetingService.js';
 
 export const VIEW_TYPES = {
     FORE: 'fore',
@@ -30,6 +32,7 @@ export class ViewManager {
         this.editMode = false;
         this.starfieldManager = null;
         this.solarSystemManager = null;  // Initialize solarSystemManager
+        this.shipSystemsInitialized = false; // Flag to prevent duplicate initialization
         
         // Initialize Ship instance (replacing simple shipEnergy)
         this.ship = new Ship('starter_ship');
@@ -37,7 +40,9 @@ export class ViewManager {
         this.ship.currentEnergy = 1000; // Reduced for starter ship
         
         // Initialize default ship systems
-        this.initializeShipSystems();
+        // NOTE: Commented out to prevent duplicate initialization loop
+        // Ship systems will be initialized when StarfieldManager is set
+        // this.initializeShipSystems();
         
         // Store camera state
         this.savedCameraState = {
@@ -100,10 +105,11 @@ export class ViewManager {
             this.subspaceRadio.setStarfieldManager(manager);
         }
         
-        // Initialize ship systems when StarfieldManager is available
-        if (manager && typeof manager.initializeShipSystems === 'function') {
+        // Initialize ship systems when StarfieldManager is available - but only once
+        if (manager && typeof manager.initializeShipSystems === 'function' && !this.shipSystemsInitialized) {
             console.log('🔗 ViewManager: StarfieldManager set - initializing ship systems');
             this.initializeShipSystems();
+            this.shipSystemsInitialized = true;
         }
     }
 
@@ -1020,85 +1026,24 @@ export class ViewManager {
         
         // Only check for targets if we have a weapon and access to the scene
         if (currentWeaponRange > 0 && this.starfieldManager?.camera && this.starfieldManager?.scene) {
-            // Cast a ray from camera center in the direction the crosshairs are pointing
+            // Use unified targeting service to ensure consistency with weapon system
             const camera = this.starfieldManager.camera;
-            const raycaster = new THREE.Raycaster();
+            const weaponRangeMeters = currentWeaponRange * 1000; // Convert km back to meters
             
-            // Get camera forward direction (where crosshairs are pointing)
-            const aimDirection = new THREE.Vector3(0, 0, -1);
-            aimDirection.applyQuaternion(camera.quaternion);
+            const targetingResult = targetingService.getCurrentTarget({
+                camera: camera,
+                weaponRange: weaponRangeMeters,
+                requestedBy: 'crosshair_display',
+                enableFallback: false // Crosshair only shows precise targets
+            });
             
-            // Set up raycaster from camera position in aim direction
-            raycaster.set(camera.position, aimDirection);
+            // Apply results to ViewManager state
+            targetState = targetingResult.crosshairState;
+            targetShip = targetingResult.targetShip;
+            targetDistance = targetingResult.targetDistance;
             
-            // Find the closest enemy ship under the crosshairs
-            let closestEnemyDistance = null;
-            let closestEnemyShip = null;
-            
-            // Check all enemy ships in the scene
-            if (this.starfieldManager.dummyShipMeshes) {
-                for (const enemyMesh of this.starfieldManager.dummyShipMeshes) {
-                    if (enemyMesh.userData?.ship && enemyMesh.position) {
-                        // Check if ray intersects with this enemy ship
-                        const intersects = raycaster.intersectObject(enemyMesh, true);
-                        
-                        if (intersects.length > 0) {
-                            const distance = camera.position.distanceTo(enemyMesh.position);
-                            
-                            // Keep track of closest enemy under crosshairs
-                            if (closestEnemyDistance === null || distance < closestEnemyDistance) {
-                                closestEnemyDistance = distance;
-                                closestEnemyShip = enemyMesh.userData.ship;
-                            }
-                        } else {
-                            // If no direct intersection, check if enemy is close to the aim line
-                            const enemyPos = enemyMesh.position;
-                            const distanceToAimLine = raycaster.ray.distanceToPoint(enemyPos);
-                            
-                            // ENHANCED TOLERANCE: Match weapon system's enhanced forgiving aiming tolerance
-                            const targetDistance = camera.position.distanceTo(enemyPos);
-                            let aimToleranceMeters;
-                            if (targetDistance < 2) {
-                                aimToleranceMeters = 1000; // 1km tolerance for close combat (very forgiving!)
-                            } else if (targetDistance < 10) {
-                                aimToleranceMeters = 1000 + (targetDistance - 2) * 125; // 1000-2000m for medium range
-                            } else {
-                                aimToleranceMeters = 2000 + Math.min((targetDistance - 10) * 50, 1000); // 2000-3000m for long range
-                            }
-                            const aimTolerance = aimToleranceMeters / 1000; // Convert to km units
-                            if (distanceToAimLine <= aimTolerance) {
-                                // Only consider if within extended range (4x weapon range for out-of-range detection)
-                                if (targetDistance <= currentWeaponRange * 4) {
-                                    if (closestEnemyDistance === null || targetDistance < closestEnemyDistance) {
-                                        closestEnemyDistance = targetDistance;
-                                        closestEnemyShip = enemyMesh.userData.ship;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Determine target state based on closest enemy under crosshairs
-            if (closestEnemyDistance !== null && closestEnemyShip) {
-                const rangeRatio = closestEnemyDistance / currentWeaponRange;
-                
-                if (rangeRatio <= 1.0) {
-                    // Within range - in range
-                    targetState = 'inRange';
-                } else if (rangeRatio <= 1.2) {
-                    // Close to range (within 20% over) - close to range
-                    targetState = 'closeRange';
-                } else {
-                    // Clearly out of range - out of range
-                    targetState = 'outRange';
-                }
-                
-                // Store target information for display
-                targetShip = closestEnemyShip;
-                targetDistance = closestEnemyDistance;
-                targetFaction = this.getFactionColor(closestEnemyShip);
+            if (targetShip) {
+                targetFaction = this.getFactionColor(targetShip);
             }
         }
         
@@ -1645,12 +1590,18 @@ export class ViewManager {
             }
         }
         
-        // Initialize ship systems for the new ship
-        this.initializeShipSystems();
-        
-        // If StarfieldManager exists and has ship system initialization, trigger it
-        if (this.starfieldManager && typeof this.starfieldManager.initializeShipSystems === 'function') {
-            this.starfieldManager.initializeShipSystems();
+        // Initialize ship systems for the new ship - but prevent duplicate initialization
+        if (!this.shipSystemsInitialized) {
+            this.initializeShipSystems();
+            this.shipSystemsInitialized = true;
+        } else {
+            console.log('🔗 ViewManager: Ship systems already initialized, skipping duplicate initialization');
+            
+            // Still trigger StarfieldManager ship system refresh for new ship
+            if (this.starfieldManager && typeof this.starfieldManager.initializeShipSystems === 'function') {
+                console.log('🔄 ViewManager: Refreshing StarfieldManager systems for new ship');
+                this.starfieldManager.initializeShipSystems();
+            }
         }
         
         console.log(`✅ ViewManager: Ship switched to ${shipType}`, this.ship.getStatus());

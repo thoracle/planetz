@@ -27,7 +27,7 @@ export class WeaponSystemCore {
         // Weapon HUD reference
         this.weaponHUD = null;
         
-        console.log(`WeaponSystem initialized with ${maxWeaponSlots} weapon slots`);
+        // WeaponSystem initialized (reduced logging for cleaner console)
     }
     
     /**
