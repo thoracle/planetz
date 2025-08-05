@@ -107,7 +107,7 @@ export class WeaponSlot {
         // Show range warning but allow firing (no throttling, always show message)
         if (isOutOfRange) {
             const distanceKm = (distanceToTarget / 1000).toFixed(1);
-            const maxRangeKm = (weapon.range / 1000).toFixed(1);
+            const maxRangeKm = weapon.range; // Already in km
             const modeText = target ? 'Target' : 'Crosshair';
             
             console.log(`Weapon slot ${this.slotIndex}: ${modeText} out of range`);

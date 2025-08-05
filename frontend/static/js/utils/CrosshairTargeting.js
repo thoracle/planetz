@@ -8,7 +8,7 @@ export class CrosshairTargeting {
     /**
      * Calculate distance-based aim tolerance
      * @param {number} targetDistance - Distance to target in kilometers
-     * @returns {number} Aim tolerance in meters
+     * @returns {number} Aim tolerance in kilometers
      */
     static calculateAimTolerance(targetDistance) {
         // PRECISION CROSSHAIR TOLERANCE: Much tighter tolerance for accurate crosshair feedback
@@ -16,28 +16,28 @@ export class CrosshairTargeting {
         // not when broadly in the target's vicinity. This ensures missile direction matches crosshair feedback.
         //
         // Precision tolerances for crosshair accuracy:
-        // Close range (<5km): 50m tolerance (tight precision for close combat)
-        // Medium range (5-15km): 50-150m tolerance (reasonable for medium range)  
-        // Long range (15km+): 150-300m tolerance (still challenging but fair)
-        let aimToleranceMeters;
+        // Close range (<5km): 0.05km tolerance (tight precision for close combat)
+        // Medium range (5-15km): 0.05-0.15km tolerance (reasonable for medium range)  
+        // Long range (15km+): 0.15-0.3km tolerance (still challenging but fair)
+        let aimToleranceKm;
         
         if (targetDistance < 5) {
-            aimToleranceMeters = 50; // 50m tolerance for close combat
+            aimToleranceKm = 0.05; // 50m = 0.05km tolerance for close combat
         } else if (targetDistance < 15) {
-            aimToleranceMeters = 50 + (targetDistance - 5) * 10; // 50-150m for medium range
+            aimToleranceKm = 0.05 + (targetDistance - 5) * 0.01; // 0.05-0.15km for medium range
         } else {
-            aimToleranceMeters = 150 + Math.min((targetDistance - 15) * 10, 150); // 150-300m for long range
+            aimToleranceKm = 0.15 + Math.min((targetDistance - 15) * 0.01, 0.15); // 0.15-0.3km for long range
         }
         
-        return aimToleranceMeters;
+        return aimToleranceKm;
     }
     
     /**
      * Check if player is currently moving and apply movement bonus to tolerance
-     * @param {number} baseToleranceMeters - Base aim tolerance in meters
+     * @param {number} baseToleranceKm - Base aim tolerance in kilometers
      * @returns {number} Adjusted tolerance with movement bonus applied
      */
-    static applyMovementBonus(baseToleranceMeters) {
+    static applyMovementBonus(baseToleranceKm) {
         const starfieldManager = window.starfieldManager;
         
         // Detect movement: linear movement OR rotational movement
@@ -52,16 +52,16 @@ export class CrosshairTargeting {
             let movementMultiplier = 1.3; // Base 30% bonus for movement
             
             // For close range, give slightly more bonus due to higher difficulty
-            if (baseToleranceMeters < 300) {
+            if (baseToleranceKm < 0.3) {
                 movementMultiplier = 1.4; // 40% bonus for close combat
             }
             
-            const adjustedTolerance = baseToleranceMeters * movementMultiplier;
+            const adjustedTolerance = baseToleranceKm * movementMultiplier;
             
             return adjustedTolerance;
         } else {
             // Static targeting - no bonus needed with realistic base tolerances
-            return baseToleranceMeters;
+            return baseToleranceKm;
         }
     }
     
@@ -103,7 +103,7 @@ export class CrosshairTargeting {
         }
         
         const raycaster = this.setupRaycaster(camera);
-        const currentWeaponRange = weaponRange / 1000; // Convert meters to kilometers
+        const currentWeaponRange = weaponRange; // Weapon range now in kilometers
         
         let closestEnemyDistance = null;
         let closestEnemyShip = null;
@@ -116,29 +116,29 @@ export class CrosshairTargeting {
             if (enemyMesh && enemyMesh.userData?.ship) {
                 // Calculate distances
                 const enemyPos = enemyMesh.position;
-                const distanceToAimLine = raycaster.ray.distanceToPoint(enemyPos); // In meters
+                const distanceToAimLineMeters = raycaster.ray.distanceToPoint(enemyPos); // In meters
+                const distanceToAimLineKm = distanceToAimLineMeters / 1000; // Convert to km for comparison
                 const targetDistanceMeters = camera.position.distanceTo(enemyPos);
-                const targetDistance = targetDistanceMeters / 1000; // Convert to kilometers for tolerance calculation
+                const targetDistance = targetDistanceMeters / 1000; // Convert to kilometers
                 
                 // Calculate tolerance with distance scaling and movement bonus
-                const baseToleranceMeters = this.calculateAimTolerance(targetDistance);
-                const aimToleranceMeters = this.applyMovementBonus(baseToleranceMeters);
-                // Note: distanceToAimLine (meters) should be compared with aimToleranceMeters (meters)
+                const baseToleranceKm = this.calculateAimTolerance(targetDistance);
+                const aimToleranceKm = this.applyMovementBonus(baseToleranceKm);
                 
                 // Debug logging (optional)
                 if (enableDebugLogging) {
                     // Check for suspiciously large distances (possible scale issues)
-                    if (distanceToAimLine > 1000000) {
-                        console.log(`🚨 AIM DEBUG ${debugPrefix}: Suspiciously large distance detected: ${distanceToAimLine}m - possible scale issue`);
+                    if (distanceToAimLineKm > 1000) {
+                        console.log(`🚨 AIM DEBUG ${debugPrefix}: Suspiciously large distance detected: ${distanceToAimLineKm.toFixed(1)}km - possible scale issue`);
                     }
                     
-                    console.log(`🔍 DEBUG ${debugPrefix}: Distance to aim line: ${(distanceToAimLine/1000).toFixed(4)}km (tolerance: ${(aimToleranceMeters/1000).toFixed(4)}km = ${aimToleranceMeters.toFixed(0)}m at ${targetDistance.toFixed(1)}km range)`);
+                    console.log(`🔍 DEBUG ${debugPrefix}: Distance to aim line: ${distanceToAimLineKm.toFixed(4)}km (tolerance: ${aimToleranceKm.toFixed(4)}km at ${targetDistance.toFixed(1)}km range)`);
                     
                     // Movement bonus applied if detected (reduced logging for cleaner console)
                 }
                 
-                // Check if target passes tolerance test (both in meters)
-                if (distanceToAimLine <= aimToleranceMeters) {
+                // Check if target passes tolerance test (both in kilometers)
+                if (distanceToAimLineKm <= aimToleranceKm) {
                     // Only consider if within extended range (4x weapon range)
                     if (targetDistance <= currentWeaponRange * 4) {
                         if (closestEnemyDistance === null || targetDistance < closestEnemyDistance) {

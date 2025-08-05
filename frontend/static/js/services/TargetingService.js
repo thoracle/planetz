@@ -174,7 +174,7 @@ export class TargetingService {
      * @private
      */
     createTargetResult(target, acquisitionMethod, weaponRange) {
-        const rangeValidation = CrosshairTargeting.validateRange(target.distance, weaponRange / 1000);
+        const rangeValidation = CrosshairTargeting.validateRange(target.distance, weaponRange);
         
         return {
             // Target information

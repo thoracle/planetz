@@ -419,7 +419,7 @@ export class WeaponHUD {
      */
     showOutOfRangeFeedback(weaponName, targetDistance, weaponRange) {
         const distanceKm = (targetDistance / 1000).toFixed(1);
-        const rangeKm = (weaponRange / 1000).toFixed(1);
+        const rangeKm = weaponRange; // Already in km
         this.showMessage(`${weaponName}: Out of range (${distanceKm}km > ${rangeKm}km)`, 4000);
     }
     

@@ -1524,7 +1524,7 @@ export class PhysicsManager {
                     projectile.entity.threeObject,
                     target.entity.threeObject, 
                     target.rigidBody,
-                    projectile.rigidBody.projectileOwner?.range || 30000
+                    (projectile.rigidBody.projectileOwner?.range || 30) * 1000 // Convert km to meters for physics
                 );
                 
                 if (hitResult.hit) {

@@ -1006,8 +1006,8 @@ export class ViewManager {
         if (this.ship.weaponSystem && this.ship.weaponSystem.getActiveWeapon) {
             const activeWeapon = this.ship.weaponSystem.getActiveWeapon();
             if (activeWeapon && activeWeapon.equippedWeapon) {
-                // Convert from meters to kilometers for comparison (with weapon system fallback)
-                currentWeaponRange = (activeWeapon.equippedWeapon.range || 30000) / 1000;
+                // Weapon range now in kilometers directly
+                currentWeaponRange = activeWeapon.equippedWeapon.range || 30;
                 activeWeaponName = activeWeapon.equippedWeapon.name;
             }
         }
@@ -1028,11 +1028,10 @@ export class ViewManager {
         if (currentWeaponRange > 0 && this.starfieldManager?.camera && this.starfieldManager?.scene) {
             // Use unified targeting service to ensure consistency with weapon system
             const camera = this.starfieldManager.camera;
-            const weaponRangeMeters = currentWeaponRange * 1000; // Convert km back to meters
             
             const targetingResult = targetingService.getCurrentTarget({
                 camera: camera,
-                weaponRange: weaponRangeMeters,
+                weaponRange: currentWeaponRange, // Already in km
                 requestedBy: 'crosshair_display',
                 enableFallback: false // Crosshair only shows precise targets
             });

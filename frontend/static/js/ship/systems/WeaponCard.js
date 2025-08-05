@@ -513,19 +513,17 @@ export class SplashDamageWeapon extends WeaponCard {
         
         // Range validation for targeted shots (if target exists) - show message but allow firing
         if (target && target.position && origin) {
-            const distance = this.calculateDistanceToTarget(origin, target.position);
-            const maxRange = this.range || 10000; // Default 10km if no range specified
+            const distanceMeters = this.calculateDistanceToTarget(origin, target.position);
+            const distanceKm = distanceMeters / 1000; // Convert to km for comparison
+            const maxRangeKm = this.range || 10; // Default 10km if no range specified (now in km)
             
-            if (distance > maxRange) {
-                const distanceKm = (distance / 1000).toFixed(1);
-                const maxRangeKm = (maxRange / 1000).toFixed(1);
-                
-                console.log(`🎯 ${this.name}: Target out of range (${distanceKm}km > ${maxRangeKm}km max)`);
+            if (distanceKm > maxRangeKm) {
+                console.log(`🎯 ${this.name}: Target out of range (${distanceKm.toFixed(1)}km > ${maxRangeKm}km max)`);
                 
                 // Send HUD message for out of range using proper callback
                 if (this.showMessage && typeof this.showMessage === 'function') {
                     this.showMessage(
-                        `Target Out of Range: ${this.name} - ${distanceKm}km > ${maxRangeKm}km max`,
+                        `Target Out of Range: ${this.name} - ${distanceKm.toFixed(1)}km > ${maxRangeKm}km max`,
                         3000
                     );
                 } else {
@@ -536,7 +534,7 @@ export class SplashDamageWeapon extends WeaponCard {
                 // Continue firing anyway - don't return false
                 console.log(`🎯 ${this.name}: Firing anyway despite being out of range`);
             } else {
-                console.log(`🎯 ${this.name}: Target in range (${(distance / 1000).toFixed(1)}km / ${(maxRange / 1000).toFixed(1)}km max)`);
+                console.log(`🎯 ${this.name}: Target in range (${distanceKm.toFixed(1)}km / ${maxRangeKm}km max)`);
             }
         }
         
@@ -570,7 +568,7 @@ export class SplashDamageWeapon extends WeaponCard {
     getCrosshairTarget(camera) {
         const targetingResult = targetingService.getCurrentTarget({
             camera: camera,
-            weaponRange: this.range || 30000,
+            weaponRange: this.range || 30, // Weapon range now in km
             requestedBy: this.name,
             enableFallback: false // Only precise crosshair targeting
         });
