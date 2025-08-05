@@ -121,6 +121,15 @@ export class CrosshairTargeting {
                 const targetDistanceMeters = camera.position.distanceTo(enemyPos);
                 const targetDistance = targetDistanceMeters / 1000; // Convert to kilometers
                 
+                // DEBUG: Log distance calculation details to diagnose 0.0km issue
+                if (enableDebugLogging || targetDistance < 0.1) {
+                    console.log(`🔍 DISTANCE DEBUG: ${enemyMesh.userData.ship.shipName || 'Target'}`);
+                    console.log(`  Camera position:`, camera.position);
+                    console.log(`  Enemy position:`, enemyPos);
+                    console.log(`  Distance meters: ${targetDistanceMeters.toFixed(1)}m`);
+                    console.log(`  Distance km: ${targetDistance.toFixed(3)}km`);
+                }
+                
                 // Calculate tolerance with distance scaling and movement bonus
                 const baseToleranceKm = this.calculateAimTolerance(targetDistance);
                 const aimToleranceKm = this.applyMovementBonus(baseToleranceKm);

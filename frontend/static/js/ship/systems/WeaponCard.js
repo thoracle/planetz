@@ -511,32 +511,7 @@ export class SplashDamageWeapon extends WeaponCard {
             console.log(`🎯 ${this.name}: Non-homing projectile firing toward crosshairs (no target lock needed)`);
         }
         
-        // Range validation for targeted shots (if target exists) - show message but allow firing
-        if (target && target.position && origin) {
-            const distanceMeters = this.calculateDistanceToTarget(origin, target.position);
-            const distanceKm = distanceMeters / 1000; // Convert to km for comparison
-            const maxRangeKm = this.range || 10; // Default 10km if no range specified (now in km)
-            
-            if (distanceKm > maxRangeKm) {
-                console.log(`🎯 ${this.name}: Target out of range (${distanceKm.toFixed(1)}km > ${maxRangeKm}km max)`);
-                
-                // Send HUD message for out of range using proper callback
-                if (this.showMessage && typeof this.showMessage === 'function') {
-                    this.showMessage(
-                        `Target Out of Range: ${this.name} - ${distanceKm.toFixed(1)}km > ${maxRangeKm}km max`,
-                        3000
-                    );
-                } else {
-                    // Fallback for when no callback is set (shouldn't happen in normal operation)
-                    console.log(`🎯 No HUD message callback available for ${this.name}`);
-                }
-                
-                // Continue firing anyway - don't return false
-                console.log(`🎯 ${this.name}: Firing anyway despite being out of range`);
-            } else {
-                console.log(`🎯 ${this.name}: Target in range (${distanceKm.toFixed(1)}km / ${maxRangeKm}km max)`);
-            }
-        }
+        // Range validation moved to after getting unified targeting result to ensure consistency
         
         // Create and launch projectile
         const projectile = this.createProjectile(origin, target);
@@ -622,7 +597,32 @@ export class SplashDamageWeapon extends WeaponCard {
                 };
                 
                 console.log(`🎯 ${this.name}: Direct trajectory to target: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
-                console.log(`🎯 ${this.name}: Firing at ${targetingResult.acquisitionMethod} target: ${finalTarget.name} (${finalTarget.distance.toFixed(1)}km) - direct trajectory`);
+                
+                // Range validation using unified targeting result for accuracy
+                const maxRangeKm = this.range || 10; // Default 10km if no range specified (now in km)
+                const targetDistanceKm = finalTarget.distance; // Already in km from targeting system
+                
+                if (targetDistanceKm > maxRangeKm) {
+                    console.log(`🎯 ${this.name}: Target out of range (${targetDistanceKm.toFixed(1)}km > ${maxRangeKm}km max)`);
+                    
+                    // Send HUD message for out of range using proper callback
+                    if (this.showMessage && typeof this.showMessage === 'function') {
+                        this.showMessage(
+                            `Target Out of Range: ${this.name} - ${targetDistanceKm.toFixed(1)}km > ${maxRangeKm}km max`,
+                            3000
+                        );
+                    } else {
+                        // Fallback for when no callback is set (shouldn't happen in normal operation)
+                        console.log(`🎯 No HUD message callback available for ${this.name}`);
+                    }
+                    
+                    // Continue firing anyway - don't return false
+                    console.log(`🎯 ${this.name}: Firing anyway despite being out of range`);
+                } else {
+                    console.log(`🎯 ${this.name}: Target in range (${targetDistanceKm.toFixed(1)}km / ${maxRangeKm}km max)`);
+                }
+                
+                console.log(`🎯 ${this.name}: Firing at ${targetingResult.acquisitionMethod} target: ${finalTarget.name} (${targetDistanceKm.toFixed(1)}km) - direct trajectory`);
                 target = finalTarget; // Enable collision tracking
             } else {
                 // NO TARGET: Use simple camera direction for consistent trajectory
@@ -1040,7 +1040,8 @@ export class Projectile {
         this.distanceTraveled += speed * deltaSeconds;
         
         // Check for collision or range limit
-        if (this.checkCollision() || this.distanceTraveled >= this.flightRange) {
+        const flightRangeMeters = this.flightRange * 1000; // Convert km to meters
+        if (this.checkCollision() || this.distanceTraveled >= flightRangeMeters) {
             this.detonate();
         }
     }
@@ -1280,8 +1281,9 @@ export class PhysicsProjectile {
             );
             
             // Check if projectile has exceeded weapon range (with small buffer for precision)
-            if (distanceTraveled > this.flightRange - 50) { // Stop 50m before max range to prevent overshoot
-                console.log(`⏰ ${this.weaponName}: Max range reached (${distanceTraveled.toFixed(1)}m / ${this.flightRange}m) after ${(flightTimeMs/1000).toFixed(1)}s`);
+            const flightRangeMeters = this.flightRange * 1000; // Convert km to meters
+            if (distanceTraveled > flightRangeMeters - 50) { // Stop 50m before max range to prevent overshoot
+                console.log(`⏰ ${this.weaponName}: Max range reached (${distanceTraveled.toFixed(1)}m / ${flightRangeMeters.toFixed(0)}m) after ${(flightTimeMs/1000).toFixed(1)}s`);
                 this.expireOutOfRange();
                 clearInterval(this.rangeCheckInterval);
                 this.rangeCheckInterval = null;
@@ -1635,7 +1637,8 @@ export class PhysicsProjectile {
                 Math.pow(currentPos.z - this.startPosition.z, 2)
             );
             
-            if (distance >= this.flightRange - 50) { // Stop 50m before max range to prevent overshoot
+            const flightRangeMeters = this.flightRange * 1000; // Convert km to meters
+            if (distance >= flightRangeMeters - 50) { // Stop 50m before max range to prevent overshoot
                 // Silent max range reached
                 this.detonate();
                 return false;
@@ -1683,7 +1686,7 @@ export class PhysicsProjectile {
                 Math.pow(clonedPos.y - this.startPosition.y, 2) +
                 Math.pow(clonedPos.z - this.startPosition.z, 2)
             );
-            console.log(`🎯 ${this.weaponName}: Distance traveled: ${distanceTraveled.toFixed(1)}m (max: ${this.flightRange}m)`);
+            console.log(`🎯 ${this.weaponName}: Distance traveled: ${distanceTraveled.toFixed(1)}m (max: ${(this.flightRange * 1000).toFixed(0)}m)`);
             
             // Validate position is not at origin (indicates corruption)
             if (clonedPos.x !== 0 || clonedPos.y !== 0 || clonedPos.z !== 0) {
