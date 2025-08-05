@@ -3252,7 +3252,7 @@ export class StarfieldManager {
                 this.weaponHUD.weaponSlotsDisplay.style.display = 'none';
                 this.weaponHUD.autofireIndicator.style.display = 'none';
                 this.weaponHUD.targetLockIndicator.style.display = 'none';
-                this.weaponHUD.messageDisplay.style.display = 'none';
+                this.weaponHUD.unifiedDisplay.style.display = 'none';
                 console.log('🚪 Weapon HUD hidden during docking');
             }
             
@@ -3387,7 +3387,7 @@ export class StarfieldManager {
                 this.weaponHUD.weaponSlotsDisplay.style.display = 'flex';
                 this.weaponHUD.autofireIndicator.style.display = 'none'; // Will be shown if autofire is on
                 this.weaponHUD.targetLockIndicator.style.display = 'none'; // Will be shown if locked
-                // Don't force messageDisplay to be hidden - let WeaponHUD.showMessage() control it
+                this.weaponHUD.unifiedDisplay.style.display = 'none'; // Will be shown when needed
                 console.log('🚀 Weapon HUD restored after launch');
                 
                 // Update weapon HUD with current weapon system state

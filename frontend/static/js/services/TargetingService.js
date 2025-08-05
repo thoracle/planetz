@@ -59,9 +59,7 @@ export class TargetingService {
 
         // Check cache validity to avoid redundant calculations
         if (this.isCacheValid(camera, weaponRange)) {
-            if (this.config.enableDebugLogging) {
-                console.log(`🎯 TARGETING: Using cached result for ${requestedBy}`);
-            }
+                    // Using cached result
             return this.cachedTargetResult;
         }
 
@@ -162,9 +160,7 @@ export class TargetingService {
             }
         }
         
-        if (nearestTarget && this.config.enableDebugLogging) {
-            console.log(`🎯 TARGETING: Fallback found for ${requestedBy}: ${nearestTarget.name} at ${nearestTarget.distance.toFixed(1)}km`);
-        }
+        // Fallback target found
         
         return nearestTarget;
     }

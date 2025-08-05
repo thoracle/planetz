@@ -40,7 +40,7 @@ export class WeaponCard {
      * @returns {Object} Fire result
      */
     fire(origin, target = null) {
-        // Cache test logging removed for production
+
         
         // Check cooldown
         const currentTime = Date.now();
@@ -99,67 +99,69 @@ export class WeaponCard {
         // FIXED: Use target-based aiming for physics projectiles, camera direction as fallback
         let direction = { x: 0, y: 0, z: 1 }; // Default forward
         
-        // FIXED: Use camera direction to eliminate parallax error
+        // ENHANCED SKILL-BASED AIMING: Camera direction with ship velocity compensation
         if (window.starfieldManager && window.starfieldManager.camera) {
             // Use camera direction for accurate crosshair alignment
             const camera = window.starfieldManager.camera;
             const cameraDirection = new window.THREE.Vector3(0, 0, -1);
             cameraDirection.applyQuaternion(camera.quaternion);
             
-            direction = {
-                x: cameraDirection.x,
-                y: cameraDirection.y,
-                z: cameraDirection.z
-            };
-            console.log(`🎯 ${this.name}: Using camera direction for crosshair alignment`);
-            
-            // DEBUG: Still log target info for reference
-            if (target && target.position) {
-                const distance = Math.sqrt(
-                    Math.pow(target.position.x - origin.x, 2) +
-                    Math.pow(target.position.y - origin.y, 2) +
-                    Math.pow(target.position.z - origin.z, 2)
-                );
-                console.log(`🔍 DEBUG ${this.name}: Target at distance ${distance.toFixed(2)}m`);
+            // VELOCITY COMPENSATION: Get ship velocity from StarfieldManager movement system
+            let shipVelocity = { x: 0, y: 0, z: 0 };
+            if (window.starfieldManager) {
+                // Use targetSpeed for immediate response (handles acceleration lag)
+                const currentSpeed = window.starfieldManager.currentSpeed || 0;
+                const targetSpeed = window.starfieldManager.targetSpeed || 0;
+                const effectiveSpeed = Math.max(currentSpeed, targetSpeed); // Use higher value for immediate response
+                
+                if (effectiveSpeed > 0) {
+                    // Calculate speed multiplier using same logic as StarfieldManager
+                    let speedMultiplier = effectiveSpeed * 0.3; // Base multiplier
+                    
+                    // Apply speed reductions for lower impulse levels
+                    if (effectiveSpeed <= 3) {
+                        const reductionFactor = Math.pow(0.15, 4 - effectiveSpeed);
+                        speedMultiplier *= reductionFactor;
+                    }
+                    
+                    // Calculate movement direction based on view (same as StarfieldManager)
+                    const moveDirection = window.starfieldManager.view === 'AFT' ? -1 : 1;
+                    
+                    // Create velocity vector using camera orientation (same as ship movement)
+                    const forwardVector = new window.THREE.Vector3(0, 0, -speedMultiplier * moveDirection);
+                    forwardVector.applyQuaternion(camera.quaternion);
+                    
+                    shipVelocity = { x: forwardVector.x, y: forwardVector.y, z: forwardVector.z };
+                }
             }
-        } else if (target && target.position) {
-            // Fallback to target-based aiming if no camera available
-            const dirVector = {
-                x: target.position.x - origin.x,
-                y: target.position.y - origin.y,
-                z: target.position.z - origin.z
-            };
-            const magnitude = Math.sqrt(dirVector.x * dirVector.x + dirVector.y * dirVector.y + dirVector.z * dirVector.z);
-            if (magnitude > 0) {
-                direction = {
-                    x: dirVector.x / magnitude,
-                    y: dirVector.y / magnitude,
-                    z: dirVector.z / magnitude
-                };
-                console.log(`🎯 ${this.name}: Using target-based direction (camera fallback)`);
-            }
-        } else if (window.starfieldManager && window.starfieldManager.camera) {
-            // Final fallback to camera direction
-            const camera = window.starfieldManager.camera;
             
-            // Get camera's forward direction (where crosshairs are pointing)
-            const cameraForward = new THREE.Vector3(0, 0, -1);
-            cameraForward.applyQuaternion(camera.quaternion);
-            
+            // CORRECTED: Subtract velocity to compensate for ship movement (not add)
+            const velocityScale = 0.1; // Reduced scale for more subtle, accurate compensation
             direction = {
-                x: cameraForward.x,
-                y: cameraForward.y,
-                z: cameraForward.z
+                x: cameraDirection.x - (shipVelocity.x * velocityScale), // ✅ Subtract for proper compensation
+                y: cameraDirection.y - (shipVelocity.y * velocityScale), // ✅ Subtract for proper compensation
+                z: cameraDirection.z - (shipVelocity.z * velocityScale)  // ✅ Subtract for proper compensation
             };
-            console.log(`🎯 ${this.name}: Using camera direction (no target available)`);
+            
+            // Normalize direction to maintain consistent speed
+            const dirLength = Math.sqrt(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
+            if (dirLength > 0) {
+                direction.x /= dirLength;
+                direction.y /= dirLength;
+                direction.z /= dirLength;
+            }
+            
+            console.log(`🎯 ${this.name}: Enhanced aiming with velocity compensation: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
+            console.log(`🎯 ${this.name}: Ship velocity: x=${shipVelocity.x.toFixed(2)}, y=${shipVelocity.y.toFixed(2)}, z=${shipVelocity.z.toFixed(2)}`);
         } else {
-            console.log(`🔍 DEBUG: No target or camera available for ${this.name}, using default direction`);
+            // No camera available - use default forward direction
+    
         }
 
         // Try to create physics-based projectile first
         if (window.physicsManager && window.physicsManager.isReady()) {
             try {
-                console.log(`🔍 DEBUG: Creating PhysicsProjectile for ${this.name} with direction:`, direction);
+    
                 
                 const physicsProjectile = new PhysicsProjectile({
                     origin: origin,
@@ -176,14 +178,14 @@ export class WeaponCard {
                     scene: window.starfieldManager?.scene || window.scene
                 });
                 
-                console.log(`✅ DEBUG: PhysicsProjectile created successfully for ${this.name}`);
+
                 return physicsProjectile;
                 
             } catch (error) {
                 console.log('Failed to create physics projectile, falling back to simple projectile:', error);
             }
         } else {
-            console.log(`🔍 DEBUG: PhysicsManager not ready for ${this.name}, using fallback`);
+
         }
         
         // Fallback to simple projectile if physics not available
@@ -564,132 +566,66 @@ export class SplashDamageWeapon extends WeaponCard {
         // FIXED: Use target-based aiming for physics projectiles, camera direction as fallback
         let direction = { x: 0, y: 0, z: 1 }; // Default forward
         
-        // UNIFIED TARGETING: Use TargetingService for consistent targeting across all systems
+        // ENHANCED SKILL-BASED AIMING: Camera direction with ship velocity compensation
+        // This ensures missiles go exactly where the player is aiming, accounting for ship movement
         if (window.starfieldManager && window.starfieldManager.camera) {
             const camera = window.starfieldManager.camera;
+            const cameraDirection = new window.THREE.Vector3(0, 0, -1);
+            cameraDirection.applyQuaternion(camera.quaternion);
             
-            // Get unified targeting result that matches crosshair display logic exactly
-            const targetingResult = targetingService.getCurrentTarget({
-                camera: camera,
-                weaponRange: this.range,
-                requestedBy: this.name,
-                enableFallback: true
-            });
-            
-            const finalTarget = targetingResult.hasTarget ? targetingResult.target : null;
-            
-            if (finalTarget) {
-                // MOVEMENT FIX: Calculate direct trajectory to target position when we have a valid target
-                const weaponPos = new window.THREE.Vector3(origin.x, origin.y, origin.z);
-                const targetPos = new window.THREE.Vector3(
-                    finalTarget.position.x,
-                    finalTarget.position.y,
-                    finalTarget.position.z
-                );
+            // VELOCITY COMPENSATION: Get ship velocity from StarfieldManager movement system
+            let shipVelocity = { x: 0, y: 0, z: 0 };
+            if (window.starfieldManager) {
+                // Use targetSpeed for immediate response (handles acceleration lag)
+                const currentSpeed = window.starfieldManager.currentSpeed || 0;
+                const targetSpeed = window.starfieldManager.targetSpeed || 0;
+                const effectiveSpeed = Math.max(currentSpeed, targetSpeed); // Use higher value for immediate response
                 
-                // Calculate direct vector from weapon to target
-                const directVector = targetPos.sub(weaponPos).normalize();
-                
-                direction = {
-                    x: directVector.x,
-                    y: directVector.y,
-                    z: directVector.z
-                };
-                
-                console.log(`🎯 ${this.name}: Direct trajectory to target: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
-                
-                // Range validation using unified targeting result for accuracy
-                const maxRangeKm = this.range || 10; // Default 10km if no range specified (now in km)
-                const targetDistanceKm = finalTarget.distance; // Already in km from targeting system
-                
-                if (targetDistanceKm > maxRangeKm) {
-                    console.log(`🎯 ${this.name}: Target out of range (${targetDistanceKm.toFixed(1)}km > ${maxRangeKm}km max)`);
+                if (effectiveSpeed > 0) {
+                    // Calculate speed multiplier using same logic as StarfieldManager
+                    let speedMultiplier = effectiveSpeed * 0.3; // Base multiplier
                     
-                    // Send HUD message for out of range using proper callback
-                    if (this.showMessage && typeof this.showMessage === 'function') {
-                        this.showMessage(
-                            `Target Out of Range: ${this.name} - ${targetDistanceKm.toFixed(1)}km > ${maxRangeKm}km max`,
-                            3000
-                        );
-                    } else {
-                        // Fallback for when no callback is set (shouldn't happen in normal operation)
-                        console.log(`🎯 No HUD message callback available for ${this.name}`);
+                    // Apply speed reductions for lower impulse levels
+                    if (effectiveSpeed <= 3) {
+                        const reductionFactor = Math.pow(0.15, 4 - effectiveSpeed);
+                        speedMultiplier *= reductionFactor;
                     }
                     
-                    // Continue firing anyway - don't return false
-                    console.log(`🎯 ${this.name}: Firing anyway despite being out of range`);
-                } else {
-                    console.log(`🎯 ${this.name}: Target in range (${targetDistanceKm.toFixed(1)}km / ${maxRangeKm}km max)`);
-                }
-                
-                console.log(`🎯 ${this.name}: Firing at ${targetingResult.acquisitionMethod} target: ${finalTarget.name} (${targetDistanceKm.toFixed(1)}km) - direct trajectory`);
-                target = finalTarget; // Enable collision tracking
-            } else {
-                // NO TARGET: Use simple camera direction for consistent trajectory
-                const camera = window.starfieldManager.camera;
-                const cameraDirection = new window.THREE.Vector3(0, 0, -1);
-                cameraDirection.applyQuaternion(camera.quaternion);
-                
-                direction = {
-                    x: cameraDirection.x,
-                    y: cameraDirection.y,
-                    z: cameraDirection.z
-                };
-                
-                console.log(`🎯 ${this.name}: Camera direction vector: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
-                console.log(`🎯 ${this.name}: No valid crosshair target - firing in camera direction (will check for miss on expiry)`);
-                target = null; // Disable collision tracking
-                console.log(`🔍 DEBUG ${this.name}: Target cleared - now null`);
-                
-                // DEBUG: Calculate where this trajectory will take the missile
-                const projectedPos = {
-                    x: origin.x + direction.x * 1000,
-                    y: origin.y + direction.y * 1000, 
-                    z: origin.z + direction.z * 1000
-                };
-                console.log(`🔍 MISS DEBUG ${this.name}: Missile will fly toward: (${projectedPos.x.toFixed(1)}, ${projectedPos.y.toFixed(1)}, ${projectedPos.z.toFixed(1)})`);
-                
-                // DEBUG: Check how close this trajectory passes to any targets
-                if (window.starfieldManager?.dummyShipMeshes) {
-                    const dummyShips = window.starfieldManager.dummyShipMeshes;
-                    for (const enemyMesh of dummyShips) {
-                        if (enemyMesh && enemyMesh.position) {
-                            const enemyPos = enemyMesh.position;
-                            const toEnemy = {
-                                x: enemyPos.x - origin.x,
-                                y: enemyPos.y - origin.y,
-                                z: enemyPos.z - origin.z
-                            };
-                            const distanceToEnemy = Math.sqrt(toEnemy.x*toEnemy.x + toEnemy.y*toEnemy.y + toEnemy.z*toEnemy.z);
-                            
-                            // Calculate closest approach distance using vector projection
-                            const dotProduct = toEnemy.x*direction.x + toEnemy.y*direction.y + toEnemy.z*direction.z;
-                            const projectionLength = Math.max(0, dotProduct); // Don't go backward
-                            const closestPoint = {
-                                x: origin.x + direction.x * projectionLength,
-                                y: origin.y + direction.y * projectionLength,
-                                z: origin.z + direction.z * projectionLength
-                            };
-                            const missDistance = Math.sqrt(
-                                Math.pow(enemyPos.x - closestPoint.x, 2) +
-                                Math.pow(enemyPos.y - closestPoint.y, 2) +
-                                Math.pow(enemyPos.z - closestPoint.z, 2)
-                            );
-                            
-                            const shipName = enemyMesh.userData?.ship?.shipName || 'Enemy';
-                            console.log(`🔍 MISS DEBUG ${this.name}: Will pass ${missDistance.toFixed(3)}km from ${shipName} (collision radius: 0.05m = 0.00005km)`);
-                            
-                            if (missDistance < 0.001) { // Less than 1m
-                                console.log(`🚨 MISS DEBUG ${this.name}: WARNING - Very close pass to ${shipName}! Possible accidental hit!`);
-                            }
-                        }
-                    }
+                    // Calculate movement direction based on view (same as StarfieldManager)
+                    const moveDirection = window.starfieldManager.view === 'AFT' ? -1 : 1;
+                    
+                    // Create velocity vector using camera orientation (same as ship movement)
+                    const forwardVector = new window.THREE.Vector3(0, 0, -speedMultiplier * moveDirection);
+                    forwardVector.applyQuaternion(camera.quaternion);
+                    
+                    shipVelocity = { x: forwardVector.x, y: forwardVector.y, z: forwardVector.z };
                 }
             }
             
-            // Removed firing details debug spam
+            // CORRECTED: Subtract velocity to compensate for ship movement (not add)
+            const velocityScale = 0.1; // Reduced scale for more subtle, accurate compensation
+            direction = {
+                x: cameraDirection.x - (shipVelocity.x * velocityScale), // ✅ Subtract for proper compensation
+                y: cameraDirection.y - (shipVelocity.y * velocityScale), // ✅ Subtract for proper compensation
+                z: cameraDirection.z - (shipVelocity.z * velocityScale)  // ✅ Subtract for proper compensation
+            };
+            
+            // Normalize direction to maintain consistent speed
+            const dirLength = Math.sqrt(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
+            if (dirLength > 0) {
+                direction.x /= dirLength;
+                direction.y /= dirLength;
+                direction.z /= dirLength;
+            }
+            
+            console.log(`🎯 ${this.name}: Enhanced aiming with velocity compensation: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
+            const speedInfo = window.starfieldManager ? `current=${window.starfieldManager.currentSpeed}, target=${window.starfieldManager.targetSpeed}, effective=${Math.max(window.starfieldManager.currentSpeed || 0, window.starfieldManager.targetSpeed || 0)}` : 'unknown';
+            console.log(`🎯 ${this.name}: Ship velocity: x=${shipVelocity.x.toFixed(2)}, y=${shipVelocity.y.toFixed(2)}, z=${shipVelocity.z.toFixed(2)} (speeds: ${speedInfo})`);
+            
+            // No automatic target tracking - missiles are dumb-fire projectiles with velocity compensation
+            target = null;
         } else {
-            console.log(`🔍 DEBUG: No camera available for ${this.name}, using default direction`);
+
         }
 
         // ENHANCED: Try to create physics-based projectile with comprehensive error handling
@@ -719,7 +655,7 @@ export class SplashDamageWeapon extends WeaponCard {
             if (window.physicsManager.isReady()) {
                 try {
                     console.log(`✅ ${this.name}: Creating physics-based projectile`);
-                    console.log(`🔍 DEBUG ${this.name}: Target being passed to physics: ${target ? target.name || 'unnamed target' : 'NULL'}`);
+            
                     
                     const physicsProjectile = new PhysicsProjectile({
                         origin: origin,
@@ -1236,10 +1172,24 @@ export class PhysicsProjectile {
         // SIMPLIFIED: No complex trail tracking - we'll create static trails on impact
         this.trailCreated = false;
         
-        // COLLISION DELAY: Prevent instant collision on launch (MUST BE BEFORE PHYSICS INIT)
+        // ADAPTIVE COLLISION DELAY: Prevent instant collision on launch (MUST BE BEFORE PHYSICS INIT)
         this.launchTime = Date.now();
         this.collisionProcessed = false;
-        this.collisionDelayMs = 3; // Reduced to 3ms - very short delay for fast projectiles
+        
+        // Calculate adaptive collision delay based on target distance (for dumb-fire, use aggressive close-range settings)
+        let adaptiveDelayMs = 1; // Default 1ms delay for dumb-fire missiles (reduced from 3ms)
+        if (this.target && this.target.distance) {
+            const targetDistanceKm = this.target.distance;
+            if (targetDistanceKm < 1) {
+                adaptiveDelayMs = 0; // No delay for targets < 1km (very close range)
+            } else if (targetDistanceKm < 5) {
+                adaptiveDelayMs = 1; // 1ms delay for targets < 5km (close range)
+            } else {
+                adaptiveDelayMs = 2; // 2ms delay for targets >= 5km (reduced from 3ms)
+            }
+        }
+        
+        this.collisionDelayMs = adaptiveDelayMs;
         this.allowCollisionAfter = this.launchTime + this.collisionDelayMs;
         
         // Initialize physics body
@@ -1365,25 +1315,23 @@ export class PhysicsProjectile {
             if (this.target && this.target.distance) {
                 const targetDistance = this.target.distance;
                 
-                // BALANCED RADIUS: Now that missiles pass through each other, we can use reasonable sizes
+                // ENHANCED COLLISION RADIUS: Implements close-range combat fixes from restart.md
                 let baseRadius;
-                if (targetDistance < 1) {
-                    baseRadius = 2.5; // Reasonable for close combat
-                } else if (targetDistance < 10) {
-                    baseRadius = 3.0; // Good for medium range
+                if (targetDistance < 10) {
+                    baseRadius = 10.0; // Close-range boost: 10.0m minimum for targets <10km
                 } else {
-                    baseRadius = 3.5; // Reliable for long range
+                    baseRadius = 8.0; // Minimum 8.0m collision radius for all shots
                 }
                 
-                // SPEED COMPENSATION: Ensure reliable hit detection
+                // SPEED COMPENSATION: Ensure reliable hit detection at high speeds
                 collisionRadius = Math.max(baseRadius, minRadiusForTunneling);
                 
-                console.log(`🎯 ${this.weaponName}: Balanced collision radius: ${collisionRadius.toFixed(2)}m for ${targetDistance.toFixed(1)}km target`);
+                console.log(`🎯 ${this.weaponName}: Enhanced collision radius: ${collisionRadius.toFixed(2)}m for ${targetDistance.toFixed(1)}km target (close-range boost: ${targetDistance < 10})`);
             } else {
-                // PRECISION FIX: Use much smaller collision radius for missiles without specific targets
-                // This ensures missiles only hit when they're actually aimed properly
-                collisionRadius = Math.max(2.0, minRadiusForTunneling); // Small 2m radius - if crosshair says miss, it should miss
-                console.log(`🎯 ${this.weaponName}: Miss collision radius: ${collisionRadius}m (no target)`);
+                // ENHANCED FALLBACK: Use minimum 8.0m radius even without specific targets
+                // This prevents close-range misses when targeting is imperfect
+                collisionRadius = Math.max(8.0, minRadiusForTunneling); // Minimum 8.0m radius per restart.md
+                console.log(`🎯 ${this.weaponName}: Enhanced fallback collision radius: ${collisionRadius.toFixed(2)}m (no target)`);
             }
             
             // Create physics rigid body with distance-appropriate collision radius
@@ -1442,7 +1390,7 @@ export class PhysicsProjectile {
                 
                 // DEBUG: Direction is now properly calculated to aim at validated targets
                 if (this.target && this.target.position) {
-                    console.log(`🔍 DEBUG ${this.weaponName}: Missile trajectory aimed directly at target position`);
+        
                 }
                 
                 // Enhanced CCD configuration handled automatically by PhysicsManager via bodyConfig.projectileSpeed
@@ -1450,7 +1398,7 @@ export class PhysicsProjectile {
                 // Set up collision callback
                 this.setupCollisionCallback();
             } else {
-                console.log(`❌ DEBUG: Failed to create physics rigid body for ${this.weaponName}`);
+
             }
             
         } catch (error) {
@@ -1464,18 +1412,18 @@ export class PhysicsProjectile {
     initializeSimpleTrail() {
         const effectsManager = window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager;
         if (!effectsManager) {
-            console.log('🔍 DEBUG: No effects manager found');
+            
             return;
         }
         
         if (effectsManager.fallbackMode) {
-            console.log('🔍 DEBUG: Effects manager in fallback mode, bypassing for test');
+            
             // Temporarily bypass fallback mode for testing
         }
         
         const THREE = window.THREE;
         if (!THREE) {
-            console.log('🔍 DEBUG: No THREE.js found in WeaponCard');
+            
             return;
         }
         
@@ -1490,7 +1438,7 @@ export class PhysicsProjectile {
         
         const startPos = new THREE.Vector3(this.startPosition.x, this.startPosition.y, this.startPosition.z);
         // TRAIL DISABLED: Temporarily disabled to eliminate visual artifacts
-        console.log('🔍 DEBUG: Calling createProjectileTrail with:', this.trailId, particleType, startPos);
+        
         this.trailData = effectsManager.createProjectileTrail(this.trailId, particleType, startPos, this.threeObject);
     }
 
@@ -1499,13 +1447,13 @@ export class PhysicsProjectile {
      */
     setupCollisionCallback() {
         if (!this.rigidBody || !this.physicsManager) {
-            console.log(`🔍 DEBUG: setupCollisionCallback failed for ${this.weaponName} - rigidBody:${!!this.rigidBody}, physicsManager:${!!this.physicsManager}`);
+
             return;
         }
         
         // Add projectile to physics manager's collision tracking
         this.rigidBody.projectileOwner = this;
-        console.log(`✅ DEBUG: Collision callback set up for ${this.weaponName} - projectileOwner assigned`);
+        
     }
     
     /**
@@ -2025,7 +1973,7 @@ export class PhysicsProjectile {
      */
     showDamageFeedback(target, damage) {
         try {
-            console.log(`🎯 FEEDBACK DEBUG: ${this.weaponName} trying to show damage feedback (${damage} dmg)`);
+
             
             // Try to get weapon HUD reference through various paths
             let weaponHUD = null;
@@ -2033,28 +1981,23 @@ export class PhysicsProjectile {
             // Path 1: Through ship's weapon system
             if (window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.starfieldManager.viewManager.ship.weaponSystem.weaponHUD;
-                console.log(`🎯 FEEDBACK DEBUG: Found weaponHUD via ship.weaponSystem`);
+
             }
             // Path 2: Through global ship reference
             else if (window.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.ship.weaponSystem.weaponHUD;
-                console.log(`🎯 FEEDBACK DEBUG: Found weaponHUD via global ship`);
+
             }
             // Path 3: Through StarfieldManager directly
             else if (window.starfieldManager?.weaponHUD) {
                 weaponHUD = window.starfieldManager.weaponHUD;
-                console.log(`🎯 FEEDBACK DEBUG: Found weaponHUD via StarfieldManager`);
+
             }
             
             if (weaponHUD) {
                 const targetName = target.shipName || target.name || 'Target';
-                console.log(`🎯 FEEDBACK DEBUG: Calling showDamageFeedback on weaponHUD`);
+
                 weaponHUD.showDamageFeedback(this.weaponName, damage, targetName);
-            } else {
-                console.log(`🎯 FEEDBACK DEBUG: No weaponHUD found - checking paths:
-                  starfieldManager.viewManager.ship.weaponSystem.weaponHUD: ${!!window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD}
-                  ship.weaponSystem.weaponHUD: ${!!window.ship?.weaponSystem?.weaponHUD}
-                  starfieldManager.weaponHUD: ${!!window.starfieldManager?.weaponHUD}`);
             }
         } catch (error) {
             console.log('Failed to show damage feedback:', error.message);

@@ -421,6 +421,12 @@ export default class Ship {
      * @param {System} system - System instance
      */
     addSystem(systemName, system) {
+        // Check if system already exists (prevent duplicates)
+        if (this.systems.has(systemName)) {
+            console.warn(`System ${systemName} already exists - skipping duplicate addition`);
+            return false;
+        }
+        
         // Check slot capacity
         if (this.usedSlots + system.slotCost > this.totalSlots) {
             console.warn(`Cannot add ${systemName}: insufficient slots (${system.slotCost} needed, ${this.availableSlots} available)`);
@@ -441,13 +447,6 @@ export default class Ship {
         
         // Calculate total stats
         this.calculateTotalStats();
-        
-        // Add the system to our systems Map
-        this.systems.set(systemName, system);
-        this.availableSlots -= system.slotCost;
-        
-        // Remove verbose system addition logging
-        // console.log(`Added system: ${systemName} (${system.slotCost} slots) - ${this.availableSlots} slots remaining`);
         
         return true;
     }
@@ -716,7 +715,7 @@ export default class Ship {
      */
     debugSystemCards(systemName) {
         if (!this.cardSystemIntegration) {
-            console.log(`🔍 DEBUG CARD CHECK [${systemName}]: No card integration system`);
+
             return { hasCards: true, reason: 'no_card_system' };
         }
         
@@ -724,7 +723,7 @@ export default class Ship {
         if (this.shipConfig?.starterCards) {
             for (const card of Object.values(this.shipConfig.starterCards)) {
                 if (this.cardEnablesSystem(card, systemName)) {
-                    console.log(`🔍 DEBUG CARD CHECK [${systemName}]: ✅ Enabled by starter card [${card.cardType}]`);
+    
                     return { hasCards: true, reason: 'starter_card', card: card.cardType };
                 }
             }
@@ -733,9 +732,9 @@ export default class Ship {
         // Check installed cards
         const result = this.cardSystemIntegration.hasSystemCardsSync(systemName);
         if (result.hasCards) {
-            console.log(`🔍 DEBUG CARD CHECK [${systemName}]: ✅ Has required cards`);
+            
         } else {
-            console.log(`🔍 DEBUG CARD CHECK [${systemName}]: ❌ Missing cards [${result.missingCards.join(', ')}]`);
+            
         }
         
         return result;

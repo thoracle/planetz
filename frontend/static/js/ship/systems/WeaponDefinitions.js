@@ -95,20 +95,20 @@ export class WeaponDefinitions {
                 weaponType: 'projectile',
                 damage: 150,
                 cooldownTime: 2.5, // seconds
-                range: 30, // km - medium-long range projectile
+                range: 15, // km - reduced range for better balance
                 autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 1.0, // Missiles don't miss if fired properly
                 energyCost: 8, // Moderate energy cost
                 blastRadius: 0, // NO SPLASH DAMAGE - direct hit only
                 homingCapability: false,
                 targetLockRequired: false, // CORRECTED: Non-homing projectiles fire toward crosshairs, no target lock needed
-                flightRange: 30, // km - match weapon range
+                flightRange: 15, // km - match weapon range
                 turnRate: 0, // No turning
                 specialProperties: {
                     explosionType: 'kinetic',
                     armorPiercing: true,
                     directHitOnly: true, // Flag to indicate this is direct-hit projectile
-                    projectileSpeed: 1500 // m/s - Reduced from 6000 to prevent physics tunneling at long range
+                    projectileSpeed: 750 // m/s - Reduced by 50% to improve close-range collision detection
                 }
             },
             
@@ -118,14 +118,14 @@ export class WeaponDefinitions {
                 weaponType: 'splash-damage',
                 damage: 180,
                 cooldownTime: 2.5, // seconds
-                range: 8.4, // km - short-medium range homing projectile
+                range: 15, // km - increased range for better balance
                 autofireEnabled: true, // Homing missiles can autofire
                 accuracy: 1.0,
                 energyCost: 8,
                 blastRadius: 45, // meters
                 homingCapability: true,
                 targetLockRequired: true,
-                flightRange: 8.4, // km - match weapon range
+                flightRange: 15, // km - match weapon range
                 turnRate: 120, // degrees per second - faster turning
                 specialProperties: {
                     trackingArc: 60, // degrees
@@ -140,20 +140,20 @@ export class WeaponDefinitions {
                 weaponType: 'splash-damage',
                 damage: 320,
                 cooldownTime: 4.0, // seconds
-                range: 45, // km - longest range heavy weapon
+                range: 15, // km - reduced range for better balance
                 autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 1.0,
                 energyCost: 12,
                 blastRadius: 20, // meters (reduced by 75% from original 80m)
                 homingCapability: false,
                 targetLockRequired: false, // CORRECTED: Torpedoes fire toward crosshairs, no target lock needed
-                flightRange: 15, // km - reduced for faster miss feedback, still long-range
+                flightRange: 15, // km - match weapon range
                 turnRate: 0, // No turning
                 specialProperties: {
                     explosionType: 'photon',
                     armorPiercing: true,
                     shieldPiercing: true, // Photon torpedoes pierce shields
-                    projectileSpeed: 2000 // m/s - Reduced from 7500 to prevent physics tunneling, still faster than standard missiles
+                    projectileSpeed: 1000 // m/s - Reduced by 50% to improve close-range collision detection
                 }
             },
             

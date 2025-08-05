@@ -12,20 +12,17 @@ export class WeaponEffectsManager {
         
         // Get THREE reference (use global pattern like other files)
         this.THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
-        console.log('🔍 DEBUG: Checking THREE.js availability');
-        console.log('🔍 DEBUG: window.THREE =', !!window.THREE);
-        console.log('🔍 DEBUG: global THREE =', typeof THREE !== 'undefined');
-        console.log('🔍 DEBUG: this.THREE =', !!this.THREE);
+        // Checking THREE.js availability
         
         if (!this.THREE) {
             console.error('THREE.js not available for WeaponEffectsManager');
             
             // Try to get THREE from scene if available
             if (scene && scene.constructor && scene.constructor.name === 'Scene') {
-                console.log('🔍 DEBUG: Trying to get THREE from scene object');
+    
                 // Scene exists, so THREE must be available somehow
                 this.THREE = window.THREE || THREE;
-                console.log('🔍 DEBUG: Retrieved THREE from scene context:', !!this.THREE);
+    
             }
             
             if (!this.THREE) {

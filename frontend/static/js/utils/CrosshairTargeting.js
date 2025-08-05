@@ -121,29 +121,18 @@ export class CrosshairTargeting {
                 const targetDistanceMeters = camera.position.distanceTo(enemyPos);
                 const targetDistance = targetDistanceMeters / 1000; // Convert to kilometers
                 
-                // DEBUG: Log distance calculation details to diagnose 0.0km issue
-                if (enableDebugLogging || targetDistance < 0.1) {
-                    console.log(`🔍 DISTANCE DEBUG: ${enemyMesh.userData.ship.shipName || 'Target'}`);
-                    console.log(`  Camera position:`, camera.position);
-                    console.log(`  Enemy position:`, enemyPos);
-                    console.log(`  Distance meters: ${targetDistanceMeters.toFixed(1)}m`);
-                    console.log(`  Distance km: ${targetDistance.toFixed(3)}km`);
-                }
+                // Track distance calculations (debug logging removed for performance)
                 
                 // Calculate tolerance with distance scaling and movement bonus
                 const baseToleranceKm = this.calculateAimTolerance(targetDistance);
                 const aimToleranceKm = this.applyMovementBonus(baseToleranceKm);
                 
-                // Debug logging (optional)
+                // Debug logging (reduced for performance)
                 if (enableDebugLogging) {
-                    // Check for suspiciously large distances (possible scale issues)
+                    // Only log if there are actual issues
                     if (distanceToAimLineKm > 1000) {
                         console.log(`🚨 AIM DEBUG ${debugPrefix}: Suspiciously large distance detected: ${distanceToAimLineKm.toFixed(1)}km - possible scale issue`);
                     }
-                    
-                    console.log(`🔍 DEBUG ${debugPrefix}: Distance to aim line: ${distanceToAimLineKm.toFixed(4)}km (tolerance: ${aimToleranceKm.toFixed(4)}km at ${targetDistance.toFixed(1)}km range)`);
-                    
-                    // Movement bonus applied if detected (reduced logging for cleaner console)
                 }
                 
                 // Check if target passes tolerance test (both in kilometers)

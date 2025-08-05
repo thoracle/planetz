@@ -617,13 +617,22 @@ export class WeaponSystemCore {
         console.log(`🎯 ${message}`);
         
         if (this.weaponHUD) {
-            // Use connected WeaponHUD
-            this.weaponHUD.showMessage(message, duration);
-            console.log(`🎯 Message sent to connected WeaponHUD`);
+            // Use connected WeaponHUD - use unified message display
+            this.weaponHUD.showUnifiedMessage(message, duration, 2); // Priority 2 for weapon messages
+            console.log(`🎯 Message sent to connected WeaponHUD unified display`);
         } else {
-            // Fallback: try to find WeaponHUD directly in DOM
-            console.warn(`🎯 WeaponHUD not connected, using fallback message system`);
-            this.showFallbackHUDMessage(message, duration);
+            // Fallback: try to find WeaponHUD directly in DOM or via StarfieldManager
+            console.warn(`🎯 WeaponHUD not connected, trying alternative paths`);
+            
+            // Try to get WeaponHUD via StarfieldManager
+            const starfieldWeaponHUD = window.starfieldManager?.weaponHUD;
+            if (starfieldWeaponHUD && starfieldWeaponHUD.showUnifiedMessage) {
+                starfieldWeaponHUD.showUnifiedMessage(message, duration, 2);
+                console.log(`🎯 Message sent via StarfieldManager WeaponHUD`);
+            } else {
+                // Last resort fallback
+                this.showFallbackHUDMessage(message, duration);
+            }
         }
     }
     

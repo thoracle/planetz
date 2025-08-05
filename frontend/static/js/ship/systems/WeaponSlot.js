@@ -104,13 +104,13 @@ export class WeaponSlot {
             isOutOfRange = distanceToTarget > weapon.range;
         }
         
-        // Show range warning but allow firing (no throttling, always show message)
+        // ENFORCE WEAPON RANGE: Prevent firing beyond weapon effective range
         if (isOutOfRange) {
             const distanceKm = (distanceToTarget / 1000).toFixed(1);
             const maxRangeKm = weapon.range; // Already in km
             const modeText = target ? 'Target' : 'Crosshair';
             
-            console.log(`Weapon slot ${this.slotIndex}: ${modeText} out of range`);
+            console.log(`Weapon slot ${this.slotIndex}: ${modeText} out of range - FIRING BLOCKED`);
             
             // Show HUD feedback for out of range
             if (this.weaponSystem && this.weaponSystem.weaponHUD) {
@@ -126,7 +126,8 @@ export class WeaponSlot {
                 );
             }
             
-            // Continue firing anyway - don't return false
+            // RANGE ENFORCEMENT: Return false to prevent firing beyond weapon range
+            return false;
         }
         
         // Calculate proper weapon firing position (especially important for projectiles)

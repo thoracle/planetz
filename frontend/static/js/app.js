@@ -29,30 +29,20 @@ let physicsManager = null;
  * @returns {boolean} True if Ammo.js is available, false otherwise
  */
 function isAmmoAvailable() {
-    // Comprehensive Ammo.js detection with detailed debugging
-    console.log('🔍 Checking Ammo.js availability...');
-    console.log('   • typeof Ammo:', typeof Ammo);
-    console.log('   • typeof window.Ammo:', typeof window.Ammo);
-    console.log('   • window.Ammo exists:', !!window.Ammo);
-    console.log('   • window.AmmoLoaded:', window.AmmoLoaded);
-    
-    // Method 0: Check explicit load flag (most reliable)
+    // Check explicit load flag (most reliable)
     if (window.AmmoLoaded === true && window.Ammo) {
-        console.log('✅ Method 0: Ammo.js confirmed loaded via AmmoLoaded flag');
         return true;
     }
     
-    // Method 1: Direct global Ammo access
+    // Direct global Ammo access
     if (typeof Ammo !== 'undefined' && Ammo) {
-        console.log('✅ Method 1: Ammo.js found via global Ammo');
         window.Ammo = Ammo; // Ensure it's on window object too
         window.AmmoLoaded = true; // Set flag for future checks
         return true;
     }
     
-    // Method 2: Window.Ammo access
+    // Window.Ammo access
     if (typeof window.Ammo !== 'undefined' && window.Ammo) {
-        console.log('✅ Method 2: Ammo.js found via window.Ammo');
         // Make it available as global Ammo too
         if (typeof globalThis !== 'undefined') {
             globalThis.Ammo = window.Ammo;
@@ -61,10 +51,9 @@ function isAmmoAvailable() {
         return true;
     }
     
-    // Method 3: Try to access Ammo with error handling
+    // Try to access Ammo with error handling
     try {
         if (window.Ammo && typeof window.Ammo === 'function') {
-            console.log('✅ Method 3: Ammo.js found and is a function');
             window.AmmoLoaded = true; // Set flag for future checks
             return true;
         }
@@ -74,11 +63,6 @@ function isAmmoAvailable() {
     
     // All methods failed
     console.warn('❌ Ammo.js not available - physics will be disabled');
-    console.warn('💡 Troubleshooting:');
-    console.warn('   • Check if static/lib/ammo.js loads without errors');
-    console.warn('   • Check browser network tab for failed requests');
-    console.warn('   • Verify ammo.js is accessible from the static server');
-    console.warn('   • Ensure script loading order: ammo.js before app.js');
     return false;
 }
 
@@ -352,10 +336,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Set initialization flag to indicate StarfieldManager is available
     window.starfieldManagerReady = true;
-    console.log('🌟 StarfieldManager exposed to global scope and ready for test scripts');
 
     // Wait for the HTML-based Ammo.js loading to complete
-    console.log('🔄 Waiting for HTML-based Ammo.js loading...');
     let ammoAvailable = false;
     let attempts = 0;
     const maxAttempts = 25; // 5 seconds with 200ms intervals
@@ -366,19 +348,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Check if HTML loading completed successfully
         if (window.AmmoLoaded === true && typeof window.Ammo !== 'undefined') {
             ammoAvailable = true;
-            console.log(`✅ Ammo.js loaded by HTML loader on attempt ${attempts}`);
             break;
         }
         
         // Check if HTML loading explicitly failed
         if (window.AmmoLoaded === false) {
-            console.log(`❌ HTML-based Ammo.js loading failed`);
             break;
-        }
-        
-        // Still waiting...
-        if (attempts % 5 === 0) {
-            console.log(`⏳ Still waiting for Ammo.js loading... (attempt ${attempts}/${maxAttempts})`);
         }
         
         await new Promise(resolve => setTimeout(resolve, 200));
@@ -391,7 +366,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     if (ammoAvailable) {
-        console.log('🚀 Proceeding with PhysicsManager initialization...');
         // Initialize PhysicsManager only if Ammo.js loaded successfully
         physicsManager = new PhysicsManager();
         
@@ -399,7 +373,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const success = await physicsManager.initialize();
             if (success) {
-                console.log('🚀 PhysicsManager initialized successfully');
                 window.physicsManager = physicsManager;
                 window.physicsManagerReady = true;
             } else {
@@ -415,8 +388,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.physicsManagerReady = false;
         }
     } else {
-        // Ammo.js failed to load - continue without physics
-        console.log('🎮 Continuing without physics engine - game will run in visual-only mode');
         physicsManager = null;
         window.physicsManager = null;
         window.physicsManagerReady = false;
@@ -440,17 +411,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Ensure universe data is shared with SolarSystemManager
         if (viewManager.galacticChart.universe) {
             solarSystemManager.universe = viewManager.galacticChart.universe;
-            console.log('Universe data shared with SolarSystemManager:', {
-                universeSize: solarSystemManager.universe.length,
-                firstSystem: solarSystemManager.universe[0]?.star_name,
-                sectorA0: solarSystemManager.universe.find(system => system.sector === 'A0')
-            });
-
             // Generate initial star system for sector A0
-            console.log('🌟 Generating initial star system for sector A0...');
             const success = await solarSystemManager.generateStarSystem('A0');
             if (success) {
-                console.log('✅ Star system generated successfully');
                 
                 // Wait a moment to ensure all celestial bodies are fully created
                 await new Promise(resolve => setTimeout(resolve, 100));
@@ -480,7 +443,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Set up GUI controls with fixed positioning
-    console.log('Setting up GUI...');
     gui = new dat.GUI({ autoPlace: false });
     gui.domElement.style.display = 'none';
     
@@ -530,9 +492,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const controlsFolder = gui.addFolder('Planet Generation');
     
     // Create planet generator
-    console.log('Creating planet generator...');
     const planetGenerator = new PlanetGenerator(64);
-    console.log('Planet generator created with params:', planetGenerator.params);
 
     // Create material first
     const material = new THREE.MeshPhongMaterial({
@@ -828,7 +788,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const typeController = controlsFolder.add(planetTypes, 'currentType', planetTypes.types)
         .name('Planet Type')
         .onChange((value) => {
-            console.log('Planet type changed to:', value);
+
             typeController.__li.setAttribute('title', planetDescriptions[value]);
             
             if (planetGenerator.applyPlanetClass(value)) {

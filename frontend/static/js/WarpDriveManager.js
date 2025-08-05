@@ -60,15 +60,7 @@ class WarpDriveManager {
             if (this.warpEffects) {
                 this.warpEffects.update(deltaTime, warpFactor);
                 
-                // Log warp effect status every second (for debugging)
-                if (Math.floor(Date.now() / 1000) !== this._lastEffectLog) {
-                    this._lastEffectLog = Math.floor(Date.now() / 1000);
-                    console.log('Warp effects update:', {
-                        warpFactor,
-                        isActive: this.warpDrive.isActive,
-                        effectsInitialized: this.warpEffects.initialized
-                    });
-                }
+                // Track warp effect status (logging reduced)
             }
         }
     }
@@ -78,10 +70,8 @@ class WarpDriveManager {
      * @param {number} warpFactor - Current warp factor
      */
     handleWarpStart(warpFactor) {
-        console.log(`Warp drive activated at factor ${warpFactor}`);
         // Show warp effects
         if (this.warpEffects && this.warpEffects.initialized) {
-            console.log('Showing warp effects');
             this.warpEffects.showAll();
         } else {
             console.warn('Warp effects not initialized');
@@ -92,23 +82,18 @@ class WarpDriveManager {
      * Handle warp drive deactivation
      */
     async handleWarpEnd() {
-        console.log('Warp drive deactivated');
         this.isActive = false;
         
         // Hide warp effects
         if (this.warpEffects && this.warpEffects.initialized) {
-            console.log('Hiding warp effects');
             this.warpEffects.hideAll();
         }
 
         // Only proceed with system generation if we're in navigation mode
         if (this.sectorNavigation && this.sectorNavigation.isNavigating) {
             try {
-                console.log('Starting post-warp sequence');
-                
                 // Get current sector from navigation
                 const currentSector = this.sectorNavigation.currentSector;
-                console.log('Generating new star system for sector:', currentSector);
                 
                 if (!this.viewManager || !this.viewManager.solarSystemManager) {
                     throw new Error('SolarSystemManager not available');
@@ -122,45 +107,30 @@ class WarpDriveManager {
                     return;
                 }
                 
-                console.log('New star system generated successfully');
+
                 
                 // Update galactic chart with new position
                 if (this.viewManager.galacticChart) {
-                    console.log('Updating galactic chart with new position:', currentSector);
+    
                     this.viewManager.galacticChart.setShipLocation(currentSector);
                 }
                 
                 // Ensure we're in the correct view (FRONT or AFT)
                 if (this.viewManager.currentView === 'galactic') {
-                    console.log('Restoring previous view after warp');
+    
                     this.viewManager.restorePreviousView();
                 }
                 
                 // Get the stored target computer state
                 const wasTargetComputerEnabled = this.sectorNavigation.wasTargetComputerEnabled;
-                console.log('Target computer state before warp:', {
-                    wasEnabled: wasTargetComputerEnabled,
-                    hasStarfieldManager: !!this.viewManager.starfieldManager,
-                    currentSector: currentSector
-                });
+                // Checking target computer state for restoration
                 
                 // Only enable target computer if it was enabled before warp
                 if (wasTargetComputerEnabled && this.viewManager.starfieldManager) {
-                    console.log('Restoring target computer state after warp');
                     this.viewManager.starfieldManager.toggleTargetComputer();
-                    console.log('Target computer state after restoration:', {
-                        isEnabled: this.viewManager.starfieldManager.targetComputerEnabled,
-                        targetCount: this.viewManager.starfieldManager.targetObjects?.length || 0,
-                        currentTarget: this.viewManager.starfieldManager.currentTarget ? 'set' : 'none'
-                    });
-                } else {
-                    console.log('Target computer state unchanged:', {
-                        reason: !wasTargetComputerEnabled ? 'was not enabled before warp' : 'starfieldManager not available',
-                        currentState: this.viewManager.starfieldManager?.targetComputerEnabled
-                    });
                 }
                 
-                console.log('Post-warp sequence completed successfully');
+
             } catch (error) {
                 console.error('Error in post-warp sequence:', error);
             }
@@ -186,7 +156,7 @@ class WarpDriveManager {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             this.currentSystem = await response.json();
-            console.log(`Generated star system in sector ${sector}:`, this.currentSystem);
+
         } catch (error) {
             console.error('Error generating star system:', error);
             // Handle error appropriately

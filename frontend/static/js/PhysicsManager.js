@@ -600,7 +600,7 @@ export class PhysicsManager {
                     this.physicsWorld.addRigidBody(rigidBody, collisionGroup, collisionMask);
                     
                     // Enable Continuous Collision Detection for fast projectiles with proper radius
-                    const projectileSpeed = config.projectileSpeed || 1500; // Default projectile speed
+                    const projectileSpeed = config.projectileSpeed || 750; // Default projectile speed (reduced by 50% for better collision detection)
                     this.configureProjectilePhysics(rigidBody, config.radius, projectileSpeed);
                     
                     // Silent projectile addition
@@ -1279,7 +1279,7 @@ export class PhysicsManager {
             
             // Enhanced collision debugging - only log when collisions actually happen
             if (numManifolds > 0) {
-                console.log(`🚀 COLLISION DEBUG: Found ${numManifolds} active collision manifolds - processing immediately`);
+    
             }
             // Removed periodic "0 manifolds found" spam - only log when something interesting happens
             
@@ -1296,7 +1296,7 @@ export class PhysicsManager {
                 const projectile1 = body1?.projectileOwner;
                 
                 if (projectile0 || projectile1) {
-                    console.log(`🚀 COLLISION DEBUG: Found projectile collision - projectile0:${!!projectile0}, projectile1:${!!projectile1}`);
+                    
                     
                     const numContacts = contactManifold.getNumContacts();
                     
@@ -1307,12 +1307,12 @@ export class PhysicsManager {
                         const distance = contactPoint.get_m_distance ? contactPoint.get_m_distance() : 
                                         (contactPoint.getDistance ? contactPoint.getDistance() : 0.1);
                         
-                        console.log(`📏 COLLISION DEBUG: Contact distance: ${distance}`);
+        
                         
                         // More permissive collision processing - allow wider range of distances
                         // Negative distances = penetration, positive = close proximity
                         if (distance <= 10.0) { // Increased to 10.0 units for very permissive collision detection
-                            console.log(`✅ COLLISION DEBUG: Processing collision - distance: ${distance}`);
+            
                             // Handle projectile collision
                             if (projectile0) {
                                 this.handleProjectileCollision(projectile0, contactPoint, body1);
@@ -1321,7 +1321,7 @@ export class PhysicsManager {
                                 this.handleProjectileCollision(projectile1, contactPoint, body0);
                             }
                         } else {
-                            console.log(`❌ COLLISION DEBUG: Collision rejected - distance too large: ${distance} (threshold: 10.0)`);
+            
                         }
                     }
                 }
@@ -1335,7 +1335,7 @@ export class PhysicsManager {
     /**
      * Configure projectile physics with enhanced CCD for high-speed projectiles
      */
-    configureProjectilePhysics(rigidBody, collisionRadius = 0.4, projectileSpeed = 1500) {
+    configureProjectilePhysics(rigidBody, collisionRadius = 0.4, projectileSpeed = 750) {
         try {
             // ENHANCED CCD: More aggressive settings for high-speed projectiles
             const physicsStepDistance = projectileSpeed / 240; // Distance per physics step
@@ -1657,26 +1657,26 @@ export class PhysicsManager {
      */
     handleProjectileCollision(projectile, contactPoint, otherBody) {
         try {
-            console.log(`🎯 COLLISION DEBUG: handleProjectileCollision called for ${projectile.weaponName}`);
+    
             
             // Find the Three.js object associated with the other body
             let otherObject = null;
             for (const [threeObj, rigidBody] of this.rigidBodies.entries()) {
                 if (rigidBody === otherBody) {
                     otherObject = threeObj;
-                    console.log(`🎯 COLLISION DEBUG: Found target object: ${threeObj.name || 'unnamed'}`);
+        
                     break;
                 }
             }
             
             if (!otherObject) {
-                console.log(`❌ COLLISION DEBUG: Could not find Three.js object for collision target`);
+    
                 return;
             }
             
             // Call the projectile's collision handler
             if (typeof projectile.onCollision === 'function') {
-                console.log(`🎯 COLLISION DEBUG: Calling projectile.onCollision for ${projectile.weaponName}`);
+        
                 projectile.onCollision(contactPoint, otherObject);
                 
                 // CRITICAL FIX: Clear collision manifolds after processing to prevent physics state corruption
@@ -1692,7 +1692,7 @@ export class PhysicsManager {
                     }
                 }
             } else {
-                console.log(`❌ COLLISION DEBUG: ${projectile.weaponName} has no onCollision method`);
+    
             }
             
         } catch (error) {
