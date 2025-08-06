@@ -1044,6 +1044,7 @@ export class ViewManager {
         
         if (targetShip) {
             targetFaction = this.getFactionColor(targetShip);
+            console.log(`🎯 CROSSHAIR DEBUG: Ship=${targetShip.shipName}, Diplomacy=${targetShip.diplomacy}, Faction=${targetShip.faction}, Color=${targetFaction}`);
         }
         }
         
