@@ -1045,7 +1045,6 @@ export class ViewManager {
         
         if (targetShip) {
             targetFaction = this.getFactionColor(targetShip);
-            console.log(`🎯 TARGET: ${targetShip.shipName} | Diplomacy: ${targetShip.diplomacy} | Faction: ${targetShip.faction} | Color: ${targetFaction}`);
         }
         }
         
@@ -1055,29 +1054,63 @@ export class ViewManager {
     }
     
     /**
-     * Get faction color for a ship
-     * @param {Object} ship - Ship object
+     * Get faction color for any target (ships, planets, moons, stations)
+     * @param {Object} target - Target object (ship or celestial body)
      * @returns {string} Faction color hex code
      */
-    getFactionColor(ship) {
-        if (!ship) return '#ffffff'; // White for unknown
+    getFactionColor(target) {
+        if (!target) return '#ffffff'; // White for unknown
         
-        const diplomacy = ship.diplomacy || ship.faction;
-        
-        switch(diplomacy) {
-            case 'enemy':
-            case 'hostile':
-                return '#ff3333'; // Red for enemies
-            case 'friendly':
-            case 'ally':
-                return '#44ff44'; // Green for friendlies
-            case 'neutral':
-                return '#ffff44'; // Yellow for neutrals
-            case 'unknown':
-                return '#44ffff'; // Cyan for unknown
-            default:
-                return '#ff3333'; // Default to red (assume hostile if unknown)
+        // Handle ship objects (have diplomacy property)
+        if (target.diplomacy || target.faction) {
+            const diplomacy = target.diplomacy || target.faction;
+            
+            switch(diplomacy) {
+                case 'enemy':
+                case 'hostile':
+                    return '#ff3333'; // Red for enemies
+                case 'friendly':
+                case 'ally':
+                    return '#44ff44'; // Green for friendlies
+                case 'neutral':
+                    return '#ffff44'; // Yellow for neutrals
+                case 'unknown':
+                    return '#44ffff'; // Cyan for unknown
+                default:
+                    return '#ff3333'; // Default to red (assume hostile if unknown)
+            }
         }
+        
+        // Handle celestial bodies (planets, moons, stars) - assign default faction colors
+        if (target.type) {
+            switch(target.type) {
+                case 'star':
+                    return '#ffff44'; // Yellow for stars (neutral)
+                case 'planet':
+                    return '#44ff44'; // Green for planets (friendly/habitable)
+                case 'moon':
+                    return '#44ffff'; // Cyan for moons (unknown/neutral)
+                case 'station':
+                case 'space_station':
+                    return '#44ff44'; // Green for stations (friendly)
+                default:
+                    return '#ffffff'; // White for unknown objects
+            }
+        }
+        
+        // Handle named celestial bodies without type
+        if (target.name) {
+            const name = target.name.toLowerCase();
+            if (name.includes('star') || name.includes('sun')) {
+                return '#ffff44'; // Yellow for stars
+            } else if (name.includes('planet')) {
+                return '#44ff44'; // Green for planets
+            } else if (name.includes('moon')) {
+                return '#44ffff'; // Cyan for moons
+            }
+        }
+        
+        return '#ffffff'; // Default white for unknown
     }
     
     /**
