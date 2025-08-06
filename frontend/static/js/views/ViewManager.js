@@ -1045,6 +1045,7 @@ export class ViewManager {
         
         if (targetShip) {
             targetFaction = this.getFactionColor(targetShip);
+            console.log(`🎯 CROSSHAIR: Ship=${targetShip.shipName}, Diplomacy=${targetShip.diplomacy}, Color=${targetFaction}, State=${targetState}`);
         }
         }
         
@@ -1090,6 +1091,7 @@ export class ViewManager {
     applyCrosshairStyle(elements, state, factionColor = null, targetShip = null, targetDistance = null) {
         // Use faction color if target detected, otherwise white for empty space
         const baseColor = factionColor || '#ffffff';
+        console.log(`🎨 APPLY STYLE: State=${state}, factionColor=${factionColor}, baseColor=${baseColor}`);
         
         // Get the crosshair container to add/remove additional elements
         const container = elements[0]?.parentElement;
