@@ -337,13 +337,13 @@ export class TargetComputerManager {
         this.targetNameDisplay.className = 'target-name-display';
         this.targetNameDisplay.style.cssText = `
             position: absolute;
-            top: -25px;
+            top: -30px;
             left: 50%;
             transform: translateX(-50%);
             color: #D0D0D0;
             text-shadow: 0 0 4px #D0D0D0;
             font-family: 'Orbitron', monospace;
-            font-size: 12.1px;
+            font-size: 16px;
             font-weight: bold;
             text-align: center;
             white-space: nowrap;
@@ -357,13 +357,13 @@ export class TargetComputerManager {
         this.targetDistanceDisplay.className = 'target-distance-display';
         this.targetDistanceDisplay.style.cssText = `
             position: absolute;
-            top: 45px;
+            top: 50px;
             left: 50%;
             transform: translateX(-50%);
             color: #D0D0D0;
             text-shadow: 0 0 4px #D0D0D0;
             font-family: 'Orbitron', monospace;
-            font-size: 11px;
+            font-size: 14px;
             font-weight: bold;
             text-align: center;
             white-space: nowrap;
