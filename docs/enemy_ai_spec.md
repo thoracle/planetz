@@ -2,7 +2,8 @@ Enemy AI Specification
 1. Overview
 The enemy AI controls the behavior of enemy ships in a 3D space environment. The AI is responsible for navigation, combat, faction-based interactions, and group dynamics using flocking behaviors. Ships operate under a faction system that dictates their relationships with other entities (player, NPCs, or other factions). The AI emphasizes emergent behavior, tactical variety, and responsiveness to create challenging yet predictable encounters that fit the retro aesthetic.
 2. Ship Types and Roles
-Each ship type has distinct characteristics, roles, and behaviors to create varied gameplay. All ships use a modular AI system with shared components (navigation, combat, faction logic) tailored to their role.
+Each ship type has distinct characteristics, roles, and behaviors to create varied gameplay. All ships use a modular AI system with shared components (navigation, combat, faction logic) tailored to their role.  Enemy Ships use the same gear cards as the player to equip their ships. Different ship types have differnt gear loadouts. This provides targetable systems for the players and enemy-ai to choose during combat based on stategies.
+
 Ship Type
 
 Role
@@ -194,7 +195,7 @@ Defensive Posture: Heavy fighters and carriers position themselves between allie
 Cooldowns: Weapons have firing cooldowns to prevent spamming, encouraging tactical positioning.
 
 Carrier-Specific Logic:
-Launches 1–2 fighters every 30–60 seconds if threats are detected, up to a cap (e.g., 6 active fighters).
+Launches 1–2 fighters every 30–60 seconds if threats are detected, up to a cap (e.g., 6 active fighters).  There is a cooldown time on respawning fighters after they have been destroyed.
 
 Recalls fighters if no threats remain or if preparing to warp out.
 
@@ -254,8 +255,6 @@ Introduce faction-specific traits (e.g., pirate factions prioritize looting, mil
 
 Support dynamic events (e.g., distress calls from freighters spawning reinforcements).
 
-Modding Support:
-Provide a scriptable AI behavior system for modders to define custom ship roles or faction rules.
 
 Allow custom formation patterns via configuration files.
 

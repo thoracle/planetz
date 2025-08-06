@@ -283,6 +283,17 @@ export class TargetingService {
     }
 
     /**
+     * Clear targeting cache (useful when targets are spawned/removed)
+     * @public
+     */
+    clearCache() {
+        this.cachedTargetResult = null;
+        this.lastTargetUpdate = 0;
+        this.lastCameraPosition = null;
+        this.lastWeaponRange = null;
+    }
+
+    /**
      * Log targeting result for debugging
      * @private
      */

@@ -101,23 +101,27 @@ export class WeaponSlot {
         } else {
             // Free-aim mode: check distance to crosshair intersection
             distanceToTarget = this.calculateCrosshairDistance();
-            isOutOfRange = distanceToTarget > weapon.range;
+            const distanceKm = distanceToTarget / 1000; // Convert meters to km for comparison
+            const weaponRangeKm = weapon.range / 1000; // Convert weapon range from meters to km
+            isOutOfRange = distanceKm > weaponRangeKm;
+            // Debug: Range calculation (removed to prevent spam)
         }
         
         // ENFORCE WEAPON RANGE: Prevent firing beyond weapon effective range
         if (isOutOfRange) {
             const distanceKm = (distanceToTarget / 1000).toFixed(1);
-            const maxRangeKm = weapon.range; // Already in km
+            const maxRangeKm = (weapon.range / 1000).toFixed(1); // Convert meters to km
             const modeText = target ? 'Target' : 'Crosshair';
             
             console.log(`Weapon slot ${this.slotIndex}: ${modeText} out of range - FIRING BLOCKED`);
             
             // Show HUD feedback for out of range
             if (this.weaponSystem && this.weaponSystem.weaponHUD) {
+                // Debug: Range feedback (removed to prevent spam)
                 this.weaponSystem.weaponHUD.showOutOfRangeFeedback(
                     weapon.name,
                     distanceToTarget,
-                    weapon.range
+                    weapon.range / 1000 // Convert meters to km
                 );
             } else if (this.weaponSystem && this.weaponSystem.showMessage) {
                 this.weaponSystem.showMessage(

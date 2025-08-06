@@ -1830,6 +1830,11 @@ export class StarfieldManager {
                     this.playCommandSound();
                     console.log('🎯 Spawning target dummy ships for weapons testing...');
                     this.createTargetDummyShips(3);
+                    
+                    // Clear targeting cache to prevent stale crosshair results after spawning targets
+                    if (window.targetingService) {
+                        window.targetingService.clearCache();
+                    }
                 } else {
                     this.playCommandFailedSound();
                     this.showHUDError(
@@ -1950,6 +1955,11 @@ export class StarfieldManager {
         
         // Update local state to match
         this.targetObjects = this.targetComputerManager.targetObjects;
+        
+        // Clear targeting cache when target list changes to prevent stale crosshair results
+        if (window.targetingService) {
+            window.targetingService.clearCache();
+        }
     }
 
     cycleTarget(isManualCycle = true) {
@@ -3688,6 +3698,9 @@ export class StarfieldManager {
                 // Mark as target dummy for classification purposes
                 dummyShip.isTargetDummy = true;
                 
+                // Set as neutral training target (not enemy) for crosshair color
+                dummyShip.diplomacy = 'neutral';
+                
                 // Add some random damage to systems for testing
                 this.addRandomDamageToShip(dummyShip);
                 
@@ -3696,8 +3709,8 @@ export class StarfieldManager {
                 
                 // Position the ship relative to player
                 const angle = (i / count) * Math.PI * 2;
-                const distance = 15 + i * 5; // 15-25 km away
-                const height = (Math.random() - 0.5) * 10; // Random height variation
+                const distance = 8 + i * 2; // 8-12 km away (within missile range for practice)
+                const height = (Math.random() - 0.5) * 4; // Reduced height variation for easier targeting
                 
                 shipMesh.position.set(
                     this.camera.position.x + Math.cos(angle) * distance,
@@ -3721,9 +3734,9 @@ export class StarfieldManager {
                 // Add physics body for the ship (static body for target practice)
                 if (window.physicsManager && window.physicsManagerReady) {
                     // Calculate actual mesh size: 2.0m base * 1.5 scale = 3.0m
-                    const baseMeshSize = 2.0;
+                    const baseMeshSize = 1.0; // REDUCED: 50% smaller target dummies (was 2.0)
                     const meshScale = 1.5; // From createDummyShipMesh()
-                    const actualMeshSize = baseMeshSize * meshScale; // 3.0m visual size
+                    const actualMeshSize = baseMeshSize * meshScale; // 1.5m visual size (was 3.0m)
                     
                     // Use collision size that matches visual mesh (what you see is what you get)
                     const useRealistic = window.useRealisticCollision !== false; // Default to realistic
@@ -3847,15 +3860,15 @@ export class StarfieldManager {
     /**
      * Create a visual mesh for a target dummy ship - simple wireframe cube
      * 
-     * Visual Size: 2.0m base geometry × 1.5 scale = 3.0m × 3.0m × 3.0m final size
-     * Physics Collision: 3.0m (matches visual mesh exactly - what you see is what you get)
+     * Visual Size: 1.0m base geometry × 1.5 scale = 1.5m × 1.5m × 1.5m final size
+     * Physics Collision: 1.5m (matches visual mesh exactly - what you see is what you get)
      * 
      * @param {number} index - Ship index for color variation
-     * @returns {THREE.Mesh} Simple wireframe cube mesh (3.0m actual size)
+     * @returns {THREE.Mesh} Simple wireframe cube mesh (1.5m actual size)
      */
     createDummyShipMesh(index) {
-        // Create simple cube geometry
-        const cubeGeometry = new this.THREE.BoxGeometry(2.0, 2.0, 2.0);
+        // Create simple cube geometry - 50% smaller than before
+        const cubeGeometry = new this.THREE.BoxGeometry(1.0, 1.0, 1.0);
         
         // Use bright, vibrant colors that stand out in space
         const cubeColors = [

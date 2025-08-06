@@ -457,7 +457,35 @@ export class SplashDamageWeapon extends WeaponCard {
      */
     fire(origin, target = null, ship = null) {
         const weaponTypeDisplay = this.blastRadius > 0 ? 'splash-damage' : 'direct-hit';
-        console.log(`🚨 WEAPON CACHE TEST: ${this.name} firing (${weaponTypeDisplay}) - TIMESTAMP: ${Date.now()}`);
+        // Debug logging removed to prevent console spam
+        
+        // RANGE ENFORCEMENT: Prevent firing beyond weapon range (for ALL firing modes)
+        if (window.starfieldManager?.camera) {
+            const camera = window.starfieldManager.camera;
+            
+            // Check if we have a valid target within weapon range
+            const targetingResult = targetingService.getCurrentTarget({
+                camera: camera,
+                weaponRange: (this.range || 30000) / 1000, // Convert meters to kilometers for targeting service
+                requestedBy: this.name + '_range_check',
+                enableFallback: false // Only precise targeting for range validation
+            });
+            
+            // STRICT ENFORCEMENT: No firing beyond weapon range, period
+            if (!targetingResult.hasTarget || !targetingResult.inRange) {
+                console.log(`🎯 ${this.name}: RANGE ENFORCEMENT - No valid target within ${(this.range/1000).toFixed(1)}km range (hasTarget=${targetingResult.hasTarget}, inRange=${targetingResult.inRange})`);
+                return {
+                    success: false,
+                    reason: 'No target within range',
+                    damage: 0
+                };
+            }
+            
+            // Use the validated target for accurate collision radius calculation
+            target = targetingResult.target;
+            console.log(`🎯 ${this.name}: RANGE VALIDATED - Target within ${(this.range/1000).toFixed(1)}km range`);
+            console.log(`🎯 ${this.name}: Using precise target: ${target ? target.name || 'unnamed' : 'null'} at ${targetingResult.targetDistance ? (targetingResult.targetDistance * 1000).toFixed(0) + 'm' : 'unknown distance'}`);
+        }
         
         // ENHANCED: Comprehensive energy validation like laser weapons
         if (ship && this.energyCost > 0) {
@@ -510,7 +538,7 @@ export class SplashDamageWeapon extends WeaponCard {
         
         // Non-homing projectiles (torpedoes, missiles) can fire without target lock toward crosshairs
         if (!this.homingCapability) {
-            console.log(`🎯 ${this.name}: Non-homing projectile firing toward crosshairs (no target lock needed)`);
+            // Non-homing projectile firing toward crosshairs
         }
         
         // Range validation moved to after getting unified targeting result to ensure consistency
@@ -545,7 +573,7 @@ export class SplashDamageWeapon extends WeaponCard {
     getCrosshairTarget(camera) {
         const targetingResult = targetingService.getCurrentTarget({
             camera: camera,
-            weaponRange: this.range || 30, // Weapon range now in km
+            weaponRange: (this.range || 30000) / 1000, // Convert meters to kilometers for targeting service
             requestedBy: this.name,
             enableFallback: false // Only precise crosshair targeting
         });
@@ -623,7 +651,8 @@ export class SplashDamageWeapon extends WeaponCard {
             console.log(`🎯 ${this.name}: Ship velocity: x=${shipVelocity.x.toFixed(2)}, y=${shipVelocity.y.toFixed(2)}, z=${shipVelocity.z.toFixed(2)} (speeds: ${speedInfo})`);
             
             // No automatic target tracking - missiles are dumb-fire projectiles with velocity compensation
-            target = null;
+            // FIXED: Don't nullify target - we need it for precise collision radius calculation
+            // target = null;
         } else {
 
         }
@@ -1176,24 +1205,43 @@ export class PhysicsProjectile {
         this.launchTime = Date.now();
         this.collisionProcessed = false;
         
-        // Calculate adaptive collision delay based on target distance (for dumb-fire, use aggressive close-range settings)
+        // Calculate adaptive collision delay based on target distance and projectile speed
         let adaptiveDelayMs = 1; // Default 1ms delay for dumb-fire missiles (reduced from 3ms)
         if (this.target && this.target.distance) {
             const targetDistanceKm = this.target.distance;
-            if (targetDistanceKm < 1) {
-                adaptiveDelayMs = 0; // No delay for targets < 1km (very close range)
-            } else if (targetDistanceKm < 5) {
-                adaptiveDelayMs = 1; // 1ms delay for targets < 5km (close range)
-            } else {
-                adaptiveDelayMs = 2; // 2ms delay for targets >= 5km (reduced from 3ms)
+            const targetDistanceM = targetDistanceKm * 1000; // Convert to meters
+            
+            // Get projectile speed for precise timing calculation
+            let projectileSpeed = this.isHoming ? 800 : 750; // Default speeds in m/s
+            if (this.weaponData?.specialProperties?.projectileSpeed) {
+                projectileSpeed = this.weaponData.specialProperties.projectileSpeed;
             }
+            
+            // Calculate time to reach target in milliseconds
+            const timeToTargetMs = (targetDistanceM / projectileSpeed) * 1000;
+            
+            if (targetDistanceKm < 0.5) {
+                // Ultra close range (< 500m): No delay, immediate collision allowed
+                adaptiveDelayMs = 0;
+            } else if (targetDistanceKm < 2) {
+                // Very close range (< 2km): Minimal delay, much less than flight time
+                adaptiveDelayMs = Math.max(0, Math.min(1, timeToTargetMs * 0.01)); // 1% of flight time, max 1ms
+            } else if (targetDistanceKm < 5) {
+                // Close range (< 5km): Short delay
+                adaptiveDelayMs = Math.max(1, Math.min(2, timeToTargetMs * 0.02)); // 2% of flight time, 1-2ms
+            } else {
+                // Long range (>= 5km): Standard delay
+                adaptiveDelayMs = Math.max(2, Math.min(3, timeToTargetMs * 0.03)); // 3% of flight time, 2-3ms
+            }
+            
+            console.log(`🕐 COLLISION TIMING: ${this.weaponName} target=${targetDistanceKm.toFixed(2)}km, speed=${projectileSpeed}m/s, flight_time=${timeToTargetMs.toFixed(1)}ms, delay=${adaptiveDelayMs.toFixed(1)}ms`);
         }
         
         this.collisionDelayMs = adaptiveDelayMs;
         this.allowCollisionAfter = this.launchTime + this.collisionDelayMs;
         
-        // Initialize physics body
-        this.initializePhysicsBody(config.origin, config.direction);
+        // Initialize physics body with target information
+        this.initializePhysicsBody(config.origin, config.direction, config.target);
         
         // TRAIL DISABLED: Temporarily disabled to eliminate visual artifacts
         // this.initializeSimpleTrail();
@@ -1245,8 +1293,9 @@ export class PhysicsProjectile {
      * Initialize Ammo.js rigid body for the projectile
      * @param {Object} origin Starting position {x, y, z}
      * @param {Object} direction Initial direction vector {x, y, z}
+     * @param {Object} target Target object with distance information for collision radius calculation
      */
-    initializePhysicsBody(origin, direction = {x: 0, y: 0, z: 1}) {
+    initializePhysicsBody(origin, direction = {x: 0, y: 0, z: 1}, target = null) {
         if (!this.physicsManager || !this.physicsManager.isReady()) {
             console.log('PhysicsManager not ready - falling back to simple projectile');
             return;
@@ -1312,26 +1361,41 @@ export class PhysicsProjectile {
             const physicsStepDistance = (projectileSpeed / 240); // Distance per physics step (240 FPS)
             const minRadiusForTunneling = Math.max(1.0, physicsStepDistance * 0.5); // Minimal tunneling prevention
             
-            if (this.target && this.target.distance) {
-                const targetDistance = this.target.distance;
+            console.log(`🔍 COLLISION DEBUG: ${this.weaponName} target parameter:`, target);
+            console.log(`🔍 COLLISION DEBUG: target has distance property: ${target && target.distance !== undefined}`);
+            console.log(`🔍 COLLISION DEBUG: target.distance value: ${target ? target.distance : 'N/A'}`);
+            
+            if (target && target.distance) {
+                const targetDistance = target.distance;
                 
-                // ENHANCED COLLISION RADIUS: Implements close-range combat fixes from restart.md
-                let baseRadius;
-                if (targetDistance < 10) {
-                    baseRadius = 10.0; // Close-range boost: 10.0m minimum for targets <10km
+                // PRECISION COLLISION RADIUS: Use weapon firing tolerance from CrosshairTargeting
+                // This ensures collision radius matches the actual aiming precision requirements
+                const aimToleranceKm = CrosshairTargeting.calculateAimTolerance(targetDistance, 'weapon');
+                const baseRadius = aimToleranceKm * 1000; // Convert km to meters
+                
+                // ENHANCED CLOSE-RANGE COMPENSATION: Ensure reliable collision at very close range
+                let speedCompensatedRadius = minRadiusForTunneling;
+                if (targetDistance < 1.0) {
+                    // Ultra close range: Increase collision radius significantly for reliable hits
+                    speedCompensatedRadius = Math.max(minRadiusForTunneling, baseRadius * 2.0);
+                } else if (targetDistance < 3.0) {
+                    // Close range: Moderate increase to collision radius
+                    speedCompensatedRadius = Math.max(minRadiusForTunneling, baseRadius * 1.5);
                 } else {
-                    baseRadius = 8.0; // Minimum 8.0m collision radius for all shots
+                    // Normal range: Standard tunneling prevention
+                    speedCompensatedRadius = minRadiusForTunneling;
                 }
                 
-                // SPEED COMPENSATION: Ensure reliable hit detection at high speeds
-                collisionRadius = Math.max(baseRadius, minRadiusForTunneling);
+                collisionRadius = Math.max(baseRadius, speedCompensatedRadius);
                 
-                console.log(`🎯 ${this.weaponName}: Enhanced collision radius: ${collisionRadius.toFixed(2)}m for ${targetDistance.toFixed(1)}km target (close-range boost: ${targetDistance < 10})`);
+                console.log(`🎯 ${this.weaponName}: ENHANCED collision radius: distance=${targetDistance.toFixed(1)}km, tolerance=${aimToleranceKm.toFixed(4)}km, base=${baseRadius.toFixed(1)}m, speed_comp=${speedCompensatedRadius.toFixed(1)}m, final=${collisionRadius.toFixed(1)}m`);
             } else {
-                // ENHANCED FALLBACK: Use minimum 8.0m radius even without specific targets
-                // This prevents close-range misses when targeting is imperfect
-                collisionRadius = Math.max(8.0, minRadiusForTunneling); // Minimum 8.0m radius per restart.md
-                console.log(`🎯 ${this.weaponName}: Enhanced fallback collision radius: ${collisionRadius.toFixed(2)}m (no target)`);
+                // STRICT FALLBACK: For free-aim firing without precise target, use minimal radius
+                // This prevents "spray and pray" tactics from working too well
+                const aimToleranceKm = 0.002; // 2m = very tight for free-aim
+                const baseRadius = aimToleranceKm * 1000; // Convert km to meters
+                collisionRadius = Math.max(baseRadius, minRadiusForTunneling);
+                console.log(`🎯 ${this.weaponName}: STRICT FALLBACK collision radius: tolerance=${aimToleranceKm}km, base=${baseRadius}m, final=${collisionRadius}m (no precise target)`);
             }
             
             // Create physics rigid body with distance-appropriate collision radius

@@ -221,7 +221,7 @@ export class WeaponHUD {
             if (isActive) {
                 const rangeDisplay = document.createElement('div');
                 rangeDisplay.className = 'weapon-range-display';
-                const rangeKm = (slot.equippedWeapon.range / 1000).toFixed(1);
+                const rangeKm = slot.equippedWeapon.range.toFixed(1);
                 rangeDisplay.textContent = `${rangeKm}km`;
                 rangeDisplay.style.cssText = `
                     position: absolute;
@@ -561,7 +561,15 @@ export class WeaponHUD {
                 duration = 2000; // Shorter duration for misses
                 break;
             case 'out-of-range':
-                const distanceKm = (distance / 1000).toFixed(1);
+                // Distance might be in meters or km depending on source
+                let distanceKm;
+                if (distance > 1000) {
+                    // Likely in meters, convert to km
+                    distanceKm = (distance / 1000).toFixed(1);
+                } else {
+                    // Likely already in km
+                    distanceKm = distance.toFixed(1);
+                }
                 text = `OUT OF RANGE\n${distanceKm}km`;
                 color = '#ffff00';
                 borderColor = '#cccc00';

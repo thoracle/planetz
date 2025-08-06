@@ -1006,16 +1006,17 @@ export class ViewManager {
         if (this.ship.weaponSystem && this.ship.weaponSystem.getActiveWeapon) {
             const activeWeapon = this.ship.weaponSystem.getActiveWeapon();
             if (activeWeapon && activeWeapon.equippedWeapon) {
-                // Weapon range now in kilometers directly
-                currentWeaponRange = activeWeapon.equippedWeapon.range || 30;
+                // Convert weapon range from meters to kilometers for targeting service
+                const weaponRangeMeters = activeWeapon.equippedWeapon.range || 30000;
+                currentWeaponRange = weaponRangeMeters / 1000; // Convert meters to km
                 activeWeaponName = activeWeapon.equippedWeapon.name;
             }
         }
         
-        // Debug log for crosshair-weapon sync (only on weapon change to avoid spam)
+        // Track last weapon for comparison
         if (!this.lastLoggedWeapon || this.lastLoggedWeapon !== activeWeaponName) {
             this.lastLoggedWeapon = activeWeaponName;
-            console.log(`🎯 CROSSHAIR SYNC: Active weapon "${activeWeaponName}" range: ${currentWeaponRange.toFixed(1)}km`);
+            // Debug removed to prevent console spam
         }
         
         // Default state - no target in sights
@@ -1031,19 +1032,19 @@ export class ViewManager {
             
             const targetingResult = targetingService.getCurrentTarget({
                 camera: camera,
-                weaponRange: currentWeaponRange, // Already in km
+                weaponRange: currentWeaponRange, // In kilometers (converted from meters)
                 requestedBy: 'crosshair_display',
                 enableFallback: false // Crosshair only shows precise targets
             });
             
-            // Apply results to ViewManager state
-            targetState = targetingResult.crosshairState;
-            targetShip = targetingResult.targetShip;
-            targetDistance = targetingResult.targetDistance;
-            
-            if (targetShip) {
-                targetFaction = this.getFactionColor(targetShip);
-            }
+                    // Apply results to ViewManager state
+        targetState = targetingResult.crosshairState;
+        targetShip = targetingResult.targetShip;
+        targetDistance = targetingResult.targetDistance;
+        
+        if (targetShip) {
+            targetFaction = this.getFactionColor(targetShip);
+        }
         }
         
         // Apply visual changes based on target state and faction
@@ -1111,12 +1112,18 @@ export class ViewManager {
                 break;
                 
             case 'closeRange':
-                // Target close to range - dynamic reticle using faction color, slightly dimmed
-                this.setCrosshairShape(container, 'dynamicTarget', baseColor, 0.9);
+                // Target close to range - show standard crosshair (no target circle to avoid confusion)
+                // Only show target circle when actually in range and can be hit
+                this.setCrosshairShape(container, 'standard', baseColor, 0.8);
                 break;
                 
             case 'outRange':
                 // Target out of range - show standard crosshair (no target circle)
+                this.setCrosshairShape(container, 'standard', baseColor, 0.6);
+                break;
+                
+            default:
+                // Unknown state - show standard crosshair  
                 this.setCrosshairShape(container, 'standard', baseColor, 0.6);
                 break;
         }
