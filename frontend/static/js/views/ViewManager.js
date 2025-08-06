@@ -1092,7 +1092,7 @@ export class ViewManager {
         
         // Get the crosshair container to add/remove additional elements
         const container = elements[0]?.parentElement;
-        if (!container) return;
+        if (!container || !elements.length) return;
         
         // Remove any existing target info indicators
         const existingIndicators = container.querySelectorAll('.target-info, .range-indicator');

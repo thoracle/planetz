@@ -3698,8 +3698,14 @@ export class StarfieldManager {
                 // Mark as target dummy for classification purposes
                 dummyShip.isTargetDummy = true;
                 
-                // Set as neutral training target (not enemy) for crosshair color
-                dummyShip.diplomacy = 'neutral';
+                // Set diplomacy based on ship index for testing different faction colors
+                if (i === 0) {
+                    dummyShip.diplomacy = 'enemy'; // First ship is enemy (red)
+                } else if (i === 1) {
+                    dummyShip.diplomacy = 'neutral'; // Second ship is neutral (yellow)
+                } else {
+                    dummyShip.diplomacy = 'friendly'; // Third ship is friendly (green)
+                }
                 
                 // Add some random damage to systems for testing
                 this.addRandomDamageToShip(dummyShip);
