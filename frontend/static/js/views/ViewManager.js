@@ -1036,6 +1036,7 @@ export class ViewManager {
                 requestedBy: 'crosshair_display',
                 enableFallback: false // Crosshair only shows precise targets
             });
+
             
                     // Apply results to ViewManager state
         targetState = targetingResult.crosshairState;
@@ -1044,7 +1045,6 @@ export class ViewManager {
         
         if (targetShip) {
             targetFaction = this.getFactionColor(targetShip);
-            console.log(`🎯 CROSSHAIR DEBUG: Ship=${targetShip.shipName}, Diplomacy=${targetShip.diplomacy}, Faction=${targetShip.faction}, Color=${targetFaction}`);
         }
         }
         
@@ -1066,7 +1066,7 @@ export class ViewManager {
         switch(diplomacy) {
             case 'enemy':
             case 'hostile':
-                return '#ff4444'; // Red for enemies
+                return '#ff3333'; // Red for enemies
             case 'friendly':
             case 'ally':
                 return '#44ff44'; // Green for friendlies
@@ -1075,7 +1075,7 @@ export class ViewManager {
             case 'unknown':
                 return '#44ffff'; // Cyan for unknown
             default:
-                return '#ff4444'; // Default to red (assume hostile if unknown)
+                return '#ff3333'; // Default to red (assume hostile if unknown)
         }
     }
     
