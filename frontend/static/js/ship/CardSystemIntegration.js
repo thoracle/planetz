@@ -108,6 +108,7 @@ export default class CardSystemIntegration {
             'long_range_scanner': [CARD_TYPES.LONG_RANGE_SCANNER],
             'galactic_chart': [CARD_TYPES.GALACTIC_CHART],
             'target_computer': [CARD_TYPES.TARGET_COMPUTER, CARD_TYPES.TACTICAL_COMPUTER, CARD_TYPES.COMBAT_COMPUTER, CARD_TYPES.STRATEGIC_COMPUTER],
+            'radar': [CARD_TYPES.BASIC_RADAR, CARD_TYPES.ADVANCED_RADAR, CARD_TYPES.TACTICAL_RADAR],
             'tactical_computer': [CARD_TYPES.TACTICAL_COMPUTER],     // Advanced intel-enabled target computer
             'combat_computer': [CARD_TYPES.COMBAT_COMPUTER],       // Advanced intel-enabled target computer
             'strategic_computer': [CARD_TYPES.STRATEGIC_COMPUTER],    // Advanced intel-enabled target computer
@@ -390,6 +391,9 @@ export default class CardSystemIntegration {
             'subspace_radio': 'SubspaceRadioSystem',
             'long_range_scanner': 'LongRangeScanner', 
             'galactic_chart': 'GalacticChartSystem',
+            'basic_radar': 'RadarSystem',
+            'advanced_radar': 'RadarSystem',
+            'tactical_radar': 'RadarSystem',
             'shields': 'Shields',
             'hull_plating': 'HullPlating',
             'shield_generator': 'Shields',  // Map shield_generator card to Shields class
@@ -454,7 +458,8 @@ export default class CardSystemIntegration {
             'ShieldedCargoHold': './systems/CargoHold.js',
             'WarpDrive': './systems/WarpDrive.js',
             'Weapons': './systems/Weapons.js',
-            'MissileTubes': './systems/MissileTubes.js'
+            'MissileTubes': './systems/MissileTubes.js',
+            'RadarSystem': './systems/RadarSystem.js'
         };
         
         let systemsCreated = 0;

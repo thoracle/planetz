@@ -138,6 +138,7 @@ export default class Ship {
             const { default: EnergyReactor } = await import('./systems/EnergyReactor.js');
             const { default: ShieldGenerator } = await import('./systems/ShieldGenerator.js');
             const { default: CargoHold } = await import('./systems/CargoHold.js');
+            const { default: RadarSystem } = await import('./systems/RadarSystem.js');
             
             // Get default system configurations
             const defaultSystems = this.shipConfig.defaultSystems;
@@ -205,6 +206,9 @@ export default class Ship {
                 cargoHold.slotCost = defaultSystems.cargo_hold.slots;
                 this.addSystem('cargo_hold', cargoHold);
             }
+            
+            // Radar system is card-based only, no default system
+            // It will be initialized when radar cards are installed
             
             console.log(`Initialized ${this.systems.size} default systems for ${this.shipType}`);
             
@@ -754,6 +758,9 @@ export default class Ship {
             'subspace_radio': 'subspace_radio',
             'long_range_scanner': 'long_range_scanner',
             'galactic_chart': 'galactic_chart',
+            'basic_radar': 'radar',
+            'advanced_radar': 'radar',
+            'tactical_radar': 'radar',
             // Weapon cards - support both consolidated AND individual systems
             'laser_cannon': ['weapons', 'laser_cannon'],  // Enable both consolidated and individual
             'plasma_cannon': ['weapons', 'plasma_cannon'],

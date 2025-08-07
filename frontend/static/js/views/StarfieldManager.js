@@ -11,6 +11,7 @@ import DockingModal from '../ui/DockingModal.js';
 import { StarfieldAudioManager } from './StarfieldAudioManager.js';
 import { StarfieldRenderer } from './StarfieldRenderer.js';
 import { TargetComputerManager } from './TargetComputerManager.js';
+import { ProximityDetector3D } from '../ui/ProximityDetector3D.js';
 // SimplifiedDamageControl removed - damage control integrated into ship systems HUD
 
 export class StarfieldManager {
@@ -119,6 +120,10 @@ export class StarfieldManager {
             this.scene, this.camera, this.viewManager, this.THREE, this.solarSystemManager
         );
         this.targetComputerManager.initialize();
+        
+        // Create radar HUD
+        this.proximityDetector3D = new ProximityDetector3D(this, document.body);
+        console.log('🎯 StarfieldManager: 3D Proximity Detector initialized');
         
         // Add intel state
         this.intelVisible = false;
@@ -236,7 +241,7 @@ export class StarfieldManager {
         }, 100);
 
         // Debug mode for weapon hit detection (independent of damage control)
-        this.debugMode = false; // Toggled with Ctrl-P
+        this.debugMode = false; // Toggled with Ctrl-O
         
         // Target outline system
         this.outlineEnabled = false; // Main outline toggle
@@ -932,25 +937,27 @@ export class StarfieldManager {
 
 
     createIntelHUD() {
-        // Create intel HUD container
+        // Create intel HUD container - match targeting CPU screen exactly and cover all panels
         this.intelHUD = document.createElement('div');
         this.intelHUD.className = 'intel-hud';
         this.intelHUD.style.cssText = `
             position: fixed;
-            bottom: 450px;
+            bottom: 80px;
             left: 10px;
             width: 200px;
-            max-height: 400px;
+            height: 280px;
             border: 2px solid #00ff41;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.95);
             color: #00ff41;
             font-family: "Courier New", monospace;
             font-size: 14px;
             padding: 10px;
             display: none;
             pointer-events: auto;
-            z-index: 1000;
+            z-index: 1500;
             overflow-y: auto;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
         `;
         
         // Add CSS for dock button and intel scrollbar
@@ -981,20 +988,26 @@ export class StarfieldManager {
                 background: #cc4f00;
             }
             
-            /* Custom scrollbar for intel HUD */
-            div[style*="overflow-y: auto"]::-webkit-scrollbar {
+            /* Custom scrollbar for intel HUD - positioned on left side */
+            .intel-hud {
+                direction: rtl; /* Right-to-left to move scrollbar to left */
+            }
+            .intel-hud > * {
+                direction: ltr; /* Reset content direction to normal */
+            }
+            .intel-hud::-webkit-scrollbar {
                 width: 8px;
             }
-            div[style*="overflow-y: auto"]::-webkit-scrollbar-track {
+            .intel-hud::-webkit-scrollbar-track {
                 background: rgba(0, 0, 0, 0.3);
                 border-radius: 4px;
             }
-            div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
+            .intel-hud::-webkit-scrollbar-thumb {
                 background: #00ff41;
                 border-radius: 4px;
                 border: 1px solid rgba(0, 255, 65, 0.3);
             }
-            div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb:hover {
+            .intel-hud::-webkit-scrollbar-thumb:hover {
                 background: #00aa41;
             }
         `;
@@ -1122,11 +1135,11 @@ export class StarfieldManager {
                 }
             }
             
-            // Debug mode toggle (Ctrl-P) for weapon hit detection
-            if (event.ctrlKey && event.key.toLowerCase() === 'p') {
+                    // Debug mode toggle (Ctrl-O) for weapon hit detection
+        if (event.ctrlKey && event.key.toLowerCase() === 'o') {
                 event.preventDefault();
                 
-                console.log(`🎮 CTRL+P PRESSED: Toggling debug mode...`);
+                console.log(`🎮 CTRL+O PRESSED: Toggling debug mode...`);
                 
                 // Toggle weapon debug mode
                 this.toggleDebugMode();
@@ -1161,7 +1174,7 @@ export class StarfieldManager {
                     }
                 }
                 
-                console.log(`✅ CTRL+P DEBUG TOGGLE COMPLETE`);
+                console.log(`✅ CTRL+O DEBUG TOGGLE COMPLETE`);
             }
             
             // Enhanced wireframe visibility toggle (Ctrl-Shift-P) for debugging wireframe issues
@@ -1629,6 +1642,83 @@ export class StarfieldManager {
                             'System requirements not met - check power and repair status'
                         );
                     }
+                }
+            }
+
+            // Add Proximity Detector key binding (P)
+            if (commandKey === 'p') {
+                // Block proximity detector when docked
+                if (!this.isDocked) {
+                    // Check if ship has radar cards installed
+                    const ship = this.viewManager?.getShip();
+                    if (ship && ship.hasSystemCardsSync('radar')) {
+                        // Toggle 3D proximity detector display
+                        this.playCommandSound();
+                        this.toggleProximityDetector();
+                    } else {
+                        // No radar cards installed
+                        this.playCommandFailedSound();
+                        this.showHUDError(
+                            'PROXIMITY DETECTOR UNAVAILABLE',
+                            'No Proximity Detector card installed in ship slots'
+                        );
+                    }
+                } else {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'PROXIMITY DETECTOR UNAVAILABLE',
+                        'Proximity Detector offline while docked'
+                    );
+                }
+            }
+
+            // Add Proximity Detector Zoom In key binding (= key, which is + without shift)
+            if (event.key === '=' || event.key === '+') {
+                // Only allow zoom when not docked and proximity detector is visible
+                if (!this.isDocked && this.proximityDetector3D && this.proximityDetector3D.isVisible) {
+                    // Zoom in (closer range) - + should zoom IN
+                    if (this.proximityDetector3D.zoomIn()) {
+                        this.playCommandSound();
+                    } else {
+                        this.playCommandFailedSound();
+                    }
+                } else if (this.isDocked) {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'PROXIMITY DETECTOR ZOOM UNAVAILABLE',
+                        'Proximity Detector offline while docked'
+                    );
+                } else {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'PROXIMITY DETECTOR ZOOM UNAVAILABLE',
+                        'Proximity Detector not active (press P to enable)'
+                    );
+                }
+            }
+
+            // Add Proximity Detector Zoom Out key binding (- key)
+            if (event.key === '-' || event.key === '_') {
+                // Only allow zoom when not docked and proximity detector is visible
+                if (!this.isDocked && this.proximityDetector3D && this.proximityDetector3D.isVisible) {
+                    // Zoom out (farther range) - - should zoom OUT  
+                    if (this.proximityDetector3D.zoomOut()) {
+                        this.playCommandSound();
+                    } else {
+                        this.playCommandFailedSound();
+                    }
+                } else if (this.isDocked) {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'PROXIMITY DETECTOR ZOOM UNAVAILABLE',
+                        'Proximity Detector offline while docked'
+                    );
+                } else {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'PROXIMITY DETECTOR ZOOM UNAVAILABLE',
+                        'Proximity Detector not active (press P to enable)'
+                    );
                 }
             }
 
@@ -2322,6 +2412,11 @@ export class StarfieldManager {
                 this.viewManager.updateCrosshairDisplay();
             }
         }
+
+        // Update 3D proximity detector
+        if (this.proximityDetector3D) {
+            this.proximityDetector3D.update(deltaTime);
+        }
     }
 
     updateCurrentSector() {
@@ -2851,14 +2946,39 @@ export class StarfieldManager {
     toggleIntel() {
         this.intelVisible = !this.intelVisible;
         
+        // Hide/show target panels when intel is toggled
+        if (this.targetComputerManager && this.targetComputerManager.targetHUD) {
+            if (this.intelVisible) {
+                // Hide target panels when intel is visible
+                this.targetComputerManager.targetHUD.style.visibility = 'hidden';
+            } else {
+                // Show target panels when intel is hidden
+                this.targetComputerManager.targetHUD.style.visibility = 'visible';
+            }
+        }
+        
         // Update intel display and icon visibility
         this.updateIntelDisplay();
         this.updateIntelIconDisplay();
     }
 
+    /**
+     * Toggle proximity detector display
+     */
+    toggleProximityDetector() {
+        if (this.proximityDetector3D) {
+            this.proximityDetector3D.toggle();
+            console.log('🎯 StarfieldManager: 3D Proximity Detector toggled');
+        }
+    }
+
     updateIntelDisplay() {
         if (!this.intelVisible || !this.currentTarget || !this.intelAvailable) {
             this.intelHUD.style.display = 'none';
+            // Show target panels when intel is hidden
+            if (this.targetComputerManager && this.targetComputerManager.targetHUD) {
+                this.targetComputerManager.targetHUD.style.visibility = 'visible';
+            }
             return;
         }
 
@@ -3709,8 +3829,8 @@ export class StarfieldManager {
                 
                 // Position the ship relative to player
                 const angle = (i / count) * Math.PI * 2;
-                const distance = 8 + i * 2; // 8-12 km away (within missile range for practice)
-                const height = (Math.random() - 0.5) * 4; // Reduced height variation for easier targeting
+                const distance = 20 + i * 5; // 20-30 km away (using correct coordinate system: 1 unit = 1 km)
+                const height = (Math.random() - 0.5) * 4; // Height variation for radar altitude testing
                 
                 shipMesh.position.set(
                     this.camera.position.x + Math.cos(angle) * distance,
@@ -5685,6 +5805,16 @@ export class StarfieldManager {
      * @param {string} direction 'previous' or 'next'
      */
     handleSubTargetingKey(direction) {
+        // Hide intel panel when cycling targets with <,> keys
+        if (this.intelVisible) {
+            this.intelVisible = false;
+            this.intelHUD.style.display = 'none';
+            // Show target panels when intel is hidden
+            if (this.targetComputerManager && this.targetComputerManager.targetHUD) {
+                this.targetComputerManager.targetHUD.style.visibility = 'visible';
+            }
+        }
+        
         // Basic requirements check
         if (this.isDocked || !this.targetComputerEnabled || !this.currentTarget) {
             this.playCommandFailedSound();

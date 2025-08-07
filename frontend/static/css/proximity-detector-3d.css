@@ -1,0 +1,197 @@
+/**
+ * 3D Proximity Detector Styling
+ * Elite (1984) inspired retro holographic aesthetic
+ */
+
+/* Main 3D proximity detector container */
+.proximity-detector-3d {
+    position: fixed;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid #00ff41;
+    border-radius: 6px;
+    font-family: 'VT323', monospace;
+    color: #00ff41;
+    padding: 8px;
+    box-shadow: 
+        0 0 25px rgba(0, 255, 65, 0.4),
+        inset 0 0 25px rgba(0, 255, 65, 0.1),
+        0 0 50px rgba(0, 255, 65, 0.2);
+    z-index: 1000;
+    display: none;
+    user-select: none;
+    pointer-events: none;
+    backdrop-filter: blur(3px);
+    
+    /* Retro CRT effect */
+    animation: subtle-flicker 4s infinite alternate;
+}
+
+/* Subtle CRT flicker animation */
+@keyframes subtle-flicker {
+    0% { 
+        opacity: 0.95;
+        box-shadow: 
+            0 0 25px rgba(0, 255, 65, 0.4),
+            inset 0 0 25px rgba(0, 255, 65, 0.1),
+            0 0 50px rgba(0, 255, 65, 0.2);
+    }
+    50% { 
+        opacity: 1.0;
+        box-shadow: 
+            0 0 30px rgba(0, 255, 65, 0.5),
+            inset 0 0 30px rgba(0, 255, 65, 0.15),
+            0 0 60px rgba(0, 255, 65, 0.25);
+    }
+    100% { 
+        opacity: 0.95;
+        box-shadow: 
+            0 0 25px rgba(0, 255, 65, 0.4),
+            inset 0 0 25px rgba(0, 255, 65, 0.1),
+            0 0 50px rgba(0, 255, 65, 0.2);
+    }
+}
+
+/* Title removed to save screen space
+.proximity-detector-title {
+    text-align: center;
+    font-size: 12px;
+    margin-bottom: 4px;
+    text-shadow: 
+        0 0 8px #00ff41,
+        0 0 16px #00ff41;
+    letter-spacing: 3px;
+    font-weight: bold;
+    color: #00ff41;
+    animation: title-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes title-glow {
+    0% { 
+        text-shadow: 
+            0 0 8px #00ff41,
+            0 0 16px #00ff41;
+    }
+    100% { 
+        text-shadow: 
+            0 0 12px #00ff41,
+            0 0 24px #00ff41,
+            0 0 32px #00ff41;
+    }
+}
+*/
+
+/* 3D Canvas styling */
+.proximity-detector-3d canvas {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 3px;
+    
+    /* Retro pixelated rendering */
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    
+    /* Subtle inner glow effect */
+    box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.1);
+    
+    /* Optional scanline effect overlay */
+    position: relative;
+}
+
+/* Scanline effect overlay */
+.proximity-detector-3d canvas::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    
+    /* Scanlines */
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 255, 65, 0.03) 2px,
+        rgba(0, 255, 65, 0.03) 4px
+    );
+    
+    /* CRT curve simulation */
+    border-radius: 3px;
+    
+    /* Subtle animation */
+    animation: scanlines 0.1s linear infinite;
+}
+
+/* Scanline animation */
+@keyframes scanlines {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 4px; }
+}
+
+/* Responsive design for different screen sizes */
+@media (max-width: 1200px) {
+    .proximity-detector-3d {
+        /* Slightly larger on smaller screens for visibility */
+        transform: translateX(-50%) scale(1.1);
+    }
+}
+
+@media (max-width: 800px) {
+    .proximity-detector-3d {
+        /* Larger on mobile/tablet */
+        transform: translateX(-50%) scale(1.2);
+        bottom: 15px;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .proximity-detector-3d {
+        border-color: #ffffff;
+        color: #ffffff;
+        box-shadow: 
+            0 0 25px rgba(255, 255, 255, 0.4),
+            inset 0 0 25px rgba(255, 255, 255, 0.1);
+    }
+    
+    .proximity-detector-title {
+        color: #ffffff;
+        text-shadow: 
+            0 0 8px #ffffff,
+            0 0 16px #ffffff;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .proximity-detector-3d {
+        animation: none;
+    }
+    
+    .proximity-detector-title {
+        animation: none;
+    }
+    
+    .proximity-detector-3d canvas::after {
+        animation: none;
+    }
+}
+
+/* Focus support for accessibility */
+.proximity-detector-3d:focus-within {
+    outline: 2px solid #00ff41;
+    outline-offset: 4px;
+}
+
+/* Print styles */
+@media print {
+    .proximity-detector-3d {
+        display: none !important;
+    }
+}

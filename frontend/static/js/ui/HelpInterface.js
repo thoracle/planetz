@@ -80,7 +80,7 @@ export class HelpInterface {
         // Check which systems are available based on cards
         const systemsToCheck = [
             'impulse_engines', 'warp_drive', 'shields', 'target_computer',
-            'long_range_scanner', 'subspace_radio', 'galactic_chart'
+            'long_range_scanner', 'subspace_radio', 'galactic_chart', 'radar'
         ];
         
         for (const systemName of systemsToCheck) {
@@ -284,6 +284,24 @@ export class HelpInterface {
             `;
         }
 
+        // Proximity Detector (Radar) - check both system and cards
+        const hasRadarSystem = context.availableSystems.radar;
+        const hasRadarCards = context.ship.hasSystemCardsSync && context.ship.hasSystemCardsSync('radar');
+        
+        if (hasRadarSystem || hasRadarCards) {
+            const level = hasRadarSystem ? context.availableSystems.radar.level : 1;
+            systemsHTML += `
+                <div class="control-entry">
+                    <span class="key-binding">P</span>
+                    <span class="control-desc">Proximity Detector (Lv.${level})</span>
+                </div>
+                <div class="control-entry">
+                    <span class="key-binding">+ / -</span>
+                    <span class="control-desc">Proximity Detector Zoom In/Out</span>
+                </div>
+            `;
+        }
+
         // Galactic Chart
         if (context.availableSystems.galactic_chart) {
             systemsHTML += `
@@ -418,7 +436,7 @@ export class HelpInterface {
                         <span class="control-desc">Debug Mode (FPS stats, system info)</span>
                     </div>
                     <div class="control-entry">
-                        <span class="key-binding">Ctrl+P</span>
+                        <span class="key-binding">Ctrl+O</span>
                         <span class="control-desc">Weapon Debug (hit detection spheres)</span>
                     </div>
                     <div class="control-entry">

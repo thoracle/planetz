@@ -60,6 +60,11 @@ export const CARD_TYPES = {
     GALACTIC_CHART: 'galactic_chart',
     TARGET_COMPUTER: 'target_computer',
     
+    // Radar systems
+    BASIC_RADAR: 'basic_radar',
+    ADVANCED_RADAR: 'advanced_radar',
+    TACTICAL_RADAR: 'tactical_radar',
+    
     // Advanced Intel Systems (Level 3+ Target Computers)
     TACTICAL_COMPUTER: 'tactical_computer',        // Level 3 - Basic intel
     COMBAT_COMPUTER: 'combat_computer',            // Level 4 - Enhanced intel
@@ -136,6 +141,11 @@ export const CARD_DISPLAY_NAMES = {
     [CARD_TYPES.SUBSPACE_RADIO]: 'Subspace Radio',
     [CARD_TYPES.GALACTIC_CHART]: 'Galactic Chart',
     [CARD_TYPES.TARGET_COMPUTER]: 'Target Computer',
+    
+    // Proximity Detector systems
+    [CARD_TYPES.BASIC_RADAR]: 'Basic Proximity Detector',
+    [CARD_TYPES.ADVANCED_RADAR]: 'Advanced Proximity Detector',
+    [CARD_TYPES.TACTICAL_RADAR]: 'Tactical Proximity Detector',
     
     // Exotic Core Systems
     [CARD_TYPES.QUANTUM_REACTOR]: 'Quantum Reactor',
@@ -601,6 +611,9 @@ export default class NFTCard {
             CARD_TYPES.SUBSPACE_RADIO,
             CARD_TYPES.GALACTIC_CHART,
             CARD_TYPES.TARGET_COMPUTER,
+            CARD_TYPES.BASIC_RADAR,
+            CARD_TYPES.ADVANCED_RADAR,
+            CARD_TYPES.TACTICAL_RADAR,
             // Exotic Sensors & Tech
             CARD_TYPES.QUANTUM_SCANNER,
             CARD_TYPES.PRECOGNITION_ARRAY,

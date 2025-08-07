@@ -10,7 +10,7 @@
 
 import CardInventory from '../ship/CardInventory.js';
 import { CARD_TYPES, CARD_ICONS } from '../ship/NFTCard.js';
-import { SHIP_CONFIGS, getAvailableShipTypes } from '../ship/ShipConfigs.js';
+import { SHIP_CONFIGS, getAvailableShipTypes, getStarterCards } from '../ship/ShipConfigs.js';
 import NFTCard from '../ship/NFTCard.js';
 
 // Simple player data structure for ship ownership
@@ -20,19 +20,13 @@ class PlayerData {
         this.credits = 50000;
         this.shipConfigurations = new Map(); // Store equipped cards for each ship
         
-        // Initialize starter ship with physics weapons configuration
-        this.shipConfigurations.set('starter_ship', new Map([
-            ['utility_1', { cardType: 'target_computer', level: 3 }], // Upgraded to level 3 for sub-targeting
-            ['utility_2', { cardType: 'hull_plating', level: 1 }],
-            ['utility_3', { cardType: 'long_range_scanner', level: 1 }],
-            ['utility_4', { cardType: 'galactic_chart', level: 1 }],
-            ['engine_1', { cardType: 'impulse_engines', level: 1 }],
-            ['power_1', { cardType: 'energy_reactor', level: 1 }],
-            ['weapon_1', { cardType: 'laser_cannon', level: 1 }],
-            ['weapon_2', { cardType: 'standard_missile', level: 1 }],
-            ['weapon_3', { cardType: 'photon_torpedo', level: 1 }],
-            ['weapon_4', { cardType: 'homing_missile', level: 1 }]
-        ]));
+        // Initialize starter ship using centralized starter card configuration
+        const starterCards = getStarterCards('starter_ship');
+        const starterCardMap = new Map();
+        Object.entries(starterCards).forEach(([slotId, cardData]) => {
+            starterCardMap.set(slotId, cardData);
+        });
+        this.shipConfigurations.set('starter_ship', starterCardMap);
     }
     
     /**
@@ -977,6 +971,11 @@ export default class CardInventoryUI {
             'subspace_radio',           // Required for R key functionality
             'target_computer',          // Required for T key functionality
             
+            // Proximity detection systems
+            'basic_radar',              // Required for P key proximity detector functionality
+            'advanced_radar',           // Enhanced radar capabilities
+            'tactical_radar',           // Advanced tactical radar system
+            
             // Advanced Intel Systems (for Intel I key functionality)
             'tactical_computer',        // Level 3+ target computer with basic intel capabilities
             
@@ -1021,6 +1020,13 @@ export default class CardInventoryUI {
         for (let i = 0; i < 12; i++) {
             const targetComputer = this.inventory.generateSpecificCard('target_computer', 'common');
             this.inventory.addCard(targetComputer);
+        }
+        
+        // Add multiple radar cards for upgrading proximity detector system
+        console.log('Adding 10 radar cards for proximity detector upgrades...');
+        for (let i = 0; i < 10; i++) {
+            const basicRadar = this.inventory.generateSpecificCard('basic_radar', 'common');
+            this.inventory.addCard(basicRadar);
         }
         
         console.log('Test data loaded with high-level upgrade capabilities');
@@ -1524,6 +1530,9 @@ export default class CardInventoryUI {
             'long_range_scanner': ['utility'],
             'quantum_scanner': ['utility'],  // Advanced scanner
             'dimensional_radar': ['utility'],
+            'basic_radar': ['utility'],
+            'advanced_radar': ['utility'],
+            'tactical_radar': ['utility'],
             'subspace_radio': ['utility'],
             'galactic_chart': ['utility'],
             'target_computer': ['utility'],
@@ -1875,6 +1884,9 @@ export default class CardInventoryUI {
                         'photon_torpedo': 'weapons',
                         'proximity_mine': 'weapons',
                         'target_computer': 'utility',
+                        'basic_radar': 'utility',
+                        'advanced_radar': 'utility',
+                        'tactical_radar': 'utility',
                         'warp_drive': 'warpDrive',
                         'shields': 'shields',
                         'long_range_scanner': 'scanner',

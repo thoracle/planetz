@@ -23,7 +23,7 @@ export default class TargetComputer extends System {
         this.isTargeting = false; // Whether actively targeting
         this.currentTarget = null; // Current target object
         this.targetLock = false; // Whether target is locked
-        this.targetingRange = 50; // Base targeting range in km
+        this.targetingRange = 150; // Base targeting range in km (increased for target dummy testing)
         this.targetingAccuracy = 1.0; // Base targeting accuracy (0-1)
         this.maxTargets = 10; // Maximum number of targets that can be tracked
         

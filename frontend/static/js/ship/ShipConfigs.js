@@ -70,22 +70,9 @@ export const SHIP_CONFIGS = {
             // No galactic chart or subspace radio - must be acquired from shop
         },
         
-        // Pre-installed starter cards
-        starterCards: {
-            utility_1: { cardType: 'target_computer', level: 3 },
-            utility_2: { cardType: 'hull_plating', level: 1 },
-            utility_3: { cardType: 'long_range_scanner', level: 1 },
-            utility_4: { cardType: 'galactic_chart', level: 1 },
-            engine_1: { cardType: 'impulse_engines', level: 1 },
-            power_1: { cardType: 'energy_reactor', level: 1 },
-            weapon_1: { cardType: 'laser_cannon', level: 1 },
-            weapon_2: { cardType: 'standard_missile', level: 1 },
-            weapon_3: { cardType: 'photon_torpedo', level: 1 },
-            weapon_4: { cardType: 'homing_missile', level: 1 }
-            // Physics weapons testing loadout: laser (energy) + standard missiles + torpedoes + homing missiles
-            // Perfect mix for testing both energy and physics projectile systems
-            // Removed galactic_chart card - player must acquire from shop
-            // Removed radio_1 - player must acquire subspace radio cards from the shop
+        // Pre-installed starter cards (uses centralized getStarterCards function)
+        get starterCards() {
+            return getStarterCards('starter_ship');
         }
     },
     
@@ -802,4 +789,53 @@ export function validateShipConfig(config) {
     ];
     
     return requiredFields.every(field => config.hasOwnProperty(field));
+}
+
+/**
+ * Get starter cards configuration for a ship type
+ * SINGLE SOURCE OF TRUTH for all starter card definitions
+ * @param {string} shipType - Ship type to get starter cards for
+ * @returns {Object} Map of slotId -> {cardType, level}
+ */
+export function getStarterCards(shipType) {
+    const starterConfigs = {
+        starter_ship: {
+            utility_1: { cardType: 'target_computer', level: 3 },
+            utility_2: { cardType: 'hull_plating', level: 1 },
+            utility_3: { cardType: 'long_range_scanner', level: 1 },
+            utility_4: { cardType: 'galactic_chart', level: 1 },
+            utility_5: { cardType: 'basic_radar', level: 1 },
+            engine_1: { cardType: 'impulse_engines', level: 1 },
+            power_1: { cardType: 'energy_reactor', level: 1 },
+            weapon_1: { cardType: 'laser_cannon', level: 1 },
+            weapon_2: { cardType: 'standard_missile', level: 1 },
+            weapon_3: { cardType: 'photon_torpedo', level: 1 },
+            weapon_4: { cardType: 'homing_missile', level: 1 }
+        },
+        heavy_fighter: {
+            utility_1: { cardType: 'target_computer', level: 2 },
+            utility_2: { cardType: 'hull_plating', level: 2 },
+            engine_1: { cardType: 'impulse_engines', level: 2 },
+            power_1: { cardType: 'energy_reactor', level: 2 },
+            weapon_1: { cardType: 'pulse_cannon', level: 1 },
+            weapon_2: { cardType: 'standard_missile', level: 1 }
+        },
+        // Add more ship types here as needed
+    };
+    
+    return starterConfigs[shipType] || {};
+}
+
+/**
+ * Get starter cards as an array format (for ViewManager compatibility)
+ * @param {string} shipType - Ship type to get starter cards for
+ * @returns {Array} Array of {slotId, cardType, level} objects
+ */
+export function getStarterCardsArray(shipType) {
+    const starterCards = getStarterCards(shipType);
+    return Object.entries(starterCards).map(([slotId, cardData]) => ({
+        slotId,
+        cardType: cardData.cardType,
+        level: cardData.level
+    }));
 } 

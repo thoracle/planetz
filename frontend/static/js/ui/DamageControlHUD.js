@@ -214,6 +214,24 @@ export default class DamageControlHUD {
         // Then validate each system individually for card requirements
         const systemsToShow = this.validateAndPrepareSystemsForDisplay(unfilteredStatus.systems);
         
+        // Check for radar cards and add virtual radar system if needed
+        const hasRadarCards = this.ship && this.ship.hasSystemCardsSync && this.ship.hasSystemCardsSync('radar');
+        if (hasRadarCards && !systemsToShow.radar) {
+            console.log('🔧 Adding virtual radar system (cards detected but no system object)');
+            systemsToShow.radar = {
+                name: 'Proximity Detector',
+                level: 1,
+                health: 100,
+                healthPercentage: 1.0,  // Full health as decimal
+                isOperational: true,
+                canBeActivated: true,   // Key property for operational status
+                canRepair: false,
+                repairCost: 0,
+                status: 'operational',  // Explicit operational status
+                virtual: true  // Mark as virtual system
+            };
+        }
+        
         // Add each system
         let systemsShown = 0;
         for (const [systemName, systemData] of Object.entries(systemsToShow)) {

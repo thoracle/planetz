@@ -1,0 +1,208 @@
+/**
+ * Radar HUD Styling
+ * Retro green screen aesthetic matching the game's overall design
+ */
+
+/* Main radar container */
+.radar-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 240px;
+    background: rgba(0, 0, 0, 0.85);
+    border: 2px solid #00ff41;
+    border-radius: 4px;
+    font-family: 'VT323', monospace;
+    color: #00ff41;
+    padding: 10px;
+    box-shadow: 
+        0 0 20px rgba(0, 255, 65, 0.3),
+        inset 0 0 20px rgba(0, 255, 65, 0.1);
+    z-index: 1000;
+    display: none;
+    user-select: none;
+    pointer-events: none;
+    backdrop-filter: blur(2px);
+}
+
+/* Radar title */
+.radar-title {
+    text-align: center;
+    font-size: 14px;
+    margin-bottom: 5px;
+    text-shadow: 0 0 5px #00ff41;
+    letter-spacing: 2px;
+    font-weight: bold;
+    color: #00ff41;
+}
+
+/* Radar display area */
+.radar-display {
+    width: 180px;
+    height: 180px;
+    margin: 0 auto;
+    border: 1px solid #00ff41;
+    background: rgba(0, 40, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 0 10px rgba(0, 255, 65, 0.2);
+}
+
+/* Radar canvas */
+.radar-canvas {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+}
+
+/* Radar information display */
+.radar-info {
+    margin-top: 8px;
+    font-size: 10px;
+    text-align: center;
+    opacity: 0.8;
+    line-height: 1.2;
+    color: #00ff41;
+}
+
+.radar-info div {
+    margin: 1px 0;
+}
+
+/* Contact count highlight */
+#radar-contact-count {
+    color: #ffffff;
+    font-weight: bold;
+    text-shadow: 0 0 3px #00ff41;
+}
+
+/* Animation effects */
+.radar-container {
+    animation: radarScanline 2s linear infinite;
+}
+
+@keyframes radarScanline {
+    0% { box-shadow: 
+        0 0 20px rgba(0, 255, 65, 0.3),
+        inset 0 0 20px rgba(0, 255, 65, 0.1); }
+    50% { box-shadow: 
+        0 0 25px rgba(0, 255, 65, 0.4),
+        inset 0 0 25px rgba(0, 255, 65, 0.15); }
+    100% { box-shadow: 
+        0 0 20px rgba(0, 255, 65, 0.3),
+        inset 0 0 20px rgba(0, 255, 65, 0.1); }
+}
+
+/* Retro CRT effect */
+.radar-display::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 255, 65, 0.03) 2px,
+        rgba(0, 255, 65, 0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    .radar-container {
+        bottom: 10px;
+        width: 180px;
+        height: 220px;
+        padding: 8px;
+    }
+    
+    .radar-display {
+        width: 160px;
+        height: 160px;
+    }
+    
+    .radar-title {
+        font-size: 12px;
+    }
+    
+    .radar-info {
+        font-size: 9px;
+    }
+}
+
+@media (max-width: 768px) {
+    .radar-container {
+        bottom: 5px;
+        width: 160px;
+        height: 200px;
+        padding: 6px;
+    }
+    
+    .radar-display {
+        width: 140px;
+        height: 140px;
+    }
+    
+    .radar-title {
+        font-size: 11px;
+        margin-bottom: 3px;
+    }
+    
+    .radar-info {
+        font-size: 8px;
+        margin-top: 5px;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .radar-container {
+        border-color: #00ff00;
+        color: #00ff00;
+        background: rgba(0, 0, 0, 0.95);
+    }
+    
+    .radar-display {
+        border-color: #00ff00;
+        background: rgba(0, 50, 0, 0.5);
+    }
+    
+    .radar-title {
+        color: #00ff00;
+        text-shadow: 0 0 8px #00ff00;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .radar-container {
+        animation: none;
+    }
+    
+    .radar-display::before {
+        background: none;
+    }
+}
+
+/* Focus and accessibility */
+.radar-container:focus-within {
+    outline: 2px solid #00ff41;
+    outline-offset: 2px;
+}
+
+/* Print styles (hide radar) */
+@media print {
+    .radar-container {
+        display: none !important;
+    }
+}
