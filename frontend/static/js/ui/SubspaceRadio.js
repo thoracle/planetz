@@ -104,7 +104,7 @@ export default class SubspaceRadio {
             font-size: 14px;
             color: #00ff41;
             overflow: hidden;
-            z-index: 1500;
+            z-index: 900;
             display: none;
             box-shadow: 0 -2px 10px rgba(0, 255, 65, 0.2);
         `;
