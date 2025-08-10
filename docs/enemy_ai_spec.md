@@ -15,11 +15,11 @@ Enemy Ships use the same gear cards as the player to equip their ships. Differen
 | Heavy Fighter | Durable combat ship for sustained engagements. | Moderate speed, high health, heavy weapons, moderate maneuverability. subspace radio to report in to base ship and call for help. Low level warp drive for short sector jumps. | Engages head-on, prioritizes high-threat targets (e.g., player), protects freighters or carriers. |
 | Carrier | Mobile base that launches/retrieves fighters, warps away if threatened. | Low speed, high hull armor and hull integrity, missiles weapons, targetable landing bay. Launch, land and repair ships. Mid Level warp drive for medium sector jumps. subspace radio to report in to other base ships and call for help. | Deploys fighters, avoids direct combat, warps out if landing bay or hull is critically damaged. |
 | Light Freighter | Lightly armed cargo hauler, often escorted. | Moderate speed, moderate health, light weapons, carries valuable cargo. Low level warp drive. | Avoids combat, flees if attacked, calls for escorts if available. Drops cargo if desperate. |
-| Heavy Freighter | Heavily armored cargo hauler, critical to faction supply lines. | Low speed, high health, moderate weapons, carries high-value cargo. Medium level warp drive. | Defends itself, relies on escorts, attempts to flee or surrender if overwhelmed. |
+| Heavy Freighter | Heavily armored cargo hauler, critical to faction supply lines. | Low speed, high health, moderate weapons, carries high-value cargo. Medium level warp drive. | Defends itself, relies on escorts, attempts to flee if overwhelmed. |
 
 Targetable Landing Bay (Carrier): The carrier’s landing bay is a weak point with lower health than the main hull. Destroying it prevents fighter launches/retrievals, forcing the carrier to retreat or warp out immediately.
 
-Cargo Mechanics: Freighters may drop cargo containers (lootable by the player) if heavily damaged or when surrendering. Heavy freighters have a higher chance of dropping rare cargo.
+Cargo Mechanics: Freighters may drop cargo containers (lootable by the player) if heavily damaged. Heavy freighters have a higher chance of dropping rare cargo.
 
 3. Faction System
 The faction system governs how ships interact with other entities (player, NPCs, or other factions). Each ship belongs to a faction with a disposition toward others, affecting their behavior.
@@ -264,7 +264,7 @@ Each ship type uses a unique blend of these behaviors, tuned via weights to refl
 | Heavy Fighter | Moderate (tolerates proximity) | High (maintains formation) | High (protects allies) | High (engages head-on) | Low (tanks damage) | Low (rarely orbits) |
 | Carrier | Low (large, slow) | Moderate (leads formation) | High (keeps fighters close) | None (avoids combat) | Moderate (warps out) | None (no orbiting) |
 | Light Freighter | Moderate (avoids escorts) | Moderate (stays with escorts) | High (needs protection) | None (avoids combat) | High (flees when attacked) | None (no orbiting) |
-| Heavy Freighter | Low (bulky, slow) | Moderate (stays with escorts) | High (needs protection) | Low (defends self) | Moderate (flees or surrenders) | None (no orbiting) |
+| Heavy Freighter | Low (bulky, slow) | Moderate (stays with escorts) | High (needs protection) | Low (defends self) | Moderate (flees when damaged) | None (no orbiting) |
 
 Faction Influence:
 Friendly: Ships increase cohesion and alignment to defend or escort allies under attack, forming tighter formations.
