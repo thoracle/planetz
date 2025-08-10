@@ -299,6 +299,10 @@ export class HelpInterface {
                     <span class="key-binding">+ / -</span>
                     <span class="control-desc">Proximity Detector Zoom In/Out</span>
                 </div>
+                <div class="control-entry">
+                    <span class="key-binding">\\</span>
+                    <span class="control-desc">Toggle 3D/Top-Down View Mode</span>
+                </div>
             `;
         }
 

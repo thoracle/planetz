@@ -39,6 +39,15 @@ planetz/
 
 ## 🚀 LATEST CRITICAL FIXES (Current Session)
 
+### 🎯 **3D Proximity Detector (Radar) Grid Rotation Fix** ⭐ LATEST UPDATE
+- **Issue Identified**: ✅ **Radar grid rotated 90 degrees to the right from ship's actual heading**
+  - **Problem**: User reports radar grid not matching ship's orientation - objects appear rotated
+  - **Root Cause**: Grid rotation calculation using wrong offset direction in `updateGridOrientation()`
+  - **Solution Implemented**: Changed from `+ Math.PI / 2` to `- Math.PI / 2` to rotate grid left by 90°
+  - **Enhancement**: Set Target Dummy 1 to very high altitude bucket (1200km) for radar testing
+  - **Files**: `ProximityDetector3D.js`, `StarfieldManager.js`
+  - **Status**: 🧪 **Testing in progress** - awaiting user verification of grid alignment
+
 ### 🎯 **3D Proximity Detector (Radar) System Enhancement** ⭐ TARGETING PERFECTION
 - **Issue Resolved**: ✅ **Radar not detecting target dummies and coordinate scaling problems**
   - **Problem 1**: Target dummies spawned 50-100km away but target computer limited to 10km range

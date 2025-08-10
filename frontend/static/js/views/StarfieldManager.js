@@ -1722,6 +1722,31 @@ export class StarfieldManager {
                 }
             }
 
+            // Add Proximity Detector View Mode Toggle key binding (\\ key)
+            if (event.key === '\\') {
+                // Only allow view mode toggle when not docked and proximity detector is visible
+                if (!this.isDocked && this.proximityDetector3D && this.proximityDetector3D.isVisible) {
+                    // Toggle between 3D and top-down view modes
+                    if (this.proximityDetector3D.toggleViewMode()) {
+                        this.playCommandSound();
+                    } else {
+                        this.playCommandFailedSound();
+                    }
+                } else if (this.isDocked) {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'PROXIMITY DETECTOR VIEW TOGGLE UNAVAILABLE',
+                        'Proximity Detector offline while docked'
+                    );
+                } else {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'PROXIMITY DETECTOR VIEW TOGGLE UNAVAILABLE',
+                        'Proximity Detector not active (press P to enable)'
+                    );
+                }
+            }
+
             // Add Shields key binding (S)
             if (commandKey === 's') {
                 // Block shields when docked
@@ -1918,7 +1943,7 @@ export class StarfieldManager {
             if (commandKey === 'q') {
                 if (!this.isDocked) {
                     this.playCommandSound();
-                    console.log('🎯 Spawning target dummy ships for weapons testing...');
+                    console.log('🎯 Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                     this.createTargetDummyShips(3);
                     
                     // Clear targeting cache to prevent stale crosshair results after spawning targets
@@ -3828,15 +3853,53 @@ export class StarfieldManager {
                 const shipMesh = this.createDummyShipMesh(i);
                 
                 // Position the ship relative to player
-                const angle = (i / count) * Math.PI * 2;
-                const distance = 20 + i * 5; // 20-30 km away (using correct coordinate system: 1 unit = 1 km)
-                const height = (Math.random() - 0.5) * 4; // Height variation for radar altitude testing
+                let angle, distance, height;
+                
+                // Get player's current heading from camera rotation
+                const playerRotation = new THREE.Euler().setFromQuaternion(this.camera.quaternion);
+                const playerHeading = playerRotation.y; // Y rotation is heading in THREE.js
+                
+                if (i === 0) {
+                    // First dummy: place in VERY HIGH altitude bucket (>1000m above)
+                    angle = playerHeading + (Math.PI * 0.1); // 18° to the right of player heading
+                    distance = 45000; // 45km away - spread across the 50km radar range
+                    height = 1.2; // 1.2km above player (very_high bucket: y=0.7, threshold=1000m)
+                    console.log(`🎯 Target Dummy 1: VERY HIGH bucket - ${height*1000}m altitude, ${distance/1000}km distance`);
+                } else if (i === 1) {
+                    // Second dummy: place in VERY LOW altitude bucket (<-1000m below)
+                    const relativeAngle = Math.PI * 0.6; // 108° to the left-back
+                    angle = playerHeading + relativeAngle;
+                    distance = 35000; // 35km away - good spread within radar range
+                    height = -1.5; // 1.5km below player (very_low bucket: y=-0.7, threshold=-Infinity)
+                    console.log(`🎯 Target Dummy 2: VERY LOW bucket - ${height*1000}m altitude, ${distance/1000}km distance`);
+                } else {
+                    // Third dummy: place in SOMEWHAT HIGH altitude bucket (100-500m above)
+                    const relativeAngle = -Math.PI * 0.4; // 72° to the left of player heading
+                    angle = playerHeading + relativeAngle;
+                    distance = 25000; // 25km away - closer but still well spread
+                    height = 0.3; // 300m above player (somewhat_high bucket: y=0.25, threshold=100m)
+                    console.log(`🎯 Target Dummy 3: SOMEWHAT HIGH bucket - ${height*1000}m altitude, ${distance/1000}km distance`);
+                }
                 
                 shipMesh.position.set(
-                    this.camera.position.x + Math.cos(angle) * distance,
+                    this.camera.position.x + Math.sin(angle) * distance,
                     this.camera.position.y + height,
-                    this.camera.position.z + Math.sin(angle) * distance
+                    this.camera.position.z + Math.cos(angle) * distance
                 );
+                
+                // Enhanced debug logging with full 3D coordinates
+                const targetPosition = shipMesh.position;
+                const playerPosition = this.camera.position;
+                const actualDistance = playerPosition.distanceTo(targetPosition);
+                const altitudeDifference = targetPosition.y - playerPosition.y;
+                
+                console.log(`🎯 Target Dummy ${i + 1} FULL DEBUG INFO:`);
+                console.log(`   Player Position: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
+                console.log(`   Target Position: (${targetPosition.x.toFixed(1)}, ${targetPosition.y.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
+                console.log(`   Altitude Difference: ${(altitudeDifference*1000).toFixed(0)}m`);
+                console.log(`   3D Distance: ${(actualDistance/1000).toFixed(1)}km`);
+                console.log(`   Horizontal Distance: ${(distance/1000).toFixed(1)}km`);
+                console.log(`   Expected Radar Bucket: ${i === 0 ? 'very_high (y=0.7)' : i === 1 ? 'very_low (y=-0.7)' : 'somewhat_high (y=0.25)'}`);
                 
                 // Store ship data in mesh
                 shipMesh.userData = {
@@ -3886,10 +3949,12 @@ export class StarfieldManager {
                     console.warn('⚠️ PhysicsManager not ready - skipping physics body creation for ships');
                 }
                 
-                // Debug log actual distance from player position
-                const playerPosition = this.camera ? this.camera.position : new this.THREE.Vector3(0, 0, 0);
-                const actualDistance = playerPosition.distanceTo(shipMesh.position);
-                console.log(`🎯 Target ${i + 1} positioned at ${(actualDistance / 1000).toFixed(1)}km (world coords: ${shipMesh.position.x}, ${shipMesh.position.y}, ${shipMesh.position.z})`);
+                // Additional debug log with intended vs calculated distance
+                const calculatedDistance = playerPosition.distanceTo(shipMesh.position);
+                console.log(`🎯 Target ${i + 1} positioned at ${(calculatedDistance / 1000).toFixed(1)}km (world coords: ${shipMesh.position.x.toFixed(1)}, ${shipMesh.position.y.toFixed(1)}, ${shipMesh.position.z.toFixed(1)})`);
+                console.log(`🎯   Player position: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
+                console.log(`🎯   Intended distance: ${(distance/1000).toFixed(1)}km, angle: ${(angle * 180 / Math.PI).toFixed(1)}°, height: ${(height*1000).toFixed(0)}m`);
+                console.log(`🎯   Calculated distance: ${(calculatedDistance/1000).toFixed(1)}km`);
                 
                 // CRITICAL: Update physics body position to match mesh position
                 if (window.physicsManager && window.physicsManager.initialized) {

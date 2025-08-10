@@ -326,13 +326,13 @@ export class Chunk {
             
             const errorMessage = `Chunk (${this.x}, ${this.y}, ${this.z}) - ${error.message}`;
             if (this.errorCount >= 3) {
-                console.error(`${errorMessage} - Marking chunk as failed after ${this.errorCount} attempts`);
+                // console.error(`${errorMessage} - Marking chunk as failed after ${this.errorCount} attempts`); // Disabled to reduce spam
                 this.loadState = 'error';
                 // Exponential backoff with max of 5 minutes
                 const backoffTime = Math.min(1000 * Math.pow(2, this.errorCount), 300000);
                 this.nextRetryTime = Date.now() + backoffTime;
             } else {
-                console.warn(`${errorMessage} - Attempt ${this.errorCount}`);
+                // console.warn(`${errorMessage} - Attempt ${this.errorCount}`); // Disabled to reduce spam
                 // Shorter backoff for initial retries
                 const backoffTime = Math.min(1000 * Math.pow(2, this.errorCount - 1), 30000);
                 this.nextRetryTime = Date.now() + backoffTime;

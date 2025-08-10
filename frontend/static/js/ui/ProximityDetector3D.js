@@ -22,8 +22,8 @@ export class ProximityDetector3D {
         // 3D Configuration
         this.config = {
             // Display properties
-            screenWidth: 0.3125,            // 31.25% of screen width (25% wider)
-            screenHeight: 0.1875,           // 18.75% of screen height (25% shorter)
+            screenWidth: 0.25,              // 25% of screen width (SQUARE aspect ratio)
+            screenHeight: 0.25,             // 25% of screen height (SQUARE aspect ratio)
             position: 'bottom-center',       // Lower center position
             
             // 3D Grid properties
@@ -32,25 +32,23 @@ export class ProximityDetector3D {
             gridTilt: -35,                  // 35° tilt from horizontal (degrees)
             
             // Detection properties  
-            detectionRange: 1200,           // 1.2km spherical range (much closer for combat/close objects)
-            altitudeRange: 600,             // ±600m vertical range (reduced for close-range focus)
+            detectionRange: 50000,          // 50km spherical range (combat range - matches starting zoom level)
+            altitudeRange: 5000,            // ±5km vertical range (extended for better target detection)
             
             // Visual properties
-            fadeDistance: 1000,             // Objects start fading at 1km
+            fadeDistance: 40000,            // Objects start fading at 40km (80% of 50km combat range)
             updateFrequency: 20,            // 20Hz updates for smooth 3D
             
-            // Zoom levels for dynamic ranging (7 levels total, ordered far to close)
-            // CORRECTED: Higher magnification for wider views (to see distant objects)
+            // Zoom levels for practical gameplay (4 levels total, ordered far to close)
+            // CORRECTED: Higher magnification = smaller range (more zoomed in)
+            // Ranges are now inversely proportional to magnification - UPDATED FOR 50km TOP MAGNIFICATION
             zoomLevels: [
-                { name: 'Galaxy', range: 160000, gridSpacing: 12800, label: '160km', magnification: 8 },     // 8x magnification for distant objects
-                { name: 'Region', range: 80000, gridSpacing: 6400, label: '80km', magnification: 4 },       // 4x magnification for far objects
-                { name: 'Wide Area', range: 40000, gridSpacing: 3200, label: '40km', magnification: 2 },     // 2x magnification for wide view
-                { name: 'Sector', range: 20000, gridSpacing: 1600, label: '20km', magnification: 1.5 },     // 1.5x magnification for sector view
-                { name: 'System', range: 15000, gridSpacing: 1200, label: '15km', magnification: 1.25 },    // 1.25x magnification for system view
-                { name: 'Standard', range: 10000, gridSpacing: 800, label: '10km', magnification: 1 },      // 1x baseline (standard)
-                { name: 'Local', range: 5000, gridSpacing: 400, label: '5km', magnification: 0.75 }        // 0.75x for close objects (already big)
+                { name: 'Long Range', range: 200000, gridSpacing: 16000, label: '200km', magnification: 0.25 },  // 0.25x - ultra wide view
+                { name: 'Wide Area', range: 150000, gridSpacing: 12000, label: '150km', magnification: 0.33 },   // 0.33x - wide view  
+                { name: 'Sector', range: 100000, gridSpacing: 8000, label: '100km', magnification: 0.5 },       // 0.5x - sector view
+                { name: 'Combat Range', range: 50000, gridSpacing: 4000, label: '50km', magnification: 1.0 }     // 1.0x - top magnification for 50km combat range
             ],
-            currentZoomLevel: 2,            // Start with x2 magnification (Wide Area - 40km)
+            currentZoomLevel: 3,            // Start with top magnification (Combat Range - 50km)
             
             // Perspective properties
             cameraDistance: 4,              // Camera distance from grid (closer for zoom)
@@ -59,9 +57,10 @@ export class ProximityDetector3D {
         };
         
         // Logging control system
-        this.debugMode = false;             // Production: disabled by default
+        this.debugMode = true;              // Temporarily enabled for coordinate debugging
         this.lastLogTime = 0;
         this.logInterval = 3000;            // Log important events every 3 seconds max
+        this.lastLoggedRotation = null;     // For rotation debug throttling
         this.sessionStats = {
             objectsTracked: 0,
             lastObjectCount: 0,
@@ -86,7 +85,13 @@ export class ProximityDetector3D {
         // State
         this.isVisible = false;
         this.lastUpdate = 0;
+        this.lastUpdateTime = 0; // For throttling updates
         this.currentShipRotation = new THREE.Euler();
+        
+        // Triangle orientation: fore camera direction = movement direction
+        
+        // View mode state - default to 3D view
+        this.viewMode = '3D'; // '3D' or 'topDown'
         
         // Container elements
         this.detectorContainer = null;
@@ -143,6 +148,41 @@ export class ProximityDetector3D {
         this.setupEventListeners();
         
         this.logControlled('log', '3D Proximity Detector initialized', null, true);
+        
+        // Expose debug method globally for console access
+        window.debugRadarRotation = () => this.debugRadarRotation();
+        
+        // Add window resize handler for responsive positioning
+        window.addEventListener('resize', () => this.handleWindowResize());
+    }
+    
+    /**
+     * Handle window resize events to maintain proper radar positioning
+     */
+    handleWindowResize() {
+        if (this.detectorContainer) {
+            this.updateContainerPositioning();
+            
+            // Update canvas dimensions based on view mode
+            if (this.viewMode === 'topDown') {
+                this.canvasWidth = this.detectorContainer.offsetWidth - 20;  // Account for 10px padding each side
+                this.canvasHeight = this.detectorContainer.offsetHeight - 40; // Account for 10px padding + range display space
+            } else {
+                this.canvasWidth = this.detectorContainer.offsetWidth - 16;  // Account for 6px padding each side  
+                this.canvasHeight = this.detectorContainer.offsetHeight - 28; // Account for 6px padding + range display space
+            }
+            
+            // Update renderer size if it exists
+            if (this.renderer) {
+                this.renderer.setSize(this.canvasWidth, this.canvasHeight);
+            }
+            
+            // Update camera aspect ratio for 3D view
+            if (this.viewMode === '3D' && this.camera && this.camera.isPerspectiveCamera) {
+                this.camera.aspect = this.canvasWidth / this.canvasHeight;
+                this.camera.updateProjectionMatrix();
+            }
+        }
     }
     
     /**
@@ -159,34 +199,80 @@ export class ProximityDetector3D {
         this.detectorContainer = document.createElement('div');
         this.detectorContainer.className = 'proximity-detector-3d';
         
-        // Calculate responsive size
+        // Calculate initial positioning and size based on view mode
         const screenWidth = window.innerWidth;
         const screenHeight = window.innerHeight;
-        const detectorWidth = Math.floor(screenWidth * this.config.screenWidth);
-        const detectorHeight = Math.floor(screenHeight * this.config.screenHeight);
+        let detectorWidth, detectorHeight, positioningCSS;
         
-        this.detectorContainer.style.cssText = `
-            position: fixed;
-            bottom: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: ${detectorWidth}px;
-            height: ${detectorHeight}px;
-            background: rgba(0, 0, 0, 0.85);
-            border: 2px solid #00ff41;
-            border-radius: 4px;
-            font-family: 'VT323', monospace;
-            color: #00ff41;
-            padding: 6px;
-            box-shadow: 
-                0 0 20px rgba(0, 255, 65, 0.3),
-                inset 0 0 20px rgba(0, 255, 65, 0.1);
-            z-index: 1000;
-            display: none;
-            user-select: none;
-            pointer-events: none;
-            backdrop-filter: blur(2px);
-        `;
+        if (this.viewMode === 'topDown') {
+            // Top-down view: Rectangular, upper-left corner, same width as target HUD
+            // Target HUD total width = 200px content + 2px border + 10px padding each side = 224px
+            // Target HUD when fully populated (target dummies) = ~320px height
+            // Target HUD positioned at bottom: 80px, so top of target HUD = screen height - 80px - 320px
+            const radarWidth = 200; // Match target HUD content width
+            const radarHeight = 100; // Compact height to fit above target HUD
+            detectorWidth = radarWidth;
+            detectorHeight = radarHeight;
+            positioningCSS = `
+                position: fixed;
+                top: 55px;
+                left: 10px;
+                width: ${radarWidth}px;
+                height: ${radarHeight}px;
+                transform: none;
+            `;
+        } else {
+            // 3D view: Larger rectangular, bottom-center (original positioning)
+            detectorWidth = Math.floor(screenWidth * this.config.screenWidth);
+            detectorHeight = Math.floor(screenHeight * this.config.screenHeight);
+            positioningCSS = `
+                position: fixed;
+                bottom: 50px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: ${detectorWidth}px;
+                height: ${detectorHeight}px;
+            `;
+        }
+        
+        // Add styling based on view mode
+        let stylingCSS;
+        if (this.viewMode === 'topDown') {
+            // Match target HUD styling for consistency
+            stylingCSS = `
+                background: rgba(0, 0, 0, 0.7);
+                border: 2px solid #00ff41;
+                border-radius: 4px;
+                font-family: 'Courier New', monospace;
+                color: #00ff41;
+                padding: 10px;
+                z-index: 1000;
+                display: none;
+                user-select: none;
+                pointer-events: none;
+            `;
+        } else {
+            // 3D view: Keep original styling with glow effects
+            stylingCSS = `
+                background: rgba(0, 0, 0, 0.85);
+                border: 2px solid #00ff41;
+                border-radius: 4px;
+                font-family: 'VT323', monospace;
+                color: #00ff41;
+                padding: 6px;
+                box-shadow: 
+                    0 0 20px rgba(0, 255, 65, 0.3),
+                    inset 0 0 20px rgba(0, 255, 65, 0.1);
+                z-index: 1000;
+                display: none;
+                user-select: none;
+                pointer-events: none;
+                backdrop-filter: blur(2px);
+            `;
+        }
+        
+        // Apply combined positioning and styling
+        this.detectorContainer.style.cssText = positioningCSS + stylingCSS;
         
         // Add range display
         const rangeDisplay = document.createElement('div');
@@ -225,11 +311,93 @@ export class ProximityDetector3D {
         
         this.container.appendChild(this.detectorContainer);
         
-        // Scan line effect removed for cleaner display
+        // Store dimensions for 3D renderer (account for different padding in each mode)
+        if (this.viewMode === 'topDown') {
+            this.canvasWidth = detectorWidth - 20;  // Account for 10px padding each side
+            this.canvasHeight = detectorHeight - 40; // Account for 10px padding + range display space
+        } else {
+            this.canvasWidth = detectorWidth - 16;  // Account for 6px padding each side  
+            this.canvasHeight = detectorHeight - 28; // Account for 6px padding + range display space
+        }
+    }
+    
+    /**
+     * Update container positioning and size based on current view mode
+     */
+    updateContainerPositioning() {
+        if (!this.detectorContainer) return;
         
-        // Store dimensions for 3D renderer (consistent with updateDetectorSpecifications)
-        this.canvasWidth = detectorWidth - 16;  // Account for padding
-        this.canvasHeight = detectorHeight - 28; // Account for padding and range display
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        
+        if (this.viewMode === 'topDown') {
+            // Top-down view: Rectangular, upper-left corner, same width as target HUD
+            // Target HUD total width = 200px content + 2px border + 10px padding each side = 224px
+            // Target HUD when fully populated (target dummies) = ~320px height
+            const radarWidth = 200; // Match target HUD content width
+            const radarHeight = 100; // Compact height to fit above target HUD
+            
+            // Position: Upper-left, below energy counter, flush left with target HUD
+            // Energy counter is at top: 10px, target HUD is at left: 10px
+            // Energy counter height ~45px + clearance = 55px from top
+            const positioningCSS = `
+                position: fixed;
+                top: 55px;
+                left: 10px;
+                width: ${radarWidth}px;
+                height: ${radarHeight}px;
+                transform: none;
+            `;
+            
+            // Match target HUD styling for consistency
+            const stylingCSS = `
+                background: rgba(0, 0, 0, 0.7);
+                border: 2px solid #00ff41;
+                border-radius: 4px;
+                font-family: 'Courier New', monospace;
+                color: #00ff41;
+                padding: 10px;
+                z-index: 1000;
+                display: ${this.detectorContainer.style.display || 'none'};
+                user-select: none;
+                pointer-events: none;
+            `;
+            
+            this.detectorContainer.style.cssText = positioningCSS + stylingCSS;
+        } else {
+            // 3D view: Larger rectangular, bottom-center (original positioning)
+            const detectorWidth = Math.floor(screenWidth * this.config.screenWidth);
+            const detectorHeight = Math.floor(screenHeight * this.config.screenHeight);
+            
+            const positioningCSS = `
+                position: fixed;
+                bottom: 50px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: ${detectorWidth}px;
+                height: ${detectorHeight}px;
+            `;
+            
+            // 3D view: Keep original styling with glow effects
+            const stylingCSS = `
+                background: rgba(0, 0, 0, 0.85);
+                border: 2px solid #00ff41;
+                border-radius: 4px;
+                font-family: 'VT323', monospace;
+                color: #00ff41;
+                padding: 6px;
+                box-shadow: 
+                    0 0 20px rgba(0, 255, 65, 0.3),
+                    inset 0 0 20px rgba(0, 255, 65, 0.1);
+                z-index: 1000;
+                display: ${this.detectorContainer.style.display || 'none'};
+                user-select: none;
+                pointer-events: none;
+                backdrop-filter: blur(2px);
+            `;
+            
+            this.detectorContainer.style.cssText = positioningCSS + stylingCSS;
+        }
     }
     
     /**
@@ -289,55 +457,69 @@ export class ProximityDetector3D {
         const spacing = this.config.gridSpacing / 1000; // Convert to scene units
         const halfSize = (gridSize - 1) * spacing / 2;
         
-        // Create grid line material with retro glow
-        const gridMaterial = new THREE.LineBasicMaterial({
+        // Create grid line material with retro glow using mesh material for guaranteed visibility
+        const gridMaterial = new THREE.MeshBasicMaterial({
             color: 0x00ff41,
             opacity: 0.8,
-            transparent: true,
-            linewidth: 1
+            transparent: true
         });
         
-        // Create horizontal grid lines (X direction)
+        // Line thickness for grid lines (increased for better visibility)
+        const lineThickness = 0.008; // Thicker cylinder radius for better visibility
+        const lineLength = gridSize * spacing;
+        
+        // Create horizontal grid lines (X direction) using cylinder geometry
         for (let i = 0; i < gridSize; i++) {
             const z = -halfSize + (i * spacing);
-            const geometry = new THREE.BufferGeometry();
-            const points = [
-                new THREE.Vector3(-halfSize, 0, z),
-                new THREE.Vector3(halfSize, 0, z)
-            ];
-            geometry.setFromPoints(points);
             
-            const line = new THREE.Line(geometry, gridMaterial);
+            // Create horizontal line using rotated cylinder
+            const geometry = new THREE.CylinderGeometry(lineThickness, lineThickness, lineLength, 6);
+            const line = new THREE.Mesh(geometry, gridMaterial);
+            
+            // Rotate cylinder to horizontal (90 degrees around Z axis)
+            line.rotation.z = Math.PI / 2;
+            line.position.set(0, 0, z);
+            
             gridGroup.add(line);
         }
         
-        // Create vertical grid lines (Z direction)  
+        // Create vertical grid lines (Z direction) using cylinder geometry
         for (let i = 0; i < gridSize; i++) {
             const x = -halfSize + (i * spacing);
-            const geometry = new THREE.BufferGeometry();
-            const points = [
-                new THREE.Vector3(x, 0, -halfSize),
-                new THREE.Vector3(x, 0, halfSize)
-            ];
-            geometry.setFromPoints(points);
             
-            const line = new THREE.Line(geometry, gridMaterial);
+            // Create vertical line using rotated cylinder (runs along Z-axis)
+            const geometry = new THREE.CylinderGeometry(lineThickness, lineThickness, lineLength, 6);
+            const line = new THREE.Mesh(geometry, gridMaterial);
+            
+            // Rotate cylinder to run along Z axis (90 degrees around X axis)
+            line.rotation.x = Math.PI / 2;
+            line.position.set(x, 0, 0);
+            
             gridGroup.add(line);
         }
         
-        // Add perspective convergence effect by scaling distant lines
+        // Add perspective convergence effect by scaling mesh objects
         gridGroup.children.forEach((line, index) => {
-            const vertices = line.geometry.attributes.position.array;
-            for (let i = 0; i < vertices.length; i += 3) {
-                const z = vertices[i + 2]; // Z coordinate
-                const distanceFactor = 1 - (Math.abs(z) / halfSize) * this.config.convergenceStrength;
-                vertices[i] *= distanceFactor; // Scale X coordinate
+            // For cylinder meshes, we can apply scaling to the entire mesh object
+            // Check if this line is positioned along the Z-axis (horizontal lines)
+            const linePosition = line.position;
+            if (Math.abs(linePosition.z) > 0.001) {
+                // This is a horizontal line, apply X-axis convergence based on Z position
+                const distanceFactor = 1 - (Math.abs(linePosition.z) / halfSize) * this.config.convergenceStrength;
+                line.scale.x = distanceFactor;
+            } else if (Math.abs(linePosition.x) > 0.001) {
+                // This is a vertical line, apply very subtle convergence based on X position (reduced effect)
+                const distanceFactor = 1 - (Math.abs(linePosition.x) / halfSize) * this.config.convergenceStrength * 0.1;
+                line.scale.z = Math.max(distanceFactor, 0.5); // Ensure lines don't become too small
             }
-            line.geometry.attributes.position.needsUpdate = true;
         });
         
         // Apply grid tilt
         gridGroup.rotation.x = THREE.MathUtils.degToRad(this.config.gridTilt);
+        
+        // Grid creation debug (disabled to reduce spam)
+        // console.log(`🎯 ProximityDetector3D: Grid created with ${gridGroup.children.length} lines (thickness: ${lineThickness})`);
+        // console.log(`🎯 ProximityDetector3D: Grid size ${gridSize}x${gridSize}, spacing ${spacing}, half-size ${halfSize}`);
         
         this.gridMesh = gridGroup;
         this.scene.add(this.gridMesh);
@@ -349,28 +531,73 @@ export class ProximityDetector3D {
      * Create player indicator at grid center
      */
     createPlayerIndicator() {
-        // Create player triangle indicator (same size as enemy triangles)
-        const triangleGeometry = new THREE.BufferGeometry();
-        const triangleVertices = new Float32Array([
-            0, 0, 0.25,     // Top point (forward - points up on screen)
-            -0.15, 0, -0.15, // Bottom left
-            0.15, 0, -0.15   // Bottom right
-        ]);
-        triangleGeometry.setAttribute('position', new THREE.BufferAttribute(triangleVertices, 3));
+        // Scale player indicator size based on view mode and coordinate space
+        let triangleSize;
+        if (this.viewMode === 'topDown') {
+            // In top-down mode, use larger triangle for the larger coordinate space
+            const currentZoom = this.getCurrentZoom();
+            const coordinateScale = Math.min(currentZoom.range / 2000, 50);
+            triangleSize = Math.max(coordinateScale * 0.04, 1.0); // Scale with coordinate space, minimum 1.0
+        } else {
+            // In 3D mode, use the standard small size
+            triangleSize = 0.25;
+        }
+        
+        console.log(`🔄 Creating player indicator with size: ${triangleSize} for ${this.viewMode} mode`);
+        
+        // Create player indicator geometry based on view mode
+        let playerGeometry;
+        if (this.viewMode === 'topDown') {
+            // Top-down mode: use flat triangle that can rotate to show heading
+            playerGeometry = new THREE.BufferGeometry();
+            const triangleVertices = new Float32Array([
+                0, 0, -triangleSize,                   // Top point (forward - points toward negative Z)
+                -triangleSize * 0.6, 0, triangleSize * 0.6, // Bottom left
+                triangleSize * 0.6, 0, triangleSize * 0.6   // Bottom right
+            ]);
+            playerGeometry.setAttribute('position', new THREE.BufferAttribute(triangleVertices, 3));
+        } else {
+            // 3D mode: use triangle for player
+            playerGeometry = new THREE.BufferGeometry();
+            const triangleVertices = new Float32Array([
+                0, 0, -triangleSize,                   // Top point (forward - points toward negative Z)
+                -triangleSize * 0.6, 0, triangleSize * 0.6, // Bottom left
+                triangleSize * 0.6, 0, triangleSize * 0.6   // Bottom right
+            ]);
+            playerGeometry.setAttribute('position', new THREE.BufferAttribute(triangleVertices, 3));
+        }
+        
+        // Make player indicator brighter in top-down mode for better visibility
+        let playerOpacity, playerTransparent;
+        if (this.viewMode === 'topDown') {
+            // Top-down mode: fully opaque and bright for maximum visibility
+            playerOpacity = 1.0;
+            playerTransparent = false;
+        } else {
+            // 3D mode: slightly transparent as before
+            playerOpacity = 0.9;
+            playerTransparent = true;
+        }
         
         const triangleMaterial = new THREE.MeshBasicMaterial({
             color: 0x00ffff,  // Cyan for player
             side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.9
+            transparent: playerTransparent,
+            opacity: playerOpacity
         });
         
-        this.playerIndicator = new THREE.Mesh(triangleGeometry, triangleMaterial);
-        this.playerIndicator.position.set(0, 0.05, 0); // Slightly above grid
+        this.playerIndicator = new THREE.Mesh(playerGeometry, triangleMaterial);
+        
+        // Position based on view mode
+        if (this.viewMode === 'topDown') {
+            this.playerIndicator.position.set(0, 0.1, 0); // Slightly above grid for visibility
+        } else {
+            this.playerIndicator.position.set(0, 0.05, 0); // Slightly above grid
+        }
         
         this.scene.add(this.playerIndicator);
         
-        console.log('🎯 Player indicator created at grid center');
+        console.log(`🎯 Player indicator created at grid center for ${this.viewMode} mode at position (${this.playerIndicator.position.x}, ${this.playerIndicator.position.y}, ${this.playerIndicator.position.z}) | Visible: ${this.playerIndicator.visible} | Scale: ${this.playerIndicator.scale.x}`);
     }
     
     /**
@@ -472,29 +699,29 @@ export class ProximityDetector3D {
     zoomIn() {
         if (!this.isVisible) return false;
         
-        // Can't zoom in further if already at closest level
-        if (this.config.currentZoomLevel <= 0) {
-            return false;
-        }
-        
-        // Move to closer zoom level
-        this.config.currentZoomLevel--;
-        return this.updateZoom();
-    }
-    
-    /**
-     * Zoom out to farther range (lower detail, larger area)
-     */
-    zoomOut() {
-        if (!this.isVisible) return false;
-        
-        // Can't zoom out further if already at farthest level
+        // Can't zoom in further if already at closest level (index 3)
         if (this.config.currentZoomLevel >= this.config.zoomLevels.length - 1) {
             return false;
         }
         
-        // Move to farther zoom level
+        // Move to closer zoom level (higher index = closer range in new order)
         this.config.currentZoomLevel++;
+        return this.updateZoom();
+    }
+    
+    /**
+     * Zoom out to farther range (lower detail, larger area)  
+     */
+    zoomOut() {
+        if (!this.isVisible) return false;
+        
+        // Can't zoom out further if already at farthest level (index 0)
+        if (this.config.currentZoomLevel <= 0) {
+            return false;
+        }
+        
+        // Move to farther zoom level (lower index = farther range in new order)
+        this.config.currentZoomLevel--;
         return this.updateZoom();
     }
     
@@ -515,17 +742,30 @@ export class ProximityDetector3D {
         const magnificationFactor = 1 / zoomLevel.magnification; // Inverse: higher mag = closer camera
         this.config.cameraDistance = baseCameraDistance * magnificationFactor;
         
-        // Update camera position with new distance
-        this.camera.position.set(0, this.config.cameraDistance, this.config.cameraDistance * 0.7);
-        this.camera.lookAt(0, 0, 0);
-        this.camera.updateProjectionMatrix();
-        console.log(`📷 CAMERA: Position Y=${this.config.cameraDistance.toFixed(2)}, Z=${(this.config.cameraDistance * 0.7).toFixed(2)}, Looking at (0,0,0)`);
+        // Update camera based on view mode
+        if (this.viewMode === 'topDown') {
+            // Update orthographic camera view size for zoom changes
+            const viewSize = Math.min(zoomLevel.range / 2000, 50);
+            this.camera.left = -viewSize;
+            this.camera.right = viewSize;
+            this.camera.top = viewSize;
+            this.camera.bottom = -viewSize;
+            this.camera.updateProjectionMatrix();
+            console.log(`📷 ORTHO CAMERA: viewSize=${viewSize}, range=${zoomLevel.range}km`);
+        } else {
+            // Update perspective camera position with new distance
+            this.camera.position.set(0, this.config.cameraDistance, this.config.cameraDistance * 0.7);
+            this.camera.lookAt(0, 0, 0);
+            this.camera.updateProjectionMatrix();
+            console.log(`📷 CAMERA: Position Y=${this.config.cameraDistance.toFixed(2)}, Z=${(this.config.cameraDistance * 0.7).toFixed(2)}, Looking at (0,0,0)`);
+        }
         
-        // Recreate grid with new spacing
+        // Recreate grid with new spacing for current view mode
         if (this.gridMesh) {
             this.scene.remove(this.gridMesh);
+            this.gridMesh = null;
         }
-        this.createPerspectiveGrid();
+        this.createGrid();
         
         // Update magnification display
         if (this.rangeDisplay) {
@@ -615,7 +855,7 @@ export class ProximityDetector3D {
         
         // Bypass throttling for immediate update
         this.updateTrackedObjects();
-        this.updateGridOrientation();
+        this.updateGridOrientation(1/60); // Use default deltaTime for immediate update
         this.render3DScene();
         this.lastUpdate = 0;
     }
@@ -632,18 +872,253 @@ export class ProximityDetector3D {
         
         if (this.lastUpdate >= updateInterval) {
             this.updateTrackedObjects();
-            this.updateGridOrientation();
+            this.updateGridOrientation(deltaTime);
             this.render3DScene();
             this.lastUpdate = 0;
         }
     }
     
     /**
+     * Manual debug method to check radar rotation alignment (call from console)
+     */
+    debugRadarRotation() {
+        if (!this.isVisible || !this.gridMesh) {
+            console.log('🧭 RADAR DEBUG: Radar not visible or grid not initialized');
+            return;
+        }
+        
+        // Get player rotation same way as updateGridOrientation
+        let playerShip = this.starfieldManager.viewManager?.getShip();
+        let playerMesh = playerShip?.mesh;
+        let playerRotation = null;
+        
+        if (!playerMesh && this.starfieldManager.camera) {
+            playerRotation = this.starfieldManager.camera.rotation;
+        } else if (playerMesh) {
+            playerRotation = playerMesh.rotation;
+        }
+        
+        if (playerRotation) {
+            const playerDegrees = THREE.MathUtils.radToDeg(playerRotation.y);
+            const gridDegrees = THREE.MathUtils.radToDeg(this.gridMesh.rotation.y);
+            const expectedGridDegrees = THREE.MathUtils.radToDeg(-playerRotation.y - Math.PI / 2);
+            const playerTriangleDegrees = this.playerIndicator ? THREE.MathUtils.radToDeg(this.playerIndicator.rotation.y) : 'N/A';
+            
+            console.log('🧭 === RADAR ROTATION DEBUG ===');
+            console.log(`🧭 Player heading: ${playerDegrees.toFixed(1)}°`);
+            console.log(`🧭 Grid rotation: ${gridDegrees.toFixed(1)}° (expected: ${expectedGridDegrees.toFixed(1)}°)`);
+            console.log(`🔺 Player triangle: ${playerTriangleDegrees}°`);
+            console.log(`🧭 Grid tilt (X): ${THREE.MathUtils.radToDeg(this.gridMesh.rotation.x).toFixed(1)}° (should be ${this.config.gridTilt}°)`);
+            console.log(`🧭 Grid roll (Z): ${THREE.MathUtils.radToDeg(this.gridMesh.rotation.z).toFixed(1)}° (should be 0°)`);
+            console.log(`🔄 Note: Grid uses angle wrapping for smooth 360° rotation`);
+        } else {
+            console.log('🧭 RADAR DEBUG: No player rotation available');
+        }
+    }
+    
+    /**
+     * Toggle between 3D and top-down view modes
+     */
+    toggleViewMode() {
+        if (!this.isVisible) return false;
+        
+        this.viewMode = this.viewMode === '3D' ? 'topDown' : '3D';
+        
+        console.log(`🔄 ProximityDetector: Switched to ${this.viewMode} view mode`);
+        
+        // Update camera and grid for the new view mode
+        this.updateViewMode();
+        
+        // Force a complete update to redraw everything
+        this.forceUpdate();
+        
+        return true;
+    }
+    
+    /**
+     * Update camera and rendering for current view mode
+     */
+    updateViewMode() {
+        if (!this.camera || !this.scene) return;
+        
+        // Update container positioning first
+        this.updateContainerPositioning();
+        
+        // Update canvas dimensions based on new container size and view mode
+        if (this.detectorContainer) {
+            if (this.viewMode === 'topDown') {
+                this.canvasWidth = this.detectorContainer.offsetWidth - 20;  // Account for 10px padding each side
+                this.canvasHeight = this.detectorContainer.offsetHeight - 40; // Account for 10px padding + range display space
+            } else {
+                this.canvasWidth = this.detectorContainer.offsetWidth - 16;  // Account for 6px padding each side  
+                this.canvasHeight = this.detectorContainer.offsetHeight - 28; // Account for 6px padding + range display space
+            }
+            
+            // Update renderer size if it exists
+            if (this.renderer) {
+                this.renderer.setSize(this.canvasWidth, this.canvasHeight);
+            }
+        }
+        
+        if (this.viewMode === 'topDown') {
+            // Top-down orthographic view
+            this.setupTopDownView();
+        } else {
+            // 3D perspective view (default)
+            this.setup3DView();
+        }
+        
+        // Recreate the grid for the new view mode
+        if (this.gridMesh) {
+            this.scene.remove(this.gridMesh);
+        }
+        this.createGrid();
+        
+        // Recreate the player indicator for the new view mode (scale appropriately)
+        // IMPORTANT: Preserve only the accumulated rotation amount, not the full quaternion
+        let preservedAccumulatedRotation = 0;
+        if (this.playerIndicator) {
+            // Save only the accumulated rotation amount (not the full quaternion which may be incompatible)
+            preservedAccumulatedRotation = this.playerIndicatorAccumulatedRotation || 0;
+            this.scene.remove(this.playerIndicator);
+        }
+        
+        this.createPlayerIndicator();
+        
+        // Restore only the accumulated rotation amount and rebuild the quaternion from scratch
+        if (preservedAccumulatedRotation !== 0) {
+            this.playerIndicatorAccumulatedRotation = preservedAccumulatedRotation;
+            
+            // Rebuild the Y rotation quaternion from the accumulated rotation
+            const restoredRotationQuaternion = new THREE.Quaternion();
+            restoredRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), preservedAccumulatedRotation);
+            this.playerIndicator.quaternion.copy(restoredRotationQuaternion);
+            
+            console.log(`🔺 RESTORED: Player indicator rotation to ${(preservedAccumulatedRotation * 180 / Math.PI).toFixed(1)}°`);
+        }
+    }
+    
+    /**
+     * Setup camera for top-down 2D view
+     */
+    setupTopDownView() {
+        // Use orthographic camera for true top-down view
+        const currentZoom = this.getCurrentZoom();
+        
+        // Adjust view size for better visibility in top-down mode
+        // Use a smaller scale factor to make objects more visible
+        const viewSize = Math.min(currentZoom.range / 2000, 50); // Smaller view size, max 50 units
+        
+        console.log(`🔄 Top-down camera setup: zoom range=${currentZoom.range}km, viewSize=${viewSize}`);
+        
+        // Replace perspective camera with orthographic camera
+        this.camera = new THREE.OrthographicCamera(
+            -viewSize, viewSize,    // left, right
+            viewSize, -viewSize,    // top, bottom  
+            0.1, 1000               // near, far
+        );
+        
+        // Position camera directly above looking down
+        this.camera.position.set(0, 100, 0);
+        this.camera.lookAt(0, 0, 0);
+        this.camera.updateProjectionMatrix();
+        
+        console.log(`🔄 Top-down camera positioned at (0, 100, 0) with orthographic bounds: ${-viewSize} to ${viewSize}`);
+    }
+    
+    /**
+     * Setup camera for 3D perspective view
+     */
+    setup3DView() {
+        // Use perspective camera for 3D view
+        this.camera = new THREE.PerspectiveCamera(
+            this.config.fov,
+            this.detectorContainer.offsetWidth / this.detectorContainer.offsetHeight,
+            0.1,
+            1000
+        );
+        
+        // Position camera at angle for 3D perspective
+        this.camera.position.set(0, this.config.cameraDistance, this.config.cameraDistance * 0.7);
+        this.camera.lookAt(0, 0, 0);
+        this.camera.updateProjectionMatrix();
+    }
+    
+    /**
+     * Create appropriate grid based on view mode
+     */
+    createGrid() {
+        if (this.viewMode === 'topDown') {
+            this.createTopDownGrid();
+        } else {
+            this.createPerspectiveGrid();
+        }
+    }
+    
+    /**
+     * Create simple 2D grid for top-down view
+     */
+    createTopDownGrid() {
+        const currentZoom = this.getCurrentZoom();
+        
+        // Create a much larger grid to handle scrolling - make it 5x larger than the view
+        const viewHalfSize = Math.min(currentZoom.range / 2000, 50);
+        const gridHalfSize = viewHalfSize * 5; // 5x larger to handle scrolling
+        const gridSpacing = viewHalfSize / 6; // More reasonable spacing for visibility
+        const gridLines = Math.ceil((gridHalfSize * 2) / gridSpacing);
+        
+        console.log(`🔄 Top-down grid: viewSize=${viewHalfSize}, gridSize=${gridHalfSize}, spacing=${gridSpacing}, lines=${gridLines}`);
+        
+        const gridGeometry = new THREE.BufferGeometry();
+        const gridMaterial = new THREE.LineBasicMaterial({
+            color: 0x00ff00,
+            opacity: 0.8,  // Brighter grid lines for better visibility in top-down
+            transparent: true
+        });
+        
+        const vertices = [];
+        
+        // Create horizontal lines
+        for (let i = 0; i <= gridLines; i++) {
+            const pos = -gridHalfSize + (i * gridSpacing);
+            vertices.push(-gridHalfSize, 0, pos);
+            vertices.push(gridHalfSize, 0, pos);
+        }
+        
+        // Create vertical lines
+        for (let i = 0; i <= gridLines; i++) {
+            const pos = -gridHalfSize + (i * gridSpacing);
+            vertices.push(pos, 0, -gridHalfSize);
+            vertices.push(pos, 0, gridHalfSize);
+        }
+        
+        gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        this.gridMesh = new THREE.LineSegments(gridGeometry, gridMaterial);
+        
+        // Ensure grid starts with correct orientation for top-down mode
+        this.gridMesh.rotation.x = 0; // No tilt in top-down
+        this.gridMesh.rotation.y = 0; // No initial rotation
+        this.gridMesh.rotation.z = 0; // No roll
+        
+        console.log(`🔄 Top-down grid created with flat orientation`);
+        
+        this.scene.add(this.gridMesh);
+    }
+    
+    /**
      * Update tracked objects and their positions
      */
     updateTrackedObjects() {
-        // Reduce spam - only log updates when debug mode is on
-        this.logControlled('log', 'updateTrackedObjects() called');
+        // Throttle updates to avoid excessive processing and console spam
+        const now = Date.now();
+        if (this.lastUpdateTime && (now - this.lastUpdateTime) < 100) { // 100ms throttle (10 FPS max)
+            return;
+        }
+        this.lastUpdateTime = now;
+        
+        // DEBUG: Always log method entry
+        // Disabled to stop console spam
+        // console.log('🎯 updateTrackedObjects() called - ENTRY POINT');
         
         if (!this.starfieldManager.solarSystemManager) {
             this.logControlled('warn', 'No solarSystemManager available');
@@ -678,6 +1153,9 @@ export class ProximityDetector3D {
         }
         
         const playerPosition = playerMesh.position;
+        
+        // Movement direction = fore camera direction (ship only moves forward)
+        
         // Use current zoom level range instead of fixed detection range
         const currentZoom = this.getCurrentZoom();
         const detectionRange = currentZoom.range;
@@ -709,13 +1187,29 @@ export class ProximityDetector3D {
             const distance = playerPosition.distanceTo(obj.mesh.position);
             
             if (distance <= detectionRange && distance > 1) { // Exclude self
+                // DEBUG: Log all objects being considered (reduced spam)
+                // console.log(`🎯 OBJECT FILTER for ${obj.name || obj.type}:`);
+                // console.log(`  Type: ${obj.type}, Distance: ${(distance/1000).toFixed(1)}km`);
+                // console.log(`  isTargetDummy: ${obj.isTargetDummy}, isEnemyShip: ${obj.isEnemyShip}`);
+                
                 // Temporarily disable celestial bodies (stars, planets, moons)
                 if (obj.type === 'star' || obj.type === 'planet' || obj.type === 'moon') {
+                                    // console.log(`  🚫 FILTERED OUT: Celestial body (${obj.type})`);
                     continue;
                 }
                 
+                // Completely disabled to stop console spam
+                // if (obj.isTargetDummy) {
+                //     console.log(`  ✅ PASSED FILTER: Creating blip for ${obj.name || obj.type}`);
+                // }
+                
                 this.createObjectBlip(obj, playerPosition);
                 objectsInRange++;
+            } else {
+                // DEBUG: Log objects outside range (FORCE ALWAYS for targets)
+                if (obj.isTargetDummy || obj.isEnemyShip || obj.type === 'enemy_ship') {
+                    console.log(`🎯 OUT OF RANGE: ${obj.name || obj.type} at ${(distance/1000).toFixed(1)}km (range: ${(detectionRange/1000).toFixed(0)}km)`);
+                }
             }
         }
         
@@ -767,9 +1261,11 @@ export class ProximityDetector3D {
         
         // Get target dummy ships from StarfieldManager
         if (this.starfieldManager.dummyShipMeshes) {
-            this.logControlled('log', `Found ${this.starfieldManager.dummyShipMeshes.length} dummy ship meshes`);
+            // Reduced debug spam - only log once
+            // console.log(`🎯 DUMMY SHIP ACCESS: Found ${this.starfieldManager.dummyShipMeshes.length} dummy ship meshes`);
             this.starfieldManager.dummyShipMeshes.forEach((mesh, index) => {
                 if (mesh && mesh.position && mesh.userData?.ship) {
+                    // console.log(`🎯 DUMMY SHIP FOUND: ${mesh.userData.ship.shipName || `Target ${index + 1}`} at (${mesh.position.x.toFixed(1)}, ${mesh.position.y.toFixed(1)}, ${mesh.position.z.toFixed(1)})`);
                     objects.push({
                         mesh: mesh,  // The Three.js mesh
                         name: mesh.userData.ship.shipName || `Target ${index + 1}`,
@@ -778,8 +1274,12 @@ export class ProximityDetector3D {
                         ship: mesh.userData.ship,
                         isTargetDummy: true
                     });
+                } else {
+                    console.log(`🚫 DUMMY SHIP INVALID: Index ${index} - mesh:${!!mesh}, position:${!!mesh?.position}, userData.ship:${!!mesh?.userData?.ship}`);
                 }
             });
+        } else {
+            console.log(`🚫 NO DUMMY SHIPS: dummyShipMeshes is ${this.starfieldManager.dummyShipMeshes}`);
         }
         
         // Get real enemy ships if they exist
@@ -844,25 +1344,57 @@ export class ProximityDetector3D {
     createObjectBlip(obj, playerPosition) {
         if (!obj.mesh) return;
         
-        // Calculate relative position
-        const relativePos = obj.mesh.position.clone().sub(playerPosition);
-        const distance = relativePos.length();
-        
-        // Calculate the actual size of the grid in Three.js scene units
-        const gridSize = this.config.gridSize;
-        const spacing = this.config.gridSpacing / 1000; // Convert to scene units (gridSpacing is in meters, convert to km)
-        const gridHalfSizeInScene = (gridSize - 1) * spacing / 2; // Actual half-size of grid (0.55 units)
-        
-        // Use current zoom level's range for world coordinate mapping
+        // Calculate position based on view mode
         const currentZoom = this.getCurrentZoom();
-        const worldHalfRange = (currentZoom.range / 1000) / 2; // Half the detection range in kilometers (convert from meters to km)
+        let gridX, gridZ, relativePos, distance;
         
-        // Map world coordinates to Three.js grid coordinates
-        // Scale factor: how many Three.js units per meter
-        const worldToGridScaleFactor = gridHalfSizeInScene / worldHalfRange;
+        // Common calculations for both view modes
+        relativePos = obj.mesh.position.clone().sub(playerPosition);
+        distance = relativePos.length(); // distance in meters
+        const detectionRangeM = currentZoom.range; // range in meters
+        const worldHalfRangeM = detectionRangeM / 2; // half range in meters
         
-        let gridX = relativePos.x * worldToGridScaleFactor;
-        let gridZ = relativePos.z * worldToGridScaleFactor;
+        if (this.viewMode === 'topDown') {
+            // Top-down mode: use absolute coordinates, grid stays fixed centered on player
+            // Use same scale system as 3D mode but with top-down view size  
+            const viewHalfSize = Math.min(currentZoom.range / 2000, 50);
+            const worldToGridScaleFactor = viewHalfSize / worldHalfRangeM; // scale factor: scene units per meter
+            
+            // Convert relative position to grid coordinates (same as 3D mode)
+            gridX = relativePos.x * worldToGridScaleFactor;
+            gridZ = relativePos.z * worldToGridScaleFactor;
+        } else {
+            // 3D mode: use relative positioning with proper scaling
+            const gridHalfSizeInScene = 0.55; // Fixed visual half-size
+            const worldToGridScaleFactor = gridHalfSizeInScene / worldHalfRangeM; // scale factor: scene units per meter
+            
+            gridX = relativePos.x * worldToGridScaleFactor;
+            gridZ = relativePos.z * worldToGridScaleFactor;
+        }
+        
+        // DEBUG: Log coordinate mapping (disabled to reduce spam)
+        // console.log(`🎯 COORDINATE DEBUG for ${obj.name || obj.type}:`);
+        // console.log(`  Type: ${obj.type}, isTargetDummy: ${obj.isTargetDummy}, isEnemyShip: ${obj.isEnemyShip}`);
+        // console.log(`  World distance: ${distance.toFixed(1)}km`);
+        // console.log(`  World pos: (${relativePos.x.toFixed(1)}, ${relativePos.z.toFixed(1)})`);
+        // console.log(`  Grid half range: ${worldHalfRangeM.toFixed(1)}m`);
+        // console.log(`  Scale factor: ${worldToGridScaleFactor.toFixed(6)}`);
+        // console.log(`  Grid pos: (${gridX.toFixed(3)}, ${gridZ.toFixed(3)})`);
+        // console.log(`  Grid size: ${gridHalfSizeInScene.toFixed(3)} units`);
+        // console.log(`  Grid distance from center: ${Math.sqrt(gridX*gridX + gridZ*gridZ).toFixed(3)} units`);
+        
+        // Debug ALL detected objects to see what we're working with
+        console.log(`🎯 DETECTED OBJECT: ${obj.name || 'unnamed'}`);
+        console.log(`  Type: ${obj.type}, isTargetDummy: ${obj.isTargetDummy}, isEnemyShip: ${obj.isEnemyShip}`);
+        console.log(`  View mode: ${this.viewMode}`);
+        console.log(`  World distance: ${distance.toFixed(1)}m (${(distance/1000).toFixed(2)}km)`);
+        console.log(`  Player pos: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
+        console.log(`  Target pos: (${obj.mesh.position.x.toFixed(1)}, ${obj.mesh.position.y.toFixed(1)}, ${obj.mesh.position.z.toFixed(1)})`);
+        console.log(`  Relative pos: (${relativePos.x.toFixed(1)}, ${relativePos.y.toFixed(1)}, ${relativePos.z.toFixed(1)})`);
+        console.log(`  Grid half range: ${worldHalfRangeM.toFixed(1)}m (${(worldHalfRangeM/1000).toFixed(1)}km)`);
+        console.log(`  Detection range: ${currentZoom.range}m (${currentZoom.label})`);
+        console.log(`  Grid pos: (${gridX.toFixed(3)}, ${gridZ.toFixed(3)})`);
+        console.log(`  Grid distance from center: ${Math.sqrt(gridX*gridX + gridZ*gridZ).toFixed(3)} units`);
         
         // Apply minimum visual separation for very close objects
         const minVisualSeparation = 0.1; // Minimum separation in grid units
@@ -873,20 +1405,28 @@ export class ProximityDetector3D {
             const scaleFactor = minVisualSeparation / gridDistance;
             gridX *= scaleFactor;
             gridZ *= scaleFactor;
-            console.log(`📏 MINIMUM SEPARATION: Scaled ${obj.name || obj.type} from ${gridDistance.toFixed(6)} to ${minVisualSeparation} grid units`);
+            // console.log(`📏 MINIMUM SEPARATION: Scaled ${obj.name || obj.type} from ${gridDistance.toFixed(6)} to ${minVisualSeparation} grid units`);
         }
         
-        // Debug very small distances (under 1 meter)
-        if (distance < 1.0) {
-            console.log(`🔍 VERY CLOSE OBJECT: ${obj.name || obj.type}`);
-            console.log(`  Distance: ${(distance * 1000).toFixed(2)}mm`);
-            console.log(`  World pos: (${relativePos.x.toFixed(6)}, ${relativePos.y.toFixed(6)}, ${relativePos.z.toFixed(6)})`);
-            console.log(`  Scale factor: ${worldToGridScaleFactor.toFixed(6)}`);
-            console.log(`  Grid pos: (${gridX.toFixed(6)}, ${gridZ.toFixed(6)})`);
-            console.log(`  Grid range: ${worldHalfRange}m, Grid size: ${gridHalfSizeInScene.toFixed(3)} units`);
-        }
+        // Debug very small distances (under 1 meter) - disabled for production
+        // if (distance < 1.0) {
+        //     console.log(`🔍 VERY CLOSE OBJECT: ${obj.name || obj.type}`);
+        //     console.log(`  Distance: ${(distance * 1000).toFixed(2)}mm`);
+        //     console.log(`  World pos: (${relativePos.x.toFixed(6)}, ${relativePos.y.toFixed(6)}, ${relativePos.z.toFixed(6)})`);
+        //     console.log(`  Scale factor: ${worldToGridScaleFactor.toFixed(6)}`);
+        //     console.log(`  Grid pos: (${gridX.toFixed(6)}, ${gridZ.toFixed(6)})`);
+        //     console.log(`  Grid range: ${worldHalfRange}m, Grid size: ${gridHalfSizeInScene.toFixed(3)} units`);
+        // }
         
-        const altitude = relativePos.y; // Altitude in km (world coordinates are already in km)
+        // Calculate altitude based on view mode
+        let altitude;
+        if (this.viewMode === 'topDown') {
+            // Top-down mode: use absolute altitude relative to player
+            altitude = obj.mesh.position.y - playerPosition.y;
+        } else {
+            // 3D mode: use relative altitude
+            altitude = relativePos.y;
+        }
         
         // Use altitude bucketing system for better visual distribution
         const bucketedAltitudeY = this.normalizeAltitudeToBucket(altitude);
@@ -905,27 +1445,41 @@ export class ProximityDetector3D {
      * Create vertical altitude indicator line
      */
     createAltitudeLine(gridX, gridZ, bucketedAltitudeY, blipColor, obj) {
+        // Skip altitude lines in top-down mode
+        if (this.viewMode === 'topDown') {
+            return;
+        }
+        
         // Use bucketed altitude directly (already normalized to appropriate range)
         
         // Use cylinder geometry for guaranteed thickness visibility
-        // Calculate line length and position
-        const lineLength = Math.abs(bucketedAltitudeY);
-        const lineHeight = lineLength > 0 ? lineLength : 0.01; // Minimum height for visibility
-        const centerY = bucketedAltitudeY / 2; // Position cylinder center between grid and object
+        // Calculate line length and position (2x taller per user request)
+        const lineLength = Math.abs(bucketedAltitudeY) * 2; // Make vertical columns 2x as tall
+        const lineHeight = lineLength > 0 ? lineLength : 0.2; // Minimum height (also 2x taller)
         
-        // Calculate line thickness based on blip size (33% of triangle size)
+        // Position so line is rooted at grid plane (Y=0) and extends to object altitude
+        let centerY;
+        if (bucketedAltitudeY >= 0) {
+            // Object above or at grid level - line extends upward from Y=0
+            centerY = lineHeight / 2; // Position cylinder so bottom is at Y=0, extends upward
+        } else {
+            // Object below grid level - line extends downward from Y=0
+            centerY = -lineHeight / 2; // Position cylinder so top is at Y=0, extends downward
+        }
+        
+        // Calculate line thickness based on blip size (increased for better visibility)
         const baseSizeMultiplier = 0.1;
         const playerSize = baseSizeMultiplier * 2; // Full size for player ship
         const targetSize = baseSizeMultiplier * 1.2; // Smaller size for targets
         const blipSize = (obj.type === 'enemy_ship' || obj.isTargetDummy) ? targetSize : playerSize;
-        const lineThickness = blipSize * 0.33; // 33% of blip size
+        const lineThickness = blipSize * 0.8; // 80% as thick as the blip
         
         // Create thick line using cylinder geometry with proper thickness
         const lineGeometry = new THREE.CylinderGeometry(lineThickness, lineThickness, lineHeight, 6);
         const lineMaterial = new THREE.MeshBasicMaterial({
             color: blipColor, // Match the blip color
-            opacity: 0.8,
-            transparent: true
+            opacity: 1.0, // Fully opaque for better visibility
+            transparent: false
         });
         
         const altitudeLine = new THREE.Mesh(lineGeometry, lineMaterial);
@@ -939,8 +1493,10 @@ export class ProximityDetector3D {
         this.scene.add(altitudeLine);
         this.altitudeLines.set(`${obj.id || `${gridX}_${gridZ}_${Date.now()}`}`, altitudeLine);
         
-        // Debug logging for altitude line creation
-        console.log(`🔧 ALTITUDE LINE: Created for ${obj.name || obj.type} at (${gridX.toFixed(2)}, ${centerY.toFixed(2)}, ${gridZ.toFixed(2)}), thickness: ${lineThickness.toFixed(3)}, height: ${lineHeight.toFixed(3)}, color: #${blipColor.toString(16)}`);
+        // Debug altitude line creation - disabled after diagnosis
+        // if (obj.isTargetDummy) {
+        //     console.log(`🔧 ALTITUDE LINE: Created for ${obj.name || obj.type} at (${gridX.toFixed(2)}, ${centerY.toFixed(2)}, ${gridZ.toFixed(2)}), thickness: ${lineThickness.toFixed(3)}, height: ${lineHeight.toFixed(3)}, bucketedAlt: ${bucketedAltitudeY.toFixed(3)}`);
+        // }
     }
     
     /**
@@ -953,59 +1509,119 @@ export class ProximityDetector3D {
         const blipColor = this.getBlipColor(obj);
         
         // Use different sizes for player vs targets
-        // Player ship blip should be more prominent, target blips smaller
-        const baseSizeMultiplier = 0.1;
+        // Scale blip size based on view mode and coordinate space
+        let baseSizeMultiplier;
+        if (this.viewMode === 'topDown') {
+            // In top-down mode, use larger blips for the larger coordinate space
+            const currentZoom = this.getCurrentZoom();
+            const coordinateScale = Math.min(currentZoom.range / 2000, 50);
+            baseSizeMultiplier = Math.max(coordinateScale * 0.02, 0.5); // Scale with coordinate space, minimum 0.5
+        } else {
+            // In 3D mode, use the standard small size
+            baseSizeMultiplier = 0.1;
+        }
+        
         const playerSize = baseSizeMultiplier * 2; // Full size for player ship
-        const targetSize = baseSizeMultiplier * 1.2; // Smaller size for targets (60% of player size)
+        const targetSize = baseSizeMultiplier * 1.2; // Smaller size for targets
         
         // Choose size based on whether this is a target or other object
         const blipSize = (obj.type === 'enemy_ship' || obj.isTargetDummy) ? targetSize : playerSize;
         
-        // Different shapes for different object types
+        // Different shapes based on view mode and object type
         let blipGeometry;
-        if (obj.type === 'enemy_ship' || obj.isTargetDummy) {
-            // Triangle for ships (pointing up) - smaller for targets
-            blipGeometry = new THREE.ConeGeometry(blipSize, blipSize * 1.5, 3);
-        } else if (obj.type === 'planet') {
-            // Large sphere for planets
-            blipGeometry = new THREE.SphereGeometry(blipSize * 1.2, 8, 8);
-        } else if (obj.type === 'moon') {
-            // Small sphere for moons
-            blipGeometry = new THREE.SphereGeometry(blipSize * 0.8, 6, 6);
-        } else if (obj.type === 'star') {
-            // Star shape (octahedron) - same size as enemy blips
-            const starSize = (obj.type === 'star') ? targetSize : blipSize;
-            blipGeometry = new THREE.OctahedronGeometry(starSize);
+        if (this.viewMode === 'topDown') {
+            // Top-down mode: use round dots (spheres) for all objects
+            blipGeometry = new THREE.SphereGeometry(blipSize, 8, 8);
         } else {
-            // Default cube for other objects
-            blipGeometry = new THREE.BoxGeometry(blipSize, blipSize, blipSize);
+            // 3D mode: use different shapes for different object types
+            if (obj.type === 'enemy_ship' || obj.isTargetDummy) {
+                // Triangle for ships (pointing up) - smaller for targets
+                blipGeometry = new THREE.ConeGeometry(blipSize, blipSize * 1.5, 3);
+            } else if (obj.type === 'planet') {
+                // Large sphere for planets
+                blipGeometry = new THREE.SphereGeometry(blipSize * 1.2, 8, 8);
+            } else if (obj.type === 'moon') {
+                // Small sphere for moons
+                blipGeometry = new THREE.SphereGeometry(blipSize * 0.8, 6, 6);
+            } else if (obj.type === 'star') {
+                // Star shape (octahedron) - same size as enemy blips
+                const starSize = (obj.type === 'star') ? targetSize : blipSize;
+                blipGeometry = new THREE.OctahedronGeometry(starSize);
+            } else {
+                // Default cube for other objects
+                blipGeometry = new THREE.BoxGeometry(blipSize, blipSize, blipSize);
+            }
+        }
+        
+        // Make blips brighter in top-down mode for better visibility
+        let blipOpacity, blipTransparent;
+        if (this.viewMode === 'topDown') {
+            // Top-down mode: fully opaque and bright for maximum visibility
+            blipOpacity = 1.0;
+            blipTransparent = false;
+        } else {
+            // 3D mode: slightly transparent as before
+            blipOpacity = 0.9;
+            blipTransparent = true;
         }
         
         const blipMaterial = new THREE.MeshBasicMaterial({
             color: blipColor,
-            transparent: true,
-            opacity: 0.9
+            transparent: blipTransparent,
+            opacity: blipOpacity
         });
         
         const blip = new THREE.Mesh(blipGeometry, blipMaterial);
         
-        // Position blip at grid coordinates with altitude (already scaled)
-        blip.position.set(gridX, clampedAltitude, gridZ);
+        // Position blip based on view mode
+        if (this.viewMode === 'topDown') {
+            // In top-down mode, place all blips slightly above grid level for visibility
+            blip.position.set(gridX, 0.05, gridZ); // Slightly above grid
+            // Debug top-down blip positioning
+            if (obj.isTargetDummy || obj.type === 'enemy_ship') {
+                // console.log(`🔄 TOP-DOWN BLIP: ${obj.name || obj.type} at (${gridX.toFixed(3)}, 0.05, ${gridZ.toFixed(3)}) size: ${blipSize.toFixed(3)} in viewMode: ${this.viewMode}`);
+            }
+        } else {
+            // In 3D mode, use altitude information
+            blip.position.set(gridX, clampedAltitude, gridZ);
+        }
         
-        // Ships point in a direction based on their altitude relative to grid plane
+        // Handle orientation based on view mode
         if (obj.type === 'enemy_ship' || obj.isTargetDummy) {
-            // Determine if object is above or below grid plane
-            const gridPlaneWorldY = 0; // Grid is centered at world Y=0
-            const objectAltitude = obj.mesh.position.y; // Object's world Y position
+            // Get player rotation for consistent orientation
+            let playerRotation = null;
+            if (this.starfieldManager.viewManager?.getShip()?.mesh) {
+                playerRotation = this.starfieldManager.viewManager.getShip().mesh.rotation;
+            } else if (this.starfieldManager.camera) {
+                playerRotation = this.starfieldManager.camera.rotation;
+            }
             
-            if (objectAltitude >= gridPlaneWorldY) {
-                // Object is at or above grid plane - point triangle UP
-                blip.rotation.x = -Math.PI / 2; // Point up from grid
-                console.log(`🔺 TRIANGLE UP: ${obj.name || obj.type} at altitude ${objectAltitude.toFixed(1)}m (at/above grid at ${gridPlaneWorldY})`);
+            if (this.viewMode === 'topDown') {
+                // In top-down mode, objects should be flat and visible from above
+                // No rotation needed for spheres, but if this is a triangle, make it flat
+                blip.rotation.x = 0; // Keep flat (lying in XZ plane)
+                blip.rotation.z = 0; // No roll
+                if (playerRotation) {
+                    blip.rotation.y = playerRotation.y + Math.PI / 2; // Match ship heading for directional objects
+                }
             } else {
-                // Object is below grid plane - point triangle DOWN
-                blip.rotation.x = Math.PI / 2; // Point down from grid
-                console.log(`🔻 TRIANGLE DOWN: ${obj.name || obj.type} at altitude ${objectAltitude.toFixed(1)}m (below grid at ${gridPlaneWorldY})`);
+                // In 3D mode, use full orientation logic
+                // Set Y rotation to match player heading (fore view) 
+                if (playerRotation) {
+                    blip.rotation.y = playerRotation.y + Math.PI / 2; // Add 90° to align with ship facing direction
+                }
+                
+                // Determine if object is above or below grid plane for X rotation
+                const gridPlaneWorldY = 0; // Grid is centered at world Y=0
+                const objectAltitude = obj.mesh.position.y; // Object's world Y position
+                
+                if (objectAltitude >= gridPlaneWorldY) {
+                    // Object is at or above grid plane - point triangle UP
+                    blip.rotation.x = -Math.PI / 2; // Point up from grid
+                } else {
+                    // Object is below grid plane - point triangle DOWN
+                    blip.rotation.x = Math.PI / 2; // Point down from grid
+                }
             }
         }
         
@@ -1072,7 +1688,7 @@ export class ProximityDetector3D {
      * - Grid rotates with ship orientation
      * - Grid scrolls to keep player centered
      */
-    updateGridOrientation() {
+    updateGridOrientation(deltaTime = 1/60) {
         // Try multiple ways to get the player ship and mesh (same as updateTrackedObjects)
         let playerShip = this.starfieldManager.viewManager?.getShip();
         let playerMesh = playerShip?.mesh;
@@ -1108,45 +1724,172 @@ export class ProximityDetector3D {
         
 
         
-        // SPEC: Grid rotates with ship orientation
-        // Smoothly interpolate grid rotation to match ship's Y rotation
-        const targetY = -playerRotation.y; // Inverse for correct orientation
-        this.gridMesh.rotation.y = THREE.MathUtils.lerp(this.gridMesh.rotation.y, targetY, 0.1);
+        // SPEC: Grid rotates with ship orientation (Y-axis only for fore view)
+        // Hold grid plane stable - only rotate around Y-axis to match player heading
+        // Preserve the original tilt (X-axis) and keep Z-axis stable (no roll)
+        const targetY = -playerRotation.y; // Remove 90° offset to align grid with ship heading
         
-        // SPEC: Triangle stays pointing north (fixed orientation)
-        // Keep player indicator pointing to absolute north regardless of ship rotation
-        if (this.playerIndicator) {
-            this.playerIndicator.rotation.y = 0; // Always point north
+        // Handle angle wrapping for smooth 360° rotation (fix the mirroring issue)
+        let currentY = this.gridMesh.rotation.y;
+        let adjustedTargetY = targetY;
+        
+        // Find the shortest angular distance, accounting for 2π wrapping
+        let angleDiff = adjustedTargetY - currentY;
+        while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+        adjustedTargetY = currentY + angleDiff;
+        
+        // Add controlled debug logging for rotation verification (disabled to reduce spam)
+        const rotationDiff = Math.abs(angleDiff);
+        // if (rotationDiff > 0.1 || !this.lastLoggedRotation || Math.abs(this.lastLoggedRotation - targetY) > 0.1) {
+        //     const playerDegrees = THREE.MathUtils.radToDeg(playerRotation.y);
+        //     const gridDegrees = THREE.MathUtils.radToDeg(targetY);
+        //     const currentGridDegrees = THREE.MathUtils.radToDeg(currentY);
+        //     const adjustedGridDegrees = THREE.MathUtils.radToDeg(adjustedTargetY);
+        //     console.log(`🧭 RADAR ROTATION: Player heading ${playerDegrees.toFixed(1)}°, Grid target ${gridDegrees.toFixed(1)}° (adjusted: ${adjustedGridDegrees.toFixed(1)}°), Current ${currentGridDegrees.toFixed(1)}°`);
+        //     this.lastLoggedRotation = targetY;
+        // }
+        
+        // Handle grid orientation based on view mode
+        if (this.viewMode === 'topDown') {
+            // Top-down mode: NO rotation at all - fixed grid orientation
+            this.gridMesh.rotation.x = 0; // No tilt
+            this.gridMesh.rotation.y = 0; // No rotation - grid stays fixed
+            this.gridMesh.rotation.z = 0; // No roll
+            
+            // Debug top-down grid rotation (disabled to reduce console spam)
+            // if (rotationDiff > 0.1 || !this.lastLoggedRotation) {
+            //     const playerDegrees = THREE.MathUtils.radToDeg(playerRotation.y);
+            //     const gridDegrees = THREE.MathUtils.radToDeg(targetY);
+            //     const currentGridDegrees = THREE.MathUtils.radToDeg(currentY);
+            //     const adjustedGridDegrees = THREE.MathUtils.radToDeg(adjustedTargetY);
+            //     console.log(`🔄 TOP-DOWN GRID: Player=${playerDegrees.toFixed(1)}° Target=${gridDegrees.toFixed(1)}° Current=${currentGridDegrees.toFixed(1)}° Adjusted=${adjustedGridDegrees.toFixed(1)}° AngleDiff=${THREE.MathUtils.radToDeg(angleDiff).toFixed(1)}°`);
+            //     
+            //     // Log actual final grid rotation to verify it's flat
+            //     const finalX = THREE.MathUtils.radToDeg(this.gridMesh.rotation.x);
+            //     const finalY = THREE.MathUtils.radToDeg(this.gridMesh.rotation.y);
+            //     const finalZ = THREE.MathUtils.radToDeg(this.gridMesh.rotation.z);
+            //     console.log(`🔄 TOP-DOWN FINAL: X=${finalX.toFixed(3)}° Y=${finalY.toFixed(1)}° Z=${finalZ.toFixed(3)}° (X&Z should be 0.000°)`);
+            // }
+        } else {
+            // 3D mode: apply all rotations
+            this.gridMesh.rotation.y = THREE.MathUtils.lerp(currentY, adjustedTargetY, 0.1);
+            this.gridMesh.rotation.x = THREE.MathUtils.degToRad(this.config.gridTilt); // Maintain original tilt
+            this.gridMesh.rotation.z = 0; // No roll - keep grid plane level
         }
         
-        // SPEC: Grid scrolls to keep player centered
-        // Update grid position to follow ship (keeping player at center)
-        // IMPORTANT: Only update X and Z, keep Y at 0 to maintain fixed grid elevation
+        // SPEC: Triangle orientation matches player ship heading (fore camera direction)
+        // Since ship only moves in the direction the fore camera is facing, use rotation velocity
+        if (this.playerIndicator) {
+            // Use rotation velocity (this preserves 360° rotation capability)
+            const rotationVelocity = this.starfieldManager?.rotationVelocity;
+            
+            if (rotationVelocity && Math.abs(rotationVelocity.y) > 0.0001) {
+                // Apply rotation using accumulated tracking to avoid Euler angle limitations
+                const rotationAmount = rotationVelocity.y * deltaTime * 60;
+                
+                // Initialize accumulated rotation tracking
+                if (this.playerIndicatorAccumulatedRotation === undefined) {
+                    this.playerIndicatorAccumulatedRotation = 0;
+                }
+                
+                // Track accumulated rotation (this allows 360° rotation)
+                this.playerIndicatorAccumulatedRotation += rotationAmount;
+                
+                // Log rotation for debugging
+                const displayDegrees = THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation);
+                const wrappedDegrees = ((displayDegrees % 360) + 360) % 360;
+                console.log(`🎯 ROTATION: ${wrappedDegrees.toFixed(1)}° (accumulated for 360° capability)`);
+            }
+            
+            // Note: Player triangle rotation is now handled purely by rotateY() calls above
+            // Initial rotation is set only when the indicator is created in createPlayerIndicator()
+        }
+        
+        // SPEC: Grid scrolls to keep player centered (top-down mode only)
         if (this.gridMesh) {
-            // Convert ship position to grid coordinates for scrolling effect
-            const gridScale = this.getCurrentZoom().gridSpacing;
-            this.gridMesh.position.x = -(playerPosition.x % gridScale) / 100;
-            this.gridMesh.position.y = 0; // Keep grid at fixed elevation
-            this.gridMesh.position.z = -(playerPosition.z % gridScale) / 100;
+            if (this.viewMode === 'topDown') {
+                // Top-down mode: scroll grid to keep player centered
+                const currentZoom = this.getCurrentZoom();
+                const viewHalfSize = Math.min(currentZoom.range / 2000, 50);
+                const worldHalfRangeM = currentZoom.range / 2;
+                const worldToGridScale = viewHalfSize / (worldHalfRangeM / 1000); // convert meters to km for scale
+                
+                // Use modulo to create infinite scrolling effect
+                const gridSpacing = viewHalfSize / 6;
+                
+                // Keep grid fixed at origin - blips use relative coordinates
+                this.gridMesh.position.x = 0;
+                this.gridMesh.position.y = 0; // Keep grid at fixed elevation
+                this.gridMesh.position.z = 0;
+                
+                // Debug grid scrolling (disabled to reduce spam)
+                // if (rotationDiff > 0.1 || !this.lastLoggedRotation) {
+                //     console.log(`🔄 GRID SCROLL: Player at (${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)})km, Grid offset (${this.gridMesh.position.x.toFixed(2)}, ${this.gridMesh.position.z.toFixed(2)})`);
+                // }
+            } else {
+                // 3D mode: use original scrolling logic
+                const gridScale = this.getCurrentZoom().gridSpacing;
+                this.gridMesh.position.x = -(playerPosition.x % gridScale) / 100;
+                this.gridMesh.position.y = 0; // Keep grid at fixed elevation
+                this.gridMesh.position.z = -(playerPosition.z % gridScale) / 100;
+            }
         }
         
         // Keep player indicator at grid level (fixed position)
         // Player altitude should be shown via vertical lines, not by moving the indicator
         if (this.playerIndicator) {
-            this.playerIndicator.position.y = 0; // Keep player indicator on grid level
+            if (this.viewMode === 'topDown') {
+                // Top-down mode: keep player indicator at center of screen (fixed position)
+                this.playerIndicator.position.set(0, 0.1, 0); // Always at center, slightly above grid
+                
+                // Debug player indicator position (heavily throttled to reduce spam)
+                this.playerPositionLogCount = (this.playerPositionLogCount || 0) + 1;
+                if (this.playerPositionLogCount % 600 === 0) { // Only log every 10 seconds
+                    console.log(`🎯 PLAYER INDICATOR: Position (${this.playerIndicator.position.x}, ${this.playerIndicator.position.y}, ${this.playerIndicator.position.z}) Visible: ${this.playerIndicator.visible}`);
+                }
+            } else {
+                // 3D mode: position based on grid level
+                this.playerIndicator.position.y = 0; // Keep player indicator on grid level
+            }
             
             // Update triangle orientation based on player altitude relative to grid plane
             // Grid plane is at a fixed world Y position (determined by the game)
             const gridPlaneWorldY = 0; // Grid is centered at world Y=0
             const playerAltitude = playerPosition.y; // Player's world Y position
             
-            // Point triangle up if at or above grid plane, down if below grid plane
-            if (playerAltitude >= gridPlaneWorldY) {
-                // Player is at or above grid plane - point triangle UP
-                this.playerIndicator.rotation.x = -Math.PI / 2; // Point up on screen
+            // Handle player triangle orientation using PURE QUATERNIONS (no Euler angle interference)
+            // IMPORTANT: Never set .rotation directly - it will override quaternion rotations
+            if (this.viewMode === 'topDown') {
+                // In top-down mode, triangle should be flat and visible from above
+                // Apply 45° correction for coordinate system alignment
+                const correctedRotation = (this.playerIndicatorAccumulatedRotation || 0) + Math.PI / 4; // Add 45° correction
+                const yRotationQuaternion = new THREE.Quaternion();
+                yRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
+                this.playerIndicator.quaternion.copy(yRotationQuaternion);
+                
             } else {
-                // Player is below grid plane - point triangle DOWN
-                this.playerIndicator.rotation.x = Math.PI / 2; // Point down on screen
+                // In 3D mode, we need to combine Y rotation (heading) with X rotation (pitch for altitude)
+                // Decompose current quaternion to preserve Y rotation while setting X rotation
+                
+                // Extract current Y rotation from the accumulated rotation
+                // Add 45° offset to correct for coordinate system mismatch
+                const yRotationQuaternion = new THREE.Quaternion();
+                const correctedRotation = (this.playerIndicatorAccumulatedRotation || 0) + Math.PI / 4; // Add 45° correction
+                yRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
+                
+                // Create pitch quaternion based on altitude
+                const pitchQuaternion = new THREE.Quaternion();
+                if (playerAltitude >= gridPlaneWorldY) {
+                    // Player is at or above grid plane - point triangle UP (-90° pitch)
+                    pitchQuaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+                } else {
+                    // Player is below grid plane - point triangle DOWN (+90° pitch)
+                    pitchQuaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+                }
+                
+                // Combine: Y rotation first, then pitch rotation
+                this.playerIndicator.quaternion.multiplyQuaternions(pitchQuaternion, yRotationQuaternion);
             }
             
             // Create/update player's altitude line
@@ -1163,6 +1906,11 @@ export class ProximityDetector3D {
             this.scene.remove(this.playerAltitudeLine);
         }
         
+        // Skip altitude lines in top-down mode
+        if (this.viewMode === 'topDown') {
+            return;
+        }
+        
         // Convert player altitude to km and bucket it
         const altitudeInKm = playerAltitude / 1000;
         const bucketedAltitudeY = this.normalizeAltitudeToBucket(altitudeInKm);
@@ -1174,10 +1922,19 @@ export class ProximityDetector3D {
             const playerSize = baseSizeMultiplier * 2; // Full size for player ship
             const lineThickness = playerSize * 0.33; // 33% of blip size
             
-            // Calculate line length and position
-            const lineLength = Math.abs(bucketedAltitudeY);
-            const lineHeight = lineLength > 0 ? lineLength : 0.01; // Minimum height for visibility
-            const centerY = bucketedAltitudeY / 2; // Position cylinder center between grid and object
+            // Calculate line length and position (2x taller per user request)
+            const lineLength = Math.abs(bucketedAltitudeY) * 2; // Make player vertical column 2x as tall
+            const lineHeight = lineLength > 0 ? lineLength : 0.02; // Minimum height (also 2x taller)
+            
+            // Position so line is rooted at grid plane (Y=0)
+            let centerY;
+            if (bucketedAltitudeY >= 0) {
+                // Player above or at grid level - line extends upward from Y=0
+                centerY = lineHeight / 2; // Position cylinder so bottom is at Y=0, extends upward
+            } else {
+                // Player below grid level - line extends downward from Y=0
+                centerY = -lineHeight / 2; // Position cylinder so top is at Y=0, extends downward
+            }
             
             // Create thick line using cylinder geometry with proper thickness
             const lineGeometry = new THREE.CylinderGeometry(lineThickness, lineThickness, lineHeight, 6);

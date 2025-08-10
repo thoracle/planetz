@@ -1,64 +1,21 @@
 Enemy AI Specification
+
 1. Overview
 The enemy AI controls the behavior of enemy ships in a 3D space environment. The AI is responsible for navigation, combat, faction-based interactions, and group dynamics using flocking behaviors. Ships operate under a faction system that dictates their relationships with other entities (player, NPCs, or other factions). The AI emphasizes emergent behavior, tactical variety, and responsiveness to create challenging yet predictable encounters that fit the retro aesthetic.
+
 2. Ship Types and Roles
-Each ship type has distinct characteristics, roles, and behaviors to create varied gameplay. All ships use a modular AI system with shared components (navigation, combat, faction logic) tailored to their role.  Enemy Ships use the same gear cards as the player to equip their ships. Different ship types have differnt gear loadouts. This provides targetable systems for the players and enemy-ai to choose during combat based on stategies.
+Each ship type has distinct characteristics, roles, and behaviors to create varied gameplay. All ships use a modular AI system with shared components (navigation, combat, faction logic) tailored to their role.  
 
-Ship Type
+Enemy Ships use the same gear cards as the player to equip their ships. Different ship types have differnt gear loadouts. This provides targetable systems for the players and enemy-ai to choose during combat based on stategies.
 
-Role
-
-Attributes
-
-AI Behavior
-
-Scout
-
-Fast, lightly armed recon ship. Detects threats and reports to patrols.
-
-High speed, low health, weak weapons, high sensors.
-
-Evades combat, prioritizes escape, calls for backup if attacked. Uses hit-and-run tactics if forced to engage.
-
-Light Fighter
-
-Agile combat ship for skirmishes and escorts.
-
-Moderate speed, moderate health, light weapons, good maneuverability.
-
-Aggressive, prioritizes dogfighting, targets weak enemies, retreats if heavily damaged.
-
-Heavy Fighter
-
-Durable combat ship for sustained engagements.
-
-Moderate speed, high health, heavy weapons, moderate maneuverability.
-
-Engages head-on, prioritizes high-threat targets (e.g., player), protects freighters or carriers.
-
-Carrier
-
-Mobile base that launches/retrieves fighters, warps away if threatened.
-
-Low speed, high health, minimal weapons, targetable landing bay.
-
-Deploys fighters, avoids direct combat, warps out if landing bay or hull is critically damaged.
-
-Light Freighter
-
-Lightly armed cargo hauler, often escorted.
-
-Moderate speed, moderate health, light weapons, carries valuable cargo.
-
-Avoids combat, flees if attacked, calls for escorts if available. Drops cargo if desperate.
-
-Heavy Freighter
-
-Heavily armored cargo hauler, critical to faction supply lines.
-
-Low speed, high health, moderate weapons, carries high-value cargo.
-
-Defends itself, relies on escorts, attempts to flee or surrender if overwhelmed.
+| Ship Type | Role | Attributes | AI Behavior |
+|-----------|------|------------|-------------|
+| Scout | Fast, lightly armed recon ship. Detects threats and reports to patrols. | High speed, low health, weak weapons, long range sensors, subspace radio to report in to base ship and call for help. No warp drive, is dropped off in local sector by carrier. | Evades combat, prioritizes escape, calls for backup if attacked. Uses hit-and-run tactics if forced to engage. |
+| Light Fighter | Agile combat ship for skirmishes and escorts. | Moderate speed, moderate health, light weapons, good maneuverability. subspace radio to report in to base ship and call for help. No warp drive, is dropped off in local sector by carrier. | Aggressive, prioritizes dogfighting, targets weak enemies, retreats if heavily damaged. |
+| Heavy Fighter | Durable combat ship for sustained engagements. | Moderate speed, high health, heavy weapons, moderate maneuverability. subspace radio to report in to base ship and call for help. Low level warp drive for short sector jumps. | Engages head-on, prioritizes high-threat targets (e.g., player), protects freighters or carriers. |
+| Carrier | Mobile base that launches/retrieves fighters, warps away if threatened. | Low speed, high hull armor and hull integrity, missiles weapons, targetable landing bay. Launch, land and repair ships. Mid Level warp drive for medium sector jumps. subspace radio to report in to other base ships and call for help. | Deploys fighters, avoids direct combat, warps out if landing bay or hull is critically damaged. |
+| Light Freighter | Lightly armed cargo hauler, often escorted. | Moderate speed, moderate health, light weapons, carries valuable cargo. Low level warp drive. | Avoids combat, flees if attacked, calls for escorts if available. Drops cargo if desperate. |
+| Heavy Freighter | Heavily armored cargo hauler, critical to faction supply lines. | Low speed, high health, moderate weapons, carries high-value cargo. Medium level warp drive. | Defends itself, relies on escorts, attempts to flee or surrender if overwhelmed. |
 
 Targetable Landing Bay (Carrier): The carrier’s landing bay is a weak point with lower health than the main hull. Destroying it prevents fighter launches/retrievals, forcing the carrier to retreat or warp out immediately.
 
@@ -66,21 +23,12 @@ Cargo Mechanics: Freighters may drop cargo containers (lootable by the player) i
 
 3. Faction System
 The faction system governs how ships interact with other entities (player, NPCs, or other factions). Each ship belongs to a faction with a disposition toward others, affecting their behavior.
-Disposition
 
-Behavior
-
-Friendly
-
-Assists the target if under attack by neutral or hostile ships. Escorts or defends allied ships.
-
-Neutral
-
-Buzzes (flies close to inspect) but does not attack unless provoked. Ignores unless attacked.
-
-Hostile
-
-Attacks on sight, prioritizes high-threat targets (e.g., player or enemy faction ships).
+| Disposition | Behavior |
+|-------------|----------|
+| Friendly | Assists the target if under attack by neutral or hostile ships. Escorts or defends allied ships. |
+| Neutral | Buzzes (flies close to inspect) but does not attack unless provoked. Ignores unless attacked. |
+| Hostile | Attacks on sight, prioritizes high-threat targets (e.g., player or enemy faction ships). |
 
 Faction Logic:
 Ships check the faction status of nearby entities (within sensor range) every few seconds.
@@ -95,29 +43,12 @@ Faction disposition can shift dynamically (e.g., a neutral ship becomes hostile 
 
 4. Encounter Types
 Enemy ships appear in three encounter types, each with distinct AI group behaviors:
-Encounter Type
 
-Composition
-
-AI Behavior
-
-Solo
-
-Single ship (any type).
-
-Operates independently based on role. Scouts flee, fighters engage, freighters evade.
-
-Patrol
-
-2–5 ships (mix of scouts, light/heavy fighters).
-
-Uses flocking for coordinated movement, splits to engage multiple targets if needed.
-
-Formation
-
-6–12 ships (includes freighters or carrier).
-
-Structured hierarchy: fighters escort freighters/carrier, scouts patrol perimeter.
+| Encounter Type | Composition | AI Behavior |
+|----------------|-------------|-------------|
+| Solo | Single ship (any type). | Operates independently based on role. Scouts flee, fighters engage, freighters evade. |
+| Patrol | 2–5 ships (mix of scouts, light/heavy fighters). | Uses flocking for coordinated movement, splits to engage multiple targets if needed. |
+| Formation | 6–12 ships (includes freighters or carrier). | Structured hierarchy: fighters escort freighters/carrier, scouts patrol perimeter. |
 
 Dynamic Scaling: Encounter size and difficulty scale based on player progression (e.g., stronger ships or larger formations in later game areas).
 
@@ -125,29 +56,12 @@ Carrier Formations: Carriers always spawn with 2–4 fighters in formation. If t
 
 5. Flocking and Steering Behaviors
 Ships use flocking movement based on Craig Reynolds’ Boid model, adapted for 3D space combat. Each ship follows three core steering behaviors, weighted by ship type and role:
-Behavior
 
-Description
-
-Weight by Ship Type
-
-Separation
-
-Avoids crowding other ships to prevent collisions.
-
-High for scouts/light fighters, moderate for others.
-
-Alignment
-
-Matches velocity and orientation with nearby allies for cohesive movement.
-
-High for patrols/formations, low for solo ships.
-
-Cohesion
-
-Moves toward the center of mass of nearby allies to maintain group structure.
-
-High for formations, moderate for patrols, low for solo.
+| Behavior | Description | Weight by Ship Type |
+|----------|-------------|---------------------|
+| Separation | Avoids crowding other ships to prevent collisions. | High for scouts/light fighters, moderate for others. |
+| Alignment | Matches velocity and orientation with nearby allies for cohesive movement. | High for patrols/formations, low for solo ships. |
+| Cohesion | Moves toward the center of mass of nearby allies to maintain group structure. | High for formations, moderate for patrols, low for solo. |
 
 Additional Behaviors:
 Pursuit: Chases a target (hostile or neutral for buzzing) using predictive pathing to intercept.
@@ -168,15 +82,14 @@ Formation Patterns: Formations use predefined patterns (e.g., V-shape for patrol
 6. Combat AI
 Combat behavior is role-specific but follows a shared decision-making framework:
 State Machine:
-Idle: Patrols or follows formation path, scans for targets.
 
-Engage: Attacks hostile targets, prioritizes based on threat level (e.g., player > enemy fighters > freighters).
-
-Evade: Performs evasive maneuvers if under heavy fire or low health.
-
-Flee: Attempts to escape to a safe distance or warp out (carriers only).
-
-Buzz: Approaches neutral targets, orbits briefly, then resumes idle state.
+| State | Behavior |
+|-------|----------|
+| Idle | Patrols or follows formation path, scans for targets. |
+| Engage | Attacks hostile targets, prioritizes based on threat level (e.g., player > enemy fighters > freighters). |
+| Evade | Performs evasive maneuvers if under heavy fire or low health. |
+| Flee | Attempts to escape to a safe distance or warp out (carriers only). |
+| Buzz | Approaches neutral targets, orbits briefly, then resumes idle state. |
 
 Threat Assessment:
 Ships evaluate targets based on distance, damage output, and faction status.
@@ -343,103 +256,15 @@ Fighters escorting freighters or carriers orbit at a set distance, adjusting for
 
 Integration with Ship Types and Faction System
 Each ship type uses a unique blend of these behaviors, tuned via weights to reflect its role and faction dynamics. Below is how flocking behaviors are applied to your ship types:
-Ship Type
 
-Separation
-
-Alignment
-
-Cohesion
-
-Pursuit
-
-Evasion
-
-Orbiting
-
-Scout
-
-High (agile, avoids clustering)
-
-Low (independent when solo)
-
-Low (solo or loose patrols)
-
-Low (prefers evasion)
-
-High (evades when threatened)
-
-High (buzzing neutrals)
-
-Light Fighter
-
-High (maintains agility)
-
-Moderate (coordinates in patrols)
-
-Moderate (stays with group)
-
-High (aggressive dogfighting)
-
-Moderate (dodges in combat)
-
-Moderate (escorts or buzzes)
-
-Heavy Fighter
-
-Moderate (tolerates proximity)
-
-High (maintains formation)
-
-High (protects allies)
-
-High (engages head-on)
-
-Low (tanks damage)
-
-Low (rarely orbits)
-
-Carrier
-
-Low (large, slow)
-
-Moderate (leads formation)
-
-High (keeps fighters close)
-
-None (avoids combat)
-
-Moderate (warps out)
-
-None (no orbiting)
-
-Light Freighter
-
-Moderate (avoids escorts)
-
-Moderate (stays with escorts)
-
-High (needs protection)
-
-None (avoids combat)
-
-High (flees when attacked)
-
-None (no orbiting)
-
-Heavy Freighter
-
-Low (bulky, slow)
-
-Moderate (stays with escorts)
-
-High (needs protection)
-
-Low (defends self)
-
-Moderate (flees or surrenders)
-
-None (no orbiting)
+| Ship Type | Separation | Alignment | Cohesion | Pursuit | Evasion | Orbiting |
+|-----------|------------|-----------|----------|---------|---------|----------|
+| Scout | High (agile, avoids clustering) | Low (independent when solo) | Low (solo or loose patrols) | Low (prefers evasion) | High (evades when threatened) | High (buzzing neutrals) |
+| Light Fighter | High (maintains agility) | Moderate (coordinates in patrols) | Moderate (stays with group) | High (aggressive dogfighting) | Moderate (dodges in combat) | Moderate (escorts or buzzes) |
+| Heavy Fighter | Moderate (tolerates proximity) | High (maintains formation) | High (protects allies) | High (engages head-on) | Low (tanks damage) | Low (rarely orbits) |
+| Carrier | Low (large, slow) | Moderate (leads formation) | High (keeps fighters close) | None (avoids combat) | Moderate (warps out) | None (no orbiting) |
+| Light Freighter | Moderate (avoids escorts) | Moderate (stays with escorts) | High (needs protection) | None (avoids combat) | High (flees when attacked) | None (no orbiting) |
+| Heavy Freighter | Low (bulky, slow) | Moderate (stays with escorts) | High (needs protection) | Low (defends self) | Moderate (flees or surrenders) | None (no orbiting) |
 
 Faction Influence:
 Friendly: Ships increase cohesion and alignment to defend or escort allies under attack, forming tighter formations.
@@ -480,8 +305,8 @@ Challenges and Solutions
 Challenge: Ships getting stuck or over-correcting in tight spaces (e.g., near asteroids).
 Solution: Add an obstacle avoidance behavior that applies a strong repulsion vector when detecting terrain or debris within a short range (e.g., 200m).
 
-Challenge: Balancing flocking with combat so ships don’t feel robotic or overly predictable.
-Solution: Introduce randomization in steering weights (e.g., ±10% variance) and occasional “personality” quirks (e.g., a light fighter briefly breaks formation to perform a risky flank).
+Challenge: Balancing flocking with combat so ships don't feel robotic or overly predictable.
+Solution: Introduce randomization in steering weights (e.g., ±10% variance) and occasional "personality" quirks (e.g., a light fighter briefly breaks formation to perform a risky flank).
 
 Challenge: Retro aesthetic vs. modern smoothness.
 Solution: Use discrete, snappy movements (e.g., quantized turn angles) for fighters and scouts to mimic Star Raiders, while carriers and freighters move more ponderously.
