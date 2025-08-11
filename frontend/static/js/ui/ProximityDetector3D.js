@@ -1958,19 +1958,19 @@ export class ProximityDetector3D {
                 this.playerIndicatorAccumulatedRotation += rotationAmount;
             }
             
-            // Smart drift correction: aggressive when stopped, gentle when rotating
+            // Balanced drift correction: smooth but responsive
             if (playerRotation) {
                 // Calculate drift between accumulated and camera rotation
                 const drift = this.playerIndicatorAccumulatedRotation - playerRotation.y;
                 
-                if (Math.abs(drift) > 0.02) { // > ~1 degree
+                if (Math.abs(drift) > 0.05) { // > ~3 degrees before correction kicks in
                     if (!rotationVelocity || Math.abs(rotationVelocity.y) < 0.0001) {
-                        // When not rotating: aggressive correction for immediate sync
-                        const correctionFactor = 0.8; // 80% correction per frame when stationary
+                        // When not rotating: moderate correction for responsive sync
+                        const correctionFactor = 0.25; // 25% correction per frame when stationary
                         this.playerIndicatorAccumulatedRotation -= drift * correctionFactor;
                     } else {
-                        // When actively rotating: gentle correction to avoid interference
-                        const correctionFactor = 0.05; // 5% correction per frame when rotating
+                        // When actively rotating: minimal correction to avoid interference
+                        const correctionFactor = 0.02; // 2% correction per frame when rotating
                         this.playerIndicatorAccumulatedRotation -= drift * correctionFactor;
                     }
                 }
