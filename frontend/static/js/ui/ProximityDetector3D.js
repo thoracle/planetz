@@ -1934,11 +1934,42 @@ export class ProximityDetector3D {
         }
         
         // SPEC: Triangle orientation matches player ship heading (fore camera direction)
-        // Use direct camera rotation for accurate sync (simplified approach)
-        if (this.playerIndicator && playerRotation) {
-            // Directly sync with camera rotation to prevent drift
-            // This ensures perfect sync but may lose 360° rotation capability
-            this.playerIndicatorAccumulatedRotation = playerRotation.y;
+        // Hybrid approach: velocity accumulation with periodic drift correction
+        if (this.playerIndicator) {
+            // Initialize accumulated rotation if not set
+            if (this.playerIndicatorAccumulatedRotation === undefined && playerRotation) {
+                this.playerIndicatorAccumulatedRotation = playerRotation.y;
+            }
+            
+            // Use rotation velocity for smooth 360° tracking
+            const rotationVelocity = this.starfieldManager?.rotationVelocity;
+            
+            if (rotationVelocity && Math.abs(rotationVelocity.y) > 0.0001) {
+                // Apply rotation using accumulated tracking (preserves 360° capability)
+                // Fix the scaling: remove the * 60 that was causing double-scaling
+                const rotationAmount = rotationVelocity.y * deltaTime;
+                
+                // Initialize if needed
+                if (this.playerIndicatorAccumulatedRotation === undefined) {
+                    this.playerIndicatorAccumulatedRotation = 0;
+                }
+                
+                // Track accumulated rotation
+                this.playerIndicatorAccumulatedRotation += rotationAmount;
+            }
+            
+            // Periodic drift correction: sync with camera when not actively rotating
+            if (playerRotation && (!rotationVelocity || Math.abs(rotationVelocity.y) < 0.0001)) {
+                // Calculate drift between accumulated and camera rotation
+                const drift = this.playerIndicatorAccumulatedRotation - playerRotation.y;
+                
+                // If drift is small, apply gentle correction
+                if (Math.abs(drift) > 0.1) { // > ~6 degrees
+                    // Gradually correct drift instead of snapping
+                    const correctionFactor = 0.1; // 10% correction per frame
+                    this.playerIndicatorAccumulatedRotation -= drift * correctionFactor;
+                }
+            }
         }
         
         // SPEC: Grid scrolls to keep player centered (top-down mode only)
@@ -1997,8 +2028,8 @@ export class ProximityDetector3D {
             // IMPORTANT: Never set .rotation directly - it will override quaternion rotations
             if (this.viewMode === 'topDown') {
                 // In top-down mode, triangle should be flat and visible from above
-                // Apply minimal correction for coordinate system alignment
-                const correctedRotation = (this.playerIndicatorAccumulatedRotation || 0) + Math.PI / 12; // Add 15° correction (reduced from 45°)
+                // Use accumulated rotation directly (no artificial correction needed)
+                const correctedRotation = (this.playerIndicatorAccumulatedRotation || 0); // No correction - let drift correction handle sync
                 const yRotationQuaternion = new THREE.Quaternion();
                 yRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
                 this.playerIndicator.quaternion.copy(yRotationQuaternion);
@@ -2011,11 +2042,13 @@ export class ProximityDetector3D {
                     const correctedRotationDeg = THREE.MathUtils.radToDeg(correctedRotation);
                     const offsetDeg = correctedRotationDeg - cameraRotationDeg;
                     const rotVel = this.starfieldManager?.rotationVelocity?.y || 0;
+                    const driftDeg = THREE.MathUtils.radToDeg(accumulatedRotationDeg - cameraRotationDeg);
                     console.log(`🎯 ROTATION SYNC DEBUG:`);
                     console.log(`  Camera rotation: ${cameraRotationDeg.toFixed(1)}°`);
                     console.log(`  Accumulated rotation: ${accumulatedRotationDeg.toFixed(1)}°`);
+                    console.log(`  Drift: ${driftDeg.toFixed(1)}° (accumulated - camera)`);
                     console.log(`  Corrected rotation (blip): ${correctedRotationDeg.toFixed(1)}°`);
-                    console.log(`  Offset (blip - camera): ${offsetDeg.toFixed(1)}°`);
+                    console.log(`  Final offset: ${offsetDeg.toFixed(1)}°`);
                     console.log(`  Rotation velocity: ${rotVel.toFixed(4)}`);
                     this.lastRotationDebugTime = Date.now();
                 }
@@ -2025,9 +2058,9 @@ export class ProximityDetector3D {
                 // Decompose current quaternion to preserve Y rotation while setting X rotation
                 
                 // Extract current Y rotation from the accumulated rotation
-                // Add minimal offset to correct for coordinate system mismatch
+                // Use accumulated rotation directly (no artificial correction needed)
                 const yRotationQuaternion = new THREE.Quaternion();
-                const correctedRotation = (this.playerIndicatorAccumulatedRotation || 0) + Math.PI / 12; // Add 15° correction (reduced from 45°)
+                const correctedRotation = (this.playerIndicatorAccumulatedRotation || 0); // No correction - let drift correction handle sync
                 yRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
                 
                 // Create pitch quaternion based on altitude
