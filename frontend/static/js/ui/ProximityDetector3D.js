@@ -32,23 +32,23 @@ export class ProximityDetector3D {
             gridTilt: -35,                  // 35° tilt from horizontal (degrees)
             
             // Detection properties  
-            detectionRange: 50000,          // 50km spherical range (combat range - matches starting zoom level)
+            detectionRange: 25000,          // 25km spherical range (combat range - matches starting zoom level)
             altitudeRange: 5000,            // ±5km vertical range (extended for better target detection)
             
             // Visual properties
-            fadeDistance: 40000,            // Objects start fading at 40km (80% of 50km combat range)
+            fadeDistance: 20000,            // Objects start fading at 20km (80% of 25km combat range)
             updateFrequency: 20,            // 20Hz updates for smooth 3D
             
             // Zoom levels for practical gameplay (4 levels total, ordered far to close)
             // CORRECTED: Higher magnification = smaller range (more zoomed in)
-            // Ranges are now inversely proportional to magnification - UPDATED FOR 50km TOP MAGNIFICATION
+            // Ranges are now inversely proportional to magnification - UPDATED FOR 25km TOP MAGNIFICATION
             zoomLevels: [
-                { name: 'Long Range', range: 200000, gridSpacing: 16000, label: '200km', magnification: 0.25 },  // 0.25x - ultra wide view
-                { name: 'Wide Area', range: 150000, gridSpacing: 12000, label: '150km', magnification: 0.33 },   // 0.33x - wide view  
-                { name: 'Sector', range: 100000, gridSpacing: 8000, label: '100km', magnification: 0.5 },       // 0.5x - sector view
-                { name: 'Combat Range', range: 50000, gridSpacing: 4000, label: '50km', magnification: 1.0 }     // 1.0x - top magnification for 50km combat range
+                { name: 'Long Range', range: 100000, gridSpacing: 8000, label: '100km', magnification: 0.25 },  // 0.25x - ultra wide view
+                { name: 'Wide Area', range: 75000, gridSpacing: 6000, label: '75km', magnification: 0.33 },     // 0.33x - wide view  
+                { name: 'Sector', range: 50000, gridSpacing: 4000, label: '50km', magnification: 0.5 },         // 0.5x - sector view
+                { name: 'Combat Range', range: 25000, gridSpacing: 2000, label: '25km', magnification: 1.0 }     // 1.0x - top magnification for 25km combat range
             ],
-            currentZoomLevel: 3,            // Start with top magnification (Combat Range - 50km)
+            currentZoomLevel: 3,            // Start with top magnification (Combat Range - 25km)
             
             // Perspective properties
             cameraDistance: 4,              // Camera distance from grid (closer for zoom)
@@ -536,7 +536,7 @@ export class ProximityDetector3D {
         if (this.viewMode === 'topDown') {
             // In top-down mode, use larger triangle for the larger coordinate space
             const currentZoom = this.getCurrentZoom();
-            const coordinateScale = Math.min(currentZoom.range / 2000, 50);
+            const coordinateScale = Math.min(currentZoom.range / 1000, 50);
             triangleSize = Math.max(coordinateScale * 0.04, 1.0); // Scale with coordinate space, minimum 1.0
         } else {
             // In 3D mode, use the standard small size
@@ -597,7 +597,7 @@ export class ProximityDetector3D {
         
         this.scene.add(this.playerIndicator);
         
-        console.log(`🎯 Player indicator created at grid center for ${this.viewMode} mode at position (${this.playerIndicator.position.x}, ${this.playerIndicator.position.y}, ${this.playerIndicator.position.z}) | Visible: ${this.playerIndicator.visible} | Scale: ${this.playerIndicator.scale.x}`);
+        // console.log(`🎯 Player indicator created at grid center for ${this.viewMode} mode at position (${this.playerIndicator.position.x}, ${this.playerIndicator.position.y}, ${this.playerIndicator.position.z}) | Visible: ${this.playerIndicator.visible} | Scale: ${this.playerIndicator.scale.x}`);
     }
     
     /**
@@ -872,10 +872,42 @@ export class ProximityDetector3D {
         
         if (this.lastUpdate >= updateInterval) {
             this.updateTrackedObjects();
+            this.updateBlipBlinking(deltaTime);
             this.updateGridOrientation(deltaTime);
             this.render3DScene();
             this.lastUpdate = 0;
         }
+    }
+    
+    /**
+     * Update blinking animation for current target blips
+     */
+    updateBlipBlinking(deltaTime) {
+        if (!this.objectBlips) return;
+        
+        const currentTime = Date.now();
+        const blinkFrequency = 2.0; // Blinks per second
+        const blinkCycle = (currentTime / 1000 * blinkFrequency) % 1.0; // 0 to 1 cycle
+        
+        // Calculate blinking opacity using sine wave for smooth fade
+        const blinkOpacity = 0.3 + 0.7 * (Math.sin(blinkCycle * Math.PI * 2) * 0.5 + 0.5);
+        
+        this.objectBlips.forEach((blip, key) => {
+            if (blip && blip.userData && blip.userData.isCurrentTarget) {
+                // Update the blinking opacity
+                if (blip.material) {
+                    blip.material.opacity = blip.userData.baseOpacity * blinkOpacity;
+                    
+                    // Ensure material is set to transparent for blinking to work
+                    blip.material.transparent = true;
+                }
+            } else if (blip && blip.userData && blip.userData.baseOpacity) {
+                // Reset non-target blips to their base opacity
+                if (blip.material) {
+                    blip.material.opacity = blip.userData.baseOpacity;
+                }
+            }
+        });
     }
     
     /**
@@ -1007,7 +1039,7 @@ export class ProximityDetector3D {
         
         // Adjust view size for better visibility in top-down mode
         // Use a smaller scale factor to make objects more visible
-        const viewSize = Math.min(currentZoom.range / 2000, 50); // Smaller view size, max 50 units
+        const viewSize = Math.min(currentZoom.range / 1000, 50); // Smaller view size, max 50 units
         
         console.log(`🔄 Top-down camera setup: zoom range=${currentZoom.range}km, viewSize=${viewSize}`);
         
@@ -1062,7 +1094,7 @@ export class ProximityDetector3D {
         const currentZoom = this.getCurrentZoom();
         
         // Create a much larger grid to handle scrolling - make it 5x larger than the view
-        const viewHalfSize = Math.min(currentZoom.range / 2000, 50);
+        const viewHalfSize = Math.min(currentZoom.range / 1000, 50);
         const gridHalfSize = viewHalfSize * 5; // 5x larger to handle scrolling
         const gridSpacing = viewHalfSize / 6; // More reasonable spacing for visibility
         const gridLines = Math.ceil((gridHalfSize * 2) / gridSpacing);
@@ -1208,7 +1240,7 @@ export class ProximityDetector3D {
             } else {
                 // DEBUG: Log objects outside range (FORCE ALWAYS for targets)
                 if (obj.isTargetDummy || obj.isEnemyShip || obj.type === 'enemy_ship') {
-                    console.log(`🎯 OUT OF RANGE: ${obj.name || obj.type} at ${(distance/1000).toFixed(1)}km (range: ${(detectionRange/1000).toFixed(0)}km)`);
+                    // console.log(`🎯 OUT OF RANGE: ${obj.name || obj.type} at ${(distance/1000).toFixed(1)}km (range: ${(detectionRange/1000).toFixed(0)}km)`);
                 }
             }
         }
@@ -1355,14 +1387,16 @@ export class ProximityDetector3D {
         const worldHalfRangeM = detectionRangeM / 2; // half range in meters
         
         if (this.viewMode === 'topDown') {
-            // Top-down mode: use absolute coordinates, grid stays fixed centered on player
-            // Use same scale system as 3D mode but with top-down view size  
-            const viewHalfSize = Math.min(currentZoom.range / 2000, 50);
-            const worldToGridScaleFactor = viewHalfSize / worldHalfRangeM; // scale factor: scene units per meter
+            // Top-down mode: use orthographic camera coordinates
+            // Camera bounds are -viewSize to +viewSize, where viewSize = range/1000
+            const viewSize = Math.min(currentZoom.range / 1000, 50); // Same as camera setup
+            const worldRangeKm = currentZoom.range / 1000; // Convert range to km
+            const worldToGridScaleFactor = viewSize / worldRangeKm; // scene units per km
             
-            // Convert relative position to grid coordinates (same as 3D mode)
-            gridX = relativePos.x * worldToGridScaleFactor;
-            gridZ = relativePos.z * worldToGridScaleFactor;
+            // Convert relative position (in km) to grid coordinates
+            const relativePosKm = relativePos.clone().multiplyScalar(1/1000); // Convert meters to km
+            gridX = relativePosKm.x * worldToGridScaleFactor;
+            gridZ = relativePosKm.z * worldToGridScaleFactor;
         } else {
             // 3D mode: use relative positioning with proper scaling
             const gridHalfSizeInScene = 0.55; // Fixed visual half-size
@@ -1383,18 +1417,18 @@ export class ProximityDetector3D {
         // console.log(`  Grid size: ${gridHalfSizeInScene.toFixed(3)} units`);
         // console.log(`  Grid distance from center: ${Math.sqrt(gridX*gridX + gridZ*gridZ).toFixed(3)} units`);
         
-        // Debug ALL detected objects to see what we're working with
-        console.log(`🎯 DETECTED OBJECT: ${obj.name || 'unnamed'}`);
-        console.log(`  Type: ${obj.type}, isTargetDummy: ${obj.isTargetDummy}, isEnemyShip: ${obj.isEnemyShip}`);
-        console.log(`  View mode: ${this.viewMode}`);
-        console.log(`  World distance: ${distance.toFixed(1)}m (${(distance/1000).toFixed(2)}km)`);
-        console.log(`  Player pos: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
-        console.log(`  Target pos: (${obj.mesh.position.x.toFixed(1)}, ${obj.mesh.position.y.toFixed(1)}, ${obj.mesh.position.z.toFixed(1)})`);
-        console.log(`  Relative pos: (${relativePos.x.toFixed(1)}, ${relativePos.y.toFixed(1)}, ${relativePos.z.toFixed(1)})`);
-        console.log(`  Grid half range: ${worldHalfRangeM.toFixed(1)}m (${(worldHalfRangeM/1000).toFixed(1)}km)`);
-        console.log(`  Detection range: ${currentZoom.range}m (${currentZoom.label})`);
-        console.log(`  Grid pos: (${gridX.toFixed(3)}, ${gridZ.toFixed(3)})`);
-        console.log(`  Grid distance from center: ${Math.sqrt(gridX*gridX + gridZ*gridZ).toFixed(3)} units`);
+        // Debug ALL detected objects to see what we're working with (DISABLED to reduce console spam)
+        // console.log(`🎯 DETECTED OBJECT: ${obj.name || 'unnamed'}`);
+        // console.log(`  Type: ${obj.type}, isTargetDummy: ${obj.isTargetDummy}, isEnemyShip: ${obj.isEnemyShip}`);
+        // console.log(`  View mode: ${this.viewMode}`);
+        // console.log(`  World distance: ${distance.toFixed(1)}m (${(distance/1000).toFixed(2)}km)`);
+        // console.log(`  Player pos: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
+        // console.log(`  Target pos: (${obj.mesh.position.x.toFixed(1)}, ${obj.mesh.position.y.toFixed(1)}, ${obj.mesh.position.z.toFixed(1)})`);
+        // console.log(`  Relative pos: (${relativePos.x.toFixed(1)}, ${relativePos.y.toFixed(1)}, ${relativePos.z.toFixed(1)})`);
+        // console.log(`  Grid half range: ${worldHalfRangeM.toFixed(1)}m (${(worldHalfRangeM/1000).toFixed(1)}km)`);
+        // console.log(`  Detection range: ${currentZoom.range}m (${currentZoom.label})`);
+        // console.log(`  Grid pos: (${gridX.toFixed(3)}, ${gridZ.toFixed(3)})`);
+        // console.log(`  Grid distance from center: ${Math.sqrt(gridX*gridX + gridZ*gridZ).toFixed(3)} units`);
         
         // Apply minimum visual separation for very close objects
         const minVisualSeparation = 0.1; // Minimum separation in grid units
@@ -1514,7 +1548,7 @@ export class ProximityDetector3D {
         if (this.viewMode === 'topDown') {
             // In top-down mode, use larger blips for the larger coordinate space
             const currentZoom = this.getCurrentZoom();
-            const coordinateScale = Math.min(currentZoom.range / 2000, 50);
+            const coordinateScale = Math.min(currentZoom.range / 1000, 50);
             baseSizeMultiplier = Math.max(coordinateScale * 0.02, 0.5); // Scale with coordinate space, minimum 0.5
         } else {
             // In 3D mode, use the standard small size
@@ -1573,6 +1607,16 @@ export class ProximityDetector3D {
         
         const blip = new THREE.Mesh(blipGeometry, blipMaterial);
         
+        // Check if this is the currently targeted object for blinking
+        const isCurrentTarget = this.isCurrentTarget(obj);
+        if (isCurrentTarget) {
+            blip.userData.isCurrentTarget = true;
+            blip.userData.baseOpacity = blipOpacity;
+            blip.userData.baseColor = blipColor;
+            // Make material transparent to enable blinking
+            blipMaterial.transparent = true;
+        }
+        
         // Position blip based on view mode
         if (this.viewMode === 'topDown') {
             // In top-down mode, place all blips slightly above grid level for visibility
@@ -1627,6 +1671,49 @@ export class ProximityDetector3D {
         
         this.scene.add(blip);
         this.objectBlips.set(obj.id || `${gridX}_${gridZ}_${Date.now()}`, blip);
+    }
+    
+    /**
+     * Check if an object is the current target
+     */
+    isCurrentTarget(obj) {
+        // Get the target computer manager
+        const targetComputerManager = this.starfieldManager.targetComputerManager;
+        if (!targetComputerManager || !targetComputerManager.currentTarget) {
+            return false;
+        }
+        
+        const currentTarget = targetComputerManager.currentTarget;
+        
+        // Direct object comparison
+        if (obj === currentTarget || obj.mesh === currentTarget) {
+            return true;
+        }
+        
+        // Check if the object's mesh is the current target
+        if (obj.mesh && obj.mesh === currentTarget) {
+            return true;
+        }
+        
+        // For target dummies and enemy ships, also check userData
+        if (currentTarget.userData) {
+            // Check if the userData.ship matches our object or its mesh
+            if (currentTarget.userData.ship === obj || currentTarget.userData.ship === obj.mesh) {
+                return true;
+            }
+            
+            // Check if the userData references match
+            if (obj.userData && currentTarget.userData === obj.userData) {
+                return true;
+            }
+        }
+        
+        // Check by ID if available
+        if (obj.id && currentTarget.id && obj.id === currentTarget.id) {
+            return true;
+        }
+        
+        return false;
     }
     
     /**
@@ -1799,7 +1886,7 @@ export class ProximityDetector3D {
                 // Log rotation for debugging
                 const displayDegrees = THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation);
                 const wrappedDegrees = ((displayDegrees % 360) + 360) % 360;
-                console.log(`🎯 ROTATION: ${wrappedDegrees.toFixed(1)}° (accumulated for 360° capability)`);
+                // console.log(`🎯 ROTATION: ${wrappedDegrees.toFixed(1)}° (accumulated for 360° capability)`);
             }
             
             // Note: Player triangle rotation is now handled purely by rotateY() calls above
@@ -1811,7 +1898,7 @@ export class ProximityDetector3D {
             if (this.viewMode === 'topDown') {
                 // Top-down mode: scroll grid to keep player centered
                 const currentZoom = this.getCurrentZoom();
-                const viewHalfSize = Math.min(currentZoom.range / 2000, 50);
+                const viewHalfSize = Math.min(currentZoom.range / 1000, 50);
                 const worldHalfRangeM = currentZoom.range / 2;
                 const worldToGridScale = viewHalfSize / (worldHalfRangeM / 1000); // convert meters to km for scale
                 
