@@ -53,6 +53,14 @@ export const CARD_TYPES = {
     MEDICAL_BAY: 'medical_bay',                      // Advanced medical facilities
     SCIENCE_LAB: 'science_lab',                      // Research and analysis
     
+    // Station-Specific Systems (Capital ships and stations)
+    MINING_ARRAY: 'mining_array',                    // Asteroid mining and processing
+    INDUSTRIAL_FABRICATOR: 'industrial_fabricator',  // Heavy manufacturing system
+    SECURITY_COMPLEX: 'security_complex',           // Prison and detention systems
+    OBSERVATORY_ARRAY: 'observatory_array',         // Deep space observation
+    LOGISTICS_CENTER: 'logistics_center',           // Supply chain coordination
+    FRONTIER_COMMAND: 'frontier_command',           // Outpost command and control
+    
     // Operational systems
     IMPULSE_ENGINES: 'impulse_engines',
     WARP_DRIVE: 'warp_drive',
@@ -238,7 +246,15 @@ export const CARD_DISPLAY_NAMES = {
     [CARD_TYPES.REACTOR_CORE]: 'Reactor Core',
     [CARD_TYPES.CARGO_PROCESSING_CENTER]: 'Cargo Processing Center',
     [CARD_TYPES.MEDICAL_BAY]: 'Medical Bay',
-    [CARD_TYPES.SCIENCE_LAB]: 'Science Lab'
+    [CARD_TYPES.SCIENCE_LAB]: 'Science Lab',
+    
+    // Station-Specific Systems
+    [CARD_TYPES.MINING_ARRAY]: 'Mining Array',
+    [CARD_TYPES.INDUSTRIAL_FABRICATOR]: 'Industrial Fabricator',
+    [CARD_TYPES.SECURITY_COMPLEX]: 'Security Complex',
+    [CARD_TYPES.OBSERVATORY_ARRAY]: 'Observatory Array',
+    [CARD_TYPES.LOGISTICS_CENTER]: 'Logistics Center',
+    [CARD_TYPES.FRONTIER_COMMAND]: 'Frontier Command'
 };
 
 // Card icons for slot identification (matches ship configuration icons exactly)
@@ -438,6 +454,10 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.REPAIR_FACILITY,
         CARD_TYPES.MEDICAL_BAY,
         CARD_TYPES.CARGO_PROCESSING_CENTER,
+        // Station-Specific Systems
+        CARD_TYPES.MINING_ARRAY,
+        CARD_TYPES.SECURITY_COMPLEX,
+        CARD_TYPES.LOGISTICS_CENTER,
         // Advanced Intel Systems
         CARD_TYPES.TACTICAL_COMPUTER,
         CARD_TYPES.COMBAT_COMPUTER
@@ -525,6 +545,13 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.SHIELD_ARRAY,
         CARD_TYPES.REACTOR_CORE,
         CARD_TYPES.SCIENCE_LAB,
+        // Station-Specific Systems (Advanced)
+        CARD_TYPES.MINING_ARRAY,
+        CARD_TYPES.INDUSTRIAL_FABRICATOR,
+        CARD_TYPES.SECURITY_COMPLEX,
+        CARD_TYPES.OBSERVATORY_ARRAY,
+        CARD_TYPES.LOGISTICS_CENTER,
+        CARD_TYPES.FRONTIER_COMMAND,
         // Advanced Intel Systems
         CARD_TYPES.TACTICAL_COMPUTER,
         CARD_TYPES.COMBAT_COMPUTER,
@@ -726,7 +753,14 @@ export default class NFTCard {
             CARD_TYPES.REACTOR_CORE,
             CARD_TYPES.CARGO_PROCESSING_CENTER,
             CARD_TYPES.MEDICAL_BAY,
-            CARD_TYPES.SCIENCE_LAB
+            CARD_TYPES.SCIENCE_LAB,
+            // Station-Specific Systems
+            CARD_TYPES.MINING_ARRAY,
+            CARD_TYPES.INDUSTRIAL_FABRICATOR,
+            CARD_TYPES.SECURITY_COMPLEX,
+            CARD_TYPES.OBSERVATORY_ARRAY,
+            CARD_TYPES.LOGISTICS_CENTER,
+            CARD_TYPES.FRONTIER_COMMAND
         ];
         
         const sensorSystemTypes = [

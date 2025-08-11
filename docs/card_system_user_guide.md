@@ -78,10 +78,31 @@ Every card has these core properties:
 | **Carrier** | ✅ Full Access | Primary capital ship with all systems |
 | **Heavy Freighter** | ✅ Full Access | Largest cargo vessel with industrial systems |
 | **Destroyer** | ✅ Full Access | Future capital ship class |
+| **All Space Stations** | ✅ Full Access | Designed specifically for capital ship systems |
 | **Scout** | ❌ No Access | Too small for capital ship systems |
 | **Light Fighter** | ❌ No Access | Focused on speed and agility |
 | **Heavy Fighter** | ❌ No Access | Combat-focused but still too small |
 | **Light Freighter** | ❌ No Access | Medium-sized cargo vessel |
+
+### Space Station Types
+
+**All space stations can use capital ship systems**:
+
+| Station Type | Primary Function | Specialized Cards |
+|-------------|------------------|-------------------|
+| **Asteroid Mine** | Resource extraction | Mining Array, Cargo Processing |
+| **Refinery** | Material processing | Industrial Fabricator, Reactor Core |
+| **Factory** | Manufacturing | Manufacturing Plant, Industrial Fabricator |
+| **Shipyard** | Ship construction | Ship Construction Bay, Repair Facility |
+| **Research Lab** | Scientific research | Science Lab, Observatory Array |
+| **Defense Platform** | Area defense | Point Defense Grid, Shield Array |
+| **Prison** | Secure detention | Security Complex, Medical Bay |
+| **Repair Station** | Ship maintenance | Repair Facility, Landing Bay |
+| **Communications Array** | Long-range comms | Communications Array, Science Lab |
+| **Storage Depot** | Bulk storage | Cargo Processing, Logistics Center |
+| **Frontier Outpost** | Multi-purpose base | Frontier Command, Multiple systems |
+| **Listening Post** | Intelligence gathering | Communications Array, Observatory Array |
+| **Orbital Telescope** | Deep space observation | Observatory Array, Science Lab |
 
 **All other card types** can be installed on any ship that has available slots.
 
@@ -174,6 +195,14 @@ Every card has these core properties:
 #### Specialized Systems
 - **Medical Bay**: Advanced medical facilities for crew treatment
 - **Science Lab**: Research facilities for scanning and analysis
+
+#### Station-Specific Systems
+- **Mining Array**: Asteroid mining and processing equipment
+- **Industrial Fabricator**: Heavy manufacturing and production systems
+- **Security Complex**: Prison and detention facility systems
+- **Observatory Array**: Deep space observation and telescope arrays
+- **Logistics Center**: Supply chain coordination and management
+- **Frontier Command**: Outpost command and control systems
 
 ---
 
@@ -312,6 +341,13 @@ Every card has these core properties:
 | **Medical Bay** | Capital Ship | Advanced medical facilities for crew treatment |
 | **Cargo Processing Center** | Capital Ship | Automated cargo handling and sorting systems |
 
+#### Station-Specific Systems
+| Card Name | Type | Function |
+|-----------|------|----------|
+| **Mining Array** | Capital Ship | Asteroid mining and processing equipment |
+| **Security Complex** | Capital Ship | Prison and detention facility systems |
+| **Logistics Center** | Capital Ship | Supply chain coordination and management |
+
 #### Alien Technology
 | Card Name | Type | Function |
 |-----------|------|----------|
@@ -377,6 +413,13 @@ Every card has these core properties:
 | **Shield Array** | Capital Ship | Massive shields that protect nearby allied ships |
 | **Reactor Core** | Capital Ship | Ultimate power generation beyond normal limits |
 | **Science Lab** | Capital Ship | Advanced research and analysis facilities |
+
+#### Station-Specific Systems (Advanced)
+| Card Name | Type | Function |
+|-----------|------|----------|
+| **Industrial Fabricator** | Capital Ship | Heavy manufacturing and production systems |
+| **Observatory Array** | Capital Ship | Deep space observation and telescope arrays |
+| **Frontier Command** | Capital Ship | Outpost command and control systems |
 
 #### Transcendent Sensors
 | Card Name | Type | Function |

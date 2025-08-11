@@ -38,7 +38,14 @@ export default class CardSystemIntegration {
             CARD_TYPES.REACTOR_CORE,
             CARD_TYPES.CARGO_PROCESSING_CENTER,
             CARD_TYPES.MEDICAL_BAY,
-            CARD_TYPES.SCIENCE_LAB
+            CARD_TYPES.SCIENCE_LAB,
+            // Station-Specific Systems
+            CARD_TYPES.MINING_ARRAY,
+            CARD_TYPES.INDUSTRIAL_FABRICATOR,
+            CARD_TYPES.SECURITY_COMPLEX,
+            CARD_TYPES.OBSERVATORY_ARRAY,
+            CARD_TYPES.LOGISTICS_CENTER,
+            CARD_TYPES.FRONTIER_COMMAND
         ];
         
         // Define which ship types can use capital ship systems
@@ -48,7 +55,21 @@ export default class CardSystemIntegration {
             'destroyer',         // Future capital ship
             'battleship',        // Future capital ship
             'cruiser',           // Future capital ship
-            'space_station'      // Future implementation
+            // Space Stations
+            'space_station',     // Generic space station
+            'asteroid_mine',     // Resource extraction
+            'refinery',          // Material processing
+            'storage_depot',     // Cargo warehouse
+            'research_lab',      // Scientific research
+            'repair_station',    // Ship maintenance
+            'frontier_outpost',  // Multi-purpose base
+            'prison',            // Detention facility
+            'shipyard',          // Ship construction
+            'defense_platform',  // Military fortress
+            'factory',           // Manufacturing
+            'communications_array', // Comms hub
+            'listening_post',    // Intelligence gathering
+            'orbital_telescope'  // Deep space observation
         ];
         
         // Check if this is a capital ship card
