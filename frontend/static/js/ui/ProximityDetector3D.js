@@ -597,7 +597,53 @@ export class ProximityDetector3D {
         
         this.scene.add(this.playerIndicator);
         
+        // Initialize rotation to match current ship orientation
+        this.initializePlayerIndicatorRotation();
+        
         // console.log(`🎯 Player indicator created at grid center for ${this.viewMode} mode at position (${this.playerIndicator.position.x}, ${this.playerIndicator.position.y}, ${this.playerIndicator.position.z}) | Visible: ${this.playerIndicator.visible} | Scale: ${this.playerIndicator.scale.x}`);
+    }
+    
+    /**
+     * Initialize player indicator rotation to match current ship orientation
+     */
+    initializePlayerIndicatorRotation() {
+        if (!this.playerIndicator) return;
+        
+        // Get current ship rotation (same method as updateGridOrientation)
+        let playerShip = this.starfieldManager.viewManager?.getShip();
+        let playerMesh = playerShip?.mesh;
+        let playerRotation = null;
+        
+        if (!playerMesh && this.starfieldManager.camera) {
+            playerRotation = this.starfieldManager.camera.rotation;
+        } else if (playerMesh) {
+            playerRotation = playerMesh.rotation;
+        }
+        
+        if (playerRotation) {
+            // Initialize accumulated rotation with current ship rotation
+            this.playerIndicatorAccumulatedRotation = playerRotation.y;
+            
+            // Apply the rotation immediately to the indicator
+            if (this.viewMode === 'topDown') {
+                const correctedRotation = this.playerIndicatorAccumulatedRotation + Math.PI / 4; // Add 45° correction
+                const yRotationQuaternion = new THREE.Quaternion();
+                yRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
+                this.playerIndicator.quaternion.copy(yRotationQuaternion);
+            } else {
+                // 3D mode - similar logic but can include pitch later if needed
+                const correctedRotation = this.playerIndicatorAccumulatedRotation + Math.PI / 4; // Add 45° correction
+                const yRotationQuaternion = new THREE.Quaternion();
+                yRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
+                this.playerIndicator.quaternion.copy(yRotationQuaternion);
+            }
+            
+            console.log(`🎯 Player indicator initialized with rotation: ${THREE.MathUtils.radToDeg(playerRotation.y).toFixed(1)}°`);
+        } else {
+            // No rotation available, use default (pointing north)
+            this.playerIndicatorAccumulatedRotation = 0;
+            console.log(`🎯 Player indicator initialized with default rotation (no ship rotation available)`);
+        }
     }
     
     /**
@@ -1017,16 +1063,27 @@ export class ProximityDetector3D {
         
         this.createPlayerIndicator();
         
-        // Restore only the accumulated rotation amount and rebuild the quaternion from scratch
-        if (preservedAccumulatedRotation !== 0) {
-            this.playerIndicatorAccumulatedRotation = preservedAccumulatedRotation;
-            
+        // Always restore the accumulated rotation (including 0° for north-facing)
+        this.playerIndicatorAccumulatedRotation = preservedAccumulatedRotation;
+        
+        // If we have preserved rotation, apply it immediately
+        if (preservedAccumulatedRotation !== null && preservedAccumulatedRotation !== undefined) {
             // Rebuild the Y rotation quaternion from the accumulated rotation
-            const restoredRotationQuaternion = new THREE.Quaternion();
-            restoredRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), preservedAccumulatedRotation);
-            this.playerIndicator.quaternion.copy(restoredRotationQuaternion);
-            
+            if (this.viewMode === 'topDown') {
+                const correctedRotation = preservedAccumulatedRotation + Math.PI / 4; // Add 45° correction
+                const restoredRotationQuaternion = new THREE.Quaternion();
+                restoredRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
+                this.playerIndicator.quaternion.copy(restoredRotationQuaternion);
+            } else {
+                const correctedRotation = preservedAccumulatedRotation + Math.PI / 4; // Add 45° correction
+                const restoredRotationQuaternion = new THREE.Quaternion();
+                restoredRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
+                this.playerIndicator.quaternion.copy(restoredRotationQuaternion);
+            }
             console.log(`🔺 RESTORED: Player indicator rotation to ${(preservedAccumulatedRotation * 180 / Math.PI).toFixed(1)}°`);
+        } else {
+            // No preserved rotation - initialize from current ship rotation
+            console.log(`🔺 No preserved rotation - initializing from current ship orientation`);
         }
     }
     
@@ -1870,31 +1927,16 @@ export class ProximityDetector3D {
         }
         
         // SPEC: Triangle orientation matches player ship heading (fore camera direction)
-        // Since ship only moves in the direction the fore camera is facing, use rotation velocity
-        if (this.playerIndicator) {
-            // Use rotation velocity (this preserves 360° rotation capability)
-            const rotationVelocity = this.starfieldManager?.rotationVelocity;
+        // Sync player indicator with actual ship rotation directly (not just velocity)
+        if (this.playerIndicator && playerRotation) {
+            // Use actual ship rotation directly for immediate sync
+            // This ensures the blip always shows the correct facing direction
+            this.playerIndicatorAccumulatedRotation = playerRotation.y;
             
-            if (rotationVelocity && Math.abs(rotationVelocity.y) > 0.0001) {
-                // Apply rotation using accumulated tracking to avoid Euler angle limitations
-                const rotationAmount = rotationVelocity.y * deltaTime * 60;
-                
-                // Initialize accumulated rotation tracking
-                if (this.playerIndicatorAccumulatedRotation === undefined) {
-                    this.playerIndicatorAccumulatedRotation = 0;
-                }
-                
-                // Track accumulated rotation (this allows 360° rotation)
-                this.playerIndicatorAccumulatedRotation += rotationAmount;
-                
-                // Log rotation for debugging
-                const displayDegrees = THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation);
-                const wrappedDegrees = ((displayDegrees % 360) + 360) % 360;
-                // console.log(`🎯 ROTATION: ${wrappedDegrees.toFixed(1)}° (accumulated for 360° capability)`);
-            }
-            
-            // Note: Player triangle rotation is now handled purely by rotateY() calls above
-            // Initial rotation is set only when the indicator is created in createPlayerIndicator()
+            // Log rotation for debugging (disabled to reduce spam)
+            // const displayDegrees = THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation);
+            // const wrappedDegrees = ((displayDegrees % 360) + 360) % 360;
+            // console.log(`🎯 PLAYER BLIP ROTATION: ${wrappedDegrees.toFixed(1)}° (synced with ship)`);
         }
         
         // SPEC: Grid scrolls to keep player centered (top-down mode only)
