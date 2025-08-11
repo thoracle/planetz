@@ -122,7 +122,13 @@ export default class CardSystemIntegration {
                 CARD_TYPES.PHASER_ARRAY,
                 CARD_TYPES.DISRUPTOR_CANNON,
                 CARD_TYPES.PARTICLE_BEAM,
-                // New projectile weapons
+                // Specialized combat weapons (AI-compatible)
+                CARD_TYPES.ENERGY_PULSE_CANNON,
+                CARD_TYPES.ENERGY_CANNON,
+                CARD_TYPES.LONG_RANGE_BEAM,
+                CARD_TYPES.DEFENSIVE_TURRET,
+                CARD_TYPES.DUAL_TURRET,
+                // Projectile weapons
                 CARD_TYPES.STANDARD_MISSILE,
                 CARD_TYPES.HOMING_MISSILE,
                 CARD_TYPES.PHOTON_TORPEDO,

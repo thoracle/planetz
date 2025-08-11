@@ -99,6 +99,13 @@ Every card has these core properties:
 - **Disruptor Cannon**: Armor-penetrating energy beams
 - **Particle Beam**: Focused high-energy weapons
 
+#### Specialized Combat Weapons
+- **Energy Pulse Cannon**: Fast-firing light energy weapon (Scout/Interceptor class)
+- **Energy Cannon**: Medium energy weapon with good tracking (Fighter class)
+- **Long Range Beam**: High-power beam weapon for carriers and capital ships
+- **Defensive Turret**: Point-defense weapon for freighters and support ships
+- **Dual Turret**: Twin-mounted defensive weapon system
+
 #### Projectile Weapons  
 - **Standard Missile**: Basic guided projectiles
 - **Homing Missile**: Advanced tracking missiles
@@ -146,6 +153,7 @@ Every card has these core properties:
 | Card Name | Type | Function |
 |-----------|------|----------|
 | **Shields** | Operational | Active deflector shield system |
+| **Shield Generator** | Core | Creates protective energy barriers (renamed from basic_shields) |
 
 #### Basic Weapons
 | Card Name | Type | Function |
@@ -161,6 +169,7 @@ Every card has these core properties:
 | **Subspace Radio** | Sensor | Enables galactic communication |
 | **Galactic Chart** | Sensor | Navigation and stellar cartography |
 | **Target Computer** | Sensor | Basic weapon targeting and lock-on |
+| **Basic Radar** | Sensor | Local proximity detection for nearby objects |
 
 ---
 
@@ -177,6 +186,15 @@ Every card has these core properties:
 | **Homing Missile** | Weapon | Advanced tracking projectile |
 | **Photon Torpedo** | Weapon | High-damage explosive projectile |
 | **Proximity Mine** | Weapon | Deployable explosive device |
+
+#### Specialized Combat Systems
+| Card Name | Type | Function |
+|-----------|------|----------|
+| **Energy Pulse Cannon** | Weapon | Fast-firing light energy weapon (Level 2-3 pulse_cannon) |
+| **Energy Cannon** | Weapon | Medium tracking energy weapon (Level 3-4 laser_cannon) |
+| **Long Range Beam** | Weapon | Extended range beam weapon (Level 4-5 particle_beam) |
+| **Defensive Turret** | Weapon | Point-defense weapon system (Level 2-3 laser_cannon) |
+| **Dual Turret** | Weapon | Twin-mounted defensive system (Level 3-4 phaser_array) |
 
 #### Exotic Core Systems
 | Card Name | Type | Function |
@@ -448,6 +466,69 @@ Cards use the **Clash Royale upgrade model** where identical cards stack togethe
 - **First Discovery**: Full art and details revealed when first obtained
 - **Collection Progress**: Track discovery percentage across all rarities
 - **Anticipation Building**: Creates excitement for finding new cards
+
+---
+
+## 🤖 AI System Card Standardization
+
+### Enemy Ship Card Integration
+
+**All AI enemy ships use the same card system as players**. When enemy ships are destroyed, they drop their equipped cards which players can collect and use. This ensures consistency and prevents duplicate systems.
+
+#### AI-Specific Card Mappings
+
+AI ships currently use specialized weapon configurations that need to be mapped to standard player cards:
+
+| AI Weapon Type | Standard Card Equivalent | Rarity | Level Range |
+|----------------|-------------------------|--------|-------------|
+| **energy_pulse** | Pulse Cannon | Common | 2-3 |
+| **energy_cannon** | Laser Cannon | Common | 3-4 |
+| **plasma_cannon** | Plasma Cannon | Common | 4-5 |
+| **long_range_beam** | Particle Beam | Rare | 4-5 |
+| **defensive_turret** | Laser Cannon | Common | 2-3 |
+| **dual_turret** | Phaser Array | Rare | 3-4 |
+
+#### Shield System Standardization
+
+The AI system currently uses inconsistent shield naming that needs standardization:
+
+| Current AI Term | Standard Card | Function |
+|----------------|---------------|----------|
+| **basic_shields** | Shield Generator (Level 1) | Basic energy barrier |
+| **shield_generator** | Shield Generator | Creates protective energy barriers |
+| **shields** | Shields | Active deflector shield system |
+
+#### Required Card System Updates
+
+**These AI-specific variations need to be removed and replaced with standard leveled cards:**
+
+1. **Remove Level Variants**: 
+   - `warp_drive_low` → `warp_drive` Level 1
+   - `warp_drive_mid` → `warp_drive` Level 3
+   - `warp_drive_high` → `warp_drive` Level 5
+
+2. **Standardize Weapon Types**:
+   - `energy_pulse` → `pulse_cannon` Level 2-3
+   - `energy_cannon` → `laser_cannon` Level 3-4
+   - `defensive_turret` → `laser_cannon` Level 2-3
+   - `dual_turret` → `phaser_array` Level 3-4
+
+3. **Fix Shield Naming**:
+   - `basic_shields` → `shield_generator` Level 1
+   - Ensure `shield_generator` and `shields` are properly differentiated
+
+4. **Radar Integration**:
+   - Confirm `basic_radar` is available as a droppable common card
+   - Ensure proper integration with proximity detector systems
+
+### Card Drop Mechanics for AI Ships
+
+When AI enemy ships are destroyed, they should drop cards based on their loadout:
+
+- **Scout Ships**: Drop Level 1-2 common cards (pulse_cannon, impulse_engines, basic_radar)
+- **Fighter Ships**: Drop Level 2-3 common/rare cards (laser_cannon, plasma_cannon, shield_generator)  
+- **Gunships**: Drop Level 3-4 rare cards (plasma_cannon, phaser_array, tactical_computer)
+- **Freighters**: Drop Level 1-3 utility cards (cargo_hold, defensive_turret, subspace_radio)
 
 ---
 

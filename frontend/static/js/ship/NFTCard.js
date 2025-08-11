@@ -48,6 +48,12 @@ export const CARD_TYPES = {
     PHASER_ARRAY: 'phaser_array',
     DISRUPTOR_CANNON: 'disruptor_cannon',
     PARTICLE_BEAM: 'particle_beam',
+    // Specialized combat weapons (AI-compatible)
+    ENERGY_PULSE_CANNON: 'energy_pulse_cannon',  // Fast-firing light weapon (maps to pulse_cannon L2-3)
+    ENERGY_CANNON: 'energy_cannon',              // Medium tracking weapon (maps to laser_cannon L3-4)
+    LONG_RANGE_BEAM: 'long_range_beam',          // Extended range beam (maps to particle_beam L4-5)
+    DEFENSIVE_TURRET: 'defensive_turret',        // Point defense (maps to laser_cannon L2-3)
+    DUAL_TURRET: 'dual_turret',                  // Twin-mounted defense (maps to phaser_array L3-4)
     // Projectile weapons
     STANDARD_MISSILE: 'standard_missile',
     HOMING_MISSILE: 'homing_missile',
@@ -324,6 +330,10 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.HOMING_MISSILE,
         CARD_TYPES.PHOTON_TORPEDO,
         CARD_TYPES.PROXIMITY_MINE,
+        // Specialized combat weapons
+        CARD_TYPES.ENERGY_PULSE_CANNON,
+        CARD_TYPES.ENERGY_CANNON,
+        CARD_TYPES.DEFENSIVE_TURRET,
         // Some exotic core systems
         CARD_TYPES.QUANTUM_REACTOR,
         CARD_TYPES.CRYSTALLINE_MATRIX,
@@ -354,6 +364,12 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.HOMING_MISSILE,
         CARD_TYPES.PHOTON_TORPEDO,
         CARD_TYPES.PROXIMITY_MINE,
+        // Specialized combat weapons
+        CARD_TYPES.ENERGY_PULSE_CANNON,
+        CARD_TYPES.ENERGY_CANNON,
+        CARD_TYPES.LONG_RANGE_BEAM,
+        CARD_TYPES.DEFENSIVE_TURRET,
+        CARD_TYPES.DUAL_TURRET,
         CARD_TYPES.QUANTUM_REACTOR,
         CARD_TYPES.CRYSTALLINE_MATRIX,
         CARD_TYPES.DARK_MATTER_CORE,
@@ -398,6 +414,12 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.HOMING_MISSILE,
         CARD_TYPES.PHOTON_TORPEDO,
         CARD_TYPES.PROXIMITY_MINE,
+        // Specialized combat weapons
+        CARD_TYPES.ENERGY_PULSE_CANNON,
+        CARD_TYPES.ENERGY_CANNON,
+        CARD_TYPES.LONG_RANGE_BEAM,
+        CARD_TYPES.DEFENSIVE_TURRET,
+        CARD_TYPES.DUAL_TURRET,
         CARD_TYPES.QUANTUM_REACTOR,
         CARD_TYPES.CRYSTALLINE_MATRIX,
         CARD_TYPES.DARK_MATTER_CORE,
@@ -582,6 +604,12 @@ export default class NFTCard {
             CARD_TYPES.HOMING_MISSILE,
             CARD_TYPES.PHOTON_TORPEDO,
             CARD_TYPES.PROXIMITY_MINE,
+            // Specialized combat weapons
+            CARD_TYPES.ENERGY_PULSE_CANNON,
+            CARD_TYPES.ENERGY_CANNON,
+            CARD_TYPES.LONG_RANGE_BEAM,
+            CARD_TYPES.DEFENSIVE_TURRET,
+            CARD_TYPES.DUAL_TURRET,
             // Exotic Weapons
             CARD_TYPES.ION_STORM_CANNON,
             CARD_TYPES.GRAVITON_BEAM,
