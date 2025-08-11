@@ -12,6 +12,7 @@ import { StarfieldAudioManager } from './StarfieldAudioManager.js';
 import { StarfieldRenderer } from './StarfieldRenderer.js';
 import { TargetComputerManager } from './TargetComputerManager.js';
 import { ProximityDetector3D } from '../ui/ProximityDetector3D.js';
+import { EnemyAIManager } from '../ai/EnemyAIManager.js';
 // SimplifiedDamageControl removed - damage control integrated into ship systems HUD
 
 export class StarfieldManager {
@@ -150,6 +151,9 @@ export class StarfieldManager {
         // Create help interface
         this.helpInterface = new HelpInterface(this);
         
+        // Create enemy AI manager
+        this.enemyAIManager = new EnemyAIManager(this.scene, this.camera, this);
+        
         // Create clean damage control HUD
         this.damageControlContainer = document.createElement('div');
         document.body.appendChild(this.damageControlContainer);
@@ -238,6 +242,7 @@ export class StarfieldManager {
         // This ensures THREE.js is fully loaded and available
         setTimeout(() => {
             this.initializeWeaponEffectsManager();
+            this.initializeAIManager();
         }, 100);
 
         // Debug mode for weapon hit detection (independent of damage control)
@@ -249,6 +254,20 @@ export class StarfieldManager {
         this.targetOutlineObject = null; // Track which object is being outlined
         this.outlineDisabledUntilManualCycle = false; // Prevents auto-outline after destruction
         this.lastOutlineUpdate = 0; // Throttling for outline updates
+    }
+    
+    /**
+     * Initialize the enemy AI manager
+     */
+    async initializeAIManager() {
+        try {
+            if (this.enemyAIManager) {
+                await this.enemyAIManager.initialize();
+                console.log('🤖 Enemy AI system ready');
+            }
+        } catch (error) {
+            console.error('❌ Failed to initialize AI manager:', error);
+        }
     }
     
     /**
@@ -1242,6 +1261,85 @@ export class StarfieldManager {
                             this.audioManager.updateEngineVolume(actualSpeed, this.maxSpeed);
                         }
                     }
+                }
+            }
+            
+            // AI Debug Commands (Cmd+Shift combinations for Mac)
+            if (event.metaKey && event.shiftKey) {
+                const key = event.key.toLowerCase();
+                switch (key) {
+                    case 'a':
+                        // Toggle AI debug mode
+                        event.preventDefault();
+                        if (this.enemyAIManager) {
+                            this.enemyAIManager.setDebugMode(!this.enemyAIManager.debugMode);
+                            console.log(`🤖 AI Debug Mode: ${this.enemyAIManager.debugMode ? 'ON' : 'OFF'}`);
+                        }
+                        return;
+                    case 'e':
+                        // Force all AIs to engage state
+                        event.preventDefault();
+                        if (this.enemyAIManager) {
+                            this.enemyAIManager.forceAllAIState('engage');
+                            console.log('🤖 All AIs forced to ENGAGE state');
+                        }
+                        return;
+                    case 'i':
+                        // Force all AIs to idle state
+                        event.preventDefault();
+                        if (this.enemyAIManager) {
+                            this.enemyAIManager.forceAllAIState('idle');
+                            console.log('🤖 All AIs forced to IDLE state');
+                        }
+                        return;
+                    case 's':
+                        // Show AI statistics
+                        event.preventDefault();
+                        if (this.enemyAIManager) {
+                            const stats = this.enemyAIManager.getAIStats();
+                            console.log('🤖 AI Statistics:', stats);
+                        }
+                        return;
+                    case 'f':
+                        // Force all AIs to flee state
+                        event.preventDefault();
+                        if (this.enemyAIManager) {
+                            this.enemyAIManager.forceAllAIState('flee');
+                            console.log('🤖 All AIs forced to FLEE state');
+                        }
+                        return;
+                    case 'v':
+                        // Create V-Formation with all AI ships
+                        event.preventDefault();
+                        if (this.enemyAIManager && this.targetDummyShips) {
+                            this.enemyAIManager.createFormation(this.targetDummyShips, 'v_formation');
+                            console.log('🎯 Created V-Formation with all AI ships');
+                        }
+                        return;
+                    case 'c':
+                        // Create Column formation with all AI ships
+                        event.preventDefault();
+                        if (this.enemyAIManager && this.targetDummyShips) {
+                            this.enemyAIManager.createFormation(this.targetDummyShips, 'column');
+                            console.log('🎯 Created Column formation with all AI ships');
+                        }
+                        return;
+                    case 'l':
+                        // Create Line Abreast formation with all AI ships
+                        event.preventDefault();
+                        if (this.enemyAIManager && this.targetDummyShips) {
+                            this.enemyAIManager.createFormation(this.targetDummyShips, 'line_abreast');
+                            console.log('🎯 Created Line Abreast formation with all AI ships');
+                        }
+                        return;
+                    case 'b':
+                        // Show flocking statistics
+                        event.preventDefault();
+                        if (this.enemyAIManager) {
+                            const stats = this.enemyAIManager.getFlockingStats();
+                            console.log('🐦 Flocking Statistics:', stats);
+                        }
+                        return;
                 }
             }
             
@@ -2441,6 +2539,11 @@ export class StarfieldManager {
         // Update 3D proximity detector
         if (this.proximityDetector3D) {
             this.proximityDetector3D.update(deltaTime);
+        }
+        
+        // Update enemy AI manager
+        if (this.enemyAIManager) {
+            this.enemyAIManager.update(deltaTime);
         }
     }
 
@@ -3862,23 +3965,23 @@ export class StarfieldManager {
                 if (i === 0) {
                     // First dummy: place in VERY HIGH altitude bucket (>1000m above)
                     angle = playerHeading + (Math.PI * 0.1); // 18° to the right of player heading
-                    distance = 45000; // 45km away - spread across the 50km radar range
+                    distance = 80; // 80km away - using game units (1 unit = 1 km)
                     height = 1.2; // 1.2km above player (very_high bucket: y=0.7, threshold=1000m)
-                    console.log(`🎯 Target Dummy 1: VERY HIGH bucket - ${height*1000}m altitude, ${distance/1000}km distance`);
+                    // console.log(`🎯 Target Dummy 1: VERY HIGH bucket - ${height*1000}m altitude, ${distance}km distance`);
                 } else if (i === 1) {
                     // Second dummy: place in VERY LOW altitude bucket (<-1000m below)
                     const relativeAngle = Math.PI * 0.6; // 108° to the left-back
                     angle = playerHeading + relativeAngle;
-                    distance = 35000; // 35km away - good spread within radar range
+                    distance = 55; // 55km away - using game units (1 unit = 1 km)
                     height = -1.5; // 1.5km below player (very_low bucket: y=-0.7, threshold=-Infinity)
-                    console.log(`🎯 Target Dummy 2: VERY LOW bucket - ${height*1000}m altitude, ${distance/1000}km distance`);
+                    // console.log(`🎯 Target Dummy 2: VERY LOW bucket - ${height*1000}m altitude, ${distance}km distance`);
                 } else {
                     // Third dummy: place in SOMEWHAT HIGH altitude bucket (100-500m above)
                     const relativeAngle = -Math.PI * 0.4; // 72° to the left of player heading
                     angle = playerHeading + relativeAngle;
-                    distance = 25000; // 25km away - closer but still well spread
+                    distance = 30; // 30km away - using game units (1 unit = 1 km)
                     height = 0.3; // 300m above player (somewhat_high bucket: y=0.25, threshold=100m)
-                    console.log(`🎯 Target Dummy 3: SOMEWHAT HIGH bucket - ${height*1000}m altitude, ${distance/1000}km distance`);
+                    // console.log(`🎯 Target Dummy 3: SOMEWHAT HIGH bucket - ${height*1000}m altitude, ${distance}km distance`);
                 }
                 
                 shipMesh.position.set(
@@ -3893,13 +3996,14 @@ export class StarfieldManager {
                 const actualDistance = playerPosition.distanceTo(targetPosition);
                 const altitudeDifference = targetPosition.y - playerPosition.y;
                 
-                console.log(`🎯 Target Dummy ${i + 1} FULL DEBUG INFO:`);
-                console.log(`   Player Position: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
-                console.log(`   Target Position: (${targetPosition.x.toFixed(1)}, ${targetPosition.y.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
-                console.log(`   Altitude Difference: ${(altitudeDifference*1000).toFixed(0)}m`);
-                console.log(`   3D Distance: ${(actualDistance/1000).toFixed(1)}km`);
-                console.log(`   Horizontal Distance: ${(distance/1000).toFixed(1)}km`);
-                console.log(`   Expected Radar Bucket: ${i === 0 ? 'very_high (y=0.7)' : i === 1 ? 'very_low (y=-0.7)' : 'somewhat_high (y=0.25)'}`);
+                // DEBUG INFO (DISABLED to reduce console spam)
+                // console.log(`🎯 Target Dummy ${i + 1} FULL DEBUG INFO:`);
+                // console.log(`   Player Position: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
+                // console.log(`   Target Position: (${targetPosition.x.toFixed(1)}, ${targetPosition.y.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
+                // console.log(`   Altitude Difference: ${(altitudeDifference*1000).toFixed(0)}m`);
+                // console.log(`   3D Distance: ${(actualDistance/1000).toFixed(1)}km`);
+                // console.log(`   Horizontal Distance: ${(distance/1000).toFixed(1)}km`);
+                // console.log(`   Expected Radar Bucket: ${i === 0 ? 'very_high (y=0.7)' : i === 1 ? 'very_low (y=-0.7)' : 'somewhat_high (y=0.25)'}`);
                 
                 // Store ship data in mesh
                 shipMesh.userData = {
@@ -3951,10 +4055,11 @@ export class StarfieldManager {
                 
                 // Additional debug log with intended vs calculated distance
                 const calculatedDistance = playerPosition.distanceTo(shipMesh.position);
-                console.log(`🎯 Target ${i + 1} positioned at ${(calculatedDistance / 1000).toFixed(1)}km (world coords: ${shipMesh.position.x.toFixed(1)}, ${shipMesh.position.y.toFixed(1)}, ${shipMesh.position.z.toFixed(1)})`);
-                console.log(`🎯   Player position: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
-                console.log(`🎯   Intended distance: ${(distance/1000).toFixed(1)}km, angle: ${(angle * 180 / Math.PI).toFixed(1)}°, height: ${(height*1000).toFixed(0)}m`);
-                console.log(`🎯   Calculated distance: ${(calculatedDistance/1000).toFixed(1)}km`);
+                // Position debug info (DISABLED to reduce console spam)
+                // console.log(`🎯 Target ${i + 1} positioned at ${(calculatedDistance / 1000).toFixed(1)}km (world coords: ${shipMesh.position.x.toFixed(1)}, ${shipMesh.position.y.toFixed(1)}, ${shipMesh.position.z.toFixed(1)})`);
+                // console.log(`🎯   Player position: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
+                // console.log(`🎯   Intended distance: ${(distance/1000).toFixed(1)}km, angle: ${(angle * 180 / Math.PI).toFixed(1)}°, height: ${(height*1000).toFixed(0)}m`);
+                // console.log(`🎯   Calculated distance: ${(calculatedDistance/1000).toFixed(1)}km`);
                 
                 // CRITICAL: Update physics body position to match mesh position
                 if (window.physicsManager && window.physicsManager.initialized) {

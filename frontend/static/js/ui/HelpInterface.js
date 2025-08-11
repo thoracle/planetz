@@ -453,6 +453,50 @@ export class HelpInterface {
                     </div>
                 </div>
                 
+                <h4 class="subsection-header">[ AI DEBUG CONTROLS ]</h4>
+                <div class="control-grid">
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+A</span>
+                        <span class="control-desc">Toggle AI Debug Mode</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+E</span>
+                        <span class="control-desc">Force All AIs to Engage</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+I</span>
+                        <span class="control-desc">Force All AIs to Idle</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+F</span>
+                        <span class="control-desc">Force All AIs to Flee</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+S</span>
+                        <span class="control-desc">Show AI Statistics</span>
+                    </div>
+                </div>
+                
+                <h4 class="subsection-header">[ FLOCKING & FORMATIONS ]</h4>
+                <div class="control-grid">
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+V</span>
+                        <span class="control-desc">Create V-Formation</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+C</span>
+                        <span class="control-desc">Create Column Formation</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+L</span>
+                        <span class="control-desc">Create Line Abreast Formation</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+B</span>
+                        <span class="control-desc">Show Flocking Statistics</span>
+                    </div>
+                </div>
+                
                 <div class="tech-notes">
                     <div class="notes-header">Technical Notes:</div>
                     <div class="note-entry">• Systems require appropriate cards to function</div>
@@ -460,6 +504,10 @@ export class HelpInterface {
                     <div class="note-entry">• Energy consumption varies by system level</div>
                     <div class="note-entry">• Sub-targeting requires Level 2+ Target Computer</div>
                     <div class="note-entry">• Debug modes are for development and testing</div>
+                    <div class="note-entry">• AI debug controls require spawned enemies (Q key)</div>
+                    <div class="note-entry">• AI statistics display in browser console</div>
+                    <div class="note-entry">• Formations require 2+ AI ships to function</div>
+                    <div class="note-entry">• Flocking behaviors work automatically once enabled</div>
                 </div>
             </div>
         `;
