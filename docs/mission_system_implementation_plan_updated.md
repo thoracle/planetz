@@ -867,12 +867,43 @@ classDiagram
         +showObjectiveComplete(objective)
     }
     
+    class MissionTriggerSystem {
+        +Dict triggers
+        
+        +registerTrigger(eventType, callback)
+        +fireTrigger(eventType, missionData, context)
+    }
+    
+    class MissionCascadeHandler {
+        +MissionManager missionManager
+        +Dict cascadeRules
+        +Dict sharedData
+        
+        +registerCascadeRule(missionId, rule)
+        +handleMissionBotched(missionId, context)
+        +botchRelatedMissions(missionIds)
+        +modifyFactionStanding(faction, change)
+    }
+    
+    class MissionStorageManager {
+        +String storageType
+        +Object storageBackend
+        
+        +determineStorageType(config)
+        +migrateFromJsonToDatabase()
+        +createStorageBackend()
+    }
+    
     Mission --> Objective : contains
     MissionManager --> Mission : manages
     MissionManager --> TemplateManager : uses
     MissionTemplate --> ObjectiveTemplate : contains
     Mission --> RewardPackage : references
     MissionEventHandler --> Mission : tracks
+    MissionManager --> MissionTriggerSystem : uses
+    MissionManager --> MissionCascadeHandler : uses
+    MissionManager --> MissionStorageManager : uses
+    MissionCascadeHandler --> Mission : affects
     
     <<enumeration>> MissionState
     MissionState : UNKNOWN
@@ -2092,9 +2123,461 @@ graph LR
 - **Week 7**: Real-time event integration with StarfieldManager
 - **Week 8**: UI polish, localization, and testing
 
-## 12. Critical Implementation Details
+## 12. Missing Implementation Details from Mission Spec
 
-### 12.1 Data Persistence Strategy
+### 12.1 Triggers and Callbacks System (From Spec Section 4.3)
+
+```mermaid
+graph TD
+    subgraph "Mission Triggers"
+        STATE_CHANGE[State Change Event]
+        OBJECTIVE_COMPLETE[Objective Completion]
+        TIME_EVENT[Time-based Event]
+        LOCATION_EVENT[Location Event]
+    end
+    
+    subgraph "Callback Handlers"
+        FRONTEND[Frontend Callbacks]
+        GAME_WORLD[Game World Effects]
+        ANIMATION[Animation Triggers]
+        SOUND[Audio Cues]
+        UI_UPDATE[UI Updates]
+    end
+    
+    subgraph "API Response Hooks"
+        RESPONSE[API Response]
+        HOOKS[Hook Data]
+        FRONTEND_HANDLER[Frontend Handler]
+        THREEJS[Three.js Integration]
+    end
+    
+    STATE_CHANGE --> FRONTEND
+    STATE_CHANGE --> GAME_WORLD
+    OBJECTIVE_COMPLETE --> ANIMATION
+    OBJECTIVE_COMPLETE --> SOUND
+    TIME_EVENT --> UI_UPDATE
+    LOCATION_EVENT --> GAME_WORLD
+    
+    RESPONSE --> HOOKS
+    HOOKS --> FRONTEND_HANDLER
+    FRONTEND_HANDLER --> THREEJS
+    
+    classDef trigger fill:#ffcdd2
+    classDef callback fill:#c8e6c9
+    classDef api fill:#fff9c4
+    
+    class STATE_CHANGE,OBJECTIVE_COMPLETE,TIME_EVENT,LOCATION_EVENT trigger
+    class FRONTEND,GAME_WORLD,ANIMATION,SOUND,UI_UPDATE callback
+    class RESPONSE,HOOKS,FRONTEND_HANDLER,THREEJS api
+```
+
+#### 12.1.1 Mission Triggers Implementation
+
+```python
+class MissionTriggerSystem:
+    def __init__(self):
+        self.triggers = {}  # event_type -> list of callback functions
+        
+    def register_trigger(self, event_type, callback):
+        """Register a callback for a specific mission event"""
+        if event_type not in self.triggers:
+            self.triggers[event_type] = []
+        self.triggers[event_type].append(callback)
+    
+    def fire_trigger(self, event_type, mission_data, context=None):
+        """Fire all callbacks for an event type"""
+        callbacks = self.triggers.get(event_type, [])
+        response_hooks = []
+        
+        for callback in callbacks:
+            hook_data = callback(mission_data, context)
+            if hook_data:
+                response_hooks.append(hook_data)
+        
+        return response_hooks
+
+# Example trigger registration
+def on_mission_accepted(mission_data, context):
+    """Trigger when mission is accepted"""
+    return {
+        'type': 'spawn_enemies',
+        'data': {
+            'mission_id': mission_data['id'],
+            'enemy_types': mission_data.get('enemy_spawn', []),
+            'location': mission_data['location']
+        }
+    }
+
+def on_objective_complete(mission_data, context):
+    """Trigger when objective is completed"""
+    return {
+        'type': 'play_audio',
+        'data': {
+            'sound': 'objective_complete.wav',
+            'volume': 0.7
+        }
+    }
+```
+
+#### 12.1.2 Custom Fields Support (Spec Section 4.3)
+
+```python
+class MissionCustomFields:
+    """Support for mission-specific custom data fields"""
+    
+    @staticmethod
+    def validate_custom_fields(mission_data):
+        """Validate custom fields based on mission type"""
+        mission_type = mission_data.get('type')
+        custom_fields = mission_data.get('customFields', {})
+        
+        validators = {
+            'escort': MissionCustomFields.validate_escort_fields,
+            'delivery': MissionCustomFields.validate_delivery_fields,
+            'elimination': MissionCustomFields.validate_combat_fields,
+            'reconnaissance': MissionCustomFields.validate_scan_fields
+        }
+        
+        validator = validators.get(mission_type)
+        if validator:
+            return validator(custom_fields)
+        return True
+    
+    @staticmethod
+    def validate_escort_fields(fields):
+        required = ['convoy_ships', 'route_waypoints', 'threat_level']
+        return all(field in fields for field in required)
+    
+    @staticmethod
+    def validate_delivery_fields(fields):
+        required = ['cargo_type', 'pickup_location', 'delivery_location', 'cargo_value']
+        return all(field in fields for field in required)
+
+# Example custom fields structure
+ESCORT_MISSION_CUSTOM_FIELDS = {
+    "convoy_ships": [
+        {"type": "merchant_freighter", "name": "Stellar Trader", "hull": 1000},
+        {"type": "escort_fighter", "name": "Guardian-1", "hull": 400}
+    ],
+    "route_waypoints": [
+        {"x": 100, "y": 50, "z": 200, "name": "Waypoint Alpha"},
+        {"x": 300, "y": 75, "z": 400, "name": "Waypoint Beta"}
+    ],
+    "threat_level": "medium",
+    "patrol_routes": ["outer_rim_patrol", "merchant_corridor"],
+    "emergency_protocols": {
+        "retreat_threshold": 0.3,
+        "distress_frequency": "121.5"
+    }
+}
+```
+
+### 12.2 Narrative Impact and Cascade Effects (Spec Section 4.2)
+
+```mermaid
+graph TD
+    subgraph "Primary Mission"
+        MAIN[Main Mission]
+        BOTCH[Mission Botched]
+    end
+    
+    subgraph "Cascade Effects"
+        RELATED1[Related Mission 1]
+        RELATED2[Related Mission 2]
+        FACTION[Faction Standing]
+        REPUTATION[Player Reputation]
+    end
+    
+    subgraph "Alternative Paths"
+        ALT1[Alternative Mission]
+        REDEMPTION[Redemption Arc]
+        PENALTY[Permanent Consequences]
+    end
+    
+    subgraph "Shared Data Impact"
+        NPC_STATUS[NPC Status]
+        WORLD_STATE[World State Changes]
+        LOCATION_ACCESS[Location Access]
+        ITEM_AVAILABILITY[Item Availability]
+    end
+    
+    MAIN --> BOTCH
+    BOTCH --> RELATED1
+    BOTCH --> RELATED2
+    BOTCH --> FACTION
+    BOTCH --> REPUTATION
+    
+    BOTCH --> ALT1
+    BOTCH --> REDEMPTION
+    BOTCH --> PENALTY
+    
+    BOTCH --> NPC_STATUS
+    BOTCH --> WORLD_STATE
+    BOTCH --> LOCATION_ACCESS
+    BOTCH --> ITEM_AVAILABILITY
+    
+    classDef primary fill:#ffcdd2
+    classDef cascade fill:#fff3e0
+    classDef alternative fill:#c8e6c9
+    classDef shared fill:#e1f5fe
+    
+    class MAIN,BOTCH primary
+    class RELATED1,RELATED2,FACTION,REPUTATION cascade
+    class ALT1,REDEMPTION,PENALTY alternative
+    class NPC_STATUS,WORLD_STATE,LOCATION_ACCESS,ITEM_AVAILABILITY shared
+```
+
+#### 12.2.1 Cascade Effects Implementation
+
+```python
+class MissionCascadeHandler:
+    def __init__(self, mission_manager):
+        self.mission_manager = mission_manager
+        self.cascade_rules = {}
+        self.shared_data = {}
+    
+    def register_cascade_rule(self, mission_id, rule):
+        """Register a cascade effect rule for a mission"""
+        if mission_id not in self.cascade_rules:
+            self.cascade_rules[mission_id] = []
+        self.cascade_rules[mission_id].append(rule)
+    
+    def handle_mission_botched(self, mission_id, context):
+        """Handle cascade effects when a mission is botched"""
+        rules = self.cascade_rules.get(mission_id, [])
+        
+        for rule in rules:
+            effect_type = rule['type']
+            effect_data = rule['data']
+            
+            if effect_type == 'botch_related_missions':
+                self.botch_related_missions(effect_data['mission_ids'])
+            elif effect_type == 'modify_faction_standing':
+                self.modify_faction_standing(effect_data['faction'], effect_data['change'])
+            elif effect_type == 'update_shared_data':
+                self.update_shared_data(effect_data['key'], effect_data['value'])
+            elif effect_type == 'unlock_alternative':
+                self.unlock_alternative_mission(effect_data['alternative_mission_id'])
+
+# Example cascade rule registration
+federation_escort_cascade = {
+    'type': 'botch_related_missions',
+    'data': {
+        'mission_ids': ['federation_patrol_001', 'federation_supply_run_002'],
+        'reason': 'convoy_destroyed'
+    }
+}
+
+trader_reputation_cascade = {
+    'type': 'modify_faction_standing',
+    'data': {
+        'faction': 'traders_guild',
+        'change': -25,
+        'reason': 'failed_delivery_contract'
+    }
+}
+```
+
+### 12.3 Performance Scaling Strategy (Spec Section 6.1)
+
+```mermaid
+graph TD
+    subgraph "Scale Thresholds"
+        SMALL[< 50 Missions<br/>JSON Files]
+        MEDIUM[50-100 Missions<br/>Hybrid System]
+        LARGE[> 100 Missions<br/>Database Required]
+    end
+    
+    subgraph "Storage Solutions"
+        JSON_FILES[JSON File Storage]
+        SQLITE[SQLite Database]
+        POSTGRESQL[PostgreSQL]
+        REDIS[Redis Cache]
+    end
+    
+    subgraph "Performance Optimizations"
+        LAZY_LOAD[Lazy Loading]
+        CACHE[Memory Caching]
+        INDEX[Database Indexing]
+        BATCH[Batch Operations]
+    end
+    
+    SMALL --> JSON_FILES
+    MEDIUM --> SQLITE
+    MEDIUM --> REDIS
+    LARGE --> POSTGRESQL
+    LARGE --> REDIS
+    
+    JSON_FILES --> LAZY_LOAD
+    SQLITE --> CACHE
+    SQLITE --> INDEX
+    POSTGRESQL --> BATCH
+    POSTGRESQL --> INDEX
+    
+    classDef scale fill:#e8f5e8
+    classDef storage fill:#fff3e0
+    classDef optimization fill:#f3e5f5
+    
+    class SMALL,MEDIUM,LARGE scale
+    class JSON_FILES,SQLITE,POSTGRESQL,REDIS storage
+    class LAZY_LOAD,CACHE,INDEX,BATCH optimization
+```
+
+#### 12.3.1 Database Migration Strategy
+
+```python
+class MissionStorageManager:
+    def __init__(self, config):
+        self.storage_type = self.determine_storage_type(config)
+        self.storage_backend = self.create_storage_backend()
+    
+    def determine_storage_type(self, config):
+        """Determine appropriate storage type based on scale"""
+        mission_count = config.get('expected_mission_count', 0)
+        
+        if mission_count < 50:
+            return 'json_files'
+        elif mission_count < 100:
+            return 'sqlite'
+        else:
+            return 'postgresql'
+    
+    def migrate_from_json_to_database(self):
+        """Migrate from JSON files to database when threshold reached"""
+        json_missions = self.load_all_json_missions()
+        db_backend = self.create_database_backend()
+        
+        for mission_data in json_missions:
+            db_backend.save_mission(mission_data)
+        
+        # Archive JSON files
+        self.archive_json_files()
+
+# Performance monitoring
+class MissionPerformanceMonitor:
+    def __init__(self):
+        self.metrics = {
+            'load_times': [],
+            'save_times': [],
+            'query_times': [],
+            'memory_usage': []
+        }
+    
+    def should_migrate_to_database(self):
+        """Determine if migration to database is needed"""
+        avg_load_time = sum(self.metrics['load_times'][-10:]) / 10
+        return avg_load_time > 0.5  # 500ms threshold
+```
+
+### 12.4 Testing Strategy Implementation (Spec Section 6.1)
+
+```mermaid
+graph TD
+    subgraph "Unit Tests"
+        STATE_TESTS[State Transition Tests]
+        OBJECTIVE_TESTS[Objective Logic Tests]
+        BOTCH_TESTS[Botch Handling Tests]
+        VALIDATION_TESTS[Data Validation Tests]
+    end
+    
+    subgraph "Integration Tests"
+        API_TESTS[API Endpoint Tests]
+        FRONTEND_TESTS[Frontend Integration Tests]
+        DATABASE_TESTS[Database Integration Tests]
+        CASCADE_TESTS[Cascade Effect Tests]
+    end
+    
+    subgraph "End-to-End Tests"
+        MISSION_FLOW[Complete Mission Flow]
+        MULTIPLAYER[Multiplayer Scenarios]
+        PERFORMANCE[Performance Tests]
+        FAILURE_RECOVERY[Failure Recovery Tests]
+    end
+    
+    subgraph "Mock Systems"
+        MOCK_API[Mock API Responses]
+        MOCK_EVENTS[Mock Game Events]
+        MOCK_DB[Mock Database]
+        TEST_DATA[Test Data Sets]
+    end
+    
+    STATE_TESTS --> API_TESTS
+    OBJECTIVE_TESTS --> FRONTEND_TESTS
+    BOTCH_TESTS --> CASCADE_TESTS
+    VALIDATION_TESTS --> DATABASE_TESTS
+    
+    API_TESTS --> MISSION_FLOW
+    FRONTEND_TESTS --> MULTIPLAYER
+    DATABASE_TESTS --> PERFORMANCE
+    CASCADE_TESTS --> FAILURE_RECOVERY
+    
+    MOCK_API --> API_TESTS
+    MOCK_EVENTS --> FRONTEND_TESTS
+    MOCK_DB --> DATABASE_TESTS
+    TEST_DATA --> CASCADE_TESTS
+    
+    classDef unit fill:#ffcdd2
+    classDef integration fill:#c8e6c9
+    classDef e2e fill:#fff9c4
+    classDef mock fill:#e1f5fe
+    
+    class STATE_TESTS,OBJECTIVE_TESTS,BOTCH_TESTS,VALIDATION_TESTS unit
+    class API_TESTS,FRONTEND_TESTS,DATABASE_TESTS,CASCADE_TESTS integration
+    class MISSION_FLOW,MULTIPLAYER,PERFORMANCE,FAILURE_RECOVERY e2e
+    class MOCK_API,MOCK_EVENTS,MOCK_DB,TEST_DATA mock
+```
+
+### 12.5 Mission File Organization Strategy (Spec Section 3.3)
+
+```mermaid
+graph TD
+    subgraph "File Structure"
+        ROOT[missions/]
+        ACTIVE[active/]
+        TEMPLATES[templates/]
+        COMPLETED[completed/]
+        ARCHIVED[archived/]
+    end
+    
+    subgraph "File Naming Convention"
+        MISSION_ID["mission_id.json"]
+        TEMPLATE_ID["template_id_template.json"]
+        PLAYER_PREFIX["player_id_mission_id.json"]
+    end
+    
+    subgraph "File Categories"
+        PREDEFINED[Predefined Missions]
+        GENERATED[Generated Missions]
+        PLAYER_SPECIFIC[Player-Specific Data]
+        BACKUP[Backup Files]
+    end
+    
+    ROOT --> ACTIVE
+    ROOT --> TEMPLATES
+    ROOT --> COMPLETED
+    ROOT --> ARCHIVED
+    
+    ACTIVE --> MISSION_ID
+    TEMPLATES --> TEMPLATE_ID
+    COMPLETED --> PLAYER_PREFIX
+    
+    PREDEFINED --> TEMPLATES
+    GENERATED --> ACTIVE
+    PLAYER_SPECIFIC --> COMPLETED
+    BACKUP --> ARCHIVED
+    
+    classDef structure fill:#e8f5e8
+    classDef naming fill:#fff3e0
+    classDef category fill:#f3e5f5
+    
+    class ROOT,ACTIVE,TEMPLATES,COMPLETED,ARCHIVED structure
+    class MISSION_ID,TEMPLATE_ID,PLAYER_PREFIX naming
+    class PREDEFINED,GENERATED,PLAYER_SPECIFIC,BACKUP category
+```
+
+## 13. Critical Implementation Details
+
+### 13.1 Data Persistence Strategy
 - JSON files for development/small scale
 - SQLite migration path for production
 - Automatic backup system for mission data
