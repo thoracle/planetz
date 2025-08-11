@@ -17,6 +17,51 @@ export default class CardSystemIntegration {
     }
 
     /**
+     * Check if a card type can be installed on this ship (slot type compatibility)
+     * @param {string} cardType - Card type to check
+     * @returns {boolean} True if card can be installed on this ship
+     */
+    canInstallCardType(cardType) {
+        // Capital ship systems require large vessels
+        const capitalShipCards = [
+            CARD_TYPES.LANDING_BAY,
+            CARD_TYPES.FIGHTER_LAUNCH_BAY,
+            CARD_TYPES.SHUTTLE_BAY,
+            CARD_TYPES.SHIP_CONSTRUCTION_BAY,
+            CARD_TYPES.REPAIR_FACILITY,
+            CARD_TYPES.MANUFACTURING_PLANT,
+            CARD_TYPES.FLEET_COMMAND_CENTER,
+            CARD_TYPES.COMMUNICATIONS_ARRAY,
+            CARD_TYPES.BATTLE_BRIDGE,
+            CARD_TYPES.POINT_DEFENSE_GRID,
+            CARD_TYPES.SHIELD_ARRAY,
+            CARD_TYPES.REACTOR_CORE,
+            CARD_TYPES.CARGO_PROCESSING_CENTER,
+            CARD_TYPES.MEDICAL_BAY,
+            CARD_TYPES.SCIENCE_LAB
+        ];
+        
+        // Define which ship types can use capital ship systems
+        const capitalShipTypes = [
+            'carrier',           // Primary capital ship
+            'heavy_freighter',   // Largest cargo vessel
+            'destroyer',         // Future capital ship
+            'battleship',        // Future capital ship
+            'cruiser',           // Future capital ship
+            'space_station'      // Future implementation
+        ];
+        
+        // Check if this is a capital ship card
+        if (capitalShipCards.includes(cardType)) {
+            // Only allow installation on capital ships
+            return capitalShipTypes.includes(this.ship.shipType || this.ship.type);
+        }
+        
+        // All other cards can be installed on any ship
+        return true;
+    }
+
+    /**
      * Initialize card data for this ship
      */
     async initializeCardData() {

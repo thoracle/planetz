@@ -353,7 +353,7 @@ flowchart TB
         ReactorCards[energy_reactor, quantum_reactor, antimatter_core]
         WeaponCards[laser_cannon, pulse_cannon, plasma_cannon, phaser_array, missiles]
         UtilityCards[target_computer, galactic_chart, subspace_radio, long_range_scanner]
-        ShieldCards[basic_shields, energy_shields, quantum_shields]
+        ShieldCards[shield_generator, shields, quantum_barrier]
     end
     
     S0 --> EngineCards

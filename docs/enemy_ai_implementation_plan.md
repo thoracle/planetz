@@ -976,14 +976,14 @@ Based on the ship types in the specification, here are the recommended card load
 ```javascript
 const SCOUT_LOADOUT = {
     weaponSlots: [
-        { type: 'light_laser', required: true },
+        { type: 'laser_cannon', required: true },
         { type: 'missile_pod', required: false }
     ],
     systemSlots: [
         { type: 'long_range_scanner', required: true },
         { type: 'subspace_radio', required: true },
-        { type: 'enhanced_thrusters', required: true },
-        { type: 'basic_shields', required: false }
+        { type: 'impulse_engines', required: true },
+        { type: 'shield_generator', required: false }
     ],
     maxCards: 6,
     difficultyScaling: 'sensors_and_speed'
@@ -999,14 +999,14 @@ const SCOUT_LOADOUT = {
 ```javascript
 const LIGHT_FIGHTER_LOADOUT = {
     weaponSlots: [
-        { type: 'light_laser', required: true, count: 2 },
+        { type: 'laser_cannon', required: true, count: 2 },
         { type: 'missile_pod', required: false }
     ],
     systemSlots: [
-        { type: 'basic_scanner', required: true },
+        { type: 'long_range_scanner', required: true },
         { type: 'subspace_radio', required: true },
-        { type: 'combat_thrusters', required: true },
-        { type: 'light_shields', required: false }
+        { type: 'impulse_engines', required: true },
+        { type: 'shield_generator', required: false }
     ],
     maxCards: 7,
     difficultyScaling: 'balanced_combat'
@@ -1027,11 +1027,11 @@ const HEAVY_FIGHTER_LOADOUT = {
         { type: 'point_defense', required: true }
     ],
     systemSlots: [
-        { type: 'combat_scanner', required: true },
+        { type: 'long_range_scanner', required: true },
         { type: 'subspace_radio', required: true },
-        { type: 'heavy_thrusters', required: true },
-        { type: 'heavy_shields', required: true },
-        { type: 'warp_drive_low', required: true }
+        { type: 'impulse_engines', required: true },
+        { type: 'shield_generator', required: true },
+        { type: 'warp_drive', required: true }
     ],
     maxCards: 9,
     difficultyScaling: 'firepower_focused'
@@ -1051,10 +1051,10 @@ const CARRIER_LOADOUT = {
         { type: 'point_defense', required: true, count: 2 }
     ],
     systemSlots: [
-        { type: 'command_center', required: true },
-        { type: 'fighter_bay', required: true, targetable: true },
-        { type: 'heavy_shields', required: true },
-        { type: 'warp_drive_mid', required: true },
+        { type: 'strategic_computer', required: true },
+        { type: 'landing_bay', required: true, targetable: true },
+        { type: 'shield_generator', required: true },
+        { type: 'warp_drive', required: true },
         { type: 'long_range_scanner', required: true },
         { type: 'subspace_radio', required: true }
     ],
@@ -1078,9 +1078,9 @@ const LIGHT_FREIGHTER_LOADOUT = {
     ],
     systemSlots: [
         { type: 'cargo_hold', required: true },
-        { type: 'basic_scanner', required: true },
-        { type: 'warp_drive_low', required: true },
-        { type: 'basic_shields', required: false }
+        { type: 'long_range_scanner', required: true },
+        { type: 'warp_drive', required: true },
+        { type: 'shield_generator', required: false }
     ],
     maxCards: 6,
     difficultyScaling: 'cargo_focused'
@@ -1092,9 +1092,9 @@ const HEAVY_FREIGHTER_LOADOUT = {
     ],
     systemSlots: [
         { type: 'large_cargo_hold', required: true },
-        { type: 'combat_scanner', required: true },
-        { type: 'warp_drive_mid', required: true },
-        { type: 'heavy_shields', required: true }
+        { type: 'long_range_scanner', required: true },
+        { type: 'warp_drive', required: true },
+        { type: 'shield_generator', required: true }
     ],
     maxCards: 8,
     difficultyScaling: 'defensive_cargo'
@@ -1540,7 +1540,7 @@ export class EnemyLoadoutGenerator {
 const SCOUT_LOADOUT_TEMPLATE = {
     weaponSlots: [
         { 
-            type: 'light_laser', 
+            type: 'laser_cannon', 
             required: true, 
             priority: 'low',
             spawnChance: 1.0 
@@ -1566,13 +1566,13 @@ const SCOUT_LOADOUT_TEMPLATE = {
             spawnChance: 1.0 
         },
         { 
-            type: 'enhanced_thrusters', 
+            type: 'impulse_engines', 
             required: true, 
             priority: 'high',
             spawnChance: 1.0 
         },
         { 
-            type: 'basic_shields', 
+            type: 'shield_generator', 
             required: false, 
             priority: 'medium',
             spawnChance: 0.7 
@@ -1606,26 +1606,26 @@ const CARRIER_LOADOUT_TEMPLATE = {
     ],
     systemSlots: [
         { 
-            type: 'fighter_bay', 
+            type: 'cargo_hold', 
             required: true, 
             priority: 'critical',
             spawnChance: 1.0,
             health: 500 // Separate targetable subsystem
         },
         { 
-            type: 'command_center', 
+            type: 'strategic_computer', 
             required: true, 
             priority: 'critical',
             spawnChance: 1.0 
         },
         { 
-            type: 'warp_drive_medium', 
+            type: 'warp_drive', 
             required: true, 
             priority: 'high',
             spawnChance: 1.0 
         },
         { 
-            type: 'heavy_shields', 
+            type: 'shield_generator', 
             required: true, 
             priority: 'high',
             spawnChance: 1.0 
@@ -1686,8 +1686,8 @@ class EnemyShipSubsystems {
         
         // Special subsystems (fighter bay for carriers)
         if (this.ship.type === 'carrier') {
-            this.subsystems.set('fighter_bay', {
-                id: 'fighter_bay',
+            this.subsystems.set('landing_bay', {
+                id: 'landing_bay',
                 type: 'special',
                 currentHealth: 500,
                 maxHealth: 500,

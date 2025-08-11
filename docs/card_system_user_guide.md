@@ -66,7 +66,24 @@ Every card has these core properties:
 | **Weapon Systems** | Combat capabilities | Lasers, Missiles, Torpedoes |
 | **Operational** | Flight and navigation | Warp Drive, Shields |
 | **Sensor Systems** | Detection and targeting | Scanners, Radar, Computers |
+| **Capital Ship Systems** | Large-scale systems for capital ships only | Landing Bay, Fleet Command, Reactor Core |
 | **Exotic Systems** | Advanced alien technology | Quantum, Dimensional, Psionic |
+
+### Ship Type Compatibility
+
+**Capital Ship Systems** can only be installed on large vessels:
+
+| Ship Type | Capital Ship Slots | Notes |
+|-----------|-------------------|-------|
+| **Carrier** | ✅ Full Access | Primary capital ship with all systems |
+| **Heavy Freighter** | ✅ Full Access | Largest cargo vessel with industrial systems |
+| **Destroyer** | ✅ Full Access | Future capital ship class |
+| **Scout** | ❌ No Access | Too small for capital ship systems |
+| **Light Fighter** | ❌ No Access | Focused on speed and agility |
+| **Heavy Fighter** | ❌ No Access | Combat-focused but still too small |
+| **Light Freighter** | ❌ No Access | Medium-sized cargo vessel |
+
+**All other card types** can be installed on any ship that has available slots.
 
 ---
 
@@ -127,6 +144,36 @@ Every card has these core properties:
 - **Tactical Computer**: Level 3+ targeting with basic intel
 - **Combat Computer**: Level 4+ targeting with enhanced intel  
 - **Strategic Computer**: Level 5+ targeting with advanced intel
+
+### Capital Ship Systems
+**Large-scale systems for capital ships and stations only**
+
+#### Docking & Hangar Systems
+- **Landing Bay**: Fighter/shuttle docking and repair facilities
+- **Fighter Launch Bay**: Advanced automated fighter deployment system
+- **Shuttle Bay**: Utility craft and cargo shuttle operations
+
+#### Industrial & Manufacturing
+- **Ship Construction Bay**: On-board construction of small fighters/drones
+- **Repair Facility**: Advanced repair systems for allied ships
+- **Manufacturing Plant**: Converts raw materials into finished goods
+
+#### Command & Control
+- **Fleet Command Center**: Coordinates multiple allied ships with tactical bonuses
+- **Communications Array**: Long-range communications across sectors
+- **Battle Bridge**: Redundant command center for damage resilience
+
+#### Defensive Systems
+- **Point Defense Grid**: Multiple interconnected defensive turrets
+- **Shield Array**: Massive shield generators that can protect nearby ships
+
+#### Power & Infrastructure
+- **Reactor Core**: Massive power generation beyond normal reactors
+- **Cargo Processing Center**: Automated cargo handling and sorting
+
+#### Specialized Systems
+- **Medical Bay**: Advanced medical facilities for crew treatment
+- **Science Lab**: Research facilities for scanning and analysis
 
 ---
 
@@ -257,6 +304,14 @@ Every card has these core properties:
 | **Precognition Array** | Sensor | Predictive scanning technology |
 | **Neural Interface** | Sensor | Direct mind-machine interface |
 
+#### Capital Ship Systems (Basic)
+| Card Name | Type | Function |
+|-----------|------|----------|
+| **Shuttle Bay** | Capital Ship | Utility craft and cargo shuttle operations |
+| **Repair Facility** | Capital Ship | Advanced ship repair systems for allied vessels |
+| **Medical Bay** | Capital Ship | Advanced medical facilities for crew treatment |
+| **Cargo Processing Center** | Capital Ship | Automated cargo handling and sorting systems |
+
 #### Alien Technology
 | Card Name | Type | Function |
 |-----------|------|----------|
@@ -308,6 +363,20 @@ Every card has these core properties:
 | **Temporal Deflector** | Operational | Time-based defensive system |
 | **Phase Shield** | Operational | Perfect phasing shield technology |
 | **Adaptive Armor** | Core | Ultimate self-repairing hull |
+
+#### Capital Ship Systems (Advanced)
+| Card Name | Type | Function |
+|-----------|------|----------|
+| **Fighter Launch Bay** | Capital Ship | Advanced automated fighter deployment system |
+| **Ship Construction Bay** | Capital Ship | On-board construction of fighters and drones |
+| **Manufacturing Plant** | Capital Ship | Raw material processing into finished goods |
+| **Fleet Command Center** | Capital Ship | Multi-ship coordination with tactical bonuses |
+| **Communications Array** | Capital Ship | Long-range inter-sector communications |
+| **Battle Bridge** | Capital Ship | Redundant command center for damage resilience |
+| **Point Defense Grid** | Capital Ship | Multi-turret coordinated defense system |
+| **Shield Array** | Capital Ship | Massive shields that protect nearby allied ships |
+| **Reactor Core** | Capital Ship | Ultimate power generation beyond normal limits |
+| **Science Lab** | Capital Ship | Advanced research and analysis facilities |
 
 #### Transcendent Sensors
 | Card Name | Type | Function |
@@ -510,26 +579,41 @@ The AI system currently uses inconsistent shield naming that needs standardizati
 
 #### Required Card System Updates
 
-**These AI-specific variations need to be removed and replaced with standard leveled cards:**
+**✅ COMPLETED: All AI-specific variations have been removed and replaced with standard leveled cards:**
 
-1. **Remove Level Variants**: 
-   - `warp_drive_low` → `warp_drive` Level 1
-   - `warp_drive_mid` → `warp_drive` Level 3
-   - `warp_drive_high` → `warp_drive` Level 5
+1. **✅ Fixed Level Variants**: 
+   - `warp_drive_low` → `warp_drive` (Level 1 implied)
+   - `warp_drive_mid` → `warp_drive` (Level 3 implied)
+   - `warp_drive_high` → `warp_drive` (Level 5 implied)
 
-2. **Standardize Weapon Types**:
-   - `energy_pulse` → `pulse_cannon` Level 2-3
-   - `energy_cannon` → `laser_cannon` Level 3-4
-   - `defensive_turret` → `laser_cannon` Level 2-3
-   - `dual_turret` → `phaser_array` Level 3-4
+2. **✅ Standardized Weapon Types**:
+   - `energy_pulse` → `energy_pulse_cannon` (Rare, Level 2-3)
+   - `energy_cannon` → `energy_cannon` (Rare, Level 3-4)
+   - `defensive_turret` → `defensive_turret` (Rare, Level 2-3)
+   - `dual_turret` → `dual_turret` (Epic, Level 3-4)
+   - `light_laser` → `laser_cannon` (Common, Level 1-2)
 
-3. **Fix Shield Naming**:
-   - `basic_shields` → `shield_generator` Level 1
-   - Ensure `shield_generator` and `shields` are properly differentiated
+3. **✅ Fixed Shield Naming**:
+   - `basic_shields` → `shield_generator` (Level 1)
+   - `light_shields` → `shield_generator` (Level 2)
+   - `heavy_shields` → `shield_generator` (Level 4)
 
-4. **Radar Integration**:
-   - Confirm `basic_radar` is available as a droppable common card
-   - Ensure proper integration with proximity detector systems
+4. **✅ Fixed Engine/Thruster Variants**:
+   - `enhanced_thrusters` → `impulse_engines` (Level 2)
+   - `combat_thrusters` → `impulse_engines` (Level 3)
+   - `heavy_thrusters` → `impulse_engines` (Level 4)
+
+5. **✅ Fixed Scanner Variants**:
+   - `basic_scanner` → `long_range_scanner` (Level 1)
+   - `combat_scanner` → `long_range_scanner` (Level 3)
+
+6. **✅ Fixed Special Systems**:
+   - `command_center` → `strategic_computer` (Level 5)
+   - `fighter_bay` → `cargo_hold` (Level 3-4)
+
+7. **✅ Radar Integration**:
+   - `basic_radar` is available as droppable common card
+   - Proper integration with proximity detector systems confirmed
 
 ### Card Drop Mechanics for AI Ships
 

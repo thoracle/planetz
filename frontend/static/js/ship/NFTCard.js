@@ -35,6 +35,23 @@ export const CARD_TYPES = {
     CARGO_HOLD: 'cargo_hold',
     REINFORCED_CARGO_HOLD: 'reinforced_cargo_hold',  // Damage-resistant cargo
     SHIELDED_CARGO_HOLD: 'shielded_cargo_hold',      // Scan-resistant cargo
+    LANDING_BAY: 'landing_bay',                       // Fighter/shuttle docking system
+    
+    // Capital Ship Systems (Large vessels only)
+    FIGHTER_LAUNCH_BAY: 'fighter_launch_bay',        // Advanced fighter deployment system
+    SHUTTLE_BAY: 'shuttle_bay',                      // Utility craft docking
+    SHIP_CONSTRUCTION_BAY: 'ship_construction_bay',  // On-board ship manufacturing
+    REPAIR_FACILITY: 'repair_facility',              // Advanced ship repair systems
+    MANUFACTURING_PLANT: 'manufacturing_plant',      // Raw material processing
+    FLEET_COMMAND_CENTER: 'fleet_command_center',    // Multi-ship coordination
+    COMMUNICATIONS_ARRAY: 'communications_array',    // Long-range communications
+    BATTLE_BRIDGE: 'battle_bridge',                  // Redundant command center
+    POINT_DEFENSE_GRID: 'point_defense_grid',        // Multi-turret defense system
+    SHIELD_ARRAY: 'shield_array',                    // Capital ship shield system
+    REACTOR_CORE: 'reactor_core',                    // Massive power generation
+    CARGO_PROCESSING_CENTER: 'cargo_processing_center', // Automated cargo handling
+    MEDICAL_BAY: 'medical_bay',                      // Advanced medical facilities
+    SCIENCE_LAB: 'science_lab',                      // Research and analysis
     
     // Operational systems
     IMPULSE_ENGINES: 'impulse_engines',
@@ -205,7 +222,23 @@ export const CARD_DISPLAY_NAMES = {
     // Advanced Intel Systems (Level 3+ Target Computers)
     [CARD_TYPES.TACTICAL_COMPUTER]: 'Tactical Computer',
     [CARD_TYPES.COMBAT_COMPUTER]: 'Combat Computer',
-    [CARD_TYPES.STRATEGIC_COMPUTER]: 'Strategic Computer'
+    [CARD_TYPES.STRATEGIC_COMPUTER]: 'Strategic Computer',
+    
+    // Capital Ship Systems
+    [CARD_TYPES.FIGHTER_LAUNCH_BAY]: 'Fighter Launch Bay',
+    [CARD_TYPES.SHUTTLE_BAY]: 'Shuttle Bay',
+    [CARD_TYPES.SHIP_CONSTRUCTION_BAY]: 'Ship Construction Bay',
+    [CARD_TYPES.REPAIR_FACILITY]: 'Repair Facility',
+    [CARD_TYPES.MANUFACTURING_PLANT]: 'Manufacturing Plant',
+    [CARD_TYPES.FLEET_COMMAND_CENTER]: 'Fleet Command Center',
+    [CARD_TYPES.COMMUNICATIONS_ARRAY]: 'Communications Array',
+    [CARD_TYPES.BATTLE_BRIDGE]: 'Battle Bridge',
+    [CARD_TYPES.POINT_DEFENSE_GRID]: 'Point Defense Grid',
+    [CARD_TYPES.SHIELD_ARRAY]: 'Shield Array',
+    [CARD_TYPES.REACTOR_CORE]: 'Reactor Core',
+    [CARD_TYPES.CARGO_PROCESSING_CENTER]: 'Cargo Processing Center',
+    [CARD_TYPES.MEDICAL_BAY]: 'Medical Bay',
+    [CARD_TYPES.SCIENCE_LAB]: 'Science Lab'
 };
 
 // Card icons for slot identification (matches ship configuration icons exactly)
@@ -399,6 +432,12 @@ export const RARITY_CARD_POOLS = {
         // Advanced cargo systems
         CARD_TYPES.REINFORCED_CARGO_HOLD,
         CARD_TYPES.SHIELDED_CARGO_HOLD,
+        CARD_TYPES.LANDING_BAY,
+        // Capital Ship Systems (Basic)
+        CARD_TYPES.SHUTTLE_BAY,
+        CARD_TYPES.REPAIR_FACILITY,
+        CARD_TYPES.MEDICAL_BAY,
+        CARD_TYPES.CARGO_PROCESSING_CENTER,
         // Advanced Intel Systems
         CARD_TYPES.TACTICAL_COMPUTER,
         CARD_TYPES.COMBAT_COMPUTER
@@ -470,6 +509,22 @@ export const RARITY_CARD_POOLS = {
         // Advanced cargo systems
         CARD_TYPES.REINFORCED_CARGO_HOLD,
         CARD_TYPES.SHIELDED_CARGO_HOLD,
+        CARD_TYPES.LANDING_BAY,
+        // Capital Ship Systems (All)
+        CARD_TYPES.SHUTTLE_BAY,
+        CARD_TYPES.REPAIR_FACILITY,
+        CARD_TYPES.MEDICAL_BAY,
+        CARD_TYPES.CARGO_PROCESSING_CENTER,
+        CARD_TYPES.FIGHTER_LAUNCH_BAY,
+        CARD_TYPES.SHIP_CONSTRUCTION_BAY,
+        CARD_TYPES.MANUFACTURING_PLANT,
+        CARD_TYPES.FLEET_COMMAND_CENTER,
+        CARD_TYPES.COMMUNICATIONS_ARRAY,
+        CARD_TYPES.BATTLE_BRIDGE,
+        CARD_TYPES.POINT_DEFENSE_GRID,
+        CARD_TYPES.SHIELD_ARRAY,
+        CARD_TYPES.REACTOR_CORE,
+        CARD_TYPES.SCIENCE_LAB,
         // Advanced Intel Systems
         CARD_TYPES.TACTICAL_COMPUTER,
         CARD_TYPES.COMBAT_COMPUTER,
@@ -651,7 +706,27 @@ export default class NFTCard {
             CARD_TYPES.PHASE_SHIELD,
             CARD_TYPES.ADAPTIVE_ARMOR,
             CARD_TYPES.QUANTUM_BARRIER,
-            CARD_TYPES.TEMPORAL_DEFLECTOR
+            CARD_TYPES.TEMPORAL_DEFLECTOR,
+            // Special operational systems
+            CARD_TYPES.LANDING_BAY
+        ];
+        
+        const capitalShipSystemTypes = [
+            CARD_TYPES.LANDING_BAY,
+            CARD_TYPES.FIGHTER_LAUNCH_BAY,
+            CARD_TYPES.SHUTTLE_BAY,
+            CARD_TYPES.SHIP_CONSTRUCTION_BAY,
+            CARD_TYPES.REPAIR_FACILITY,
+            CARD_TYPES.MANUFACTURING_PLANT,
+            CARD_TYPES.FLEET_COMMAND_CENTER,
+            CARD_TYPES.COMMUNICATIONS_ARRAY,
+            CARD_TYPES.BATTLE_BRIDGE,
+            CARD_TYPES.POINT_DEFENSE_GRID,
+            CARD_TYPES.SHIELD_ARRAY,
+            CARD_TYPES.REACTOR_CORE,
+            CARD_TYPES.CARGO_PROCESSING_CENTER,
+            CARD_TYPES.MEDICAL_BAY,
+            CARD_TYPES.SCIENCE_LAB
         ];
         
         const sensorSystemTypes = [
@@ -690,6 +765,8 @@ export default class NFTCard {
             return 'Weapon Systems';
         } else if (operationalSystemTypes.includes(this.cardType)) {
             return 'Operational Systems';
+        } else if (capitalShipSystemTypes.includes(this.cardType)) {
+            return 'Capital Ship Systems';
         } else if (sensorSystemTypes.includes(this.cardType)) {
             return 'Sensor Systems';
         } else if (alienTechTypes.includes(this.cardType)) {
