@@ -1707,20 +1707,19 @@ export class ProximityDetector3D {
                 playerRotation = this.starfieldManager.camera.rotation;
             }
             
+            // Use accumulated rotation for full 360° capability (same as player blip and grid)
+            const accumulatedRotation = this.playerIndicatorAccumulatedRotation || (playerRotation ? playerRotation.y : 0);
+            
             if (this.viewMode === 'topDown') {
                 // In top-down mode, objects should be flat and visible from above
                 // No rotation needed for spheres, but if this is a triangle, make it flat
                 blip.rotation.x = 0; // Keep flat (lying in XZ plane)
                 blip.rotation.z = 0; // No roll
-                if (playerRotation) {
-                    blip.rotation.y = playerRotation.y + Math.PI / 2; // Match ship heading for directional objects
-                }
+                blip.rotation.y = accumulatedRotation + Math.PI / 2; // Match ship heading for directional objects
             } else {
                 // In 3D mode, use full orientation logic
                 // Set Y rotation to match player heading (fore view) 
-                if (playerRotation) {
-                    blip.rotation.y = playerRotation.y + Math.PI / 2; // Add 90° to align with ship facing direction
-                }
+                blip.rotation.y = accumulatedRotation + Math.PI / 2; // Add 90° to align with ship facing direction
                 
                 // Determine if object is above or below grid plane for X rotation
                 const gridPlaneWorldY = 0; // Grid is centered at world Y=0
@@ -1881,7 +1880,9 @@ export class ProximityDetector3D {
         // SPEC: Grid rotates with ship orientation (Y-axis only for fore view)
         // Hold grid plane stable - only rotate around Y-axis to match player heading
         // Preserve the original tilt (X-axis) and keep Z-axis stable (no roll)
-        const targetY = -playerRotation.y; // Remove 90° offset to align grid with ship heading
+        // Use accumulated rotation for full 360° capability (same as player blip)
+        const accumulatedRotation = this.playerIndicatorAccumulatedRotation || playerRotation.y;
+        const targetY = -accumulatedRotation; // Remove 90° offset to align grid with ship heading
         
         // Handle angle wrapping for smooth 360° rotation (fix the mirroring issue)
         let currentY = this.gridMesh.rotation.y;
