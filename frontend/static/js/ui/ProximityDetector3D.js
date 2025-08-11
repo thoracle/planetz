@@ -1442,7 +1442,7 @@ export class ProximityDetector3D {
         
         // Calculate position based on view mode
         const currentZoom = this.getCurrentZoom();
-        let gridX, gridZ, relativePos, distance;
+        let gridX, gridZ, relativePos, distance, worldToGridScaleFactor;
         
         // Common calculations for both view modes
         relativePos = obj.mesh.position.clone().sub(playerPosition);
@@ -1455,7 +1455,7 @@ export class ProximityDetector3D {
             // Camera bounds are -viewSize to +viewSize, where viewSize = range/1000
             const viewSize = Math.min(currentZoom.range / 1000, 50); // Same as camera setup
             const worldRangeKm = currentZoom.range / 1000; // Convert range to km
-            const worldToGridScaleFactor = viewSize / worldRangeKm; // scene units per km (should be 1.0 for 25km range)
+            worldToGridScaleFactor = viewSize / worldRangeKm; // scene units per km (should be 1.0 for 25km range)
             
             // relativePos is already in km (game units), use directly
             gridX = relativePos.x * worldToGridScaleFactor;
@@ -1464,7 +1464,7 @@ export class ProximityDetector3D {
             // 3D mode: use relative positioning with proper scaling
             const gridHalfSizeInScene = 0.55; // Fixed visual half-size
             const worldHalfRangeKm = worldHalfRangeM / 1000; // Convert to km for consistency
-            const worldToGridScaleFactor = gridHalfSizeInScene / worldHalfRangeKm; // scale factor: scene units per km
+            worldToGridScaleFactor = gridHalfSizeInScene / worldHalfRangeKm; // scale factor: scene units per km
             
             gridX = relativePos.x * worldToGridScaleFactor;
             gridZ = relativePos.z * worldToGridScaleFactor;
