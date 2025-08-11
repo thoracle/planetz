@@ -609,6 +609,12 @@ export class ProximityDetector3D {
     initializePlayerIndicatorRotation() {
         if (!this.playerIndicator) return;
         
+        // Only initialize if we don't already have accumulated rotation
+        if (this.playerIndicatorAccumulatedRotation !== undefined) {
+            console.log(`🎯 Player indicator already has rotation: ${THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation).toFixed(1)}° - skipping initialization`);
+            return;
+        }
+        
         // Get current ship rotation (same method as updateGridOrientation)
         let playerShip = this.starfieldManager.viewManager?.getShip();
         let playerMesh = playerShip?.mesh;
@@ -1927,16 +1933,36 @@ export class ProximityDetector3D {
         }
         
         // SPEC: Triangle orientation matches player ship heading (fore camera direction)
-        // Sync player indicator with actual ship rotation directly (not just velocity)
-        if (this.playerIndicator && playerRotation) {
-            // Use actual ship rotation directly for immediate sync
-            // This ensures the blip always shows the correct facing direction
-            this.playerIndicatorAccumulatedRotation = playerRotation.y;
+        // Combine ship rotation sync with velocity accumulation for 360° capability
+        if (this.playerIndicator) {
+            // Initialize accumulated rotation if not set, using current ship rotation
+            if (this.playerIndicatorAccumulatedRotation === undefined && playerRotation) {
+                this.playerIndicatorAccumulatedRotation = playerRotation.y;
+            }
             
-            // Log rotation for debugging (disabled to reduce spam)
-            // const displayDegrees = THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation);
-            // const wrappedDegrees = ((displayDegrees % 360) + 360) % 360;
-            // console.log(`🎯 PLAYER BLIP ROTATION: ${wrappedDegrees.toFixed(1)}° (synced with ship)`);
+            // Use rotation velocity for smooth 360° tracking (preserves full rotation capability)
+            const rotationVelocity = this.starfieldManager?.rotationVelocity;
+            
+            if (rotationVelocity && Math.abs(rotationVelocity.y) > 0.0001) {
+                // Apply rotation using accumulated tracking to avoid Euler angle limitations
+                const rotationAmount = rotationVelocity.y * deltaTime * 60;
+                
+                // Initialize accumulated rotation tracking if needed
+                if (this.playerIndicatorAccumulatedRotation === undefined) {
+                    this.playerIndicatorAccumulatedRotation = 0;
+                }
+                
+                // Track accumulated rotation (this allows 360° rotation)
+                this.playerIndicatorAccumulatedRotation += rotationAmount;
+                
+                // Log rotation for debugging (disabled to reduce spam)
+                // const displayDegrees = THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation);
+                // const wrappedDegrees = ((displayDegrees % 360) + 360) % 360;
+                // console.log(`🎯 ROTATION: ${wrappedDegrees.toFixed(1)}° (accumulated for 360° capability)`);
+            } else if (playerRotation && this.playerIndicatorAccumulatedRotation === undefined) {
+                // Fallback: if no velocity but we have ship rotation and no accumulated rotation yet
+                this.playerIndicatorAccumulatedRotation = playerRotation.y;
+            }
         }
         
         // SPEC: Grid scrolls to keep player centered (top-down mode only)
