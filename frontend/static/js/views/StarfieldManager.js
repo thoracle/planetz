@@ -1340,6 +1340,43 @@ export class StarfieldManager {
                             console.log('🐦 Flocking Statistics:', stats);
                         }
                         return;
+                    case 't':
+                        // Show detailed combat statistics
+                        event.preventDefault();
+                        if (this.enemyAIManager) {
+                            const aiShips = Array.from(this.enemyAIManager.activeAIs);
+                            console.log('⚔️ Combat Statistics:');
+                            aiShips.forEach((ai, index) => {
+                                const combatState = ai.getCombatState();
+                                const debugInfo = ai.getDebugInfo();
+                                console.log(`  Ship ${index + 1} (${combatState.state}):`, debugInfo);
+                            });
+                        }
+                        return;
+                    case 'w':
+                        // Show weapon targeting debug
+                        event.preventDefault();
+                        if (this.enemyAIManager) {
+                            const aiShips = Array.from(this.enemyAIManager.activeAIs);
+                            console.log('🎯 Weapon Targeting Debug:');
+                            aiShips.forEach((ai, index) => {
+                                const targetingInfo = ai.weaponTargeting?.getDebugInfo() || {};
+                                console.log(`  Ship ${index + 1}:`, targetingInfo);
+                            });
+                        }
+                        return;
+                    case 'x':
+                        // Force all AIs to engage player (if available)
+                        event.preventDefault();
+                        if (this.enemyAIManager && this.shipMesh) {
+                            const aiShips = Array.from(this.enemyAIManager.activeAIs);
+                            aiShips.forEach(ai => {
+                                ai.setTarget(this.shipMesh);
+                                ai.setState('engage');
+                            });
+                            console.log(`⚔️ All AIs now targeting player ship`);
+                        }
+                        return;
                 }
             }
             

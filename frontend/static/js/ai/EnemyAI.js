@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { AIStateMachine } from './AIStateMachine.js';
 import { ThreatAssessment } from './ThreatAssessment.js';
 import { FlockingBehavior } from './FlockingBehavior.js';
+import { CombatBehavior } from './CombatBehavior.js';
+import { WeaponTargeting } from './WeaponTargeting.js';
 
 /**
  * EnemyAI - Base AI class for all enemy ships
@@ -17,6 +19,8 @@ export class EnemyAI {
         // Core AI components
         this.stateMachine = new AIStateMachine(this);
         this.threatAssessment = new ThreatAssessment(this);
+        this.combatBehavior = new CombatBehavior(this);
+        this.weaponTargeting = new WeaponTargeting(this);
         
         // AI state tracking
         this.currentTarget = null;
@@ -91,8 +95,18 @@ export class EnemyAI {
             // Update threat assessment
             this.threatAssessment.update(deltaTime, gameWorld);
             
+            // Update combat behavior
+            this.combatBehavior.update(deltaTime, this.threatAssessment);
+            
+            // Update weapon targeting
+            const primaryThreat = this.threatAssessment.getPrimaryThreat();
+            this.weaponTargeting.update(deltaTime, primaryThreat?.ship || null);
+            
             // Update state machine
             this.stateMachine.update(deltaTime, gameWorld);
+            
+            // Execute weapon firing
+            this.handleWeaponFiring();
             
             // Apply movement forces
             this.updateMovement(deltaTime);
@@ -147,6 +161,44 @@ export class EnemyAI {
         this.detectedThreats.sort((a, b) => 
             this.ship.position.distanceTo(a.position) - this.ship.position.distanceTo(b.position)
         );
+    }
+    
+    /**
+     * Handle weapon firing based on targeting solution
+     */
+    handleWeaponFiring() {
+        if (!this.weaponTargeting) return;
+        
+        // Check if we should fire
+        const targetingSolution = this.weaponTargeting.getTargetingSolution();
+        if (!targetingSolution || !this.weaponTargeting.shouldFire()) {
+            return;
+        }
+        
+        // Execute firing command
+        const firingSolution = this.weaponTargeting.executeFireCommand();
+        if (firingSolution) {
+            // Integrate with weapon effects system (if available)
+            this.createWeaponEffect(firingSolution);
+            
+            // Update combat statistics
+            if (this.combatBehavior.recordShot) {
+                this.combatBehavior.recordShot();
+            }
+        }
+    }
+    
+    /**
+     * Create weapon effect (placeholder for integration with effects system)
+     */
+    createWeaponEffect(firingSolution) {
+        // This would integrate with the game's weapon effects system
+        // For now, just log the firing event
+        console.log(`💥 ${this.ship.shipType} fired at ${firingSolution.target.shipType || 'target'} (${(firingSolution.hitProbability * 100).toFixed(1)}% hit chance)`);
+        
+        // TODO: Create visual/audio effects
+        // TODO: Apply damage to target if hit
+        // TODO: Create projectile or beam effect
     }
     
     /**
@@ -405,11 +457,123 @@ export class EnemyAI {
     }
     
     /**
+     * Get current combat state information
+     */
+    getCombatState() {
+        return {
+            state: this.stateMachine.currentState,
+            combatState: this.combatBehavior?.getCombatState() || 'idle',
+            threatLevel: this.threatAssessment?.getCurrentThreatLevel() || 0,
+            currentTarget: this.currentTarget?.shipType || 'none',
+            lockQuality: this.weaponTargeting?.getLockQuality() || 0,
+            canFire: this.weaponTargeting?.shouldFire() || false,
+            health: this.ship.currentHull / this.ship.maxHull
+        };
+    }
+    
+    /**
+     * Get comprehensive debug information
+     */
+    getDebugInfo() {
+        return {
+            shipType: this.ship.shipType,
+            aiState: this.stateMachine.currentState,
+            combatInfo: this.combatBehavior?.getDebugInfo() || {},
+            threatInfo: this.threatAssessment?.getDebugInfo() || {},
+            targetingInfo: this.weaponTargeting?.getDebugInfo() || {},
+            flockingInfo: this.flockingBehavior?.getDebugInfo() || {},
+            position: this.ship.position?.clone() || new THREE.Vector3(),
+            velocity: this.velocity.clone(),
+            energy: this.ship.currentEnergy || 0,
+            health: (this.ship.currentHull / this.ship.maxHull * 100).toFixed(1) + '%'
+        };
+    }
+    
+    /**
+     * Force AI to a specific state (for debugging)
+     */
+    setState(state) {
+        if (this.stateMachine.transitions[this.stateMachine.currentState] && 
+            this.stateMachine.transitions[this.stateMachine.currentState][state]) {
+            this.stateMachine.currentState = state;
+            this.stateMachine.stateStartTime = Date.now();
+            console.log(`🤖 ${this.ship.shipType} forced to state: ${state}`);
+        } else {
+            console.warn(`⚠️ Invalid state transition: ${this.stateMachine.currentState} → ${state}`);
+        }
+    }
+    
+    /**
+     * Set target for AI (overrides threat assessment)
+     */
+    setTarget(target) {
+        this.currentTarget = target;
+        if (this.weaponTargeting) {
+            this.weaponTargeting.setTarget(target);
+        }
+        if (this.combatBehavior) {
+            this.combatBehavior.setTarget(target);
+        }
+    }
+    
+    /**
+     * Clear current target
+     */
+    clearTarget() {
+        this.currentTarget = null;
+        if (this.weaponTargeting) {
+            this.weaponTargeting.setTarget(null);
+        }
+        if (this.combatBehavior) {
+            this.combatBehavior.clearTarget();
+        }
+    }
+    
+    /**
+     * Get ship health percentage
+     */
+    getHealthPercentage() {
+        return this.ship.currentHull / this.ship.maxHull;
+    }
+    
+    /**
+     * Check if ship should flee based on health and threat level
+     */
+    shouldFlee() {
+        const healthPercent = this.getHealthPercentage();
+        const threatLevel = this.threatAssessment?.getCurrentThreatLevel() || 0;
+        
+        return healthPercent < this.fleeHealthThreshold || 
+               (threatLevel > 0.8 && healthPercent < 0.5);
+    }
+    
+    /**
+     * Check if ship should evade
+     */
+    shouldEvade() {
+        const healthPercent = this.getHealthPercentage();
+        const threatLevel = this.threatAssessment?.getCurrentThreatLevel() || 0;
+        
+        return healthPercent < this.evadeHealthThreshold && threatLevel > 0.4;
+    }
+    
+    /**
      * Cleanup when AI is destroyed
      */
     destroy() {
         this.stateMachine.destroy();
         this.threatAssessment.destroy();
+        
+        if (this.combatBehavior) {
+            this.combatBehavior.destroy();
+        }
+        if (this.weaponTargeting) {
+            this.weaponTargeting.destroy();
+        }
+        if (this.flockingBehavior) {
+            this.flockingBehavior.clearFormationTarget();
+        }
+        
         this.currentTarget = null;
         this.nearbyShips = [];
         this.detectedThreats = [];

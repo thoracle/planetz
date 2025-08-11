@@ -497,6 +497,22 @@ export class HelpInterface {
                     </div>
                 </div>
                 
+                <h4 class="subsection-header">[ COMBAT DEBUGGING ]</h4>
+                <div class="control-grid">
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+T</span>
+                        <span class="control-desc">Show Combat Statistics</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+W</span>
+                        <span class="control-desc">Show Weapon Targeting Debug</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+X</span>
+                        <span class="control-desc">Force AIs to Target Player</span>
+                    </div>
+                </div>
+                
                 <div class="tech-notes">
                     <div class="notes-header">Technical Notes:</div>
                     <div class="note-entry">• Systems require appropriate cards to function</div>
@@ -508,6 +524,8 @@ export class HelpInterface {
                     <div class="note-entry">• AI statistics display in browser console</div>
                     <div class="note-entry">• Formations require 2+ AI ships to function</div>
                     <div class="note-entry">• Flocking behaviors work automatically once enabled</div>
+                    <div class="note-entry">• Combat debugging shows AI decision making</div>
+                    <div class="note-entry">• Weapon targeting displays firing solutions</div>
                 </div>
             </div>
         `;
