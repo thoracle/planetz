@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { EnemyAI } from './EnemyAI.js';
 import { getAIConfig, applyDifficultyModifiers, applyFactionModifiers } from './AIConfigs.js';
 import { FlockingManager } from './FlockingManager.js';
+import { AIPerformanceManager } from './AIPerformanceManager.js';
+import { AIDebugVisualizer } from './AIDebugVisualizer.js';
 
 /**
  * EnemyAIManager - Central coordinator for all enemy AI systems
@@ -41,6 +43,12 @@ export class EnemyAIManager {
         
         // Flocking system
         this.flockingManager = new FlockingManager();
+        
+        // Performance management
+        this.performanceManager = new AIPerformanceManager();
+        
+        // Debug visualization
+        this.debugVisualizer = new AIDebugVisualizer(scene, camera);
         
         // Integration state
         this.isInitialized = false;
@@ -227,18 +235,50 @@ export class EnemyAIManager {
             // Update game world state
             this.updateGameWorld();
             
+            // Get player position for LOD calculations
+            const playerPosition = this.getPlayerPosition();
+            
+            // Schedule AI updates with performance management
+            const activeAIs = Array.from(this.activeAIs);
+            this.performanceManager.scheduleAIUpdates(activeAIs, playerPosition);
+            
+            // Execute scheduled AI updates within performance budget
+            const updatedCount = this.performanceManager.executeScheduledUpdates(deltaTime);
+            
             // Update flocking system
             this.flockingManager.update(deltaTime);
             
-            // Update AI systems
-            this.updateAI(deltaTime);
+            // Update debug visualization
+            this.debugVisualizer.update(activeAIs, playerPosition);
             
             // Cleanup destroyed ships
             this.cleanupDestroyedShips();
             
+            // Adaptive performance adjustment
+            if (Date.now() % 5000 < 50) { // Every 5 seconds
+                this.performanceManager.adaptivePerformanceAdjustment();
+            }
+            
         } catch (error) {
             console.error('🤖 EnemyAIManager update error:', error);
         }
+    }
+    
+    /**
+     * Get player position for LOD calculations
+     */
+    getPlayerPosition() {
+        // Try to get player position from various sources
+        if (this.starfieldManager?.shipMesh?.position) {
+            return this.starfieldManager.shipMesh.position;
+        }
+        if (this.gameWorld.playerShip?.position) {
+            return this.gameWorld.playerShip.position;
+        }
+        if (this.starfieldManager?.ship?.position) {
+            return this.starfieldManager.ship.position;
+        }
+        return new THREE.Vector3(0, 0, 0); // Fallback to origin
     }
     
     /**
@@ -378,6 +418,9 @@ export class EnemyAIManager {
         // Set debug mode for flocking manager
         this.flockingManager.setDebugMode(debug);
         
+        // Set debug visualization
+        this.debugVisualizer.setEnabled(debug);
+        
         console.log(`🤖 AI debug mode ${debug ? 'enabled' : 'disabled'}`);
     }
     
@@ -397,10 +440,30 @@ export class EnemyAIManager {
         
         // Count AIs by state
         stats.stateBreakdown = {};
+        stats.combatBreakdown = {};
+        stats.healthDistribution = { healthy: 0, damaged: 0, critical: 0 };
+        
         for (const ai of this.activeAIs) {
-            const state = ai.getState();
+            const state = ai.stateMachine?.currentState || 'unknown';
             stats.stateBreakdown[state] = (stats.stateBreakdown[state] || 0) + 1;
+            
+            const combatState = ai.combatBehavior?.getCombatState() || 'idle';
+            stats.combatBreakdown[combatState] = (stats.combatBreakdown[combatState] || 0) + 1;
+            
+            const health = ai.getHealthPercentage();
+            if (health > 0.7) stats.healthDistribution.healthy++;
+            else if (health > 0.3) stats.healthDistribution.damaged++;
+            else stats.healthDistribution.critical++;
         }
+        
+        // Add performance stats
+        stats.performance = this.performanceManager.getPerformanceStats();
+        
+        // Add flocking stats
+        stats.flocking = this.flockingManager.getDebugStats();
+        
+        // Add debug visualization stats
+        stats.visualization = this.debugVisualizer.getDebugStats();
         
         return stats;
     }

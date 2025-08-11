@@ -513,6 +513,18 @@ export class HelpInterface {
                     </div>
                 </div>
                 
+                <h4 class="subsection-header">[ PERFORMANCE & VISUALIZATION ]</h4>
+                <div class="control-grid">
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+P</span>
+                        <span class="control-desc">Show Performance Statistics</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Cmd+Shift+D</span>
+                        <span class="control-desc">Toggle Debug Visualization</span>
+                    </div>
+                </div>
+                
                 <div class="tech-notes">
                     <div class="notes-header">Technical Notes:</div>
                     <div class="note-entry">• Systems require appropriate cards to function</div>
@@ -526,6 +538,8 @@ export class HelpInterface {
                     <div class="note-entry">• Flocking behaviors work automatically once enabled</div>
                     <div class="note-entry">• Combat debugging shows AI decision making</div>
                     <div class="note-entry">• Weapon targeting displays firing solutions</div>
+                    <div class="note-entry">• Performance stats show LOD and frame timing</div>
+                    <div class="note-entry">• Debug visualization overlays AI behavior in 3D</div>
                 </div>
             </div>
         `;

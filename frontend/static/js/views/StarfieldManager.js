@@ -1377,6 +1377,34 @@ export class StarfieldManager {
                             console.log(`⚔️ All AIs now targeting player ship`);
                         }
                         return;
+                    case 'p':
+                        // Show performance statistics
+                        event.preventDefault();
+                        if (this.enemyAIManager) {
+                            const perfStats = this.enemyAIManager.performanceManager.getPerformanceStats();
+                            console.log('⚡ AI Performance Statistics:', perfStats);
+                        }
+                        return;
+                    case 'd':
+                        // Toggle debug visualization options
+                        event.preventDefault();
+                        if (this.enemyAIManager) {
+                            const visualizer = this.enemyAIManager.debugVisualizer;
+                            // Cycle through different visualization modes
+                            const currentSettings = visualizer.getDebugStats().settings;
+                            const newSettings = {
+                                showSensorRanges: !currentSettings.showSensorRanges,
+                                showWeaponRanges: currentSettings.showWeaponRanges,
+                                showTargetingLines: currentSettings.showTargetingLines,
+                                showStateLabels: currentSettings.showStateLabels,
+                                showVelocityVectors: currentSettings.showVelocityVectors,
+                                showFlockingForces: currentSettings.showFlockingForces,
+                                showThreatLevels: currentSettings.showThreatLevels
+                            };
+                            visualizer.configure(newSettings);
+                            console.log('🎨 Debug visualization settings updated');
+                        }
+                        return;
                 }
             }
             
