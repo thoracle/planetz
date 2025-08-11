@@ -31,7 +31,7 @@ export class PhysicsManager {
         
         // Performance settings
         this.maxEntities = 1000;
-        this.spatialQueryDistance = 5000; // Units beyond which entities are deactivated
+        this.spatialQueryDistance = 200; // 200km beyond which entities are deactivated (game units)
         this.physicsUpdateRate = 60; // Hz
         this.lastUpdateTime = 0;
 

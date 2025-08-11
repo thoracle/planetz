@@ -459,7 +459,7 @@ export class TargetComputerManager {
      */
     updateTargetListWithPhysics() {
         console.log('🎯 TargetComputerManager.updateTargetListWithPhysics() called');
-        const maxTargetingRange = 150000; // 150,000 km max targeting range (enough for target dummies at 50-100km)
+        const maxTargetingRange = 150; // 150km max targeting range (enough for target dummies at 30-80km)
         
         // Perform spatial query around the camera position
         const nearbyEntities = window.physicsManager.spatialQuery(

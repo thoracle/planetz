@@ -1383,8 +1383,8 @@ export class ProximityDetector3D {
         
         // Common calculations for both view modes
         relativePos = obj.mesh.position.clone().sub(playerPosition);
-        distance = relativePos.length(); // distance in meters
-        const detectionRangeM = currentZoom.range; // range in meters
+        distance = relativePos.length(); // distance in km (game units: 1 unit = 1km)
+        const detectionRangeM = currentZoom.range; // range in meters (for camera setup)
         const worldHalfRangeM = detectionRangeM / 2; // half range in meters
         
         if (this.viewMode === 'topDown') {
@@ -1392,31 +1392,34 @@ export class ProximityDetector3D {
             // Camera bounds are -viewSize to +viewSize, where viewSize = range/1000
             const viewSize = Math.min(currentZoom.range / 1000, 50); // Same as camera setup
             const worldRangeKm = currentZoom.range / 1000; // Convert range to km
-            const worldToGridScaleFactor = viewSize / worldRangeKm; // scene units per km
+            const worldToGridScaleFactor = viewSize / worldRangeKm; // scene units per km (should be 1.0 for 25km range)
             
-            // Convert relative position (in km) to grid coordinates
-            const relativePosKm = relativePos.clone().multiplyScalar(1/1000); // Convert meters to km
-            gridX = relativePosKm.x * worldToGridScaleFactor;
-            gridZ = relativePosKm.z * worldToGridScaleFactor;
+            // relativePos is already in km (game units), use directly
+            gridX = relativePos.x * worldToGridScaleFactor;
+            gridZ = relativePos.z * worldToGridScaleFactor;
         } else {
             // 3D mode: use relative positioning with proper scaling
             const gridHalfSizeInScene = 0.55; // Fixed visual half-size
-            const worldToGridScaleFactor = gridHalfSizeInScene / worldHalfRangeM; // scale factor: scene units per meter
+            const worldHalfRangeKm = worldHalfRangeM / 1000; // Convert to km for consistency
+            const worldToGridScaleFactor = gridHalfSizeInScene / worldHalfRangeKm; // scale factor: scene units per km
             
             gridX = relativePos.x * worldToGridScaleFactor;
             gridZ = relativePos.z * worldToGridScaleFactor;
         }
         
-        // DEBUG: Log coordinate mapping (disabled to reduce spam)
-        // console.log(`🎯 COORDINATE DEBUG for ${obj.name || obj.type}:`);
-        // console.log(`  Type: ${obj.type}, isTargetDummy: ${obj.isTargetDummy}, isEnemyShip: ${obj.isEnemyShip}`);
-        // console.log(`  World distance: ${distance.toFixed(1)}km`);
-        // console.log(`  World pos: (${relativePos.x.toFixed(1)}, ${relativePos.z.toFixed(1)})`);
-        // console.log(`  Grid half range: ${worldHalfRangeM.toFixed(1)}m`);
-        // console.log(`  Scale factor: ${worldToGridScaleFactor.toFixed(6)}`);
-        // console.log(`  Grid pos: (${gridX.toFixed(3)}, ${gridZ.toFixed(3)})`);
-        // console.log(`  Grid size: ${gridHalfSizeInScene.toFixed(3)} units`);
-        // console.log(`  Grid distance from center: ${Math.sqrt(gridX*gridX + gridZ*gridZ).toFixed(3)} units`);
+        // DEBUG: Log coordinate mapping for targets near edge of detection range (24-26km)
+        if (this.viewMode === 'topDown' && (obj.isTargetDummy || obj.type === 'enemy_ship') && distance >= 24 && distance <= 26) {
+            console.log(`🎯 EDGE DETECTION DEBUG for ${obj.name || obj.type}:`);
+            console.log(`  Type: ${obj.type}, isTargetDummy: ${obj.isTargetDummy}, isEnemyShip: ${obj.isEnemyShip}`);
+            console.log(`  World distance: ${distance.toFixed(1)}km`);
+            console.log(`  Player pos: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
+            console.log(`  Target pos: (${obj.mesh.position.x.toFixed(1)}, ${obj.mesh.position.y.toFixed(1)}, ${obj.mesh.position.z.toFixed(1)})`);
+            console.log(`  Relative pos: (${relativePos.x.toFixed(1)}, ${relativePos.y.toFixed(1)}, ${relativePos.z.toFixed(1)})`);
+            console.log(`  Detection range: ${(detectionRangeM/1000).toFixed(1)}km`);
+            console.log(`  Scale factor: ${worldToGridScaleFactor.toFixed(6)}`);
+            console.log(`  Grid pos: (${gridX.toFixed(3)}, ${gridZ.toFixed(3)})`);
+            console.log(`  Grid distance from center: ${Math.sqrt(gridX*gridX + gridZ*gridZ).toFixed(3)} units`);
+        }
         
         // Debug ALL detected objects to see what we're working with (DISABLED to reduce console spam)
         // console.log(`🎯 DETECTED OBJECT: ${obj.name || 'unnamed'}`);

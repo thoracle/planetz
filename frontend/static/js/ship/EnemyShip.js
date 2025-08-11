@@ -56,6 +56,11 @@ export default class EnemyShip {
         this.isInitialized = false;
         this.initializationPromise = null;
         
+        // AI integration
+        this.ai = null;              // Will be set by EnemyAIManager
+        this.position = null;        // 3D position (set by physics/mesh)
+        this.mesh = null;            // Reference to 3D mesh object
+        
         // Initialize enemy systems
         this.initializationPromise = this.initializeEnemySystemInstances();
         
