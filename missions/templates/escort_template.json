@@ -1,0 +1,176 @@
+{
+  "template_id": "escort",
+  "title": "Convoy Escort Mission",
+  "description": "Provide protection for valuable cargo convoy",
+  "mission_type": "escort",
+  "faction": "federation",
+  "reward_package_id": 5,
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Rendezvous with convoy at {meeting_point}",
+      "is_optional": false,
+      "is_ordered": true
+    },
+    {
+      "id": "2",
+      "description": "Escort convoy safely to {destination}",
+      "is_optional": false,
+      "is_ordered": true
+    },
+    {
+      "id": "3",
+      "description": "Ensure no convoy ships are lost",
+      "is_optional": true,
+      "is_ordered": false
+    }
+  ],
+  "custom_fields": {
+    "convoy_ships": [
+      {
+        "type": "merchant_freighter",
+        "name": "Stellar Trader",
+        "hull": 1000,
+        "cargo_value": 50000
+      },
+      {
+        "type": "escort_fighter", 
+        "name": "Guardian-1",
+        "hull": 400,
+        "role": "point_defense"
+      }
+    ],
+    "route_waypoints": [
+      {
+        "x": 100,
+        "y": 50,
+        "z": 200,
+        "name": "Waypoint Alpha"
+      },
+      {
+        "x": 300,
+        "y": 75,
+        "z": 400,
+        "name": "Waypoint Beta"
+      }
+    ],
+    "threat_level": "medium",
+    "meeting_point": "jump_gate_7",
+    "destination": "federation_starbase",
+    "patrol_routes": ["outer_rim_patrol", "merchant_corridor"],
+    "emergency_protocols": {
+      "retreat_threshold": 0.3,
+      "distress_frequency": "121.5"
+    },
+    "escort_bonus": 1200,
+    "no_losses_bonus": 800,
+    "reputation_gain": 20
+  },
+  "triggers": {
+    "on_accept": "notify_convoy_commander",
+    "on_rendezvous": "begin_escort_formation",
+    "on_attack": "activate_defense_protocols",
+    "on_convoy_ship_destroyed": "trigger_emergency_response",
+    "on_complete": "debrief_escort_mission"
+  },
+  "location_variants": {
+    "pirate_territory": {
+      "title": "High-Risk Convoy Escort",
+      "description": "Escort high-value convoy through known pirate territory",
+      "custom_fields": {
+        "threat_level": "high",
+        "escort_bonus": 2000,
+        "no_losses_bonus": 1500,
+        "enemy_spawn_probability": 0.8,
+        "pirate_faction_types": ["blood_ravens", "void_reapers"]
+      }
+    },
+    "war_zone": {
+      "title": "Combat Zone Escort",
+      "description": "Military convoy escort through active combat zone",
+      "custom_fields": {
+        "threat_level": "extreme",
+        "escort_bonus": 3000,
+        "military_classification": "classified",
+        "enemy_spawn_probability": 0.9,
+        "required_clearance": "federation_military"
+      }
+    },
+    "safe_passage": {
+      "title": "Routine Escort",
+      "description": "Standard protection for merchant convoy in secure space",
+      "custom_fields": {
+        "threat_level": "low",
+        "escort_bonus": 800,
+        "enemy_spawn_probability": 0.2
+      }
+    }
+  },
+  "level_scaling": {
+    "convoy_size_by_level": {
+      "1-5": 1,
+      "6-10": 2,
+      "11-15": 3,
+      "16-20": 4
+    },
+    "threat_scaling": {
+      "enemy_types_by_level": {
+        "1-5": ["enemy_fighter"],
+        "6-10": ["enemy_fighter", "enemy_interceptor"],
+        "11-15": ["enemy_interceptor", "enemy_gunship"],
+        "16-20": ["enemy_gunship", "enemy_frigate"]
+      }
+    },
+    "reward_scaling": {
+      "base_credits": 1500,
+      "credits_per_level": 150,
+      "reputation_multiplier": 1.25
+    }
+  },
+  "random_elements": {
+    "meeting_point": [
+      "jump_gate_7",
+      "asteroid_beacon_delta",
+      "trading_post_gamma"
+    ],
+    "destination": [
+      "federation_starbase",
+      "mining_colony_beta",
+      "research_station_omega"
+    ],
+    "threat_level": ["low", "medium", "high"]
+  },
+  "failure_conditions": {
+    "convoy_destroyed": {
+      "botch_mission": true,
+      "reputation_penalty": -50,
+      "faction_standing_loss": -30
+    },
+    "convoy_ship_lost": {
+      "reduce_payment": 0.5,
+      "reputation_penalty": -20,
+      "no_losses_bonus": 0
+    },
+    "player_abandons_convoy": {
+      "botch_mission": true,
+      "reputation_penalty": -75,
+      "faction_standing_loss": -40
+    }
+  },
+  "cascade_effects": [
+    {
+      "trigger": "convoy_destroyed",
+      "effects": [
+        {
+          "type": "modify_faction_standing",
+          "faction": "federation",
+          "change": -25
+        },
+        {
+          "type": "unlock_alternative",
+          "mission_id": "salvage_recovery_convoy"
+        }
+      ]
+    }
+  ]
+}

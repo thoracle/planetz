@@ -4,6 +4,7 @@
 
 import { StationRepairInterface } from './StationRepairInterface.js';
 import CardInventoryUI from './CardInventoryUI.js';
+import { MissionBoard } from './MissionBoard.js';
 
 export class DockingInterface {
     constructor(starfieldManager) {
@@ -14,6 +15,7 @@ export class DockingInterface {
         // Initialize station services
         this.stationRepairInterface = new StationRepairInterface(starfieldManager);
         this.cardInventoryUI = new CardInventoryUI(null);
+        this.missionBoard = new MissionBoard(starfieldManager);
         
         // Properly initialize the CardInventoryUI for ship integration
         this.cardInventoryUI.init(); // This will load test data since no container
@@ -131,10 +133,19 @@ export class DockingInterface {
             () => this.handleShop()
         );
 
+        // Mission Board button
+        this.missionButton = this.createServiceButton(
+            'MISSION BOARD',
+            'View and accept available missions and contracts',
+            'mission-button',
+            () => this.handleMissionBoard()
+        );
+
         // Add buttons to services container
         this.servicesContainer.appendChild(this.launchButton);
         this.servicesContainer.appendChild(this.repairButton);
         this.servicesContainer.appendChild(this.shopButton);
+        this.servicesContainer.appendChild(this.missionButton);
     }
 
     createServiceButton(title, description, className, clickHandler) {
@@ -312,6 +323,50 @@ export class DockingInterface {
             this.cardInventoryUI.showAsShop(dockedLocation, this);
         } else {
             console.error('Cannot access card shop: location data unavailable');
+        }
+    }
+
+    handleMissionBoard() {
+        console.log('🎯 Mission Board requested');
+        
+        // Play command sound
+        if (this.starfieldManager.playCommandSound) {
+            this.starfieldManager.playCommandSound();
+        }
+        
+        // Store the docked location BEFORE hiding the interface
+        const dockedLocation = this.dockedLocation;
+        
+        // Hide docking interface
+        this.hide();
+        
+        // Show mission board with location context
+        if (this.missionBoard && dockedLocation) {
+            // Set current location for mission filtering
+            this.missionBoard.setLocation(dockedLocation);
+            
+            // Update player data if available
+            if (this.starfieldManager.ship) {
+                const playerData = {
+                    level: this.starfieldManager.ship.level || 1,
+                    credits: this.starfieldManager.ship.credits || 50000,
+                    ship_type: this.starfieldManager.ship.shipType || 'starter_ship',
+                    faction_standings: this.starfieldManager.ship.factionStandings || {
+                        'federation': 0,
+                        'traders_guild': 0,
+                        'scientists_consortium': 0
+                    }
+                };
+                this.missionBoard.updatePlayerData(playerData);
+            }
+            
+            // Store reference for return navigation
+            this.missionBoard.dockingInterface = this;
+            
+            // Show mission board
+            this.missionBoard.show();
+        } else {
+            console.error('❌ Cannot access mission board: mission board or location data unavailable');
         }
     }
 

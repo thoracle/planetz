@@ -1,0 +1,113 @@
+{
+  "template_id": "delivery",
+  "title": "Cargo Delivery Contract",
+  "description": "Transport valuable cargo to specified destination",
+  "mission_type": "delivery",
+  "faction": "traders_guild",
+  "reward_package_id": 4,
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Pick up {cargo_type} from {pickup_location}",
+      "is_optional": false,
+      "is_ordered": true
+    },
+    {
+      "id": "2", 
+      "description": "Deliver cargo to {delivery_location}",
+      "is_optional": false,
+      "is_ordered": true
+    },
+    {
+      "id": "3",
+      "description": "Maintain cargo integrity above 90%",
+      "is_optional": true,
+      "is_ordered": false
+    }
+  ],
+  "custom_fields": {
+    "cargo_type": "medical_supplies",
+    "pickup_location": "terra_prime",
+    "delivery_location": "mining_station_alpha",
+    "cargo_value": 5000,
+    "cargo_mass": 50,
+    "time_limit": 7200,
+    "cargo_fragile": true,
+    "delivery_bonus": 750,
+    "reputation_gain": 15
+  },
+  "triggers": {
+    "on_accept": "reserve_cargo_bay",
+    "on_pickup": "load_cargo_manifest",
+    "on_delivery": "process_payment",
+    "on_complete": "update_trader_reputation"
+  },
+  "location_variants": {
+    "terra_prime": {
+      "custom_fields": {
+        "pickup_location": "terra_prime",
+        "cargo_type": "medical_supplies",
+        "delivery_bonus": 500
+      }
+    },
+    "mining_station": {
+      "title": "Mining Supply Run",
+      "description": "Deliver essential supplies to remote mining operation",
+      "custom_fields": {
+        "pickup_location": "federation_depot",
+        "cargo_type": "mining_equipment",
+        "delivery_bonus": 600,
+        "hazard_pay": 200
+      }
+    },
+    "frontier_colony": {
+      "title": "Frontier Relief Mission",
+      "description": "Emergency supply delivery to frontier colony",
+      "custom_fields": {
+        "pickup_location": "central_supply_hub",
+        "cargo_type": "survival_kit",
+        "time_limit": 3600,
+        "delivery_bonus": 1000,
+        "emergency_bonus": 500
+      }
+    }
+  },
+  "level_scaling": {
+    "cargo_value_by_level": {
+      "1-5": 2000,
+      "6-10": 5000,
+      "11-15": 8000,
+      "16-20": 12000
+    },
+    "reward_scaling": {
+      "base_credits": 600,
+      "credits_per_level": 75,
+      "reputation_multiplier": 1.15
+    }
+  },
+  "random_elements": {
+    "cargo_type": [
+      "medical_supplies",
+      "rare_minerals",
+      "technological_components",
+      "luxury_goods",
+      "agricultural_products"
+    ],
+    "delivery_bonus": [500, 750, 1000, 1250],
+    "time_limit": [3600, 5400, 7200, 10800]
+  },
+  "failure_conditions": {
+    "cargo_destroyed": {
+      "botch_mission": true,
+      "reputation_penalty": -25
+    },
+    "time_limit_exceeded": {
+      "botch_mission": true,
+      "partial_payment": 0.3
+    },
+    "cargo_integrity_below_50": {
+      "reduce_payment": 0.7,
+      "reputation_penalty": -10
+    }
+  }
+}

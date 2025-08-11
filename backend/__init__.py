@@ -48,8 +48,15 @@ def create_app(config_name):
     from backend.routes.main import bp as main_blueprint
     from backend.routes.universe import universe_bp
     from backend.routes.api import api_bp
+    from backend.routes.missions import missions_bp, init_mission_system
+    
     app.register_blueprint(main_blueprint)
     app.register_blueprint(universe_bp, url_prefix='/api')
     app.register_blueprint(api_bp)
+    app.register_blueprint(missions_bp)
+    
+    # Initialize mission system
+    with app.app_context():
+        init_mission_system(app)
     
     return app 

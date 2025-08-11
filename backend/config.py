@@ -16,6 +16,11 @@ class Config:
     # API settings
     API_PREFIX = '/api/v1'
     
+    # Mission system settings
+    MISSION_DATA_DIR = 'missions'
+    EXPECTED_MISSION_COUNT = 25
+    MISSION_SQLITE_PATH = 'missions.db'
+    
     @staticmethod
     def init_app(app):
         """Initialize the application with this configuration."""

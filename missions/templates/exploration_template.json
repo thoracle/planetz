@@ -1,0 +1,94 @@
+{
+  "template_id": "exploration",
+  "title": "Exploration Survey",
+  "description": "Conduct reconnaissance of uncharted systems",
+  "mission_type": "exploration",
+  "faction": "scientists_consortium",
+  "reward_package_id": 2,
+  "objectives": [
+    {
+      "id": "1", 
+      "description": "Reach the target coordinates at {target_location}",
+      "is_optional": false,
+      "is_ordered": true
+    },
+    {
+      "id": "2",
+      "description": "Scan {scan_count} points of interest",
+      "is_optional": false,
+      "is_ordered": true
+    },
+    {
+      "id": "3",
+      "description": "Collect mineral samples",
+      "is_optional": true,
+      "is_ordered": false
+    }
+  ],
+  "custom_fields": {
+    "target_location": "nebula_sector_7",
+    "scan_count": 3,
+    "required_ship_equipment": ["long_range_scanner"],
+    "discovery_bonus": 300,
+    "research_data_value": 1500,
+    "hazard_level": "low"
+  },
+  "triggers": {
+    "on_accept": "mark_exploration_waypoints",
+    "on_location_reached": "begin_scanning_protocol",
+    "on_scan_complete": "update_star_charts",
+    "on_complete": "submit_research_data"
+  },
+  "location_variants": {
+    "nebula": {
+      "title": "Nebula Survey Mission",
+      "description": "Map navigational hazards and resource deposits in the nebula",
+      "custom_fields": {
+        "hazard_level": "medium",
+        "discovery_bonus": 500,
+        "required_ship_equipment": ["enhanced_shields", "long_range_scanner"]
+      }
+    },
+    "asteroid_field": {
+      "title": "Asteroid Survey",
+      "description": "Catalog valuable mineral deposits in unexplored asteroid fields",
+      "custom_fields": {
+        "hazard_level": "low",
+        "discovery_bonus": 400,
+        "mineral_samples_bonus": 200
+      }
+    },
+    "unknown_system": {
+      "title": "Deep Space Reconnaissance", 
+      "description": "First contact survey of previously unknown star system",
+      "custom_fields": {
+        "hazard_level": "high",
+        "discovery_bonus": 1000,
+        "first_contact_bonus": 500,
+        "required_ship_equipment": ["enhanced_life_support", "long_range_scanner", "subspace_radio"]
+      }
+    }
+  },
+  "level_scaling": {
+    "scan_requirements_by_level": {
+      "1-5": 2,
+      "6-10": 3,
+      "11-15": 4,
+      "16-20": 5
+    },
+    "reward_scaling": {
+      "base_credits": 800,
+      "credits_per_level": 80,
+      "research_bonus_multiplier": 1.1
+    }
+  },
+  "random_elements": {
+    "target_location": [
+      "nebula_sector_7",
+      "asteroid_field_delta",
+      "unknown_system_x1",
+      "outer_rim_beacon_3"
+    ],
+    "discovery_bonus": [250, 300, 350, 400]
+  }
+}

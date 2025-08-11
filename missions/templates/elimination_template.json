@@ -1,0 +1,77 @@
+{
+  "template_id": "elimination",
+  "title": "Enemy Elimination Contract",
+  "description": "Eliminate hostile targets in the specified sector",
+  "mission_type": "elimination",
+  "faction": "federation",
+  "reward_package_id": 3,
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Eliminate {enemy_count} {target_enemy_type} ships",
+      "is_optional": false,
+      "is_ordered": false
+    }
+  ],
+  "custom_fields": {
+    "target_enemy_type": "enemy_fighter",
+    "enemy_count": 3,
+    "enemy_spawn": [
+      "enemy_fighter",
+      "enemy_fighter", 
+      "enemy_fighter"
+    ],
+    "required_faction_standing": -10,
+    "completion_bonus": 500,
+    "time_limit": 3600
+  },
+  "triggers": {
+    "on_accept": "spawn_elimination_targets",
+    "on_enemy_destroyed": "check_elimination_progress",
+    "on_complete": "award_combat_bonus"
+  },
+  "location_variants": {
+    "asteroid_field": {
+      "title": "Asteroid Belt Cleanup",
+      "description": "Clear pirate fighters from the asteroid belt mining operations",
+      "custom_fields": {
+        "enemy_spawn_location": "asteroid_field",
+        "completion_bonus": 750
+      }
+    },
+    "trade_route": {
+      "title": "Convoy Protection",
+      "description": "Eliminate raiders threatening trade convoys",
+      "custom_fields": {
+        "enemy_spawn_location": "trade_route", 
+        "completion_bonus": 600
+      }
+    },
+    "outer_rim": {
+      "title": "Border Patrol",
+      "description": "Eliminate hostile incursions in outer rim territory",
+      "custom_fields": {
+        "enemy_spawn_location": "outer_rim",
+        "target_enemy_type": "enemy_interceptor",
+        "completion_bonus": 800
+      }
+    }
+  },
+  "level_scaling": {
+    "enemy_types_by_level": {
+      "1-5": ["enemy_fighter"],
+      "6-10": ["enemy_fighter", "enemy_interceptor"],
+      "11-15": ["enemy_interceptor", "enemy_gunship"],
+      "16-20": ["enemy_gunship", "enemy_frigate"]
+    },
+    "reward_scaling": {
+      "base_credits": 1000,
+      "credits_per_level": 100,
+      "experience_multiplier": 1.2
+    }
+  },
+  "random_elements": {
+    "enemy_count": [2, 3, 4, 5],
+    "completion_bonus": [400, 500, 600, 750]
+  }
+}
