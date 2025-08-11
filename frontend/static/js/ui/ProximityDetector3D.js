@@ -2029,16 +2029,19 @@ export class ProximityDetector3D {
                 this.playerIndicator.quaternion.copy(yRotationQuaternion);
                 
                 // DEBUG: Compare camera vs blip rotation for synchronization debugging
-                if (Math.abs(rotationVelocity?.y || 0) > 0.0001 || !this.lastRotationDebugTime || Date.now() - this.lastRotationDebugTime > 2000) {
+                // Show debug every 1 second to diagnose rotation offset
+                if (!this.lastRotationDebugTime || Date.now() - this.lastRotationDebugTime > 1000) {
                     const cameraRotationDeg = THREE.MathUtils.radToDeg(playerRotation ? playerRotation.y : 0);
                     const accumulatedRotationDeg = THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation || 0);
                     const correctedRotationDeg = THREE.MathUtils.radToDeg(correctedRotation);
                     const offsetDeg = correctedRotationDeg - cameraRotationDeg;
+                    const rotVel = this.starfieldManager?.rotationVelocity?.y || 0;
                     console.log(`🎯 ROTATION SYNC DEBUG:`);
                     console.log(`  Camera rotation: ${cameraRotationDeg.toFixed(1)}°`);
                     console.log(`  Accumulated rotation: ${accumulatedRotationDeg.toFixed(1)}°`);
                     console.log(`  Corrected rotation (blip): ${correctedRotationDeg.toFixed(1)}°`);
                     console.log(`  Offset (blip - camera): ${offsetDeg.toFixed(1)}°`);
+                    console.log(`  Rotation velocity: ${rotVel.toFixed(4)}`);
                     this.lastRotationDebugTime = Date.now();
                 }
                 
