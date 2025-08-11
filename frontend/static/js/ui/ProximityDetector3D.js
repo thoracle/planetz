@@ -1190,10 +1190,11 @@ export class ProximityDetector3D {
         
         // Use current zoom level range instead of fixed detection range
         const currentZoom = this.getCurrentZoom();
-        const detectionRange = currentZoom.range;
+        const detectionRangeM = currentZoom.range; // Range in meters
+        const detectionRangeKm = detectionRangeM / 1000; // Convert to km (game units)
         
         // Minimal position logging - only in debug mode
-        this.logControlled('log', `Player at (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)}), range: ${(detectionRange/1000).toFixed(0)}km`);
+        this.logControlled('log', `Player at (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)}), range: ${detectionRangeKm.toFixed(0)}km`);
         
         // Clear previous frame's objects
         this.clearPreviousObjects();
@@ -1218,11 +1219,11 @@ export class ProximityDetector3D {
             
             const distance = playerPosition.distanceTo(obj.mesh.position);
             
-            if (distance <= detectionRange && distance > 1) { // Exclude self
-                // DEBUG: Log all objects being considered (reduced spam)
-                // console.log(`🎯 OBJECT FILTER for ${obj.name || obj.type}:`);
-                // console.log(`  Type: ${obj.type}, Distance: ${(distance/1000).toFixed(1)}km`);
-                // console.log(`  isTargetDummy: ${obj.isTargetDummy}, isEnemyShip: ${obj.isEnemyShip}`);
+            if (distance <= detectionRangeKm && distance > 1) { // Exclude self (distance in km, range in km)
+                // DEBUG: Log all objects being considered (temporarily enabled for testing)
+                if (obj.isTargetDummy || obj.isEnemyShip || obj.type === 'enemy_ship') {
+                    console.log(`🎯 IN RANGE: ${obj.name || obj.type} at ${distance.toFixed(1)}km (range: ${detectionRangeKm.toFixed(0)}km)`);
+                }
                 
                 // Temporarily disable celestial bodies (stars, planets, moons)
                 if (obj.type === 'star' || obj.type === 'planet' || obj.type === 'moon') {
@@ -1240,7 +1241,7 @@ export class ProximityDetector3D {
             } else {
                 // DEBUG: Log objects outside range (FORCE ALWAYS for targets)
                 if (obj.isTargetDummy || obj.isEnemyShip || obj.type === 'enemy_ship') {
-                    // console.log(`🎯 OUT OF RANGE: ${obj.name || obj.type} at ${(distance/1000).toFixed(1)}km (range: ${(detectionRange/1000).toFixed(0)}km)`);
+                    console.log(`🎯 OUT OF RANGE: ${obj.name || obj.type} at ${distance.toFixed(1)}km (range: ${detectionRangeKm.toFixed(0)}km)`);
                 }
             }
         }
@@ -1249,7 +1250,7 @@ export class ProximityDetector3D {
         
         // Only log when object count changes significantly
         if (objectsInRange !== this.sessionStats.lastObjectCount) {
-            this.logControlled('log', `Tracking ${objectsInRange} objects within ${(detectionRange/1000).toFixed(0)}km range`, null, true);
+            this.logControlled('log', `Tracking ${objectsInRange} objects within ${detectionRangeKm.toFixed(0)}km range`, null, true);
             this.sessionStats.lastObjectCount = objectsInRange;
         }
         this.sessionStats.objectsTracked = objectsInRange;
