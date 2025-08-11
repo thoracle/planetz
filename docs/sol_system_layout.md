@@ -219,8 +219,8 @@ The Sol System serves as the starting area for new pilots and the heart of human
 
 #### **Mercury Orbit**
 
-##### **Helios Solar Array** (UFW Research Lab)
-- **Faction**: United Federation of Worlds
+##### **Helios Solar Array** (TRA Research Lab)
+- **Faction**: Terran Republic Alliance
 - **Type**: Research Lab
 - **Function**: Solar energy research and power generation
 - **Systems**: Science Lab, Reactor Core, Communications Array
@@ -255,18 +255,18 @@ The Sol System serves as the starting area for new pilots and the heart of human
 
 #### **Earth-Luna System**
 
-##### **Terra Station** (UFW Communications Array)
-- **Faction**: United Federation of Worlds
+##### **Terra Station** (TRA Communications Array)
+- **Faction**: Terran Republic Alliance
 - **Type**: Communications Array
-- **Function**: Central communication hub for Federation
+- **Function**: Central communication hub for Alliance
 - **Systems**: Communications Array, Science Lab, Reactor Core, Battle Bridge
 - **Population**: 2,000 communication specialists
-- **Special**: Primary Federation communication network
+- **Special**: Primary Alliance communication network
 
-##### **Luna Shipyards** (UFW Shipyard)
-- **Faction**: United Federation of Worlds
+##### **Luna Shipyards** (TRA Shipyard)
+- **Faction**: Terran Republic Alliance
 - **Type**: Shipyard
-- **Function**: Construction of Federation starships
+- **Function**: Construction of Alliance starships
 - **Systems**: Ship Construction Bay, Manufacturing Plant, Repair Facility, Reactor Core
 - **Population**: 5,000 shipbuilders and engineers
 - **Special**: Massive construction berths for capital ships
@@ -289,8 +289,8 @@ The Sol System serves as the starting area for new pilots and the heart of human
 
 #### **Mars System**
 
-##### **Olympus Mons Base** (UFW Repair Station)
-- **Faction**: United Federation of Worlds
+##### **Olympus Mons Base** (TRA Repair Station)
+- **Faction**: Terran Republic Alliance
 - **Type**: Repair Station
 - **Function**: Fleet maintenance and military training
 - **Systems**: Repair Facility, Landing Bay, Manufacturing Plant, Medical Bay
@@ -337,13 +337,13 @@ The Sol System serves as the starting area for new pilots and the heart of human
 
 #### **Vesta Operations**
 
-##### **Vesta Mining Complex** (Vorthan Empire)
-- **Faction**: Vorthan Empire
+##### **Vesta Mining Complex** (Draconis Imperium)
+- **Faction**: Draconis Imperium
 - **Type**: Asteroid Mine
 - **Function**: Heavy metal extraction and processing
 - **Systems**: Mining Array, Cargo Processing Center, Repair Facility
-- **Population**: 1,500 Vorthan miners
-- **Special**: Vorthan territorial claim, heavily defended
+- **Population**: 1,500 Draconis miners
+- **Special**: Draconis territorial claim, heavily defended
 
 ##### **Pallas Research** (Zephyrian Collective)
 - **Faction**: Zephyrian Collective
@@ -377,16 +377,16 @@ The Sol System serves as the starting area for new pilots and the heart of human
 
 #### **Jupiter System**
 
-##### **Europa Deep** (UFW Research Lab)
-- **Faction**: United Federation of Worlds
+##### **Europa Deep** (TRA Research Lab)
+- **Faction**: Terran Republic Alliance
 - **Type**: Research Lab
 - **Function**: Xenobiology research and oceanic studies
 - **Systems**: Science Lab, Observatory Array, Medical Bay
 - **Population**: 1,000 scientists
 - **Special**: Underwater research modules in Europa's ocean
 
-##### **Ganymede Shipyards** (UFW Shipyard)
-- **Faction**: United Federation of Worlds
+##### **Ganymede Shipyards** (TRA Shipyard)
+- **Faction**: Terran Republic Alliance
 - **Type**: Shipyard
 - **Function**: Capital ship construction and heavy industry
 - **Systems**: Ship Construction Bay, Manufacturing Plant, Repair Facility, Reactor Core
@@ -401,8 +401,8 @@ The Sol System serves as the starting area for new pilots and the heart of human
 - **Population**: 1,200 technicians
 - **Special**: Harnesses Io's volcanic activity for power
 
-##### **Callisto Defense Platform** (UFW Defense Platform)
-- **Faction**: United Federation of Worlds
+##### **Callisto Defense Platform** (TRA Defense Platform)
+- **Faction**: Terran Republic Alliance
 - **Type**: Defense Platform
 - **Function**: Outer system defense and early warning
 - **Systems**: Point Defense Grid, Shield Array, Battle Bridge, Reactor Core
@@ -435,18 +435,18 @@ The Sol System serves as the starting area for new pilots and the heart of human
 - **Population**: 400 researchers
 - **Special**: Studies the moon's water geysers and possible life
 
-##### **Iapetus Fortress** (Vorthan Empire)
-- **Faction**: Vorthan Empire
+##### **Iapetus Fortress** (Draconis Imperium)
+- **Faction**: Draconis Imperium
 - **Type**: Defense Platform
 - **Function**: Military outpost and territorial marker
 - **Systems**: Point Defense Grid, Battle Bridge, Repair Facility
 - **Population**: 800 warriors
-- **Special**: Marks the edge of Vorthan influence in Sol system
+- **Special**: Marks the edge of Draconis influence in Sol system
 
 #### **Uranus System**
 
-##### **Uranus Observatory** (UFW Research Lab)
-- **Faction**: United Federation of Worlds
+##### **Uranus Observatory** (TRA Research Lab)
+- **Faction**: Terran Republic Alliance
 - **Type**: Orbital Telescope
 - **Function**: Deep space observation and early warning
 - **Systems**: Observatory Array, Science Lab, Communications Array
@@ -463,8 +463,8 @@ The Sol System serves as the starting area for new pilots and the heart of human
 
 #### **Neptune System**
 
-##### **Triton Station** (UFW Listening Post)
-- **Faction**: United Federation of Worlds
+##### **Triton Station** (TRA Listening Post)
+- **Faction**: Terran Republic Alliance
 - **Type**: Listening Post
 - **Function**: Deep space monitoring and communication relay
 - **Systems**: Communications Array, Science Lab, Observatory Array
@@ -481,8 +481,8 @@ The Sol System serves as the starting area for new pilots and the heart of human
 
 #### **Pluto System**
 
-##### **Charon Outpost** (UFW Frontier Outpost)
-- **Faction**: United Federation of Worlds
+##### **Charon Outpost** (TRA Frontier Outpost)
+- **Faction**: Terran Republic Alliance
 - **Type**: Frontier Outpost
 - **Function**: Deep space exploration staging area
 - **Systems**: Frontier Command, Repair Facility, Communications Array
@@ -503,8 +503,8 @@ The Sol System serves as the starting area for new pilots and the heart of human
 
 #### **Oort Cloud**
 
-##### **Deep Space Monitor 1** (UFW Orbital Telescope)
-- **Faction**: United Federation of Worlds
+##### **Deep Space Monitor 1** (TRA Orbital Telescope)
+- **Faction**: Terran Republic Alliance
 - **Type**: Orbital Telescope
 - **Function**: Interstellar observation and early warning
 - **Systems**: Observatory Array, Science Lab, Communications Array
@@ -534,12 +534,12 @@ The Sol System serves as the starting area for new pilots and the heart of human
 ### **Faction Balance**
 
 #### **Friendly Faction Dominance**
-- **UFW**: 8 major stations (strongest presence)
+- **TRA**: 8 major stations (strongest presence)
 - **Zephyrian**: 3 stations (focused on research)
 - **Free Traders**: 6 stations (economic backbone)
 
 #### **Neutral Faction Presence**
-- **Vorthan**: 2 military outposts (territorial claims)
+- **Draconis**: 2 military outposts (territorial claims)
 - **Nexus Corporate**: 6 stations (industrial/research)
 - **Ethereal**: 4 stations (peaceful colonies)
 
@@ -552,23 +552,23 @@ The Sol System serves as the starting area for new pilots and the heart of human
 
 #### **Asteroid Belt**
 - **Primary Tension**: Mining rights and territorial disputes
-- **Key Players**: Free Traders vs Nexus Corporate, Vorthan claims
+- **Key Players**: Free Traders vs Nexus Corporate, Draconis claims
 - **Threat**: Crimson Raider piracy against cargo shipments
 
 #### **Outer System**
 - **Strategic Competition**: Military positioning and resource control
-- **Border Tensions**: Vorthan Empire territorial expansion
+- **Border Tensions**: Draconis Imperium territorial expansion
 - **Deep Space Threats**: Void Cult infiltration and ancient mysteries
 
 #### **Trade Routes**
 - **Major Lanes**: Earth-Mars-Ceres-Jupiter corridor
 - **Vulnerable Points**: Asteroid belt passages, outer system approaches
-- **Protection**: UFW patrol routes, Free Trader escort services
+- **Protection**: TRA patrol routes, Free Trader escort services
 
 ### **Player Opportunities**
 
 #### **Career Paths**
-- **Federation Officer**: Join UFW military or exploration service
+- **Alliance Officer**: Join TRA military or exploration service
 - **Independent Trader**: Work with Free Trader Consortium
 - **Corporate Agent**: Employment with Nexus Corporate
 - **Bounty Hunter**: Track down criminals and raiders
@@ -594,7 +594,7 @@ The Sol System serves as the starting area for new pilots and the heart of human
 #### **Core Circuit** (High Security)
 - **Route**: Earth → Mars → Ceres → Jupiter → Saturn
 - **Travel Time**: 2-4 weeks depending on ship and cargo
-- **Security**: Heavy UFW patrol presence
+- **Security**: Heavy TRA patrol presence
 - **Traffic**: Extremely high, major commercial artery
 
 #### **Belt Run** (Medium Security)
@@ -606,7 +606,7 @@ The Sol System serves as the starting area for new pilots and the heart of human
 #### **Outer Patrol** (Low Security)
 - **Route**: Jupiter → Saturn → Uranus → Neptune
 - **Travel Time**: 4-8 weeks
-- **Security**: Scattered UFW presence
+- **Security**: Scattered TRA presence
 - **Purpose**: Military patrol and deep space monitoring
 
 #### **Deep Space** (No Security)
@@ -655,11 +655,11 @@ The Sol System serves as the starting area for new pilots and the heart of human
 #### **New Pilot Orientation**
 - **Starting Location**: Terra Station (Earth orbit)
 - **Initial Ship**: Basic scout vessel
-- **Starting Faction**: United Federation (civilian pilot license)
+- **Starting Faction**: Terran Republic Alliance (civilian pilot license)
 - **Tutorial Missions**: Local cargo runs, basic navigation training
 
 #### **Career Selection**
-- **Military Track**: Join UFW Starfleet for structure and benefits
+- **Military Track**: Join TRA Starfleet for structure and benefits
 - **Commercial Track**: Work with Free Traders for profit and freedom
 - **Explorer Track**: Partner with research factions for discovery
 - **Independent Track**: Maintain neutrality, work for multiple factions

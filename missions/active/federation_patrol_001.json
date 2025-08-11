@@ -1,10 +1,10 @@
 {
   "id": "federation_patrol_001",
   "title": "Sector 7 Patrol",
-  "description": "Eliminate pirate fighters threatening Federation trade routes in Sector 7",
+  "description": "Eliminate pirate fighters threatening Alliance trade routes in Sector 7",
   "mission_type": "elimination",
   "location": "sector_7",
-  "faction": "federation",
+  "faction": "terran_republic_alliance",
   "reward_package_id": 3,
   "state": "Mentioned",
   "is_botched": false,
@@ -28,7 +28,7 @@
     "completion_bonus": 500,
     "time_limit": 3600,
     "enemy_spawn_location": "sector_7_patrol_route",
-    "mission_giver": "Admiral Chen",
+    "mission_giver": "Admiral Sarah Chen",
     "priority": "standard"
   },
   "triggers": {

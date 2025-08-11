@@ -432,7 +432,7 @@ Every card has these core properties:
 #### Ascended Alien Technology
 | Card Name | Type | Function |
 |-----------|------|----------|
-| **Vorthan Mind Link** | Exotic | Direct consciousness interface |
+| **Draconis Mind Link** | Exotic | Direct consciousness interface |
 | **Nexus Harmonizer** | Exotic | Synchronizes with galactic energy grid |
 | **Ethereal Conduit** | Exotic | Channels energy from other dimensions |
 | **Zephyrian Crystal** | Exotic | Perfected ancient alien artifact |
@@ -724,7 +724,7 @@ When AI enemy ships are destroyed, they should drop cards based on their loadout
 
 #### Alien Faction Technology
 - **Zephyrian Systems**: Crystal-based energy manipulation
-- **Vorthan Technology**: Psychic/mental interface systems  
+- **Draconis Technology**: Psychic/mental interface systems  
 - **Nexus Artifacts**: Galactic network integration
 - **Ethereal Devices**: Interdimensional technology
 

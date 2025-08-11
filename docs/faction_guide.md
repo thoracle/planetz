@@ -682,7 +682,7 @@ The Ancient Architects are the mysterious builders of countless ruins, artifacts
 - Shared values of freedom, knowledge, and peaceful expansion
 
 #### **The Warrior's Respect**
-- **Vorthan Empire**: Respects TRA and Crimson Raiders as worthy opponents
+- **Draconis Imperium**: Respects TRA and Crimson Raiders as worthy opponents
 - Maintains honor-based relationships even with enemies
 - Potential for temporary alliances against greater threats
 
@@ -707,7 +707,7 @@ The Ancient Architects are the mysterious builders of countless ruins, artifacts
 
 ### **Alliance Patterns**
 - **Democratic Core**: TRA, Zephyrian, Free Traders form stable alliance
-- **Independent Powers**: Vorthan, Nexus, Ethereal maintain sovereignty
+- **Independent Powers**: Draconis, Nexus, Ethereal maintain sovereignty
 - **Criminal Elements**: Raiders, Shadow, Void operate outside law
 - **Ancient Factor**: Architects remain wild card in all calculations
 

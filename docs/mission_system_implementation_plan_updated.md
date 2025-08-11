@@ -919,7 +919,7 @@ classDiagram
 
 ```mermaid
 graph LR
-    subgraph "Federation Navy Chain"
+    subgraph "Alliance Navy Chain"
         F1[Fed Recruitment Test]
         F2[Patrol Duty]
         F3[Combat Assessment]
@@ -1982,8 +1982,8 @@ class MissionChainManager {
 // Example mission chain data
 const CHAIN_EXAMPLE = {
     id: 'federation_recruitment',
-    name: 'Federation Naval Recruitment',
-    description: 'Complete this chain to join the Federation Navy',
+    name: 'Alliance Naval Recruitment',
+    description: 'Complete this chain to join the Alliance Navy',
     missions: ['fed_001', 'fed_002', 'fed_003'],
     chainRewards: {
         rewardPackage: 10,
