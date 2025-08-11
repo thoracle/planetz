@@ -14,11 +14,11 @@ The galaxy is divided among ten major factions, each with distinct cultures, tec
 
 ## 🤝 Friendly Factions
 
-### **🌟 United Federation of Worlds (UFW)**
+### **🌟 Terran Republic Alliance (TRA)**
 *Democratic alliance of human and allied worlds*
 
 #### **Overview**
-The United Federation represents humanity's greatest political achievement: a democratic alliance spanning hundreds of worlds. Founded on principles of cooperation, scientific advancement, and peaceful expansion, the Federation serves as the primary ally to independent pilots and explorers.
+The Terran Republic Alliance represents humanity's greatest political achievement: a democratic alliance spanning hundreds of worlds. Founded on principles of cooperation, scientific advancement, and peaceful expansion, the Alliance serves as the primary ally to independent pilots and explorers.
 
 #### **Core Values**
 - **Democracy & Freedom**: Representative government and individual rights
@@ -27,14 +27,14 @@ The United Federation represents humanity's greatest political achievement: a de
 - **Environmental Stewardship**: Sustainable development and conservation
 
 #### **Government Structure**
-- **Federation Council**: Representatives from member worlds
-- **Starfleet Command**: Military and exploration divisions
+- **Republic Senate**: Representatives from member worlds
+- **Alliance Command**: Military and exploration divisions
 - **Science Directorate**: Research coordination and technology sharing
 - **Trade Commission**: Economic policy and commercial regulation
 
 #### **Territory & Influence**
 - **Core Worlds**: 50+ heavily populated and developed systems
-- **Member Systems**: 200+ allied worlds with Federation citizenship
+- **Member Systems**: 200+ allied worlds with Alliance citizenship
 - **Outposts**: Scientific stations and trading posts throughout known space
 - **Frontier Zones**: Exploration missions and colony support
 
@@ -58,14 +58,14 @@ The United Federation represents humanity's greatest political achievement: a de
 
 #### **Relations**
 - **Allies**: Zephyrian Collective, Free Trader Consortium
-- **Neutral**: Vorthan Empire, Nexus Corporate Syndicate, Ethereal Wanderers
+- **Neutral**: Draconis Imperium, Nexus Corporate Syndicate, Ethereal Wanderers
 - **Enemies**: Crimson Raider Clans, Shadow Consortium, Void Cult
 
 #### **Player Interactions**
 - **Missions**: Exploration, colony defense, diplomatic escort
-- **Benefits**: Access to advanced Federation technology and safe harbors
-- **Restrictions**: Must maintain positive standing, follow Federation laws
-- **Opportunities**: Join Starfleet, establish trading relationships
+- **Benefits**: Access to advanced Alliance technology and safe harbors
+- **Restrictions**: Must maintain positive standing, follow Alliance laws
+- **Opportunities**: Join Alliance Command, establish trading relationships
 
 ---
 
@@ -112,8 +112,8 @@ The Zephyrians are an ancient crystalline species that communicates through harm
 - **Temporal Observers**: Experimental time-research vessels
 
 #### **Relations**
-- **Allies**: United Federation of Worlds, Free Trader Consortium
-- **Neutral**: Vorthan Empire, Nexus Corporate Syndicate, Ethereal Wanderers
+- **Allies**: Terran Republic Alliance, Free Trader Consortium
+- **Neutral**: Draconis Imperium, Nexus Corporate Syndicate, Ethereal Wanderers
 - **Enemies**: Shadow Consortium, Void Cult, Crimson Raider Clans
 - **Special**: Deep fear and distrust of the Ancient Architects
 
@@ -168,7 +168,7 @@ The Free Trader Consortium represents the economic backbone of galactic civiliza
 - **Escort Vessels**: Armed ships protecting merchant convoys
 
 #### **Relations**
-- **Allies**: United Federation of Worlds, Zephyrian Collective
+- **Allies**: Terran Republic Alliance, Zephyrian Collective
 - **Customers**: Trades with ALL factions including enemies
 - **Neutral**: Maintains business relationships with everyone
 - **Competitors**: Nexus Corporate Syndicate (business rivalry)
@@ -183,11 +183,11 @@ The Free Trader Consortium represents the economic backbone of galactic civiliza
 
 ## ⚖️ Neutral Factions
 
-### **👑 Vorthan Empire**
+### **👑 Draconis Imperium**
 *Proud warrior culture with rigid honor codes*
 
 #### **Overview**
-The Vorthan Empire is a feudal military state built on traditions of honor, martial prowess, and territorial conquest. Their society revolves around warrior castes, elaborate honor codes, and constant competition for status and glory. They respect strength and despise weakness.
+The Draconis Imperium is a feudal military state built on traditions of honor, martial prowess, and territorial conquest. Their society revolves around warrior castes, elaborate honor codes, and constant competition for status and glory. They respect strength and despise weakness.
 
 #### **Core Values**
 - **Military Honor**: Courage, loyalty, and martial excellence
@@ -226,7 +226,7 @@ The Vorthan Empire is a feudal military state built on traditions of honor, mart
 - **Dreadnoughts**: Rare super-heavy vessels for major campaigns
 
 #### **Relations**
-- **Respect**: United Federation (worthy opponents), Crimson Raiders (fellow warriors)
+- **Respect**: Terran Republic Alliance (worthy opponents), Crimson Raiders (fellow warriors)
 - **Neutral**: Zephyrian Collective, Free Trader Consortium, Nexus Corporate
 - **Disdain**: Shadow Consortium (dishonorable), Ethereal Wanderers (weak)
 - **Hatred**: Void Cult (abomination), Ancient Architects (ancient enemy)
@@ -339,7 +339,7 @@ The Ethereal Wanderers are a peaceful nomadic people who travel the galaxy in ma
 
 #### **Relations**
 - **Peaceful**: Maintains non-aggressive stance toward all factions
-- **Sympathetic**: United Federation (shared peaceful values)
+- **Sympathetic**: Terran Republic Alliance (shared peaceful values)
 - **Neutral**: Most factions respect their non-combatant status
 - **Victims**: Often targeted by raiders and aggressive factions
 
@@ -396,9 +396,9 @@ The Crimson Raider Clans are a loose confederation of pirate fleets, raider band
 - **Stealth Raiders**: Cloaked vessels for surprise attacks
 
 #### **Relations**
-- **Enemies**: United Federation, Zephyrian Collective, Free Traders
+- **Enemies**: Terran Republic Alliance, Zephyrian Collective, Free Traders
 - **Rivals**: Shadow Consortium (territory disputes), Nexus Corporate (targets)
-- **Respect**: Vorthan Empire (fellow warriors, despite enmity)
+- **Respect**: Draconis Imperium (fellow warriors, despite enmity)
 - **Opportunistic**: Will attack anyone if profit justifies risk
 
 #### **Player Interactions**
@@ -452,7 +452,7 @@ The Shadow Consortium operates in the dark spaces between legitimate factions, d
 - **Shadow Carriers**: Mobile bases deploying covert operatives
 
 #### **Relations**
-- **Enemies**: All factions (when discovered), particularly Federation
+- **Enemies**: All factions (when discovered), particularly Terran Republic Alliance
 - **Clients**: Sells services to any faction willing to pay
 - **Rivals**: Crimson Raiders (territory), Nexus Corporate (competition)
 - **Hidden**: Maintains secret relationships with corrupted officials
@@ -591,12 +591,12 @@ The Ancient Architects are the mysterious builders of countless ruins, artifacts
 
 ### **Relationship Matrix**
 
-|                        | UFW | Zeph | FTC | Vorth | Nexus | Ether | Crim | Shad | Void | Arch |
+|                        | TRA | Zeph | FTC | Draco | Nexus | Ether | Crim | Shad | Void | Arch |
 |------------------------|-----|------|-----|-------|-------|-------|------|------|------|------|
-| **United Federation**  |  -  | 🤝   | 🤝  | 😐    | 😐    | 😊    | ⚔️   | 😠   | ⚔️   | ❓   |
+| **Terran Republic Alliance**  |  -  | 🤝   | 🤝  | 😐    | 😐    | 😊    | ⚔️   | 😠   | ⚔️   | ❓   |
 | **Zephyrian Collective** | 🤝 |  -   | 🤝  | 😐    | 😐    | 😊    | 😠   | 😠   | ⚔️   | 😨   |
 | **Free Trader Consortium** | 🤝 | 🤝  |  -  | 😐    | 😠    | 😊    | 😠   | 😐   | 😠   | ❓   |
-| **Vorthan Empire**     | 😐  | 😐   | 😐  |   -   | 😐    | 😠    | 😐   | 😠   | ⚔️   | ❓   |
+| **Draconis Imperium**     | 😐  | 😐   | 😐  |   -   | 😐    | 😠    | 😐   | 😠   | ⚔️   | ❓   |
 | **Nexus Corporate**    | 😐  | 😐   | 😠  | 😐    |   -   | 😐    | 😐   | 😐   | 😠   | ❓   |
 | **Ethereal Wanderers** | 😊  | 😊   | 😊  | 😠    | 😐    |   -   | 😠   | 😠   | 😠   | ❓   |
 | **Crimson Raiders**    | ⚔️  | 😠   | 😠  | 😐    | 😐    | 😠    |   -  | 😠   | 😠   | ❓   |
@@ -607,12 +607,12 @@ The Ancient Architects are the mysterious builders of countless ruins, artifacts
 ### **Key Relationships**
 
 #### **The Democratic Alliance**
-- **UFW + Zephyrian + Free Traders**: Core alliance promoting peace and prosperity
+- **TRA + Zephyrian + Free Traders**: Core alliance promoting peace and prosperity
 - Strong military cooperation and economic integration
 - Shared values of freedom, knowledge, and peaceful expansion
 
 #### **The Warrior's Respect**
-- **Vorthan Empire**: Respects UFW and Crimson Raiders as worthy opponents
+- **Vorthan Empire**: Respects TRA and Crimson Raiders as worthy opponents
 - Maintains honor-based relationships even with enemies
 - Potential for temporary alliances against greater threats
 
@@ -636,7 +636,7 @@ The Ancient Architects are the mysterious builders of countless ruins, artifacts
 ## 🎯 Strategic Implications
 
 ### **Alliance Patterns**
-- **Democratic Core**: UFW, Zephyrian, Free Traders form stable alliance
+- **Democratic Core**: TRA, Zephyrian, Free Traders form stable alliance
 - **Independent Powers**: Vorthan, Nexus, Ethereal maintain sovereignty
 - **Criminal Elements**: Raiders, Shadow, Void operate outside law
 - **Ancient Factor**: Architects remain wild card in all calculations
