@@ -289,7 +289,7 @@ export default class DamageControlHUD {
         // For individual weapon systems, check if the corresponding weapon card is installed
         const weaponSystems = ['laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array', 
                               'disruptor_cannon', 'particle_beam', 'standard_missile', 'homing_missile',
-                              'heavy_torpedo', 'proximity_mine'];
+                              'photon_torpedo', 'proximity_mine'];
         
         if (weaponSystems.includes(systemName)) {
             // Check if we have the specific weapon card installed

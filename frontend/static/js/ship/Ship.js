@@ -770,7 +770,7 @@ export default class Ship {
             'particle_beam': ['weapons', 'particle_beam'],
             'standard_missile': ['weapons', 'standard_missile'],
             'homing_missile': ['weapons', 'homing_missile'],
-            'heavy_torpedo': ['weapons', 'heavy_torpedo'],
+            'photon_torpedo': ['weapons', 'photon_torpedo'],
             'proximity_mine': ['weapons', 'proximity_mine']
         };
         

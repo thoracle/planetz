@@ -930,7 +930,7 @@ export class WeaponEffectsManager {
             'phaser_array': { muzzle: 0xFF0080, beam: 0xFF0080 },      // Pink
             'standard_missile': { muzzle: 0xFFFF00, beam: 0xFFFF00 },  // Yellow
             'homing_missile': { muzzle: 0xFF8000, beam: 0xFF8000 },    // Orange
-            'heavy_torpedo': { muzzle: 0xFF0000, beam: 0xFF0000 },     // Red
+            'photon_torpedo': { muzzle: 0xFF0000, beam: 0xFF0000 },     // Red
             'proximity_mine': { muzzle: 0x8000FF, beam: 0x8000FF }     // Purple
         };
         
@@ -950,7 +950,7 @@ export class WeaponEffectsManager {
             'phaser_array': 'photons',
             'standard_missile': 'missiles',
             'homing_missile': 'missiles',
-            'heavy_torpedo': 'missiles',
+            'photon_torpedo': 'missiles',
             'proximity_mine': 'mines',
             'laser': 'lasers',
             'pulse': 'lasers',

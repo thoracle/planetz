@@ -128,6 +128,10 @@ export default class CardSystemIntegration {
                 CARD_TYPES.LONG_RANGE_BEAM,
                 CARD_TYPES.DEFENSIVE_TURRET,
                 CARD_TYPES.DUAL_TURRET,
+                // Advanced weapon systems
+                CARD_TYPES.MISSILE_LAUNCHER,
+                CARD_TYPES.POINT_DEFENSE,
+                CARD_TYPES.MISSILE_POD,
                 // Projectile weapons
                 CARD_TYPES.STANDARD_MISSILE,
                 CARD_TYPES.HOMING_MISSILE,
@@ -608,7 +612,7 @@ export default class CardSystemIntegration {
             // Individual weapon systems
             'laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array',
             'disruptor_cannon', 'particle_beam', 'standard_missile', 'homing_missile',
-            'heavy_torpedo', 'proximity_mine', 'missile_tubes'
+            'photon_torpedo', 'proximity_mine', 'missile_tubes'
         ];
         
         let removedCount = 0;
@@ -712,7 +716,7 @@ export default class CardSystemIntegration {
         // For weapon systems, check if the specific weapon card is installed
         const weaponSystems = ['laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array',
                               'disruptor_cannon', 'particle_beam', 'standard_missile', 'homing_missile',
-                              'heavy_torpedo', 'proximity_mine', 'photon_torpedo', 'ion_storm_cannon',
+                              'photon_torpedo', 'proximity_mine', 'ion_storm_cannon',
                               'graviton_beam', 'quantum_torpedo', 'singularity_launcher', 'void_ripper',
                               'nanite_swarm'];
         
@@ -740,7 +744,7 @@ export default class CardSystemIntegration {
             // Step 2: Remove all individual weapon systems to prevent duplicates
             const weaponSystemNames = ['laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array',
                                      'disruptor_cannon', 'particle_beam', 'standard_missile', 'homing_missile',
-                                     'heavy_torpedo', 'proximity_mine'];
+                                     'photon_torpedo', 'proximity_mine'];
             
             let removedCount = 0;
             for (const weaponName of weaponSystemNames) {
@@ -861,7 +865,7 @@ export default class CardSystemIntegration {
         const weaponCardTypes = [
             'laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array',
             'disruptor_cannon', 'particle_beam', 'standard_missile', 'homing_missile',
-            'heavy_torpedo', 'proximity_mine'
+            'photon_torpedo', 'proximity_mine'
         ];
         return weaponCardTypes.includes(cardType);
     }

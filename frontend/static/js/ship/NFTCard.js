@@ -59,6 +59,10 @@ export const CARD_TYPES = {
     HOMING_MISSILE: 'homing_missile',
     PHOTON_TORPEDO: 'photon_torpedo',
     PROXIMITY_MINE: 'proximity_mine',
+    // Advanced weapon systems
+    MISSILE_LAUNCHER: 'missile_launcher',        // Multi-missile launcher system
+    POINT_DEFENSE: 'point_defense',              // Anti-missile defense system
+    MISSILE_POD: 'missile_pod',                  // Light missile system
     
     // Sensor and communication systems
     LONG_RANGE_SCANNER: 'long_range_scanner',
@@ -334,6 +338,10 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.ENERGY_PULSE_CANNON,
         CARD_TYPES.ENERGY_CANNON,
         CARD_TYPES.DEFENSIVE_TURRET,
+        // Advanced weapon systems
+        CARD_TYPES.MISSILE_LAUNCHER,
+        CARD_TYPES.POINT_DEFENSE,
+        CARD_TYPES.MISSILE_POD,
         // Some exotic core systems
         CARD_TYPES.QUANTUM_REACTOR,
         CARD_TYPES.CRYSTALLINE_MATRIX,
@@ -370,6 +378,10 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.LONG_RANGE_BEAM,
         CARD_TYPES.DEFENSIVE_TURRET,
         CARD_TYPES.DUAL_TURRET,
+        // Advanced weapon systems
+        CARD_TYPES.MISSILE_LAUNCHER,
+        CARD_TYPES.POINT_DEFENSE,
+        CARD_TYPES.MISSILE_POD,
         CARD_TYPES.QUANTUM_REACTOR,
         CARD_TYPES.CRYSTALLINE_MATRIX,
         CARD_TYPES.DARK_MATTER_CORE,
@@ -420,6 +432,10 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.LONG_RANGE_BEAM,
         CARD_TYPES.DEFENSIVE_TURRET,
         CARD_TYPES.DUAL_TURRET,
+        // Advanced weapon systems
+        CARD_TYPES.MISSILE_LAUNCHER,
+        CARD_TYPES.POINT_DEFENSE,
+        CARD_TYPES.MISSILE_POD,
         CARD_TYPES.QUANTUM_REACTOR,
         CARD_TYPES.CRYSTALLINE_MATRIX,
         CARD_TYPES.DARK_MATTER_CORE,
@@ -610,6 +626,10 @@ export default class NFTCard {
             CARD_TYPES.LONG_RANGE_BEAM,
             CARD_TYPES.DEFENSIVE_TURRET,
             CARD_TYPES.DUAL_TURRET,
+            // Advanced weapon systems
+            CARD_TYPES.MISSILE_LAUNCHER,
+            CARD_TYPES.POINT_DEFENSE,
+            CARD_TYPES.MISSILE_POD,
             // Exotic Weapons
             CARD_TYPES.ION_STORM_CANNON,
             CARD_TYPES.GRAVITON_BEAM,

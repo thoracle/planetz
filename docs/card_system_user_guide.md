@@ -196,6 +196,13 @@ Every card has these core properties:
 | **Defensive Turret** | Weapon | Point-defense weapon system (Level 2-3 laser_cannon) |
 | **Dual Turret** | Weapon | Twin-mounted defensive system (Level 3-4 phaser_array) |
 
+#### Advanced Weapon Systems
+| Card Name | Type | Function |
+|-----------|------|----------|
+| **Missile Launcher** | Weapon | Multi-missile launcher system for sustained fire |
+| **Point Defense** | Weapon | Anti-missile and anti-fighter defensive system |
+| **Missile Pod** | Weapon | Light missile system for fighters and scouts |
+
 #### Exotic Core Systems
 | Card Name | Type | Function |
 |-----------|------|----------|
@@ -481,12 +488,15 @@ AI ships currently use specialized weapon configurations that need to be mapped 
 
 | AI Weapon Type | Standard Card Equivalent | Rarity | Level Range |
 |----------------|-------------------------|--------|-------------|
-| **energy_pulse** | Pulse Cannon | Common | 2-3 |
-| **energy_cannon** | Laser Cannon | Common | 3-4 |
+| **energy_pulse** | Energy Pulse Cannon | Rare | 2-3 |
+| **energy_cannon** | Energy Cannon | Rare | 3-4 |
 | **plasma_cannon** | Plasma Cannon | Common | 4-5 |
-| **long_range_beam** | Particle Beam | Rare | 4-5 |
-| **defensive_turret** | Laser Cannon | Common | 2-3 |
-| **dual_turret** | Phaser Array | Rare | 3-4 |
+| **long_range_beam** | Long Range Beam | Epic | 4-5 |
+| **defensive_turret** | Defensive Turret | Rare | 2-3 |
+| **dual_turret** | Dual Turret | Epic | 3-4 |
+| **missile_launcher** | Missile Launcher | Epic | 3-5 |
+| **point_defense** | Point Defense | Epic | 2-4 |
+| **missile_pod** | Missile Pod | Rare | 1-3 |
 
 #### Shield System Standardization
 
