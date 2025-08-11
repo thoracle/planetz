@@ -1283,10 +1283,10 @@ export class ProximityDetector3D {
             const distance = playerPosition.distanceTo(obj.mesh.position);
             
             if (distance <= detectionRangeKm && distance > 1) { // Exclude self (distance in km, range in km)
-                // DEBUG: Log all objects being considered (temporarily enabled for testing)
-                if (obj.isTargetDummy || obj.isEnemyShip || obj.type === 'enemy_ship') {
-                    console.log(`🎯 IN RANGE: ${obj.name || obj.type} at ${distance.toFixed(1)}km (range: ${detectionRangeKm.toFixed(0)}km)`);
-                }
+                // DEBUG: Log all objects being considered (DISABLED to reduce console spam)
+                // if (obj.isTargetDummy || obj.isEnemyShip || obj.type === 'enemy_ship') {
+                //     console.log(`🎯 IN RANGE: ${obj.name || obj.type} at ${distance.toFixed(1)}km (range: ${detectionRangeKm.toFixed(0)}km)`);
+                // }
                 
                 // Temporarily disable celestial bodies (stars, planets, moons)
                 if (obj.type === 'star' || obj.type === 'planet' || obj.type === 'moon') {
@@ -1302,10 +1302,10 @@ export class ProximityDetector3D {
                 this.createObjectBlip(obj, playerPosition);
                 objectsInRange++;
             } else {
-                // DEBUG: Log objects outside range (FORCE ALWAYS for targets)
-                if (obj.isTargetDummy || obj.isEnemyShip || obj.type === 'enemy_ship') {
-                    console.log(`🎯 OUT OF RANGE: ${obj.name || obj.type} at ${distance.toFixed(1)}km (range: ${detectionRangeKm.toFixed(0)}km)`);
-                }
+                // DEBUG: Log objects outside range (DISABLED to reduce console spam)
+                // if (obj.isTargetDummy || obj.isEnemyShip || obj.type === 'enemy_ship') {
+                //     console.log(`🎯 OUT OF RANGE: ${obj.name || obj.type} at ${distance.toFixed(1)}km (range: ${detectionRangeKm.toFixed(0)}km)`);
+                // }
             }
         }
         
