@@ -124,12 +124,12 @@ Localization: Mission IDs link to localized text via separate JSON.
 4.4 Reward Packages
 Intead of defining the rewards for a completed mission on a one to one basis we associate a reward package id with each mission.  The reward package is used by the system to determine what rewards to give the player when he completes the mission.
 
-ex: 
+psuedo code: 
 Reward Package: 1
 Min Credits: 50 # if zero then don't randomize the credits awarded just give out the max credits.
 Max Credits: 150  
-Min XP: 1000 # if zero then don't randomize the credits awarded just give out the max XP.
-Max XP: 2000
+{faction_name} Min Faction: 0 # if zero then don't randomize the credits awarded just give out the max Faction.
+{faction_name} Max Faction: 5
 Min Cards: 1 # if zero then don't randomize the cards awarded just give out the max cards.
 Max Cards: 3
 Min Card Tier: 2 # if zero then don't randomize the card tiers just give out only max tier cards.

@@ -2028,6 +2028,20 @@ export class ProximityDetector3D {
                 yRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
                 this.playerIndicator.quaternion.copy(yRotationQuaternion);
                 
+                // DEBUG: Compare camera vs blip rotation for synchronization debugging
+                if (Math.abs(rotationVelocity?.y || 0) > 0.0001 || !this.lastRotationDebugTime || Date.now() - this.lastRotationDebugTime > 2000) {
+                    const cameraRotationDeg = THREE.MathUtils.radToDeg(playerRotation ? playerRotation.y : 0);
+                    const accumulatedRotationDeg = THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation || 0);
+                    const correctedRotationDeg = THREE.MathUtils.radToDeg(correctedRotation);
+                    const offsetDeg = correctedRotationDeg - cameraRotationDeg;
+                    console.log(`🎯 ROTATION SYNC DEBUG:`);
+                    console.log(`  Camera rotation: ${cameraRotationDeg.toFixed(1)}°`);
+                    console.log(`  Accumulated rotation: ${accumulatedRotationDeg.toFixed(1)}°`);
+                    console.log(`  Corrected rotation (blip): ${correctedRotationDeg.toFixed(1)}°`);
+                    console.log(`  Offset (blip - camera): ${offsetDeg.toFixed(1)}°`);
+                    this.lastRotationDebugTime = Date.now();
+                }
+                
             } else {
                 // In 3D mode, we need to combine Y rotation (heading) with X rotation (pitch for altitude)
                 // Decompose current quaternion to preserve Y rotation while setting X rotation
