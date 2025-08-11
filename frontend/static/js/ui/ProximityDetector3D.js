@@ -1934,36 +1934,11 @@ export class ProximityDetector3D {
         }
         
         // SPEC: Triangle orientation matches player ship heading (fore camera direction)
-        // Combine ship rotation sync with velocity accumulation for 360° capability
-        if (this.playerIndicator) {
-            // Initialize accumulated rotation if not set, using current ship rotation
-            if (this.playerIndicatorAccumulatedRotation === undefined && playerRotation) {
-                this.playerIndicatorAccumulatedRotation = playerRotation.y;
-            }
-            
-            // Use rotation velocity for smooth 360° tracking (preserves full rotation capability)
-            const rotationVelocity = this.starfieldManager?.rotationVelocity;
-            
-            if (rotationVelocity && Math.abs(rotationVelocity.y) > 0.0001) {
-                // Apply rotation using accumulated tracking to avoid Euler angle limitations
-                const rotationAmount = rotationVelocity.y * deltaTime * 60;
-                
-                // Initialize accumulated rotation tracking if needed
-                if (this.playerIndicatorAccumulatedRotation === undefined) {
-                    this.playerIndicatorAccumulatedRotation = 0;
-                }
-                
-                // Track accumulated rotation (this allows 360° rotation)
-                this.playerIndicatorAccumulatedRotation += rotationAmount;
-                
-                // Log rotation for debugging (disabled to reduce spam)
-                // const displayDegrees = THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation);
-                // const wrappedDegrees = ((displayDegrees % 360) + 360) % 360;
-                // console.log(`🎯 ROTATION: ${wrappedDegrees.toFixed(1)}° (accumulated for 360° capability)`);
-            } else if (playerRotation && this.playerIndicatorAccumulatedRotation === undefined) {
-                // Fallback: if no velocity but we have ship rotation and no accumulated rotation yet
-                this.playerIndicatorAccumulatedRotation = playerRotation.y;
-            }
+        // Use direct camera rotation for accurate sync (simplified approach)
+        if (this.playerIndicator && playerRotation) {
+            // Directly sync with camera rotation to prevent drift
+            // This ensures perfect sync but may lose 360° rotation capability
+            this.playerIndicatorAccumulatedRotation = playerRotation.y;
         }
         
         // SPEC: Grid scrolls to keep player centered (top-down mode only)
@@ -2022,8 +1997,8 @@ export class ProximityDetector3D {
             // IMPORTANT: Never set .rotation directly - it will override quaternion rotations
             if (this.viewMode === 'topDown') {
                 // In top-down mode, triangle should be flat and visible from above
-                // Apply 45° correction for coordinate system alignment
-                const correctedRotation = (this.playerIndicatorAccumulatedRotation || 0) + Math.PI / 4; // Add 45° correction
+                // Apply minimal correction for coordinate system alignment
+                const correctedRotation = (this.playerIndicatorAccumulatedRotation || 0) + Math.PI / 12; // Add 15° correction (reduced from 45°)
                 const yRotationQuaternion = new THREE.Quaternion();
                 yRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
                 this.playerIndicator.quaternion.copy(yRotationQuaternion);
@@ -2050,9 +2025,9 @@ export class ProximityDetector3D {
                 // Decompose current quaternion to preserve Y rotation while setting X rotation
                 
                 // Extract current Y rotation from the accumulated rotation
-                // Add 45° offset to correct for coordinate system mismatch
+                // Add minimal offset to correct for coordinate system mismatch
                 const yRotationQuaternion = new THREE.Quaternion();
-                const correctedRotation = (this.playerIndicatorAccumulatedRotation || 0) + Math.PI / 4; // Add 45° correction
+                const correctedRotation = (this.playerIndicatorAccumulatedRotation || 0) + Math.PI / 12; // Add 15° correction (reduced from 45°)
                 yRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
                 
                 // Create pitch quaternion based on altitude
