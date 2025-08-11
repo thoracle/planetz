@@ -25,13 +25,269 @@ This document outlines the implementation of a robust mission/quest system for t
 - **Real-Time Objectives**: Support for dynamic mission objectives during space combat
 - **Space Station Integration**: Mission acquisition through existing docking interface
 
-## 2. Space Station Mission Acquisition Interface
+## 2. System Architecture Overview
 
-### 2.1 Integration with Existing DockingInterface
+### 2.1 Mission System Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        UI[Mission UI Components]
+        SFM[StarfieldManager]
+        DI[DockingInterface]
+        MB[Mission Board]
+        MJ[Mission Journal]
+    end
+    
+    subgraph "API Layer"
+        API[Flask REST API]
+        AUTH[Authentication]
+        VAL[Validation]
+    end
+    
+    subgraph "Core Mission System"
+        MM[Mission Manager]
+        MS[Mission State Machine]
+        MT[Mission Templates]
+        MG[Mission Generator]
+    end
+    
+    subgraph "Integration Systems"
+        AI[Enemy AI Manager]
+        CS[Card System]
+        FS[Faction System]
+        ES[Event System]
+    end
+    
+    subgraph "Data Layer"
+        JSON[JSON Files]
+        DB[SQLite Database]
+        CACHE[Redis Cache]
+    end
+    
+    UI --> API
+    SFM --> API
+    DI --> MB
+    MB --> MJ
+    
+    API --> MM
+    API --> AUTH
+    API --> VAL
+    
+    MM --> MS
+    MM --> MT
+    MM --> MG
+    MM --> JSON
+    MM --> DB
+    
+    MS --> ES
+    ES --> AI
+    ES --> CS
+    ES --> FS
+    
+    MT --> MG
+    MG --> JSON
+    
+    API --> CACHE
+    
+    classDef frontend fill:#e1f5fe
+    classDef api fill:#f3e5f5
+    classDef core fill:#e8f5e8
+    classDef integration fill:#fff3e0
+    classDef data fill:#fce4ec
+    
+    class UI,SFM,DI,MB,MJ frontend
+    class API,AUTH,VAL api
+    class MM,MS,MT,MG core
+    class AI,CS,FS,ES integration
+    class JSON,DB,CACHE data
+```
+
+### 2.2 Mission State Flow Diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> Unknown
+    Unknown --> Mentioned : Rumor/Overhear
+    Mentioned --> Accepted : Player Agreement
+    Accepted --> Achieved : Complete Objectives
+    Achieved --> Completed : Turn In/Validate
+    Completed --> [*]
+    
+    Unknown --> Botched : Failure Condition
+    Mentioned --> Botched : Failure Condition
+    Accepted --> Botched : Failure Condition
+    Achieved --> Botched : Failure Condition
+    
+    Botched --> Mentioned : Redemption Arc
+    Botched --> [*] : Permanent Failure
+    
+    note right of Botched
+        Botched is a flag overlay
+        Can occur in any state except Completed
+        Allows for narrative flexibility
+    end note
+    
+    note right of Achieved
+        Auto-advances to Completed
+        when all required objectives met
+    end note
+```
+
+### 2.3 Mission Objective Dependency Graph
+
+```mermaid
+graph TD
+    subgraph "Ordered Objectives"
+        O1[Objective 1<br/>Eliminate Scouts]
+        O2[Objective 2<br/>Eliminate Commander]
+        O3[Objective 3<br/>Secure Area]
+    end
+    
+    subgraph "Optional Objectives"
+        OPT1[Optional: Collect Intel]
+        OPT2[Optional: Rescue Hostages]
+    end
+    
+    O1 --> O2
+    O2 --> O3
+    O1 -.-> OPT1
+    O2 -.-> OPT2
+    
+    O3 --> COMPLETE[Mission Complete]
+    OPT1 -.-> BONUS1[+Bonus Rewards]
+    OPT2 -.-> BONUS2[+Faction Standing]
+    
+    classDef required fill:#ffcdd2
+    classDef optional fill:#c8e6c9
+    classDef complete fill:#bbdefb
+    classDef bonus fill:#fff9c4
+    
+    class O1,O2,O3 required
+    class OPT1,OPT2 optional
+    class COMPLETE complete
+    class BONUS1,BONUS2 bonus
+```
+
+## 3. Space Station Mission Acquisition Interface
+
+### 3.1 Integration with Existing DockingInterface
 
 The mission system will integrate seamlessly with the existing `DockingInterface.js` by adding a new "MISSION BOARD" service button alongside the current REPAIR SHIP and UPGRADE SHIP options.
 
-#### 2.1.1 Enhanced DockingInterface Structure
+### 3.2 Mission Board UI Component Hierarchy
+
+```mermaid
+graph TD
+    subgraph "DockingInterface"
+        DI[DockingInterface Container]
+        SERVICES[Services Container]
+        LAUNCH[Launch Button]
+        REPAIR[Repair Button]
+        SHOP[Shop Button]
+        MISSION[Mission Board Button]
+    end
+    
+    subgraph "Mission Board Interface"
+        MBI[Mission Board Container]
+        LEFT[Left Panel<br/>Mission List]
+        CENTER[Center Panel<br/>Mission Details]
+        RIGHT[Right Panel<br/>Objectives & Rewards]
+        BOTTOM[Bottom Panel<br/>Actions]
+    end
+    
+    subgraph "Mission List Components"
+        CATS[Category Tabs]
+        FILTERS[Mission Filters]
+        CARDS[Mission Cards]
+        SCROLL[Scroll Container]
+    end
+    
+    subgraph "Mission Details Components"
+        HEADER[Mission Header]
+        DESC[Description]
+        OBJLIST[Objectives List]
+        REWARDS[Rewards Preview]
+        META[Mission Metadata]
+    end
+    
+    DI --> SERVICES
+    SERVICES --> LAUNCH
+    SERVICES --> REPAIR
+    SERVICES --> SHOP
+    SERVICES --> MISSION
+    
+    MISSION --> MBI
+    MBI --> LEFT
+    MBI --> CENTER
+    MBI --> RIGHT
+    MBI --> BOTTOM
+    
+    LEFT --> CATS
+    LEFT --> FILTERS
+    LEFT --> CARDS
+    LEFT --> SCROLL
+    
+    CENTER --> HEADER
+    CENTER --> DESC
+    CENTER --> OBJLIST
+    CENTER --> REWARDS
+    CENTER --> META
+    
+    classDef docking fill:#e3f2fd
+    classDef mission fill:#f1f8e9
+    classDef list fill:#fff3e0
+    classDef details fill:#fce4ec
+    
+    class DI,SERVICES,LAUNCH,REPAIR,SHOP,MISSION docking
+    class MBI,LEFT,CENTER,RIGHT,BOTTOM mission
+    class CATS,FILTERS,CARDS,SCROLL list
+    class HEADER,DESC,OBJLIST,REWARDS,META details
+```
+
+### 3.3 Mission Acquisition Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant Player
+    participant DockingUI
+    participant MissionBoard
+    participant MissionAPI
+    participant MissionManager
+    participant Database
+    
+    Player->>DockingUI: Dock at Station
+    DockingUI->>DockingUI: Show Station Services
+    Player->>DockingUI: Click "MISSION BOARD"
+    
+    DockingUI->>MissionBoard: Open Mission Board
+    MissionBoard->>MissionAPI: GET /api/missions?location=station_alpha
+    MissionAPI->>MissionManager: getAvailableMissions(location)
+    MissionManager->>Database: Query missions by location/faction
+    Database-->>MissionManager: Return mission data
+    MissionManager-->>MissionAPI: Return available missions
+    MissionAPI-->>MissionBoard: JSON mission list
+    MissionBoard->>MissionBoard: Render mission cards
+    
+    Player->>MissionBoard: Select mission
+    MissionBoard->>MissionBoard: Show mission details
+    
+    Player->>MissionBoard: Click "ACCEPT MISSION"
+    MissionBoard->>MissionAPI: POST /api/missions/{id}/accept
+    MissionAPI->>MissionManager: acceptMission(id)
+    MissionManager->>Database: Update mission state to "Accepted"
+    Database-->>MissionManager: Confirm update
+    MissionManager-->>MissionAPI: Return success
+    MissionAPI-->>MissionBoard: Mission accepted
+    MissionBoard->>MissionBoard: Update UI, show success
+    
+    Player->>DockingUI: Launch ship
+    DockingUI->>MissionBoard: Close mission board
+    
+    Note over Player, Database: Mission now active in player's journal
+```
+
+#### 3.3.1 Enhanced DockingInterface Structure
 
 ```javascript
 // Addition to existing DockingInterface.createActionButtons()
@@ -387,7 +643,297 @@ class MissionManager:
         return mission.to_dict()
 ```
 
-## 4. Complete Backend API Implementation
+## 4. Mission Types and Classification System
+
+### 4.1 Mission Type Hierarchy
+
+```mermaid
+graph TD
+    MISSION[Mission Base Class]
+    
+    subgraph "Combat Missions"
+        COMBAT[Combat Mission]
+        ELIM[Elimination Contract]
+        ESCORT[Escort Mission]
+        DEFENSE[Base Defense]
+        PATROL[Patrol Route]
+    end
+    
+    subgraph "Exploration Missions"
+        EXPLORE[Exploration Mission]
+        RECON[Reconnaissance]
+        SURVEY[Resource Survey]
+        SCAN[Scanning Mission]
+        CHART[Charting Mission]
+    end
+    
+    subgraph "Trading Missions"
+        TRADE[Trading Mission]
+        DELIVERY[Cargo Delivery]
+        SMUGGLING[Smuggling Run]
+        FREIGHT[Bulk Freight]
+        COURIER[Courier Service]
+    end
+    
+    subgraph "Special Missions"
+        SPECIAL[Special Mission]
+        RESCUE[Rescue Operation]
+        DIPLOMACY[Diplomatic Mission]
+        RESEARCH[Research Mission]
+        EVENT[Seasonal Event]
+    end
+    
+    MISSION --> COMBAT
+    MISSION --> EXPLORE
+    MISSION --> TRADE
+    MISSION --> SPECIAL
+    
+    COMBAT --> ELIM
+    COMBAT --> ESCORT
+    COMBAT --> DEFENSE
+    COMBAT --> PATROL
+    
+    EXPLORE --> RECON
+    EXPLORE --> SURVEY
+    EXPLORE --> SCAN
+    EXPLORE --> CHART
+    
+    TRADE --> DELIVERY
+    TRADE --> SMUGGLING
+    TRADE --> FREIGHT
+    TRADE --> COURIER
+    
+    SPECIAL --> RESCUE
+    SPECIAL --> DIPLOMACY
+    SPECIAL --> RESEARCH
+    SPECIAL --> EVENT
+    
+    classDef combat fill:#ffcdd2
+    classDef exploration fill:#c8e6c9
+    classDef trading fill:#fff9c4
+    classDef special fill:#e1bee7
+    classDef base fill:#e3f2fd
+    
+    class MISSION base
+    class COMBAT,ELIM,ESCORT,DEFENSE,PATROL combat
+    class EXPLORE,RECON,SURVEY,SCAN,CHART exploration
+    class TRADE,DELIVERY,SMUGGLING,FREIGHT,COURIER trading
+    class SPECIAL,RESCUE,DIPLOMACY,RESEARCH,EVENT special
+```
+
+### 4.2 Mission Generation Process Flow
+
+```mermaid
+flowchart TD
+    START([Player Requests Missions]) --> CONTEXT{Gather Context}
+    
+    CONTEXT --> LOCATION[Station Location]
+    CONTEXT --> FACTION[Player Faction Standing]
+    CONTEXT --> LEVEL[Player Level/Experience]
+    CONTEXT --> HISTORY[Mission History]
+    
+    LOCATION --> FILTER1[Filter Templates by Location]
+    FACTION --> FILTER2[Filter by Faction Requirements]
+    LEVEL --> FILTER3[Filter by Difficulty Range]
+    HISTORY --> FILTER4[Filter by Cooldowns/Prerequisites]
+    
+    FILTER1 --> TEMPLATE[Select Mission Template]
+    FILTER2 --> TEMPLATE
+    FILTER3 --> TEMPLATE
+    FILTER4 --> TEMPLATE
+    
+    TEMPLATE --> GENERATE[Generate Mission Instance]
+    
+    GENERATE --> CUSTOMIZE[Customize Parameters]
+    CUSTOMIZE --> ENEMIES[Select Enemy Types]
+    CUSTOMIZE --> REWARDS[Calculate Rewards]
+    CUSTOMIZE --> LOCATION_SPECIFIC[Set Specific Locations]
+    CUSTOMIZE --> TIMING[Set Time Constraints]
+    
+    ENEMIES --> VALIDATE[Validate Mission]
+    REWARDS --> VALIDATE
+    LOCATION_SPECIFIC --> VALIDATE
+    TIMING --> VALIDATE
+    
+    VALIDATE --> VALID{Valid Mission?}
+    VALID -->|Yes| SAVE[Save to Database]
+    VALID -->|No| REGENERATE[Try Different Template]
+    
+    REGENERATE --> TEMPLATE
+    SAVE --> PRESENT[Present to Player]
+    PRESENT --> END([Mission Available])
+    
+    classDef process fill:#e8f5e8
+    classDef decision fill:#fff3e0
+    classDef data fill:#e3f2fd
+    classDef output fill:#f1f8e9
+    
+    class CONTEXT,GENERATE,CUSTOMIZE,VALIDATE process
+    class VALID decision
+    class LOCATION,FACTION,LEVEL,HISTORY,FILTER1,FILTER2,FILTER3,FILTER4,TEMPLATE,SAVE data
+    class START,PRESENT,END output
+```
+
+### 4.3 Backend Class Structure
+
+```mermaid
+classDiagram
+    class Mission {
+        +String id
+        +MissionState state
+        +Boolean isBotched
+        +List~Objective~ objectives
+        +String description
+        +Dict rewards
+        +String location
+        +String faction
+        +DateTime createdAt
+        +DateTime updatedAt
+        
+        +setState(newState, objectiveId)
+        +getState()
+        +botch()
+        +unbotch()
+        +canAchieveObjective(objective)
+        +checkCompletion()
+        +toDict()
+    }
+    
+    class MissionManager {
+        +String dataDir
+        +Dict~String,Mission~ missions
+        +TemplateManager templateManager
+        
+        +loadMissions()
+        +saveMission(mission)
+        +getAvailableMissions(location, factionStanding)
+        +generateProceduralMission(template, playerData, location)
+        +acceptMission(missionId)
+        +updateMissionProgress(missionId, objectiveId, data)
+        +botchMission(missionId)
+        +abandonMission(missionId)
+    }
+    
+    class Objective {
+        +Integer id
+        +String type
+        +String description
+        +Boolean isAchieved
+        +Boolean isOptional
+        +Boolean isOrdered
+        +Integer currentProgress
+        +Integer targetCount
+        +Dict metadata
+        
+        +checkProgress(gameEvent)
+        +markComplete()
+        +getProgressPercentage()
+    }
+    
+    class MissionTemplate {
+        +String type
+        +String baseDescription
+        +List~ObjectiveTemplate~ objectives
+        +Dict difficultyScaling
+        +List~Integer~ rewardTiers
+        +Dict prerequisites
+        
+        +generateMission(playerData, location)
+        +validatePrerequisites(playerData)
+        +scaleForDifficulty(difficulty)
+    }
+    
+    class RewardPackage {
+        +Integer id
+        +String name
+        +Integer minCredits
+        +Integer maxCredits
+        +Dict factionBonuses
+        +Dict cardRewards
+        
+        +calculateRewards(playerLevel, bonusMultiplier)
+        +awardToPlayer(playerId)
+    }
+    
+    class MissionEventHandler {
+        +StarfieldManager starfieldManager
+        +Map~String,Mission~ activeMissions
+        +MissionAPI missionAPI
+        
+        +handleEnemyDestroyed(enemy)
+        +handleLocationReached(location)
+        +handleCargoPickup(cargo)
+        +checkEliminationObjectives(missionId, enemy)
+        +showObjectiveComplete(objective)
+    }
+    
+    Mission --> Objective : contains
+    MissionManager --> Mission : manages
+    MissionManager --> TemplateManager : uses
+    MissionTemplate --> ObjectiveTemplate : contains
+    Mission --> RewardPackage : references
+    MissionEventHandler --> Mission : tracks
+    
+    <<enumeration>> MissionState
+    MissionState : UNKNOWN
+    MissionState : MENTIONED  
+    MissionState : ACCEPTED
+    MissionState : ACHIEVED
+    MissionState : COMPLETED
+    
+    Mission --> MissionState : has
+```
+
+### 4.4 Mission Chain and Dependency System
+
+```mermaid
+graph LR
+    subgraph "Federation Navy Chain"
+        F1[Fed Recruitment Test]
+        F2[Patrol Duty]
+        F3[Combat Assessment]
+        F4[Officer Candidacy]
+        F5[Command Mission]
+    end
+    
+    subgraph "Trader Guild Chain"
+        T1[Courier Run]
+        T2[Bulk Cargo]
+        T3[Dangerous Goods]
+        T4[Guild Membership]
+        T5[Trade Route Control]
+    end
+    
+    subgraph "Pirate Hunting Campaign"
+        P1[Intel Gathering]
+        P2[Scout Elimination]
+        P3[Raid Disruption]
+        P4[Base Assault]
+        P5[Pirate Lord Confrontation]
+    end
+    
+    F1 --> F2 --> F3 --> F4 --> F5
+    T1 --> T2 --> T3 --> T4 --> T5
+    P1 --> P2 --> P3 --> P4 --> P5
+    
+    F3 -.-> P1
+    T3 -.-> P2
+    F5 -.-> ADMIRAL[Admiral Rank]
+    T5 -.-> MONOPOLY[Trade Monopoly]
+    P5 -.-> BOUNTY[Elite Bounty Hunter]
+    
+    classDef federation fill:#4fc3f7
+    classDef trader fill:#aed581
+    classDef pirate fill:#ffb74d
+    classDef reward fill:#f48fb1
+    
+    class F1,F2,F3,F4,F5 federation
+    class T1,T2,T3,T4,T5 trader
+    class P1,P2,P3,P4,P5 pirate
+    class ADMIRAL,MONOPOLY,BOUNTY reward
+```
+
+## 5. Complete Backend API Implementation
 
 ### 4.1 Flask Route Handlers (Exact from Mission Spec)
 
@@ -683,7 +1229,225 @@ class MissionAPI {
 }
 ```
 
-## 6. Mission Data Serialization and Persistence
+## 6. Real-Time Mission Tracking and Event Integration
+
+### 6.1 Mission Event Flow During Gameplay
+
+```mermaid
+sequenceDiagram
+    participant Game as Game World
+    participant SFM as StarfieldManager
+    participant MEH as MissionEventHandler
+    participant API as Mission API
+    participant UI as Mission UI
+    
+    Game->>SFM: Enemy Ship Destroyed
+    SFM->>MEH: onEnemyDestroyed(enemy)
+    MEH->>MEH: Check Active Missions
+    
+    loop For Each Active Mission
+        MEH->>MEH: checkEliminationObjectives(mission, enemy)
+        MEH->>API: POST /api/missions/{id}/progress
+        API->>API: updateObjectiveProgress()
+        API-->>MEH: Progress Updated
+        MEH->>UI: showProgressNotification()
+    end
+    
+    MEH->>MEH: Check Mission Completion
+    alt Mission Complete
+        MEH->>API: Auto-advance to Achieved
+        API-->>MEH: Mission State Updated
+        MEH->>UI: showMissionComplete()
+        MEH->>SFM: triggerRewardEffects()
+    end
+    
+    Note over Game, UI: Real-time objective tracking<br/>without interrupting gameplay
+```
+
+### 6.2 Mission Objective Types and Tracking
+
+```mermaid
+graph TD
+    subgraph "Objective Types"
+        ELIM[Eliminate Targets]
+        REACH[Reach Location]
+        COLLECT[Collect Items]
+        PROTECT[Protect Target]
+        SCAN[Scan Objects]
+        DELIVER[Deliver Cargo]
+        SURVIVE[Survive Duration]
+        AVOID[Avoid Detection]
+    end
+    
+    subgraph "Game Events"
+        ENEMY_KILL[Enemy Destroyed]
+        LOCATION_ENTER[Location Reached]
+        ITEM_PICKUP[Item Collected]
+        DAMAGE_TAKEN[Damage to Protected Target]
+        SCAN_COMPLETE[Scan Completed]
+        CARGO_DROP[Cargo Delivered]
+        TIME_ELAPSED[Time Passed]
+        DETECTION[Player Detected]
+    end
+    
+    subgraph "Tracking Methods"
+        COUNTER[Progress Counter]
+        BOOLEAN[Boolean Flag]
+        TIMER[Time Tracker]
+        DISTANCE[Distance Monitor]
+        STATE[State Machine]
+    end
+    
+    ELIM --> ENEMY_KILL
+    REACH --> LOCATION_ENTER
+    COLLECT --> ITEM_PICKUP
+    PROTECT --> DAMAGE_TAKEN
+    SCAN --> SCAN_COMPLETE
+    DELIVER --> CARGO_DROP
+    SURVIVE --> TIME_ELAPSED
+    AVOID --> DETECTION
+    
+    ENEMY_KILL --> COUNTER
+    LOCATION_ENTER --> BOOLEAN
+    ITEM_PICKUP --> COUNTER
+    DAMAGE_TAKEN --> STATE
+    SCAN_COMPLETE --> COUNTER
+    CARGO_DROP --> BOOLEAN
+    TIME_ELAPSED --> TIMER
+    DETECTION --> BOOLEAN
+    
+    classDef objective fill:#e8f5e8
+    classDef event fill:#fff3e0
+    classDef tracking fill:#e3f2fd
+    
+    class ELIM,REACH,COLLECT,PROTECT,SCAN,DELIVER,SURVIVE,AVOID objective
+    class ENEMY_KILL,LOCATION_ENTER,ITEM_PICKUP,DAMAGE_TAKEN,SCAN_COMPLETE,CARGO_DROP,TIME_ELAPSED,DETECTION event
+    class COUNTER,BOOLEAN,TIMER,DISTANCE,STATE tracking
+```
+
+### 6.3 Reward System Integration
+
+```mermaid
+graph TD
+    subgraph "Mission Completion"
+        COMPLETE[Mission Completed]
+        VALIDATE[Validate Completion]
+        CALCULATE[Calculate Rewards]
+    end
+    
+    subgraph "Reward Components"
+        CREDITS[Credits]
+        FACTION[Faction Standing]
+        CARDS[Card Rewards]
+        UNLOCK[Unlocks]
+        SPECIAL[Special Items]
+    end
+    
+    subgraph "Card System Integration"
+        TIER[Determine Card Tier]
+        TYPE[Select Card Type]
+        LEVEL[Calculate Card Level]
+        RARITY[Apply Rarity Bonus]
+    end
+    
+    subgraph "Faction Integration"
+        REP[Current Reputation]
+        BONUS[Mission Bonus]
+        PENALTY[Failure Penalty]
+        STANDING[New Standing]
+    end
+    
+    subgraph "Player Systems"
+        INVENTORY[Player Inventory]
+        WALLET[Credit Balance]
+        PROGRESS[Player Progress]
+        STATS[Statistics]
+    end
+    
+    COMPLETE --> VALIDATE
+    VALIDATE --> CALCULATE
+    
+    CALCULATE --> CREDITS
+    CALCULATE --> FACTION
+    CALCULATE --> CARDS
+    CALCULATE --> UNLOCK
+    CALCULATE --> SPECIAL
+    
+    CARDS --> TIER
+    TIER --> TYPE
+    TYPE --> LEVEL
+    LEVEL --> RARITY
+    
+    FACTION --> REP
+    REP --> BONUS
+    BONUS --> STANDING
+    
+    CREDITS --> WALLET
+    CARDS --> INVENTORY
+    FACTION --> PROGRESS
+    UNLOCK --> PROGRESS
+    COMPLETE --> STATS
+    
+    classDef completion fill:#e8f5e8
+    classDef reward fill:#fff3e0
+    classDef card fill:#f3e5f5
+    classDef faction fill:#e1f5fe
+    classDef player fill:#fce4ec
+    
+    class COMPLETE,VALIDATE,CALCULATE completion
+    class CREDITS,FACTION,CARDS,UNLOCK,SPECIAL reward
+    class TIER,TYPE,LEVEL,RARITY card
+    class REP,BONUS,PENALTY,STANDING faction
+    class INVENTORY,WALLET,PROGRESS,STATS player
+```
+
+### 6.4 Mission Failure and Recovery System
+
+```mermaid
+stateDiagram-v2
+    [*] --> Active
+    
+    Active --> Monitoring : Track Progress
+    Monitoring --> Success : All Objectives Met
+    Monitoring --> Failure : Failure Condition
+    Monitoring --> TimeExpired : Time Limit Reached
+    Monitoring --> TargetDestroyed : Protected Target Lost
+    
+    Success --> Completed : Award Full Rewards
+    
+    Failure --> PartialRewards : Some Progress Made?
+    Failure --> NoRewards : Complete Failure
+    
+    TimeExpired --> PartialRewards : Partial Completion
+    TimeExpired --> NoRewards : No Progress
+    
+    TargetDestroyed --> FactionPenalty : Reputation Loss
+    
+    PartialRewards --> Botched : Mark as Failed
+    NoRewards --> Botched
+    FactionPenalty --> Botched
+    
+    Botched --> RedemptionArc : Special Conditions
+    Botched --> Abandoned : Player Choice
+    
+    RedemptionArc --> Alternative : New Mission Path
+    Alternative --> [*]
+    
+    Completed --> [*]
+    Abandoned --> [*]
+    
+    note right of PartialRewards
+        30-70% of normal rewards
+        based on completion percentage
+    end note
+    
+    note right of FactionPenalty
+        -10 to -50 faction standing
+        based on mission importance
+    end note
+```
+
+## 7. Mission Data Serialization and Persistence
 
 ### 6.1 Complete Mission JSON Structure (From Spec)
 
@@ -1211,19 +1975,120 @@ const CHAIN_EXAMPLE = {
 
 ## 11. Updated Implementation Timeline
 
-### Phase 1: Core Infrastructure (Weeks 1-2)
+### 11.1 Implementation Phases Gantt Chart
+
+```mermaid
+gantt
+    title Mission System Implementation Timeline
+    dateFormat  YYYY-MM-DD
+    section Phase 1 Core Infrastructure
+    Backend Mission System        :p1-backend, 2024-02-01, 7d
+    Mission State Machine         :p1-states, after p1-backend, 3d
+    Basic API Endpoints          :p1-api, after p1-states, 4d
+    Space Station UI Integration :p1-ui, after p1-api, 7d
+    Mission Board Interface      :p1-board, after p1-ui, 7d
+    
+    section Phase 2 Mission Types
+    Combat Mission Templates     :p2-combat, after p1-board, 7d
+    Elimination Contracts        :p2-elim, after p2-combat, 3d
+    Escort Missions             :p2-escort, after p2-elim, 4d
+    Trading & Delivery          :p2-trade, after p2-escort, 7d
+    Exploration Missions        :p2-explore, after p2-trade, 7d
+    
+    section Phase 3 Advanced Features
+    Mission Chains              :p3-chains, after p2-explore, 7d
+    Failure & Botch System      :p3-failure, after p3-chains, 5d
+    Procedural Generation       :p3-proc, after p3-failure, 5d
+    Template System             :p3-templates, after p3-proc, 3d
+    
+    section Phase 4 Integration Polish
+    Real-time Event Integration :p4-events, after p3-templates, 7d
+    UI Polish & UX              :p4-ui, after p4-events, 5d
+    Localization Framework      :p4-locale, after p4-ui, 2d
+    Testing & Bug Fixes         :p4-test, after p4-locale, 7d
+    Documentation               :p4-docs, after p4-test, 3d
+```
+
+### 11.2 Component Dependency Matrix
+
+```mermaid
+graph LR
+    subgraph "Week 1-2: Foundation"
+        BACKEND[Backend Mission System]
+        API[API Endpoints]
+        UI[Space Station UI]
+        BOARD[Mission Board]
+    end
+    
+    subgraph "Week 3-4: Mission Types"
+        COMBAT[Combat Missions]
+        TRADE[Trading Missions]
+        EXPLORE[Exploration Missions]
+        TEMPLATES[Mission Templates]
+    end
+    
+    subgraph "Week 5-6: Advanced"
+        CHAINS[Mission Chains]
+        FAILURE[Failure System]
+        PROC[Procedural Generation]
+        REWARDS[Reward System]
+    end
+    
+    subgraph "Week 7-8: Integration"
+        EVENTS[Real-time Events]
+        POLISH[UI Polish]
+        LOCALE[Localization]
+        TEST[Testing]
+    end
+    
+    BACKEND --> API
+    API --> UI
+    UI --> BOARD
+    
+    BOARD --> COMBAT
+    BOARD --> TRADE
+    BOARD --> EXPLORE
+    COMBAT --> TEMPLATES
+    TRADE --> TEMPLATES
+    EXPLORE --> TEMPLATES
+    
+    TEMPLATES --> CHAINS
+    TEMPLATES --> FAILURE
+    TEMPLATES --> PROC
+    FAILURE --> REWARDS
+    
+    PROC --> EVENTS
+    CHAINS --> EVENTS
+    EVENTS --> POLISH
+    POLISH --> LOCALE
+    LOCALE --> TEST
+    
+    classDef foundation fill:#e3f2fd
+    classDef missions fill:#f1f8e9
+    classDef advanced fill:#fff3e0
+    classDef integration fill:#fce4ec
+    
+    class BACKEND,API,UI,BOARD foundation
+    class COMBAT,TRADE,EXPLORE,TEMPLATES missions
+    class CHAINS,FAILURE,PROC,REWARDS advanced
+    class EVENTS,POLISH,LOCALE,TEST integration
+```
+
+### 11.3 Detailed Phase Breakdown
+
+#### Phase 1: Core Infrastructure (Weeks 1-2)
 - **Week 1**: Backend mission system (states, manager, basic API)
 - **Week 2**: Space station UI integration and mission board interface
 
-### Phase 2: Mission Types and Templates (Weeks 3-4)  
+#### Phase 2: Mission Types and Templates (Weeks 3-4)  
 - **Week 3**: Combat and elimination mission implementation
 - **Week 4**: Trading, delivery, and exploration missions
 
-### Phase 3: Advanced Features (Weeks 5-6)
+#### Phase 3: Advanced Features (Weeks 5-6)
 - **Week 5**: Mission chains, failure handling, and botch system
 - **Week 6**: Procedural generation and template system
 
-### Phase 4: Integration and Polish (Weeks 7-8)
+#### Phase 4: Integration and Polish (Weeks 7-8)
 - **Week 7**: Real-time event integration with StarfieldManager
 - **Week 8**: UI polish, localization, and testing
 
