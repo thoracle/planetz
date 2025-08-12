@@ -352,7 +352,7 @@ export class DockingInterface {
                     credits: this.starfieldManager.ship.credits || 50000,
                     ship_type: this.starfieldManager.ship.shipType || 'starter_ship',
                     faction_standings: this.starfieldManager.ship.factionStandings || {
-                        'federation': 0,
+                        'terran_republic_alliance': 0,
                         'traders_guild': 0,
                         'scientists_consortium': 0
                     }

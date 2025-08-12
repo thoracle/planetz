@@ -14,6 +14,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def parse_iso_datetime(date_string: str) -> datetime:
+    """
+    Parse ISO datetime string with proper timezone handling.
+    Handles both 'Z' suffix (UTC) and standard ISO format.
+    """
+    if date_string.endswith('Z'):
+        # Replace 'Z' with '+00:00' for proper UTC parsing
+        date_string = date_string[:-1] + '+00:00'
+    return datetime.fromisoformat(date_string)
+
+
 class MissionState(Enum):
     """Mission state enumeration - forward progression only"""
     UNKNOWN = "Unknown"
@@ -78,7 +89,7 @@ class Objective:
         )
         obj.is_achieved = data.get('is_achieved', False)
         if data.get('achieved_at'):
-            obj.achieved_at = datetime.fromisoformat(data['achieved_at'])
+            obj.achieved_at = parse_iso_datetime(data['achieved_at'])
         return obj
 
 
@@ -325,9 +336,9 @@ class Mission:
         
         # Restore metadata
         if data.get('created_at'):
-            mission.created_at = datetime.fromisoformat(data['created_at'])
+            mission.created_at = parse_iso_datetime(data['created_at'])
         if data.get('updated_at'):
-            mission.updated_at = datetime.fromisoformat(data['updated_at'])
+            mission.updated_at = parse_iso_datetime(data['updated_at'])
         
         # Restore custom fields and triggers
         mission.custom_fields = data.get('custom_fields', {})

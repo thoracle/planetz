@@ -9,9 +9,16 @@ backend/config.py
 backend/planetGenerator.py
 backend/test_verse.py
 backend/verse.py
+backend/mission_system/__init__.py
+backend/mission_system/cascade_handler.py
+backend/mission_system/mission.py
+backend/mission_system/mission_manager.py
+backend/mission_system/storage_manager.py
+backend/mission_system/triggers.py
 backend/routes/__init__.py
 backend/routes/api.py
 backend/routes/main.py
+backend/routes/missions.py
 backend/routes/universe.py
 backend/tests/__init__.py
 backend/tests/test_app.py

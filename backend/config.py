@@ -16,8 +16,8 @@ class Config:
     # API settings
     API_PREFIX = '/api/v1'
     
-    # Mission system settings
-    MISSION_DATA_DIR = 'missions'
+    # Mission system settings  
+    MISSION_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'missions')
     EXPECTED_MISSION_COUNT = 25
     MISSION_SQLITE_PATH = 'missions.db'
     

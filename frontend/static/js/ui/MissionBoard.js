@@ -20,13 +20,13 @@ export class MissionBoard {
             difficulty: 'all'
         };
         
-        // Player data for mission generation
+        // Player data for mission generation - ensure all primitive values
         this.playerData = {
             level: 1,
             faction_standings: {
-                'federation': 0,
-                'traders_guild': 0,
-                'scientists_consortium': 0
+                terran_republic_alliance: 0,
+                traders_guild: 0,
+                scientists_consortium: 0
             },
             credits: 50000,
             ship_type: 'starter_ship'
@@ -184,9 +184,9 @@ export class MissionBoard {
         // Faction filter
         const factionFilter = this.createFilterSelect('Faction', 'faction', [
             { value: 'all', label: 'All Factions' },
-            { value: 'federation', label: 'Federation' },
+            { value: 'terran_republic_alliance', label: 'Terran Republic Alliance' },
             { value: 'traders_guild', label: 'Traders Guild' },
-            { value: 'scientists_consortium', label: 'Scientists' }
+            { value: 'scientists_consortium', label: 'Scientists Consortium' }
         ]);
         
         filtersContainer.appendChild(typeFilter);
@@ -342,7 +342,17 @@ export class MissionBoard {
     
     async loadAvailableMissions() {
         try {
-            const response = await fetch(`/api/missions?location=${this.currentLocation}&faction_standings=${encodeURIComponent(JSON.stringify(this.playerData.faction_standings))}`);
+            // Create clean faction standings to avoid circular references
+            const cleanFactionStandings = {
+                terran_republic_alliance: this.playerData.faction_standings?.terran_republic_alliance || 0,
+                traders_guild: this.playerData.faction_standings?.traders_guild || 0,
+                scientists_consortium: this.playerData.faction_standings?.scientists_consortium || 0
+            };
+
+            // Create clean location string to avoid circular references
+            const cleanLocationString = this.currentLocation?.name || this.currentLocation || 'terra_prime';
+            
+            const response = await fetch(`/api/missions?location=${cleanLocationString}&faction_standings=${encodeURIComponent(JSON.stringify(cleanFactionStandings))}`);
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -597,16 +607,56 @@ export class MissionBoard {
             const templates = ['elimination', 'exploration', 'delivery', 'escort'];
             const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
             
+            // Create a completely clean copy of player data with explicit type conversion
+            const cleanPlayerData = {
+                level: Number(this.playerData.level) || 1,
+                credits: Number(this.playerData.credits) || 50000,
+                ship_type: String(this.playerData.ship_type) || 'starter_ship',
+                faction_standings: {
+                    terran_republic_alliance: Number(this.playerData.faction_standings?.terran_republic_alliance) || 0,
+                    traders_guild: Number(this.playerData.faction_standings?.traders_guild) || 0,
+                    scientists_consortium: Number(this.playerData.faction_standings?.scientists_consortium) || 0
+                }
+            };
+            
+            // Debug log to help identify any remaining issues
+            console.log('🎲 Generating mission with clean player data:', cleanPlayerData);
+
+            // Create a clean copy of location data to avoid circular references
+            const cleanLocation = this.currentLocation ? {
+                name: String(this.currentLocation.name || ''),
+                type: String(this.currentLocation.type || ''),
+                faction: String(this.currentLocation.faction || ''),
+                sector: String(this.currentLocation.sector || '')
+            } : {
+                name: 'terra_prime',
+                type: 'station',
+                faction: 'terran_republic_alliance',
+                sector: 'A0'
+            };
+
+            // Test JSON serialization to catch any remaining circular references
+            const requestPayload = {
+                template_id: randomTemplate,
+                player_data: cleanPlayerData,
+                location: cleanLocation
+            };
+
+            let jsonPayload;
+            try {
+                jsonPayload = JSON.stringify(requestPayload);
+            } catch (jsonError) {
+                console.error('❌ JSON serialization error:', jsonError);
+                console.error('Problematic payload:', requestPayload);
+                throw new Error(`JSON serialization failed: ${jsonError.message}`);
+            }
+
             const response = await fetch('/api/missions/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    template_id: randomTemplate,
-                    player_data: this.playerData,
-                    location: this.currentLocation
-                })
+                body: jsonPayload
             });
             
             if (!response.ok) {
@@ -739,7 +789,19 @@ export class MissionBoard {
     }
     
     updatePlayerData(playerData) {
-        this.playerData = { ...this.playerData, ...playerData };
+        // Create clean copy of only primitive values to avoid circular references
+        const cleanData = {
+            level: Number(playerData.level) || this.playerData.level || 1,
+            credits: Number(playerData.credits) || this.playerData.credits || 50000,
+            ship_type: String(playerData.ship_type) || this.playerData.ship_type || 'starter_ship',
+            faction_standings: {
+                terran_republic_alliance: Number(playerData.faction_standings?.terran_republic_alliance) || this.playerData.faction_standings?.terran_republic_alliance || 0,
+                traders_guild: Number(playerData.faction_standings?.traders_guild) || this.playerData.faction_standings?.traders_guild || 0,
+                scientists_consortium: Number(playerData.faction_standings?.scientists_consortium) || this.playerData.faction_standings?.scientists_consortium || 0
+            }
+        };
+        
+        this.playerData = cleanData;
         
         // Update credits display
         const creditsElement = this.footer.querySelector('.player-credits');
@@ -760,6 +822,13 @@ export class MissionBoard {
         this.container.style.display = 'none';
         this.selectedMission = null;
         this.acceptButton.disabled = true;
+        
+        // Return to docking interface if available
+        if (this.dockingInterface && this.currentLocation) {
+            console.log('🎯 Returning to docking interface...');
+            this.dockingInterface.show(this.currentLocation);
+        }
+        
         console.log('🎯 Mission Board closed');
     }
     

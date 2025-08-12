@@ -3,7 +3,7 @@
   "title": "Convoy Escort Mission",
   "description": "Provide protection for valuable cargo convoy",
   "mission_type": "escort",
-  "faction": "federation",
+  "faction": "terran_republic_alliance",
   "reward_package_id": 5,
   "objectives": [
     {
@@ -56,7 +56,7 @@
     ],
     "threat_level": "medium",
     "meeting_point": "jump_gate_7",
-    "destination": "federation_starbase",
+    "destination": "alliance_starbase",
     "patrol_routes": ["outer_rim_patrol", "merchant_corridor"],
     "emergency_protocols": {
       "retreat_threshold": 0.3,
@@ -93,7 +93,7 @@
         "escort_bonus": 3000,
         "military_classification": "classified",
         "enemy_spawn_probability": 0.9,
-        "required_clearance": "federation_military"
+        "required_clearance": "alliance_military"
       }
     },
     "safe_passage": {
@@ -134,7 +134,7 @@
       "trading_post_gamma"
     ],
     "destination": [
-      "federation_starbase",
+      "alliance_starbase",
       "mining_colony_beta",
       "research_station_omega"
     ],
@@ -163,7 +163,7 @@
       "effects": [
         {
           "type": "modify_faction_standing",
-          "faction": "federation",
+          "faction": "terran_republic_alliance",
           "change": -25
         },
         {

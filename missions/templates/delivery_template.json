@@ -54,7 +54,7 @@
       "title": "Mining Supply Run",
       "description": "Deliver essential supplies to remote mining operation",
       "custom_fields": {
-        "pickup_location": "federation_depot",
+        "pickup_location": "alliance_depot",
         "cargo_type": "mining_equipment",
         "delivery_bonus": 600,
         "hazard_pay": 200

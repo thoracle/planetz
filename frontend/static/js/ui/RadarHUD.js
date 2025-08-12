@@ -316,7 +316,7 @@ export class RadarHUD {
                     object: obj,
                     relativePosition: rotatedPos,
                     distance: distance,
-                    factionColor: this.getFactionColorForRadar(obj),
+                    factionColor: this.getObjectColorForRadar(obj),
                     type: this.getObjectType(obj)
                 });
             }
@@ -332,8 +332,18 @@ export class RadarHUD {
         // Add celestial bodies from solar system manager
         if (this.starfieldManager.solarSystemManager && 
             this.starfieldManager.solarSystemManager.celestialBodies) {
-            this.starfieldManager.solarSystemManager.celestialBodies.forEach(body => {
-                objects.push(body);
+            this.starfieldManager.solarSystemManager.celestialBodies.forEach((body, key) => {
+                // Create a trackable object with proper identification
+                const trackableObj = {
+                    object: body,
+                    position: body.position,
+                    name: key,
+                    uuid: body.uuid,
+                    isCelestial: true,
+                    isSpaceStation: key.startsWith('station_'),
+                    type: this.getCelestialObjectType(key, body),
+                };
+                objects.push(trackableObj);
             });
         }
         
@@ -353,6 +363,24 @@ export class RadarHUD {
         return obj.id || obj.name || obj.uuid || `obj_${Math.random().toString(36).substr(2, 9)}`;
     }
     
+    /**
+     * Get celestial object type from solar system manager key
+     */
+    getCelestialObjectType(key, body) {
+        if (key === 'star') return 'star';
+        if (key.startsWith('planet_')) return 'planet';
+        if (key.startsWith('moon_')) return 'moon';
+        if (key.startsWith('station_')) return 'station';
+        
+        // Fallback to body inspection
+        if (body && body.userData) {
+            if (body.userData.isSpaceStation) return 'station';
+            if (body.userData.type) return body.userData.type.toLowerCase();
+        }
+        
+        return 'unknown';
+    }
+
     /**
      * Get object type for appropriate blip rendering
      */
@@ -382,7 +410,52 @@ export class RadarHUD {
     }
     
     /**
-     * Get faction color for radar display
+     * Get color for radar display based on object type
+     */
+    getObjectColorForRadar(target) {
+        // Handle celestial bodies first
+        if (target.isCelestial) {
+            switch (target.type) {
+                case 'star': return '#ffffff';    // Bright white for stars
+                case 'planet': return '#44ff44';  // Bright green for planets
+                case 'moon': return '#888888';    // Gray for moons
+                case 'station': return '#00ffff'; // Cyan for space stations
+                default: return '#666666';        // Dim gray for unknown celestial
+            }
+        }
+        
+        // Handle space stations with faction-specific colors
+        if (target.isSpaceStation || target.type === 'station') {
+            // Check if we have faction information from the station userData
+            if (target.object && target.object.userData && target.object.userData.faction) {
+                switch (target.object.userData.faction) {
+                    case 'Terran Republic Alliance': return '#00ff44'; // Alliance green
+                    case 'Free Trader Consortium': return '#ffff00';   // Trade yellow
+                    case 'Nexus Corporate Syndicate': return '#44ffff'; // Corporate cyan
+                    case 'Scientists Consortium': return '#44ff44';    // Science green
+                    case 'Ethereal Wanderers': return '#ff44ff';       // Ethereal purple
+                    default: return '#00ffff'; // Default cyan for unknown faction stations
+                }
+            }
+            return '#00ffff'; // Default cyan for stations
+        }
+        
+        // Handle target dummies (orange to distinguish from enemy ships)
+        if (target.isTargetDummy) {
+            return '#ff8800'; // Orange for target dummies (not red)
+        }
+        
+        // Handle enemy ships - ONLY these should be red
+        if (target.isEnemyShip || target.type === 'enemy_ship') {
+            return '#ff0000'; // Red for confirmed enemy ships
+        }
+        
+        // Fall back to faction-based colors for other objects
+        return this.getFactionColorForRadar(target);
+    }
+
+    /**
+     * Get faction color for radar display (legacy method)
      */
     getFactionColorForRadar(target) {
         // Use existing faction color system from ViewManager

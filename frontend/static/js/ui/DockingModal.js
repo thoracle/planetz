@@ -353,7 +353,10 @@ export default class DockingModal {
         
         // Use the closest dockable object
         const target = nearbyDockableObjects[0]; // Already sorted by distance
-        const targetInfo = nearbyDockableObjects[0].info;
+        const targetInfo = {
+            ...nearbyDockableObjects[0].info,
+            name: target.name // Ensure targetInfo has the correct name
+        };
         const distance = nearbyDockableObjects[0].distance;
         const currentSpeed = this.starfieldManager.currentSpeed;
         const inRange = distance <= (targetInfo.dockingRange || 4.0);
@@ -502,6 +505,7 @@ export default class DockingModal {
                 foundInRange = true;
                 nearbyObjects.push({
                     ...body, // Include all body properties (name, position, etc.)
+                    name: bodyInfo?.name || body.name || bodyId, // Ensure name is always present
                     type: bodyType, // Explicitly set the type
                     info: bodyInfo,
                     distance: distance,

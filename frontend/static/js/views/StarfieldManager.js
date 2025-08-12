@@ -2,6 +2,7 @@
 import { DockingInterface } from '../ui/DockingInterface.js';
 import { HelpInterface } from '../ui/HelpInterface.js';
 import DockingSystemManager from '../ship/DockingSystemManager.js';
+import { PhysicsDockingManager } from '../ship/PhysicsDockingManager.js';
 import { getSystemDisplayName } from '../ship/System.js';
 import DamageControlHUD from '../ui/DamageControlHUD.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
@@ -145,6 +146,9 @@ export class StarfieldManager {
         this.dockingInterface = new DockingInterface(this);
         this.dockingSystemManager = new DockingSystemManager();
         
+        // Initialize physics-based docking manager (will be activated when physics is ready)
+        this.physicsDockingManager = null;
+        
         // Create docking modal for popup-based docking
         this.dockingModal = new DockingModal(this);
         
@@ -254,6 +258,31 @@ export class StarfieldManager {
         this.targetOutlineObject = null; // Track which object is being outlined
         this.outlineDisabledUntilManualCycle = false; // Prevents auto-outline after destruction
         this.lastOutlineUpdate = 0; // Throttling for outline updates
+    }
+
+    /**
+     * Convert faction name to diplomacy status
+     * @param {string} faction - Faction name
+     * @returns {string} Diplomacy status ('friendly', 'neutral', 'enemy')
+     */
+    getFactionDiplomacy(faction) {
+        if (!faction) return 'neutral';
+        
+        // Faction relationship mappings (matches AmbientShipManager.js)
+        const factionRelations = {
+            'Terran Republic Alliance': 'friendly',
+            'Zephyrian Collective': 'friendly', 
+            'Scientists Consortium': 'friendly',
+            'Free Trader Consortium': 'neutral',
+            'Nexus Corporate Syndicate': 'neutral',
+            'Ethereal Wanderers': 'neutral',
+            'Draconis Imperium': 'neutral',
+            'Crimson Raider Clans': 'enemy',
+            'Shadow Consortium': 'enemy',
+            'Void Cult': 'enemy'
+        };
+        
+        return factionRelations[faction] || 'neutral';
     }
     
     /**
@@ -2245,7 +2274,7 @@ export class StarfieldManager {
         this.targetComputerManager.cycleTarget(isManualCycle);
         
         // Update local state to match
-        this.currentTarget = this.targetComputerManager.currentTarget;
+        this.currentTarget = this.targetComputerManager.currentTarget?.object || this.targetComputerManager.currentTarget;
         this.targetIndex = this.targetComputerManager.targetIndex;
         this.targetObjects = this.targetComputerManager.targetObjects;
         
@@ -3197,12 +3226,20 @@ export class StarfieldManager {
             diplomacyColor = '#ff8888'; // Enemy ships are brighter red for better visibility
         } else if (info?.type === 'star') {
             diplomacyColor = '#ffff00'; // Stars are neutral yellow
-        } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-            diplomacyColor = '#ff8888'; // Brighter red for better visibility
-        } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-            diplomacyColor = '#ffff00';
-        } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-            diplomacyColor = '#00ff41';
+        } else {
+            // Convert faction to diplomacy if needed
+            let diplomacy = info?.diplomacy?.toLowerCase();
+            if (!diplomacy && info?.faction) {
+                diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
+            }
+            
+            if (diplomacy === 'enemy') {
+                diplomacyColor = '#ff8888'; // Enemy red (brighter for intel)
+            } else if (diplomacy === 'neutral') {
+                diplomacyColor = '#ffff00'; // Neutral yellow
+            } else if (diplomacy === 'friendly') {
+                diplomacyColor = '#00ff41'; // Friendly green
+            }
         }
         
         // Update intel HUD border color to match faction
@@ -3420,12 +3457,20 @@ export class StarfieldManager {
                 diplomacyColor = '#ff3333'; // Enemy ships are darker neon red
             } else if (info?.type === 'star') {
                 diplomacyColor = '#ffff00'; // Stars are neutral yellow
-            } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-                diplomacyColor = '#ff3333'; // Darker neon red
-            } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-                diplomacyColor = '#ffff00';
-            } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-                diplomacyColor = '#00ff41';
+            } else {
+                // Convert faction to diplomacy if needed
+                let diplomacy = info?.diplomacy?.toLowerCase();
+                if (!diplomacy && info?.faction) {
+                    diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
+                }
+                
+                if (diplomacy === 'enemy') {
+                    diplomacyColor = '#ff3333'; // Enemy red
+                } else if (diplomacy === 'neutral') {
+                    diplomacyColor = '#ffff00'; // Neutral yellow
+                } else if (diplomacy === 'friendly') {
+                    diplomacyColor = '#00ff41'; // Friendly green
+                }
             }
             
             this.intelIcon.style.borderColor = diplomacyColor;
@@ -3462,7 +3507,51 @@ export class StarfieldManager {
         return validation.canDock;
     }
 
+    /**
+     * Initialize physics-based docking when physics system is ready
+     */
+    initializePhysicsDocking() {
+        if (window.physicsManagerReady && !this.physicsDockingManager) {
+            this.physicsDockingManager = new PhysicsDockingManager(this);
+            console.log('🚀 Physics-based docking system initialized');
+        }
+    }
+
+    /**
+     * Safely get position from target object (handles different target structures)
+     */
+    getTargetPosition(target) {
+        if (!target) return null;
+        
+        if (target.position && typeof target.position.clone === 'function') {
+            // Three.js Vector3 object
+            return target.position;
+        } else if (target.object && target.object.position) {
+            // Target has a nested object with position
+            return target.object.position;
+        } else if (target.position && Array.isArray(target.position)) {
+            // Position is stored as array [x, y, z]
+            return new this.THREE.Vector3(...target.position);
+        } else if (target.position && typeof target.position === 'object' && 
+                   typeof target.position.x === 'number') {
+            // Position is a plain object with x, y, z properties
+            return new this.THREE.Vector3(target.position.x, target.position.y, target.position.z);
+        }
+        
+        console.warn('🎯 Could not extract position from target:', target);
+        return null;
+    }
+
     dock(target) {
+        // Initialize physics docking if not already done
+        this.initializePhysicsDocking();
+        
+        // Use physics-based docking if available, otherwise fall back to distance-based
+        if (this.physicsDockingManager) {
+            return this.physicsDockingManager.initiateDocking(target);
+        }
+        
+        // Fallback to original distance-based docking
         if (!this.canDockWithLogging(target)) {
             return false;
         }
@@ -3484,7 +3573,13 @@ export class StarfieldManager {
         }
 
         // Calculate initial position relative to target
-        const relativePos = new this.THREE.Vector3().subVectors(this.camera.position, target.position);
+        const targetPosition = this.getTargetPosition(target);
+        if (!targetPosition) {
+            console.error('🚀 Cannot dock - invalid target position');
+            return false;
+        }
+        
+        const relativePos = new this.THREE.Vector3().subVectors(this.camera.position, targetPosition);
         this.orbitAngle = Math.atan2(relativePos.z, relativePos.x);
         
         // Store initial state for transition
@@ -3508,9 +3603,9 @@ export class StarfieldManager {
 
         // Calculate final orbit position
         const finalOrbitPos = new this.THREE.Vector3(
-            target.position.x + Math.cos(this.orbitAngle) * this.orbitRadius,
-            target.position.y,
-            target.position.z + Math.sin(this.orbitAngle) * this.orbitRadius
+            targetPosition.x + Math.cos(this.orbitAngle) * this.orbitRadius,
+            targetPosition.y,
+            targetPosition.z + Math.sin(this.orbitAngle) * this.orbitRadius
         );
         this.dockingState.endPos = finalOrbitPos;
 
@@ -3599,6 +3694,11 @@ export class StarfieldManager {
     undock() {
         if (!this.isDocked) {
             return;
+        }
+
+        // Use physics-based launch if available
+        if (this.physicsDockingManager && this.physicsDockingManager.isDocked) {
+            return this.physicsDockingManager.initiateLaunch();
         }
 
         // Get ship instance for launch procedures
@@ -3726,6 +3826,38 @@ export class StarfieldManager {
         // Update the dock button to show "DOCK"
         this.updateTargetDisplay();
         this.updateSpeedIndicator();
+    }
+
+    /**
+     * Launch from docked station (alias for undock)
+     */
+    launch() {
+        return this.undock();
+    }
+
+    /**
+     * Safely get position from target object (handles different target structures)
+     */
+    getTargetPosition(target) {
+        if (!target) return null;
+        
+        if (target.position && typeof target.position.clone === 'function') {
+            // Three.js Vector3 object
+            return target.position;
+        } else if (target.object && target.object.position) {
+            // Target has a nested object with position
+            return target.object.position;
+        } else if (target.position && Array.isArray(target.position)) {
+            // Position is stored as array [x, y, z]
+            return new this.THREE.Vector3(...target.position);
+        } else if (target.position && typeof target.position === 'object' && 
+                   typeof target.position.x === 'number') {
+            // Position is a plain object with x, y, z properties
+            return new this.THREE.Vector3(target.position.x, target.position.y, target.position.z);
+        }
+        
+        console.warn('🎯 StarfieldManager: Could not extract position from target:', target);
+        return null;
     }
 
     updateOrbit(deltaTime) {
@@ -4169,11 +4301,12 @@ export class StarfieldManager {
                         }
                     } else {
                         // For celestial bodies or when ship name not available, use position check
-                        if (targetIdentifier.position && target?.position) {
+                        const targetPos = this.getTargetPosition(target);
+                        if (targetIdentifier.position && targetPos) {
                             const posMatch = (
-                                Math.abs(target.position.x - targetIdentifier.position.x) < 0.01 &&
-                                Math.abs(target.position.y - targetIdentifier.position.y) < 0.01 &&
-                                Math.abs(target.position.z - targetIdentifier.position.z) < 0.01
+                                Math.abs(targetPos.x - targetIdentifier.position.x) < 0.01 &&
+                                Math.abs(targetPos.y - targetIdentifier.position.y) < 0.01 &&
+                                Math.abs(targetPos.z - targetIdentifier.position.z) < 0.01
                             );
                             if (posMatch) {
                                 foundIndex = i;
@@ -4602,12 +4735,20 @@ export class StarfieldManager {
             diplomacyColor = '#ff3333'; // Enemy ships are darker neon red
         } else if (info?.type === 'star') {
             diplomacyColor = '#ffff00'; // Stars are neutral yellow
-        } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-            diplomacyColor = '#ff3333'; // Darker neon red
-        } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-            diplomacyColor = '#ffff00';
-        } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-            diplomacyColor = '#00ff41';
+        } else {
+            // Convert faction to diplomacy if needed
+            let diplomacy = info?.diplomacy?.toLowerCase();
+            if (!diplomacy && info?.faction) {
+                diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
+            }
+            
+            if (diplomacy === 'enemy') {
+                diplomacyColor = '#ff3333'; // Enemy red
+            } else if (diplomacy === 'neutral') {
+                diplomacyColor = '#ffff00'; // Neutral yellow
+            } else if (diplomacy === 'friendly') {
+                diplomacyColor = '#00ff41'; // Friendly green
+            }
         }
         this.targetComputerManager.setTargetHUDBorderColor(diplomacyColor);
         
@@ -4709,8 +4850,15 @@ export class StarfieldManager {
             return;
         }
 
+        // Get target position using helper function
+        const targetPosition = this.getTargetPosition(this.currentTarget);
+        if (!targetPosition) {
+            console.warn('🎯 Cannot update reticle - invalid target position');
+            return;
+        }
+
         // Calculate target's screen position
-        const screenPosition = this.currentTarget.position.clone().project(this.camera);
+        const screenPosition = targetPosition.clone().project(this.camera);
         const isOnScreen = Math.abs(screenPosition.x) <= 1 && Math.abs(screenPosition.y) <= 1;
 
         if (isOnScreen) {
@@ -4718,7 +4866,7 @@ export class StarfieldManager {
             const y = (-screenPosition.y + 1) * window.innerHeight / 2;
             
             const cameraForward = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-            const relativePos = this.currentTarget.position.clone().sub(this.camera.position);
+            const relativePos = targetPosition.clone().sub(this.camera.position);
             const isBehindCamera = relativePos.dot(cameraForward) < 0;
             
             if (isBehindCamera) {
@@ -4764,7 +4912,8 @@ export class StarfieldManager {
         }
 
         // Calculate distance to target
-        const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
+        const targetPos = this.getTargetPosition(this.currentTarget);
+        const distance = targetPos ? this.calculateDistance(this.camera.position, targetPos) : 0;
         
         // Get target info for diplomacy status and display
         let info = null;
@@ -4782,9 +4931,17 @@ export class StarfieldManager {
             };
             targetName = info.name || 'Enemy Ship';
         } else {
-            // Get celestial body info
-            info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-            targetName = info?.name || 'Unknown Target';
+            // Get celestial body info - need to pass the actual Three.js object
+            const targetObject = this.currentTarget?.object || this.currentTarget;
+            info = this.solarSystemManager.getCelestialBodyInfo(targetObject);
+            
+            // Fallback to target data name if celestial body info not found
+            if (!info || !info.name) {
+                const targetData = this.targetComputerManager.getCurrentTargetData();
+                targetName = targetData?.name || 'Unknown Target';
+            } else {
+                targetName = info.name;
+            }
         }
         
         // Determine reticle color based on diplomacy using faction color rules
@@ -4793,14 +4950,22 @@ export class StarfieldManager {
             reticleColor = '#ff0000'; // Enemy ships are bright red
         } else if (info?.type === 'star') {
             reticleColor = '#ffff00'; // Stars are neutral yellow
-        } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-            reticleColor = '#ff0000'; // Enemy territories are bright red
-        } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-            reticleColor = '#ffff00'; // Neutral territories are yellow
-        } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-            reticleColor = '#00ff41'; // Friendly territories are green
-        } else if (info?.diplomacy?.toLowerCase() === 'unknown') {
-            reticleColor = '#44ffff'; // Unknown territories are cyan
+        } else {
+            // Convert faction to diplomacy if needed
+            let diplomacy = info?.diplomacy?.toLowerCase();
+            if (!diplomacy && info?.faction) {
+                diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
+            }
+            
+            if (diplomacy === 'enemy') {
+                reticleColor = '#ff0000'; // Enemy territories are bright red
+            } else if (diplomacy === 'neutral') {
+                reticleColor = '#ffff00'; // Neutral territories are yellow
+            } else if (diplomacy === 'friendly') {
+                reticleColor = '#00ff41'; // Friendly territories are green
+            } else if (diplomacy === 'unknown') {
+                reticleColor = '#44ffff'; // Unknown territories are cyan
+            }
         }
 
         // Update reticle corner colors
@@ -5034,13 +5199,20 @@ export class StarfieldManager {
      */
     updateTargetOutline(targetObject, deltaTime) {
         // CRITICAL: Prevent outline creation when no targets exist
-        if (!this.targets || this.targets.length === 0) {
-            console.log('🚫 updateTargetOutline: No targets available - clearing outline');
+        if (!this.targetObjects || this.targetObjects.length === 0) {
+            // Only log this message once per state change to avoid spam
+            if (!this._noTargetsWarningLogged) {
+                console.log('🚫 updateTargetOutline: No targets available - clearing outline');
+                this._noTargetsWarningLogged = true;
+            }
             if (this.targetOutline) {
                 this.clearTargetOutline();
             }
             return;
         }
+        
+        // Reset warning flag when targets are available
+        this._noTargetsWarningLogged = false;
         
         // Check if outlines are enabled and not suppressed
         if (!this.outlineEnabled || this.outlineDisabledUntilManualCycle) {
@@ -5842,6 +6014,7 @@ export class StarfieldManager {
         // Determine target type and faction color using same logic as main target display
         let diplomacyColor = '#D0D0D0'; // Default gray
         let isCelestialBody = false;
+        let isSpaceStation = false;
         
         if (isEnemyShip) {
             diplomacyColor = '#ff3333'; // Enemy ships are darker neon red
@@ -5850,14 +6023,28 @@ export class StarfieldManager {
             const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
             if (info) {
                 isCelestialBody = true; // Mark as celestial body
+                
+                // Check if it's a space station
+                isSpaceStation = info.type === 'station' || 
+                                 (currentTargetData && currentTargetData.isSpaceStation) ||
+                                 (this.currentTarget && this.currentTarget.userData && this.currentTarget.userData.isSpaceStation);
+                
                 if (info.type === 'star') {
                     diplomacyColor = '#ffff00'; // Stars are neutral yellow
-                } else if (info.diplomacy?.toLowerCase() === 'enemy') {
-                    diplomacyColor = '#ff3333'; // Darker neon red
-                } else if (info.diplomacy?.toLowerCase() === 'neutral') {
-                    diplomacyColor = '#ffff00';
-                } else if (info.diplomacy?.toLowerCase() === 'friendly') {
-                    diplomacyColor = '#00ff41';
+                } else {
+                    // Convert faction to diplomacy if needed
+                    let diplomacy = info?.diplomacy?.toLowerCase();
+                    if (!diplomacy && info?.faction) {
+                        diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
+                    }
+                    
+                    if (diplomacy === 'enemy') {
+                        diplomacyColor = '#ff3333'; // Enemy red
+                    } else if (diplomacy === 'neutral') {
+                        diplomacyColor = '#ffff00'; // Neutral yellow
+                    } else if (diplomacy === 'friendly') {
+                        diplomacyColor = '#00ff41'; // Friendly green
+                    }
                 }
             }
         }
@@ -5892,13 +6079,13 @@ export class StarfieldManager {
             available = false;
             reason = `Target Computer Level ${tcLevel} (requires Level 3+)`;
             statusColor = '#ff3333';
-        } else if (isCelestialBody) {
+        } else if (isCelestialBody && !isSpaceStation) {
             available = false;
             reason = 'Celestial bodies don\'t have subsystems';
             statusColor = '#ff3333';
-        } else if (!isEnemyShip || !currentTargetData.ship) {
+        } else if (!isEnemyShip && !isSpaceStation) {
             available = false;
-            reason = 'Target must be a ship with subsystems';
+            reason = 'Target must be a ship or station with subsystems';
             statusColor = '#ff3333';
         } else if (!currentWeapon || currentWeapon.isEmpty) {
             available = false;

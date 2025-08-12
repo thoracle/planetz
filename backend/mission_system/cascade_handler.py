@@ -142,19 +142,19 @@ class MissionCascadeHandler:
     def _register_default_cascade_rules(self):
         """Register default cascade rules for common mission types"""
         
-        # Federation escort mission cascade
-        self.register_cascade_rule('federation_escort_001', {
+        # Alliance escort mission cascade
+        self.register_cascade_rule('alliance_escort_001', {
             'type': 'botch_related_missions',
             'data': {
-                'mission_ids': ['federation_patrol_001', 'federation_supply_run_002'],
+                'mission_ids': ['alliance_patrol_001', 'alliance_supply_run_002'],
                 'reason': 'convoy_destroyed'
             }
         })
         
-        self.register_cascade_rule('federation_escort_001', {
+        self.register_cascade_rule('alliance_escort_001', {
             'type': 'modify_faction_standing',
             'data': {
-                'faction': 'federation',
+                'faction': 'terran_republic_alliance',
                 'change': -25,
                 'reason': 'failed_convoy_escort'
             }

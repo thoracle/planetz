@@ -1786,44 +1786,57 @@ export class ProximityDetector3D {
      * Get blip color based on object type and faction
      */
     getBlipColor(obj) {
-        // Handle celestial bodies
+        // Handle celestial bodies with distinctive colors
         if (obj.isCelestial) {
             switch (obj.type) {
-                case 'star': return 0xffffff;     // White for stars
-                case 'planet': return 0xffff00;   // Yellow for planets
-                case 'moon': return 0xaaaaaa;     // Gray for moons
-                default: return 0x888888;         // Gray for unknown celestial
+                case 'star': return 0xffffff;     // Bright white for stars
+                case 'planet': return 0x44ff44;   // Bright green for planets
+                case 'moon': return 0x888888;     // Gray for moons
+                case 'station': return 0x00ffff; // Cyan for space stations
+                default: return 0x666666;         // Dim gray for unknown celestial
             }
         }
         
-        // Handle space stations
-        if (obj.isSpaceStation) {
-            return 0x00ff00; // Green for stations
+        // Handle space stations with faction-specific colors
+        if (obj.isSpaceStation || obj.type === 'station') {
+            // Check if we have faction information from the station userData
+            if (obj.mesh && obj.mesh.userData && obj.mesh.userData.faction) {
+                switch (obj.mesh.userData.faction) {
+                    case 'Terran Republic Alliance': return 0x00ff44; // Alliance green
+                    case 'Free Trader Consortium': return 0xffff00;   // Trade yellow
+                    case 'Nexus Corporate Syndicate': return 0x44ffff; // Corporate cyan
+                    case 'Scientists Consortium': return 0x44ff44;    // Science green
+                    case 'Ethereal Wanderers': return 0xff44ff;       // Ethereal purple
+                    default: return 0x00ffff; // Default cyan for unknown faction stations
+                }
+            }
+            return 0x00ffff; // Default cyan for stations
         }
         
-        // Handle target dummies (red for practice targets)
+        // Handle target dummies (orange to distinguish from enemy ships)
         if (obj.isTargetDummy) {
-            return 0xff0000; // Red for target dummies
+            return 0xff8800; // Orange for target dummies (not red)
         }
         
-        // Handle enemy ships
+        // Handle enemy ships - ONLY these should be red
         if (obj.isEnemyShip && obj.ship) {
             // Check ship diplomacy if available
             switch (obj.ship.diplomacy) {
-                case 'enemy': return 0xff0000;     // Red
-                case 'friendly': return 0x00ff00;  // Green  
-                case 'neutral': return 0xffff00;   // Yellow
-                default: return 0xff8800;          // Orange for unknown hostiles
+                case 'enemy': return 0xff0000;     // Red for confirmed enemies
+                case 'hostile': return 0xff4444;   // Bright red for hostiles
+                case 'friendly': return 0x00ff00;  // Green for friendlies
+                case 'neutral': return 0xffff00;   // Yellow for neutrals
+                default: return 0xff6600;          // Orange for unknown hostiles
             }
         }
         
         // Handle ships by type
         if (obj.type === 'enemy_ship') {
-            return 0xff0000; // Red for enemy ships
+            return 0xff0000; // Red for confirmed enemy ships
         }
         
-        // Default to gray for unknown objects
-        return 0x888888;
+        // Default to dim gray for unknown objects
+        return 0x666666;
     }
     
     /**

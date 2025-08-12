@@ -1,0 +1,49 @@
+{
+  "id": "elimination_1754936620",
+  "title": "Enemy Elimination Contract",
+  "description": "Eliminate hostile targets in the specified sector",
+  "mission_type": "elimination",
+  "location": "terra_prime",
+  "faction": "terran_republic_alliance",
+  "reward_package_id": 3,
+  "state": "Mentioned",
+  "is_botched": false,
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Eliminate {enemy_count} {target_enemy_type} ships",
+      "is_achieved": false,
+      "is_optional": false,
+      "is_ordered": false,
+      "achieved_at": null
+    }
+  ],
+  "created_at": "2025-08-11T18:23:40.748036+00:00",
+  "updated_at": "2025-08-11T18:23:40.748071+00:00",
+  "custom_fields": {
+    "target_enemy_type": "enemy_fighter",
+    "enemy_count": 3,
+    "enemy_spawn": [
+      "enemy_fighter",
+      "enemy_fighter",
+      "enemy_fighter"
+    ],
+    "required_faction_standing": -10,
+    "completion_bonus": 500,
+    "time_limit": 3600
+  },
+  "triggers": {
+    "on_accept": "spawn_elimination_targets",
+    "on_enemy_destroyed": "check_elimination_progress",
+    "on_complete": "award_combat_bonus"
+  },
+  "progress": {
+    "state": "Mentioned",
+    "is_botched": false,
+    "total_objectives": 1,
+    "achieved_objectives": 0,
+    "required_objectives": 1,
+    "achieved_required": 0,
+    "completion_percentage": 0.0
+  }
+}

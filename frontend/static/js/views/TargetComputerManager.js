@@ -62,7 +62,52 @@ export class TargetComputerManager {
         // Arrow state tracking
         this.lastArrowState = null;
         
+        // Power-up animation state
+        this.isPoweringUp = false;
+        
+        // No targets monitoring state
+        this.noTargetsInterval = null;
+        this.isInNoTargetsMode = false;
+        
+        // Range monitoring state
+        this.rangeMonitoringInterval = null;
+        this.isRangeMonitoringActive = false;
+        
+        // Audio for targeting events (using HTML5 Audio for simplicity)
+        this.audioElements = new Map();
+        
+        // Wireframe animation
+        this.wireframeAnimationId = null;
+        
+        // Warning throttling
+        this.lastTargetNotFoundWarning = 0;
+        
         console.log('🎯 TargetComputerManager initialized');
+    }
+
+    /**
+     * Convert faction name to diplomacy status
+     * @param {string} faction - Faction name
+     * @returns {string} Diplomacy status ('friendly', 'neutral', 'enemy')
+     */
+    getFactionDiplomacy(faction) {
+        if (!faction) return 'neutral';
+        
+        // Faction relationship mappings (matches AmbientShipManager.js)
+        const factionRelations = {
+            'Terran Republic Alliance': 'friendly',
+            'Zephyrian Collective': 'friendly', 
+            'Scientists Consortium': 'friendly',
+            'Free Trader Consortium': 'neutral',
+            'Nexus Corporate Syndicate': 'neutral',
+            'Ethereal Wanderers': 'neutral',
+            'Draconis Imperium': 'neutral',
+            'Crimson Raider Clans': 'enemy',
+            'Shadow Consortium': 'enemy',
+            'Void Cult': 'enemy'
+        };
+        
+        return factionRelations[faction] || 'neutral';
     }
 
     /**
@@ -86,9 +131,9 @@ export class TargetComputerManager {
             left: 10px;
             width: 200px;
             height: auto;
-            border: 2px solid #00ff41;
+            border: 2px solid #D0D0D0;
             background: rgba(0, 0, 0, 0.7);
-            color: #00ff41;
+            color: #D0D0D0;
             font-family: "Courier New", monospace;
             font-size: 14px;
             padding: 10px;
@@ -103,7 +148,7 @@ export class TargetComputerManager {
         this.wireframeContainer.style.cssText = `
             width: 100%;
             height: 150px;
-            border: 1px solid #00ff41;
+            border: 1px solid #D0D0D0;
             margin-bottom: 10px;
             position: relative;
             overflow: visible;
@@ -166,14 +211,14 @@ export class TargetComputerManager {
                 position: relative;
                 width: 24px;
                 height: 24px;
-                border: 1px solid #00ff41;
+                border: 1px solid #D0D0D0;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 font-family: "Courier New", monospace;
                 font-size: 14px;
-                text-shadow: 0 0 4px #00ff41;
-                box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
+                text-shadow: 0 0 4px #D0D0D0;
+                box-shadow: 0 0 4px rgba(208, 208, 208, 0.4);
             `;
             icon.innerHTML = symbol;
             icon.title = tooltip;
@@ -182,13 +227,13 @@ export class TargetComputerManager {
             icon.addEventListener('mouseenter', () => {
                 icon.style.opacity = '1';
                 icon.style.transform = 'scale(1.1)';
-                icon.style.boxShadow = '0 0 8px rgba(0, 255, 65, 0.6)';
+                // Box shadow will be updated by updateStatusIcons with diplomacy color
             });
             
             icon.addEventListener('mouseleave', () => {
                 icon.style.opacity = '0.8';
                 icon.style.transform = 'scale(1)';
-                icon.style.boxShadow = '0 0 4px rgba(0, 255, 65, 0.4)';
+                // Box shadow will be updated by updateStatusIcons with diplomacy color
             });
             
             return icon;
@@ -412,6 +457,17 @@ export class TargetComputerManager {
             this.targetHUD.style.display = 'none';
             this.targetReticle.style.display = 'none';
             
+            // Clear target info display to prevent "unknown target" flash
+            this.targetInfoDisplay.innerHTML = '';
+            
+            // Clear current target to ensure clean reactivation
+            this.currentTarget = null;
+            this.targetIndex = -1;
+            
+            // Stop all monitoring when target computer is disabled
+            this.stopNoTargetsMonitoring();
+            this.stopRangeMonitoring();
+            
             // Clear wireframe if it exists
             if (this.targetWireframe) {
                 this.wireframeScene.remove(this.targetWireframe);
@@ -426,15 +482,446 @@ export class TargetComputerManager {
             // Show the HUD immediately when target computer is enabled
             this.targetHUD.style.display = 'block';
             
+            // Show "Powering up" animation while initializing
+            this.showPowerUpAnimation();
+            
             this.updateTargetList();
-            // Only reset target index if we don't have a current target AND target changes are allowed
-            if (!this.currentTarget && !this.preventTargetChanges) {
-                this.targetIndex = -1;
-                this.cycleTarget();
-            } else {
-                // Just update the display with existing target
-                this.updateTargetDisplay();
+            
+            // Use a longer delay to allow for power-up animation and target initialization
+            setTimeout(() => {
+                // Hide the power-up animation
+                this.hidePowerUpAnimation();
+                
+                // Always select nearest target when activating (fresh start behavior)
+                if (!this.preventTargetChanges) {
+                    this.targetIndex = -1;
+                    if (this.targetObjects.length > 0) {
+                        // Call cycleTarget directly and then sync with StarfieldManager
+                        this.cycleTarget(false); // false = automatic cycle
+                        
+                        // Stop no targets monitoring since we have a target
+                        this.stopNoTargetsMonitoring();
+                        
+                        // Play audio feedback for target acquisition on startup
+                        this.playAudio('frontend/static/audio/blurb.mp3');
+                        
+                        // Start monitoring the selected target's range
+                        this.startRangeMonitoring();
+                        
+                        // Manually sync with StarfieldManager to ensure UI updates
+                        if (this.viewManager?.starfieldManager) {
+                            this.viewManager.starfieldManager.currentTarget = this.currentTarget?.object || this.currentTarget;
+                            this.viewManager.starfieldManager.targetIndex = this.targetIndex;
+                            this.viewManager.starfieldManager.targetObjects = this.targetObjects;
+                            
+                            // Update 3D outline for automatic cycle (if enabled)
+                            if (this.currentTarget && this.viewManager.starfieldManager.outlineEnabled && 
+                                !this.viewManager.starfieldManager.outlineDisabledUntilManualCycle) {
+                                this.viewManager.starfieldManager.updateTargetOutline(this.currentTarget?.object || this.currentTarget, 0);
+                            }
+                        }
+                    } else {
+                        console.log('🎯 No targets available for initial selection');
+                        this.showNoTargetsDisplay(); // Show special "No targets in range" display
+                    }
+                } else {
+                    // Just update the display with existing target
+                    this.updateTargetDisplay();
+                }
+            }, 800); // Longer delay for power-up animation (0.8 seconds)
+        }
+    }
+
+    /**
+     * Show power-up animation when target computer first activates
+     */
+    showPowerUpAnimation() {
+        this.isPoweringUp = true;
+        // Create or update power-up display
+        this.targetInfoDisplay.innerHTML = `
+            <div id="powerup-animation" style="
+                background: linear-gradient(45deg, #001122, #002244, #001122);
+                background-size: 200% 200%;
+                color: #00ff41;
+                padding: 20px;
+                border-radius: 4px;
+                text-align: center;
+                border: 1px solid #00ff41;
+                box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+                animation: powerUpPulse 0.8s ease-in-out infinite alternate,
+                           powerUpGradient 2s ease-in-out infinite alternate;
+                font-family: 'Orbitron', monospace;
+            ">
+                <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px;">
+                    TARGET COMPUTER
+                </div>
+                <div style="font-size: 12px; opacity: 0.8; margin-bottom: 12px;">
+                    POWERING UP...
+                </div>
+                <div style="
+                    display: flex;
+                    justify-content: center;
+                    gap: 4px;
+                    align-items: center;
+                ">
+                    <div class="power-dot" style="
+                        width: 8px;
+                        height: 8px;
+                        background: #00ff41;
+                        border-radius: 50%;
+                        animation: powerDot1 1.2s ease-in-out infinite;
+                    "></div>
+                    <div class="power-dot" style="
+                        width: 8px;
+                        height: 8px;
+                        background: #00ff41;
+                        border-radius: 50%;
+                        animation: powerDot2 1.2s ease-in-out infinite;
+                    "></div>
+                    <div class="power-dot" style="
+                        width: 8px;
+                        height: 8px;
+                        background: #00ff41;
+                        border-radius: 50%;
+                        animation: powerDot3 1.2s ease-in-out infinite;
+                    "></div>
+                </div>
+            </div>
+        `;
+        
+        // Add CSS animations if not already present
+        if (!document.getElementById('target-computer-powerup-styles')) {
+            const style = document.createElement('style');
+            style.id = 'target-computer-powerup-styles';
+            style.textContent = `
+                @keyframes powerUpPulse {
+                    0% { 
+                        box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+                        border-color: #00ff41;
+                    }
+                    100% { 
+                        box-shadow: 0 0 30px rgba(0, 255, 65, 0.6);
+                        border-color: #33ff66;
+                    }
+                }
+                
+                @keyframes powerUpGradient {
+                    0% { background-position: 0% 50%; }
+                    100% { background-position: 100% 50%; }
+                }
+                
+                @keyframes powerDot1 {
+                    0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+                    30% { opacity: 1; transform: scale(1.2); }
+                }
+                
+                @keyframes powerDot2 {
+                    0%, 30%, 90%, 100% { opacity: 0.3; transform: scale(0.8); }
+                    60% { opacity: 1; transform: scale(1.2); }
+                }
+                
+                @keyframes powerDot3 {
+                    0%, 90%, 100% { opacity: 0.3; transform: scale(0.8); }
+                    90% { opacity: 1; transform: scale(1.2); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // Hide wireframe during power-up
+        if (this.wireframeContainer) {
+            this.wireframeContainer.style.opacity = '0.3';
+        }
+        
+        // Hide reticle during power-up
+        this.hideTargetReticle();
+    }
+    
+    /**
+     * Hide power-up animation and restore normal display
+     */
+    hidePowerUpAnimation() {
+        this.isPoweringUp = false;
+        // Restore wireframe visibility
+        if (this.wireframeContainer) {
+            this.wireframeContainer.style.opacity = '1';
+        }
+        
+        // The updateTargetDisplay() call after this will replace the power-up content
+        // with the actual target information
+    }
+
+    /**
+     * Show "No Targets in Range" display when no targets are available
+     */
+    showNoTargetsDisplay() {
+        // Get the actual range from the target computer system
+        const ship = this.viewManager?.getShip();
+        const targetComputer = ship?.getSystem('target_computer');
+        const range = targetComputer?.range || 150; // Fallback to 150km if system not found
+        
+        this.targetInfoDisplay.innerHTML = `
+            <div style="
+                background: linear-gradient(45deg, #2a1810, #3a2218, #2a1810);
+                background-size: 200% 200%;
+                color: #ff8c42;
+                padding: 20px;
+                border-radius: 4px;
+                text-align: center;
+                border: 1px solid #ff8c42;
+                box-shadow: 0 0 20px rgba(255, 140, 66, 0.3);
+                animation: noTargetsGlow 2s ease-in-out infinite alternate;
+                font-family: 'Orbitron', monospace;
+            ">
+                <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px;">
+                    NO TARGETS IN RANGE
+                </div>
+                <div style="font-size: 10px; opacity: 0.8; margin-bottom: 8px;">
+                    TARGET COMPUTER RANGE: ${range}km
+                </div>
+                <div style="font-size: 9px; opacity: 0.6;">
+                    Move closer to celestial bodies or ships
+                </div>
+            </div>
+        `;
+        
+        // Add CSS animation for no targets glow effect
+        if (!document.getElementById('no-targets-styles')) {
+            const style = document.createElement('style');
+            style.id = 'no-targets-styles';
+            style.textContent = `
+                @keyframes noTargetsGlow {
+                    0% { 
+                        box-shadow: 0 0 20px rgba(255, 140, 66, 0.3);
+                        border-color: #ff8c42;
+                    }
+                    100% { 
+                        box-shadow: 0 0 30px rgba(255, 140, 66, 0.6);
+                        border-color: #ffb366;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // Hide wireframe during no targets display
+        if (this.wireframeContainer) {
+            this.wireframeContainer.style.opacity = '0.3';
+        }
+        
+        // Hide reticle during no targets display
+        this.hideTargetReticle();
+        
+        // Play audio feedback for no targets found
+        this.playAudio('frontend/static/audio/command_failed.mp3');
+        
+        // Start monitoring for targets coming back into range
+        this.startNoTargetsMonitoring();
+    }
+    
+    /**
+     * Start monitoring for targets when in "no targets" mode
+     */
+    startNoTargetsMonitoring() {
+        this.isInNoTargetsMode = true;
+        
+        // Clear any existing interval
+        if (this.noTargetsInterval) {
+            clearInterval(this.noTargetsInterval);
+        }
+        
+        // Check for targets every 2 seconds
+        this.noTargetsInterval = setInterval(() => {
+            if (!this.targetComputerEnabled || !this.isInNoTargetsMode) {
+                this.stopNoTargetsMonitoring();
+                return;
             }
+            
+            // Silently update target list to check for new targets
+            this.updateTargetList();
+            
+            // If we found targets, automatically select the nearest one
+            if (this.targetObjects && this.targetObjects.length > 0) {
+                console.log(`🎯 Targets detected while monitoring - automatically acquiring nearest target`);
+                this.stopNoTargetsMonitoring();
+                
+                // Select nearest target
+                this.targetIndex = -1;
+                this.cycleTarget(false); // false = automatic cycle
+                
+                // Play audio feedback for automatic target reacquisition
+                this.playAudio('frontend/static/audio/blurb.mp3');
+                
+                // Start monitoring the acquired target's range
+                this.startRangeMonitoring();
+                
+                // Sync with StarfieldManager
+                if (this.viewManager?.starfieldManager) {
+                    this.viewManager.starfieldManager.currentTarget = this.currentTarget?.object || this.currentTarget;
+                    this.viewManager.starfieldManager.targetIndex = this.targetIndex;
+                    this.viewManager.starfieldManager.targetObjects = this.targetObjects;
+                    
+                    // Update 3D outline for automatic cycle (if enabled)
+                    if (this.currentTarget && this.viewManager.starfieldManager.outlineEnabled && 
+                        !this.viewManager.starfieldManager.outlineDisabledUntilManualCycle) {
+                        this.viewManager.starfieldManager.updateTargetOutline(this.currentTarget?.object || this.currentTarget, 0);
+                    }
+                }
+            }
+        }, 2000); // Check every 2 seconds
+    }
+    
+    /**
+     * Stop monitoring for targets
+     */
+    stopNoTargetsMonitoring() {
+        this.isInNoTargetsMode = false;
+        if (this.noTargetsInterval) {
+            clearInterval(this.noTargetsInterval);
+            this.noTargetsInterval = null;
+        }
+    }
+    
+    /**
+     * Start monitoring current target range to detect when it goes out of range
+     */
+    startRangeMonitoring() {
+        if (this.isRangeMonitoringActive) {
+            return; // Already monitoring
+        }
+        
+        this.isRangeMonitoringActive = true;
+        
+        // Clear any existing interval
+        if (this.rangeMonitoringInterval) {
+            clearInterval(this.rangeMonitoringInterval);
+        }
+        
+        // Check target range every 3 seconds
+        this.rangeMonitoringInterval = setInterval(() => {
+            if (!this.targetComputerEnabled || !this.currentTarget) {
+                this.stopRangeMonitoring();
+                return;
+            }
+            
+            // Get target computer range
+            const ship = this.viewManager?.getShip();
+            const targetComputer = ship?.getSystem('target_computer');
+            const maxRange = targetComputer?.range || 150;
+            
+            // Calculate distance to current target
+            const targetPos = this.getTargetPosition(this.currentTarget);
+            if (!targetPos) {
+                this.stopRangeMonitoring();
+                return;
+            }
+            
+            const distance = this.calculateDistance(this.camera.position, targetPos);
+            
+            // Check if current target is out of range
+            if (distance > maxRange) {
+                console.log(`🎯 Current target out of range (${distance.toFixed(1)}km > ${maxRange}km) - searching for new target`);
+                this.handleTargetOutOfRange();
+            }
+        }, 3000); // Check every 3 seconds
+    }
+    
+    /**
+     * Stop monitoring current target range
+     */
+    stopRangeMonitoring() {
+        this.isRangeMonitoringActive = false;
+        if (this.rangeMonitoringInterval) {
+            clearInterval(this.rangeMonitoringInterval);
+            this.rangeMonitoringInterval = null;
+        }
+    }
+    
+    /**
+     * Handle when current target goes out of range
+     */
+    handleTargetOutOfRange() {
+        // Update target list to see what's currently in range
+        this.updateTargetList();
+        
+        // If we have targets in range, select the nearest one
+        if (this.targetObjects && this.targetObjects.length > 0) {
+            console.log(`🎯 Switching to nearest target in range`);
+            this.targetIndex = -1;
+            this.cycleTarget(false); // false = automatic cycle
+            
+            // Play audio feedback for automatic target switch
+            this.playAudio('frontend/static/audio/blurb.mp3');
+            
+            // Sync with StarfieldManager
+            if (this.viewManager?.starfieldManager) {
+                this.viewManager.starfieldManager.currentTarget = this.currentTarget?.object || this.currentTarget;
+                this.viewManager.starfieldManager.targetIndex = this.targetIndex;
+                this.viewManager.starfieldManager.targetObjects = this.targetObjects;
+                
+                // Update 3D outline for automatic cycle (if enabled)
+                if (this.currentTarget && this.viewManager.starfieldManager.outlineEnabled && 
+                    !this.viewManager.starfieldManager.outlineDisabledUntilManualCycle) {
+                    this.viewManager.starfieldManager.updateTargetOutline(this.currentTarget?.object || this.currentTarget, 0);
+                }
+            }
+        } else {
+            // No targets in range - show no targets display
+            console.log(`🎯 No targets in range - showing no targets display`);
+            this.currentTarget = null;
+            this.targetIndex = -1;
+            this.stopRangeMonitoring();
+            this.showNoTargetsDisplay();
+            
+            // Clear StarfieldManager state
+            if (this.viewManager?.starfieldManager) {
+                this.viewManager.starfieldManager.currentTarget = null;
+                this.viewManager.starfieldManager.targetIndex = -1;
+                this.viewManager.starfieldManager.targetObjects = [];
+            }
+        }
+    }
+
+    /**
+     * Play audio file using HTML5 Audio (simpler and more reliable)
+     * @param {string} audioPath - Path to audio file
+     */
+    playAudio(audioPath) {
+        try {
+            // Use correct audio path format (like CardInventoryUI)
+            const audioBasePath = 'static/audio/';
+            const fileName = audioPath.split('/').pop(); // Extract filename from full path
+            const correctedPath = `${audioBasePath}${fileName}`;
+            
+            // Get or create audio element for this sound
+            if (!this.audioElements.has(fileName)) {
+                const audio = new Audio(correctedPath);
+                // Increase volume slightly for better audibility
+                audio.volume = fileName === 'blurb.mp3' ? 0.4 : 0.3; // blurb.mp3 slightly louder
+                audio.preload = 'auto';
+                
+                // Add error handling
+                audio.addEventListener('error', (e) => {
+                    console.warn(`🔊 Audio error for ${fileName}:`, e);
+                });
+                
+                this.audioElements.set(fileName, audio);
+            }
+            
+            const audio = this.audioElements.get(fileName);
+            
+            // Reset playback position and play
+            audio.currentTime = 0;
+            const playPromise = audio.play();
+            
+            // Handle potential play() promise rejection
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.warn('🔊 Failed to play audio:', fileName, error);
+                });
+            }
+        } catch (error) {
+            console.warn('🔊 Failed to play audio:', audioPath, error);
         }
     }
 
@@ -459,7 +946,11 @@ export class TargetComputerManager {
      */
     updateTargetListWithPhysics() {
         console.log('🎯 TargetComputerManager.updateTargetListWithPhysics() called');
-        const maxTargetingRange = 150; // 150km max targeting range (enough for target dummies at 30-80km)
+        
+        // Get the actual range from the target computer system
+        const ship = this.viewManager?.getShip();
+        const targetComputer = ship?.getSystem('target_computer');
+        const maxTargetingRange = targetComputer?.range || 150; // Fallback to 150km if system not found
         
         // Perform spatial query around the camera position
         const nearbyEntities = window.physicsManager.spatialQuery(
@@ -467,7 +958,7 @@ export class TargetComputerManager {
             maxTargetingRange
         );
         
-        console.log(`🎯 Physics spatial query found ${nearbyEntities.length} entities within ${maxTargetingRange}km`);
+        console.log(`🎯 Physics spatial query found ${nearbyEntities.length} entities within ${maxTargetingRange}km (Target Computer Level ${targetComputer?.level || 'Unknown'})`);
         
         let allTargets = [];
         
@@ -475,6 +966,12 @@ export class TargetComputerManager {
         nearbyEntities.forEach(entity => {
             if (!entity.threeObject || !entity.threeObject.position) {
                 return; // Skip invalid entities
+            }
+            
+            // Skip docking collision boxes - they are not targetable
+            if (entity.type === 'docking_zone' || 
+                entity.threeObject.userData?.isDockingCollisionBox) {
+                return;
             }
             
             const distance = this.calculateDistance(this.camera.position, entity.threeObject.position);
@@ -500,8 +997,8 @@ export class TargetComputerManager {
                 } else if (ship && ship.currentHull <= 0.001) {
                     console.log(`🗑️ Physics query filtering out destroyed ship: ${ship.shipName} (Hull: ${ship.currentHull})`);
                 }
-            } else if (entity.type === 'star' || entity.type === 'planet' || entity.type === 'moon') {
-                // Handle celestial bodies
+            } else if (entity.type === 'star' || entity.type === 'planet' || entity.type === 'moon' || entity.type === 'station') {
+                // Handle celestial bodies and stations
                 const info = this.solarSystemManager.getCelestialBodyInfo(entity.threeObject);
                 if (info) {
                     targetData = {
@@ -509,12 +1006,38 @@ export class TargetComputerManager {
                         type: info.type,
                         position: entity.threeObject.position.toArray(),
                         isMoon: entity.type === 'moon',
+                        isSpaceStation: entity.type === 'station' || info.type === 'station',
                         object: entity.threeObject,
                         isShip: false,
                         distance: distance,
                         physicsEntity: entity,
                         ...info
                     };
+                }
+            } else {
+                // Handle unknown physics entities - try to get info from userData or object properties
+                const obj = entity.threeObject;
+                if (obj.userData) {
+                    const userData = obj.userData;
+                    
+                    // Check if this is a space station from userData
+                    if (userData.type === 'station' || userData.isSpaceStation) {
+                        const info = this.solarSystemManager.getCelestialBodyInfo(obj);
+                        targetData = {
+                            name: userData.stationName || userData.name || info?.name || 'Unknown Station',
+                            type: 'station',
+                            position: obj.position.toArray(),
+                            isMoon: false,
+                            isSpaceStation: true,
+                            object: obj,
+                            isShip: false,
+                            distance: distance,
+                            physicsEntity: entity,
+                            faction: userData.faction,
+                            stationType: userData.stationType,
+                            canDock: userData.canDock
+                        };
+                    }
                 }
             }
             
@@ -530,10 +1053,12 @@ export class TargetComputerManager {
         this.targetObjects = allTargets;
         
         // Sort targets by distance using physics-enhanced sorting
-        this.sortTargetsByDistanceWithPhysics();
+        this.sortTargetsByDistanceWithPhysics(true); // Force sort on target list update
         
-        // Update target display
-        this.updateTargetDisplay();
+        // Update target display (unless power-up animation is running or in no targets monitoring mode)
+        if (!this.isPoweringUp && !this.isInNoTargetsMode) {
+            this.updateTargetDisplay();
+        }
         
         console.log(`🎯 Physics-enhanced targeting: ${allTargets.length} total targets`);
     }
@@ -610,15 +1135,24 @@ export class TargetComputerManager {
         // Update target list
         this.targetObjects = allTargets;
         
+        // If target computer is enabled and we have targets, ensure current target is valid
+        if (this.targetComputerEnabled && allTargets.length > 0) {
+            if (this.targetIndex >= 0 && this.targetIndex < allTargets.length) {
+                this.updateTargetDisplay();
+            }
+        }
+        
         console.log(`🎯 Final target list: ${allTargets.length} targets total`, 
             allTargets.map((t, index) => ({ index, name: t.name, type: t.type, isShip: t.isShip }))
         );
         
         // Sort targets by distance
-        this.sortTargetsByDistance();
+        this.sortTargetsByDistance(true); // Force sort on target list update
         
-        // Update target display
-        this.updateTargetDisplay();
+        // Update target display (unless power-up animation is running or in no targets monitoring mode)
+        if (!this.isPoweringUp && !this.isInNoTargetsMode) {
+            this.updateTargetDisplay();
+        }
     }
 
     /**
@@ -699,9 +1233,9 @@ export class TargetComputerManager {
     /**
      * Enhanced sorting with physics data
      */
-    sortTargetsByDistanceWithPhysics() {
+    sortTargetsByDistanceWithPhysics(forceSort = false) {
         const now = Date.now();
-        if (now - this.lastSortTime < this.sortInterval) {
+        if (!forceSort && now - this.lastSortTime < this.sortInterval) {
             return; // Don't sort too frequently
         }
         this.lastSortTime = now;
@@ -728,9 +1262,9 @@ export class TargetComputerManager {
     /**
      * Sort targets by distance from camera
      */
-    sortTargetsByDistance() {
+    sortTargetsByDistance(forceSort = false) {
         const now = Date.now();
-        if (now - this.lastSortTime < this.sortInterval) {
+        if (!forceSort && now - this.lastSortTime < this.sortInterval) {
             return; // Don't sort too frequently
         }
         this.lastSortTime = now;
@@ -786,9 +1320,9 @@ export class TargetComputerManager {
             this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
         }
 
-        // Get the target object directly from our target list
+        // Get the target data directly from our target list
         const targetData = this.targetObjects[this.targetIndex];
-        this.currentTarget = targetData.object;
+        this.currentTarget = targetData; // Store the full target data, not just the object
         
         // Removed target cycling log to prevent console spam
         // console.log(`🔄 Target cycled: ${previousIndex} → ${this.targetIndex} (${targetData.name})`);
@@ -818,6 +1352,9 @@ export class TargetComputerManager {
         // Create new wireframe and update display
         this.createTargetWireframe();
         this.updateTargetDisplay();
+        
+        // Start monitoring the selected target's range (for both manual and automatic cycles)
+        this.startRangeMonitoring();
     }
 
     /**
@@ -852,12 +1389,20 @@ export class TargetComputerManager {
                 // Determine wireframe color based on diplomacy
                 if (info?.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
                     wireframeColor = 0xffff00; // Stars are always yellow
-                } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-                    wireframeColor = 0xff3333; // Darker neon red
-                } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-                    wireframeColor = 0xffff00;
-                } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-                    wireframeColor = 0x00ff41;
+                } else {
+                    // Convert faction to diplomacy if needed
+                    let diplomacy = info?.diplomacy?.toLowerCase();
+                    if (!diplomacy && info?.faction) {
+                        diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
+                    }
+                    
+                    if (diplomacy === 'enemy') {
+                        wireframeColor = 0xff3333; // Enemy red
+                    } else if (diplomacy === 'neutral') {
+                        wireframeColor = 0xffff00; // Neutral yellow
+                    } else if (diplomacy === 'friendly') {
+                        wireframeColor = 0x00ff41; // Friendly green
+                    }
                 }
             }
             
@@ -981,7 +1526,24 @@ export class TargetComputerManager {
      * Update target display information
      */
     updateTargetDisplay() {
-        if (!this.currentTarget || !this.targetComputerEnabled) {
+        if (!this.targetComputerEnabled) {
+            return;
+        }
+        
+        // Don't update display during power-up animation
+        if (this.isPoweringUp) {
+            return;
+        }
+        
+        // Handle case where no target is selected
+        if (!this.currentTarget) {
+            this.targetInfoDisplay.innerHTML = `
+                <div style="background-color: #2a2a2a; color: #D0D0D0; padding: 8px; border-radius: 4px; margin-bottom: 8px; text-align: center; border: 1px solid #555555;">
+                    <div style="font-weight: bold; font-size: 12px;">No Target Selected</div>
+                    <div style="font-size: 10px;">Press TAB to cycle targets</div>
+                </div>
+            `;
+            this.hideTargetReticle();
             return;
         }
 
@@ -990,7 +1552,14 @@ export class TargetComputerManager {
             return;
         }
 
-        const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
+        // Get target position safely
+        const targetPos = this.getTargetPosition(this.currentTarget);
+        if (!targetPos) {
+            console.warn('🎯 Cannot calculate distance for range check - invalid target position');
+            return;
+        }
+
+        const distance = this.calculateDistance(this.camera.position, targetPos);
         
         // Get target info for diplomacy status and actions
         let info = null;
@@ -1016,12 +1585,20 @@ export class TargetComputerManager {
             diplomacyColor = '#ff3333'; // Enemy ships are darker neon red
         } else if (info?.type === 'star') {
             diplomacyColor = '#ffff00'; // Stars are neutral yellow
-        } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
-            diplomacyColor = '#ff3333'; // Darker neon red
-        } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-            diplomacyColor = '#ffff00';
-        } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-            diplomacyColor = '#00ff41';
+        } else {
+            // Convert faction to diplomacy if needed
+            let diplomacy = info?.diplomacy?.toLowerCase();
+            if (!diplomacy && info?.faction) {
+                diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
+            }
+            
+            if (diplomacy === 'enemy') {
+                diplomacyColor = '#ff3333'; // Enemy red
+            } else if (diplomacy === 'neutral') {
+                diplomacyColor = '#ffff00'; // Neutral yellow
+            } else if (diplomacy === 'friendly') {
+                diplomacyColor = '#00ff41'; // Friendly green
+            }
         }
         
         this.targetHUD.style.borderColor = diplomacyColor;
@@ -1191,29 +1768,41 @@ export class TargetComputerManager {
         // First, check if the current targetIndex is valid
         if (this.targetIndex >= 0 && this.targetIndex < this.targetObjects.length) {
             const targetData = this.targetObjects[this.targetIndex];
-            if (targetData && targetData.object === this.currentTarget) {
+            if (targetData && targetData === this.currentTarget) {
                 // console.log(`🎯 DEBUG: getCurrentTargetData() - valid target data found for ${targetData.name}`);
                 return this.processTargetData(targetData);
             }
         }
 
-        // Fallback: Search for the current target in the target list
-        for (let i = 0; i < this.targetObjects.length; i++) {
-            const targetData = this.targetObjects[i];
-            if (targetData && targetData.object === this.currentTarget) {
-                // Update the index to match the found target
-                this.targetIndex = i;
-                console.log(`🔧 Fixed target index mismatch: set to ${i} for target ${targetData.name}`);
-                
-                // Process and return the target data
-                return this.processTargetData(targetData);
+        // If current target is already a target data object, try to find it in the list
+        if (this.currentTarget && typeof this.currentTarget === 'object') {
+            for (let i = 0; i < this.targetObjects.length; i++) {
+                const targetData = this.targetObjects[i];
+                if (targetData && 
+                    (targetData === this.currentTarget || 
+                     targetData.object === this.currentTarget ||
+                     (targetData.name === this.currentTarget.name && targetData.type === this.currentTarget.type))) {
+                    // Update the index to match the found target
+                    this.targetIndex = i;
+                    this.currentTarget = targetData; // Ensure we have the full target data
+                    console.log(`🔧 Fixed target index mismatch: set to ${i} for target ${targetData.name}`);
+                    
+                    // Process and return the target data
+                    return this.processTargetData(targetData);
+                }
             }
         }
 
-        // If we still can't find the target, it might have been destroyed
-        console.log(`⚠️ Current target not found in target list - may have been destroyed`);
-        // console.log(`🎯 DEBUG: Current target object:`, this.currentTarget?.userData?.ship?.shipName || 'no ship name');
-        // console.log(`🎯 DEBUG: Available targets:`, this.targetObjects.map(t => t?.name || 'unnamed'));
+        // If we still can't find the target, it might have been destroyed or removed
+        // Don't spam the console - only log occasionally
+        const now = Date.now();
+        if (!this.lastTargetNotFoundWarning || (now - this.lastTargetNotFoundWarning) > 5000) { // Only warn every 5 seconds
+            console.log(`⚠️ Current target not found in target list - may have been destroyed or updated`);
+            this.lastTargetNotFoundWarning = now;
+        }
+        
+        // Clear the invalid target to prevent repeated warnings
+        this.clearCurrentTarget();
         return null;
     }
 
@@ -1261,7 +1850,46 @@ export class TargetComputerManager {
      * Calculate distance between two points
      */
     calculateDistance(point1, point2) {
-        return point1.distanceTo(point2);
+        if (!point1 || !point2) {
+            console.warn('🎯 calculateDistance: Invalid points provided', { point1, point2 });
+            return 0;
+        }
+        
+        // Convert points to Vector3 if needed
+        let vec1 = point1;
+        let vec2 = point2;
+        
+        // Convert point1 to Vector3 if it's an array
+        if (Array.isArray(point1)) {
+            vec1 = new this.THREE.Vector3(point1[0], point1[1], point1[2]);
+        } else if (point1 && typeof point1 === 'object' && typeof point1.x === 'number' && !point1.distanceTo) {
+            vec1 = new this.THREE.Vector3(point1.x, point1.y, point1.z);
+        }
+        
+        // Convert point2 to Vector3 if it's an array
+        if (Array.isArray(point2)) {
+            vec2 = new this.THREE.Vector3(point2[0], point2[1], point2[2]);
+        } else if (point2 && typeof point2 === 'object' && typeof point2.x === 'number' && !point2.distanceTo) {
+            vec2 = new this.THREE.Vector3(point2.x, point2.y, point2.z);
+        }
+        
+        // Ensure we have Vector3 objects
+        if (!vec1 || !vec2 || typeof vec1.distanceTo !== 'function' || typeof vec2.distanceTo !== 'function') {
+            console.warn('🎯 calculateDistance: Could not convert to Vector3 objects', { 
+                originalPoint1: point1, 
+                originalPoint2: point2,
+                vec1: vec1,
+                vec2: vec2
+            });
+            return 0;
+        }
+        
+        try {
+            return vec1.distanceTo(vec2);
+        } catch (error) {
+            console.warn('🎯 calculateDistance: Error calculating distance', error);
+            return 0;
+        }
     }
 
     /**
@@ -1332,8 +1960,16 @@ export class TargetComputerManager {
             return;
         }
 
+        // Get target position using helper function
+        const targetPosition = this.getTargetPosition(this.currentTarget);
+        if (!targetPosition) {
+            console.warn('🎯 TargetComputerManager: Cannot update reticle - invalid target position');
+            this.targetReticle.style.display = 'none';
+            return;
+        }
+
         // Calculate target's screen position
-        const screenPosition = this.currentTarget.position.clone().project(this.camera);
+        const screenPosition = targetPosition.clone().project(this.camera);
         const isOnScreen = Math.abs(screenPosition.x) <= 1 && Math.abs(screenPosition.y) <= 1;
 
         if (isOnScreen) {
@@ -1341,7 +1977,7 @@ export class TargetComputerManager {
             const y = (-screenPosition.y + 1) * window.innerHeight / 2;
             
             const cameraForward = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-            const relativePos = this.currentTarget.position.clone().sub(this.camera.position);
+            const relativePos = targetPosition.clone().sub(this.camera.position);
             const isBehindCamera = relativePos.dot(cameraForward) < 0;
             
             // RESTORED: Direct positioning like original working version
@@ -1370,7 +2006,8 @@ export class TargetComputerManager {
         }
 
         // Calculate distance to target
-        const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
+        const targetPos = this.getTargetPosition(this.currentTarget);
+        const distance = targetPos ? this.calculateDistance(this.camera.position, targetPos) : 0;
         
         // Get target info for diplomacy status and display
         let info = null;
@@ -1389,23 +2026,37 @@ export class TargetComputerManager {
             targetName = info.name || 'Enemy Ship';
             // console.log(`🎯 DEBUG: updateReticleTargetInfo() - Enemy ship target: ${targetName}, diplomacy: ${info.diplomacy}`);
         } else {
-            // Get celestial body info
-            info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-            targetName = info?.name || 'Unknown Target';
-            // console.log(`🎯 DEBUG: updateReticleTargetInfo() - Celestial body target: ${targetName}, type: ${info?.type || 'unknown'}`);
+            // Get celestial body info - need to pass the actual Three.js object
+            const targetObject = this.currentTarget?.object || this.currentTarget;
+            info = this.solarSystemManager.getCelestialBodyInfo(targetObject);
+            
+            // Fallback to target data name if celestial body info not found
+            if (!info || !info.name) {
+                targetName = currentTargetData?.name || 'Unknown Target';
+            } else {
+                targetName = info.name;
+            }
+            // console.log(`🎯 DEBUG: updateReticleTargetInfo() - Target: ${targetName}, type: ${info?.type || currentTargetData?.type || 'unknown'}`);
         }
         
         // Determine reticle color based on diplomacy using faction color rules
         let reticleColor = '#D0D0D0'; // Default gray
+        
+        // Use diplomacy if available, otherwise try to get it from faction
+        let diplomacyStatus = info?.diplomacy;
+        if (!diplomacyStatus && info?.faction) {
+            diplomacyStatus = this.getFactionDiplomacy(info.faction);
+        }
+        
         if (isEnemyShip) {
             reticleColor = '#ff3333'; // Enemy ships are darker neon red
         } else if (info?.type === 'star') {
             reticleColor = '#ffff00'; // Stars are neutral yellow
-        } else if (info?.diplomacy?.toLowerCase() === 'enemy') {
+        } else if (diplomacyStatus?.toLowerCase() === 'enemy') {
             reticleColor = '#ff3333'; // Darker neon red
-        } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
+        } else if (diplomacyStatus?.toLowerCase() === 'neutral') {
             reticleColor = '#ffff00';
-        } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
+        } else if (diplomacyStatus?.toLowerCase() === 'friendly') {
             reticleColor = '#00ff41';
         }
 
@@ -1440,8 +2091,16 @@ export class TargetComputerManager {
             return;
         }
 
+        // Get target position using helper function
+        const targetPos = this.getTargetPosition(this.currentTarget);
+        if (!targetPos) {
+            console.warn('🎯 TargetComputerManager: Cannot update direction arrow - invalid target position');
+            this.hideAllDirectionArrows();
+            return;
+        }
+
         // Get target's world position relative to camera
-        const targetPosition = this.currentTarget.position.clone();
+        const targetPosition = targetPos.clone();
         const screenPosition = targetPosition.clone().project(this.camera);
         
         // Check if target is near or off screen edges (arrows appear sooner)
@@ -1562,14 +2221,31 @@ export class TargetComputerManager {
             return;
         }
 
-        // Create targetable area indicators (simulating different systems/areas)
+        // Get diplomacy color for the target to influence sub-target indicators
+        let baseDiplomacyColor = 0x808080; // Default gray
+        const currentTargetData = this.getCurrentTargetData();
+        
+        if (currentTargetData?.isShip) {
+            baseDiplomacyColor = 0xff3333; // Enemy ships
+        } else {
+            const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+            if (info?.diplomacy?.toLowerCase() === 'enemy') {
+                baseDiplomacyColor = 0xff3333;
+            } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
+                baseDiplomacyColor = 0xffff00;
+            } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
+                baseDiplomacyColor = 0x00ff41;
+            }
+        }
+
+        // Create targetable area indicators (tinted by diplomacy but maintaining system identity)
         const targetableAreas = [
-            { name: 'Command Center', position: [0, radius * 0.7, 0], color: 0xff3333 },
-            { name: 'Power Core', position: [0, 0, 0], color: 0x44ff44 },
-            { name: 'Communications', position: [radius * 0.6, 0, 0], color: 0x4444ff },
-            { name: 'Defense Grid', position: [-radius * 0.6, 0, 0], color: 0xffff44 },
-            { name: 'Sensor Array', position: [0, -radius * 0.7, 0], color: 0xff44ff },
-            { name: 'Docking Bay', position: [0, 0, radius * 0.8], color: 0x44ffff }
+            { name: 'Command Center', position: [0, radius * 0.7, 0], color: baseDiplomacyColor === 0xff3333 ? 0xff6666 : 0xff3333 },
+            { name: 'Power Core', position: [0, 0, 0], color: baseDiplomacyColor === 0x00ff41 ? 0x66ff66 : 0x44ff44 },
+            { name: 'Communications', position: [radius * 0.6, 0, 0], color: baseDiplomacyColor === 0xffff00 ? 0x6666ff : 0x4444ff },
+            { name: 'Defense Grid', position: [-radius * 0.6, 0, 0], color: baseDiplomacyColor === 0xffff00 ? 0xffff66 : 0xffff44 },
+            { name: 'Sensor Array', position: [0, -radius * 0.7, 0], color: baseDiplomacyColor === 0xff3333 ? 0xff66ff : 0xff44ff },
+            { name: 'Docking Bay', position: [0, 0, radius * 0.8], color: baseDiplomacyColor === 0x00ff41 ? 0x66ffff : 0x44ffff }
         ];
 
         // Create indicators for each targetable area
@@ -1917,6 +2593,7 @@ export class TargetComputerManager {
     setTargetHUDBorderColor(color) {
         if (this.targetHUD) {
             this.targetHUD.style.borderColor = color;
+            this.targetHUD.style.color = color;
         }
     }
     
@@ -2033,6 +2710,49 @@ export class TargetComputerManager {
             corner.style.borderColor = diplomacyColor;
             corner.style.boxShadow = `0 0 2px ${diplomacyColor}`;
         });
+
+        // Update target name and distance display colors
+        if (this.targetNameDisplay) {
+            this.targetNameDisplay.style.color = diplomacyColor;
+            this.targetNameDisplay.style.textShadow = `0 0 4px ${diplomacyColor}`;
+        }
+        if (this.targetDistanceDisplay) {
+            this.targetDistanceDisplay.style.color = diplomacyColor;
+            this.targetDistanceDisplay.style.textShadow = `0 0 4px ${diplomacyColor}`;
+        }
+
+        // Update HUD and wireframe container colors to match diplomacy
+        if (this.targetHUD) {
+            this.targetHUD.style.borderColor = diplomacyColor;
+            this.targetHUD.style.color = diplomacyColor;
+        }
+        if (this.wireframeContainer) {
+            this.wireframeContainer.style.borderColor = diplomacyColor;
+        }
+
+        // Update arrow colors to match diplomacy
+        this.updateArrowColors(diplomacyColor);
+    }
+    
+    /**
+     * Update arrow colors to match diplomacy
+     */
+    updateArrowColors(diplomacyColor) {
+        ['top', 'bottom', 'left', 'right'].forEach(direction => {
+            const arrow = document.querySelector(`#targeting-arrow-${direction}`);
+            if (arrow) {
+                // Update the visible border color based on direction
+                if (direction === 'top') {
+                    arrow.style.borderBottomColor = diplomacyColor;
+                } else if (direction === 'bottom') {
+                    arrow.style.borderTopColor = diplomacyColor;
+                } else if (direction === 'left') {
+                    arrow.style.borderRightColor = diplomacyColor;
+                } else if (direction === 'right') {
+                    arrow.style.borderLeftColor = diplomacyColor;
+                }
+            }
+        });
     }
     
     /**
@@ -2105,6 +2825,372 @@ export class TargetComputerManager {
         this.clearTargetOutline();
         
         console.log('🎯 TargetComputerManager disposed');
+    }
+
+    /**
+     * Update target display and HUD visibility
+     */
+    updateTargetDisplay() {
+        if (!this.targetComputerEnabled || !this.targetObjects || this.targetObjects.length === 0) {
+            // Hide HUD if no targets or target computer disabled
+            if (this.targetHUD) {
+                this.targetHUD.style.display = 'none';
+            }
+            if (this.targetReticle) {
+                this.targetReticle.style.display = 'none';
+            }
+            this.currentTarget = null;
+            return;
+        }
+
+        // Validate target index
+        if (this.targetIndex < 0 || this.targetIndex >= this.targetObjects.length) {
+            this.targetIndex = 0; // Reset to first target
+        }
+
+        // Get current target
+        const target = this.targetObjects[this.targetIndex];
+        if (!target) {
+            console.warn('🎯 Invalid target at index:', this.targetIndex);
+            return;
+        }
+        
+        // Validate target has minimum required data
+        if (!target.object && !target.position) {
+            console.warn('🎯 Target missing both object and position data, skipping display update');
+            // Try to find a valid target
+            this.findNextValidTarget();
+            return;
+        }
+
+        // Ensure currentTarget is set to the full target data
+        this.currentTarget = target;
+
+        // Show target HUD
+        if (this.targetHUD) {
+            this.targetHUD.style.display = 'block';
+            
+            // Update target info display
+            if (this.targetInfoDisplay) {
+                // Calculate distance safely
+                let distance = 0;
+                if (target.distance && !isNaN(target.distance)) {
+                    distance = target.distance;
+                } else {
+                    // Try to calculate distance from target position
+                    const targetPos = this.getTargetPosition(target);
+                    if (targetPos) {
+                        distance = this.calculateDistance(this.camera.position, targetPos);
+                    }
+                }
+                
+                const distanceText = distance > 0 ? 
+                    (distance < 1000 ? `${Math.round(distance)}m` : `${(distance/1000).toFixed(1)}km`) :
+                    'Unknown';
+                
+                // Get better target name
+                const targetName = target.name || 
+                                 target.object?.userData?.stationName || 
+                                 target.object?.userData?.name ||
+                                 'Unknown Target';
+                
+                // Get better target type
+                const targetType = target.type || 
+                                 target.object?.userData?.type ||
+                                 target.object?.userData?.stationType ||
+                                 'Unknown';
+                
+                this.targetInfoDisplay.innerHTML = `
+                    <div style="font-weight: bold; margin-bottom: 5px;">${targetName}</div>
+                    <div>Type: ${targetType}</div>
+                    <div>Distance: ${distanceText}</div>
+                    <div>Target: ${this.targetIndex + 1}/${this.targetObjects.length}</div>
+                `;
+            }
+            
+            // Update wireframe display to match the actual 3D object geometry
+            this.updateWireframeDisplay(target);
+        }
+
+        // Show target reticle if available
+        if (this.targetReticle) {
+            this.targetReticle.style.display = 'block';
+        }
+
+        console.log(`🎯 Target display updated: ${target.name} (${this.targetIndex + 1}/${this.targetObjects.length})`);
+    }
+
+    /**
+     * Update wireframe display to match the actual 3D object geometry
+     */
+    updateWireframeDisplay(target) {
+        if (!this.wireframeScene || !this.wireframeRenderer) {
+            return;
+        }
+
+        // Clear existing wireframe
+        if (this.targetWireframe) {
+            this.wireframeScene.remove(this.targetWireframe);
+            if (this.targetWireframe.geometry) {
+                this.targetWireframe.geometry.dispose();
+            }
+            if (this.targetWireframe.material) {
+                this.targetWireframe.material.dispose();
+            }
+            this.targetWireframe = null;
+        }
+
+        // Get the actual 3D object
+        const object3D = target.object;
+        if (!object3D || !object3D.geometry) {
+            console.warn('🎯 No 3D object or geometry found for wireframe display');
+            return;
+        }
+
+        // Create wireframe geometry that matches the actual object
+        let wireframeGeometry;
+        
+        // Check if it's a space station with specific geometry
+        if (target.type === 'station' && object3D.userData && object3D.userData.type) {
+            wireframeGeometry = this.createStationWireframeGeometry(object3D.userData.type, 1.0);
+        } else {
+            // For other objects, create a simplified wireframe based on the actual geometry
+            wireframeGeometry = this.createGeometryWireframe(object3D.geometry, target.type);
+        }
+
+        if (wireframeGeometry) {
+            // Determine wireframe color based on diplomacy (same logic as createTargetWireframe)
+            let wireframeColor = 0x808080; // Default gray for unknown
+            
+            // Handle enemy ships differently from celestial bodies
+            if (target.isShip) {
+                wireframeColor = 0xff3333; // Enemy ships are darker neon red
+            } else {
+                // Get celestial body info for diplomacy
+                const info = this.solarSystemManager.getCelestialBodyInfo(target.object);
+                
+                if (info?.type === 'star' || (this.getStarSystem() && info.name === this.getStarSystem().star_name)) {
+                    wireframeColor = 0xffff00; // Stars are always yellow
+                } else {
+                    // Convert faction to diplomacy if needed
+                    let diplomacy = info?.diplomacy?.toLowerCase();
+                    if (!diplomacy && info?.faction) {
+                        diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
+                    }
+                    
+                    if (diplomacy === 'enemy') {
+                        wireframeColor = 0xff3333; // Enemy red
+                    } else if (diplomacy === 'neutral') {
+                        wireframeColor = 0xffff00; // Neutral yellow
+                    } else if (diplomacy === 'friendly') {
+                        wireframeColor = 0x00ff41; // Friendly green
+                    }
+                }
+            }
+            
+            // Create wireframe material with diplomacy color
+            const wireframeMaterial = new this.THREE.LineBasicMaterial({
+                color: wireframeColor,
+                linewidth: 1,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            // Create wireframe mesh
+            this.targetWireframe = new this.THREE.LineSegments(wireframeGeometry, wireframeMaterial);
+            
+            // Position and scale the wireframe appropriately
+            this.targetWireframe.position.set(0, 0, 0);
+            this.targetWireframe.rotation.x = 0.2;
+            this.targetWireframe.rotation.y = 0;
+            
+            // Add to wireframe scene
+            this.wireframeScene.add(this.targetWireframe);
+            
+            // Start wireframe animation if not already running
+            this.startWireframeAnimation();
+            
+            // Render the wireframe
+            this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
+        }
+    }
+
+    /**
+     * Create wireframe geometry for space stations that matches the 3D world geometry
+     */
+    createStationWireframeGeometry(stationType, size) {
+        let baseGeometry;
+        
+        switch (stationType) {
+            case 'Shipyard':
+                // Match the cylinder geometry used in 3D world
+                baseGeometry = new this.THREE.CylinderGeometry(size * 0.5, size * 0.8, size * 2, 8);
+                break;
+            case 'Defense Platform':
+                // Match the octagonal cylinder geometry
+                baseGeometry = new this.THREE.CylinderGeometry(size * 0.8, size * 0.8, size * 0.5, 8);
+                break;
+            case 'Research Lab':
+                // Match the sphere geometry
+                baseGeometry = new this.THREE.SphereGeometry(size * 0.6, 16, 16);
+                break;
+            case 'Mining Station':
+                // Match the box geometry
+                baseGeometry = new this.THREE.BoxGeometry(size, size * 0.6, size * 1.2);
+                break;
+            default:
+                // Match the default torus geometry
+                baseGeometry = new this.THREE.TorusGeometry(size, size * 0.3, 8, 16);
+        }
+        
+        // Convert to wireframe
+        return new this.THREE.WireframeGeometry(baseGeometry);
+    }
+
+    /**
+     * Create wireframe from existing geometry for non-station objects
+     */
+    createGeometryWireframe(geometry, objectType) {
+        let wireframeGeometry;
+        
+        // For celestial bodies, create simplified representative wireframes
+        switch (objectType) {
+            case 'star':
+                // Simple sphere wireframe for stars
+                const starGeometry = new this.THREE.SphereGeometry(1, 12, 8);
+                wireframeGeometry = new this.THREE.WireframeGeometry(starGeometry);
+                break;
+            case 'planet':
+                // Sphere wireframe for planets
+                const planetGeometry = new this.THREE.SphereGeometry(0.8, 16, 12);
+                wireframeGeometry = new this.THREE.WireframeGeometry(planetGeometry);
+                break;
+            case 'moon':
+                // Smaller sphere wireframe for moons
+                const moonGeometry = new this.THREE.SphereGeometry(0.4, 12, 8);
+                wireframeGeometry = new this.THREE.WireframeGeometry(moonGeometry);
+                break;
+            default:
+                // Try to use the actual geometry if possible
+                try {
+                    wireframeGeometry = new this.THREE.WireframeGeometry(geometry);
+                } catch (error) {
+                    console.warn('🎯 Failed to create wireframe from geometry, using default sphere');
+                    const defaultGeometry = new this.THREE.SphereGeometry(0.5, 12, 8);
+                    wireframeGeometry = new this.THREE.WireframeGeometry(defaultGeometry);
+                }
+        }
+        
+        return wireframeGeometry;
+    }
+
+    /**
+     * Start wireframe animation loop
+     */
+    startWireframeAnimation() {
+        if (this.wireframeAnimationId) {
+            return; // Already running
+        }
+
+        const animate = () => {
+            if (this.targetWireframe && this.wireframeScene && this.wireframeRenderer) {
+                // Rotate the wireframe slowly for visual appeal
+                this.targetWireframe.rotation.y += 0.01;
+                this.targetWireframe.rotation.x = 0.2 + Math.sin(Date.now() * 0.001) * 0.1;
+                
+                // Render the scene
+                this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
+                
+                this.wireframeAnimationId = requestAnimationFrame(animate);
+            } else {
+                this.wireframeAnimationId = null;
+            }
+        };
+
+        this.wireframeAnimationId = requestAnimationFrame(animate);
+    }
+
+    /**
+     * Stop wireframe animation
+     */
+    stopWireframeAnimation() {
+        if (this.wireframeAnimationId) {
+            cancelAnimationFrame(this.wireframeAnimationId);
+            this.wireframeAnimationId = null;
+        }
+    }
+
+    /**
+     * Activate target computer and select first target if available
+     */
+    activateTargetComputer() {
+        this.targetComputerEnabled = true;
+        
+        // If we have targets, select the first one
+        if (this.targetObjects && this.targetObjects.length > 0) {
+            this.targetIndex = 0;
+            this.updateTargetDisplay();
+        }
+        
+        console.log('🎯 Target Computer activated and display updated');
+    }
+
+    /**
+     * Deactivate target computer and hide HUD
+     */
+    deactivateTargetComputer() {
+        this.targetComputerEnabled = false;
+        this.currentTarget = null;
+        this.targetIndex = -1;
+        
+        if (this.targetHUD) {
+            this.targetHUD.style.display = 'none';
+        }
+        if (this.targetReticle) {
+            this.targetReticle.style.display = 'none';
+        }
+        
+        // Stop wireframe animation and clear wireframe
+        this.stopWireframeAnimation();
+        if (this.targetWireframe) {
+            this.wireframeScene.remove(this.targetWireframe);
+            if (this.targetWireframe.geometry) {
+                this.targetWireframe.geometry.dispose();
+            }
+            if (this.targetWireframe.material) {
+                this.targetWireframe.material.dispose();
+            }
+            this.targetWireframe = null;
+        }
+        
+        console.log('🎯 Target Computer deactivated');
+    }
+
+    /**
+     * Cycle to next target
+     */
+    cycleTargetNext() {
+        if (!this.targetComputerEnabled || !this.targetObjects || this.targetObjects.length === 0) {
+            return;
+        }
+        
+        this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
+        this.updateTargetDisplay();
+    }
+
+    /**
+     * Cycle to previous target  
+     */
+    cycleTargetPrevious() {
+        if (!this.targetComputerEnabled || !this.targetObjects || this.targetObjects.length === 0) {
+            return;
+        }
+        
+        this.targetIndex = this.targetIndex - 1;
+        if (this.targetIndex < 0) {
+            this.targetIndex = this.targetObjects.length - 1;
+        }
+        this.updateTargetDisplay();
     }
 
     /**
@@ -2228,5 +3314,97 @@ export class TargetComputerManager {
             this.targetWireframe.material.dispose();
             this.targetWireframe = null;
         }
+    }
+
+    /**
+     * Safely get position from target object (handles different target structures)
+     * Always returns a Vector3 object or null
+     */
+    getTargetPosition(target) {
+        if (!target) return null;
+        
+        // Check for Three.js Vector3 object first
+        if (target.position && typeof target.position.clone === 'function') {
+            return target.position;
+        }
+        
+        // Check for nested object with position
+        if (target.object && target.object.position && typeof target.object.position.clone === 'function') {
+            return target.object.position;
+        }
+        
+        // Convert array position to Vector3
+        if (target.position && Array.isArray(target.position) && target.position.length >= 3) {
+            return new this.THREE.Vector3(target.position[0], target.position[1], target.position[2]);
+        }
+        
+        // Convert plain object position to Vector3
+        if (target.position && typeof target.position === 'object' && 
+            typeof target.position.x === 'number' && 
+            typeof target.position.y === 'number' && 
+            typeof target.position.z === 'number') {
+            return new this.THREE.Vector3(target.position.x, target.position.y, target.position.z);
+        }
+        
+        // Try to extract position from nested object userData
+        if (target.object && target.object.userData && target.object.userData.position) {
+            const pos = target.object.userData.position;
+            if (Array.isArray(pos) && pos.length >= 3) {
+                return new this.THREE.Vector3(pos[0], pos[1], pos[2]);
+            }
+            if (typeof pos === 'object' && typeof pos.x === 'number') {
+                return new this.THREE.Vector3(pos.x, pos.y, pos.z);
+            }
+        }
+        
+        console.warn('🎯 TargetComputerManager: Could not extract position from target:', target);
+        return null;
+    }
+
+    /**
+     * Clear current target and reset target state
+     */
+    clearCurrentTarget() {
+        this.currentTarget = null;
+        this.targetIndex = -1;
+        
+        // Hide target display elements
+        if (this.targetHUD) {
+            this.targetHUD.style.display = 'none';
+        }
+        if (this.targetReticle) {
+            this.targetReticle.style.display = 'none';
+        }
+        
+        // Clear wireframe
+        this.clearTargetWireframe();
+        
+        // Hide direction arrows
+        this.hideAllDirectionArrows();
+        
+        console.log('🎯 Current target cleared due to invalid state');
+    }
+
+    /**
+     * Find next valid target when current target is invalid
+     */
+    findNextValidTarget() {
+        const startIndex = this.targetIndex;
+        
+        // Search for next valid target
+        for (let i = 0; i < this.targetObjects.length; i++) {
+            const nextIndex = (startIndex + i + 1) % this.targetObjects.length;
+            const target = this.targetObjects[nextIndex];
+            
+            if (target && (target.object || target.position)) {
+                this.targetIndex = nextIndex;
+                console.log(`🎯 Found valid target at index ${nextIndex}: ${target.name}`);
+                return;
+            }
+        }
+        
+        // No valid targets found
+        console.warn('🎯 No valid targets found in target list');
+        this.clearCurrentTarget();
     }
 } 

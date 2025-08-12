@@ -301,6 +301,13 @@ export class SolarSystemManager {
                 moonCount: Array.from(this.celestialBodies.keys()).filter(k => k.startsWith('moon_')).length
             });
             
+            // Add Sol-specific infrastructure if this is the Sol system
+            if (this.currentSector === 'A0' || this.starSystem?.star_name?.toLowerCase() === 'sol') {
+                console.log('🌟 Creating Sol System infrastructure...');
+                await this.createSolSystemInfrastructure();
+                console.log('🌟 Sol System infrastructure complete');
+            }
+            
             console.log('=== Star System Creation Complete ===');
             return true; // Return true on successful completion
         } catch (error) {
@@ -749,6 +756,26 @@ export class SolarSystemManager {
             };
         }
 
+        // Handle space stations
+        if (key.startsWith('station_')) {
+            if (body && body.userData) {
+                return {
+                    name: body.userData.name || 'Unknown Station',
+                    type: 'station',
+                    classification: body.userData.type || 'Space Station',
+                    faction: body.userData.faction || 'Unknown',
+                    description: body.userData.description || 'Space station facility.',
+                    intel_brief: `${body.userData.type} operated by ${body.userData.faction}`,
+                    canDock: body.userData.canDock || false
+                };
+            }
+            return {
+                name: 'Unknown Station',
+                type: 'station',
+                classification: 'Space Station'
+            };
+        }
+
         const [type, planetIndex, moonIndex] = key.split('_');
         const planet = this.starSystem.planets[parseInt(planetIndex)];
         
@@ -801,5 +828,342 @@ export class SolarSystemManager {
     // Add method to get current sector
     getCurrentSector() {
         return this.currentSector;
+    }
+
+    /**
+     * Create Sol System specific infrastructure including space stations and faction presence
+     * Based on docs/sol_system_layout.md
+     */
+    async createSolSystemInfrastructure() {
+        console.log('🛰️ Creating Sol System space stations and infrastructure...');
+        
+        // Sol System Space Stations based on the documentation
+        const solStations = [
+            // Inner System Stations
+            {
+                name: 'Helios Solar Array',
+                faction: 'Terran Republic Alliance',
+                type: 'Research Lab',
+                position: this.getOrbitPosition(0.39, 45), // Mercury orbit
+                description: 'Solar energy research and power generation',
+                color: 0x00ff44, // Alliance green
+                size: 0.8
+            },
+            {
+                name: 'Hermes Refinery',
+                faction: 'Free Trader Consortium',
+                type: 'Refinery', 
+                position: this.getOrbitPosition(0.39, 135), // Mercury orbit
+                description: 'Processing rare metals from Mercury mining',
+                color: 0xffff00, // Trade yellow
+                size: 0.6
+            },
+            {
+                name: 'Aphrodite Atmospheric Research',
+                faction: 'Nexus Corporate Syndicate',
+                type: 'Research Lab',
+                position: this.getOrbitPosition(0.72, 90), // Venus orbit
+                description: 'Atmospheric research and chemical extraction',
+                color: 0x44ffff, // Corporate cyan
+                size: 0.7
+            },
+            {
+                name: 'Venus Cloud City',
+                faction: 'Ethereal Wanderers',
+                type: 'Frontier Outpost',
+                position: this.getOrbitPosition(0.72, 270), // Venus orbit
+                description: 'Spiritual retreat and meditation center',
+                color: 0xff44ff, // Ethereal purple
+                size: 0.5
+            },
+            // Earth-Luna System
+            {
+                name: 'Terra Station',
+                faction: 'Terran Republic Alliance', 
+                type: 'Communications Array',
+                position: this.getOrbitPosition(1.0, 0), // Earth orbit
+                description: 'Central communication hub for Alliance',
+                color: 0x00ff44, // Alliance green
+                size: 1.0
+            },
+            {
+                name: 'Luna Shipyards',
+                faction: 'Terran Republic Alliance',
+                type: 'Shipyard',
+                position: this.getOrbitPosition(1.003, 60), // Just outside Earth orbit (Luna distance)
+                description: 'Construction of Alliance starships',
+                color: 0x00ff44, // Alliance green
+                size: 1.2
+            },
+            {
+                name: 'L4 Trading Post',
+                faction: 'Free Trader Consortium',
+                type: 'Storage Depot',
+                position: this.getOrbitPosition(1.0, 300), // Earth L4 Lagrange point (60° ahead of Earth)
+                description: 'Major trading hub and cargo distribution',
+                color: 0xffff00, // Trade yellow
+                size: 0.9
+            },
+            {
+                name: 'Lunar Mining Consortium',
+                faction: 'Nexus Corporate Syndicate',
+                type: 'Factory',
+                position: this.getOrbitPosition(1.003, 240), // Luna orbit
+                description: 'Automated manufacturing and rare earth processing',
+                color: 0x44ffff, // Corporate cyan
+                size: 0.8
+            },
+            // Mars System
+            {
+                name: 'Olympus Mons Base',
+                faction: 'Terran Republic Alliance',
+                type: 'Repair Station',
+                position: this.getOrbitPosition(1.52, 0), // Mars orbit
+                description: 'Fleet maintenance and military training',
+                color: 0x00ff44, // Alliance green
+                size: 0.9
+            },
+            {
+                name: 'Phobos Mining Station',
+                faction: 'Free Trader Consortium',
+                type: 'Mining Station',
+                position: this.getOrbitPosition(1.521, 30), // Just outside Mars (Phobos)
+                description: 'Mining station and cargo depot',
+                color: 0xffff00, // Trade yellow
+                size: 0.4
+            },
+            {
+                name: 'Deimos Research Facility',
+                faction: 'Scientists Consortium',
+                type: 'Research Lab',
+                position: this.getOrbitPosition(1.523, 330), // Just outside Mars (Deimos)
+                description: 'Research facility and communication relay',
+                color: 0x44ff44, // Science green
+                size: 0.4
+            },
+            // Asteroid Belt
+            {
+                name: 'Ceres Research Station',
+                faction: 'Scientists Consortium',
+                type: 'Research Lab',
+                position: this.getOrbitPosition(2.77, 0), // Ceres orbit
+                description: 'Research on dwarf planet and asteroid mining',
+                color: 0x44ff44, // Science green
+                size: 0.7
+            },
+            {
+                name: 'Vesta Mining Complex',
+                faction: 'Free Trader Consortium',
+                type: 'Mining Station',
+                position: this.getOrbitPosition(2.36, 120), // Vesta orbit
+                description: 'Major asteroid mining operations',
+                color: 0xffff00, // Trade yellow
+                size: 0.6
+            },
+            // Outer System
+            {
+                name: 'Europa Research Station',
+                faction: 'Scientists Consortium',
+                type: 'Research Lab',
+                position: this.getOrbitPosition(5.203, 0), // Europa orbit (Jupiter system)
+                description: 'Research stations studying subsurface ocean',
+                color: 0x44ff44, // Science green
+                size: 0.8
+            },
+            {
+                name: 'Ganymede Shipyards',
+                faction: 'Terran Republic Alliance',
+                type: 'Shipyard',
+                position: this.getOrbitPosition(5.207, 90), // Ganymede orbit
+                description: 'Major colony and shipyards',
+                color: 0x00ff44, // Alliance green
+                size: 1.0
+            },
+            {
+                name: 'Callisto Defense Platform',
+                faction: 'Terran Republic Alliance',
+                type: 'Defense Platform',
+                position: this.getOrbitPosition(5.212, 180), // Callisto orbit
+                description: 'Military bases and defensive installations',
+                color: 0xff6600, // Military orange
+                size: 0.9
+            }
+        ];
+
+        // Create space station objects
+        for (const stationData of solStations) {
+            try {
+                const station = this.createSpaceStation(stationData);
+                if (station) {
+                    this.scene.add(station);
+                    this.celestialBodies.set(`station_${stationData.name.toLowerCase().replace(/\s+/g, '_')}`, station);
+                    console.log(`✅ Created station: ${stationData.name} (${stationData.faction})`);
+                }
+            } catch (error) {
+                console.error(`❌ Failed to create station ${stationData.name}:`, error);
+            }
+        }
+
+        console.log(`🛰️ Created ${solStations.length} space stations in Sol system`);
+    }
+
+    /**
+     * Create a space station mesh
+     */
+    createSpaceStation(stationData) {
+        // Create station geometry (simple geometric shape for now)
+        let stationGeometry;
+        
+        switch (stationData.type) {
+            case 'Shipyard':
+                // Larger, more complex structure for shipyards
+                stationGeometry = new THREE.CylinderGeometry(stationData.size * 0.5, stationData.size * 0.8, stationData.size * 2, 8);
+                break;
+            case 'Defense Platform':
+                // Octagonal shape for defense platforms
+                stationGeometry = new THREE.CylinderGeometry(stationData.size * 0.8, stationData.size * 0.8, stationData.size * 0.5, 8);
+                break;
+            case 'Research Lab':
+                // Spherical with protruding modules
+                stationGeometry = new THREE.SphereGeometry(stationData.size * 0.6, 16, 16);
+                break;
+            case 'Mining Station':
+                // Industrial cubic structure
+                stationGeometry = new THREE.BoxGeometry(stationData.size, stationData.size * 0.6, stationData.size * 1.2);
+                break;
+            default:
+                // Default torus shape for other station types
+                stationGeometry = new THREE.TorusGeometry(stationData.size, stationData.size * 0.3, 8, 16);
+        }
+
+        // Create station material with faction colors
+        const stationMaterial = new THREE.MeshPhongMaterial({
+            color: stationData.color,
+            shininess: 30,
+            transparent: true,
+            opacity: 0.9
+        });
+
+        const station = new THREE.Mesh(stationGeometry, stationMaterial);
+        station.position.copy(stationData.position);
+        
+        // Add some random rotation to make stations look more dynamic
+        station.rotation.x = Math.random() * Math.PI * 2;
+        station.rotation.y = Math.random() * Math.PI * 2;
+        station.rotation.z = Math.random() * Math.PI * 2;
+
+        // Store station metadata for interactions
+        station.userData = {
+            name: stationData.name,
+            faction: stationData.faction,
+            type: stationData.type,
+            description: stationData.description,
+            isSpaceStation: true,
+            canDock: true // Space stations should be dockable
+        };
+
+        // Add docking collision box for physics-based docking
+        this.addDockingCollisionBox(station, stationData);
+
+        return station;
+    }
+
+    /**
+     * Add docking collision box to a space station
+     */
+    addDockingCollisionBox(station, stationData) {
+        // Only add docking collision if physics manager is available
+        if (!window.physicsManager || !window.physicsManagerReady) {
+            console.warn('🚀 Physics manager not ready - docking collision box will be added later');
+            // Store the data for later addition
+            station.userData.pendingDockingCollision = {
+                stationData: stationData,
+                position: station.position.clone()
+            };
+            return;
+        }
+
+        // Create a larger invisible collision box around the station for docking detection
+        // Size it based on station type and size for appropriate docking range
+        let dockingBoxSize = stationData.size * 3; // Default 3x station size
+        
+        switch (stationData.type) {
+            case 'Shipyard':
+                dockingBoxSize = stationData.size * 4; // Larger docking area for shipyards
+                break;
+            case 'Defense Platform':
+                dockingBoxSize = stationData.size * 2.5; // Smaller docking area for military precision
+                break;
+            default:
+                dockingBoxSize = stationData.size * 3; // Standard docking area
+        }
+
+        // Create invisible collision box geometry
+        const dockingBoxGeometry = new THREE.BoxGeometry(
+            dockingBoxSize * 2, 
+            dockingBoxSize * 1.5, 
+            dockingBoxSize * 2
+        );
+        
+        // Create invisible material
+        const dockingBoxMaterial = new THREE.MeshBasicMaterial({
+            visible: false, // Invisible collision box
+            transparent: true,
+            opacity: 0
+        });
+
+        // Create the docking collision box mesh
+        const dockingBox = new THREE.Mesh(dockingBoxGeometry, dockingBoxMaterial);
+        dockingBox.position.copy(station.position);
+        
+        // Add metadata to identify this as a docking collision box
+        dockingBox.userData = {
+            isDockingCollisionBox: true,
+            parentStation: station,
+            stationName: stationData.name,
+            stationType: stationData.type,
+            faction: stationData.faction,
+            dockingRange: dockingBoxSize
+        };
+
+        // Add to scene
+        this.scene.add(dockingBox);
+
+        // Add physics collision detection
+        try {
+            // Create physics rigid body for the docking box
+            const rigidBody = window.physicsManager.createRigidBody(dockingBox, {
+                mass: 0, // Static body
+                shape: 'box',
+                isTrigger: true, // This is a trigger volume, not a solid collision
+                entityType: 'docking_zone',
+                entityId: `docking_${stationData.name.toLowerCase().replace(/\s+/g, '_')}`,
+                canCollideWith: ['ship'] // Only collide with ships
+            });
+
+            if (rigidBody) {
+                // Store reference for cleanup
+                station.userData.dockingCollisionBox = dockingBox;
+                station.userData.dockingRigidBody = rigidBody;
+                
+                console.log(`🚀 Created docking collision box for ${stationData.name} (${dockingBoxSize.toFixed(1)}m range)`);
+            }
+        } catch (error) {
+            console.error(`❌ Failed to create docking physics for ${stationData.name}:`, error);
+        }
+    }
+
+    /**
+     * Get position in orbit around the star
+     */
+    getOrbitPosition(auDistance, angleDegrees) {
+        const angle = (angleDegrees * Math.PI) / 180;
+        const distance = auDistance * this.VISUAL_SCALE;
+        
+        return new THREE.Vector3(
+            Math.cos(angle) * distance,
+            (Math.random() - 0.5) * 2, // Small random Y variation
+            Math.sin(angle) * distance
+        );
     }
 } 

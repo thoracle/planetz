@@ -29,49 +29,73 @@ export default class SubspaceRadio {
             general: '#ffffff'        // White - general messages
         };
         
-        // Predefined message pool
+        // Predefined message pool - Updated for Planetz Universe
         this.messagePool = [
             // Navigation & Traffic Control
-            { text: "Sector A4 traffic control: Heavy freighter convoy passing through grid 7-9, maintain safe distance", type: "navigation" },
-            { text: "Navigation warning: Solar storm activity detected in Sector B2, recommend alternate routes", type: "navigation" },
-            { text: "Hyperspace beacon offline in Sector C6, use manual navigation protocols", type: "navigation" },
-            { text: "Traffic advisory: Increased shipping activity in core sectors, expect delays", type: "navigation" },
-            { text: "Jump gate maintenance scheduled for Sector D5, temporary closure 0800-1200 hours", type: "navigation" },
+            { text: "Sol System Traffic Control: Heavy freighter convoy departing Terra Prime, all vessels maintain 15km clearance", type: "navigation" },
+            { text: "Navigation warning: Solar storm activity detected near Jupiter's magnetosphere, recommend alternate routes through asteroid belt", type: "navigation" },
+            { text: "Hyperspace beacon offline at Mars Orbital Station, use manual navigation protocols for inner system transit", type: "navigation" },
+            { text: "Traffic advisory: Increased Free Trader Consortium shipping to Europa Station, expect delays at docking bays", type: "navigation" },
+            { text: "Jump gate maintenance scheduled for Luna Station, temporary closure 0800-1200 Sol Standard Time", type: "navigation" },
+            { text: "Asteroid belt mining operations active in Sector 7, mining vessels have right of way", type: "navigation" },
+            { text: "Ceres Research Lab requesting clear approach vector for incoming Zephyrian Collective science vessel", type: "navigation" },
             
-            // Trade & Commerce
-            { text: "Commodity prices updated: Dilithium crystals up 12% at Starbase Alpha", type: "trade" },
-            { text: "Trade route disruption: Pirate activity reported along the Centauri shipping lanes", type: "trade" },
-            { text: "New trade agreement signed between Federation and Klingon Empire, tariffs reduced", type: "trade" },
-            { text: "Market alert: Rare earth metals in high demand, premium prices offered", type: "trade" },
-            { text: "Trading post Beta-9 reports full cargo bays, seeking immediate transport contracts", type: "trade" },
+            // Trade & Commerce - Updated for new factions
+            { text: "Free Trader Consortium price update: Rare earth minerals up 18% at Europa Station", type: "trade" },
+            { text: "Trade route disruption: Crimson Raider Clan activity reported along the Outer Rim shipping lanes", type: "trade" },
+            { text: "New trade agreement signed between Terran Republic Alliance and Zephyrian Collective, crystal technology exports increased", type: "trade" },
+            { text: "Market alert: Exotic matter in high demand for Nexus Corporate research projects, premium prices offered", type: "trade" },
+            { text: "Mining Station Alpha reports full dilithium cargo holds, seeking immediate transport contracts to Alliance worlds", type: "trade" },
+            { text: "Scientists Consortium offering technology exchange program at Ceres Research Lab", type: "trade" },
+            { text: "Draconis Imperium trade embargo lifted on rare metal exports, markets expected to surge", type: "trade" },
             
-            // Military & Security
-            { text: "Fleet Command: All vessels maintain yellow alert status in contested sectors", type: "military" },
-            { text: "Security bulletin: Unidentified ships detected near the neutral zone", type: "military" },
-            { text: "Patrol update: Sector sweep complete, no hostile contacts detected", type: "military" },
-            { text: "Defense grid online: All stations report ready status", type: "military" },
-            { text: "Border patrol: Increased surveillance in outer rim territories", type: "military" },
+            // Military & Security - Alliance focus
+            { text: "Alliance Command: All vessels maintain yellow alert status in contested outer rim territories", type: "military" },
+            { text: "Security bulletin: Shadow Consortium infiltrator ships detected near Alliance defensive perimeter", type: "military" },
+            { text: "Patrol update: Captain James Sullivan reports sector sweep complete, no Void Cult contacts detected", type: "military" },
+            { text: "Defense grid online: Luna Station, Mars Orbital, and Europa Station report ready status", type: "military" },
+            { text: "Admiral Sarah Chen: Increased patrols authorized for frontier colonies after recent Raider attacks", type: "military" },
+            { text: "Border patrol: Unknown vessels probing Ethereal Wanderer territory boundaries", type: "military" },
+            { text: "Military intelligence: Crimson Raider Clan fleet movements detected in Sector 12", type: "military" },
             
             // Emergency & Distress
-            { text: "Mayday relay: Civilian transport requesting assistance in grid 4-7", type: "emergency" },
-            { text: "Medical emergency: Hospital ship en route to mining colony Beta-7", type: "emergency" },
-            { text: "Search and rescue: Missing explorer vessel last seen in asteroid field", type: "emergency" },
-            { text: "Emergency broadcast: Evacuation procedures in effect for Station Gamma", type: "emergency" },
-            { text: "Distress signal detected: Automated beacon from coordinates 127.4, 89.2", type: "emergency" },
+            { text: "Mayday relay: Civilian transport 'Stellar Hope' requesting assistance near Europa Station", type: "emergency" },
+            { text: "Medical emergency: Alliance hospital ship en route to mining colony under Raider attack", type: "emergency" },
+            { text: "Search and rescue: Missing explorer vessel 'Deep Survey' last seen in uncharted system", type: "emergency" },
+            { text: "Emergency broadcast: Evacuation procedures in effect for Frontier Station Omega due to Void Cult incursion", type: "emergency" },
+            { text: "Distress signal detected: Automated beacon from coordinates 247.9, 156.3 - possible Architect artifact site", type: "emergency" },
+            { text: "Priority medical: Dr. Marcus Webb requesting immediate transport to alien artifact excavation site", type: "emergency" },
             
             // System Status & Maintenance
-            { text: "Starbase maintenance: Docking bay 3 offline for repairs, use alternate berths", type: "system" },
-            { text: "Subspace relay station performing routine diagnostics, expect brief interruptions", type: "system" },
-            { text: "Orbital platform reports all systems nominal, docking clearance granted", type: "system" },
-            { text: "Communication array upgrade complete, improved signal strength in outer sectors", type: "system" },
-            { text: "Power grid maintenance: Temporary brownouts possible in industrial sectors", type: "system" },
+            { text: "Terra Prime Starbase maintenance: Docking bay 7 offline for repairs, use alternate berths", type: "system" },
+            { text: "Luna Station subspace relay performing routine diagnostics, expect brief communication interruptions", type: "system" },
+            { text: "Mars Orbital Platform reports all systems nominal, docking clearance granted for Alliance vessels", type: "system" },
+            { text: "Ceres Research Lab communication array upgrade complete, improved sensor range for deep space monitoring", type: "system" },
+            { text: "Europa Station power grid maintenance: Temporary restrictions on industrial fabrication systems", type: "system" },
+            { text: "Mining Station Alpha reactor efficiency optimized, production capacity increased by 15%", type: "system" },
             
-            // General Information
-            { text: "Galactic Standard Time: 2387.156.14:32 - Current stardate synchronized", type: "general" },
-            { text: "Weather advisory: Ion storms predicted in the Vega system, shield modifications recommended", type: "general" },
-            { text: "Cultural exchange: Vulcan science delegation arriving at Deep Space 9", type: "general" },
-            { text: "Scientific discovery: New exoplanet discovered in the Kepler-442 system", type: "general" },
-            { text: "Diplomatic mission: Peace talks scheduled between warring factions in Sector F8", type: "general" }
+            // Faction-Specific Intelligence
+            { text: "Zephyrian Collective harmonic transmission detected: Crystal formations showing increased resonance activity", type: "system" },
+            { text: "Draconis Imperium border status: Military exercises concluded, trade routes reopened", type: "military" },
+            { text: "Nexus Corporate Syndicate research bulletin: Breakthrough in quantum drive efficiency announced", type: "general" },
+            { text: "Ethereal Wanderer fleet spotted in deep space: Purpose unknown, maintaining peaceful trajectory", type: "navigation" },
+            { text: "Scientists Consortium discovery: Ancient Architect ruins found on asteroid designation SC-4471", type: "general" },
+            
+            // Mission Giver Activities
+            { text: "Ambassador Elena Rodriguez scheduling diplomatic escort missions to neutral territories", type: "general" },
+            { text: "Director Lisa Park coordinating multi-system defense initiative from Earth Orbital Command", type: "military" },
+            { text: "Captain Morrison reporting successful medical supply delivery to frontier mining colonies", type: "trade" },
+            { text: "Admiral Sarah Chen authorizing exploration contracts for uncharted system survey", type: "general" },
+            
+            // World Events & General Information
+            { text: "Sol Standard Time: 2387.203.16:45 - All stations synchronized to Earth Orbital Command", type: "general" },
+            { text: "Space weather advisory: Ion storms predicted near Outer Rim, enhanced shielding recommended", type: "general" },
+            { text: "Cultural exchange: Zephyrian meditation crystals arriving at Terra Prime for diplomatic exhibition", type: "general" },
+            { text: "Scientific breakthrough: New hyperdrive efficiency improvements tested at Ceres Research Lab", type: "general" },
+            { text: "Diplomatic mission: Peace negotiations scheduled between Free Traders and mining guild representatives", type: "general" },
+            { text: "Archaeological report: Architect artifact analysis reveals advanced quantum manipulation technology", type: "general" },
+            { text: "Galactic news: Crimson Raider Clans reportedly developing new stealth technology", type: "military" },
+            { text: "Economic update: Alliance credits maintain stability despite recent Outer Rim conflicts", type: "trade" }
         ];
         
         this.messageInterval = null;
@@ -337,6 +361,9 @@ export default class SubspaceRadio {
     generateIntelMessages() {
         const intelMessages = [];
         
+        // Add mission-related chatter
+        this.addMissionRelatedChatter(intelMessages);
+        
         // Get current star system data from starfield manager
         if (!this.starfieldManager || !this.starfieldManager.solarSystemManager) {
             return intelMessages;
@@ -477,6 +504,26 @@ export default class SubspaceRadio {
         }
         
         return intelMessages;
+    }
+
+    addMissionRelatedChatter(intelMessages) {
+        // Generate dynamic chatter based on current mission activities
+        const missionChatter = [
+            { text: "Mission Control: Elimination contracts available in contested sectors, suitable for experienced pilots", type: "military" },
+            { text: "Traders Guild bulletin: Delivery missions showing increased demand for frontier colony supplies", type: "trade" },
+            { text: "Scientists Consortium: Exploration surveys needed for recently discovered system anomalies", type: "general" },
+            { text: "Alliance Command: Escort missions prioritized due to increased raider activity in trade corridors", type: "military" },
+            { text: "Freelance dispatch: High-value cargo transport contracts available at Terra Prime", type: "trade" },
+            { text: "Research update: Archaeological expeditions seeking experienced pilots for artifact recovery", type: "general" },
+            { text: "Security alert: Bounty hunters advised that elimination targets have been updated in system database", type: "military" },
+            { text: "Trade commission: New commercial routes established between Alliance and Zephyrian territories", type: "trade" },
+            { text: "Mission advisory: Long-range exploration contracts now offering enhanced compensation packages", type: "general" },
+            { text: "Diplomatic corps: Escort assignments available for high-ranking officials traveling to neutral space", type: "general" }
+        ];
+        
+        // Add 2-3 mission-related messages to the intel pool
+        const selectedChatter = missionChatter.sort(() => 0.5 - Math.random()).slice(0, 3);
+        intelMessages.push(...selectedChatter);
     }
     
     displayMessage(message) {

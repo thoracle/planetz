@@ -3,7 +3,7 @@
   "title": "Enemy Elimination Contract",
   "description": "Eliminate hostile targets in the specified sector",
   "mission_type": "elimination",
-  "faction": "federation",
+  "faction": "terran_republic_alliance",
   "reward_package_id": 3,
   "objectives": [
     {
