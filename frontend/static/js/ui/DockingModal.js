@@ -840,7 +840,7 @@ export default class DockingModal {
         }
     }
     
-    handleDock() {
+    async handleDock() {
         console.log('🚀 DOCK button pressed - starting docking process');
         
         let targetToUse = null;
@@ -897,49 +897,52 @@ export default class DockingModal {
             verificationId: targetToUse._dockingModalId
         });
         
-        // Use the same validation logic as the original dock button
+        // Prefer physics-based docking for stations. Also cut speed immediately on dock.
+        const info = this.starfieldManager.solarSystemManager?.getCelestialBodyInfo(targetToUse) || {};
+        const isStation = info.type === 'station' || !!targetToUse?.userData?.dockingCollisionBox;
+
+        // Cut speed to 0 to satisfy docking requirements
+        this.starfieldManager.targetSpeed = 0;
+        this.starfieldManager.currentSpeed = 0;
+        this.starfieldManager.decelerating = false;
+
+        if (isStation && this.starfieldManager.physicsDockingManager) {
+            const success = await this.starfieldManager.physicsDockingManager.initiateDocking(targetToUse);
+            if (success) {
+                // Successful physics docking hides HUDs; close modal too
+                this.hide();
+                return;
+            }
+            // Fall through to show error details if physics initiation was rejected
+        }
+
+        // Fallback: distance-based validation (planets/moons)
         if (this.starfieldManager.canDockWithLogging(targetToUse)) {
             console.log('✅ Docking validation passed - proceeding with dock');
-            
-            // ONLY hide modal AFTER successful docking validation
             this.hide();
-            
-            // Use dockWithDebug for better debugging/logging
             this.starfieldManager.dockWithDebug(targetToUse);
         } else {
             console.warn('❌ Docking validation failed');
-            
-            // Handle docking failure with proper feedback - keep modal open
-            const info = this.starfieldManager.solarSystemManager?.getCelestialBodyInfo(targetToUse);
             const distance = this.starfieldManager.calculateDistance(
                 this.starfieldManager.camera.position,
                 targetToUse.position
             );
-            
-            // Calculate docking range for display
             const dockingRange = targetToUse?.userData?.dockingRange || (info?.type === 'planet' ? 4.0 : 1.5);
-            
             console.log('📊 Docking failure details:', {
                 distance: distance.toFixed(2),
                 maxRange: dockingRange,
                 currentSpeed: this.starfieldManager.currentSpeed,
                 targetType: info?.type
             });
-            
             if (distance > dockingRange) {
-                // Keep modal open and update status to show error
                 this.updateStatusWithError(`Docking failed: Distance ${distance.toFixed(1)}km > ${dockingRange}km range`);
                 console.warn(`Docking failed - Distance: ${distance.toFixed(2)}km (max: ${dockingRange}km), Speed: ${this.starfieldManager.currentSpeed}`);
             } else {
-                // Keep modal open and update status to show error - likely speed issue
                 this.updateStatusWithError(`Docking failed: Speed too high (current: ${this.starfieldManager.currentSpeed})`);
                 console.warn(`Docking failed - Distance: ${distance.toFixed(2)}km (max: ${dockingRange}km), Speed: ${this.starfieldManager.currentSpeed}`);
             }
-
-            // Add short failure cooldown to prevent immediate re-open loops after auto-hide
             const failedTargetName = info?.name || targetToUse?.userData?.name || 'unknown_target';
             this.failureCooldowns.set(failedTargetName, Date.now());
-            // Hide modal so the user can adjust without repeated prompts
             this.hide();
         }
     }
