@@ -573,18 +573,25 @@ export default class DockingModal {
         
         this.isVisible = true;
         
-        // Update display with target information
-        const diplomacyStatus = targetInfo.diplomacy || 'Unknown';
+        // Resolve target info if not provided and normalize fields
+        let info = targetInfo;
+        if (!info) {
+            const resolved = this.starfieldManager.solarSystemManager?.getCelestialBodyInfo(target);
+            info = resolved || {};
+        }
+        const name = info.name || target?.userData?.name || 'Unknown';
+        const type = info.type || target?.userData?.type || 'Unknown';
+        const diplomacyStatus = (info.diplomacy || info.faction || 'Unknown').toString();
         const diplomacyColor = this.getDiplomacyColor(diplomacyStatus);
         
         this.targetInfo.innerHTML = `
-            <div><strong>Target:</strong> ${targetInfo.name || 'Unknown'}</div>
-            <div><strong>Type:</strong> ${targetInfo.type || 'Unknown'}</div>
+            <div><strong>Target:</strong> ${name}</div>
+            <div><strong>Type:</strong> ${type}</div>
             <div><strong>Faction:</strong> <span style="color: ${diplomacyColor};">${diplomacyStatus}</span></div>
         `;
         
         // Display station services instead of docking requirements
-        const servicesHTML = this.getStationServices(targetInfo, diplomacyStatus, diplomacyColor);
+        const servicesHTML = this.getStationServices({ ...info, name, type }, diplomacyStatus, diplomacyColor);
         
         this.statusInfo.innerHTML = servicesHTML;
         
