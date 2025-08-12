@@ -97,7 +97,27 @@ export class LongRangeScanner {
             } else {
                 this.container.classList.remove('targeting-active');
             }
-            this.updateScannerMap();
+            // Render immediately if data is ready, otherwise show placeholder and poll briefly
+            const ssm = this.viewManager.getSolarSystemManager();
+            if (!ssm || !ssm.starSystem) {
+                this.mapContainer.innerHTML = '<div style="color:#888; padding:20px; text-align:center;">Scanning sector data...</div>';
+                this._readyTries = 0;
+                this._readyInterval = setInterval(() => {
+                    this._readyTries += 1;
+                    const readySsm = this.viewManager.getSolarSystemManager();
+                    if (readySsm && readySsm.starSystem) {
+                        clearInterval(this._readyInterval);
+                        this._readyInterval = null;
+                        this.updateScannerMap();
+                    } else if (this._readyTries > 20) { // ~5s
+                        clearInterval(this._readyInterval);
+                        this._readyInterval = null;
+                        this.mapContainer.innerHTML = '<div style="color:#888; padding:20px; text-align:center;">No sector data available</div>';
+                    }
+                }, 250);
+            } else {
+                this.updateScannerMap();
+            }
         }
     }
 
@@ -106,6 +126,10 @@ export class LongRangeScanner {
             this._isVisible = false;
             this.container.classList.remove('visible');
             this.container.classList.remove('targeting-active');
+            if (this._readyInterval) {
+                clearInterval(this._readyInterval);
+                this._readyInterval = null;
+            }
             if (shouldRestoreView && this.viewManager) {
                 this.viewManager.restorePreviousView();
             }
