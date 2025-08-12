@@ -411,6 +411,79 @@ export class LongRangeScanner {
             });
         }
 
+        // Add space stations (exclude ships). Place them on nearest orbit at their actual angular position.
+        (() => {
+            const bodiesMap = solarSystemManager.celestialBodies;
+            if (!bodiesMap || bodiesMap.size === 0) return;
+
+            // Precompute orbit radii from planets drawn above
+            const orbitRadii = [];
+            if (starSystem.planets) {
+                for (let i = 0; i < starSystem.planets.length; i++) {
+                    orbitRadii.push(100 + (i * 150));
+                }
+            }
+
+            bodiesMap.forEach((body, key) => {
+                const info = solarSystemManager.getCelestialBodyInfo(body);
+                if (!info) return;
+                // Show stations only; skip ships and non-stations
+                const isStation = info.type === 'station' || body.userData?.type === 'station' || body.userData?.isSpaceStation;
+                const isShip = body.userData?.ship || info.type === 'ship' || info.isShip;
+                if (!isStation || isShip) return;
+
+                // Compute angle from star (origin)
+                const pos = body.position;
+                const angle = Math.atan2(pos.z, pos.x);
+
+                // Choose nearest orbit radius for placement
+                let r = 300; // default if no planets
+                if (orbitRadii.length > 0) {
+                    r = orbitRadii.reduce((best, candidate) => {
+                        return (Math.abs(candidate - pos.length()) < Math.abs(best - pos.length())) ? candidate : best;
+                    }, orbitRadii[0]);
+                }
+
+                const x = r * Math.cos(angle);
+                const y = r * Math.sin(angle);
+
+                // Draw station marker as a rotated square (diamond)
+                const size = 8;
+                const station = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                station.setAttribute('x', String(x - size / 2));
+                station.setAttribute('y', String(y - size / 2));
+                station.setAttribute('width', String(size));
+                station.setAttribute('height', String(size));
+                station.setAttribute('class', 'scanner-station');
+                station.setAttribute('data-name', info.name || body.userData?.name || 'Station');
+                station.setAttribute('data-original-r', String(size));
+                station.setAttribute('transform', `rotate(45 ${x} ${y})`);
+                station.setAttribute('fill', '#00aaff');
+                station.setAttribute('stroke', '#ffffff');
+                station.setAttribute('stroke-width', '1');
+                svg.appendChild(station);
+
+                // Hover effects (scale via width/height)
+                this.addHoverEffects(station);
+
+                // Tooltip
+                station.addEventListener('mousemove', (e) => {
+                    const name = info.name || body.userData?.name || 'Station';
+                    this.tooltip.textContent = name;
+                    this.tooltip.style.display = 'block';
+                    this.tooltip.style.left = e.clientX + 'px';
+                    this.tooltip.style.top = e.clientY + 'px';
+                });
+                station.addEventListener('mouseleave', () => {
+                    this.tooltip.style.display = 'none';
+                });
+                // Click → details
+                station.addEventListener('click', () => {
+                    this.showCelestialBodyDetails(info.name || body.userData?.name || 'Station');
+                });
+            });
+        })();
+
         // Add ship position indicator
         const camera = this.viewManager.getCamera();
         if (camera) {
@@ -477,7 +550,7 @@ export class LongRangeScanner {
         }
 
         // Add click handlers for celestial bodies
-        const celestialBodies = svg.querySelectorAll('.scanner-star, .scanner-planet, .scanner-moon');
+        const celestialBodies = svg.querySelectorAll('.scanner-star, .scanner-planet, .scanner-moon, .scanner-station');
         celestialBodies.forEach(body => {
             body.addEventListener('click', () => {
                 this.showCelestialBodyDetails(body.getAttribute('data-name'));
