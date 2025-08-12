@@ -523,6 +523,72 @@ export class LongRangeScanner {
             });
         })();
 
+        // Add navigation beacons (from StarfieldManager.navigationBeacons)
+        (() => {
+            const starfieldManager = this.viewManager?.starfieldManager;
+            const beacons = starfieldManager?.navigationBeacons || [];
+            if (!beacons || beacons.length === 0) return;
+
+            // Precompute orbit radii from planets drawn above (same as stations)
+            const orbitRadii = [];
+            if (starSystem.planets) {
+                for (let i = 0; i < starSystem.planets.length; i++) {
+                    orbitRadii.push(100 + (i * 150));
+                }
+            }
+
+            beacons.forEach((beacon, idx) => {
+                if (!beacon || !beacon.position) return;
+                const pos = beacon.position;
+                const angle = Math.atan2(pos.z, pos.x);
+
+                // Choose nearest orbit ring for consistent map scale
+                let r = 300;
+                if (orbitRadii.length > 0) {
+                    r = orbitRadii.reduce((best, candidate) => {
+                        return (Math.abs(candidate - pos.length()) < Math.abs(best - pos.length())) ? candidate : best;
+                    }, orbitRadii[0]);
+                }
+
+                const x = r * Math.cos(angle);
+                const y = r * Math.sin(angle);
+
+                // Draw small triangle marker for beacon
+                const size = 10;
+                const points = [
+                    `${x},${y - size / 1.2}`,
+                    `${x - size / 2},${y + size / 2}`,
+                    `${x + size / 2},${y + size / 2}`
+                ].join(' ');
+
+                const tri = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                tri.setAttribute('points', points);
+                tri.setAttribute('class', 'scanner-beacon');
+                tri.setAttribute('data-name', beacon.userData?.name || 'Navigation Beacon');
+                tri.setAttribute('data-index', String(idx));
+                tri.setAttribute('fill', '#ffff00');
+                tri.setAttribute('stroke', '#ffffff');
+                tri.setAttribute('stroke-width', '1');
+                tri.style.cursor = 'pointer';
+                svg.appendChild(tri);
+
+                // Tooltip + click
+                tri.addEventListener('mousemove', (e) => {
+                    const name = beacon.userData?.name || 'Navigation Beacon';
+                    this.tooltip.textContent = name;
+                    this.tooltip.style.display = 'block';
+                    this.tooltip.style.left = e.clientX + 'px';
+                    this.tooltip.style.top = e.clientY + 'px';
+                });
+                tri.addEventListener('mouseleave', () => {
+                    this.tooltip.style.display = 'none';
+                });
+                tri.addEventListener('click', () => {
+                    this.showBeaconDetailsByIndex(idx);
+                });
+            });
+        })();
+
         // Add ship position indicator
         const camera = this.viewManager.getCamera();
         if (camera) {
@@ -589,10 +655,17 @@ export class LongRangeScanner {
         }
 
         // Add click handlers for celestial bodies
-        const celestialBodies = svg.querySelectorAll('.scanner-star, .scanner-planet, .scanner-moon, .scanner-station');
+        const celestialBodies = svg.querySelectorAll('.scanner-star, .scanner-planet, .scanner-moon, .scanner-station, .scanner-beacon');
         celestialBodies.forEach(body => {
             body.addEventListener('click', () => {
-                this.showCelestialBodyDetails(body.getAttribute('data-name'));
+                const isBeacon = body.classList.contains('scanner-beacon');
+                if (isBeacon) {
+                    const idxStr = body.getAttribute('data-index');
+                    const idx = typeof idxStr === 'string' ? parseInt(idxStr, 10) : -1;
+                    if (!isNaN(idx) && idx >= 0) this.showBeaconDetailsByIndex(idx);
+                } else {
+                    this.showCelestialBodyDetails(body.getAttribute('data-name'));
+                }
             });
         });
 
@@ -764,6 +837,65 @@ export class LongRangeScanner {
             </div>`;
 
         this.detailsPanel.innerHTML = detailsHTML;
+    }
+
+    // Beacon-specific detail display and CPU sync
+    showBeaconDetailsByIndex(index) {
+        const starfieldManager = this.viewManager?.starfieldManager;
+        const beacons = starfieldManager?.navigationBeacons || [];
+        const beacon = beacons[index];
+        if (!beacon) return;
+
+        // Zoom to beacon angular position on nearest ring (reuse station logic approximations)
+        const svg = this.mapContainer.querySelector('svg');
+        if (svg && beacon.position) {
+            const pos = beacon.position;
+            const angle = Math.atan2(pos.z, pos.x);
+            // Use middle ring radius for visibility
+            const r = 300;
+            const cx = r * Math.cos(angle);
+            const cy = r * Math.sin(angle);
+            this.currentZoomLevel = Math.min(this.currentZoomLevel + 1, this.maxZoomLevel);
+            this.currentCenter = { x: cx, y: cy };
+            this.updateScannerMap();
+        }
+
+        // If targeting computer is enabled, set beacon as current target
+        if (starfieldManager?.targetComputerEnabled && starfieldManager.targetComputerManager) {
+            const tcm = starfieldManager.targetComputerManager;
+            // Refresh list so beacon appears via physics entities
+            tcm.updateTargetList();
+            const idx = tcm.targetObjects.findIndex(t => t.object === beacon || t.name === (beacon.userData?.name || 'Navigation Beacon'));
+            if (idx !== -1) {
+                tcm.targetIndex = idx - 1;
+                tcm.cycleTarget(false);
+                starfieldManager.currentTarget = tcm.currentTarget?.object || tcm.currentTarget;
+                starfieldManager.targetIndex = tcm.targetIndex;
+                starfieldManager.targetObjects = tcm.targetObjects;
+            }
+        }
+
+        // Details panel for beacon
+        const name = beacon.userData?.name || 'Navigation Beacon';
+        const desc = 'A navigation marker for local traffic lanes';
+        const intel = 'Transmits local traffic advisories on subspace band';
+        const type = 'beacon';
+        const diplomacy = 'Neutral';
+        this.detailsPanel.innerHTML = `
+            <div class="scanner-details-header">
+                <h2>${name}</h2>
+            </div>
+            <div class="scanner-details-content">
+                <div class="detail-row"><span class="label">Type:</span><span class="value">${type}</span></div>
+                <div class="detail-row"><span class="label">Diplomacy:</span><span class="value neutral">${diplomacy}</span></div>
+                <div class="detail-section">
+                    <div class="detail-row description"><span class="label">Description:</span><span class="value description-text">${desc}</span></div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-row intel-brief"><span class="label">Intel Brief:</span><span class="value intel-text">${intel}</span></div>
+                </div>
+            </div>
+        `;
     }
 
     dispose() {
