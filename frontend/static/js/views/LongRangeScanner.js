@@ -461,6 +461,8 @@ export class LongRangeScanner {
                 station.setAttribute('fill', '#00aaff');
                 station.setAttribute('stroke', '#ffffff');
                 station.setAttribute('stroke-width', '1');
+                // Consistent UI affordance: show pointer cursor like other bodies
+                station.style.cursor = 'pointer';
                 svg.appendChild(station);
 
                 // Hover effects (scale via width/height)
