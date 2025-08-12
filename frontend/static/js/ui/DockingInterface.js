@@ -342,8 +342,10 @@ export class DockingInterface {
         
         // Show mission board with location context
         if (this.missionBoard && dockedLocation) {
-            // Set current location for mission filtering
-            this.missionBoard.setLocation(dockedLocation);
+            // Normalize location for mission filtering (string key)
+            const locName = dockedLocation?.userData?.name || dockedLocation?.name || 'terra_prime';
+            const locKey = String(locName).toLowerCase().replace(/\s+/g, '_');
+            this.missionBoard.setLocation(locKey);
             
             // Update player data if available
             if (this.starfieldManager.ship) {

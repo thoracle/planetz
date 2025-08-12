@@ -9,6 +9,7 @@ export class MissionBoard {
         this.starfieldManager = starfieldManager;
         this.isVisible = false;
         this.currentLocation = 'terra_prime';
+        this.currentLocationKey = 'terra_prime';
         this.availableMissions = [];
         this.acceptedMissions = [];
         this.selectedMission = null;
@@ -105,7 +106,7 @@ export class MissionBoard {
             font-size: 16px;
         `;
         locationInfo.innerHTML = `
-            <div>Location: <span class="location-name">${this.currentLocation}</span></div>
+            <div>Location: <span class="location-name">${typeof this.currentLocation === 'string' ? this.currentLocation : 'unknown'}</span></div>
             <div>Available Missions: <span class="mission-count">0</span></div>
         `;
         
@@ -350,7 +351,7 @@ export class MissionBoard {
             };
 
             // Create clean location string to avoid circular references
-            const cleanLocationString = this.currentLocation?.name || this.currentLocation || 'terra_prime';
+            const cleanLocationString = this.currentLocationKey || 'terra_prime';
             
             const response = await fetch(`/api/missions?location=${cleanLocationString}&faction_standings=${encodeURIComponent(JSON.stringify(cleanFactionStandings))}`);
             
@@ -780,10 +781,18 @@ export class MissionBoard {
     }
     
     setLocation(location) {
+        // Accept either a location object (docked body) or a string key
         this.currentLocation = location;
-        const locationElement = this.header.querySelector('.location-name');
-        if (locationElement) {
-            locationElement.textContent = location;
+        if (typeof location === 'object' && location) {
+            const name = (location.userData?.name || location.name || 'terra_prime');
+            this.currentLocationKey = String(name).toLowerCase().replace(/\s+/g, '_');
+            const el = this.header.querySelector('.location-name');
+            if (el) el.textContent = name;
+        } else {
+            const key = String(location || 'terra_prime');
+            this.currentLocationKey = key.toLowerCase().replace(/\s+/g, '_');
+            const el = this.header.querySelector('.location-name');
+            if (el) el.textContent = key;
         }
         this.loadAvailableMissions();
     }
