@@ -656,8 +656,34 @@ export class TargetComputerManager {
             this.wireframeContainer.style.opacity = '1';
         }
         
+        // Remove power-up element if present
+        const pu = document.getElementById('powerup-animation');
+        if (pu && pu.parentNode) {
+            pu.parentNode.removeChild(pu);
+        }
+        
         // The updateTargetDisplay() call after this will replace the power-up content
         // with the actual target information
+    }
+
+    /**
+     * Hard reset any in-progress power-up state (used on undock/launch)
+     */
+    resetAfterUndock() {
+        this.isPoweringUp = false;
+        // Remove any lingering power-up DOM
+        const pu = document.getElementById('powerup-animation');
+        if (pu && pu.parentNode) {
+            pu.parentNode.removeChild(pu);
+        }
+        // Stop monitors and hide HUD to ensure a clean manual re-activation
+        this.stopNoTargetsMonitoring();
+        this.stopRangeMonitoring();
+        if (this.targetHUD) this.targetHUD.style.display = 'none';
+        if (this.targetReticle) this.targetReticle.style.display = 'none';
+        this.targetInfoDisplay.innerHTML = '';
+        this.currentTarget = null;
+        this.targetIndex = -1;
     }
 
     /**

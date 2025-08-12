@@ -3906,6 +3906,11 @@ export class StarfieldManager {
             // Remove flawed subspace radio state restoration - systems will be properly initialized above
         }
         
+        // Ensure Target Computer leaves any power-up state on undock/launch
+        if (this.targetComputerManager) {
+            this.targetComputerManager.resetAfterUndock?.();
+        }
+
         // Update the dock button to show "DOCK"
         this.updateTargetDisplay();
         this.updateSpeedIndicator();
