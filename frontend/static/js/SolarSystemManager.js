@@ -170,6 +170,13 @@ export class SolarSystemManager {
             }
             
             console.log('Successfully generated new star system for sector:', sector);
+            // Notify listeners that the star system is ready
+            try {
+                const evt = new CustomEvent('starSystemReady', { detail: { sector, starName: this.starSystem?.star_name } });
+                window.dispatchEvent(evt);
+            } catch (e) {
+                // ignore if CustomEvent unavailable
+            }
             return true;
         } catch (error) {
             console.error('Error generating star system:', error);

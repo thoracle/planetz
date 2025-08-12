@@ -102,19 +102,28 @@ export class LongRangeScanner {
             if (!ssm || !ssm.starSystem) {
                 this.mapContainer.innerHTML = '<div style="color:#888; padding:20px; text-align:center;">Scanning sector data...</div>';
                 this._readyTries = 0;
+                // Event-driven readiness (from SolarSystemManager)
+                const onReady = () => {
+                    window.removeEventListener('starSystemReady', onReady);
+                    if (this._isVisible) this.updateScannerMap();
+                };
+                window.addEventListener('starSystemReady', onReady);
+                // Fallback polling in case event is missed
                 this._readyInterval = setInterval(() => {
                     this._readyTries += 1;
                     const readySsm = this.viewManager.getSolarSystemManager();
                     if (readySsm && readySsm.starSystem) {
                         clearInterval(this._readyInterval);
                         this._readyInterval = null;
+                        window.removeEventListener('starSystemReady', onReady);
                         this.updateScannerMap();
-                    } else if (this._readyTries > 20) { // ~5s
+                    } else if (this._readyTries > 50) { // ~10s
                         clearInterval(this._readyInterval);
                         this._readyInterval = null;
+                        window.removeEventListener('starSystemReady', onReady);
                         this.mapContainer.innerHTML = '<div style="color:#888; padding:20px; text-align:center;">No sector data available</div>';
                     }
-                }, 250);
+                }, 200);
             } else {
                 this.updateScannerMap();
             }
@@ -130,6 +139,7 @@ export class LongRangeScanner {
                 clearInterval(this._readyInterval);
                 this._readyInterval = null;
             }
+            window.removeEventListener('starSystemReady', this._onStarSystemReady);
             if (shouldRestoreView && this.viewManager) {
                 this.viewManager.restorePreviousView();
             }

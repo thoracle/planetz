@@ -484,7 +484,9 @@ export class MissionBoard {
                 
                 <div style="margin-bottom: 20px;">
                     <h4>Description</h4>
-                    <p style="color: #ccc; line-height: 1.4;">${mission.description}</p>
+                    <div style="color: #ccc; line-height: 1.5; font-size: 14px; background: rgba(0,0,0,0.35); border: 1px solid #00ff41; padding: 10px; border-radius: 4px;">
+                        ${mission.description}
+                    </div>
                 </div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
