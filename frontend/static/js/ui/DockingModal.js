@@ -20,6 +20,9 @@ export default class DockingModal {
         // Cooldown tracking for cancelled targets
         this.cancelledTargets = new Map(); // targetName -> timestamp
         this.cooldownDuration = 30000; // 30 seconds cooldown
+        // Short cooldown after a failed docking attempt to prevent re-open loop
+        this.failureCooldowns = new Map(); // targetName -> timestamp
+        this.failureCooldownMs = 5000; // 5 seconds
         
         // Debug state tracking to prevent spam - separated by message type
         this.lastDebugState = {
@@ -583,6 +586,16 @@ export default class DockingModal {
         const type = info.type || target?.userData?.type || 'Unknown';
         const diplomacyStatus = (info.diplomacy || info.faction || 'Unknown').toString();
         const diplomacyColor = this.getDiplomacyColor(diplomacyStatus);
+
+        // Respect cancel/failure cooldowns to avoid re-open loops
+        const nowTs = Date.now();
+        const cancelledTs = this.cancelledTargets.get(name);
+        const failedTs = this.failureCooldowns.get(name);
+        if ((cancelledTs && nowTs - cancelledTs < this.cooldownDuration) ||
+            (failedTs && nowTs - failedTs < this.failureCooldownMs)) {
+            console.log(`⏳ Skipping modal due to cooldown for target "${name}"`);
+            return;
+        }
         
         this.targetInfo.innerHTML = `
             <div><strong>Target:</strong> ${name}</div>
@@ -904,7 +917,7 @@ export default class DockingModal {
             );
             
             // Calculate docking range for display
-            const dockingRange = info?.type === 'planet' ? 4.0 : 1.5;
+            const dockingRange = targetToUse?.userData?.dockingRange || (info?.type === 'planet' ? 4.0 : 1.5);
             
             console.log('📊 Docking failure details:', {
                 distance: distance.toFixed(2),
@@ -922,6 +935,12 @@ export default class DockingModal {
                 this.updateStatusWithError(`Docking failed: Speed too high (current: ${this.starfieldManager.currentSpeed})`);
                 console.warn(`Docking failed - Distance: ${distance.toFixed(2)}km (max: ${dockingRange}km), Speed: ${this.starfieldManager.currentSpeed}`);
             }
+
+            // Add short failure cooldown to prevent immediate re-open loops after auto-hide
+            const failedTargetName = info?.name || targetToUse?.userData?.name || 'unknown_target';
+            this.failureCooldowns.set(failedTargetName, Date.now());
+            // Hide modal so the user can adjust without repeated prompts
+            this.hide();
         }
     }
     
