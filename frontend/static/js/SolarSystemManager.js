@@ -744,6 +744,19 @@ export class SolarSystemManager {
                 .find(([_, value]) => value.uuid === body.uuid)?.[0];
         }
         
+        // Defensive: if body carries station flags in userData, force station info
+        if (!key && body && body.userData && (body.userData.type === 'station' || body.userData.isSpaceStation)) {
+            return {
+                name: body.userData.name || 'Unknown Station',
+                type: 'station',
+                classification: body.userData.stationType || body.userData.type || 'Space Station',
+                faction: body.userData.faction || 'Unknown',
+                description: body.userData.description || 'Space station facility.',
+                intel_brief: body.userData.faction ? `${body.userData.stationType || 'Station'} operated by ${body.userData.faction}` : 'Space station facility.',
+                canDock: !!body.userData.canDock
+            };
+        }
+
         if (!key) return null;
 
         if (key === 'star') {
