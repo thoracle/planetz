@@ -1101,10 +1101,10 @@ export class TargetComputerManager {
         if (this.solarSystemManager) {
             const bodies = this.solarSystemManager.getCelestialBodies();
             // console.log('🎯 Celestial bodies found:', {
-                bodiesMapSize: bodies.size,
-                bodiesKeys: Array.from(bodies.keys()),
-                hasStarSystem: !!this.solarSystemManager.starSystem
-            });
+            //     bodiesMapSize: bodies.size,
+            //     bodiesKeys: Array.from(bodies.keys()),
+            //     hasStarSystem: !!this.solarSystemManager.starSystem
+            // });
             
             const celestialBodies = Array.from(bodies.entries())
                 .map(([key, body]) => {
@@ -1112,12 +1112,12 @@ export class TargetComputerManager {
                     
                     // Add detailed debugging for each body
                         // console.log(`🎯 Processing celestial body: ${key}`, {
-                        hasBody: !!body,
-                        hasPosition: !!body?.position,
-                        position: body?.position ? [body.position.x, body.position.y, body.position.z] : null,
-                        info: info,
-                        bodyType: typeof body
-                    });
+                        //     hasBody: !!body,
+                        //     hasPosition: !!body?.position,
+                        //     position: body?.position ? [body.position.x, body.position.y, body.position.z] : null,
+                        //     info: info,
+                        //     bodyType: typeof body
+                        // });
                     
                     // Validate body position
                     if (!body.position || 
@@ -1141,8 +1141,8 @@ export class TargetComputerManager {
                 .filter(body => body !== null); // Remove any invalid bodies
             
             // console.log(`🎯 Processed ${celestialBodies.length} valid celestial bodies:`, 
-                celestialBodies.map(b => ({ name: b.name, type: b.type, distance: b.distance.toFixed(1) + 'km' }))
-            );
+            //     celestialBodies.map(b => ({ name: b.name, type: b.type, distance: b.distance.toFixed(1) + 'km' }))
+            // );
             
             allTargets = allTargets.concat(celestialBodies);
         } else {
