@@ -127,6 +127,24 @@ export class StarfieldManager {
         this.proximityDetector3D = new ProximityDetector3D(this, document.body);
         console.log('🎯 StarfieldManager: 3D Proximity Detector initialized');
         
+        // Ensure physics-based docking initializes as soon as physics is ready
+        if (!this._physicsDockingInitTried) {
+            this._physicsDockingInitTried = true;
+            const initIfReady = () => {
+                if (window.physicsManagerReady) {
+                    this.initializePhysicsDocking();
+                    if (this._physicsDockingInitInterval) {
+                        clearInterval(this._physicsDockingInitInterval);
+                        this._physicsDockingInitInterval = null;
+                    }
+                }
+            };
+            initIfReady();
+            if (!this.physicsDockingManager) {
+                this._physicsDockingInitInterval = setInterval(initIfReady, 250);
+            }
+        }
+        
         // Add intel state
         this.intelVisible = false;
         this.intelAvailable = false;
