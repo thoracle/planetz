@@ -1820,11 +1820,12 @@ export class TargetComputerManager {
         if (isEnemyShip) {
             // White text on solid red background for hostile enemies
             textColor = 'white';
-            backgroundColor = '#ff0000'; // Bright red background for hostile enemies
+            backgroundColor = '#ff0000';
         } else {
-            // Keep existing styling for non-hostile targets (black text on colored background)
-            textColor = 'black';
+            // For neutral (yellow) backgrounds, use black text for readability
             backgroundColor = diplomacyColor;
+            const isYellow = backgroundColor.toLowerCase() === '#ffff00';
+            textColor = isYellow ? 'black' : 'white';
         }
         
         this.targetInfoDisplay.innerHTML = `
