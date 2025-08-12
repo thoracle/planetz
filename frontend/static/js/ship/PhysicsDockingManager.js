@@ -106,6 +106,12 @@ export class PhysicsDockingManager {
             this.onEnterDockingZone(closestDockingZone);
         } else if (wasInDockingZone && !this.inDockingZone) {
             this.onLeaveDockingZone();
+        } else if (this.inDockingZone && this.currentDockingZone && !this.isDocked && !this.dockingInProgress) {
+            // Re-check eligibility while remaining inside the zone (handle case: slowed down after initial fast pass)
+            const currentSpeed = this.starfieldManager.currentSpeed || 0;
+            if (currentSpeed <= 1) {
+                this.checkAutoDocking(this.currentDockingZone);
+            }
         }
     }
 
@@ -194,9 +200,17 @@ export class PhysicsDockingManager {
     promptDocking(stationData) {
         console.log(`🚀 Entered docking zone for ${stationData.name} - press DOCK to dock`);
         
-        // Show docking UI if available
+        // Show docking UI if available with enriched info
         if (this.starfieldManager.dockingModal) {
-            this.starfieldManager.dockingModal.show(stationData.object);
+            const targetInfo = {
+                name: stationData.name,
+                type: 'station',
+                faction: stationData.faction,
+                dockingRange: this.currentDockingZone?.range
+            };
+            const distance = this.currentDockingZone?.distance ?? 0;
+            const currentSpeed = this.starfieldManager.currentSpeed || 0;
+            this.starfieldManager.dockingModal.show(stationData.object, targetInfo, distance, currentSpeed);
         }
     }
 
