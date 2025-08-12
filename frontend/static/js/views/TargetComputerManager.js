@@ -948,14 +948,14 @@ export class TargetComputerManager {
      * Update the list of available targets
      */
     updateTargetList() {
-        console.log(`🎯 updateTargetList called: physicsManager=${!!window.physicsManager}, physicsManagerReady=${!!window.physicsManagerReady}`);
+        // console.log(`🎯 updateTargetList called: physicsManager=${!!window.physicsManager}, physicsManagerReady=${!!window.physicsManagerReady}`);
         
         // Use physics-based spatial queries if available, otherwise fall back to traditional method
         if (window.physicsManager && window.physicsManagerReady) {
-            console.log(`🎯 Using updateTargetListWithPhysics()`);
+            // console.log(`🎯 Using updateTargetListWithPhysics()`);
             this.updateTargetListWithPhysics();
         } else {
-            console.log(`🎯 Using updateTargetListTraditional()`);
+            // console.log(`🎯 Using updateTargetListTraditional()`);
             this.updateTargetListTraditional();
         }
     }
@@ -964,7 +964,7 @@ export class TargetComputerManager {
      * Enhanced target list update using physics-based spatial queries
      */
     updateTargetListWithPhysics() {
-        console.log('🎯 TargetComputerManager.updateTargetListWithPhysics() called');
+        // console.log('🎯 TargetComputerManager.updateTargetListWithPhysics() called');
         
         // Get the actual range from the target computer system
         const ship = this.viewManager?.getShip();
@@ -977,7 +977,7 @@ export class TargetComputerManager {
             maxTargetingRange
         );
         
-        console.log(`🎯 Physics spatial query found ${nearbyEntities.length} entities within ${maxTargetingRange}km (Target Computer Level ${targetComputer?.level || 'Unknown'})`);
+        // console.log(`🎯 Physics spatial query found ${nearbyEntities.length} entities within ${maxTargetingRange}km (Target Computer Level ${targetComputer?.level || 'Unknown'})`);
         
         let allTargets = [];
         
@@ -1079,7 +1079,7 @@ export class TargetComputerManager {
             this.updateTargetDisplay();
         }
         
-        console.log(`🎯 Physics-enhanced targeting: ${allTargets.length} total targets`);
+        // console.log(`🎯 Physics-enhanced targeting: ${allTargets.length} total targets`);
     }
 
     /**
@@ -1100,7 +1100,7 @@ export class TargetComputerManager {
         // Get celestial bodies from SolarSystemManager
         if (this.solarSystemManager) {
             const bodies = this.solarSystemManager.getCelestialBodies();
-            console.log('🎯 Celestial bodies found:', {
+            // console.log('🎯 Celestial bodies found:', {
                 bodiesMapSize: bodies.size,
                 bodiesKeys: Array.from(bodies.keys()),
                 hasStarSystem: !!this.solarSystemManager.starSystem
@@ -1111,7 +1111,7 @@ export class TargetComputerManager {
                     const info = this.solarSystemManager.getCelestialBodyInfo(body);
                     
                     // Add detailed debugging for each body
-                    console.log(`🎯 Processing celestial body: ${key}`, {
+                        // console.log(`🎯 Processing celestial body: ${key}`, {
                         hasBody: !!body,
                         hasPosition: !!body?.position,
                         position: body?.position ? [body.position.x, body.position.y, body.position.z] : null,
@@ -1124,7 +1124,7 @@ export class TargetComputerManager {
                         isNaN(body.position.x) || 
                         isNaN(body.position.y) || 
                         isNaN(body.position.z)) {
-                        console.warn('🎯 Invalid position detected for celestial body:', info?.name);
+                        // console.warn('🎯 Invalid position detected for celestial body:', info?.name);
                         return null;
                     }
                     
@@ -1140,13 +1140,13 @@ export class TargetComputerManager {
                 })
                 .filter(body => body !== null); // Remove any invalid bodies
             
-            console.log(`🎯 Processed ${celestialBodies.length} valid celestial bodies:`, 
+            // console.log(`🎯 Processed ${celestialBodies.length} valid celestial bodies:`, 
                 celestialBodies.map(b => ({ name: b.name, type: b.type, distance: b.distance.toFixed(1) + 'km' }))
             );
             
             allTargets = allTargets.concat(celestialBodies);
         } else {
-            console.warn('🎯 No SolarSystemManager available for targeting');
+            // console.warn('🎯 No SolarSystemManager available for targeting');
         }
         
         // Note: Dummy ships will be added by addNonPhysicsTargets() to avoid duplicates
@@ -1161,7 +1161,7 @@ export class TargetComputerManager {
             }
         }
         
-        console.log(`🎯 Final target list: ${allTargets.length} targets total`, 
+        // console.log(`🎯 Final target list: ${allTargets.length} targets total`, 
             allTargets.map((t, index) => ({ index, name: t.name, type: t.type, isShip: t.isShip }))
         );
         
@@ -1184,21 +1184,21 @@ export class TargetComputerManager {
         
         // Check for ships without physics bodies
         if (this.viewManager?.starfieldManager?.dummyShipMeshes) {
-            console.log(`🎯 addNonPhysicsTargets: Processing ${this.viewManager.starfieldManager.dummyShipMeshes.length} dummy ships`);
-            console.log(`🎯 addNonPhysicsTargets: Existing target IDs:`, Array.from(existingTargetIds));
+            // console.log(`🎯 addNonPhysicsTargets: Processing ${this.viewManager.starfieldManager.dummyShipMeshes.length} dummy ships`);
+            // console.log(`🎯 addNonPhysicsTargets: Existing target IDs:`, Array.from(existingTargetIds));
             
             this.viewManager.starfieldManager.dummyShipMeshes.forEach((mesh, index) => {
                 const ship = mesh.userData.ship;
                 const targetId = ship.shipName;
                 
-                console.log(`🎯 addNonPhysicsTargets: Checking dummy ship ${index}: ${targetId}, hull: ${ship.currentHull}, already exists: ${existingTargetIds.has(targetId) || existingShipObjects.has(ship)}`);
+                // console.log(`🎯 addNonPhysicsTargets: Checking dummy ship ${index}: ${targetId}, hull: ${ship.currentHull}, already exists: ${existingTargetIds.has(targetId) || existingShipObjects.has(ship)}`);
                 
                 // Filter out destroyed ships and check if not already in target list
                 // Check both by ID/name and by ship object reference
                 if (!existingTargetIds.has(targetId) && !existingShipObjects.has(ship) && ship && ship.currentHull > 0.001) {
                     const distance = this.calculateDistance(this.camera.position, mesh.position);
                     if (distance <= maxRange) {
-                        console.log(`🎯 addNonPhysicsTargets: Adding dummy ship: ${targetId}`);
+                        // console.log(`🎯 addNonPhysicsTargets: Adding dummy ship: ${targetId}`);
                         allTargets.push({
                             name: ship.shipName,
                             type: 'enemy_ship',
@@ -1210,7 +1210,7 @@ export class TargetComputerManager {
                             distance: distance
                         });
                     } else {
-                        console.log(`🎯 addNonPhysicsTargets: Dummy ship ${targetId} out of range: ${distance.toFixed(1)}km > ${maxRange}km`);
+                        // console.log(`🎯 addNonPhysicsTargets: Dummy ship ${targetId} out of range: ${distance.toFixed(1)}km > ${maxRange}km`);
                     }
                 } else if (ship && ship.currentHull <= 0.001) {
                     console.log(`🗑️ Fallback method filtering out destroyed ship: ${ship.shipName} (Hull: ${ship.currentHull})`);
@@ -1221,7 +1221,7 @@ export class TargetComputerManager {
         // CRITICAL FIX: Add celestial bodies to fallback system
         // When spatial query fails, this ensures planets/moons/stars still appear in targeting
         if (this.solarSystemManager?.celestialBodies) {
-            console.log(`🎯 addNonPhysicsTargets: Processing celestial bodies as fallback`);
+            // console.log(`🎯 addNonPhysicsTargets: Processing celestial bodies as fallback`);
             
             for (const [key, body] of this.solarSystemManager.celestialBodies.entries()) {
                 if (!body || !body.position) continue;
@@ -1230,7 +1230,7 @@ export class TargetComputerManager {
                 if (distance <= maxRange) {
                     const info = this.solarSystemManager.getCelestialBodyInfo(body);
                     if (info && !existingTargetIds.has(info.name)) {
-                        console.log(`🎯 addNonPhysicsTargets: Adding celestial body: ${info.name} (${info.type})`);
+                        // console.log(`🎯 addNonPhysicsTargets: Adding celestial body: ${info.name} (${info.type})`);
                         allTargets.push({
                             name: info.name,
                             type: info.type,
@@ -1247,7 +1247,7 @@ export class TargetComputerManager {
             }
         }
         
-        console.log(`🎯 addNonPhysicsTargets: Processing ${this.viewManager.starfieldManager.dummyShipMeshes?.length || 0} dummy ships`);
+        // console.log(`🎯 addNonPhysicsTargets: Processing ${this.viewManager.starfieldManager.dummyShipMeshes?.length || 0} dummy ships`);
     }
 
     /**
@@ -1314,7 +1314,7 @@ export class TargetComputerManager {
 
         // Prevent target changes during dummy creation
         if (this.preventTargetChanges) {
-            console.log(`🎯 Target change prevented during dummy creation`);
+            // console.log(`🎯 Target change prevented during dummy creation`);
             return;
         }
 
@@ -1361,7 +1361,7 @@ export class TargetComputerManager {
 
         // Clean up existing wireframe before creating a new one
         if (this.targetWireframe) {
-            console.log(`🎯 WIREFRAME: Cleaning up existing wireframe`);
+            // console.log(`🎯 WIREFRAME: Cleaning up existing wireframe`);
             this.wireframeScene.remove(this.targetWireframe);
             if (this.targetWireframe.geometry) {
                 this.targetWireframe.geometry.dispose();
@@ -1374,9 +1374,9 @@ export class TargetComputerManager {
                 }
             }
             this.targetWireframe = null;
-            console.log(`🎯 WIREFRAME: Existing wireframe cleaned up`);
+            // console.log(`🎯 WIREFRAME: Existing wireframe cleaned up`);
         } else {
-            console.log(`🎯 WIREFRAME: No existing wireframe to clean up`);
+            // console.log(`🎯 WIREFRAME: No existing wireframe to clean up`);
         }
 
         // Create new wireframe and update display
@@ -1579,16 +1579,7 @@ export class TargetComputerManager {
         }
 
         const currentTargetData = this.getCurrentTargetData();
-        console.log('🎯 getCurrentTargetData() returned:', currentTargetData);
-        if (currentTargetData) {
-            console.log('🎯 Target data type:', currentTargetData.type, 'isSpaceStation:', currentTargetData.isSpaceStation);
-        }
-        console.log('🎯 currentTarget:', this.currentTarget);
-        console.log('🎯 targetIndex:', this.targetIndex);
-        console.log('🎯 targetObjects length:', this.targetObjects.length);
-        if (this.targetIndex >= 0 && this.targetIndex < this.targetObjects.length) {
-            console.log('🎯 targetObjects[targetIndex]:', this.targetObjects[this.targetIndex]);
-        }
+        // Reduced debug noise: remove verbose per-frame logs
         if (!currentTargetData) {
             console.log('🎯 No currentTargetData, returning early');
             return;
@@ -1662,17 +1653,7 @@ export class TargetComputerManager {
             const isSpaceStation = info?.type === 'station' || currentTargetData.type === 'station' || 
                                     (this.currentTarget?.userData?.isSpaceStation);
             
-            console.log('🎯 SUB-TARGET CHECK:', {
-                isEnemyShip,
-                isSpaceStation,
-                'info?.type': info?.type,
-                'currentTargetData.type': currentTargetData.type,
-                'hasCurrentSubTarget': !!targetComputer.currentSubTarget,
-                'currentSubTargetName': targetComputer.currentSubTarget?.displayName,
-                'currentTarget.userData.isSpaceStation': this.currentTarget?.userData?.isSpaceStation,
-                'currentTarget.userData.type': this.currentTarget?.userData?.type,
-                'currentTargetData.isSpaceStation': currentTargetData.isSpaceStation
-            });
+            // Reduced debug noise
             
 
             
@@ -2063,7 +2044,7 @@ export class TargetComputerManager {
         // Get target position using helper function
         const targetPosition = this.getTargetPosition(this.currentTarget);
         if (!targetPosition) {
-            console.warn('🎯 TargetComputerManager: Cannot update reticle - invalid target position');
+            // console.warn('🎯 TargetComputerManager: Cannot update reticle - invalid target position');
             this.targetReticle.style.display = 'none';
             return;
         }
@@ -2194,7 +2175,7 @@ export class TargetComputerManager {
         // Get target position using helper function
         const targetPos = this.getTargetPosition(this.currentTarget);
         if (!targetPos) {
-            console.warn('🎯 TargetComputerManager: Cannot update direction arrow - invalid target position');
+            // console.warn('🎯 TargetComputerManager: Cannot update direction arrow - invalid target position');
             this.hideAllDirectionArrows();
             return;
         }
@@ -2595,7 +2576,7 @@ export class TargetComputerManager {
             }
 
             // ALWAYS clear 3D outline when a targeted ship is destroyed
-            console.log('🎯 Clearing 3D outline for destroyed target');
+            // console.log('🎯 Clearing 3D outline for destroyed target');
             this.clearTargetOutline();
 
             // Update target list to remove destroyed ship
@@ -2626,7 +2607,7 @@ export class TargetComputerManager {
                 this.currentTarget = targetData?.object || null;
 
                 if (this.currentTarget) {
-                    console.log(`🎯 Selected new target: ${targetData.name} (index ${this.targetIndex})`);
+                    // console.log(`🎯 Selected new target: ${targetData.name} (index ${this.targetIndex})`);
                     
                     // Update UI for new target
                     this.updateTargetDisplay();
@@ -2636,12 +2617,12 @@ export class TargetComputerManager {
                     this.targetIndex = -1;
                 }
 
-                console.log('🎯 Target selection complete - outline disabled until next manual cycle');
+                // console.log('🎯 Target selection complete - outline disabled until next manual cycle');
             } else {
                 console.log('📭 No targets remaining after destruction');
 
                 // CRITICAL: Force clear outline again when no targets remain
-                console.log('🎯 Force-clearing outline - no targets remaining');
+                // console.log('🎯 Force-clearing outline - no targets remaining');
                 this.clearTargetOutline();
 
                 // Clear wireframe and hide UI
@@ -2924,7 +2905,7 @@ export class TargetComputerManager {
         // Clean up target outline
         this.clearTargetOutline();
         
-        console.log('🎯 TargetComputerManager disposed');
+        // console.log('🎯 TargetComputerManager disposed');
     }
 
 
@@ -2952,7 +2933,7 @@ export class TargetComputerManager {
             this.updateTargetDisplay();
         }
         
-        console.log('🎯 Target Computer activated and display updated');
+        // console.log('🎯 Target Computer activated and display updated');
     }
 
     /**
@@ -2983,7 +2964,7 @@ export class TargetComputerManager {
             this.targetWireframe = null;
         }
         
-        console.log('🎯 Target Computer deactivated');
+        // console.log('🎯 Target Computer deactivated');
     }
 
     /**
@@ -3121,7 +3102,7 @@ export class TargetComputerManager {
         // Disable target computer
         this.targetComputerEnabled = false;
         
-        console.log('🎯 Target computer completely cleared - all state reset');
+        // console.log('🎯 Target computer completely cleared - all state reset');
     }
 
     /**
@@ -3177,7 +3158,7 @@ export class TargetComputerManager {
             }
         }
         
-        console.warn('🎯 TargetComputerManager: Could not extract position from target:', target);
+        // console.warn('🎯 TargetComputerManager: Could not extract position from target:', target);
         return null;
     }
 
@@ -3202,7 +3183,7 @@ export class TargetComputerManager {
         // Hide direction arrows
         this.hideAllDirectionArrows();
         
-        console.log('🎯 Current target cleared due to invalid state');
+        // console.log('🎯 Current target cleared due to invalid state');
     }
 
     /**
@@ -3218,13 +3199,13 @@ export class TargetComputerManager {
             
             if (target && (target.object || target.position)) {
                 this.targetIndex = nextIndex;
-                console.log(`🎯 Found valid target at index ${nextIndex}: ${target.name}`);
+                // console.log(`🎯 Found valid target at index ${nextIndex}: ${target.name}`);
                 return;
             }
         }
         
         // No valid targets found
-        console.warn('🎯 No valid targets found in target list');
+        // console.warn('🎯 No valid targets found in target list');
         this.clearCurrentTarget();
     }
 } 

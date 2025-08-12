@@ -3545,13 +3545,17 @@ export class StarfieldManager {
     dock(target) {
         // Initialize physics docking if not already done
         this.initializePhysicsDocking();
-        
-        // Use physics-based docking if available, otherwise fall back to distance-based
-        if (this.physicsDockingManager) {
+
+        // Decide whether to use physics docking (stations) or distance docking (planets/moons)
+        const targetObject = target?.object || target;
+        const isStationTarget = !!(targetObject?.userData?.dockingCollisionBox || targetObject?.userData?.type === 'station');
+        const canUsePhysicsDocking = !!(this.physicsDockingManager && (this.physicsDockingManager.isInDockingZone() || isStationTarget));
+
+        if (canUsePhysicsDocking) {
             return this.physicsDockingManager.initiateDocking(target);
         }
-        
-        // Fallback to original distance-based docking
+
+        // Fallback to original distance-based docking (planets/moons)
         if (!this.canDockWithLogging(target)) {
             return false;
         }
