@@ -348,6 +348,14 @@ def generate_mission():
         
         if not template_id:
             return jsonify({'error': 'template_id is required'}), 400
+
+        # Safety: validate template exists before attempting generation
+        if mission_manager and template_id not in mission_manager.templates:
+            available = sorted(list(mission_manager.templates.keys()))
+            return jsonify({
+                'error': f"Unknown template_id '{template_id}'",
+                'available_templates': available
+            }), 400
         
         mission = mission_manager.generate_procedural_mission(
             template_id=template_id,
@@ -362,9 +370,11 @@ def generate_mission():
                 'message': f'Generated mission: {mission.title}'
             })
         else:
+            available = sorted(list(mission_manager.templates.keys()))
             return jsonify({
                 'success': False,
-                'error': f'Failed to generate mission from template: {template_id}'
+                'error': f"Failed to generate mission from template '{template_id}'",
+                'available_templates': available
             }), 400
         
     except Exception as e:
