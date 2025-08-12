@@ -287,8 +287,23 @@ export class PhysicsDockingManager {
         this.currentDockingTarget = target;
 
         try {
-            // Use existing docking animation system
-            const dockingSuccess = this.starfieldManager.dock(target);
+            // Prevent recursion: if dock() would route back to physics, call distance path directly
+            let dockingSuccess = false;
+            const targetObject = target?.object || target;
+            const isStationTarget = !!(targetObject?.userData?.dockingCollisionBox || targetObject?.userData?.type === 'station');
+            if (isStationTarget) {
+                // Call the internal distance-based branch (bypass physics decision) only if needed
+                if (!this.starfieldManager.canDockWithLogging(target)) {
+                    dockingSuccess = false;
+                } else {
+                    // Execute the distance-based part of dock() without re-evaluating physics
+                    dockingSuccess = this.starfieldManager._dockDistanceOnly
+                        ? this.starfieldManager._dockDistanceOnly(target)
+                        : this.starfieldManager.dock(target);
+                }
+            } else {
+                dockingSuccess = this.starfieldManager.dock(target);
+            }
             
             if (dockingSuccess) {
                 this.isDocked = true;

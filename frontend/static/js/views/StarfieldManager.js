@@ -3561,16 +3561,28 @@ export class StarfieldManager {
     }
 
     dock(target) {
+        // Ensure guard flag exists
+        if (typeof this._inPhysicsDocking !== 'boolean') {
+            this._inPhysicsDocking = false;
+        }
         // Initialize physics docking if not already done
         this.initializePhysicsDocking();
 
         // Decide whether to use physics docking (stations) or distance docking (planets/moons)
         const targetObject = target?.object || target;
         const isStationTarget = !!(targetObject?.userData?.dockingCollisionBox || targetObject?.userData?.type === 'station');
-        const canUsePhysicsDocking = !!(this.physicsDockingManager && (this.physicsDockingManager.isInDockingZone() || isStationTarget));
+        const canUsePhysicsDocking = !!(
+            this.physicsDockingManager &&
+            !this.physicsDockingManager.dockingInProgress &&
+            (this.physicsDockingManager.isInDockingZone() || isStationTarget)
+        );
 
-        if (canUsePhysicsDocking) {
-            return this.physicsDockingManager.initiateDocking(target);
+        if (canUsePhysicsDocking && !this._inPhysicsDocking) {
+            // Avoid recursion: if physics path calls back into dock(), skip here
+            this._inPhysicsDocking = true;
+            const res = this.physicsDockingManager.initiateDocking(target);
+            this._inPhysicsDocking = false;
+            return res;
         }
 
         // Fallback to original distance-based docking (planets/moons)
