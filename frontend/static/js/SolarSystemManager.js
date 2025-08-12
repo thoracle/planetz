@@ -996,7 +996,7 @@ export class SolarSystemManager {
                 name: 'Callisto Defense Platform',
                 faction: 'Terran Republic Alliance',
                 type: 'Defense Platform',
-                position: this.getOrbitPosition(5.212, 180), // Callisto orbit
+                position: this.getOrbitPosition(1.05, 210), // Moved near Terra Prime orbit
                 description: 'Military bases and defensive installations',
                 color: 0xff6600, // Military orange
                 size: 0.9
