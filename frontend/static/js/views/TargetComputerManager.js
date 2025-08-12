@@ -1726,7 +1726,7 @@ export class TargetComputerManager {
                     // Create health bar display matching main hull health style
                     const healthBarSection = `
                         <div style="margin-top: 8px; padding: 4px 0;">
-                            <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">${subTarget.displayName}: ${healthPercent}%</div>
+                            <div class=\"tcm-subsystem-label\" style=\"font-weight: bold; font-size: 11px; margin-bottom: 2px;\">${subTarget.displayName}: ${healthPercent}%</div>
                             <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
                                 <div style="background-color: white; height: 100%; width: ${healthPercent}%; transition: width 0.3s ease;"></div>
                             </div>
@@ -1808,7 +1808,7 @@ export class TargetComputerManager {
             
             hullHealthSection = `
                 <div style="margin-top: 8px; padding: 4px 0;">
-                    <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">HULL: ${displayPercentage}%</div>
+                    <div class="tcm-hull-label" style="font-weight: bold; font-size: 11px; margin-bottom: 2px;">HULL: ${displayPercentage}%</div>
                     <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
                         <div style="background-color: white; height: 100%; width: ${hullPercentage}%; transition: width 0.3s ease;"></div>
                     </div>
@@ -1826,7 +1826,7 @@ export class TargetComputerManager {
 
                 hullHealthSection = `
                     <div style="margin-top: 8px; padding: 4px 0;">
-                        <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">HULL: ${hullPercent}%</div>
+                        <div class="tcm-hull-label" style="font-weight: bold; font-size: 11px; margin-bottom: 2px;">HULL: ${hullPercent}%</div>
                         <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
                             <div style="background-color: white; height: 100%; width: ${hullPercent}%; transition: width 0.3s ease;"></div>
                         </div>
@@ -1841,10 +1841,11 @@ export class TargetComputerManager {
             textColor = 'white';
             backgroundColor = '#ff0000';
         } else {
-            // For neutral (yellow) backgrounds, use black text for readability
+            // Friendly (green) and Neutral (yellow) should use black text
             backgroundColor = diplomacyColor;
             const isYellow = backgroundColor.toLowerCase() === '#ffff00';
-            textColor = isYellow ? 'black' : 'white';
+            const isGreen = backgroundColor.toLowerCase() === '#00ff41';
+            textColor = (isYellow || isGreen) ? 'black' : 'white';
         }
         
         this.targetInfoDisplay.innerHTML = `
@@ -1860,6 +1861,24 @@ export class TargetComputerManager {
 
         // Update status icons with diplomacy color
         this.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info);
+
+        // Ensure hull/subsystem labels use black for friendly/neutral, white for hostile
+        const hullLabels = this.targetInfoDisplay.querySelectorAll('.tcm-hull-label');
+        hullLabels.forEach(lbl => {
+            if (!isEnemyShip) {
+                lbl.style.color = 'black';
+            } else {
+                lbl.style.color = 'white';
+            }
+        });
+        const subsystemLabels = this.targetInfoDisplay.querySelectorAll('.tcm-subsystem-label');
+        subsystemLabels.forEach(lbl => {
+            if (!isEnemyShip) {
+                lbl.style.color = 'black';
+            } else {
+                lbl.style.color = 'white';
+            }
+        });
 
         // Update action buttons based on target type  
         this.updateActionButtons(currentTargetData, info);
