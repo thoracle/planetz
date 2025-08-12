@@ -151,6 +151,11 @@ export class PhysicsDockingManager {
             return;
         }
 
+        // Must be within docking zone range
+        if (!dockingZone || dockingZone.distance > dockingZone.range) {
+            return;
+        }
+
         // Check velocity - must be slow enough to dock
         const currentSpeed = this.starfieldManager.currentSpeed || 0;
         if (currentSpeed > 1) { // Max docking speed
