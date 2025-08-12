@@ -241,8 +241,8 @@ export class TargetComputerManager {
 
         // New station service icons (5):
         this.serviceIcons = {
-            repairRefuel: createIcon('🛠️', 'Repair & Refuel'),
-            energyRecharge: createIcon('⚡', 'Energy Recharge'),
+            // Combine Repair & Refuel with Energy Recharge: keep name of former, icon of latter
+            repairRefuel: createIcon('⚡', 'Repair & Refuel'),
             shipRefit: createIcon('🛠️', 'Ship Refitting'),
             tradeExchange: createIcon('💰', 'Trade Exchange'),
             missionBoard: createIcon('📋', 'Mission Board')
@@ -2790,12 +2790,17 @@ export class TargetComputerManager {
         // New service availability logic
         if (this.serviceIcons) {
             const isEnemy = (info?.diplomacy || '').toLowerCase() === 'enemy';
+            const isStar = info?.type === 'star' || (this.getStarSystem && this.getStarSystem() && info?.name === this.getStarSystem().star_name);
             const isPlanet = info?.type === 'planet';
             const canUse = !isEnemy;
 
-            const availability = {
+            const availability = isStar ? {
+                repairRefuel: false,
+                shipRefit: false,
+                tradeExchange: false,
+                missionBoard: false
+            } : {
                 repairRefuel: canUse,
-                energyRecharge: canUse,
                 shipRefit: canUse,
                 tradeExchange: canUse && isPlanet,
                 missionBoard: canUse
@@ -2811,7 +2816,7 @@ export class TargetComputerManager {
                 icon.title = icon.title; // keep tooltip text
             });
 
-            const anyVisible = Object.entries(this.serviceIcons).some(([_, icon]) => icon.style.display !== 'none');
+            const anyVisible = !isStar && Object.entries(this.serviceIcons).some(([_, icon]) => icon.style.display !== 'none');
             this.statusIconsContainer.style.display = anyVisible ? 'flex' : 'none';
         }
 
