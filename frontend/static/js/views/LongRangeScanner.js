@@ -88,6 +88,9 @@ export class LongRangeScanner {
             // Reset zoom when showing the scanner
             this.currentZoomLevel = 1;
             this.currentCenter = { x: 0, y: 0 };
+            // Reset previous selection and clear stale details when opening
+            this.lastClickedBody = null;
+            if (this.detailsPanel) this.detailsPanel.innerHTML = '';
             // Update targeting-active class based on targeting computer state
             if (this.viewManager.starfieldManager?.targetComputerEnabled) {
                 this.container.classList.add('targeting-active');
@@ -558,6 +561,11 @@ export class LongRangeScanner {
                 this.showCelestialBodyDetails(body.getAttribute('data-name'));
             });
         });
+
+        // Default selection: star of current sector if nothing selected yet
+        if (!this.lastClickedBody && starSystem.star_name) {
+            this.showCelestialBodyDetails(starSystem.star_name);
+        }
     }
 
     showCelestialBodyDetails(bodyName) {
