@@ -530,8 +530,6 @@ export class TargetComputerManager {
                             }
                         }
 
-                        // Ensure wireframe is created for the initial auto-selected target
-                        this.createTargetWireframe();
                     } else {
                         console.log('🎯 No targets available for initial selection');
                         this.showNoTargetsDisplay(); // Show special "No targets in range" display
@@ -1388,7 +1386,7 @@ export class TargetComputerManager {
         // console.log(`🎯 Previous target: ${previousTarget?.userData?.ship?.shipName || 'none'}`);
         // console.log(`🎯 New target: ${targetData.name}`);
 
-        // Clean up existing wireframe before creating a new one
+        // Always clear wireframe before switching targets (covers star wireframe case)
         if (this.targetWireframe) {
             // console.log(`🎯 WIREFRAME: Cleaning up existing wireframe`);
             this.wireframeScene.remove(this.targetWireframe);
@@ -1408,7 +1406,13 @@ export class TargetComputerManager {
             // console.log(`🎯 WIREFRAME: No existing wireframe to clean up`);
         }
 
-        // Create new wireframe and update display
+        // Also remove any stray power-up overlay that might obscure re-render
+        const pu = document.getElementById('powerup-animation');
+        if (pu && pu.parentNode) {
+            pu.parentNode.removeChild(pu);
+        }
+
+        // Create new wireframe and refresh HUD
         this.createTargetWireframe();
         this.updateTargetDisplay();
         
