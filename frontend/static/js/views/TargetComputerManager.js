@@ -1052,9 +1052,16 @@ export class TargetComputerManager {
                 } else if (ship && ship.currentHull <= 0.001) {
                     console.log(`🗑️ Physics query filtering out destroyed ship: ${ship.shipName} (Hull: ${ship.currentHull})`);
                 }
-            } else if (entity.type === 'star' || entity.type === 'planet' || entity.type === 'moon' || entity.type === 'station') {
+            } else if (entity.type === 'star' || entity.type === 'planet' || entity.type === 'moon' || entity.type === 'station' || entity.type === 'beacon') {
                 // Handle celestial bodies and stations
-                const info = this.solarSystemManager.getCelestialBodyInfo(entity.threeObject);
+                const info = entity.type === 'beacon' ? {
+                    name: entity.name || 'Navigation Beacon',
+                    type: 'beacon',
+                    faction: 'Neutral',
+                    description: 'A navigation marker for local traffic lanes',
+                    intel_brief: 'Transmits local traffic advisories on subspace band',
+                    diplomacy: 'Neutral'
+                } : this.solarSystemManager.getCelestialBodyInfo(entity.threeObject);
                 if (info) {
                     targetData = {
                         name: info.name,

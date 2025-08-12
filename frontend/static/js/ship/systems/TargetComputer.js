@@ -385,6 +385,24 @@ export default class TargetComputer extends System {
                 });
             }
         }
+        // Handle navigation beacons (neutral, simple systems)
+        else if (target.userData?.isBeacon || target.userData?.type === 'beacon') {
+            const beaconSystems = [
+                { name: 'hull_plating', displayName: 'Hull Plating', health: 20, healthPercentage: 20 },
+                { name: 'subspace_radio', displayName: 'Subspace Radio', health: 30, healthPercentage: 30 }
+            ];
+            for (const system of beaconSystems) {
+                if (system.health > 0) {
+                    targetableSystems.push({
+                        systemName: system.name,
+                        system: system,
+                        displayName: system.displayName,
+                        health: system.healthPercentage,
+                        priority: this.getSystemTargetPriority(system.name)
+                    });
+                }
+            }
+        }
         
         // Sort by priority (higher priority first)
         targetableSystems.sort((a, b) => b.priority - a.priority);

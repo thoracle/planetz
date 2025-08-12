@@ -5430,6 +5430,24 @@ export class StarfieldManager {
                 break;
             }
         }
+
+        // Also support removing destroyed navigation beacons (by Three.js object)
+        if (!shipMesh && this.navigationBeacons && destroyedShip.isBeacon) {
+            for (let i = this.navigationBeacons.length - 1; i >= 0; i--) {
+                const mesh = this.navigationBeacons[i];
+                if (mesh === destroyedShip || mesh.userData === destroyedShip || mesh.userData?.isBeacon === true && mesh === destroyedShip) {
+                    console.log(`🗑️ Removing Navigation Beacon from scene`);
+                    this.scene.remove(mesh);
+                    if (window.physicsManager && typeof window.physicsManager.removeRigidBody === 'function') {
+                        window.physicsManager.removeRigidBody(mesh);
+                    }
+                    if (mesh.geometry) mesh.geometry.dispose();
+                    if (mesh.material) mesh.material.dispose();
+                    this.navigationBeacons.splice(i, 1);
+                    break;
+                }
+            }
+        }
         
         // Check if ANY targeting system was targeting the destroyed ship
         const ship = this.viewManager?.getShip();

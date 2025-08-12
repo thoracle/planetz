@@ -1025,6 +1025,103 @@ export class SolarSystemManager {
         }
 
         console.log(`🛰️ Created ${solStations.length} space stations in Sol system`);
+
+        // Create Navigation Beacon ring around Terra Prime on the galactic plane
+        try {
+            this.createNavigationBeaconsAroundTerraPrime();
+        } catch (e) {
+            console.warn('⚠️ Failed to create navigation beacons:', e?.message || e);
+        }
+    }
+
+    /**
+     * Create a ring of Navigation Beacons 140km from Terra Prime with ~140km spacing
+     * Small neutral pyramids with low hull that can be destroyed in 1–2 shots
+     */
+    createNavigationBeaconsAroundTerraPrime() {
+        if (!this.starSystem || !Array.isArray(this.starSystem.planets) || this.starSystem.planets.length === 0) {
+            console.warn('No star system/planets available for beacon placement');
+            return;
+        }
+
+        // Find Terra Prime index in generated planets
+        const terraIndex = this.starSystem.planets.findIndex(p => (p?.planet_name || '').toLowerCase() === 'terra prime'.toLowerCase());
+        if (terraIndex < 0) {
+            console.warn('Terra Prime not found - skipping navigation beacon creation');
+            return;
+        }
+
+        const terraPlanet = this.celestialBodies.get(`planet_${terraIndex}`);
+        if (!terraPlanet || !terraPlanet.position) {
+            console.warn('Terra Prime mesh not found - skipping navigation beacon creation');
+            return;
+        }
+
+        const center = terraPlanet.position.clone();
+        const radiusKm = 140; // ring radius
+        // Spacing target ~140km along circumference ⇒ ~2πR/140 ≈ 6 beacons
+        const estimatedCount = Math.max(6, Math.round((2 * Math.PI * radiusKm) / 140));
+        const count = Math.min(12, estimatedCount); // cap for sanity
+
+        const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
+        if (!THREE) return;
+
+        // Ensure StarfieldManager has a tracking array
+        if (!this.starfieldManager) this.starfieldManager = window.starfieldManager;
+        if (this.starfieldManager && !Array.isArray(this.starfieldManager.navigationBeacons)) {
+            this.starfieldManager.navigationBeacons = [];
+        }
+
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const bx = center.x + radiusKm * Math.cos(angle);
+            const by = center.y; // Galactic plane (same Y as Terra Prime)
+            const bz = center.z + radiusKm * Math.sin(angle);
+
+            // Small pyramid (4-sided cone) geometry
+            const height = 0.8;
+            const baseRadius = 0.5;
+            const geometry = new THREE.ConeGeometry(baseRadius, height, 4);
+            const material = new THREE.MeshPhongMaterial({ color: 0xffff00, emissive: 0x222200, shininess: 10 });
+            const beacon = new THREE.Mesh(geometry, material);
+            beacon.position.set(bx, by, bz);
+            beacon.rotation.y = angle;
+
+            beacon.userData = {
+                name: 'Navigation Beacon',
+                type: 'beacon',
+                faction: 'Neutral',
+                isBeacon: true
+            };
+
+            this.scene.add(beacon);
+
+            // Add a small static physics body tagged as beacon with low health
+            if (window.physicsManager && window.physicsManagerReady) {
+                const rb = window.physicsManager.createStationRigidBody(beacon, {
+                    width: 1.0,
+                    height: 1.2,
+                    depth: 1.0,
+                    entityType: 'beacon',
+                    entityId: `navigation_beacon_${i + 1}`,
+                    health: 150 // 1–2 laser hits from starter weapons
+                });
+                if (rb) {
+                    // Tag metadata with a friendly name for HUD/logs
+                    const meta = window.physicsManager.entityMetadata.get(rb);
+                    if (meta) {
+                        meta.name = 'Navigation Beacon';
+                    }
+                }
+            }
+
+            // Track in StarfieldManager so we can clean up on destroy
+            if (this.starfieldManager) {
+                this.starfieldManager.navigationBeacons.push(beacon);
+            }
+        }
+
+        console.log(`📡 Created ${count} Navigation Beacons around Terra Prime at ${radiusKm}km radius`);
     }
 
     /**
