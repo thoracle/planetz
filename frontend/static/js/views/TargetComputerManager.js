@@ -529,6 +529,9 @@ export class TargetComputerManager {
                                 this.viewManager.starfieldManager.updateTargetOutline(this.currentTarget?.object || this.currentTarget, 0);
                             }
                         }
+
+                        // Ensure wireframe is created for the initial auto-selected target
+                        this.createTargetWireframe();
                     } else {
                         console.log('🎯 No targets available for initial selection');
                         this.showNoTargetsDisplay(); // Show special "No targets in range" display
@@ -1333,8 +1336,8 @@ export class TargetComputerManager {
             return;
         }
 
-        // Prevent cycling targets immediately after undocking
-        if (this.viewManager?.starfieldManager?.undockCooldown && Date.now() < this.viewManager.starfieldManager.undockCooldown) {
+        // Prevent manual cycling during undock cooldown, but allow automatic initial selection
+        if (isManualCycle && this.viewManager?.starfieldManager?.undockCooldown && Date.now() < this.viewManager.starfieldManager.undockCooldown) {
             return;
         }
 
