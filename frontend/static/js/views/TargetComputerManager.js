@@ -599,6 +599,10 @@ export class TargetComputerManager {
                 </div>
             </div>
         `;
+        // Hide service icons while powering up (no valid target yet)
+        if (this.statusIconsContainer) {
+            this.statusIconsContainer.style.display = 'none';
+        }
         
         // Add CSS animations if not already present
         if (!document.getElementById('target-computer-powerup-styles')) {
@@ -721,6 +725,10 @@ export class TargetComputerManager {
                 </div>
             </div>
         `;
+        // Hide service icons on no-targets screen
+        if (this.statusIconsContainer) {
+            this.statusIconsContainer.style.display = 'none';
+        }
         
         // Add CSS animation for no targets glow effect
         if (!document.getElementById('no-targets-styles')) {
@@ -1609,6 +1617,10 @@ export class TargetComputerManager {
                 </div>
             `;
             this.hideTargetReticle();
+            // Hide service icons when there is no current target
+            if (this.statusIconsContainer) {
+                this.statusIconsContainer.style.display = 'none';
+            }
             return;
         }
 
