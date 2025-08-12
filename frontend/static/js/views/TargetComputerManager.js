@@ -1161,9 +1161,9 @@ export class TargetComputerManager {
             }
         }
         
-        // console.log(`🎯 Final target list: ${allTargets.length} targets total`, 
-            allTargets.map((t, index) => ({ index, name: t.name, type: t.type, isShip: t.isShip }))
-        );
+        // console.log(`🎯 Final target list: ${allTargets.length} targets total`,
+        //     allTargets.map((t, index) => ({ index, name: t.name, type: t.type, isShip: t.isShip }))
+        // );
         
         // Sort targets by distance
         this.sortTargetsByDistance(true); // Force sort on target list update
