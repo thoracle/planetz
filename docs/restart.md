@@ -52,6 +52,8 @@ planetz/
   - ✅ **Initial Target Selection Fix**: Eliminated "unknown target" flash on first T-key activation
   - ✅ **Faction Diplomacy Color System**: All UI elements (wireframes, reticles, displays) use consistent faction colors
   - ✅ **Target Reticle Color Coding**: Fixed space stations and all target types to show proper faction colors
+  - ✅ **Station Sub-Target UI**: Stations now fully support sub-targeting UI in Target CPU (Life Support, Power Core, Cargo Bay, etc.)
+  - ✅ **Ship Sub-Target UI**: Fixed regression by passing actual ship instance to sub-targeting system
   - ✅ **Power-Up Animation**: Professional "POWERING UP..." sequence covers timing issues during activation
   - ✅ **Range Monitoring System**: Automatic detection when current target goes out of range
   - ✅ **Intelligent Target Switching**: Auto-selects nearest target when current target becomes unavailable
@@ -62,6 +64,7 @@ planetz/
 - **Key Features**:
   - 🎯 **Seamless Activation**: T-key provides immediate nearest target selection with proper color coding
   - 🎨 **Complete Visual Consistency**: All wireframes, reticles, and UI elements respect faction diplomacy
+  - 🧩 **Centralized HUD Rendering**: Unified Target CPU rendering in `TargetComputerManager` to prevent double renders/overwrites
   - ⚡ **Smart Automation**: Handles target loss/reacquisition without player intervention
   - 🔊 **Professional Audio**: HTML5 Audio implementation with proper volume balancing
   - 📊 **Dynamic Range Display**: Uses actual target computer card specifications (not hardcoded)

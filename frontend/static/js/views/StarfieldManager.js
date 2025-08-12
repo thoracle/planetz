@@ -4757,81 +4757,9 @@ export class StarfieldManager {
             this.wireframeContainer.style.borderColor = diplomacyColor;
         }
 
-        // Get sub-target information from targeting computer
-        const ship = this.viewManager?.getShip();
-        const targetComputer = ship?.getSystem('target_computer');
-        let subTargetHTML = '';
-        
-        // Enhanced sub-targeting display with weapon and level compatibility
-        // Only update sub-targets if we're not preventing target changes (like during dummy creation)
-        if (!this.targetComputerManager?.preventTargetChanges) {
-            const subTargetAvailability = this.getSubTargetAvailability(ship, targetComputer, isEnemyShip, currentTargetData);
-            subTargetHTML = subTargetAvailability.html;
-        }
-
-        // Update target information display with colored background and black text
-        let typeDisplay = info?.type || 'Unknown';
-        if (isEnemyShip) {
-            // Remove redundant "(Enemy Ship)" text since faction colors already indicate hostility
-            typeDisplay = info.shipType;
-        }
-        
-        // Format distance with proper commas
-        const formattedDistance = this.formatDistance(distance);
-        
-        // Prepare hull health display for enemy ships - integrate into main target info
-        let hullHealthSection = '';
-        if (isEnemyShip && currentTargetData.ship) {
-            const currentHull = currentTargetData.ship.currentHull || 0;
-            const maxHull = currentTargetData.ship.maxHull || 1;
-            const hullPercentage = maxHull > 0 ? (currentHull / maxHull) * 100 : 0;
-            
-            // More accurate hull percentage display - don't round to 0% unless actually 0
-            let displayPercentage;
-            if (hullPercentage === 0) {
-                displayPercentage = 0;
-            } else if (hullPercentage < 1) {
-                displayPercentage = Math.ceil(hullPercentage); // Always show at least 1% if hull > 0
-            } else {
-                displayPercentage = Math.round(hullPercentage);
-            }
-            
-            hullHealthSection = `
-                <div style="margin-top: 8px; padding: 4px 0;">
-                    <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">HULL: ${displayPercentage}%</div>
-                    <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
-                        <div style="background-color: white; height: 100%; width: ${hullPercentage}%; transition: width 0.3s ease;"></div>
-                    </div>
-                </div>`;
-        }
-        
-        // Determine text and background colors based on target type
-        let textColor, backgroundColor;
-        if (isEnemyShip) {
-            // White text on solid red background for hostile enemies
-            textColor = 'white';
-            backgroundColor = '#ff0000'; // Bright red background for hostile enemies
-        } else {
-            // Keep existing styling for non-hostile targets (black text on colored background)
-            textColor = 'black';
-            backgroundColor = diplomacyColor;
-        }
-        
-        this.targetComputerManager.updateTargetInfoDisplay(`
-            <div style="background-color: ${backgroundColor}; color: ${textColor}; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-                <div style="font-weight: bold; font-size: 12px;">${info?.name || 'Unknown Target'}</div>
-                <div style="font-size: 10px;">${typeDisplay}</div>
-                <div style="font-size: 10px;">${formattedDistance}</div>
-                ${hullHealthSection}
-            </div>
-            ${subTargetHTML}
-        `);
-
-        // Update status icons with diplomacy color
-        this.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info);
-
-        // Update action buttons based on target type  
-        this.updateActionButtons(currentTargetData, info);
+        // Delegate full Target CPU HUD rendering to TargetComputerManager to avoid double-rendering
+        // and accidental overwrites (especially for space stations' sub-target UI)
+        this.targetComputerManager.updateTargetDisplay();
 
         // Display the reticle if we have a valid target
         this.targetComputerManager.showTargetReticle();
@@ -6309,7 +6237,12 @@ export class StarfieldManager {
 
             if (success) {
                 this.playCommandSound();
-                this.updateTargetDisplay(); // Update HUD display
+                this.updateTargetDisplay(); // Update main HUD display
+                
+                // Also update Target Computer Manager display for sub-targeting UI
+                if (this.targetComputerManager) {
+                    this.targetComputerManager.updateTargetDisplay();
+                }
                 
                 // Show brief confirmation
                 const subTargetName = targetComputer.currentSubTarget?.displayName || 'Unknown';

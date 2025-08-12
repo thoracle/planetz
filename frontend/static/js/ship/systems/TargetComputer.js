@@ -344,25 +344,44 @@ export default class TargetComputer extends System {
      * @param {Ship} enemyShip - Enemy ship to scan for targetable systems
      * @returns {Array} Array of targetable systems
      */
-    detectTargetableSystems(enemyShip) {
-        if (!this.hasSubTargeting() || !enemyShip || !enemyShip.systems) {
+    detectTargetableSystems(target) {
+        if (!this.hasSubTargeting() || !target) {
             return [];
         }
         
-        const targetableSystems = [];
-        const detectionRange = this.getCurrentTargetingRange();
+        // Debug logging removed for performance
         
-        // Scan enemy ship systems
-        for (const [systemName, system] of enemyShip.systems) {
-            // Only target systems that are not completely destroyed (health > 0)
-            // Systems with 0% health are destroyed and cannot be targeted
-            if (system.healthPercentage > 0) {
+        const targetableSystems = [];
+        
+        // Handle ships with systems property
+        if (target.systems) {
+            // Scan ship systems
+            for (const [systemName, system] of target.systems) {
+                // Only target systems that are not completely destroyed (health > 0)
+                // Systems with 0% health are destroyed and cannot be targeted
+                if (system.healthPercentage > 0) {
+                    targetableSystems.push({
+                        systemName: systemName,
+                        system: system,
+                        displayName: system.displayName || getSystemDisplayName(systemName),
+                        health: system.healthPercentage,
+                        priority: this.getSystemTargetPriority(systemName)
+                    });
+                }
+            }
+        }
+        // Handle space stations (Three.js objects with userData.isSpaceStation)
+        else if (target.userData?.isSpaceStation || target.isSpaceStation) {
+            // Generate standard space station systems based on station type
+            const stationSystems = this.generateStationSystems(target);
+            
+            for (const system of stationSystems) {
                 targetableSystems.push({
-                    systemName: systemName,
+                    systemName: system.name,
                     system: system,
-                    displayName: system.displayName || getSystemDisplayName(systemName),
-                    health: system.healthPercentage,
-                    priority: this.getSystemTargetPriority(systemName)
+                    displayName: system.displayName,
+                    health: system.health,
+                    priority: this.getSystemTargetPriority(system.name)
                 });
             }
         }
@@ -370,7 +389,105 @@ export default class TargetComputer extends System {
         // Sort by priority (higher priority first)
         targetableSystems.sort((a, b) => b.priority - a.priority);
         
+        // Debug: Found ${targetableSystems.length} targetable systems
+        
         return targetableSystems;
+    }
+    
+    /**
+     * Generate standard systems for space stations based on their type
+     * @param {Object} station - Space station object with userData
+     * @returns {Array} Array of station systems
+     */
+    generateStationSystems(station) {
+        const stationData = station.userData || {};
+        const stationType = stationData.type || 'Unknown';
+        const stationName = stationData.name || 'Space Station';
+        
+        // Generating station systems for ${stationName} (${stationType})
+        
+        // Base systems that all stations have
+        const baseSystems = [
+            {
+                name: 'hull_plating',
+                displayName: 'Hull Plating',
+                health: 100,
+                healthPercentage: 100
+            },
+            {
+                name: 'energy_reactor',
+                displayName: 'Power Core',
+                health: 100,
+                healthPercentage: 100
+            },
+            {
+                name: 'life_support',
+                displayName: 'Life Support',
+                health: 100,
+                healthPercentage: 100
+            }
+        ];
+        
+        // Additional systems based on station type
+        const additionalSystems = [];
+        
+        switch (stationType) {
+            case 'Defense Platform':
+            case 'Military Base':
+                additionalSystems.push(
+                    { name: 'weapons', displayName: 'Defense Weapons', health: 100, healthPercentage: 100 },
+                    { name: 'shields', displayName: 'Station Shields', health: 100, healthPercentage: 100 },
+                    { name: 'target_computer', displayName: 'Fire Control', health: 100, healthPercentage: 100 }
+                );
+                break;
+                
+            case 'Shipyard':
+                additionalSystems.push(
+                    { name: 'manufacturing', displayName: 'Manufacturing Bay', health: 100, healthPercentage: 100 },
+                    { name: 'docking_arms', displayName: 'Docking Arms', health: 100, healthPercentage: 100 },
+                    { name: 'cargo_systems', displayName: 'Cargo Systems', health: 100, healthPercentage: 100 }
+                );
+                break;
+                
+            case 'Research Lab':
+            case 'Research Station':
+                additionalSystems.push(
+                    { name: 'laboratories', displayName: 'Research Labs', health: 100, healthPercentage: 100 },
+                    { name: 'long_range_scanner', displayName: 'Sensor Array', health: 100, healthPercentage: 100 },
+                    { name: 'data_core', displayName: 'Data Core', health: 100, healthPercentage: 100 }
+                );
+                break;
+                
+            case 'Mining Station':
+            case 'Refinery':
+                additionalSystems.push(
+                    { name: 'mining_equipment', displayName: 'Mining Equipment', health: 100, healthPercentage: 100 },
+                    { name: 'processing_plant', displayName: 'Processing Plant', health: 100, healthPercentage: 100 },
+                    { name: 'cargo_systems', displayName: 'Cargo Bay', health: 100, healthPercentage: 100 }
+                );
+                break;
+                
+            case 'Trading Post':
+            case 'Commercial Hub':
+                additionalSystems.push(
+                    { name: 'cargo_systems', displayName: 'Cargo Bay', health: 100, healthPercentage: 100 },
+                    { name: 'subspace_radio', displayName: 'Communications', health: 100, healthPercentage: 100 },
+                    { name: 'docking_arms', displayName: 'Docking Bays', health: 100, healthPercentage: 100 }
+                );
+                break;
+                
+            default:
+                // Generic station systems
+                additionalSystems.push(
+                    { name: 'docking_arms', displayName: 'Docking System', health: 100, healthPercentage: 100 },
+                    { name: 'subspace_radio', displayName: 'Communications', health: 100, healthPercentage: 100 }
+                );
+        }
+        
+        const allSystems = [...baseSystems, ...additionalSystems];
+        // Generated ${allSystems.length} systems for station
+        
+        return allSystems;
     }
     
     /**
@@ -389,7 +506,16 @@ export default class TargetComputer extends System {
             'energy_reactor': 4,
             'hull_plating': 3,
             'subspace_radio': 2,
-            'galactic_chart': 1
+            'galactic_chart': 1,
+            // Station-specific systems
+            'life_support': 9,
+            'manufacturing': 8,
+            'docking_arms': 7,
+            'cargo_systems': 6,
+            'laboratories': 6,
+            'data_core': 5,
+            'mining_equipment': 5,
+            'processing_plant': 4
         };
         
         return priorities[systemName] || 0;

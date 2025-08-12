@@ -464,6 +464,15 @@ export class TargetComputerManager {
             this.currentTarget = null;
             this.targetIndex = -1;
             
+            // Clear target on ship's TargetComputer system
+            const ship = this.viewManager?.getShip();
+            if (ship) {
+                const targetComputer = ship.getSystem('target_computer');
+                if (targetComputer) {
+                    targetComputer.setTarget(null);
+                }
+            }
+            
             // Stop all monitoring when target computer is disabled
             this.stopNoTargetsMonitoring();
             this.stopRangeMonitoring();
@@ -871,6 +880,16 @@ export class TargetComputerManager {
             this.currentTarget = null;
             this.targetIndex = -1;
             this.stopRangeMonitoring();
+            
+            // Clear target on ship's TargetComputer system
+            const ship = this.viewManager?.getShip();
+            if (ship) {
+                const targetComputer = ship.getSystem('target_computer');
+                if (targetComputer) {
+                    targetComputer.setTarget(null);
+                }
+            }
+            
             this.showNoTargetsDisplay();
             
             // Clear StarfieldManager state
@@ -1217,6 +1236,7 @@ export class TargetComputerManager {
                             type: info.type,
                             position: body.position.toArray(),
                             isMoon: key.startsWith('moon_'),
+                            isSpaceStation: info.type === 'station',
                             object: body,
                             isShip: false,
                             distance: distance,
@@ -1324,6 +1344,16 @@ export class TargetComputerManager {
         const targetData = this.targetObjects[this.targetIndex];
         this.currentTarget = targetData; // Store the full target data, not just the object
         
+        // Sync with ship's TargetComputer system for sub-targeting
+        const ship = this.viewManager?.getShip();
+        const targetComputer = ship?.getSystem('target_computer');
+        if (targetComputer) {
+            // For enemy ships, pass the ship instance (has systems). For others, pass the render object
+            const isEnemyShip = !!(targetData?.isShip && targetData?.ship);
+            const targetForSubTargeting = isEnemyShip ? targetData.ship : (targetData?.object || targetData);
+            targetComputer.setTarget(targetForSubTargeting);
+        }
+        
         // Removed target cycling log to prevent console spam
         // console.log(`🔄 Target cycled: ${previousIndex} → ${this.targetIndex} (${targetData.name})`);
         // console.log(`🎯 Previous target: ${previousTarget?.userData?.ship?.shipName || 'none'}`);
@@ -1364,98 +1394,99 @@ export class TargetComputerManager {
         if (!this.currentTarget) return;
 
         try {
-            // Get current target data to determine if it's a ship or celestial body
+            // Normalize references
             const currentTargetData = this.getCurrentTargetData();
+            const targetObject = this.currentTarget?.object || this.currentTarget;
+
+            // Derive radius from actual target geometry when possible
             let radius = 1;
-            let wireframeColor = 0x808080; // Default gray for unknown
-            let info = null;
-            
-            // Handle enemy ships differently from celestial bodies
-            if (currentTargetData?.isShip) {
-                // For enemy ships, use a fixed radius and get info from ship data
-                radius = 2; // Fixed radius for ship wireframes
-                wireframeColor = 0xff3333; // Enemy ships are darker neon red
-                info = { type: 'enemy_ship' };
-            } else {
-                // For celestial bodies, get radius from geometry
-                if (this.currentTarget.geometry?.boundingSphere) {
-                    this.currentTarget.geometry.computeBoundingSphere();
-                    radius = this.currentTarget.geometry.boundingSphere.radius || 1;
+            if (targetObject?.geometry) {
+                if (!targetObject.geometry.boundingSphere) {
+                    targetObject.geometry.computeBoundingSphere();
                 }
-                
-                // Get celestial body info
-                info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-                
-                // Determine wireframe color based on diplomacy
-                if (info?.type === 'star' || (this.starSystem && info.name === this.starSystem.star_name)) {
-                    wireframeColor = 0xffff00; // Stars are always yellow
+                radius = targetObject.geometry.boundingSphere?.radius || radius;
+            }
+
+            // Determine target info
+            let info = null;
+            let wireframeColor = 0x808080; // default gray
+
+            if (currentTargetData?.isShip) {
+                info = { type: 'enemy_ship' };
+                wireframeColor = 0xff3333; // hostile red for enemy ships
+                radius = Math.max(radius, 2);
+            } else {
+                info = currentTargetData || this.solarSystemManager.getCelestialBodyInfo(targetObject);
+
+                if (info?.type === 'star' || (this.getStarSystem() && info?.name === this.getStarSystem().star_name)) {
+                    wireframeColor = 0xffff00; // stars yellow
                 } else {
-                    // Convert faction to diplomacy if needed
                     let diplomacy = info?.diplomacy?.toLowerCase();
                     if (!diplomacy && info?.faction) {
                         diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
                     }
-                    
-                    if (diplomacy === 'enemy') {
-                        wireframeColor = 0xff3333; // Enemy red
-                    } else if (diplomacy === 'neutral') {
-                        wireframeColor = 0xffff00; // Neutral yellow
-                    } else if (diplomacy === 'friendly') {
-                        wireframeColor = 0x00ff41; // Friendly green
-                    }
+                    if (diplomacy === 'enemy') wireframeColor = 0xff3333;
+                    else if (diplomacy === 'neutral') wireframeColor = 0xffff00;
+                    else if (diplomacy === 'friendly') wireframeColor = 0x00ff41;
                 }
             }
-            
-            const wireframeMaterial = new this.THREE.LineBasicMaterial({ 
+
+            const wireframeMaterial = new this.THREE.LineBasicMaterial({
                 color: wireframeColor,
                 linewidth: 1,
                 transparent: true,
                 opacity: 0.8
             });
 
+            // Build geometry per type
             if (info && (info.type === 'star' || (this.getStarSystem() && info.name === this.getStarSystem().star_name))) {
-                // For stars, use the custom star geometry directly (it's already a line geometry)
                 const starGeometry = this.createStarGeometry(radius);
                 this.targetWireframe = new this.THREE.LineSegments(starGeometry, wireframeMaterial);
             } else {
-                // For other objects, create standard wireframes using EdgesGeometry
-                let wireframeGeometry;
-                if (info) {
-                    // Create different shapes based on object type
-                    if (info.type === 'enemy_ship') {
-                        // Use simple cube wireframe to match simplified target dummies
-                        wireframeGeometry = new this.THREE.BoxGeometry(radius, radius, radius);
-                    } else if (currentTargetData?.isMoon) {
-                        wireframeGeometry = new this.THREE.OctahedronGeometry(radius, 0);
-                    } else {
-                        wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
-                    }
-                } else {
-                    wireframeGeometry = new this.THREE.IcosahedronGeometry(radius, 1);
+                let baseGeometry = null;
+
+                if (info?.type === 'enemy_ship' || currentTargetData?.isShip) {
+                    baseGeometry = new this.THREE.BoxGeometry(radius, radius, radius);
+                } else if (info?.type === 'station' || currentTargetData?.isSpaceStation || targetObject?.userData?.isSpaceStation) {
+                    // Distinct station silhouette: torus ring
+                    const ringR = Math.max(radius * 0.8, 1.0);
+                    const ringTube = Math.max(radius * 0.25, 0.3);
+                    baseGeometry = new this.THREE.TorusGeometry(ringR, ringTube, 8, 16);
+                } else if (currentTargetData?.isMoon || info?.type === 'moon') {
+                    baseGeometry = new this.THREE.OctahedronGeometry(radius, 0);
+                } else if (info?.type === 'planet') {
+                    baseGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
+                } else if (targetObject?.geometry && targetObject.geometry.isBufferGeometry) {
+                    // Fall back to edges of actual target geometry to preserve uniqueness
+                    const edgesGeometry = new this.THREE.EdgesGeometry(targetObject.geometry);
+                    this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
+                    // Do not dispose edgesGeometry here; it will be disposed when clearing wireframe
                 }
-                
-                const edgesGeometry = new this.THREE.EdgesGeometry(wireframeGeometry);
-                this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
-                
-                // Clean up the temporary geometries
-                wireframeGeometry.dispose();
-                edgesGeometry.dispose();
+
+                if (!this.targetWireframe) {
+                    // Create edges from our base geometry
+                    if (!baseGeometry) {
+                        baseGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
+                    }
+                    const edgesGeometry = new this.THREE.EdgesGeometry(baseGeometry);
+                    this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
+                    // Dispose only the temporary base geometry; keep edgesGeometry until clear
+                    baseGeometry.dispose();
+                }
             }
-            
-            // Add sub-target visual indicators only for enemy ships
-            const targetData = this.getCurrentTargetData();
-            const isEnemyShip = targetData?.isShip && targetData?.ship;
+
+            // Add sub-target indicators only for enemy ships
+            const isEnemyShip = !!(currentTargetData?.isShip && currentTargetData?.ship);
             if (isEnemyShip) {
                 this.createSubTargetIndicators(radius, wireframeColor);
             } else {
-                // Clear sub-target indicators for celestial bodies
-                this.createSubTargetIndicators(0, 0); // This will clear existing indicators
+                this.createSubTargetIndicators(0, 0); // clears existing indicators
             }
-            
+
             this.targetWireframe.position.set(0, 0, 0);
             this.wireframeScene.add(this.targetWireframe);
-            
-            this.wireframeCamera.position.z = radius * 3;
+
+            this.wireframeCamera.position.z = Math.max(radius * 3, 3);
             this.targetWireframe.rotation.set(0.5, 0, 0.3);
 
         } catch (error) {
@@ -1548,7 +1579,18 @@ export class TargetComputerManager {
         }
 
         const currentTargetData = this.getCurrentTargetData();
+        console.log('🎯 getCurrentTargetData() returned:', currentTargetData);
+        if (currentTargetData) {
+            console.log('🎯 Target data type:', currentTargetData.type, 'isSpaceStation:', currentTargetData.isSpaceStation);
+        }
+        console.log('🎯 currentTarget:', this.currentTarget);
+        console.log('🎯 targetIndex:', this.targetIndex);
+        console.log('🎯 targetObjects length:', this.targetObjects.length);
+        if (this.targetIndex >= 0 && this.targetIndex < this.targetObjects.length) {
+            console.log('🎯 targetObjects[targetIndex]:', this.targetObjects[this.targetIndex]);
+        }
         if (!currentTargetData) {
+            console.log('🎯 No currentTargetData, returning early');
             return;
         }
 
@@ -1575,8 +1617,9 @@ export class TargetComputerManager {
                 shipType: currentTargetData.ship.shipType
             };
         } else {
-            // Get celestial body info
-            info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+            // Prefer the processed target data; fall back to solar system info using the underlying object
+            const targetObject = this.currentTarget?.object || this.currentTarget;
+            info = currentTargetData || this.solarSystemManager.getCelestialBodyInfo(targetObject);
         }
         
         // Update HUD border color based on diplomacy
@@ -1615,14 +1658,28 @@ export class TargetComputerManager {
         
         // Add sub-target information if available
         if (targetComputer && targetComputer.hasSubTargeting()) {
-            // For enemy ships, use actual sub-targeting
-            if (isEnemyShip && currentTargetData.ship) {
-                // Set the enemy ship as the current target for the targeting computer
-                targetComputer.currentTarget = currentTargetData.ship;
-                // Only update sub-targets if we're not preventing target changes
-                if (!this.preventTargetChanges) {
-                    targetComputer.updateSubTargets();
-                }
+            // For enemy ships and space stations, use actual sub-targeting
+            const isSpaceStation = info?.type === 'station' || currentTargetData.type === 'station' || 
+                                    (this.currentTarget?.userData?.isSpaceStation);
+            
+            console.log('🎯 SUB-TARGET CHECK:', {
+                isEnemyShip,
+                isSpaceStation,
+                'info?.type': info?.type,
+                'currentTargetData.type': currentTargetData.type,
+                'hasCurrentSubTarget': !!targetComputer.currentSubTarget,
+                'currentSubTargetName': targetComputer.currentSubTarget?.displayName,
+                'currentTarget.userData.isSpaceStation': this.currentTarget?.userData?.isSpaceStation,
+                'currentTarget.userData.type': this.currentTarget?.userData?.type,
+                'currentTargetData.isSpaceStation': currentTargetData.isSpaceStation
+            });
+            
+
+            
+            if ((isEnemyShip && currentTargetData.ship) || isSpaceStation) {
+                // Note: Target is already set via setTarget() in cycleTarget method
+                // The setTarget() method automatically calls updateSubTargets()
+                // So we don't need to call it again here to avoid console spam
                 
                 if (targetComputer.currentSubTarget) {
                     const subTarget = targetComputer.currentSubTarget;
@@ -1698,7 +1755,7 @@ export class TargetComputerManager {
         // Format distance for display
         const formattedDistance = this.formatDistance(distance);
         
-        // Create hull health section for enemy ships
+        // Create hull health section for enemy ships and stations
         let hullHealthSection = '';
         if (isEnemyShip && currentTargetData.ship) {
             const currentHull = currentTargetData.ship.currentHull || 0;
@@ -1722,6 +1779,25 @@ export class TargetComputerManager {
                         <div style="background-color: white; height: 100%; width: ${hullPercentage}%; transition: width 0.3s ease;"></div>
                     </div>
                 </div>`;
+        } else if (info?.type === 'station' && targetComputer) {
+            // Use station's Hull Plating sub-system as hull indicator
+            const hullSystem = targetComputer.availableSubTargets?.find(s => s.systemName === 'hull_plating');
+            if (hullSystem) {
+                let raw = (typeof hullSystem.healthPercentage === 'number') ? hullSystem.healthPercentage : hullSystem.health;
+                let hullPercent = 0;
+                if (typeof raw === 'number') {
+                    hullPercent = raw <= 1 ? Math.round(raw * 100) : Math.round(raw);
+                }
+                hullPercent = Math.max(0, Math.min(100, hullPercent));
+
+                hullHealthSection = `
+                    <div style="margin-top: 8px; padding: 4px 0;">
+                        <div style="color: white; font-weight: bold; font-size: 11px; margin-bottom: 2px;">HULL: ${hullPercent}%</div>
+                        <div style="background-color: #333; border: 1px solid #666; height: 8px; border-radius: 2px; overflow: hidden;">
+                            <div style="background-color: white; height: 100%; width: ${hullPercent}%; transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>`;
+            }
         }
         
         // Determine text and background colors based on target type
@@ -1746,6 +1822,7 @@ export class TargetComputerManager {
             ${subTargetHTML}
         `;
 
+
         // Update status icons with diplomacy color
         this.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info);
 
@@ -1768,9 +1845,14 @@ export class TargetComputerManager {
         // First, check if the current targetIndex is valid
         if (this.targetIndex >= 0 && this.targetIndex < this.targetObjects.length) {
             const targetData = this.targetObjects[this.targetIndex];
-            if (targetData && targetData === this.currentTarget) {
-                // console.log(`🎯 DEBUG: getCurrentTargetData() - valid target data found for ${targetData.name}`);
-                return this.processTargetData(targetData);
+            if (targetData) {
+                // For targets from addNonPhysicsTargets, the Three.js object is in targetData.object
+                // For other targets, the targetData might be the object itself
+                if (targetData === this.currentTarget || 
+                    targetData.object === this.currentTarget ||
+                    (targetData.object && targetData.object.uuid === this.currentTarget?.uuid)) {
+                    return this.processTargetData(targetData);
+                }
             }
         }
 
@@ -1826,16 +1908,34 @@ export class TargetComputerManager {
                 isMoon: targetData.isMoon || false
             };
         } else {
-            const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-            return {
-                object: this.currentTarget,
-                name: info?.name || 'Unknown',
-                type: info?.type || 'unknown',
-                isShip: false,
-                distance: targetData.distance,
-                isMoon: targetData.isMoon || false,
-                ...info
-            };
+            // For non-ship targets, prefer the data we already have from target list
+            // If targetData already has the info (from addNonPhysicsTargets), use it
+            if (targetData.type && targetData.type !== 'unknown') {
+                return {
+                    object: this.currentTarget,
+                    name: targetData.name || 'Unknown',
+                    type: targetData.type,
+                    isShip: false,
+                    distance: targetData.distance,
+                    isMoon: targetData.isMoon || false,
+                    isSpaceStation: targetData.isSpaceStation,
+                    faction: targetData.faction,
+                    diplomacy: targetData.diplomacy,
+                    ...targetData
+                };
+            } else {
+                // Fallback to getCelestialBodyInfo if no proper data
+                const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+                return {
+                    object: this.currentTarget,
+                    name: info?.name || 'Unknown',
+                    type: info?.type || 'unknown',
+                    isShip: false,
+                    distance: targetData.distance,
+                    isMoon: targetData.isMoon || false,
+                    ...info
+                };
+            }
         }
     }
 
@@ -2827,288 +2927,8 @@ export class TargetComputerManager {
         console.log('🎯 TargetComputerManager disposed');
     }
 
-    /**
-     * Update target display and HUD visibility
-     */
-    updateTargetDisplay() {
-        if (!this.targetComputerEnabled || !this.targetObjects || this.targetObjects.length === 0) {
-            // Hide HUD if no targets or target computer disabled
-            if (this.targetHUD) {
-                this.targetHUD.style.display = 'none';
-            }
-            if (this.targetReticle) {
-                this.targetReticle.style.display = 'none';
-            }
-            this.currentTarget = null;
-            return;
-        }
 
-        // Validate target index
-        if (this.targetIndex < 0 || this.targetIndex >= this.targetObjects.length) {
-            this.targetIndex = 0; // Reset to first target
-        }
 
-        // Get current target
-        const target = this.targetObjects[this.targetIndex];
-        if (!target) {
-            console.warn('🎯 Invalid target at index:', this.targetIndex);
-            return;
-        }
-        
-        // Validate target has minimum required data
-        if (!target.object && !target.position) {
-            console.warn('🎯 Target missing both object and position data, skipping display update');
-            // Try to find a valid target
-            this.findNextValidTarget();
-            return;
-        }
-
-        // Ensure currentTarget is set to the full target data
-        this.currentTarget = target;
-
-        // Show target HUD
-        if (this.targetHUD) {
-            this.targetHUD.style.display = 'block';
-            
-            // Update target info display
-            if (this.targetInfoDisplay) {
-                // Calculate distance safely
-                let distance = 0;
-                if (target.distance && !isNaN(target.distance)) {
-                    distance = target.distance;
-                } else {
-                    // Try to calculate distance from target position
-                    const targetPos = this.getTargetPosition(target);
-                    if (targetPos) {
-                        distance = this.calculateDistance(this.camera.position, targetPos);
-                    }
-                }
-                
-                const distanceText = distance > 0 ? 
-                    (distance < 1000 ? `${Math.round(distance)}m` : `${(distance/1000).toFixed(1)}km`) :
-                    'Unknown';
-                
-                // Get better target name
-                const targetName = target.name || 
-                                 target.object?.userData?.stationName || 
-                                 target.object?.userData?.name ||
-                                 'Unknown Target';
-                
-                // Get better target type
-                const targetType = target.type || 
-                                 target.object?.userData?.type ||
-                                 target.object?.userData?.stationType ||
-                                 'Unknown';
-                
-                this.targetInfoDisplay.innerHTML = `
-                    <div style="font-weight: bold; margin-bottom: 5px;">${targetName}</div>
-                    <div>Type: ${targetType}</div>
-                    <div>Distance: ${distanceText}</div>
-                    <div>Target: ${this.targetIndex + 1}/${this.targetObjects.length}</div>
-                `;
-            }
-            
-            // Update wireframe display to match the actual 3D object geometry
-            this.updateWireframeDisplay(target);
-        }
-
-        // Show target reticle if available
-        if (this.targetReticle) {
-            this.targetReticle.style.display = 'block';
-        }
-
-        console.log(`🎯 Target display updated: ${target.name} (${this.targetIndex + 1}/${this.targetObjects.length})`);
-    }
-
-    /**
-     * Update wireframe display to match the actual 3D object geometry
-     */
-    updateWireframeDisplay(target) {
-        if (!this.wireframeScene || !this.wireframeRenderer) {
-            return;
-        }
-
-        // Clear existing wireframe
-        if (this.targetWireframe) {
-            this.wireframeScene.remove(this.targetWireframe);
-            if (this.targetWireframe.geometry) {
-                this.targetWireframe.geometry.dispose();
-            }
-            if (this.targetWireframe.material) {
-                this.targetWireframe.material.dispose();
-            }
-            this.targetWireframe = null;
-        }
-
-        // Get the actual 3D object
-        const object3D = target.object;
-        if (!object3D || !object3D.geometry) {
-            console.warn('🎯 No 3D object or geometry found for wireframe display');
-            return;
-        }
-
-        // Create wireframe geometry that matches the actual object
-        let wireframeGeometry;
-        
-        // Check if it's a space station with specific geometry
-        if (target.type === 'station' && object3D.userData && object3D.userData.type) {
-            wireframeGeometry = this.createStationWireframeGeometry(object3D.userData.type, 1.0);
-        } else {
-            // For other objects, create a simplified wireframe based on the actual geometry
-            wireframeGeometry = this.createGeometryWireframe(object3D.geometry, target.type);
-        }
-
-        if (wireframeGeometry) {
-            // Determine wireframe color based on diplomacy (same logic as createTargetWireframe)
-            let wireframeColor = 0x808080; // Default gray for unknown
-            
-            // Handle enemy ships differently from celestial bodies
-            if (target.isShip) {
-                wireframeColor = 0xff3333; // Enemy ships are darker neon red
-            } else {
-                // Get celestial body info for diplomacy
-                const info = this.solarSystemManager.getCelestialBodyInfo(target.object);
-                
-                if (info?.type === 'star' || (this.getStarSystem() && info.name === this.getStarSystem().star_name)) {
-                    wireframeColor = 0xffff00; // Stars are always yellow
-                } else {
-                    // Convert faction to diplomacy if needed
-                    let diplomacy = info?.diplomacy?.toLowerCase();
-                    if (!diplomacy && info?.faction) {
-                        diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
-                    }
-                    
-                    if (diplomacy === 'enemy') {
-                        wireframeColor = 0xff3333; // Enemy red
-                    } else if (diplomacy === 'neutral') {
-                        wireframeColor = 0xffff00; // Neutral yellow
-                    } else if (diplomacy === 'friendly') {
-                        wireframeColor = 0x00ff41; // Friendly green
-                    }
-                }
-            }
-            
-            // Create wireframe material with diplomacy color
-            const wireframeMaterial = new this.THREE.LineBasicMaterial({
-                color: wireframeColor,
-                linewidth: 1,
-                transparent: true,
-                opacity: 0.8
-            });
-
-            // Create wireframe mesh
-            this.targetWireframe = new this.THREE.LineSegments(wireframeGeometry, wireframeMaterial);
-            
-            // Position and scale the wireframe appropriately
-            this.targetWireframe.position.set(0, 0, 0);
-            this.targetWireframe.rotation.x = 0.2;
-            this.targetWireframe.rotation.y = 0;
-            
-            // Add to wireframe scene
-            this.wireframeScene.add(this.targetWireframe);
-            
-            // Start wireframe animation if not already running
-            this.startWireframeAnimation();
-            
-            // Render the wireframe
-            this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
-        }
-    }
-
-    /**
-     * Create wireframe geometry for space stations that matches the 3D world geometry
-     */
-    createStationWireframeGeometry(stationType, size) {
-        let baseGeometry;
-        
-        switch (stationType) {
-            case 'Shipyard':
-                // Match the cylinder geometry used in 3D world
-                baseGeometry = new this.THREE.CylinderGeometry(size * 0.5, size * 0.8, size * 2, 8);
-                break;
-            case 'Defense Platform':
-                // Match the octagonal cylinder geometry
-                baseGeometry = new this.THREE.CylinderGeometry(size * 0.8, size * 0.8, size * 0.5, 8);
-                break;
-            case 'Research Lab':
-                // Match the sphere geometry
-                baseGeometry = new this.THREE.SphereGeometry(size * 0.6, 16, 16);
-                break;
-            case 'Mining Station':
-                // Match the box geometry
-                baseGeometry = new this.THREE.BoxGeometry(size, size * 0.6, size * 1.2);
-                break;
-            default:
-                // Match the default torus geometry
-                baseGeometry = new this.THREE.TorusGeometry(size, size * 0.3, 8, 16);
-        }
-        
-        // Convert to wireframe
-        return new this.THREE.WireframeGeometry(baseGeometry);
-    }
-
-    /**
-     * Create wireframe from existing geometry for non-station objects
-     */
-    createGeometryWireframe(geometry, objectType) {
-        let wireframeGeometry;
-        
-        // For celestial bodies, create simplified representative wireframes
-        switch (objectType) {
-            case 'star':
-                // Simple sphere wireframe for stars
-                const starGeometry = new this.THREE.SphereGeometry(1, 12, 8);
-                wireframeGeometry = new this.THREE.WireframeGeometry(starGeometry);
-                break;
-            case 'planet':
-                // Sphere wireframe for planets
-                const planetGeometry = new this.THREE.SphereGeometry(0.8, 16, 12);
-                wireframeGeometry = new this.THREE.WireframeGeometry(planetGeometry);
-                break;
-            case 'moon':
-                // Smaller sphere wireframe for moons
-                const moonGeometry = new this.THREE.SphereGeometry(0.4, 12, 8);
-                wireframeGeometry = new this.THREE.WireframeGeometry(moonGeometry);
-                break;
-            default:
-                // Try to use the actual geometry if possible
-                try {
-                    wireframeGeometry = new this.THREE.WireframeGeometry(geometry);
-                } catch (error) {
-                    console.warn('🎯 Failed to create wireframe from geometry, using default sphere');
-                    const defaultGeometry = new this.THREE.SphereGeometry(0.5, 12, 8);
-                    wireframeGeometry = new this.THREE.WireframeGeometry(defaultGeometry);
-                }
-        }
-        
-        return wireframeGeometry;
-    }
-
-    /**
-     * Start wireframe animation loop
-     */
-    startWireframeAnimation() {
-        if (this.wireframeAnimationId) {
-            return; // Already running
-        }
-
-        const animate = () => {
-            if (this.targetWireframe && this.wireframeScene && this.wireframeRenderer) {
-                // Rotate the wireframe slowly for visual appeal
-                this.targetWireframe.rotation.y += 0.01;
-                this.targetWireframe.rotation.x = 0.2 + Math.sin(Date.now() * 0.001) * 0.1;
-                
-                // Render the scene
-                this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
-                
-                this.wireframeAnimationId = requestAnimationFrame(animate);
-            } else {
-                this.wireframeAnimationId = null;
-            }
-        };
-
-        this.wireframeAnimationId = requestAnimationFrame(animate);
-    }
 
     /**
      * Stop wireframe animation
