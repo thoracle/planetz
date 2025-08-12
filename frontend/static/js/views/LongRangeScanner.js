@@ -629,13 +629,29 @@ export class LongRangeScanner {
             this.updateScannerMap();
         }
 
-        // If targeting computer is enabled, set this body as the target
+        // If targeting computer is enabled, set this body as the target robustly
         const starfieldManager = this.viewManager.starfieldManager;
         if (starfieldManager && starfieldManager.targetComputerEnabled) {
-            const targetIndex = starfieldManager.targetObjects.findIndex(obj => obj.name === bodyName);
-            if (targetIndex !== -1) {
-                starfieldManager.targetIndex = targetIndex - 1; // Subtract 1 because cycleTarget will add 1
-                starfieldManager.cycleTarget();
+            // Ensure TargetComputerManager exists and has a fresh list
+            if (starfieldManager.targetComputerManager) {
+                starfieldManager.targetComputerManager.updateTargetList();
+                const tcm = starfieldManager.targetComputerManager;
+                const idx = tcm.targetObjects.findIndex(t => (t.name === bodyName) || (t.object?.userData?.name === bodyName));
+                if (idx !== -1) {
+                    tcm.targetIndex = idx - 1; // cycleTarget will advance to idx
+                    tcm.cycleTarget(false); // automatic cycle; avoids manual cooldown
+                    // sync StarfieldManager reference for outline/reticle
+                    starfieldManager.currentTarget = tcm.currentTarget?.object || tcm.currentTarget;
+                    starfieldManager.targetIndex = tcm.targetIndex;
+                    starfieldManager.targetObjects = tcm.targetObjects;
+                }
+            } else {
+                // Fallback to previous behavior using SFManager list
+                const targetIndex = starfieldManager.targetObjects.findIndex(obj => obj.name === bodyName);
+                if (targetIndex !== -1) {
+                    starfieldManager.targetIndex = targetIndex - 1;
+                    starfieldManager.cycleTarget();
+                }
             }
         }
 
