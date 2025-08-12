@@ -606,7 +606,18 @@ export default class DockingModal {
         // Display station services instead of docking requirements
         const servicesHTML = this.getStationServices({ ...info, name, type }, diplomacyStatus, diplomacyColor);
         
-        this.statusInfo.innerHTML = servicesHTML;
+        // Add live status line with distance and required range for clarity
+        const playerPos = this.starfieldManager.camera.position;
+        const dist = this.starfieldManager.calculateDistance(playerPos, target.position);
+        const requiredRange = target?.userData?.dockingRange || (type === 'planet' ? 4.0 : 1.5);
+        const speed = this.starfieldManager.currentSpeed || 0;
+
+        this.statusInfo.innerHTML = `
+            ${servicesHTML}
+            <div style="margin-top: 10px; color: #aaa; font-size: 12px;">
+                Distance: ${dist.toFixed(2)} km • Required ≤ ${requiredRange} km • Speed ≤ 1
+            </div>
+        `;
         
         // Show modal
         this.modal.style.display = 'flex';

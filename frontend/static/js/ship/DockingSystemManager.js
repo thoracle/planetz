@@ -63,14 +63,21 @@ export default class DockingSystemManager {
         
         // Distance validation
         const distance = starfieldManager.calculateDistance(
-            starfieldManager.camera.position, 
+            starfieldManager.camera.position,
             target.position
         );
-        
-        // Use different docking ranges for planets vs moons (matching StarfieldManager logic)
-        let dockingRange = this.dockingRequirements.dockingRange; // Default 1.5 for moons
-        if (targetInfo?.type === 'planet') {
-            dockingRange = 4.0; // 4.0km for planets
+
+        // Unified docking range resolution
+        // Stations: prefer per-station userData.dockingRange; fallback to active zone range; final fallback to 1.8km
+        // Planets: 4.0km; Moons/others: 1.5km
+        let dockingRange = this.dockingRequirements.dockingRange; // default 1.5 (moons)
+        const isStation = (targetInfo?.type === 'station') || !!target?.userData?.dockingCollisionBox || target?.userData?.type === 'station';
+        if (isStation) {
+            dockingRange = target?.userData?.dockingRange
+                || starfieldManager.physicsDockingManager?.currentDockingZone?.range
+                || 1.8; // sensible default for stations
+        } else if (targetInfo?.type === 'planet') {
+            dockingRange = 4.0;
         }
         
         if (distance > dockingRange) {

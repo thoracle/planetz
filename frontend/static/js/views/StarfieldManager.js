@@ -3725,6 +3725,55 @@ export class StarfieldManager {
         return true;
     }
 
+    /**
+     * Complete docking for stations via physics path without re-entering routing logic
+     */
+    completeDockingStation(target) {
+        // Set docking state
+        this.isDocked = true;
+        this.dockedTo = target;
+        this.targetSpeed = 0;
+        this.currentSpeed = 0;
+        this.decelerating = false;
+
+        // Hide crosshairs and power down systems similar to distance docking
+        if (this.viewManager) {
+            if (this.viewManager.frontCrosshair) this.viewManager.frontCrosshair.style.display = 'none';
+            if (this.viewManager.aftCrosshair) this.viewManager.aftCrosshair.style.display = 'none';
+            this.shutdownAllSystems();
+            if (this.targetComputerEnabled && this.targetComputerManager) {
+                this.targetComputerEnabled = false;
+                this.targetComputerManager.hideTargetHUD();
+                this.targetComputerManager.hideTargetReticle();
+                this.targetComputerManager.clearTargetWireframe();
+            }
+            if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
+                this.viewManager.galacticChart.hide(false);
+            }
+            if (this.viewManager.longRangeScanner && this.viewManager.longRangeScanner.isVisible()) {
+                this.viewManager.longRangeScanner.hide(false);
+            }
+            if (this.viewManager.subspaceRadio && this.viewManager.subspaceRadio.isVisible) {
+                this.viewManager.subspaceRadio.hide();
+            }
+            if (this.damageControlVisible && this.damageControlHUD) {
+                this.damageControlVisible = false;
+                this.damageControlHUD.hide();
+                this.view = this.previousView || 'FORE';
+            }
+            if (this.weaponHUD && this.weaponHUD.weaponSlotsDisplay) {
+                this.weaponHUD.weaponSlotsDisplay.style.display = 'none';
+                this.weaponHUD.autofireIndicator.style.display = 'none';
+                this.weaponHUD.targetLockIndicator.style.display = 'none';
+                this.weaponHUD.unifiedDisplay.style.display = 'none';
+            }
+        }
+
+        // Play feedback
+        this.playCommandSound();
+        return true;
+    }
+
     undock() {
         if (!this.isDocked) {
             return;
