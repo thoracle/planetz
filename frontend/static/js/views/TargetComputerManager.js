@@ -239,14 +239,15 @@ export class TargetComputerManager {
             return icon;
         };
 
-        // Create sci-fi style icons - match original
-        this.governmentIcon = createIcon('⬡', 'Government');
-        this.economyIcon = createIcon('⬢', 'Economy');
-        this.technologyIcon = createIcon('⬨', 'Technology');
-
-        this.statusIconsContainer.appendChild(this.governmentIcon);
-        this.statusIconsContainer.appendChild(this.economyIcon);
-        this.statusIconsContainer.appendChild(this.technologyIcon);
+        // New station service icons (5):
+        this.serviceIcons = {
+            repairRefuel: createIcon('🛠️', 'Repair & Refuel'),
+            energyRecharge: createIcon('⚡', 'Energy Recharge'),
+            shipRefit: createIcon('🛠️', 'Ship Refitting'),
+            tradeExchange: createIcon('💰', 'Trade Exchange'),
+            missionBoard: createIcon('📋', 'Mission Board')
+        };
+        Object.values(this.serviceIcons).forEach(icon => this.statusIconsContainer.appendChild(icon));
 
         // Create action buttons container
         this.actionButtonsContainer = document.createElement('div');
@@ -2785,37 +2786,32 @@ export class TargetComputerManager {
      * Update status icons with diplomacy color and info
      */
     updateStatusIcons(distance, diplomacyColor, isEnemyShip, info) {
-        // Update status icons with diplomacy color
-        if (this.governmentIcon) {
-            this.governmentIcon.style.display = info?.government ? 'block' : 'none';
-        }
-        if (this.economyIcon) {
-            this.economyIcon.style.display = info?.economy ? 'block' : 'none';
-        }
-        if (this.technologyIcon) {
-            this.technologyIcon.style.display = info?.technology ? 'block' : 'none';
-        }
+        // New service availability logic
+        if (this.serviceIcons) {
+            const isEnemy = (info?.diplomacy || '').toLowerCase() === 'enemy';
+            const isPlanet = info?.type === 'planet';
+            const canUse = !isEnemy;
 
-        // Update icon colors and borders to match diplomacy
-        const icons = [this.governmentIcon, this.economyIcon, this.technologyIcon].filter(icon => icon);
-        icons.forEach(icon => {
-            if (icon.style.display !== 'none') {
+            const availability = {
+                repairRefuel: canUse,
+                energyRecharge: canUse,
+                shipRefit: canUse,
+                tradeExchange: canUse && isPlanet,
+                missionBoard: canUse
+            };
+
+            Object.entries(this.serviceIcons).forEach(([key, icon]) => {
+                const visible = !!availability[key];
+                icon.style.display = visible ? 'flex' : 'none';
                 icon.style.borderColor = diplomacyColor;
                 icon.style.color = diplomacyColor;
                 icon.style.textShadow = `0 0 4px ${diplomacyColor}`;
-                icon.style.boxShadow = `0 0 4px ${diplomacyColor.replace(')', ', 0.4)')}`;
-            }
-        });
+                icon.style.boxShadow = `0 0 4px ${diplomacyColor}`;
+                icon.title = icon.title; // keep tooltip text
+            });
 
-        // Update tooltips with current info
-        if (info?.government && this.governmentIcon) {
-            this.governmentIcon.title = `Government: ${info.government}`;
-        }
-        if (info?.economy && this.economyIcon) {
-            this.economyIcon.title = `Economy: ${info.economy}`;
-        }
-        if (info?.technology && this.technologyIcon) {
-            this.technologyIcon.title = `Technology: ${info.technology}`;
+            const anyVisible = Object.entries(this.serviceIcons).some(([_, icon]) => icon.style.display !== 'none');
+            this.statusIconsContainer.style.display = anyVisible ? 'flex' : 'none';
         }
 
         // Update reticle colors
