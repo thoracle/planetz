@@ -78,6 +78,25 @@ planetz/
 - **Files**: `TargetComputerManager.js`, `StarfieldManager.js`, `SolarSystemManager.js`, `DockingModal.js`, `PhysicsDockingManager.js`
 - **Result**: **Professional-grade targeting system** with complete automation, visual consistency, and audio feedback
 
+### 🔭 Long Range Scanner Enhancements (Current Session)
+- **Stations on scanner**: Stations are now rendered on the Long Range Scanner (diamond markers), excluded ships, with tooltips and click-to-intel
+- **Click-to-target sync**: When the Target CPU is active, clicking a body in the scanner selects the exact same target in the Target CPU (name/userData matching with list refresh)
+- **UX polish**: Pointer cursor on station markers; selection resets on open; defaults to the sector star when first opened to avoid stale details
+- **Files**: `LongRangeScanner.js`, `SolarSystemManager.js`
+
+### 🧭 Target CPU HUD Service Icons (Current Session)
+- **Replaced legacy icons**: Government/Economy/Technology replaced with service icons
+- **Services shown**: ⚡ Repair & Refuel, 🛠️ Ship Refitting, 💰 Trade Exchange, 📋 Mission Board (stars show none)
+- **Availability handling**: Hidden for enemy or inappropriate contexts (e.g., Trade only on planets)
+- **Readability**: Black text on neutral (yellow) backgrounds; white retained for gray/red/green
+- **Hidden during no-target states**: Power-up, no-targets, and no-current-target screens hide services
+- **Files**: `TargetComputerManager.js`
+
+### 🛰️ Station Placement & Detection (Current Session)
+- **Defensive info mapping**: `getCelestialBodyInfo` now treats bodies with station `userData` as `type: 'station'` even if key lookup fails, ensuring consistent detection
+- **Callisto Defense Platform**: Repositioned near Terra Prime (1.05 AU @ 210°) for better visibility within Target CPU range
+- **Files**: `SolarSystemManager.js`
+
 ### 🌌 **Complete Faction & Universe System** ⭐ UNIVERSE FRAMEWORK
 - **Status**: ✅ **FULLY IMPLEMENTED** - Comprehensive galactic civilization with integrated mission framework
 - **Achievement**: Complete faction system, space stations, Sol system layout, and 50+ mission giver NPCs
