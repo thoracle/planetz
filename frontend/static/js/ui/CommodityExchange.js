@@ -74,7 +74,7 @@ export class CommodityExchange {
         
         this.container.innerHTML = `
             <div style="text-align: center; margin-bottom: 20px;">
-                <h2 style="color: #00ff41; margin: 0 0 10px 0; font-size: 24px;">COMMODITY EXCHANGE</h2>
+                <h2 style="color: #00ff41; margin: 0 0 10px 0; font-size: 28px; font-family: 'VT323', monospace;">COMMODITY EXCHANGE</h2>
                 <div id="station-name" style="color: #888; font-size: 16px;">Station Unknown</div>
             </div>
             
@@ -111,13 +111,15 @@ export class CommodityExchange {
             <!-- Control Buttons -->
             <div style="position: absolute; bottom: 20px; right: 20px;">
                 <button id="return-btn" style="
-                    background: #0066cc;
-                    color: white;
-                    border: none;
-                    padding: 10px 20px;
-                    border-radius: 5px;
+                    background: rgba(0, 0, 0, 0.5);
+                    border: 1px solid #00ff41;
+                    color: #00ff41;
+                    padding: 12px 16px;
+                    border-radius: 4px;
                     cursor: pointer;
-                    font-family: 'Courier New', monospace;
+                    font-family: 'VT323', monospace;
+                    font-size: 16px;
+                    transition: all 0.3s ease;
                     margin-left: 10px;
                 ">RETURN TO DOCKING</button>
             </div>
@@ -138,6 +140,18 @@ export class CommodityExchange {
             if (this.dockingInterface) {
                 this.dockingInterface.show(this.currentStation);
             }
+        });
+        
+        // Add hover effects to return button
+        returnBtn.addEventListener('mouseenter', () => {
+            returnBtn.style.background = 'rgba(0, 255, 65, 0.2)';
+            returnBtn.style.borderColor = '#44ff44';
+            returnBtn.style.transform = 'scale(1.05)';
+        });
+        returnBtn.addEventListener('mouseleave', () => {
+            returnBtn.style.background = 'rgba(0, 0, 0, 0.5)';
+            returnBtn.style.borderColor = '#00ff41';
+            returnBtn.style.transform = 'scale(1)';
         });
     }
     
@@ -337,10 +351,10 @@ export class CommodityExchange {
                     <div style="margin: 10px 0;">
                         Total: <span id="buy-total">${marketData.buy_price}</span> CR
                     </div>
-                    <button id="confirm-buy" style="background: #006600; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                    <button id="confirm-buy" style="background: rgba(0, 0, 0, 0.5); border: 1px solid #00ff41; color: #00ff41; padding: 12px 16px; border-radius: 4px; cursor: pointer; font-family: 'VT323', monospace; font-size: 16px; transition: all 0.3s ease;">
                         CONFIRM PURCHASE
                     </button>
-                    <button id="cancel-transaction" style="background: #666; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-left: 10px;">
+                    <button id="cancel-transaction" style="background: rgba(0, 0, 0, 0.5); border: 1px solid #888; color: #888; padding: 12px 16px; border-radius: 4px; cursor: pointer; font-family: 'VT323', monospace; font-size: 16px; transition: all 0.3s ease; margin-left: 10px;">
                         CANCEL
                     </button>
                 </div>
@@ -369,6 +383,10 @@ export class CommodityExchange {
         cancelBtn.addEventListener('click', () => {
             panel.style.display = 'none';
         });
+        
+        // Add hover effects to transaction buttons
+        this.addButtonHoverEffects(confirmBtn, '#00ff41');
+        this.addButtonHoverEffects(cancelBtn, '#888');
     }
     
     /**
@@ -398,10 +416,10 @@ export class CommodityExchange {
                     <div style="margin: 10px 0;">
                         Total: <span id="sell-total">${cargoItem.quantity * effectivePrice}</span> CR
                     </div>
-                    <button id="confirm-sell" style="background: #660000; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                    <button id="confirm-sell" style="background: rgba(0, 0, 0, 0.5); border: 1px solid #00ff41; color: #00ff41; padding: 12px 16px; border-radius: 4px; cursor: pointer; font-family: 'VT323', monospace; font-size: 16px; transition: all 0.3s ease;">
                         CONFIRM SALE
                     </button>
-                    <button id="cancel-transaction" style="background: #666; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-left: 10px;">
+                    <button id="cancel-transaction" style="background: rgba(0, 0, 0, 0.5); border: 1px solid #888; color: #888; padding: 12px 16px; border-radius: 4px; cursor: pointer; font-family: 'VT323', monospace; font-size: 16px; transition: all 0.3s ease; margin-left: 10px;">
                         CANCEL
                     </button>
                 </div>
@@ -430,6 +448,10 @@ export class CommodityExchange {
         cancelBtn.addEventListener('click', () => {
             panel.style.display = 'none';
         });
+        
+        // Add hover effects to transaction buttons
+        this.addButtonHoverEffects(confirmBtn, '#00ff41');
+        this.addButtonHoverEffects(cancelBtn, '#888');
     }
     
     /**
@@ -545,5 +567,27 @@ export class CommodityExchange {
             ship.cargoHoldManager.testCargoOperations();
             this.refreshCargoDisplay();
         }
+    }
+    
+    /**
+     * Add hover effects to buttons with consistent styling
+     */
+    addButtonHoverEffects(button, borderColor) {
+        button.addEventListener('mouseenter', () => {
+            if (borderColor === '#00ff41') {
+                button.style.background = 'rgba(0, 255, 65, 0.2)';
+                button.style.borderColor = '#44ff44';
+            } else {
+                button.style.background = 'rgba(136, 136, 136, 0.2)';
+                button.style.borderColor = '#aaa';
+            }
+            button.style.transform = 'scale(1.05)';
+        });
+        
+        button.addEventListener('mouseleave', () => {
+            button.style.background = 'rgba(0, 0, 0, 0.5)';
+            button.style.borderColor = borderColor;
+            button.style.transform = 'scale(1)';
+        });
     }
 }

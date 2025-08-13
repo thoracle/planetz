@@ -100,7 +100,8 @@ export class MissionBoard {
         title.style.cssText = `
             margin: 0;
             font-size: 28px;
-            text-shadow: 0 0 10px #00ff41;
+            color: #00ff41;
+            font-family: 'VT323', monospace;
         `;
         
         // Location info
@@ -823,24 +824,30 @@ export class MissionBoard {
         style.id = 'mission-board-styles';
         style.textContent = `
             .mission-board-btn {
-                background: rgba(0, 0, 0, 0.8);
+                background: rgba(0, 0, 0, 0.5);
                 border: 1px solid #00ff41;
                 color: #00ff41;
-                padding: 8px 16px;
+                padding: 12px 16px;
                 font-family: 'VT323', monospace;
-                font-size: 14px;
+                font-size: 16px;
                 cursor: pointer;
-                transition: all 0.2s;
+                transition: all 0.3s ease;
+                border-radius: 4px;
+                text-align: center;
+                position: relative;
+                overflow: hidden;
             }
             
             .mission-board-btn:hover:not(:disabled) {
                 background: rgba(0, 255, 65, 0.2);
-                box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+                border-color: #44ff44;
+                transform: scale(1.05);
             }
             
             .mission-board-btn:disabled {
                 opacity: 0.5;
                 cursor: not-allowed;
+                transform: none;
             }
             
             .mission-item.selected {

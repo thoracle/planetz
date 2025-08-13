@@ -177,22 +177,50 @@ export class DockingInterface {
     }
 
     createStationWireframe() {
-        // Create animated wireframe station visualization
+        // Create animated wireframe station visualization matching target CPU design
+        // Use torus ring design like the target computer for consistency
         const wireframe = document.createElement('div');
         wireframe.style.cssText = `
             width: 80px;
             height: 80px;
-            border: 2px solid #00ff41;
-            border-radius: 50%;
             position: relative;
             animation: station-pulse 3s ease-in-out infinite;
         `;
         
-        // Add station details
+        // Main torus ring (outer ring)
+        const outerRing = document.createElement('div');
+        outerRing.style.cssText = `
+            width: 80px;
+            height: 80px;
+            border: 2px solid #00ff41;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        `;
+        wireframe.appendChild(outerRing);
+        
+        // Inner torus tube
+        const innerRing = document.createElement('div');
+        innerRing.style.cssText = `
+            width: 40px;
+            height: 40px;
+            border: 1px solid #00ff41;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 255, 65, 0.1);
+        `;
+        wireframe.appendChild(innerRing);
+
+        // Station core hub
         const stationCore = document.createElement('div');
         stationCore.style.cssText = `
-            width: 20px;
-            height: 20px;
+            width: 12px;
+            height: 12px;
             border: 1px solid #00ff41;
             border-radius: 50%;
             position: absolute;
@@ -203,21 +231,21 @@ export class DockingInterface {
         `;
         wireframe.appendChild(stationCore);
 
-        // Add docking arms
-        for (let i = 0; i < 4; i++) {
-            const arm = document.createElement('div');
-            arm.style.cssText = `
-                width: 30px;
-                height: 2px;
+        // Docking spokes (like target CPU wireframes)
+        for (let i = 0; i < 6; i++) {
+            const spoke = document.createElement('div');
+            spoke.style.cssText = `
+                width: 20px;
+                height: 1px;
                 background: #00ff41;
                 position: absolute;
                 top: 50%;
                 left: 50%;
-                transform-origin: 0 50%;
-                transform: translate(-50%, -50%) rotate(${i * 90}deg);
+                transform-origin: 0% 50%;
+                transform: translate(-50%, -50%) rotate(${i * 60}deg);
                 opacity: 0.7;
             `;
-            wireframe.appendChild(arm);
+            wireframe.appendChild(spoke);
         }
 
         this.stationVisualization.appendChild(wireframe);
@@ -377,7 +405,7 @@ export class DockingInterface {
             <div style="font-size: 16px; margin-bottom: 8px; opacity: 0.8; letter-spacing: 1px; font-family: 'VT323', monospace;">DOCKED AT</div>
             <div style="font-size: 28px; font-weight: bold; color: #00ff41; margin-bottom: 8px; font-family: 'VT323', monospace;">${info?.name || 'UNKNOWN LOCATION'}</div>
             <div style="font-size: 16px; opacity: 0.9; font-family: 'VT323', monospace;">
-                ${info?.type?.toUpperCase() || 'UNKNOWN'} • ${info?.diplomacy?.toUpperCase() || 'NEUTRAL'}
+                ${info?.diplomacy?.toUpperCase() || 'NEUTRAL'} • ${info?.type?.toUpperCase() || 'UNKNOWN'}
             </div>
         `;
         
