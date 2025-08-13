@@ -422,17 +422,17 @@ export class CommodityExchange {
         let background, boxShadow;
         
         if (percentage <= 70) {
-            // Green - Normal operation
-            background = 'linear-gradient(90deg, #00ff41 0%, #44ff44 100%)';
-            boxShadow = '0 0 8px rgba(0, 255, 65, 0.3)';
+            // Neon Green - Normal operation (matching game's neon aesthetic)
+            background = 'linear-gradient(90deg, #00ff41 0%, #00ff88 50%, #00ff41 100%)';
+            boxShadow = '0 0 12px rgba(0, 255, 65, 0.6), inset 0 0 8px rgba(0, 255, 65, 0.3)';
         } else if (percentage <= 90) {
-            // Orange - Caution/warning
-            background = 'linear-gradient(90deg, #ffaa00 0%, #ffcc44 100%)';
-            boxShadow = '0 0 8px rgba(255, 170, 0, 0.3)';
+            // Neon Orange - Caution/warning  
+            background = 'linear-gradient(90deg, #ff8800 0%, #ffaa00 50%, #ff8800 100%)';
+            boxShadow = '0 0 12px rgba(255, 136, 0, 0.6), inset 0 0 8px rgba(255, 170, 0, 0.3)';
         } else {
-            // Red - Critical/full
-            background = 'linear-gradient(90deg, #ff3333 0%, #ff6666 100%)';
-            boxShadow = '0 0 8px rgba(255, 51, 51, 0.3)';
+            // Neon Red - Critical/full
+            background = 'linear-gradient(90deg, #ff0033 0%, #ff3366 50%, #ff0033 100%)';
+            boxShadow = '0 0 12px rgba(255, 51, 51, 0.6), inset 0 0 8px rgba(255, 51, 51, 0.3)';
         }
         
         progressFill.style.background = background;
