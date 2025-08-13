@@ -1566,11 +1566,438 @@ export default class CardInventoryUI {
     }
 
     /**
+     * Check if a cargo hold card can be removed safely
+     * @param {Object} card - The card being removed
+     * @param {number} slotId - The slot ID
+     * @returns {boolean} True if removal should be cancelled
+     */
+    async checkCargoHoldRemoval(card, slotId) {
+        console.log(`🛡️ CARGO CHECK: Checking ${card.cardType} in slot ${slotId}`);
+        
+        // Check if this is a cargo hold card
+        const cargoHoldTypes = ['cargo_hold', 'reinforced_cargo_hold', 'shielded_cargo_hold'];
+        if (!cargoHoldTypes.includes(card.cardType)) {
+            console.log(`🛡️ CARGO CHECK: ${card.cardType} is not a cargo hold card`);
+            return false; // Not a cargo hold, proceed with normal removal
+        }
+        
+        console.log(`🛡️ CARGO CHECK: ${card.cardType} is a cargo hold card, checking for cargo...`);
+        
+        // Check if ship has cargo manager and if hold contains cargo
+        if (!window.viewManager || !window.viewManager.ship || !window.viewManager.ship.cargoHoldManager) {
+            console.log(`🛡️ CARGO CHECK: No cargo manager available`);
+            return false; // No cargo manager, proceed with removal
+        }
+        
+        const cargoManager = window.viewManager.ship.cargoHoldManager;
+        console.log(`🛡️ CARGO CHECK: Found cargo manager with ${cargoManager.cargoHolds.size} holds`);
+        
+        // Find which cargo hold slot this card corresponds to
+        let holdSlot = null;
+        console.log(`🛡️ CARGO CHECK: Looking for card slot ${slotId} in cargo holds`);
+        for (const [holdSlotId, hold] of cargoManager.cargoHolds) {
+            console.log(`🛡️ CARGO CHECK: Checking hold ${holdSlotId} with slotId ${hold.slotId}`);
+            if (hold.slotId === slotId) {
+                holdSlot = holdSlotId;
+                console.log(`🛡️ CARGO CHECK: Found matching hold slot ${holdSlot}`);
+                break;
+            }
+        }
+        
+        if (holdSlot === null) {
+            console.log(`🛡️ CARGO CHECK: No matching hold found for slot ${slotId}`);
+            return false; // Hold not found, proceed with removal
+        }
+        
+        // Check if hold contains cargo (use the actual card slot ID, not the hold map key)
+        const hasCargo = cargoManager.hasCargoInHold(slotId);
+        console.log(`🛡️ CARGO CHECK: Hold ${holdSlot} (card slot ${slotId}) has cargo: ${hasCargo}`);
+        if (!hasCargo) {
+            console.log(`🛡️ CARGO CHECK: Hold ${holdSlot} (card slot ${slotId}) is empty, proceeding with removal`);
+            return false; // No cargo in hold, proceed with removal
+        }
+        
+        // Get cargo contents for display (use the actual card slot ID)
+        const cargoContents = cargoManager.getCargoInHold(slotId);
+        console.log(`🛡️ CARGO CHECK: Hold ${holdSlot} (card slot ${slotId}) contains ${cargoContents.length} cargo types`);
+        
+        console.log(`🛡️ CARGO CHECK: Showing removal confirmation modal...`);
+        // Show confirmation modal
+        const result = await this.showCargoRemovalConfirmation(card, slotId, holdSlot, cargoContents, cargoManager);
+        console.log(`🛡️ CARGO CHECK: Modal returned ${result} (true = cancel removal, false = proceed)`);
+        return result;
+    }
+    
+    /**
+     * Show cargo removal confirmation modal
+     * @param {Object} card - The card being removed
+     * @param {number} slotId - The slot ID
+     * @param {number} holdSlot - The cargo hold slot
+     * @param {Array} cargoContents - List of cargo items
+     * @param {Object} cargoManager - Cargo manager reference
+     * @returns {boolean} True if removal should be cancelled
+     */
+    async showCargoRemovalConfirmation(card, slotId, holdSlot, cargoContents, cargoManager) {
+        return new Promise((resolve) => {
+            // Create modal overlay
+            const modal = document.createElement('div');
+            modal.className = 'cargo-removal-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 20000;
+                font-family: 'VT323', 'Courier New', monospace;
+            `;
+            
+            // Create modal content
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = `
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                border: 3px solid #ff4444;
+                border-radius: 12px;
+                padding: 30px;
+                max-width: 600px;
+                width: 90%;
+                box-shadow: 0 0 30px rgba(255, 68, 68, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.3);
+                text-align: center;
+                animation: modalSlideIn 0.3s ease-out;
+            `;
+            
+            // Add animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes modalSlideIn {
+                    from { transform: scale(0.8); opacity: 0; }
+                    to { transform: scale(1); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Create header
+            const header = document.createElement('div');
+            header.style.cssText = `
+                color: #ff4444;
+                font-size: 28px;
+                font-weight: bold;
+                margin-bottom: 20px;
+                text-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+            `;
+            header.innerHTML = `⚠️ CARGO HOLD REMOVAL WARNING`;
+            
+            // Create message
+            const message = document.createElement('div');
+            message.style.cssText = `
+                color: #ffffff;
+                font-size: 18px;
+                line-height: 1.6;
+                margin-bottom: 25px;
+            `;
+            message.innerHTML = `
+                <p style="margin-bottom: 15px;">You are attempting to remove a <span style="color: #00ff41; font-weight: bold;">${card.cardType.replace('_', ' ').toUpperCase()}</span> that contains cargo!</p>
+                <p style="margin-bottom: 15px;">Removing this card will <span style="color: #ff4444; font-weight: bold;">DESTROY ALL CARGO</span> in this hold.</p>
+            `;
+            
+            // Create cargo list
+            const cargoList = document.createElement('div');
+            cargoList.style.cssText = `
+                background: rgba(0, 0, 0, 0.4);
+                border: 2px solid #555;
+                border-radius: 8px;
+                padding: 15px;
+                margin: 20px 0;
+                text-align: left;
+                max-height: 200px;
+                overflow-y: auto;
+            `;
+            
+            const cargoHeader = document.createElement('div');
+            cargoHeader.style.cssText = `
+                color: #ffff44;
+                font-size: 16px;
+                font-weight: bold;
+                margin-bottom: 10px;
+                text-align: center;
+            `;
+            cargoHeader.textContent = 'CARGO TO BE DESTROYED:';
+            cargoList.appendChild(cargoHeader);
+            
+            cargoContents.forEach(item => {
+                const cargoItem = document.createElement('div');
+                cargoItem.style.cssText = `
+                    color: #ffffff;
+                    font-size: 14px;
+                    margin-bottom: 8px;
+                    padding: 8px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 4px;
+                `;
+                cargoItem.innerHTML = `
+                    <span style="color: #00ff41;">${item.name}</span> - 
+                    <span style="color: #ffff44;">${item.quantity} units</span> 
+                    (${item.volume} volume)
+                `;
+                cargoList.appendChild(cargoItem);
+            });
+            
+            // Create warning
+            const warning = document.createElement('div');
+            warning.style.cssText = `
+                color: #ff4444;
+                font-size: 16px;
+                font-weight: bold;
+                margin: 20px 0;
+                padding: 15px;
+                background: rgba(255, 68, 68, 0.1);
+                border: 2px solid #ff4444;
+                border-radius: 8px;
+            `;
+            warning.textContent = '⚠️ THIS ACTION CANNOT BE UNDONE! ⚠️';
+            
+            // Create buttons container
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.cssText = `
+                display: flex;
+                gap: 20px;
+                justify-content: center;
+                margin-top: 25px;
+            `;
+            
+            // Create Cancel button
+            const cancelButton = document.createElement('button');
+            cancelButton.textContent = 'CANCEL';
+            cancelButton.style.cssText = `
+                background: linear-gradient(135deg, #333 0%, #555 100%);
+                border: 2px solid #888;
+                color: #ffffff;
+                font-family: 'VT323', 'Courier New', monospace;
+                font-size: 18px;
+                font-weight: bold;
+                padding: 12px 25px;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                min-width: 120px;
+            `;
+            
+            // Create Dump Cargo button
+            const dumpButton = document.createElement('button');
+            dumpButton.textContent = 'DUMP CARGO & REMOVE';
+            dumpButton.style.cssText = `
+                background: linear-gradient(135deg, #cc3333 0%, #ff4444 100%);
+                border: 2px solid #ff4444;
+                color: #ffffff;
+                font-family: 'VT323', 'Courier New', monospace;
+                font-size: 18px;
+                font-weight: bold;
+                padding: 12px 25px;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                min-width: 180px;
+                box-shadow: 0 0 15px rgba(255, 68, 68, 0.3);
+            `;
+            
+            // Add hover effects
+            cancelButton.addEventListener('mouseenter', () => {
+                cancelButton.style.background = 'linear-gradient(135deg, #444 0%, #666 100%)';
+                cancelButton.style.borderColor = '#aaa';
+                cancelButton.style.transform = 'scale(1.05)';
+            });
+            
+            cancelButton.addEventListener('mouseleave', () => {
+                cancelButton.style.background = 'linear-gradient(135deg, #333 0%, #555 100%)';
+                cancelButton.style.borderColor = '#888';
+                cancelButton.style.transform = 'scale(1)';
+            });
+            
+            dumpButton.addEventListener('mouseenter', () => {
+                dumpButton.style.background = 'linear-gradient(135deg, #ff4444 0%, #ff6666 100%)';
+                dumpButton.style.transform = 'scale(1.05)';
+                dumpButton.style.boxShadow = '0 0 25px rgba(255, 68, 68, 0.5)';
+            });
+            
+            dumpButton.addEventListener('mouseleave', () => {
+                dumpButton.style.background = 'linear-gradient(135deg, #cc3333 0%, #ff4444 100%)';
+                dumpButton.style.transform = 'scale(1)';
+                dumpButton.style.boxShadow = '0 0 15px rgba(255, 68, 68, 0.3)';
+            });
+            
+            // Add event handlers
+            cancelButton.addEventListener('click', () => {
+                document.body.removeChild(modal);
+                document.head.removeChild(style);
+                resolve(true); // Cancel removal
+            });
+            
+            dumpButton.addEventListener('click', () => {
+                // Dump cargo and proceed with removal
+                const dumpResult = cargoManager.dumpCargoInHold(slotId); // Use actual slot ID, not hold map key
+                console.log(`🗑️ Dumped cargo from hold ${holdSlot} (slot ${slotId}):`, dumpResult);
+                
+                document.body.removeChild(modal);
+                document.head.removeChild(style);
+                
+                // Show dump confirmation
+                this.showCargoDumpNotification(dumpResult.dumpedCargo);
+                
+                resolve(false); // Proceed with removal
+            });
+            
+            // Assemble modal
+            modalContent.appendChild(header);
+            modalContent.appendChild(message);
+            modalContent.appendChild(cargoList);
+            modalContent.appendChild(warning);
+            modalContent.appendChild(buttonContainer);
+            buttonContainer.appendChild(cancelButton);
+            buttonContainer.appendChild(dumpButton);
+            modal.appendChild(modalContent);
+            
+            // Add to page
+            document.body.appendChild(modal);
+            
+            // Focus on cancel button by default
+            cancelButton.focus();
+        });
+    }
+    
+    /**
+     * Show notification after cargo is dumped
+     */
+    showCargoDumpNotification(dumpedCargo) {
+        // Create notification using the existing trading notification system
+        let cargoList = dumpedCargo.map(item => `${item.quantity}x ${item.name}`).join(', ');
+        if (cargoList.length > 80) {
+            cargoList = cargoList.substring(0, 77) + '...';
+        }
+        
+        const message = `⚠️ Cargo Dumped: ${cargoList}`;
+        
+        // Use existing notification system from CommodityExchange
+        this.showTradeNotification(message, 'warning');
+    }
+    
+    /**
+     * Show trading notification (borrowed from CommodityExchange)
+     */
+    showTradeNotification(message, type = 'info') {
+        // Create centered modal notification
+        const modal = document.createElement('div');
+        modal.className = `trade-notification-modal ${type}`;
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 15000;
+            font-family: 'VT323', 'Courier New', monospace;
+        `;
+        
+        const colors = {
+            'info': '#00ff41',
+            'success': '#44ff44',
+            'error': '#ff4444',
+            'warning': '#ffff44'
+        };
+        
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 3px solid ${colors[type]};
+            border-radius: 12px;
+            padding: 30px 40px;
+            max-width: 600px;
+            width: 80%;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(${type === 'error' ? '255, 68, 68' : type === 'warning' ? '255, 255, 68' : '0, 255, 65'}, 0.3);
+        `;
+        
+        const header = document.createElement('div');
+        header.style.cssText = `
+            color: ${colors[type]};
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        `;
+        
+        const typeLabels = {
+            'info': '🔵 Information',
+            'success': '✅ Success', 
+            'error': '❌ Error',
+            'warning': '⚠️ Warning'
+        };
+        header.textContent = typeLabels[type];
+        
+        const messageEl = document.createElement('div');
+        messageEl.style.cssText = `
+            color: #ffffff;
+            font-size: 18px;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        `;
+        messageEl.textContent = message;
+        
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'OK';
+        closeButton.style.cssText = `
+            background: linear-gradient(135deg, ${colors[type]}, ${colors[type]}dd);
+            border: 2px solid ${colors[type]};
+            color: #000000;
+            font-family: 'VT323', 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 10px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        `;
+        
+        closeButton.addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        content.appendChild(header);
+        content.appendChild(messageEl);
+        content.appendChild(closeButton);
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+        
+        // Auto-close after 5 seconds
+        setTimeout(() => {
+            if (document.body.contains(modal)) {
+                document.body.removeChild(modal);
+            }
+        }, 5000);
+    }
+
+    /**
      * Remove a card from a ship slot
      */
     async removeCard(slotId) {
         const card = this.shipSlots.get(slotId);
         if (card) {
+            console.log(`🛡️ CARGO PROTECTION: Checking removal of ${card.cardType} from slot ${slotId}`);
+            
+            // Check if this is a cargo hold card with cargo
+            if (await this.checkCargoHoldRemoval(card, slotId)) {
+                console.log(`🛡️ CARGO PROTECTION: Removal cancelled for ${card.cardType}`);
+                return; // Removal cancelled or handled by cargo dump process
+            }
+            
+            console.log(`🛡️ CARGO PROTECTION: Proceeding with removal of ${card.cardType}`);
             // Remove from ship slots
             this.shipSlots.delete(slotId);
             

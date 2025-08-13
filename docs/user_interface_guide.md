@@ -321,6 +321,61 @@ font-family: 'VT323', monospace;
 }
 ```
 
+#### **Progress Bars**
+```css
+.progress-bar {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #333;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 8px 0;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+    border-radius: 5px;
+    background: linear-gradient(90deg, #00ff41 0%, #44ff44 100%);
+    box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+}
+
+.progress-fill--warning {
+    background: linear-gradient(90deg, #ffaa00 0%, #ffcc44 100%);
+    box-shadow: 0 0 8px rgba(255, 170, 0, 0.3);
+}
+
+.progress-fill--critical {
+    background: linear-gradient(90deg, #ff3333 0%, #ff6666 100%);
+    box-shadow: 0 0 8px rgba(255, 51, 51, 0.3);
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 10px;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    z-index: 1;
+}
+```
+
+**Progress Bar Color Thresholds:**
+- **0-70%:** Green (`#00ff41`) - Normal operation
+- **71-90%:** Orange (`#ffaa00`) - Caution/warning
+- **91-100%:** Red (`#ff3333`) - Critical/full
+
+**Usage Examples:**
+- Cargo hold capacity
+- Hull/shield status
+- Energy levels
+- Fuel reserves
+- Mission progress
+
 #### **Data Displays**
 ```css
 .data-label {

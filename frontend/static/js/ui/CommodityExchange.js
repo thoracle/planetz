@@ -92,6 +92,37 @@ export class CommodityExchange {
                     <h3 style="color: #00ff41; margin-top: 0;">SHIP CARGO</h3>
                     <div id="cargo-info" style="margin-bottom: 15px; color: #888;">
                         <div>Capacity: <span id="cargo-capacity">0/0</span> units</div>
+                        <div id="cargo-progress-container" style="margin: 8px 0;">
+                            <div id="cargo-progress-bar" class="progress-bar" style="
+                                background: rgba(0, 0, 0, 0.5);
+                                border: 1px solid #333;
+                                height: 12px;
+                                border-radius: 6px;
+                                overflow: hidden;
+                                position: relative;
+                            ">
+                                <div id="cargo-progress-fill" class="progress-fill" style="
+                                    height: 100%;
+                                    width: 0%;
+                                    transition: width 0.3s ease;
+                                    border-radius: 5px;
+                                    background: linear-gradient(90deg, #00ff41 0%, #44ff44 100%);
+                                    box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+                                "></div>
+                                <div id="cargo-progress-text" class="progress-text" style="
+                                    position: absolute;
+                                    top: 50%;
+                                    left: 50%;
+                                    transform: translate(-50%, -50%);
+                                    font-size: 10px;
+                                    color: #fff;
+                                    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+                                    pointer-events: none;
+                                    z-index: 1;
+                                    font-family: 'VT323', monospace;
+                                ">0%</div>
+                            </div>
+                        </div>
                         <div>Credits: <span id="player-credits">0</span> CR</div>
                     </div>
                     <div id="cargo-list" style="overflow-y: auto; height: calc(100% - 80px);">
@@ -277,6 +308,9 @@ export class CommodityExchange {
             capacityEl.style.fontWeight = 'normal';
         }
         
+        // Update cargo progress bar
+        this.updateCargoProgressBar(manifest);
+        
         // Update credits display (mock for now)
         const creditsEl = this.container.querySelector('#player-credits');
         creditsEl.textContent = '15,000'; // TODO: Get from player data
@@ -332,6 +366,51 @@ export class CommodityExchange {
             
             cargoListEl.appendChild(itemEl);
         }
+    }
+    
+    /**
+     * Update cargo progress bar with current capacity
+     */
+    updateCargoProgressBar(manifest) {
+        const progressFill = this.container.querySelector('#cargo-progress-fill');
+        const progressText = this.container.querySelector('#cargo-progress-text');
+        
+        if (!progressFill || !progressText) {
+            console.warn('🚛 CommodityExchange: Progress bar elements not found');
+            return;
+        }
+        
+        // Calculate percentage (avoid division by zero)
+        const percentage = manifest.totalCapacity > 0 ? 
+            Math.round((manifest.usedCapacity / manifest.totalCapacity) * 100) : 0;
+        
+        // Update progress bar width
+        progressFill.style.width = `${percentage}%`;
+        
+        // Update progress text
+        progressText.textContent = `${percentage}%`;
+        
+        // Update colors based on capacity thresholds
+        let background, boxShadow;
+        
+        if (percentage <= 70) {
+            // Green - Normal operation
+            background = 'linear-gradient(90deg, #00ff41 0%, #44ff44 100%)';
+            boxShadow = '0 0 8px rgba(0, 255, 65, 0.3)';
+        } else if (percentage <= 90) {
+            // Orange - Caution/warning
+            background = 'linear-gradient(90deg, #ffaa00 0%, #ffcc44 100%)';
+            boxShadow = '0 0 8px rgba(255, 170, 0, 0.3)';
+        } else {
+            // Red - Critical/full
+            background = 'linear-gradient(90deg, #ff3333 0%, #ff6666 100%)';
+            boxShadow = '0 0 8px rgba(255, 51, 51, 0.3)';
+        }
+        
+        progressFill.style.background = background;
+        progressFill.style.boxShadow = boxShadow;
+        
+        console.log(`🚛 Updated cargo progress bar: ${manifest.usedCapacity}/${manifest.totalCapacity} (${percentage}%)`);
     }
     
     /**

@@ -40,11 +40,11 @@ export class CargoHoldManager {
             console.log(`🚛 Found card: ${card.cardType} (Lv.${card.level}) in slot ${slotId}`);
             if (this.isCargoHoldCard(card.cardType)) {
                 console.log(`🚛 ✅ Identified as cargo hold card: ${card.cardType}`);
-                const cargoHold = this.createCargoHold(card, holdSlot);
+                const cargoHold = this.createCargoHold(card, slotId); // Pass the actual slot ID, not holdSlot counter
                 this.cargoHolds.set(holdSlot, cargoHold);
                 this.totalCapacity += cargoHold.capacity;
                 
-                console.log(`🚛 Cargo Hold ${holdSlot}: ${cargoHold.name} (${cargoHold.capacity} units)`);
+                console.log(`🚛 Cargo Hold ${holdSlot}: ${cargoHold.name} (Level ${cargoHold.level}) in slot ${slotId} (${cargoHold.capacity} units)`);
                 holdSlot++;
             } else {
                 console.log(`🚛 ❌ Not a cargo hold card: ${card.cardType}`);
@@ -158,42 +158,68 @@ export class CargoHoldManager {
             };
         }
         
-        // Find optimal cargo hold for this commodity
-        const targetHold = this.selectOptimalHold(commodityData);
-        if (!targetHold) {
-            return {
-                success: false,
-                error: 'No suitable cargo hold available'
+        // Distribute cargo across multiple holds if needed
+        let remainingQuantity = quantity;
+        const loadedCargo = [];
+        
+        while (remainingQuantity > 0) {
+            // Find optimal cargo hold for this commodity
+            const targetHold = this.selectOptimalHold(commodityData);
+            if (!targetHold) {
+                return {
+                    success: false,
+                    error: 'No suitable cargo hold available'
+                };
+            }
+            
+            // Calculate how much can fit in this hold
+            const holdUsedSpace = this.getHoldUsedCapacity(targetHold);
+            const holdAvailableSpace = targetHold.capacity - holdUsedSpace;
+            const maxUnitsForThisHold = Math.floor(holdAvailableSpace / commodityData.volume);
+            const unitsToLoad = Math.min(remainingQuantity, maxUnitsForThisHold);
+            
+            if (unitsToLoad <= 0) {
+                return {
+                    success: false,
+                    error: 'No space available in cargo holds'
+                };
+            }
+            
+            // Add to cargo manifest
+            const cargoId = `${commodityId}_${Date.now()}_${targetHold.slotId}`;
+            const cargoItem = {
+                id: cargoId,
+                commodityId: commodityId,
+                quantity: unitsToLoad,
+                volume: commodityData.volume,
+                holdSlot: targetHold.slotId,
+                loadedAt: Date.now(),
+                integrity: 1.0,
+                commodityData: commodityData
             };
+            
+            this.loadedCargo.set(cargoId, cargoItem);
+            
+            // Add to hold's cargo list
+            const existingQuantity = targetHold.cargo.get(commodityId) || 0;
+            targetHold.cargo.set(commodityId, existingQuantity + unitsToLoad);
+            
+            loadedCargo.push({
+                holdSlot: targetHold.slotId,
+                quantity: unitsToLoad
+            });
+            
+            console.log(`🚛 Loaded ${unitsToLoad} units of ${commodityId} into hold ${targetHold.slotId}`);
+            
+            remainingQuantity -= unitsToLoad;
         }
-        
-        // Add to cargo manifest
-        const cargoId = `${commodityId}_${Date.now()}`;
-        const cargoItem = {
-            id: cargoId,
-            commodityId: commodityId,
-            quantity: quantity,
-            volume: commodityData.volume,
-            holdSlot: targetHold.slotId,
-            loadedAt: Date.now(),
-            integrity: 1.0,
-            commodityData: commodityData
-        };
-        
-        this.loadedCargo.set(cargoId, cargoItem);
-        
-        // Add to hold's cargo list
-        const existingQuantity = targetHold.cargo.get(commodityId) || 0;
-        targetHold.cargo.set(commodityId, existingQuantity + quantity);
         
         this.updateUsedCapacity();
         
-        console.log(`🚛 Loaded ${quantity} units of ${commodityId} into hold ${targetHold.slotId}`);
-        
         return {
             success: true,
-            cargoId: cargoId,
-            holdSlot: targetHold.slotId,
+            loadedCargo: loadedCargo,
+            totalLoaded: quantity,
             usedCapacity: this.usedCapacity,
             totalCapacity: this.totalCapacity
         };
@@ -399,6 +425,103 @@ export class CargoHoldManager {
         }
         
         return totalQuantity >= minQuantity;
+    }
+    
+    /**
+     * Check if any cargo hold contains cargo
+     * @param {number} holdSlot - Optional: check specific hold slot, if not provided checks all holds
+     * @returns {boolean} True if cargo is present
+     */
+    hasCargoInHold(holdSlot = null) {
+        console.log(`🛡️ CARGO CHECK: hasCargoInHold(${holdSlot}) called`);
+        console.log(`🛡️ CARGO CHECK: loadedCargo has ${this.loadedCargo.size} items`);
+        
+        if (holdSlot !== null) {
+            // Check specific hold
+            console.log(`🛡️ CARGO CHECK: Looking for cargo with holdSlot === ${holdSlot}`);
+            for (const [cargoId, cargoItem] of this.loadedCargo) {
+                console.log(`🛡️ CARGO CHECK: Cargo item ${cargoId}: holdSlot=${cargoItem.holdSlot}, quantity=${cargoItem.quantity}`);
+                if (cargoItem.holdSlot === holdSlot && cargoItem.quantity > 0) {
+                    console.log(`🛡️ CARGO CHECK: Found matching cargo! Returning true`);
+                    return true;
+                }
+            }
+            console.log(`🛡️ CARGO CHECK: No matching cargo found, returning false`);
+            return false;
+        } else {
+            // Check all holds
+            console.log(`🛡️ CARGO CHECK: Checking all holds, usedCapacity=${this.usedCapacity}`);
+            return this.usedCapacity > 0;
+        }
+    }
+    
+    /**
+     * Get cargo contents for a specific hold
+     * @param {number} holdSlot - Hold slot to check
+     * @returns {Array} Array of cargo items in the hold
+     */
+    getCargoInHold(holdSlot) {
+        const cargoInHold = [];
+        for (const [cargoId, cargoItem] of this.loadedCargo) {
+            if (cargoItem.holdSlot === holdSlot) {
+                cargoInHold.push({
+                    id: cargoItem.id,
+                    commodityId: cargoItem.commodityId,
+                    name: cargoItem.commodityData.name,
+                    quantity: cargoItem.quantity,
+                    volume: cargoItem.volume
+                });
+            }
+        }
+        return cargoInHold;
+    }
+    
+    /**
+     * Dump (destroy) all cargo in a specific hold
+     * @param {number} holdSlot - Hold slot to clear
+     * @returns {Object} Result with success status and dumped cargo list
+     */
+        dumpCargoInHold(holdSlot) {
+        console.log(`🗑️ DUMP: Attempting to dump cargo from hold slot ${holdSlot}`);
+        console.log(`🗑️ DUMP: Current loadedCargo has ${this.loadedCargo.size} items`);
+        
+        const cargoToDump = this.getCargoInHold(holdSlot);
+        const dumpedCargo = [];
+
+        // Remove all cargo items from this hold
+        for (const [cargoId, cargoItem] of this.loadedCargo) {
+            console.log(`🗑️ DUMP: Checking cargo ${cargoId}: holdSlot=${cargoItem.holdSlot}, looking for ${holdSlot}`);
+            if (cargoItem.holdSlot === holdSlot) {
+                dumpedCargo.push({
+                    commodityId: cargoItem.commodityId,
+                    name: cargoItem.commodityData.name,
+                    quantity: cargoItem.quantity
+                });
+                this.loadedCargo.delete(cargoId);
+                console.log(`🗑️ DUMP: Removed cargo ${cargoId}`);
+            }
+        }
+        
+        // Recalculate used capacity
+        this.recalculateUsedCapacity();
+        
+        console.log(`🗑️ Dumped ${dumpedCargo.length} cargo types from hold ${holdSlot}`);
+        
+        return {
+            success: true,
+            dumpedCargo: dumpedCargo,
+            totalItemsDumped: dumpedCargo.length
+        };
+    }
+    
+    /**
+     * Recalculate used capacity based on current cargo
+     */
+    recalculateUsedCapacity() {
+        this.usedCapacity = 0;
+        for (const [cargoId, cargoItem] of this.loadedCargo) {
+            this.usedCapacity += cargoItem.volume;
+        }
     }
     
     /**
