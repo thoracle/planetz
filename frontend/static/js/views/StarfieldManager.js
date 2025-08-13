@@ -3827,9 +3827,22 @@ export class StarfieldManager {
                 console.log('🚪 Long Range Scanner dismissed during docking - scanner systems powered down');
             }
             
+            // Hide proximity detector if open - radar systems powered down when docked
+            if (this.proximityDetector3D && this.proximityDetector3D.isVisible) {
+                this.proximityDetector3D.isVisible = false;
+                this.proximityDetector3D.detectorContainer.style.display = 'none';
+                console.log('🚪 Proximity Detector dismissed during docking - radar systems powered down');
+            }
+            
             // Hide subspace radio UI during docking
             if (this.viewManager.subspaceRadio && this.viewManager.subspaceRadio.isVisible) {
                 this.viewManager.subspaceRadio.hide();
+            }
+            
+            // Hide communication HUD during docking - stations have their own communication systems
+            if (this.communicationHUD && this.communicationHUD.visible) {
+                this.communicationHUD.hide();
+                console.log('🚪 Communication HUD dismissed during docking - station communications available');
             }
             
             // Hide damage control HUD when docking since systems are powered down
@@ -3912,8 +3925,17 @@ export class StarfieldManager {
                 this.viewManager.longRangeScanner.hide(false);
                 console.log('🚪 Long Range Scanner dismissed during docking completion');
             }
+            if (this.proximityDetector3D && this.proximityDetector3D.isVisible) {
+                this.proximityDetector3D.isVisible = false;
+                this.proximityDetector3D.detectorContainer.style.display = 'none';
+                console.log('🚪 Proximity Detector dismissed during docking completion');
+            }
             if (this.viewManager.subspaceRadio && this.viewManager.subspaceRadio.isVisible) {
                 this.viewManager.subspaceRadio.hide();
+            }
+            if (this.communicationHUD && this.communicationHUD.visible) {
+                this.communicationHUD.hide();
+                console.log('🚪 Communication HUD dismissed during docking completion');
             }
             if (this.damageControlVisible && this.damageControlHUD) {
                 this.damageControlVisible = false;
