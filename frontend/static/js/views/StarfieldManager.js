@@ -5,6 +5,7 @@ import DockingSystemManager from '../ship/DockingSystemManager.js';
 import { PhysicsDockingManager } from '../ship/PhysicsDockingManager.js';
 import { getSystemDisplayName } from '../ship/System.js';
 import DamageControlHUD from '../ui/DamageControlHUD.js';
+import { CommunicationHUD } from '../ui/CommunicationHUD.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { WeaponSlot } from '../ship/systems/WeaponSlot.js';
 import SimplifiedDamageControl from '../ui/SimplifiedDamageControl.js';
@@ -172,6 +173,9 @@ export class StarfieldManager {
         
         // Create help interface
         this.helpInterface = new HelpInterface(this);
+        
+        // Create communication HUD for NPC interactions
+        this.communicationHUD = new CommunicationHUD(this, document.body);
         
         // Create enemy AI manager
         this.enemyAIManager = new EnemyAIManager(this.scene, this.camera, this);
@@ -1953,6 +1957,25 @@ export class StarfieldManager {
                     this.showHUDError(
                         'PROXIMITY DETECTOR VIEW TOGGLE UNAVAILABLE',
                         'Proximity Detector not active (press P to enable)'
+                    );
+                }
+            }
+
+            // Add Communication HUD Toggle key binding (N key)
+            if (commandKey === 'n') {
+                // Communication HUD can be toggled anytime (for testing and mission systems)
+                if (this.communicationHUD) {
+                    if (this.communicationHUD.toggle()) {
+                        this.playCommandSound();
+                        console.log('🗣️ Communication HUD toggled:', this.communicationHUD.visible ? 'ON' : 'OFF');
+                    } else {
+                        this.playCommandFailedSound();
+                    }
+                } else {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'COMMUNICATION HUD UNAVAILABLE',
+                        'Communication system not initialized'
                     );
                 }
             }
@@ -6365,6 +6388,37 @@ export class StarfieldManager {
                 this.playCommandFailedSound();
             }
         }
+    }
+
+    /**
+     * Show communication message from mission or AI system
+     * @param {string} npcName - Name of the NPC sending the message
+     * @param {string} message - The message text
+     * @param {Object} options - Optional settings (channel, signal strength, duration)
+     */
+    showCommunication(npcName, message, options = {}) {
+        if (this.communicationHUD) {
+            this.communicationHUD.showMessage(npcName, message, options);
+            return true;
+        }
+        console.warn('🗣️ Communication HUD not available');
+        return false;
+    }
+
+    /**
+     * Hide communication HUD
+     */
+    hideCommunication() {
+        if (this.communicationHUD) {
+            this.communicationHUD.hide();
+        }
+    }
+
+    /**
+     * Check if communication HUD is visible
+     */
+    isCommunicationVisible() {
+        return this.communicationHUD ? this.communicationHUD.visible : false;
     }
 
 } 
