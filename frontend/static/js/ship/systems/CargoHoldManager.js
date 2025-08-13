@@ -27,6 +27,15 @@ export class CargoHoldManager {
             return;
         }
         
+        // Save existing cargo before clearing holds
+        const existingCargo = new Map();
+        for (const [holdSlot, hold] of this.cargoHolds) {
+            if (hold.cargo && hold.cargo.size > 0) {
+                existingCargo.set(hold.slotId, new Map(hold.cargo));
+                console.log(`🚛 PRESERVING: Saved ${hold.cargo.size} cargo types from hold slot ${hold.slotId}`);
+            }
+        }
+        
         // Clear existing holds
         this.cargoHolds.clear();
         this.totalCapacity = 0;
@@ -48,6 +57,18 @@ export class CargoHoldManager {
                 holdSlot++;
             } else {
                 console.log(`🚛 ❌ Not a cargo hold card: ${card.cardType}`);
+            }
+        }
+        
+        // Restore existing cargo to recreated holds
+        for (const [slotId, savedCargo] of existingCargo) {
+            // Find the hold with this slotId
+            for (const [holdSlot, hold] of this.cargoHolds) {
+                if (hold.slotId === slotId) {
+                    hold.cargo = savedCargo;
+                    console.log(`🚛 RESTORED: ${savedCargo.size} cargo types to hold slot ${slotId}`);
+                    break;
+                }
             }
         }
         
@@ -280,12 +301,16 @@ export class CargoHoldManager {
      * Select optimal cargo hold for commodity
      */
     selectOptimalHold(commodityData) {
+        console.log(`🚛 SELECTING HOLD: Looking for optimal hold for ${commodityData.name || 'unknown commodity'}`);
+        console.log(`🚛 SELECTING HOLD: Available holds: ${this.cargoHolds.size}`);
+        
         // Priority 1: Special requirements
         for (const requirement of commodityData.special_requirements || []) {
             for (const [slotId, hold] of this.cargoHolds) {
                 if (hold.features.includes(requirement)) {
                     const usedSpace = this.getHoldUsedCapacity(hold);
                     if (usedSpace < hold.capacity) {
+                        console.log(`🚛 SELECTING HOLD: Found special requirement hold: slot ${hold.slotId} (${usedSpace}/${hold.capacity} used)`);
                         return hold;
                     }
                 }
@@ -296,14 +321,20 @@ export class CargoHoldManager {
         let bestHold = null;
         let mostSpace = 0;
         
+        console.log(`🚛 SELECTING HOLD: Checking available space in each hold:`);
         for (const [slotId, hold] of this.cargoHolds) {
-            const availableSpace = hold.capacity - this.getHoldUsedCapacity(hold);
+            const usedSpace = this.getHoldUsedCapacity(hold);
+            const availableSpace = hold.capacity - usedSpace;
+            console.log(`🚛 SELECTING HOLD: Hold slot ${hold.slotId}: ${usedSpace}/${hold.capacity} used, ${availableSpace} available`);
+            
             if (availableSpace > mostSpace) {
                 mostSpace = availableSpace;
                 bestHold = hold;
+                console.log(`🚛 SELECTING HOLD: New best hold: slot ${hold.slotId} with ${availableSpace} available space`);
             }
         }
         
+        console.log(`🚛 SELECTING HOLD: Selected hold: slot ${bestHold?.slotId || 'none'} with ${mostSpace} available space`);
         return bestHold;
     }
     
@@ -312,10 +343,14 @@ export class CargoHoldManager {
      */
     getHoldUsedCapacity(hold) {
         let used = 0;
+        console.log(`🚛 CAPACITY CHECK: Hold slot ${hold.slotId} cargo:`, Array.from(hold.cargo.entries()));
         for (const [commodityId, quantity] of hold.cargo) {
             const commodityData = this.getCommodityData(commodityId);
-            used += quantity * commodityData.volume;
+            const volume = quantity * commodityData.volume;
+            console.log(`🚛 CAPACITY CHECK: ${commodityId}: ${quantity} units × ${commodityData.volume} = ${volume} space`);
+            used += volume;
         }
+        console.log(`🚛 CAPACITY CHECK: Hold slot ${hold.slotId} total used: ${used}/${hold.capacity}`);
         return used;
     }
     
