@@ -178,6 +178,20 @@ class MissionManager:
         logger.debug(f"🎯 Found {len(available)} available missions at {location}")
         return available
     
+    def get_active_missions(self, player_context: Dict[str, Any] = None) -> List[Mission]:
+        """
+        Get missions that are currently active/accepted by the player
+        """
+        active = []
+        
+        for mission in self.missions.values():
+            # Only include accepted missions that aren't botched
+            if mission.state == MissionState.ACCEPTED and not mission.is_botched:
+                active.append(mission)
+        
+        logger.debug(f"🎯 Found {len(active)} active missions")
+        return active
+    
     def accept_mission(self, mission_id: str, player_context: Dict[str, Any] = None) -> bool:
         """
         Accept a mission (change state to ACCEPTED)

@@ -97,6 +97,33 @@ def get_available_missions():
         return jsonify({'error': str(e)}), 500
 
 
+@missions_bp.route('/api/missions/active', methods=['GET'])
+def get_active_missions():
+    """
+    Get active/accepted missions for the player
+    """
+    if not mission_manager:
+        return jsonify({'error': 'Mission system not initialized'}), 500
+    
+    try:
+        # Get player context from request if needed
+        player_context = {}
+        
+        active_missions = mission_manager.get_active_missions(player_context)
+        
+        # Convert missions to dict format for JSON response
+        missions_data = [mission.to_dict() for mission in active_missions]
+        
+        return jsonify({
+            'missions': missions_data,
+            'count': len(missions_data)
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Get active missions failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @missions_bp.route('/api/missions/<mission_id>', methods=['GET'])
 def get_mission_details(mission_id: str):
     """
