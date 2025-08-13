@@ -286,6 +286,17 @@ export class PhysicsDockingManager {
         this.dockingInProgress = true;
         this.currentDockingTarget = target;
 
+        // Immediately cut speed and stop engine noise when docking starts
+        if (this.starfieldManager.audioManager && this.starfieldManager.audioManager.getEngineState() === 'running') {
+            this.starfieldManager.playEngineShutdown();
+            console.log('🔇 Physics docking: Engine shutdown called');
+        } else {
+            console.log('🔇 Physics docking engine state check:', this.starfieldManager.audioManager ? this.starfieldManager.audioManager.getEngineState() : 'no audioManager');
+        }
+        this.starfieldManager.targetSpeed = 0;
+        this.starfieldManager.currentSpeed = 0;
+        this.starfieldManager.decelerating = false;
+
         try {
             // Prevent recursion: if dock() would route back to physics, call distance path directly
             let dockingSuccess = false;

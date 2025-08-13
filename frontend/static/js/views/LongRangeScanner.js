@@ -209,8 +209,8 @@ export class LongRangeScanner {
         
         svg.style.cursor = 'default'; // Set default cursor instead of grab
         
-        // Ensure valid zoom level
-        if (isNaN(this.currentZoomLevel) || this.currentZoomLevel <= 0) {
+        // Ensure valid zoom level (allow zoom out to 0.4 for beacon ring view)
+        if (isNaN(this.currentZoomLevel) || this.currentZoomLevel < 0.4) {
             this.currentZoomLevel = 1;
         }
 
@@ -236,21 +236,47 @@ export class LongRangeScanner {
         };
 
         svg.setAttribute('viewBox', `${safeViewBox.x} ${safeViewBox.y} ${safeViewBox.width} ${safeViewBox.height}`);
+        // console.log(`🔍 LRS ViewBox: zoom=${this.currentZoomLevel}, viewBox="${safeViewBox.x} ${safeViewBox.y} ${safeViewBox.width} ${safeViewBox.height}", center=(${this.currentCenter.x}, ${this.currentCenter.y})`);
         this.mapContainer.appendChild(svg);
 
         // Add click handler for empty space zoom out
         svg.addEventListener('click', (e) => {
-            const clickedElement = document.elementFromPoint(e.clientX, e.clientY);
-            // If clicked element is the SVG itself or a non-celestial body element, zoom out one level
-            if (clickedElement === svg || 
-                (clickedElement && !clickedElement.classList.contains('scanner-star') && 
-                 !clickedElement.classList.contains('scanner-planet') && 
-                 !clickedElement.classList.contains('scanner-moon') &&
-                 !clickedElement.classList.contains('scanner-moon-hitbox'))) {
+            // Add small delay to prevent double-click interference
+            setTimeout(() => {
+                const clickedElement = document.elementFromPoint(e.clientX, e.clientY);
+                console.log(`🔍 LRS Click: element=${clickedElement.tagName}, classes=[${clickedElement.className}], zoomLevel=${this.currentZoomLevel}`);
                 
-                if (this.currentZoomLevel > 1) {
+                // If clicked element is the SVG itself or a non-interactive element, zoom out
+                const isInteractiveElement = clickedElement !== svg && (
+                    clickedElement.classList.contains('scanner-star') || 
+                    clickedElement.classList.contains('scanner-planet') || 
+                    clickedElement.classList.contains('scanner-moon') ||
+                    clickedElement.classList.contains('scanner-moon-hitbox') ||
+                    clickedElement.classList.contains('scanner-station') ||
+                    clickedElement.classList.contains('scanner-beacon') || // Exclude beacon clicks from zoom out
+                    clickedElement.hasAttribute('data-name') // Any element with targeting data
+                );
+                
+                if (!isInteractiveElement) {
+                console.log(`🔍 LRS: Empty space clicked, zooming out from level ${this.currentZoomLevel}`);
+                
+                // More aggressive approach: If we get two clicks at non-super-zoom levels, force super zoom
+                if (!this.lastZoomClickTime) this.lastZoomClickTime = 0;
+                const now = Date.now();
+                const isQuickDoubleClick = (now - this.lastZoomClickTime) < 1000; // Within 1 second
+                
+                if (isQuickDoubleClick && this.currentZoomLevel >= 1) {
+                    // Force super zoom on quick double click
+                    this.currentZoomLevel = 0.4;
+                    this.currentCenter = { x: 0, y: 0 };
+                    this.lastClickedBody = null;
+                    console.log(`🔍 LRS: FORCE SUPER ZOOM (double click) to level ${this.currentZoomLevel} to show beacon ring`);
+                    console.log(`🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
+                    this.updateScannerMap();
+                } else if (this.currentZoomLevel > 1) {
                     // Step down zoom level by 1
                     this.currentZoomLevel--;
+                    console.log(`🔍 LRS: Zoomed to level ${this.currentZoomLevel}`);
                     
                     // If we're zooming back to overview, reset center
                     if (this.currentZoomLevel === 1) {
@@ -259,19 +285,59 @@ export class LongRangeScanner {
                     }
                     
                     this.updateScannerMap();
+                } else if (this.currentZoomLevel === 1) {
+                    // We're at zoom level 1, zoom out further to show the full beacon ring
+                    this.currentZoomLevel = 0.4; // Zoom out to 40% to show beacons at radius 350 (viewBox becomes 2500x2500)
+                    this.currentCenter = { x: 0, y: 0 };
+                    this.lastClickedBody = null;
+                    console.log(`🔍 LRS: Super zoomed out to level ${this.currentZoomLevel} to show beacon ring`);
+                    console.log(`🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
+                    this.updateScannerMap();
+                } else if (this.currentZoomLevel < 1) {
+                    // Already at super zoom level, reset back to normal
+                    this.currentZoomLevel = 1;
+                    this.currentCenter = { x: 0, y: 0 };
+                    this.lastClickedBody = null;
+                    console.log(`🔍 LRS: Reset zoom back to level ${this.currentZoomLevel}`);
+                    this.updateScannerMap();
+                } else {
+                    // Fallback case
+                    console.log(`🔍 LRS: Fallback - forcing super zoom from level ${this.currentZoomLevel}`);
+                    this.currentZoomLevel = 0.4;
+                    this.currentCenter = { x: 0, y: 0 };
+                    this.lastClickedBody = null;
+                    this.updateScannerMap();
                 }
+                
+                this.lastZoomClickTime = now;
+            } else {
+                console.log(`🔍 LRS: Clicked interactive element, not zooming`);
             }
+            }, 50); // Small delay to let other events settle
         });
 
         // Add double-click handler for zoom out
         svg.addEventListener('dblclick', (e) => {
             e.preventDefault(); // Prevent text selection on double click
             
-            // If we're zoomed in, zoom out to overview
-            if (this.currentZoomLevel > 1) {
-                this.currentZoomLevel = 1;
+            // Double-click always forces super zoom to see beacon ring
+            this.currentZoomLevel = 0.4;
+            this.currentCenter = { x: 0, y: 0 };
+            this.lastClickedBody = null;
+            console.log(`🔍 LRS: DOUBLE-CLICK SUPER ZOOM to level ${this.currentZoomLevel} to show beacon ring`);
+            console.log(`🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
+            this.updateScannerMap();
+        });
+        
+        // Add keyboard shortcut for super zoom (B for Beacons)
+        document.addEventListener('keydown', (e) => {
+            if (this._isVisible && (e.key === 'b' || e.key === 'B')) {
+                e.preventDefault();
+                this.currentZoomLevel = 0.4;
                 this.currentCenter = { x: 0, y: 0 };
                 this.lastClickedBody = null;
+                console.log(`🔍 LRS: KEYBOARD SUPER ZOOM (B key) to level ${this.currentZoomLevel} to show beacon ring`);
+                console.log(`🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
                 this.updateScannerMap();
             }
         });
@@ -527,31 +593,47 @@ export class LongRangeScanner {
         (() => {
             const starfieldManager = this.viewManager?.starfieldManager;
             const beacons = starfieldManager?.navigationBeacons || [];
-            if (!beacons || beacons.length === 0) return;
-
-            // Precompute orbit radii from planets drawn above (same as stations)
-            const orbitRadii = [];
-            if (starSystem.planets) {
-                for (let i = 0; i < starSystem.planets.length; i++) {
-                    orbitRadii.push(100 + (i * 150));
-                }
+            // console.log(`🔍 Long Range Scanner: Found ${beacons.length} navigation beacons`);
+            // console.log(`🔍 Long Range Scanner: Current viewBox - width: ${this.defaultViewBox.width}, height: ${this.defaultViewBox.height}, x: ${this.defaultViewBox.x}, y: ${this.defaultViewBox.y}`);
+            if (!beacons || beacons.length === 0) {
+                console.log(`🔍 Long Range Scanner: No beacons to display - starfieldManager=${!!starfieldManager}, navigationBeacons=${!!starfieldManager?.navigationBeacons}`);
+                return;
             }
+            
+            // console.log(`🔍 Long Range Scanner: Drawing ${beacons.length} beacons at zoom ${this.currentZoomLevel}`);
+
+            // Beacons get their own dedicated ring at 175km distance from Sol
+            // Calculate scanner radius based on beacon's actual distance from center
+            const beaconDistanceFromSol = 175; // km - matches the beacon creation radius
+            const beaconScannerRadius = 350; // Dedicated ring for beacons, further out than stations but within viewBox
+
+            // Draw the beacon orbital ring (dotted circle)
+            const beaconRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            beaconRing.setAttribute('cx', '0');
+            beaconRing.setAttribute('cy', '0');
+            beaconRing.setAttribute('r', String(beaconScannerRadius));
+            beaconRing.setAttribute('fill', 'none');
+            beaconRing.setAttribute('stroke', '#ffff44');
+            beaconRing.setAttribute('stroke-width', '1');
+            beaconRing.setAttribute('stroke-dasharray', '5,3'); // Dotted line
+            beaconRing.setAttribute('opacity', '0.6');
+            beaconRing.setAttribute('class', 'beacon-orbit-ring');
+            svg.appendChild(beaconRing);
 
             beacons.forEach((beacon, idx) => {
-                if (!beacon || !beacon.position) return;
+                if (!beacon || !beacon.position) {
+                    console.log(`🔍 Beacon ${idx + 1}: Invalid beacon or position`);
+                    return;
+                }
                 const pos = beacon.position;
                 const angle = Math.atan2(pos.z, pos.x);
 
-                // Choose nearest orbit ring for consistent map scale
-                let r = 300;
-                if (orbitRadii.length > 0) {
-                    r = orbitRadii.reduce((best, candidate) => {
-                        return (Math.abs(candidate - pos.length()) < Math.abs(best - pos.length())) ? candidate : best;
-                    }, orbitRadii[0]);
-                }
-
-                const x = r * Math.cos(angle);
-                const y = r * Math.sin(angle);
+                // Place beacons on their dedicated outer ring
+                const x = beaconScannerRadius * Math.cos(angle);
+                const y = beaconScannerRadius * Math.sin(angle);
+                
+                // console.log(`🔍 Beacon ${idx + 1}: Position (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}) -> Scanner (${x.toFixed(1)}, ${y.toFixed(1)}) at radius ${beaconScannerRadius}`);
+                // console.log(`🔍 Beacon ${idx + 1}: Current ViewBox: ${this.currentZoomLevel}x zoom, center=(${this.currentCenter.x}, ${this.currentCenter.y})`);
 
                 // Draw small triangle marker for beacon
                 const size = 10;
@@ -732,12 +814,11 @@ export class LongRangeScanner {
                 parentY: parseFloat(clickedElement.getAttribute('data-parent-y')) || null
             };
 
-            // Simple progressive zoom: go to next zoom level
+            // Progressive zoom: go to next zoom level, or center on object if at max zoom
             if (this.currentZoomLevel < this.maxZoomLevel) {
                 this.currentZoomLevel++;
             }
-
-            // Update center with validation
+            // Always center on the clicked object (whether zooming in or already at max zoom)
             this.currentCenter = { 
                 x: isNaN(cx) ? 0 : cx,
                 y: isNaN(cy) ? 0 : cy
@@ -753,14 +834,39 @@ export class LongRangeScanner {
             if (starfieldManager.targetComputerManager) {
                 starfieldManager.targetComputerManager.updateTargetList();
                 const tcm = starfieldManager.targetComputerManager;
-                const idx = tcm.targetObjects.findIndex(t => (t.name === bodyName) || (t.object?.userData?.name === bodyName));
+                let idx = tcm.targetObjects.findIndex(t => (t.name === bodyName) || (t.object?.userData?.name === bodyName));
+                
+                // If body not found in range, force-add it as an out-of-range target
+                if (idx === -1) {
+                    console.log(`🔍 Long Range Scanner: Adding out-of-range celestial body ${bodyName} to target list`);
+                    const distance = starfieldManager.camera.position.distanceTo(targetBody.position);
+                    const outOfRangeTarget = {
+                        name: bodyName,
+                        type: bodyInfo.type,
+                        position: targetBody.position.toArray(),
+                        isMoon: bodyInfo.type === 'moon',
+                        isSpaceStation: bodyInfo.type === 'station',
+                        object: targetBody,
+                        isShip: false,
+                        distance: distance,
+                        outOfRange: true, // Flag to indicate this is out of range
+                        faction: bodyInfo.faction || 'Neutral',
+                        diplomacy: bodyInfo.diplomacy || 'Neutral',
+                        ...bodyInfo
+                    };
+                    tcm.targetObjects.push(outOfRangeTarget);
+                    idx = tcm.targetObjects.length - 1;
+                }
+                
                 if (idx !== -1) {
-                    tcm.targetIndex = idx - 1; // cycleTarget will advance to idx
-                    tcm.cycleTarget(false); // automatic cycle; avoids manual cooldown
-                    // sync StarfieldManager reference for outline/reticle
+                    tcm.targetIndex = idx;
+                    tcm.currentTarget = tcm.targetObjects[idx];
                     starfieldManager.currentTarget = tcm.currentTarget?.object || tcm.currentTarget;
                     starfieldManager.targetIndex = tcm.targetIndex;
                     starfieldManager.targetObjects = tcm.targetObjects;
+                    
+                    // Update the target display to show the new target
+                    tcm.updateTargetDisplay();
                 }
             } else {
                 // Fallback to previous behavior using SFManager list
@@ -855,7 +961,11 @@ export class LongRangeScanner {
             const r = 300;
             const cx = r * Math.cos(angle);
             const cy = r * Math.sin(angle);
-            this.currentZoomLevel = Math.min(this.currentZoomLevel + 1, this.maxZoomLevel);
+            // Progressive zoom: go to next zoom level, or center on beacon if at max zoom
+            if (this.currentZoomLevel < this.maxZoomLevel) {
+                this.currentZoomLevel++;
+            }
+            // Always center on the clicked beacon (whether zooming in or already at max zoom)
             this.currentCenter = { x: cx, y: cy };
             this.updateScannerMap();
         }
@@ -863,15 +973,42 @@ export class LongRangeScanner {
         // If targeting computer is enabled, set beacon as current target
         if (starfieldManager?.targetComputerEnabled && starfieldManager.targetComputerManager) {
             const tcm = starfieldManager.targetComputerManager;
-            // Refresh list so beacon appears via physics entities
+            // Refresh list so beacon appears via physics entities if in range
             tcm.updateTargetList();
-            const idx = tcm.targetObjects.findIndex(t => t.object === beacon || t.name === (beacon.userData?.name || 'Navigation Beacon'));
+            let idx = tcm.targetObjects.findIndex(t => t.object === beacon || t.name === (beacon.userData?.name || 'Navigation Beacon'));
+            
+            // If beacon not found in range, force-add it as an out-of-range target
+            if (idx === -1) {
+                console.log(`🔍 Long Range Scanner: Adding out-of-range beacon ${beacon.userData?.name || 'Navigation Beacon'} to target list`);
+                const distance = starfieldManager.camera.position.distanceTo(beacon.position);
+                const outOfRangeTarget = {
+                    name: beacon.userData?.name || 'Navigation Beacon',
+                    type: 'beacon',
+                    position: beacon.position.toArray(),
+                    isMoon: false,
+                    isSpaceStation: false,
+                    object: beacon,
+                    isShip: false,
+                    distance: distance,
+                    outOfRange: true, // Flag to indicate this is out of range
+                    faction: 'Neutral',
+                    description: 'A navigation marker for local traffic lanes',
+                    intel_brief: 'Transmits local traffic advisories on subspace band',
+                    diplomacy: 'Neutral'
+                };
+                tcm.targetObjects.push(outOfRangeTarget);
+                idx = tcm.targetObjects.length - 1;
+            }
+            
             if (idx !== -1) {
-                tcm.targetIndex = idx - 1;
-                tcm.cycleTarget(false);
+                tcm.targetIndex = idx;
+                tcm.currentTarget = tcm.targetObjects[idx];
                 starfieldManager.currentTarget = tcm.currentTarget?.object || tcm.currentTarget;
                 starfieldManager.targetIndex = tcm.targetIndex;
                 starfieldManager.targetObjects = tcm.targetObjects;
+                
+                // Update the target display to show the new target
+                tcm.updateTargetDisplay();
             }
         }
 

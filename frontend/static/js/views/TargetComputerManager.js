@@ -1008,10 +1008,14 @@ export class TargetComputerManager {
         const maxTargetingRange = targetComputer?.range || 150; // Fallback to 150km if system not found
         
         // Perform spatial query around the camera position
+        // Convert km to meters for spatial query (spatial query expects radius in meters)
+        const maxTargetingRangeMeters = maxTargetingRange * 1000;
+        // console.log(`🔍 TARGET COMPUTER: Performing spatial query from position (${this.camera.position.x.toFixed(1)}, ${this.camera.position.y.toFixed(1)}, ${this.camera.position.z.toFixed(1)}) with range ${maxTargetingRange}km (${maxTargetingRangeMeters}m)`);
         const nearbyEntities = window.physicsManager.spatialQuery(
             this.camera.position, 
-            maxTargetingRange
+            maxTargetingRangeMeters
         );
+        // console.log(`🔍 TARGET COMPUTER: Spatial query returned ${nearbyEntities.length} entities`);
         
         // console.log(`🎯 Physics spatial query found ${nearbyEntities.length} entities within ${maxTargetingRange}km (Target Computer Level ${targetComputer?.level || 'Unknown'})`);
         
@@ -1021,6 +1025,16 @@ export class TargetComputerManager {
         nearbyEntities.forEach(entity => {
             if (!entity.threeObject || !entity.threeObject.position) {
                 return; // Skip invalid entities
+            }
+            
+            // Debug logging for beacons
+            if (entity.type === 'beacon' || entity.threeObject?.userData?.isBeacon) {
+                console.log(`🔍 Processing beacon entity:`, {
+                    entityType: entity.type,
+                    name: entity.name || entity.threeObject?.userData?.name,
+                    distance: this.calculateDistance(this.camera.position, entity.threeObject.position),
+                    userData: entity.threeObject?.userData
+                });
             }
             
             // Skip docking collision boxes - they are not targetable
@@ -1054,8 +1068,15 @@ export class TargetComputerManager {
                 }
             } else if (entity.type === 'star' || entity.type === 'planet' || entity.type === 'moon' || entity.type === 'station' || entity.type === 'beacon') {
                 // Handle celestial bodies and stations
+                if (entity.type === 'beacon') {
+                    console.log(`🔍 Found beacon in main conditional:`, {
+                        entityName: entity.name,
+                        entityId: entity.id,
+                        threeObjectName: entity.threeObject?.userData?.name
+                    });
+                }
                 const info = entity.type === 'beacon' ? {
-                    name: entity.name || 'Navigation Beacon',
+                    name: entity.name || entity.threeObject?.userData?.name || 'Navigation Beacon',
                     type: 'beacon',
                     faction: 'Neutral',
                     description: 'A navigation marker for local traffic lanes',
@@ -1082,8 +1103,27 @@ export class TargetComputerManager {
                 if (obj.userData) {
                     const userData = obj.userData;
                     
+                    // Check if this is a navigation beacon from userData
+                    if (userData.type === 'beacon' || userData.isBeacon) {
+                        console.log(`🔍 Found beacon in unknown entities section: ${userData.name || 'Navigation Beacon'}`);
+                        targetData = {
+                            name: userData.name || 'Navigation Beacon',
+                            type: 'beacon',
+                            position: obj.position.toArray(),
+                            isMoon: false,
+                            isSpaceStation: false,
+                            object: obj,
+                            isShip: false,
+                            distance: distance,
+                            physicsEntity: entity,
+                            faction: userData.faction || 'Neutral',
+                            description: 'A navigation marker for local traffic lanes',
+                            intel_brief: 'Transmits local traffic advisories on subspace band',
+                            diplomacy: 'Neutral'
+                        };
+                    }
                     // Check if this is a space station from userData
-                    if (userData.type === 'station' || userData.isSpaceStation) {
+                    else if (userData.type === 'station' || userData.isSpaceStation) {
                         const info = this.solarSystemManager.getCelestialBodyInfo(obj);
                         targetData = {
                             name: userData.stationName || userData.name || info?.name || 'Unknown Station',
@@ -1786,8 +1826,8 @@ export class TargetComputerManager {
             typeDisplay = info.shipType;
         }
         
-        // Format distance for display
-        const formattedDistance = this.formatDistance(distance);
+        // Format distance for display - check if target is flagged as out of range
+        const formattedDistance = currentTargetData.outOfRange ? 'Out of Range' : this.formatDistance(distance);
         
         // Create hull health section for enemy ships and stations
         let hullHealthSection = '';
@@ -2220,8 +2260,9 @@ export class TargetComputerManager {
         this.targetNameDisplay.style.textShadow = `0 0 4px ${reticleColor}`;
         this.targetNameDisplay.style.display = 'block';
 
-        // Update distance display
-        this.targetDistanceDisplay.textContent = this.formatDistance(distance);
+        // Update distance display - check if target is flagged as out of range
+        const targetData = this.getCurrentTargetData();
+        this.targetDistanceDisplay.textContent = targetData?.outOfRange ? 'Out of Range' : this.formatDistance(distance);
         this.targetDistanceDisplay.style.color = reticleColor;
         this.targetDistanceDisplay.style.textShadow = `0 0 4px ${reticleColor}`;
         this.targetDistanceDisplay.style.display = 'block';

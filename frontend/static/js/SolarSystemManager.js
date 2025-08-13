@@ -1035,33 +1035,27 @@ export class SolarSystemManager {
     }
 
     /**
-     * Create a ring of Navigation Beacons 140km from Terra Prime with ~140km spacing
+     * Create a ring of Navigation Beacons 200km from Sol (the star) with even spacing
      * Small neutral pyramids with low hull that can be destroyed in 1–2 shots
      */
     createNavigationBeaconsAroundTerraPrime() {
-        if (!this.starSystem || !Array.isArray(this.starSystem.planets) || this.starSystem.planets.length === 0) {
-            console.warn('No star system/planets available for beacon placement');
+        if (!this.starSystem) {
+            console.warn('No star system available for beacon placement');
             return;
         }
 
-        // Find Terra Prime index in generated planets
-        const terraIndex = this.starSystem.planets.findIndex(p => (p?.planet_name || '').toLowerCase() === 'terra prime'.toLowerCase());
-        if (terraIndex < 0) {
-            console.warn('Terra Prime not found - skipping navigation beacon creation');
+        // Get Sol (the star) position - should be at origin (0,0,0)
+        const star = this.celestialBodies.get('star');
+        if (!star || !star.position) {
+            console.warn('Sol (star) not found - skipping navigation beacon creation');
             return;
         }
 
-        const terraPlanet = this.celestialBodies.get(`planet_${terraIndex}`);
-        if (!terraPlanet || !terraPlanet.position) {
-            console.warn('Terra Prime mesh not found - skipping navigation beacon creation');
-            return;
-        }
-
-        const center = terraPlanet.position.clone();
-        const radiusKm = 140; // ring radius
-        // Spacing target ~140km along circumference ⇒ ~2πR/140 ≈ 6 beacons
-        const estimatedCount = Math.max(6, Math.round((2 * Math.PI * radiusKm) / 140));
-        const count = Math.min(12, estimatedCount); // cap for sanity
+        const center = star.position.clone();
+        const radiusKm = 175; // ring radius from Sol
+        console.log(`📡 Creating beacons around Sol at position (${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)}) with ${radiusKm}km radius`);
+        // Create 8 beacons evenly spaced around Sol
+        const count = 8;
 
         const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
         if (!THREE) return;
@@ -1086,9 +1080,11 @@ export class SolarSystemManager {
             const beacon = new THREE.Mesh(geometry, material);
             beacon.position.set(bx, by, bz);
             beacon.rotation.y = angle;
+            
+            // console.log(`📡 Beacon ${i + 1} created at position (${bx.toFixed(1)}, ${by.toFixed(1)}, ${bz.toFixed(1)})`);
 
             beacon.userData = {
-                name: 'Navigation Beacon',
+                name: `Navigation Beacon #${i + 1}`,
                 type: 'beacon',
                 faction: 'Neutral',
                 isBeacon: true
@@ -1110,7 +1106,7 @@ export class SolarSystemManager {
                     // Tag metadata with a friendly name for HUD/logs
                     const meta = window.physicsManager.entityMetadata.get(rb);
                     if (meta) {
-                        meta.name = 'Navigation Beacon';
+                        meta.name = `Navigation Beacon #${i + 1}`;
                     }
                 }
             }
@@ -1121,7 +1117,7 @@ export class SolarSystemManager {
             }
         }
 
-        console.log(`📡 Created ${count} Navigation Beacons around Terra Prime at ${radiusKm}km radius`);
+        console.log(`📡 Created ${count} Navigation Beacons around Sol at ${radiusKm}km radius`);
     }
 
     /**

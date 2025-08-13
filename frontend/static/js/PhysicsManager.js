@@ -783,12 +783,9 @@ export class PhysicsManager {
         console.log(`🔍 SPATIAL QUERY: Called with position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}), radius: ${radius}m`);
 
         try {
-            // Check if ghost objects are available
-            if (!this.Ammo.btGhostObject) {
-                // Fallback: Use simple distance-based query
-                console.log('🔍 Using fallback spatial query (btGhostObject not available)');
-                return this.spatialQueryFallback(position, radius);
-            }
+            // Always use fallback for now since btGhostObject spatial queries seem unreliable
+            console.log('🔍 Using fallback spatial query for reliable detection');
+            return this.spatialQueryFallback(position, radius);
 
             // Create ghost object for spatial query (convert radius from meters to km)
             const ghost = new this.Ammo.btGhostObject();
@@ -839,14 +836,38 @@ export class PhysicsManager {
         const radiusSquared = radiusKm * radiusKm; // Use km radius for calculations
         
         // Debug: Log what we're searching for
-        console.log(`🔍 SPATIAL QUERY: Searching for entities within ${radius}m (${radiusKm.toFixed(3)}km) of position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
-        console.log(`🔍 SPATIAL QUERY: Checking ${this.rigidBodies.size} rigid bodies and ${this.entityMetadata.size} metadata entries`);
+        // console.log(`🔍 SPATIAL QUERY: Searching for entities within ${radius}m (${radiusKm.toFixed(3)}km) of position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+        // console.log(`🔍 SPATIAL QUERY: Checking ${this.rigidBodies.size} rigid bodies and ${this.entityMetadata.size} metadata entries`);
+        
+        // Debug: Count beacon entities (commented out for production)
+        // let beaconCount = 0;
+        // for (const [rigidBody, metadata] of this.entityMetadata.entries()) {
+        //     if (metadata.type === 'beacon') {
+        //         beaconCount++;
+        //         // Only log first beacon for debugging
+        //         if (beaconCount === 1) {
+        //             const distance = metadata.threeObject ? metadata.threeObject.position.distanceTo(position) : 'No position';
+        //             console.log(`🔍 BEACON EXAMPLE: ${metadata.id} at distance ${distance}km`);
+        //         }
+        //     }
+        // }
+        // console.log(`🔍 SPATIAL QUERY: Found ${beaconCount} total beacon entities in physics manager`);
         
         // Check all registered rigid bodies
+        let checkedCount = 0;
+        let withinRangeCount = 0;
         for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
             if (threeObject.position) {
+                checkedCount++;
                 const distance = threeObject.position.distanceTo(position); // Distance in km (world units)
+                
+                // Debug: Log first few entities regardless of distance (commented out for production)
+                // if (checkedCount <= 3) {
+                //     console.log(`🔍 DEBUG ENTITY ${checkedCount}: Distance ${distance.toFixed(3)}km, Range limit ${radiusKm.toFixed(3)}km`);
+                // }
+                
                 if (distance <= radiusKm) { // Compare km to km
+                    withinRangeCount++;
                     const metadata = this.entityMetadata.get(rigidBody);
                     if (metadata) {
                         console.log(`✅ SPATIAL QUERY: Found entity '${metadata.id}' (${metadata.type}) at ${distance.toFixed(3)}km (${(distance * 1000).toFixed(1)}m)`);
@@ -857,6 +878,7 @@ export class PhysicsManager {
                 }
             }
         }
+        // console.log(`🔍 SPATIAL QUERY: Checked ${checkedCount} entities, ${withinRangeCount} within range`);
         
         console.log(`🔍 SPATIAL QUERY: Found ${overlaps.length} entities within ${radius}m radius`);
         

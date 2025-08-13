@@ -3601,10 +3601,18 @@ export class StarfieldManager {
         // Store the current view before docking
         this.previousView = this.view;
 
-        // Stop engine sounds when docking
-        if (this.engineState === 'running') {
+        // Stop engine sounds and reduce speed immediately when docking starts
+        if (this.audioManager && this.audioManager.getEngineState() === 'running') {
             this.playEngineShutdown();
+            console.log('🔇 Engine shutdown called during docking');
+        } else {
+            console.log('🔇 Engine state check:', this.audioManager ? this.audioManager.getEngineState() : 'no audioManager');
         }
+        
+        // Immediately cut speed to 0 when docking initiates
+        this.targetSpeed = 0;
+        this.currentSpeed = 0;
+        this.decelerating = false;
 
         // Calculate initial position relative to target
         const targetPosition = this.getTargetPosition(target);

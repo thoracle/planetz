@@ -331,22 +331,19 @@ export class ProximityDetector3D {
         const screenHeight = window.innerHeight;
         
         if (this.viewMode === 'topDown') {
-            // Top-down view: Rectangular, upper-left corner, same width as target HUD
-            // Target HUD total width = 200px content + 2px border + 10px padding each side = 224px
-            // Target HUD when fully populated (target dummies) = ~320px height
-            const radarWidth = 200; // Match target HUD content width
-            const radarHeight = 100; // Compact height to fit above target HUD
+            // Top-down view: Rectangular, bottom-center position (matching 3D radar location)
+            // Position same as RadarHUD at bottom-center for consistency
+            const radarWidth = 200; // Match RadarHUD width
+            const radarHeight = 160; // Compact but readable height
             
-            // Position: Upper-left, below energy counter, flush left with target HUD
-            // Energy counter is at top: 10px, target HUD is at left: 10px
-            // Energy counter height ~45px + clearance = 55px from top
+            // Position: Bottom-center, same as other radar systems
             const positioningCSS = `
                 position: fixed;
-                top: 55px;
-                left: 10px;
+                bottom: 20px;
+                left: 50%;
                 width: ${radarWidth}px;
                 height: ${radarHeight}px;
-                transform: none;
+                transform: translateX(-50%);
             `;
             
             // Match target HUD styling for consistency
