@@ -187,6 +187,26 @@ export class CommodityExchange {
     }
     
     /**
+     * Get icon for commodity type
+     */
+    getCommodityIcon(commodityId) {
+        const icons = {
+            'medical_supplies': '🏥',
+            'food_rations': '🍖',
+            'raw_materials': '⚙️',
+            'rare_elements': '💎',
+            'illegal_weapons': '⚔️',
+            'luxury_goods': '👑',
+            'energy_cells': '🔋',
+            'water': '💧',
+            'oxygen': '🫁',
+            'fuel': '⛽'
+        };
+        
+        return icons[commodityId] || '📦'; // Default box icon for unknown commodities
+    }
+
+    /**
      * Load market data for station
      */
     loadMarketData(stationKey) {
@@ -249,11 +269,15 @@ export class CommodityExchange {
                 transition: background 0.2s;
             `;
             
+            const icon = this.getCommodityIcon(commodityId);
             itemEl.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div style="font-weight: bold;">${commodityData.name}</div>
-                        <div style="color: #888; font-size: 12px;">Available: ${data.available} units</div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="font-size: 24px;">${icon}</div>
+                        <div>
+                            <div style="font-weight: bold;">${commodityData.name}</div>
+                            <div style="color: #888; font-size: 12px;">Available: ${data.available} units</div>
+                        </div>
                     </div>
                     <div style="text-align: right;">
                         <div style="color: #ff6666;">Buy: ${data.buy_price} CR</div>
@@ -337,12 +361,16 @@ export class CommodityExchange {
             `;
             
             const timeSinceLoaded = Math.floor((Date.now() - cargoItem.loadedAt) / 1000 / 60);
+            const icon = this.getCommodityIcon(cargoItem.commodityId);
             
             itemEl.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div style="font-weight: bold;">${cargoItem.name}</div>
-                        <div style="color: #888; font-size: 12px;">Hold ${cargoItem.holdSlot} • ${timeSinceLoaded}m ago</div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="font-size: 24px;">${icon}</div>
+                        <div>
+                            <div style="font-weight: bold;">${cargoItem.name}</div>
+                            <div style="color: #888; font-size: 12px;">Hold ${cargoItem.holdSlot} • ${timeSinceLoaded}m ago</div>
+                        </div>
                     </div>
                     <div style="text-align: right;">
                         <div style="color: #66ff66;">Qty: ${cargoItem.quantity}</div>
