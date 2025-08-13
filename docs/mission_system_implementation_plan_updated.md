@@ -2575,9 +2575,752 @@ graph TD
     class PREDEFINED,GENERATED,PLAYER_SPECIFIC,BACKUP category
 ```
 
-## 13. Critical Implementation Details
+## 13. In-Game Mission UI Components
 
-### 13.1 Data Persistence Strategy
+### 13.1 Mission Status HUD (M Key Toggle)
+
+The in-game mission UI will provide real-time mission tracking during gameplay, accessible via the M key toggle. This system complements the mission board interface by providing quick status updates during active gameplay.
+
+#### 13.1.1 Mission Status HUD Architecture
+
+```mermaid
+graph TB
+    subgraph "Mission Status HUD Components"
+        TOGGLE[M Key Toggle]
+        CONTAINER[Mission HUD Container]
+        HEADER[Mission Header]
+        ACTIVE[Active Missions Panel]
+        OBJECTIVES[Objectives Panel]
+        PROGRESS[Progress Indicators]
+    end
+    
+    subgraph "Mission Completion UI"
+        COMPLETE[Mission Complete Screen]
+        REWARDS[Rewards Display]
+        CARDS[Card Rewards]
+        CREDITS[Credit Rewards]
+        FACTION[Faction Standing]
+        CONTINUE[Continue Button]
+    end
+    
+    subgraph "Integration Points"
+        STARFIELD[StarfieldManager]
+        MISSION_MGR[Mission Manager]
+        AUDIO[Audio System]
+        COMM_HUD[Communication HUD]
+    end
+    
+    TOGGLE --> CONTAINER
+    CONTAINER --> HEADER
+    CONTAINER --> ACTIVE
+    CONTAINER --> OBJECTIVES
+    OBJECTIVES --> PROGRESS
+    
+    MISSION_MGR --> COMPLETE
+    COMPLETE --> REWARDS
+    REWARDS --> CARDS
+    REWARDS --> CREDITS
+    REWARDS --> FACTION
+    COMPLETE --> CONTINUE
+    
+    STARFIELD --> TOGGLE
+    MISSION_MGR --> ACTIVE
+    AUDIO --> COMPLETE
+    COMM_HUD --> COMPLETE
+    
+    classDef hud fill:#e8f5e8
+    classDef completion fill:#fff3e0
+    classDef integration fill:#f3e5f5
+    
+    class TOGGLE,CONTAINER,HEADER,ACTIVE,OBJECTIVES,PROGRESS hud
+    class COMPLETE,REWARDS,CARDS,CREDITS,FACTION,CONTINUE completion
+    class STARFIELD,MISSION_MGR,AUDIO,COMM_HUD integration
+```
+
+#### 13.1.2 Mission Status HUD Component Specification
+
+```javascript
+/**
+ * MissionStatusHUD - In-game mission tracking interface
+ * Positioned in upper-right corner, toggled with M key
+ */
+class MissionStatusHUD {
+    constructor(starfieldManager, missionManager) {
+        this.starfieldManager = starfieldManager;
+        this.missionManager = missionManager;
+        this.isVisible = false;
+        this.activeMissions = [];
+        this.updateInterval = null;
+        
+        // UI positioning and styling
+        this.hudContainer = null;
+        this.missionPanels = new Map();
+        
+        this.initialize();
+    }
+    
+    // HUD Positioning: Upper-right corner, below speed indicator
+    // Size: 320px width x variable height (max 400px) - narrower to avoid UI conflicts
+    // Style: Retro terminal green theme matching other HUDs
+    // Conflicts: Must dismiss Damage Control HUD if open
+    
+    createHUDContainer() {
+        this.hudContainer = document.createElement('div');
+        this.hudContainer.className = 'mission-status-hud';
+        this.hudContainer.style.cssText = `
+            position: fixed;
+            top: 120px;
+            right: 15px;
+            width: 320px;
+            max-height: 400px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #00ff41;
+            border-radius: 4px;
+            font-family: 'VT323', monospace;
+            color: #00ff41;
+            padding: 15px;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 65, 0.3),
+                inset 0 0 20px rgba(0, 255, 65, 0.1);
+            z-index: 1001;
+            display: none;
+            user-select: none;
+            backdrop-filter: blur(2px);
+            overflow-y: auto;
+        `;
+    }
+}
+```
+
+### 13.2 Active Mission Panel Layout
+
+#### 13.2.1 Mission Panel Structure (320px width - UI optimized)
+
+```
+┌────────────────────────────────────────┐
+│ ◉ MISSION STATUS             [M] CLOSE │
+├────────────────────────────────────────┤
+│                                        │
+│ ▲ ELIMINATE RAIDER SQUADRON            │
+│   Client: Terra Defense Force          │
+│   Sector: Sol Inner                    │
+│   Progress: 3/5 Raiders Eliminated     │
+│                                        │
+│   OBJECTIVES:                          │
+│   ✓ Locate squadron         [COMPLETE] │
+│   ● Eliminate 5 ships          [3/5]  │
+│   ○ Return to station        [PENDING] │
+│                                        │
+│   Time Remaining: 15:42                │
+│   ──────────────────────────────────── │
+│                                        │
+│ ▼ CARGO DELIVERY RUN                  │
+│   Client: Free Traders Union          │
+│   Route: Ceres → Europa               │
+│   Progress: In Transit                 │
+│                                        │
+│   OBJECTIVES:                          │
+│   ✓ Pick up cargo          [COMPLETE] │
+│   ● Deliver to Europa       [ACTIVE]  │
+│   ○ Avoid ambush            [BONUS]   │
+│                                        │
+│   Distance to Target: 47.3 km         │
+│                                        │
+└────────────────────────────────────────┘
+```
+
+#### 13.2.2 Objective Status Indicators
+
+```javascript
+const OBJECTIVE_ICONS = {
+    COMPLETED: '✓',      // Green checkmark
+    ACTIVE: '●',         // Yellow filled circle  
+    PENDING: '○',        // Gray empty circle
+    FAILED: '✗',         // Red X mark
+    OPTIONAL: '◇',       // Diamond for bonus objectives
+    LOCKED: '🔒'         // Locked objectives (prerequisites not met)
+};
+
+const OBJECTIVE_COLORS = {
+    COMPLETED: '#00ff41',   // Bright green
+    ACTIVE: '#ffff44',      // Yellow
+    PENDING: '#888888',     // Gray
+    FAILED: '#ff4444',      // Red
+    OPTIONAL: '#00aaff',    // Blue
+    LOCKED: '#666666'       // Dark gray
+};
+```
+
+### 13.3 Mission Completion UI System
+
+#### 13.3.1 Mission Complete Screen Design
+
+```
+┌─────────────────────────────────────────────────────┐
+│                 🎉 MISSION COMPLETE 🎉             │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│               ELIMINATE RAIDER SQUADRON             │
+│                                                     │
+│              All objectives completed!              │
+│                                                     │
+│   PERFORMANCE RATING: ⭐⭐⭐⭐☆ (EXCELLENT)          │
+│   Completion Time: 12:34 / 15:00                    │
+│   Bonus Objectives: 2/3 completed                   │
+│                                                     │
+│ ─────────────────── REWARDS ────────────────────── │
+│                                                     │
+│   💰 CREDITS EARNED:        15,750 (+2,500 bonus)  │
+│                                                     │
+│   🎴 CARDS AWARDED:                                 │
+│   ┌───────────────┐ ┌───────────────┐              │
+│   │   PLASMA      │ │   SHIELD      │              │
+│   │   CANNON      │ │   BOOSTER     │              │
+│   │   Level 3     │ │   Level 2     │              │
+│   │   [RARE]      │ │   [COMMON]    │              │
+│   └───────────────┘ └───────────────┘              │
+│                                                     │
+│   ⭐ FACTION STANDING:                              │
+│   Terra Defense Force: +250 (Honored → Revered)    │
+│                                                     │
+│   📊 MISSION STATISTICS:                           │
+│   Ships Destroyed: 7                               │
+│   Damage Taken: 23%                                │
+│   Accuracy: 89%                                     │
+│                                                     │
+│                 [ CONTINUE ]                        │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+#### 13.3.2 Mission Completion Trigger System
+
+```javascript
+/**
+ * Mission completion detection and UI management
+ */
+class MissionCompletionHandler {
+    constructor(missionManager, starfieldManager) {
+        this.missionManager = missionManager;
+        this.starfieldManager = starfieldManager;
+        this.completionScreen = null;
+        this.animationQueue = [];
+    }
+    
+    /**
+     * Triggered when all mission objectives are completed
+     */
+    async onMissionComplete(missionId, completionData) {
+        // 1. Pause game action (optional - configurable)
+        this.starfieldManager.pauseForMissionComplete();
+        
+        // 2. Play completion sound
+        this.starfieldManager.audioManager.playSound('mission_complete', 0.8);
+        
+        // 3. Show completion screen with rewards
+        await this.showCompletionScreen(missionId, completionData);
+        
+        // 4. Update mission status in backend
+        await this.missionManager.completeMission(missionId, completionData);
+        
+        // 5. Award rewards to player
+        await this.awardRewards(completionData.rewards);
+        
+        // 6. Update faction standings
+        await this.updateFactionStanding(completionData.factionRewards);
+        
+        // 7. Resume game action
+        this.starfieldManager.resumeFromMissionComplete();
+    }
+    
+    /**
+     * Create animated completion screen
+     */
+    async showCompletionScreen(missionId, data) {
+        const mission = await this.missionManager.getMission(missionId);
+        
+        this.completionScreen = document.createElement('div');
+        this.completionScreen.className = 'mission-complete-screen';
+        this.completionScreen.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.5s ease-in-out;
+        `;
+        
+        // Create completion panel
+        this.createCompletionPanel(mission, data);
+        
+        // Add to DOM and start animations
+        document.body.appendChild(this.completionScreen);
+        await this.animateRewards(data.rewards);
+    }
+}
+```
+
+### 13.4 Mission UI Integration Points
+
+#### 13.4.1 StarfieldManager Integration
+
+```javascript
+// Add to StarfieldManager.js key bindings
+if (commandKey === 'm') {
+    // Toggle Mission Status HUD
+    if (!this.isDocked) { // Don't show during docking
+        if (this.missionStatusHUD) {
+            // CRITICAL: Dismiss Damage Control HUD if open to prevent overlap
+            if (this.damageControlHUD && this.damageControlHUD.isVisible()) {
+                this.damageControlHUD.hide();
+                console.log('🔧 Damage Control HUD dismissed for Mission Status');
+            }
+            
+            // Also dismiss Galactic Chart and Long Range Scanner if open
+            if (this.viewManager) {
+                if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
+                    this.viewManager.galacticChart.hide();
+                    console.log('🗺️ Galactic Chart dismissed for Mission Status');
+                }
+                if (this.viewManager.longRangeScanner && this.viewManager.longRangeScanner.isVisible()) {
+                    this.viewManager.longRangeScanner.hide();
+                    console.log('🔭 Long Range Scanner dismissed for Mission Status');
+                }
+            }
+            
+            if (this.missionStatusHUD.toggle()) {
+                this.playCommandSound();
+                console.log('🎯 Mission Status HUD toggled:', 
+                    this.missionStatusHUD.visible ? 'ON' : 'OFF');
+            } else {
+                this.playCommandFailedSound();
+            }
+        } else {
+            this.playCommandFailedSound();
+            this.showHUDError(
+                'MISSION STATUS UNAVAILABLE',
+                'Mission system not initialized'
+            );
+        }
+    } else {
+        this.playCommandFailedSound();
+        this.showHUDError(
+            'MISSION STATUS UNAVAILABLE', 
+            'Use Mission Board while docked'
+        );
+    }
+}
+```
+
+#### 13.4.2 Communication HUD Integration
+
+```javascript
+/**
+ * Integration with Communication HUD for mission updates
+ */
+class MissionNotificationHandler {
+    constructor(communicationHUD, missionManager) {
+        this.commHUD = communicationHUD;
+        this.missionManager = missionManager;
+        
+        // Listen for mission events
+        this.missionManager.on('objectiveCompleted', this.onObjectiveComplete.bind(this));
+        this.missionManager.on('missionCompleted', this.onMissionComplete.bind(this));
+        this.missionManager.on('missionFailed', this.onMissionFailed.bind(this));
+    }
+    
+    onObjectiveComplete(objective, mission) {
+        this.commHUD.showMessage(
+            'Mission Control',
+            `Objective completed: ${objective.description}`,
+            {
+                channel: 'MISSION.1',
+                status: '■ UPDATE',
+                duration: 4000
+            }
+        );
+    }
+    
+    onMissionComplete(mission) {
+        this.commHUD.showMessage(
+            mission.giver || 'Mission Control',
+            `Mission complete: ${mission.title}`,
+            {
+                channel: 'MISSION.1', 
+                status: '■ SUCCESS',
+                duration: 6000
+            }
+        );
+    }
+}
+```
+
+### 13.5 Mission HUD Technical Specifications
+
+#### 13.5.1 UI Positioning & Conflict Resolution
+
+- **Position**: `top: 120px, right: 15px` (below speed indicator, avoid overlap)
+- **Size**: `320px width × 400px max height` (narrower to prevent UI conflicts)
+- **Z-Index**: `1001` (above game elements, below modal dialogs)
+- **Conflict Handling**:
+  - **Damage Control HUD**: Auto-dismiss when Mission HUD opens
+  - **Galactic Chart**: Auto-dismiss to prevent overlap
+  - **Long Range Scanner**: Auto-dismiss to prevent overlap
+  - **Speed Indicator**: Positioned above, no conflict
+  - **Communication HUD**: Positioned left side, no conflict
+
+#### 13.5.2 Performance Requirements
+
+- **Update Frequency**: 2Hz (every 500ms) for objective status
+- **Real-time Updates**: Immediate for objective completion
+- **Memory Usage**: < 5MB for up to 10 active missions
+- **Rendering**: Lazy rendering for collapsed mission panels
+
+#### 13.5.3 Clash Royale Style Card Reward Animation System
+
+```javascript
+class CardRewardAnimator {
+    constructor(rewardContainer) {
+        this.container = rewardContainer;
+        this.cardQueue = [];
+        this.isAnimating = false;
+        this.currentCardIndex = 0;
+    }
+    
+    /**
+     * Clash Royale style card reveal - one at a time with dramatic presentation
+     */
+    async animateCardRewards(cards) {
+        this.cardQueue = [...cards];
+        this.currentCardIndex = 0;
+        this.isAnimating = true;
+        
+        // Create card reveal overlay (fullscreen dark background)
+        this.createCardRevealOverlay();
+        
+        // Show cards one by one with dramatic reveal
+        for (let i = 0; i < cards.length; i++) {
+            await this.revealSingleCard(cards[i], i);
+            if (i < cards.length - 1) {
+                await this.waitForUserInput(); // Wait for click/space to continue
+            }
+        }
+        
+        // Clean up and return to mission complete screen
+        await this.finishCardReveals();
+        this.isAnimating = false;
+    }
+    
+    /**
+     * Create fullscreen overlay for dramatic card reveals
+     */
+    createCardRevealOverlay() {
+        this.overlay = document.createElement('div');
+        this.overlay.className = 'card-reveal-overlay';
+        this.overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.95) 100%);
+            z-index: 2100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        `;
+        
+        // Add "REWARDS EARNED" text
+        const titleText = document.createElement('div');
+        titleText.style.cssText = `
+            font-family: 'VT323', monospace;
+            font-size: 32px;
+            color: #00ff41;
+            text-shadow: 0 0 20px #00ff41;
+            margin-bottom: 50px;
+            animation: pulse 2s ease-in-out infinite;
+        `;
+        titleText.textContent = '🎴 REWARDS EARNED 🎴';
+        this.overlay.appendChild(titleText);
+        
+        document.body.appendChild(this.overlay);
+    }
+    
+    /**
+     * Reveal single card with Clash Royale style animation
+     */
+    async revealSingleCard(cardData, index) {
+        // Create card container
+        const cardContainer = document.createElement('div');
+        cardContainer.className = 'card-reveal-container';
+        cardContainer.style.cssText = `
+            position: relative;
+            width: 200px;
+            height: 280px;
+            perspective: 1000px;
+            margin: 20px;
+        `;
+        
+        // Create card back (closed loot crate style)
+        const cardBack = this.createCardBack(cardData.rarity);
+        
+        // Create card front (actual card)
+        const cardFront = this.createCardFront(cardData);
+        
+        cardContainer.appendChild(cardBack);
+        cardContainer.appendChild(cardFront);
+        this.overlay.appendChild(cardContainer);
+        
+        // Phase 1: Drop in from above with bounce
+        cardContainer.style.transform = 'translateY(-500px) scale(0.5)';
+        cardContainer.style.opacity = '0';
+        
+        await this.animateElement(cardContainer, {
+            transform: 'translateY(0) scale(1)',
+            opacity: '1'
+        }, 800, 'cubic-bezier(0.68, -0.55, 0.265, 1.55)'); // Bounce easing
+        
+        // Phase 2: Anticipation pause with glow buildup
+        await this.addAnticipationEffects(cardContainer, cardData.rarity);
+        
+        // Phase 3: Dramatic flip reveal
+        await this.flipCardReveal(cardBack, cardFront, cardData.rarity);
+        
+        // Phase 4: Celebration effects
+        await this.addCelebrationEffects(cardContainer, cardData);
+        
+        // Add continue prompt
+        this.showContinuePrompt(index < this.cardQueue.length - 1);
+    }
+    
+    /**
+     * Create card back with rarity-based loot crate styling
+     */
+    createCardBack(rarity) {
+        const cardBack = document.createElement('div');
+        cardBack.className = 'card-back';
+        
+        const rarityColors = {
+            common: '#888888',
+            uncommon: '#00ff41', 
+            rare: '#0088ff',
+            epic: '#8800ff',
+            legendary: '#ffaa00'
+        };
+        
+        const color = rarityColors[rarity] || rarityColors.common;
+        
+        cardBack.style.cssText = `
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, ${color}22 0%, ${color}44 50%, ${color}22 100%);
+            border: 3px solid ${color};
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backface-visibility: hidden;
+            box-shadow: 
+                0 0 30px ${color}66,
+                inset 0 0 30px ${color}33;
+        `;
+        
+        // Add mystery card icon
+        cardBack.innerHTML = `
+            <div style="font-size: 64px; color: ${color}; text-shadow: 0 0 20px ${color};">?</div>
+            <div style="font-family: 'VT323', monospace; color: ${color}; font-size: 16px; margin-top: 20px; text-transform: uppercase;">${rarity}</div>
+        `;
+        
+        return cardBack;
+    }
+    
+    /**
+     * Create actual card front with game data
+     */
+    createCardFront(cardData) {
+        const cardFront = document.createElement('div');
+        cardFront.className = 'card-front';
+        cardFront.style.cssText = `
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #001100 0%, #002200 50%, #001100 100%);
+            border: 3px solid #00ff41;
+            border-radius: 15px;
+            transform: rotateY(180deg);
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            box-sizing: border-box;
+        `;
+        
+        cardFront.innerHTML = `
+            <div style="color: #00ff41; font-family: 'VT323', monospace; font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 10px;">
+                ${cardData.name}
+            </div>
+            <div style="flex: 1; background: rgba(0,255,65,0.1); border: 1px solid #00ff41; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                <div style="color: #ffffff; font-size: 14px; text-align: center;">
+                    Level ${cardData.level}
+                </div>
+            </div>
+            <div style="color: #ffff44; font-size: 12px; text-align: center; text-transform: uppercase;">
+                [${cardData.rarity}]
+            </div>
+        `;
+        
+        return cardFront;
+    }
+    
+    /**
+     * Add anticipation effects before reveal
+     */
+    async addAnticipationEffects(container, rarity) {
+        // Add pulsing glow
+        const glowKeyframes = `
+            @keyframes cardGlow {
+                0% { filter: drop-shadow(0 0 10px currentColor); }
+                50% { filter: drop-shadow(0 0 30px currentColor); }
+                100% { filter: drop-shadow(0 0 10px currentColor); }
+            }
+        `;
+        
+        if (!document.getElementById('card-glow-styles')) {
+            const style = document.createElement('style');
+            style.id = 'card-glow-styles';
+            style.textContent = glowKeyframes;
+            document.head.appendChild(style);
+        }
+        
+        container.style.animation = 'cardGlow 1s ease-in-out 3'; // 3 cycles
+        await this.delay(3000); // 3 seconds of anticipation
+    }
+    
+    /**
+     * Flip card reveal animation
+     */
+    async flipCardReveal(cardBack, cardFront, rarity) {
+        // Flip animation with sound effect
+        await this.animateElement(cardBack, {
+            transform: 'rotateY(-180deg)'
+        }, 600);
+        
+        await this.animateElement(cardFront, {
+            transform: 'rotateY(0deg)'
+        }, 600);
+        
+        // Play reveal sound based on rarity
+        this.playRevealSound(rarity);
+    }
+    
+    /**
+     * Add celebration particle effects
+     */
+    async addCelebrationEffects(container, cardData) {
+        // Create particle burst based on rarity
+        const particleCount = {
+            common: 10,
+            uncommon: 20,
+            rare: 35,
+            epic: 50,
+            legendary: 100
+        };
+        
+        const count = particleCount[cardData.rarity] || 10;
+        
+        for (let i = 0; i < count; i++) {
+            this.createParticle(container, cardData.rarity);
+        }
+        
+        await this.delay(1500); // Let particles settle
+    }
+    
+    /**
+     * Show continue prompt
+     */
+    showContinuePrompt(hasMore) {
+        const prompt = document.createElement('div');
+        prompt.className = 'continue-prompt';
+        prompt.style.cssText = `
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-family: 'VT323', monospace;
+            font-size: 18px;
+            animation: pulse 1s ease-in-out infinite;
+        `;
+        
+        prompt.textContent = hasMore ? 
+            'CLICK OR PRESS SPACE FOR NEXT CARD' : 
+            'CLICK OR PRESS SPACE TO CONTINUE';
+            
+        this.overlay.appendChild(prompt);
+        this.currentPrompt = prompt;
+    }
+    
+    /**
+     * Wait for user input to continue
+     */
+    async waitForUserInput() {
+        return new Promise(resolve => {
+            const handleInput = (event) => {
+                if (event.type === 'click' || event.key === ' ' || event.key === 'Enter') {
+                    document.removeEventListener('click', handleInput);
+                    document.removeEventListener('keydown', handleInput);
+                    if (this.currentPrompt) {
+                        this.currentPrompt.remove();
+                    }
+                    resolve();
+                }
+            };
+            
+            document.addEventListener('click', handleInput);
+            document.addEventListener('keydown', handleInput);
+        });
+    }
+    
+    /**
+     * Clean up card reveal overlay
+     */
+    async finishCardReveals() {
+        await this.animateElement(this.overlay, {
+            opacity: '0'
+        }, 500);
+        
+        this.overlay.remove();
+    }
+    
+    playRevealSound(rarity) {
+        const audioManager = window.starfieldAudioManager;
+        if (audioManager) {
+            const soundMap = {
+                common: 'card_reveal_common',
+                uncommon: 'card_reveal_uncommon', 
+                rare: 'card_reveal_rare',
+                epic: 'card_reveal_epic',
+                legendary: 'card_reveal_legendary'
+            };
+            
+            const sound = soundMap[rarity] || 'card_reveal_common';
+            audioManager.playSound(sound, 0.7);
+        }
+    }
+}
+```
+
+## 14. Critical Implementation Details
+
+### 14.1 Data Persistence Strategy
 - JSON files for development/small scale
 - SQLite migration path for production
 - Automatic backup system for mission data

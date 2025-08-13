@@ -4,6 +4,8 @@
  * Integrates with existing docking interface
  */
 
+import { MissionAPIService } from '../services/MissionAPIService.js';
+
 export class MissionBoard {
     constructor(starfieldManager) {
         this.starfieldManager = starfieldManager;
@@ -13,6 +15,9 @@ export class MissionBoard {
         this.availableMissions = [];
         this.acceptedMissions = [];
         this.selectedMission = null;
+        
+        // Initialize Mission API Service
+        this.missionAPI = new MissionAPIService();
         
         // Mission filtering
         this.filters = {
@@ -343,28 +348,27 @@ export class MissionBoard {
     
     async loadAvailableMissions() {
         try {
-            // Create clean faction standings to avoid circular references
-            const cleanFactionStandings = {
-                terran_republic_alliance: this.playerData.faction_standings?.terran_republic_alliance || 0,
-                traders_guild: this.playerData.faction_standings?.traders_guild || 0,
-                scientists_consortium: this.playerData.faction_standings?.scientists_consortium || 0
-            };
-
-            // Create clean location string to avoid circular references
-            const cleanLocationString = this.currentLocationKey || 'terra_prime';
+            // Update mission API with player data
+            this.missionAPI.updatePlayerData(this.playerData);
+            this.missionAPI.setPlayerLocation(this.currentLocationKey);
             
-            const response = await fetch(`/api/missions?location=${cleanLocationString}&faction_standings=${encodeURIComponent(JSON.stringify(cleanFactionStandings))}`);
+            // Get available missions from API service
+            const missions = await this.missionAPI.getAvailableMissions(
+                this.currentLocationKey,
+                this.playerData.faction_standings
+            );
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            this.availableMissions = data.missions || [];
+            this.availableMissions = missions || [];
             
             console.log(`🎯 Loaded ${this.availableMissions.length} available missions`);
             this.updateMissionList();
             this.updateMissionCount();
+            
+            // If no missions available, try to generate some
+            if (this.availableMissions.length === 0) {
+                console.log('🎯 No missions available, attempting to generate some...');
+                await this.generateStationMissions();
+            }
             
         } catch (error) {
             console.error('❌ Failed to load missions:', error);
@@ -547,34 +551,14 @@ export class MissionBoard {
             this.acceptButton.disabled = true;
             this.acceptButton.textContent = 'Accepting...';
             
-            const response = await fetch(`/api/missions/${this.selectedMission.id}/accept`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    player_id: 'player_1',
-                    location: this.currentLocation,
-                    ship_type: this.playerData.ship_type
-                })
-            });
+            // Use MissionAPIService to accept mission
+            const result = await this.missionAPI.acceptMission(this.selectedMission.id);
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.success) {
+            if (result.success) {
                 console.log(`✅ Mission accepted: ${this.selectedMission.title}`);
                 
-                // Process frontend hooks
-                if (data.hooks && data.hooks.length > 0) {
-                    this.processResponseHooks(data.hooks);
-                }
-                
                 // Update UI
-                this.acceptedMissions.push(data.mission);
+                this.acceptedMissions.push(result.mission);
                 this.showSuccess(`Mission accepted: ${this.selectedMission.title}`);
                 
                 // Reload available missions
@@ -589,7 +573,7 @@ export class MissionBoard {
                 `;
                 
             } else {
-                throw new Error(data.error || 'Failed to accept mission');
+                throw new Error(result.error || 'Failed to accept mission');
             }
             
         } catch (error) {
@@ -606,9 +590,9 @@ export class MissionBoard {
             this.generateButton.disabled = true;
             this.generateButton.textContent = 'Generating...';
             
-            // Choose random template
-            const templates = ['elimination', 'exploration', 'delivery', 'escort'];
-            const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+            // Get station-appropriate templates
+            const stationTemplates = this.getStationTemplates(this.currentLocationKey);
+            const randomTemplate = stationTemplates[Math.floor(Math.random() * stationTemplates.length)];
             
             // Create a completely clean copy of player data with explicit type conversion
             const cleanPlayerData = {
@@ -654,26 +638,15 @@ export class MissionBoard {
                 throw new Error(`JSON serialization failed: ${jsonError.message}`);
             }
 
-            const response = await fetch('/api/missions/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: jsonPayload
-            });
+            // Use MissionAPIService to generate mission
+            const result = await this.missionAPI.generateMission(randomTemplate, this.currentLocationKey);
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                console.log(`🎲 Generated mission: ${data.mission.title}`);
-                this.showSuccess(`Generated new mission: ${data.mission.title}`);
+            if (result.success) {
+                console.log(`🎲 Generated mission: ${result.mission.title}`);
+                this.showSuccess(`Generated new mission: ${result.mission.title}`);
                 this.loadAvailableMissions();
             } else {
-                throw new Error(data.error || 'Failed to generate mission');
+                throw new Error(result.error || 'Failed to generate mission');
             }
             
         } catch (error) {
@@ -916,5 +889,44 @@ export class MissionBoard {
         `;
         
         document.head.appendChild(style);
+    }
+    
+    /**
+     * Get station-appropriate mission templates
+     */
+    getStationTemplates(stationKey) {
+        const stationTemplateMap = {
+            'terra_prime': ['elimination', 'escort'],
+            'europa_station': ['exploration', 'delivery'],
+            'ceres_outpost': ['delivery', 'escort'],
+            'mars_base': ['elimination', 'escort'],
+            'luna_port': ['delivery', 'escort'],
+            'asteroid_mining_platform': ['elimination', 'escort']
+        };
+        
+        return stationTemplateMap[stationKey] || ['elimination', 'delivery', 'escort'];
+    }
+    
+    /**
+     * Generate missions for current station
+     */
+    async generateStationMissions() {
+        try {
+            console.log(`🎯 Generating missions for station: ${this.currentLocationKey}`);
+            
+            const templates = this.getStationTemplates(this.currentLocationKey);
+            const numMissions = Math.min(3, templates.length); // Generate 1-3 missions
+            
+            for (let i = 0; i < numMissions; i++) {
+                const template = templates[i % templates.length];
+                await this.missionAPI.generateMission(template, this.currentLocationKey);
+            }
+            
+            // Reload missions after generation
+            await this.loadAvailableMissions();
+            
+        } catch (error) {
+            console.error('❌ Failed to generate station missions:', error);
+        }
     }
 }

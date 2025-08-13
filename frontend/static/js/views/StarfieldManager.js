@@ -6,6 +6,10 @@ import { PhysicsDockingManager } from '../ship/PhysicsDockingManager.js';
 import { getSystemDisplayName } from '../ship/System.js';
 import DamageControlHUD from '../ui/DamageControlHUD.js';
 import { CommunicationHUD } from '../ui/CommunicationHUD.js';
+import { MissionStatusHUD } from '../ui/MissionStatusHUD.js';
+import { MissionCompletionUI } from '../ui/MissionCompletionUI.js';
+import { MissionNotificationHandler } from '../ui/MissionNotificationHandler.js';
+import { MissionAPIService } from '../services/MissionAPIService.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { WeaponSlot } from '../ship/systems/WeaponSlot.js';
 import SimplifiedDamageControl from '../ui/SimplifiedDamageControl.js';
@@ -177,8 +181,21 @@ export class StarfieldManager {
         // Create communication HUD for NPC interactions
         this.communicationHUD = new CommunicationHUD(this, document.body);
         
+        // Create mission API service
+        this.missionAPI = new MissionAPIService();
+        
+        // Create mission UI components
+        this.missionStatusHUD = new MissionStatusHUD(this, null); // Mission manager to be integrated later
+        this.missionCompletionUI = new MissionCompletionUI(this, null); // Mission manager to be integrated later
+        this.missionNotificationHandler = new MissionNotificationHandler(this.communicationHUD, this);
+        
         // Create enemy AI manager
         this.enemyAIManager = new EnemyAIManager(this.scene, this.camera, this);
+        
+        // Initialize mission system after a short delay to ensure all systems are ready
+        setTimeout(() => {
+            this.initializeMissionSystem();
+        }, 2000);
         
         // Create clean damage control HUD
         this.damageControlContainer = document.createElement('div');
@@ -1980,6 +1997,51 @@ export class StarfieldManager {
                 }
             }
 
+            // Add Mission Status HUD Toggle key binding (M key)
+            if (commandKey === 'm') {
+                // Toggle Mission Status HUD
+                if (!this.isDocked) { // Don't show during docking
+                    if (this.missionStatusHUD) {
+                        // CRITICAL: Dismiss conflicting HUDs to prevent overlap
+                        if (this.damageControlHUD && this.damageControlHUD.isVisible) {
+                            this.damageControlHUD.hide();
+                            console.log('🔧 Damage Control HUD dismissed for Mission Status');
+                        }
+                        
+                        // Also dismiss Galactic Chart and Long Range Scanner if open
+                        if (this.viewManager) {
+                            if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
+                                this.viewManager.galacticChart.hide();
+                                console.log('🗺️ Galactic Chart dismissed for Mission Status');
+                            }
+                            if (this.viewManager.longRangeScanner && this.viewManager.longRangeScanner.isVisible()) {
+                                this.viewManager.longRangeScanner.hide();
+                                console.log('🔭 Long Range Scanner dismissed for Mission Status');
+                            }
+                        }
+                        
+                        if (this.missionStatusHUD.toggle()) {
+                            this.playCommandSound();
+                            console.log('🎯 Mission Status HUD toggled:', this.missionStatusHUD.visible ? 'ON' : 'OFF');
+                        } else {
+                            this.playCommandFailedSound();
+                        }
+                    } else {
+                        this.playCommandFailedSound();
+                        this.showHUDError(
+                            'MISSION STATUS UNAVAILABLE',
+                            'Mission system not initialized'
+                        );
+                    }
+                } else {
+                    this.playCommandFailedSound();
+                    this.showHUDError(
+                        'MISSION STATUS UNAVAILABLE', 
+                        'Use Mission Board while docked'
+                    );
+                }
+            }
+
             // Add Shields key binding (S)
             if (commandKey === 's') {
                 // Block shields when docked
@@ -2162,6 +2224,12 @@ export class StarfieldManager {
 
             // Damage control key (D) - toggle damage control view
             if (commandKey === 'd') {
+                // CRITICAL: Dismiss Mission Status HUD if open to prevent overlap
+                if (this.missionStatusHUD && this.missionStatusHUD.visible) {
+                    this.missionStatusHUD.hide();
+                    console.log('🎯 Mission Status HUD dismissed for Damage Control');
+                }
+                
                 this.playCommandSound();
                 this.toggleDamageControl();
             }
@@ -3706,14 +3774,16 @@ export class StarfieldManager {
                 this.targetComputerManager.clearTargetWireframe();
             }
             
-            // Close galactic chart if open
+            // Close galactic chart if open - navigation systems powered down when docked
             if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
                 this.viewManager.galacticChart.hide(false);
+                console.log('🚪 Galactic Chart dismissed during docking - navigation systems powered down');
             }
             
-            // Close long range scanner if open
+            // Close long range scanner if open - scanner systems powered down when docked
             if (this.viewManager.longRangeScanner && this.viewManager.longRangeScanner.isVisible()) {
                 this.viewManager.longRangeScanner.hide(false);
+                console.log('🚪 Long Range Scanner dismissed during docking - scanner systems powered down');
             }
             
             // Hide subspace radio UI during docking
@@ -3728,6 +3798,12 @@ export class StarfieldManager {
                 // Restore the previous view
                 this.view = this.previousView || 'FORE';
                 console.log('🚪 Damage Control HUD dismissed during docking');
+            }
+            
+            // Hide mission status HUD when docking - use station mission board instead
+            if (this.missionStatusHUD && this.missionStatusHUD.visible) {
+                this.missionStatusHUD.hide();
+                console.log('🚪 Mission Status HUD dismissed during docking - use station Mission Board');
             }
             
             // Hide weapon HUD when docking since weapon systems are powered down
@@ -3753,6 +3829,15 @@ export class StarfieldManager {
 
         // Update the dock button to show "LAUNCH"
         this.updateTargetDisplay();
+        
+        // Refresh missions for the docked station
+        if (target && target.userData && target.userData.name) {
+            const stationKey = String(target.userData.name).toLowerCase().replace(/\s+/g, '_');
+            setTimeout(() => {
+                this.refreshStationMissions(stationKey);
+            }, 1000);
+        }
+        
         return true;
     }
 
@@ -3780,9 +3865,11 @@ export class StarfieldManager {
             }
             if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
                 this.viewManager.galacticChart.hide(false);
+                console.log('🚪 Galactic Chart dismissed during docking completion');
             }
             if (this.viewManager.longRangeScanner && this.viewManager.longRangeScanner.isVisible()) {
                 this.viewManager.longRangeScanner.hide(false);
+                console.log('🚪 Long Range Scanner dismissed during docking completion');
             }
             if (this.viewManager.subspaceRadio && this.viewManager.subspaceRadio.isVisible) {
                 this.viewManager.subspaceRadio.hide();
@@ -6419,6 +6506,445 @@ export class StarfieldManager {
      */
     isCommunicationVisible() {
         return this.communicationHUD ? this.communicationHUD.visible : false;
+    }
+
+    /**
+     * Show mission completion screen
+     * @param {string} missionId - Mission identifier
+     * @param {Object} completionData - Mission completion data with rewards
+     */
+    async showMissionComplete(missionId, completionData) {
+        if (this.missionCompletionUI) {
+            await this.missionCompletionUI.showMissionComplete(missionId, completionData);
+            return true;
+        }
+        console.warn('🎯 Mission completion UI not available');
+        return false;
+    }
+
+    /**
+     * Pause game for mission completion (optional)
+     */
+    pauseForMissionComplete() {
+        // Optional: pause game systems during mission completion
+        console.log('🎯 Game paused for mission completion');
+    }
+
+    /**
+     * Resume game after mission completion
+     */
+    resumeFromMissionComplete() {
+        // Resume game systems after mission completion
+        console.log('🎯 Game resumed from mission completion');
+    }
+
+    /**
+     * Check if mission status HUD is visible
+     */
+    isMissionStatusVisible() {
+        return this.missionStatusHUD ? this.missionStatusHUD.visible : false;
+    }
+
+    /**
+     * Hide mission status HUD
+     */
+    hideMissionStatus() {
+        if (this.missionStatusHUD) {
+            this.missionStatusHUD.hide();
+        }
+    }
+
+    /**
+     * Show mission status HUD
+     */
+    showMissionStatus() {
+        if (this.missionStatusHUD) {
+            this.missionStatusHUD.show();
+        }
+    }
+
+    /**
+     * Send mission notification via Communication HUD
+     * @param {string} npcName - Name of the NPC/organization sending the message
+     * @param {string} message - The notification message
+     * @param {Object} options - Notification options (channel, status, duration, etc.)
+     */
+    sendMissionNotification(npcName, message, options = {}) {
+        if (this.missionNotificationHandler) {
+            this.missionNotificationHandler.sendMissionNotification(npcName, message, options);
+            return true;
+        }
+        console.warn('🎯 Mission notification handler not available');
+        return false;
+    }
+
+    /**
+     * Send mission briefing
+     * @param {Object} mission - Mission data
+     */
+    sendMissionBriefing(mission) {
+        if (this.missionNotificationHandler) {
+            this.missionNotificationHandler.sendMissionBriefing(mission);
+            return true;
+        }
+        console.warn('🎯 Mission notification handler not available');
+        return false;
+    }
+
+    /**
+     * Update mission system with current player data
+     */
+    updateMissionSystemPlayerData() {
+        if (!this.ship) return;
+        
+        const playerData = {
+            level: this.ship.level || 1,
+            credits: this.ship.credits || 50000,
+            ship_type: this.ship.shipType || 'starter_ship',
+            faction_standings: this.ship.factionStandings || {
+                'terran_republic_alliance': 0,
+                'traders_guild': 0,
+                'scientists_consortium': 0
+            }
+        };
+        
+        // Update all mission components with player data
+        if (this.missionAPI) {
+            this.missionAPI.updatePlayerData(playerData);
+        }
+        
+        if (this.missionStatusHUD) {
+            this.missionStatusHUD.updatePlayerData(playerData);
+        }
+        
+        console.log('🎯 StarfieldManager: Updated mission system with player data', playerData);
+    }
+    
+    /**
+     * Update mission system with current player location
+     */
+    updateMissionSystemLocation(location) {
+        if (this.missionAPI) {
+            this.missionAPI.setPlayerLocation(location);
+        }
+        
+        if (this.missionStatusHUD) {
+            this.missionStatusHUD.setPlayerLocation(location);
+        }
+        
+        console.log(`🎯 StarfieldManager: Updated mission system location to ${location}`);
+    }
+    
+    /**
+     * Initialize mission system on game start
+     */
+    async initializeMissionSystem() {
+        console.log('🎯 Initializing mission system...');
+        
+        try {
+            // Update player data first
+            this.updateMissionSystemPlayerData();
+            
+            // Test backend connection
+            const isConnected = await this.missionAPI.testConnection();
+            
+            if (isConnected) {
+                console.log('🎯 Mission API connected, pre-populating stations...');
+                await this.prePopulateStationMissions();
+            } else {
+                console.log('🎯 Mission API not available, missions will use fallback data');
+            }
+            
+        } catch (error) {
+            console.error('🎯 Failed to initialize mission system:', error);
+        }
+    }
+    
+    /**
+     * Pre-populate all stations with appropriate missions
+     */
+    async prePopulateStationMissions() {
+        const stations = this.getGameStations();
+        
+        console.log(`🎯 Pre-populating ${stations.length} stations with missions...`);
+        
+        for (const station of stations) {
+            try {
+                await this.ensureStationHasMissions(station);
+                // Small delay to avoid overwhelming the API
+                await this.delay(500);
+            } catch (error) {
+                console.error(`🎯 Failed to populate missions for ${station.key}:`, error);
+            }
+        }
+        
+        console.log('🎯 Station mission pre-population complete');
+    }
+    
+    /**
+     * Get all game stations that should have missions
+     */
+    getGameStations() {
+        // Available templates: elimination, escort, exploration, delivery
+        return [
+            {
+                key: 'terra_prime',
+                name: 'Terra Prime',
+                type: 'military_hub',
+                faction: 'terran_republic_alliance',
+                templates: ['elimination', 'escort'],
+                minMissions: 3,
+                maxMissions: 6
+            },
+            {
+                key: 'europa_station',
+                name: 'Europa Station',
+                type: 'research_station',
+                faction: 'scientists_consortium',
+                templates: ['exploration', 'delivery'],
+                minMissions: 2,
+                maxMissions: 4
+            },
+            {
+                key: 'ceres_outpost',
+                name: 'Ceres Outpost',
+                type: 'trade_hub',
+                faction: 'traders_guild',
+                templates: ['delivery', 'escort'],
+                minMissions: 3,
+                maxMissions: 5
+            },
+            {
+                key: 'mars_base',
+                name: 'Mars Base',
+                type: 'military_base',
+                faction: 'terran_republic_alliance',
+                templates: ['elimination', 'escort'],
+                minMissions: 2,
+                maxMissions: 4
+            },
+            {
+                key: 'luna_port',
+                name: 'Luna Port',
+                type: 'commercial_port',
+                faction: 'traders_guild',
+                templates: ['delivery', 'escort'],
+                minMissions: 2,
+                maxMissions: 3
+            },
+            {
+                key: 'asteroid_mining_platform',
+                name: 'Asteroid Mining Platform',
+                type: 'industrial',
+                faction: 'miners_union',
+                templates: ['elimination', 'escort'],
+                minMissions: 1,
+                maxMissions: 3
+            }
+        ];
+    }
+    
+    /**
+     * Ensure a station has the right number of missions
+     */
+    async ensureStationHasMissions(station) {
+        try {
+            // Check current missions at this station
+            const currentMissions = await this.missionAPI.getAvailableMissions(station.key);
+            const currentCount = currentMissions.length;
+            
+            console.log(`🎯 ${station.name}: ${currentCount} existing missions`);
+            
+            // Generate missions if below minimum
+            if (currentCount < station.minMissions) {
+                const missionsToGenerate = station.minMissions - currentCount;
+                console.log(`🎯 Generating ${missionsToGenerate} missions for ${station.name}`);
+                
+                for (let i = 0; i < missionsToGenerate; i++) {
+                    // Select template based on station type
+                    const template = this.selectStationTemplate(station);
+                    
+                    try {
+                        const result = await this.missionAPI.generateMission(template, station.key);
+                        
+                        if (result.success) {
+                            console.log(`🎯 Generated ${template} mission for ${station.name}: ${result.mission.title}`);
+                        } else {
+                            console.warn(`🎯 Failed to generate ${template} for ${station.name}: ${result.error}`);
+                        }
+                        
+                        // Small delay between generations
+                        await this.delay(200);
+                        
+                    } catch (error) {
+                        console.error(`🎯 Error generating ${template} for ${station.name}:`, error);
+                    }
+                }
+            } else {
+                console.log(`🎯 ${station.name} has sufficient missions (${currentCount}/${station.minMissions})`);
+            }
+            
+        } catch (error) {
+            console.error(`🎯 Failed to check missions for ${station.name}:`, error);
+        }
+    }
+    
+    /**
+     * Select appropriate template for station
+     */
+    selectStationTemplate(station) {
+        const templates = station.templates || ['delivery_template', 'elimination_template'];
+        
+        // Weight templates based on station type
+        const weights = this.getTemplateWeights(station.type);
+        
+        // Weighted random selection
+        const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
+        let random = Math.random() * totalWeight;
+        
+        for (const template of templates) {
+            const weight = weights[template] || 1;
+            random -= weight;
+            if (random <= 0) {
+                return template;
+            }
+        }
+        
+        // Fallback to random template
+        return templates[Math.floor(Math.random() * templates.length)];
+    }
+    
+    /**
+     * Get template weights based on station type
+     */
+    getTemplateWeights(stationType) {
+        // Only use available templates: elimination, escort, exploration, delivery
+        const weights = {
+            military_hub: {
+                'elimination': 3,
+                'escort': 2
+            },
+            research_station: {
+                'exploration': 3,
+                'delivery': 2
+            },
+            trade_hub: {
+                'delivery': 3,
+                'escort': 2
+            },
+            military_base: {
+                'elimination': 3,
+                'escort': 2
+            },
+            commercial_port: {
+                'delivery': 3,
+                'escort': 2
+            },
+            industrial: {
+                'elimination': 2,
+                'escort': 3
+            }
+        };
+        
+        return weights[stationType] || {
+            'delivery': 2,
+            'elimination': 2,
+            'escort': 1
+        };
+    }
+    
+    /**
+     * Refresh missions for a specific station
+     */
+    async refreshStationMissions(stationKey) {
+        const station = this.getGameStations().find(s => s.key === stationKey);
+        if (station) {
+            console.log(`🎯 Refreshing missions for ${station.name}...`);
+            await this.ensureStationHasMissions(station);
+        }
+    }
+    
+    /**
+     * Simple delay utility
+     */
+    async delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    /**
+     * Test mission UI systems
+     */
+    testMissionUI() {
+        console.log('🎯 Testing mission UI systems...');
+        
+        // Update player data first
+        this.updateMissionSystemPlayerData();
+        
+        // Test connection to backend
+        if (this.missionAPI) {
+            this.missionAPI.testConnection().then(connected => {
+                if (connected) {
+                    console.log('🎯 Mission API connection successful');
+                    // Test with real data
+                    this.missionAPI.refreshAllMissions();
+                } else {
+                    console.log('🎯 Mission API not available, using mock data');
+                }
+            });
+        }
+        
+        // Test mission status HUD
+        if (this.missionStatusHUD) {
+            console.log('🎯 Mission Status HUD available - press M to test');
+        }
+        
+        // Test notifications
+        if (this.missionNotificationHandler) {
+            this.missionNotificationHandler.testNotifications();
+        }
+        
+        // Test mission completion after 20 seconds
+        setTimeout(() => {
+            if (this.missionCompletionUI) {
+                console.log('🎯 Testing mission completion UI...');
+                this.missionCompletionUI.testCompletion();
+            }
+        }, 20000);
+        
+        console.log('🎯 Mission UI test sequence started');
+    }
+    
+    /**
+     * Manual mission population for testing (console command)
+     */
+    async populateAllStations() {
+        console.log('🎯 Manual station population requested...');
+        await this.prePopulateStationMissions();
+    }
+    
+    /**
+     * Get mission summary for all stations (console command)
+     */
+    async getMissionSummary() {
+        console.log('🎯 Getting mission summary for all stations...');
+        
+        const stations = this.getGameStations();
+        const summary = {};
+        
+        for (const station of stations) {
+            try {
+                const missions = await this.missionAPI.getAvailableMissions(station.key);
+                summary[station.name] = {
+                    count: missions.length,
+                    missions: missions.map(m => ({ title: m.title, type: m.type }))
+                };
+            } catch (error) {
+                summary[station.name] = { error: error.message };
+            }
+        }
+        
+        console.table(summary);
+        return summary;
     }
 
 } 
