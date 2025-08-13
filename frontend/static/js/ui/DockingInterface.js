@@ -43,9 +43,9 @@ export class DockingInterface {
     }
 
     createDockingUI() {
-        // Create main docking interface container
+        // Create main station menu container (after docking is complete)
         this.container = document.createElement('div');
-        this.container.className = 'docking-interface';
+        this.container.className = 'station-menu';
         this.container.style.cssText = `
             position: fixed;
             top: 50%;
@@ -384,14 +384,14 @@ export class DockingInterface {
         // Show the interface
         this.container.style.display = 'flex';
         
-        console.log('Docking interface shown for:', dockedLocation);
+        console.log('Station menu shown for:', dockedLocation);
     }
 
     hide() {
         this.isVisible = false;
         this.dockedLocation = null;
         this.container.style.display = 'none';
-        console.log('Docking interface hidden');
+        console.log('Station menu hidden');
     }
 
     updateHeader() {
@@ -402,7 +402,7 @@ export class DockingInterface {
         
         // Update header title section (don't overwrite the whole header which contains launch button)
         this.headerTitle.innerHTML = `
-            <div style="font-size: 16px; margin-bottom: 8px; opacity: 0.8; letter-spacing: 1px; font-family: 'VT323', monospace;">DOCKED AT</div>
+            <div style="font-size: 16px; margin-bottom: 8px; opacity: 0.8; letter-spacing: 1px; font-family: 'VT323', monospace;">STATION MENU</div>
             <div style="font-size: 28px; font-weight: bold; color: #00ff41; margin-bottom: 8px; font-family: 'VT323', monospace;">${info?.name || 'UNKNOWN LOCATION'}</div>
             <div style="font-size: 16px; opacity: 0.9; font-family: 'VT323', monospace;">
                 ${info?.diplomacy?.toUpperCase() || 'NEUTRAL'} • ${info?.type?.toUpperCase() || 'UNKNOWN'}
@@ -435,7 +435,7 @@ export class DockingInterface {
     }
 
     handleLaunch() {
-        console.log('Launch button clicked from docking interface');
+        console.log('Launch button clicked from station menu');
         
         // Play command sound
         if (this.starfieldManager.playCommandSound) {
@@ -587,92 +587,92 @@ export class DockingInterface {
         style.textContent = `
             @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
             
-            .docking-interface.visible {
+            .station-menu.visible {
                 display: flex;
             }
             
-            .docking-interface .content-wrapper {
+            .station-menu .content-wrapper {
                 scrollbar-width: thin;
                 scrollbar-color: #00ff41 rgba(0, 255, 65, 0.1);
             }
             
-            .docking-interface .content-wrapper::-webkit-scrollbar {
+            .station-menu .content-wrapper::-webkit-scrollbar {
                 width: 8px;
             }
             
-            .docking-interface .content-wrapper::-webkit-scrollbar-track {
+            .station-menu .content-wrapper::-webkit-scrollbar-track {
                 background: rgba(0, 255, 65, 0.1);
                 border-radius: 4px;
             }
             
-            .docking-interface .content-wrapper::-webkit-scrollbar-thumb {
+            .station-menu .content-wrapper::-webkit-scrollbar-thumb {
                 background-color: #00ff41;
                 border-radius: 4px;
                 border: 2px solid transparent;
                 background-clip: content-box;
             }
             
-            .docking-interface .service-button.launch-button {
+            .station-menu .service-button.launch-button {
                 border-color: #00ff41;
             }
             
-            .docking-interface .service-button.launch-button .service-title,
-            .docking-interface .service-button.launch-button .service-description {
+            .station-menu .service-button.launch-button .service-title,
+            .station-menu .service-button.launch-button .service-description {
                 color: #00ff41;
             }
             
-            .docking-interface .service-button.launch-button:hover {
+            .station-menu .service-button.launch-button:hover {
                 border-color: #44ff44;
                 background: rgba(0, 255, 65, 0.2) !important;
             }
             
-            .docking-interface .service-button.repair-button {
+            .station-menu .service-button.repair-button {
                 border-color: #ffaa00;
             }
             
-            .docking-interface .service-button.repair-button .service-title,
-            .docking-interface .service-button.repair-button .service-description {
+            .station-menu .service-button.repair-button .service-title,
+            .station-menu .service-button.repair-button .service-description {
                 color: #ffaa00;
             }
             
-            .docking-interface .service-button.repair-button:hover {
+            .station-menu .service-button.repair-button:hover {
                 border-color: #ffcc44;
                 background: rgba(255, 170, 0, 0.2) !important;
             }
             
-            .docking-interface .service-button.shop-button {
+            .station-menu .service-button.shop-button {
                 border-color: #0099ff;
             }
             
-            .docking-interface .service-button.shop-button .service-title,
-            .docking-interface .service-button.shop-button .service-description {
+            .station-menu .service-button.shop-button .service-title,
+            .station-menu .service-button.shop-button .service-description {
                 color: #0099ff;
             }
             
-            .docking-interface .service-button.shop-button:hover {
+            .station-menu .service-button.shop-button:hover {
                 border-color: #44bbff;
                 background: rgba(0, 153, 255, 0.2) !important;
             }
             
-            .docking-interface .service-button.inventory-button {
+            .station-menu .service-button.inventory-button {
                 border-color: #00ff99;
             }
             
-            .docking-interface .service-button.inventory-button .service-title,
-            .docking-interface .service-button.inventory-button .service-description {
+            .station-menu .service-button.inventory-button .service-title,
+            .station-menu .service-button.inventory-button .service-description {
                 color: #00ff99;
             }
             
-            .docking-interface .service-button.inventory-button:hover {
+            .station-menu .service-button.inventory-button:hover {
                 border-color: #44ffaa;
                 background: rgba(0, 255, 153, 0.2) !important;
             }
             
-            .docking-interface .close-button {
+            .station-menu .close-button {
                 font-family: 'VT323', monospace;
             }
             
-            .docking-interface .close-button:hover {
+            .station-menu .close-button:hover {
                 background: rgba(0, 255, 65, 0.2) !important;
             }
             
@@ -689,8 +689,8 @@ export class DockingInterface {
             }
         `;
         
-        if (!document.head.querySelector('style[data-docking-interface]')) {
-            style.setAttribute('data-docking-interface', 'true');
+        if (!document.head.querySelector('style[data-station-menu]')) {
+            style.setAttribute('data-station-menu', 'true');
             document.head.appendChild(style);
         }
     }

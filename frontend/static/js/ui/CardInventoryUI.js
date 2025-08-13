@@ -772,7 +772,7 @@ export default class CardInventoryUI {
     /**
      * Show the card inventory as a station shop
      * @param {Object} dockedLocation - The location where the ship is docked
-     * @param {Object} dockingInterface - Reference to the docking interface to return to
+     * @param {Object} dockingInterface - Reference to the station menu to return to
      */
     showAsShop(dockedLocation, dockingInterface) {
         this.isShopMode = true;
@@ -856,7 +856,7 @@ export default class CardInventoryUI {
     }
 
     /**
-     * Hide the shop and return to docking interface
+     * Hide the shop and return to station menu
      */
     hideShop() {
         console.log('Hiding shop...');
@@ -877,17 +877,17 @@ export default class CardInventoryUI {
         
         this.isShopMode = false;
         
-        // Return to docking interface
+        // Return to station menu
         if (this.dockingInterface && this.dockedLocation) {
-            console.log('Attempting to show docking interface...');
+            console.log('Attempting to show station menu...');
             try {
                 this.dockingInterface.show(this.dockedLocation);
-                console.log('Successfully returned to docking interface');
+                console.log('Successfully returned to station menu');
             } catch (error) {
-                console.error('Error showing docking interface:', error);
+                console.error('Error showing station menu:', error);
             }
         } else {
-            console.error('Cannot return to docking interface - missing reference or location');
+            console.error('Cannot return to station menu - missing reference or location');
             console.log('dockingInterface:', this.dockingInterface);
             console.log('dockedLocation:', this.dockedLocation);
         }
@@ -1049,8 +1049,8 @@ export default class CardInventoryUI {
         header.innerHTML = `
             <h2>${this.isShopMode ? 'SHIP UPGRADE SHOP' : 'SHIP INVENTORY'}</h2>
             ${this.isShopMode ? 
-                `<button onclick="cardInventoryUI.hideShop()" class="close-shop-btn">← BACK TO STATION</button>` : 
-                `<button onclick="cardInventoryUI.hideInventory()" class="close-inventory-btn">← BACK TO STATION</button>`
+                `<button onclick="cardInventoryUI.hideShop()" class="close-shop-btn">← RETURN TO STATION MENU</button>` : 
+                `<button onclick="cardInventoryUI.hideInventory()" class="close-inventory-btn">← RETURN TO STATION MENU</button>`
             }
         `;
         this.container.appendChild(header);
@@ -2182,7 +2182,7 @@ export default class CardInventoryUI {
     }
 
     /**
-     * Hide the inventory and return to docking interface
+     * Hide the inventory and return to station menu
      */
     hideInventory() {
         if (this.inventoryContainer && this.inventoryContainer.parentNode) {
@@ -2192,7 +2192,7 @@ export default class CardInventoryUI {
         
         this.isShopMode = false;
         
-        // Return to docking interface
+        // Return to station menu
         if (this.dockingInterface && this.dockedLocation) {
             this.dockingInterface.show(this.dockedLocation);
         }

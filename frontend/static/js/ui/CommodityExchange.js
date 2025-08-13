@@ -121,7 +121,7 @@ export class CommodityExchange {
                     font-size: 16px;
                     transition: all 0.3s ease;
                     margin-left: 10px;
-                ">RETURN TO DOCKING</button>
+                ">RETURN TO STATION MENU</button>
             </div>
         `;
         

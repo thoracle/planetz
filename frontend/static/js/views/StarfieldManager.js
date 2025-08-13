@@ -178,7 +178,7 @@ export class StarfieldManager {
         // Weapon HUD connection state
         this.weaponHUDConnected = false;
         
-        // Create docking interface and system manager
+        // Create station menu interface and system manager
         this.dockingInterface = new DockingInterface(this);
         this.dockingSystemManager = new DockingSystemManager();
         
@@ -3878,7 +3878,7 @@ export class StarfieldManager {
         // Play command sound for successful dock
         this.playCommandSound();
 
-        // Show docking interface with services available at this location
+        // Show station menu with services available at this location
         this.dockingInterface.show(target);
 
         // Update the dock button to show "LAUNCH"
@@ -3973,7 +3973,7 @@ export class StarfieldManager {
             
             if (!launchValidation.canLaunch) {
                 console.warn('Launch failed:', launchValidation.reasons.join(', '));
-                // Show error in docking interface instead of hiding it
+                // Show error in station menu instead of hiding it
                 return;
             }
             
@@ -3988,7 +3988,7 @@ export class StarfieldManager {
         // Store the target we're launching from before clearing it
         const launchTarget = this.dockedTo;
 
-        // Hide docking interface
+        // Hide station menu
         this.dockingInterface.hide();
 
         // Play command sound for successful launch
@@ -4187,7 +4187,7 @@ export class StarfieldManager {
         this.undock();
     }
 
-    // Add new method to handle dock button clicks (launch is handled by docking interface)
+    // Add new method to handle dock button clicks (launch is handled by station menu)
     handleDockButtonClick(isDocked, targetName) {
         if (!this.currentTarget) {
             console.warn('No current target available for docking');

@@ -307,7 +307,7 @@ export class MissionBoard {
         
         this.generateButton = this.createButton('Generate Mission', () => this.generateNewMission());
         this.refreshButton = this.createButton('Refresh', () => this.loadAvailableMissions());
-        this.closeButton = this.createButton('Close', () => this.hide());
+        this.closeButton = this.createButton('Return to Station Menu', () => this.hide());
         
         buttonContainer.appendChild(this.acceptButton);
         buttonContainer.appendChild(this.generateButton);
@@ -808,9 +808,9 @@ export class MissionBoard {
         this.selectedMission = null;
         this.acceptButton.disabled = true;
         
-        // Return to docking interface if available
+        // Return to station menu if available
         if (this.dockingInterface && this.currentLocation) {
-            console.log('🎯 Returning to docking interface...');
+            console.log('🎯 Returning to station menu...');
             this.dockingInterface.show(this.currentLocation);
         }
         
