@@ -1896,19 +1896,35 @@ export class StarfieldManager {
             if (commandKey === 'p') {
                 // Block proximity detector when docked
                 if (!this.isDocked) {
-                    // Check if ship has radar cards installed
+                    // Check radar system availability like other systems
                     const ship = this.viewManager?.getShip();
-                    if (ship && ship.hasSystemCardsSync('radar')) {
-                        // Toggle 3D proximity detector display
-                        this.playCommandSound();
-                        this.toggleProximityDetector();
-                    } else {
-                        // No radar cards installed
+                    const radarSystem = ship?.getSystem('radar');
+                    
+                    if (!radarSystem) {
+                        // No radar system exists (no cards installed)
                         this.playCommandFailedSound();
                         this.showHUDError(
                             'PROXIMITY DETECTOR UNAVAILABLE',
                             'No Proximity Detector card installed in ship slots'
                         );
+                    } else if (!radarSystem.canActivate(ship)) {
+                        // System exists but can't be activated
+                        if (!radarSystem.isOperational()) {
+                            this.showHUDError(
+                                'PROXIMITY DETECTOR DAMAGED',
+                                'Proximity Detector system requires repair'
+                            );
+                        } else {
+                            this.showHUDError(
+                                'INSUFFICIENT ENERGY',
+                                'Need energy to activate proximity detector'
+                            );
+                        }
+                        this.playCommandFailedSound();
+                    } else {
+                        // System available and operational - toggle it
+                        this.playCommandSound();
+                        this.toggleProximityDetector();
                     }
                 } else {
                     this.playCommandFailedSound();
@@ -3320,9 +3336,12 @@ export class StarfieldManager {
      */
     toggleProximityDetector() {
         if (this.proximityDetector3D) {
-            this.proximityDetector3D.toggle();
-            console.log('🎯 StarfieldManager: 3D Proximity Detector toggled');
+            // The proximity detector will handle its own validation
+            const success = this.proximityDetector3D.toggle();
+            console.log('🎯 StarfieldManager: 3D Proximity Detector toggle result:', success);
+            return success;
         }
+        return false;
     }
 
     updateIntelDisplay() {

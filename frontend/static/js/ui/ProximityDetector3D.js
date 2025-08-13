@@ -835,8 +835,22 @@ export class ProximityDetector3D {
         const ship = this.starfieldManager.viewManager?.getShip();
         if (!ship) return false;
         
-        // Check if ship has radar cards installed
-        return ship.hasSystemCardsSync('radar');
+        // Check if ship has radar system (like other systems do)
+        const radarSystem = ship.getSystem('radar');
+        
+        if (!radarSystem) {
+            console.log('🎯 ProximityDetector: No radar system found');
+            return false;
+        }
+        
+        // Check if the radar system can be activated
+        if (!radarSystem.canActivate(ship)) {
+            console.log('🎯 ProximityDetector: Radar system cannot be activated:', radarSystem.isOperational() ? 'low energy' : 'damaged');
+            return false;
+        }
+        
+        console.log('🎯 ProximityDetector: Radar system available and operational');
+        return true;
     }
     
     /**
