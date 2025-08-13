@@ -9,6 +9,58 @@ A 3D web-based spaceship simulation game featuring intergalactic exploration, tr
 **Stability**: Production-ready with comprehensive testing and robust error handling  
 **Documentation**: Complete technical and user documentation available  
 
+## 🧪 Testing Mode Configuration
+
+### No-Persistence Testing Mode ✅ **ACTIVE**
+
+**For Testing Phase**: The game is currently configured with `NO_PERSISTENCE` mode enabled, which clears all persistent data between sessions to provide a clean testing environment.
+
+#### Current Configuration
+```javascript
+// In frontend/static/js/views/StarfieldManager.js
+const TESTING_CONFIG = {
+    NO_PERSISTENCE: true,  // ✅ CURRENTLY ACTIVE
+    
+    // Future options:
+    // RESET_PLAYER_PROGRESS: true,
+    // RESET_SHIP_CONFIG: true,
+    // RESET_CREDITS: true,
+    // RESET_FACTION_STANDINGS: true
+};
+```
+
+#### What Gets Cleared on Game Start
+- **Active Missions**: All previously accepted missions are marked as completed
+- **Mission Progress**: No mission state carries over between sessions
+- **Game State**: Fresh slate every time you start the game
+
+#### Expected Behavior
+- 🔄 **Game Restart** → All old missions automatically cleared
+- ✅ **Accept 2 Missions** → Mission Status HUD shows exactly 2 missions  
+- 🚫 **No Confusion** → No persistent data from previous sessions
+- 🧪 **Consistent Testing** → Same starting state every time
+
+#### Console Output During Testing Mode
+```
+🧪 TESTING MODE ACTIVE: Clearing all persistent data for fresh start...
+🧪 TESTING MODE: Found X old active missions, clearing...
+🧪 TESTING MODE: All old missions cleared
+🧪 TESTING MODE: Fresh session initialized
+```
+
+#### How to Disable Testing Mode (For Production)
+When ready for production with persistent game data:
+```javascript
+// Change this line in StarfieldManager.js:
+const TESTING_CONFIG = {
+    NO_PERSISTENCE: false,  // Enables persistence between sessions
+};
+```
+
+**Note**: This testing mode will be disabled in future production releases to enable normal save/load functionality.
+
+---
+
 ## ⚡ Recent Major Fixes & Improvements
 
 ### Equipment Synchronization Fix ✅ **NEW**
@@ -167,6 +219,7 @@ python3 -m http.server 8080 --directory frontend/static
 - **Tab**: Cycle through targets
 - **< / > Keys**: Cycle through sub-targets (Level 3+ targeting computer)
 - **I Key**: Toggle Intel HUD for celestial objects
+- **M Key**: Toggle Mission Status HUD (shows active missions)
 
 ### Weapon Controls
 - **Z Key**: Select previous weapon
@@ -289,6 +342,26 @@ python3 -m http.server 8080 --directory frontend/static
 - Clear visual feedback shows remaining initialization time
 
 ### Development & Testing Issues
+
+#### Mission Data Persists Between Sessions ✅ **ADDRESSED**
+**Symptoms**:
+- Mission Status HUD shows old missions from previous game sessions
+- More active missions than actually accepted in current session
+- Confusion about which missions are currently active
+
+**Root Cause**: Mission system persistence between game restarts
+**Status**: ✅ **ADDRESSED** - Testing mode active with no persistence
+
+**Current Solution**: 
+- **Testing Mode Enabled**: `TESTING_CONFIG.NO_PERSISTENCE = true`
+- All active missions automatically cleared on game start
+- Fresh mission state every session for consistent testing
+- See "🧪 Testing Mode Configuration" section above for details
+
+**Future Solution** (Production):
+- When `NO_PERSISTENCE = false`, missions will persist between sessions
+- Save/load system will maintain mission progress correctly
+- Player choice to continue or start fresh
 
 #### StarfieldManager Not Found in Console ✅ **FIXED**
 **Symptoms**:
