@@ -11,6 +11,18 @@ import { MissionCompletionUI } from '../ui/MissionCompletionUI.js';
 import { MissionNotificationHandler } from '../ui/MissionNotificationHandler.js';
 import { MissionAPIService } from '../services/MissionAPIService.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
+
+// TESTING CONFIGURATION
+const TESTING_CONFIG = {
+    // Set to true for testing phase - clears all persistent data on game start
+    NO_PERSISTENCE: true,
+    
+    // Future testing options:
+    // RESET_PLAYER_PROGRESS: true,
+    // RESET_SHIP_CONFIG: true,
+    // RESET_CREDITS: true,
+    // RESET_FACTION_STANDINGS: true
+};
 import { WeaponSlot } from '../ship/systems/WeaponSlot.js';
 import SimplifiedDamageControl from '../ui/SimplifiedDamageControl.js';
 import DockingModal from '../ui/DockingModal.js';
@@ -6637,6 +6649,10 @@ export class StarfieldManager {
     
     /**
      * Initialize mission system on game start
+     * 
+     * TESTING MODE: When TESTING_CONFIG.NO_PERSISTENCE is true,
+     * all persistent data is cleared on startup to simulate
+     * fresh sessions without any carry-over between game restarts.
      */
     async initializeMissionSystem() {
         console.log('🎯 Initializing mission system...');
@@ -6651,13 +6667,26 @@ export class StarfieldManager {
             if (isConnected) {
                 console.log('🎯 Mission API connected, pre-populating stations...');
                 
-                // Optional: Clear old active missions for fresh start
-                // Uncomment the next 4 lines if you want to clear old missions on game start
-                // const activeCount = await this.missionAPI.getActiveMissions();
-                // if (activeCount.length > 0) {
-                //     console.log(`🎯 Found ${activeCount.length} old active missions, clearing for fresh start...`);
-                //     await this.missionAPI.clearActiveMissions();
-                // }
+                // TESTING PHASE: Clear old data for fresh start (no persistence between sessions)
+                if (TESTING_CONFIG.NO_PERSISTENCE) {
+                    console.log('🧪 TESTING MODE ACTIVE: Clearing all persistent data for fresh start...');
+                    
+                    const activeCount = await this.missionAPI.getActiveMissions();
+                    if (activeCount.length > 0) {
+                        console.log(`🧪 TESTING MODE: Found ${activeCount.length} old active missions, clearing...`);
+                        await this.missionAPI.clearActiveMissions();
+                        console.log('🧪 TESTING MODE: All old missions cleared');
+                    } else {
+                        console.log('🧪 TESTING MODE: No old missions found - clean start');
+                    }
+                    
+                    // Future: Could also clear other persistent data here
+                    // - Player progress/stats
+                    // - Ship configurations
+                    // - Credits/inventory
+                    // - Faction standings
+                    console.log('🧪 TESTING MODE: Fresh session initialized');
+                }
                 
                 await this.prePopulateStationMissions();
             } else {
