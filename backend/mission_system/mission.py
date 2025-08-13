@@ -98,7 +98,7 @@ class Mission:
     
     def __init__(self, mission_id: str, title: str, description: str, 
                  mission_type: str = "exploration", location: str = "unknown",
-                 faction: str = "neutral", reward_package_id: int = 1):
+                 faction: str = "neutral", reward_package_id: int = 1, client: str = None):
         self.id = mission_id
         self.title = title
         self.description = description
@@ -106,6 +106,7 @@ class Mission:
         self.location = location
         self.faction = faction
         self.reward_package_id = reward_package_id
+        self.client = client or "Mission Control"
         
         # Core state management (from spec)
         self.state = MissionState.UNKNOWN
@@ -301,6 +302,7 @@ class Mission:
             'location': self.location,
             'faction': self.faction,
             'reward_package_id': self.reward_package_id,
+            'client': self.client,
             'state': self.state.value,
             'is_botched': self.is_botched,
             'objectives': [obj.to_dict() for obj in self.objectives],
@@ -321,7 +323,8 @@ class Mission:
             mission_type=data.get('mission_type', 'exploration'),
             location=data.get('location', 'unknown'),
             faction=data.get('faction', 'neutral'),
-            reward_package_id=data.get('reward_package_id', 1)
+            reward_package_id=data.get('reward_package_id', 1),
+            client=data.get('client', 'Mission Control')
         )
         
         # Restore state

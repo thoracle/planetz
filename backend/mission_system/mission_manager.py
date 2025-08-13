@@ -424,7 +424,8 @@ class MissionManager:
                 mission_type=mission_data['mission_type'],
                 location=location,
                 faction=mission_data.get('faction', 'neutral'),
-                reward_package_id=mission_data.get('reward_package_id', 1)
+                reward_package_id=mission_data.get('reward_package_id', 1),
+                client=mission_data.get('client', 'Mission Control')
             )
             
             # Add objectives
@@ -490,6 +491,88 @@ class MissionManager:
             for element_key, options in template['random_elements'].items():
                 if element_key in mission_data:
                     mission_data[element_key] = random.choice(options)
+        
+        # Process template placeholders in objectives and descriptions
+        mission_data = self._process_template_placeholders(mission_data)
+        
+        # Add client/issuer information
+        mission_data = self._add_mission_client(mission_data, location)
+        
+        return mission_data
+    
+    def _process_template_placeholders(self, mission_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Replace template placeholders like {enemy_count} with actual values from custom_fields"""
+        custom_fields = mission_data.get('custom_fields', {})
+        
+        # Process mission title
+        if 'title' in mission_data:
+            mission_data['title'] = self._replace_placeholders(mission_data['title'], custom_fields)
+        
+        # Process mission description
+        if 'description' in mission_data:
+            mission_data['description'] = self._replace_placeholders(mission_data['description'], custom_fields)
+        
+        # Process objectives
+        if 'objectives' in mission_data:
+            for objective in mission_data['objectives']:
+                if 'description' in objective:
+                    objective['description'] = self._replace_placeholders(objective['description'], custom_fields)
+        
+        return mission_data
+    
+    def _replace_placeholders(self, text: str, custom_fields: Dict[str, Any]) -> str:
+        """Replace placeholders in text with values from custom_fields"""
+        if not text or not custom_fields:
+            return text
+        
+        result = text
+        for key, value in custom_fields.items():
+            placeholder = f"{{{key}}}"
+            if placeholder in result:
+                result = result.replace(placeholder, str(value))
+        
+        return result
+    
+    def _add_mission_client(self, mission_data: Dict[str, Any], location: str) -> Dict[str, Any]:
+        """Add client/issuer information based on faction and location"""
+        faction = mission_data.get('faction', 'neutral')
+        mission_type = mission_data.get('mission_type', 'exploration')
+        
+        # Station-based clients
+        station_clients = {
+            'terra_prime': 'Terra Prime Command',
+            'europa_station': 'Europa Research Division',
+            'ceres_outpost': 'Ceres Trade Authority',
+            'mars_base': 'Mars Defense Force',
+            'luna_port': 'Luna Commerce Guild',
+            'asteroid_mining_platform': 'Mining Operations Center'
+        }
+        
+        # Faction-based clients as fallback
+        faction_clients = {
+            'terran_republic_alliance': 'Republic Fleet Command',
+            'scientists_consortium': 'Research Consortium',
+            'traders_guild': 'Traders Guild Representative',
+            'miners_union': 'Miners Union Local',
+            'free_trader_consortium': 'Independent Contractor'
+        }
+        
+        # Mission type specific clients
+        type_clients = {
+            'elimination': 'Security Chief',
+            'escort': 'Transport Coordinator',
+            'delivery': 'Logistics Officer',
+            'exploration': 'Survey Director'
+        }
+        
+        # Priority: Station > Faction > Mission Type > Default
+        client = (station_clients.get(location) or 
+                 faction_clients.get(faction) or 
+                 type_clients.get(mission_type) or 
+                 'Mission Control')
+        
+        mission_data['client'] = client
+        mission_data['issuer'] = client  # Also add issuer for compatibility
         
         return mission_data
     
