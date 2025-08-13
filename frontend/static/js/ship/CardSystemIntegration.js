@@ -850,6 +850,9 @@ export default class CardSystemIntegration {
             'subspace_radio': 'subspace_radio',
             'long_range_scanner': 'long_range_scanner',
             'galactic_chart': 'galactic_chart', 
+            'basic_radar': 'radar',        // Map basic radar card to radar system
+            'advanced_radar': 'radar',     // Map advanced radar card to radar system
+            'tactical_radar': 'radar',     // Map tactical radar card to radar system
             'shields': 'shields',
             'hull_plating': 'hull_plating',
             'shield_generator': 'shields',  // Map shield_generator card to shields system
