@@ -1,13 +1,12 @@
 {
-  "id": "elimination_1755063878",
+  "id": "elimination_1755065801",
   "title": "Enemy Elimination Contract",
   "description": "Eliminate hostile targets in the specified sector",
   "mission_type": "elimination",
-  "location": "terra_prime",
+  "location": "callisto_defense_platform",
   "faction": "terran_republic_alliance",
   "reward_package_id": 3,
-  "client": "Mission Control",
-  "state": "Completed",
+  "state": "Mentioned",
   "is_botched": false,
   "objectives": [
     {
@@ -19,8 +18,8 @@
       "achieved_at": null
     }
   ],
-  "created_at": "2025-08-13T05:44:38.251596+00:00",
-  "updated_at": "2025-08-13T06:22:10.843863+00:00",
+  "created_at": "2025-08-13T06:16:41.202965+00:00",
+  "updated_at": "2025-08-13T06:16:41.202985+00:00",
   "custom_fields": {
     "target_enemy_type": "enemy_fighter",
     "enemy_count": 3,
@@ -39,7 +38,7 @@
     "on_complete": "award_combat_bonus"
   },
   "progress": {
-    "state": "Completed",
+    "state": "Mentioned",
     "is_botched": false,
     "total_objectives": 1,
     "achieved_objectives": 0,

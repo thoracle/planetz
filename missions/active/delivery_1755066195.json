@@ -1,18 +1,18 @@
 {
-  "id": "trader_delivery_001",
-  "title": "Medical Supply Run",
-  "description": "Deliver emergency medical supplies to mining colony suffering equipment failures",
+  "id": "delivery_1755066195",
+  "title": "Cargo Delivery Contract",
+  "description": "Transport valuable cargo to specified destination",
   "mission_type": "delivery",
-  "location": "terra_prime",
+  "location": "helios_solar_array",
   "faction": "traders_guild",
   "reward_package_id": 4,
-  "client": "Mission Control",
-  "state": "Completed",
+  "client": "Traders Guild Representative",
+  "state": "Mentioned",
   "is_botched": false,
   "objectives": [
     {
       "id": "1",
-      "description": "Pick up medical supplies from Terra Prime",
+      "description": "Pick up medical_supplies from terra_prime",
       "is_achieved": false,
       "is_optional": false,
       "is_ordered": true,
@@ -20,7 +20,7 @@
     },
     {
       "id": "2",
-      "description": "Deliver cargo to Mining Colony Beta",
+      "description": "Deliver cargo to mining_station_alpha",
       "is_achieved": false,
       "is_optional": false,
       "is_ordered": true,
@@ -35,25 +35,18 @@
       "achieved_at": null
     }
   ],
-  "created_at": "2024-01-15T09:30:00+00:00",
-  "updated_at": "2025-08-13T06:22:10.841729+00:00",
+  "created_at": "2025-08-13T06:23:15.809596+00:00",
+  "updated_at": "2025-08-13T06:23:15.809647+00:00",
   "custom_fields": {
     "cargo_type": "medical_supplies",
     "pickup_location": "terra_prime",
-    "delivery_location": "mining_colony_beta",
+    "delivery_location": "mining_station_alpha",
     "cargo_value": 5000,
     "cargo_mass": 50,
     "time_limit": 7200,
     "cargo_fragile": true,
     "delivery_bonus": 750,
-    "reputation_gain": 15,
-    "mission_giver": "Trader Captain Morrison",
-    "urgency": "high",
-    "cargo_manifest": [
-      "Advanced Medical Scanner x2",
-      "Emergency Surgery Kit x5",
-      "Pharmaceutical Supplies x10"
-    ]
+    "reputation_gain": 15
   },
   "triggers": {
     "on_accept": "reserve_cargo_bay",
@@ -62,7 +55,7 @@
     "on_complete": "update_trader_reputation"
   },
   "progress": {
-    "state": "Completed",
+    "state": "Mentioned",
     "is_botched": false,
     "total_objectives": 3,
     "achieved_objectives": 0,

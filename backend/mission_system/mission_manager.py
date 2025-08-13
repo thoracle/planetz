@@ -306,10 +306,30 @@ class MissionManager:
         target_enemy = mission.custom_fields.get('target_enemy_type')
         
         if enemy_type == target_enemy:
-            # Find elimination objective
+            # Track kill count in mission custom fields
+            kill_count = mission.custom_fields.get('kills_made', 0) + 1
+            mission.custom_fields['kills_made'] = kill_count
+            
+            required_kills = mission.custom_fields.get('enemy_count', 1)
+            
+            logger.info(f"🎯 Mission {mission.id}: Kill progress {kill_count}/{required_kills}")
+            
+            # Find elimination objective and update progress
             for obj in mission.objectives:
                 if 'eliminate' in obj.description.lower() and not obj.is_achieved:
-                    return mission.set_state(MissionState.ACHIEVED, obj.id)
+                    # Update objective progress
+                    obj.progress = min(kill_count / required_kills, 1.0)
+                    
+                    # Check if objective is complete
+                    if kill_count >= required_kills:
+                        success = mission.set_state(MissionState.ACHIEVED, obj.id)
+                        if success:
+                            logger.info(f"🎉 Elimination objective completed: {kill_count}/{required_kills} enemies defeated")
+                        return success
+                    else:
+                        # Save progress update
+                        self.save_mission(mission)
+                        return True
         
         return False
     

@@ -6,7 +6,7 @@
   "location": "terra_prime",
   "faction": "terran_republic_alliance",
   "reward_package_id": 3,
-  "state": "Mentioned",
+  "state": "Accepted",
   "is_botched": false,
   "objectives": [
     {
@@ -19,7 +19,7 @@
     }
   ],
   "created_at": "2025-08-13T05:51:15.042911+00:00",
-  "updated_at": "2025-08-13T05:51:15.042944+00:00",
+  "updated_at": "2025-08-13T06:12:21.422293+00:00",
   "custom_fields": {
     "target_enemy_type": "enemy_fighter",
     "enemy_count": 3,
@@ -38,7 +38,7 @@
     "on_complete": "award_combat_bonus"
   },
   "progress": {
-    "state": "Mentioned",
+    "state": "Accepted",
     "is_botched": false,
     "total_objectives": 1,
     "achieved_objectives": 0,

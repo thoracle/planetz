@@ -10,6 +10,7 @@ import { MissionStatusHUD } from '../ui/MissionStatusHUD.js';
 import { MissionCompletionUI } from '../ui/MissionCompletionUI.js';
 import { MissionNotificationHandler } from '../ui/MissionNotificationHandler.js';
 import { MissionAPIService } from '../services/MissionAPIService.js';
+import { MissionEventService } from '../services/MissionEventService.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 
 // TESTING CONFIGURATION
@@ -195,6 +196,9 @@ export class StarfieldManager {
         
         // Create mission API service
         this.missionAPI = new MissionAPIService();
+        
+        // Create mission event service for tracking game events
+        this.missionEventService = new MissionEventService();
         
         // Create mission UI components
         this.missionStatusHUD = new MissionStatusHUD(this, null); // Mission manager to be integrated later
@@ -5521,6 +5525,9 @@ export class StarfieldManager {
         
         console.log(`💥 removeDestroyedTarget called for: ${destroyedShip.shipName || 'unknown ship'}`);
         
+        // Send mission event for enemy destruction
+        this.sendEnemyDestroyedEvent(destroyedShip);
+        
         // First, physically remove the ship from the scene and arrays
         let shipMesh = null;
         
@@ -6953,6 +6960,147 @@ export class StarfieldManager {
     }
     
     /**
+     * Send enemy destroyed event to mission system
+     */
+    async sendEnemyDestroyedEvent(destroyedShip) {
+        if (!this.missionEventService || !destroyedShip) return;
+        
+        try {
+            const playerContext = {
+                location: this.getCurrentLocation(),
+                playerShip: this.ship?.shipType || 'starter_ship'
+            };
+            
+            const result = await this.missionEventService.enemyDestroyed(destroyedShip, playerContext);
+            
+            if (result && result.success && result.updated_missions && result.updated_missions.length > 0) {
+                console.log(`🎯 Enemy destruction updated ${result.updated_missions.length} missions`);
+                
+                // Refresh Mission Status HUD if visible
+                if (this.missionStatusHUD && this.missionStatusHUD.visible) {
+                    setTimeout(() => {
+                        this.missionStatusHUD.refreshMissions();
+                    }, 100);
+                }
+                
+                // Show mission progress notification
+                for (const mission of result.updated_missions) {
+                    this.showMissionProgressNotification(mission, 'enemy_destroyed');
+                }
+            }
+            
+        } catch (error) {
+            console.error('🎯 Failed to send enemy destroyed event:', error);
+        }
+    }
+    
+    /**
+     * Send location reached event to mission system
+     */
+    async sendLocationReachedEvent(location) {
+        if (!this.missionEventService || !location) return;
+        
+        try {
+            const playerContext = {
+                playerShip: this.ship?.shipType || 'starter_ship'
+            };
+            
+            const result = await this.missionEventService.locationReached(location, playerContext);
+            
+            if (result && result.success && result.updated_missions && result.updated_missions.length > 0) {
+                console.log(`🎯 Location reached updated ${result.updated_missions.length} missions`);
+                
+                // Refresh Mission Status HUD if visible
+                if (this.missionStatusHUD && this.missionStatusHUD.visible) {
+                    setTimeout(() => {
+                        this.missionStatusHUD.refreshMissions();
+                    }, 100);
+                }
+                
+                // Show mission progress notification
+                for (const mission of result.updated_missions) {
+                    this.showMissionProgressNotification(mission, 'location_reached');
+                }
+            }
+            
+        } catch (error) {
+            console.error('🎯 Failed to send location reached event:', error);
+        }
+    }
+    
+    /**
+     * Show mission progress notification
+     */
+    showMissionProgressNotification(mission, eventType) {
+        if (!this.missionNotificationHandler) return;
+        
+        // Find completed objectives for progress message
+        const completedObjectives = mission.objectives?.filter(obj => 
+            obj.status === 'ACHIEVED' || obj.status === 'COMPLETED'
+        ) || [];
+        
+        if (completedObjectives.length > 0) {
+            const objective = completedObjectives[0];
+            const message = `Objective completed: ${objective.description}`;
+            
+            this.missionNotificationHandler.sendObjectiveUpdate(
+                mission.client || 'Mission Control',
+                message,
+                mission
+            );
+        } else {
+            // Show progress update
+            const message = this.getMissionProgressMessage(mission, eventType);
+            if (message) {
+                this.missionNotificationHandler.sendMissionUpdate(
+                    mission.client || 'Mission Control',
+                    message,
+                    mission
+                );
+            }
+        }
+    }
+    
+    /**
+     * Get appropriate progress message for mission event
+     */
+    getMissionProgressMessage(mission, eventType) {
+        const killCount = mission.custom_fields?.kills_made || 0;
+        const requiredKills = mission.custom_fields?.enemy_count || 0;
+        
+        switch (eventType) {
+            case 'enemy_destroyed':
+                if (requiredKills > 0) {
+                    return `Enemy eliminated. Progress: ${killCount}/${requiredKills}`;
+                }
+                return 'Enemy eliminated';
+                
+            case 'location_reached':
+                return 'Location objective updated';
+                
+            default:
+                return 'Mission progress updated';
+        }
+    }
+    
+    /**
+     * Get current player location for mission events
+     */
+    getCurrentLocation() {
+        // Try to get location from current system or target
+        if (this.solarSystemManager?.currentSystem) {
+            return this.solarSystemManager.currentSystem.toLowerCase().replace(/\s+/g, '_');
+        }
+        
+        if (this.currentTarget?.userData?.name) {
+            return String(this.currentTarget.userData.name).toLowerCase().replace(/\s+/g, '_');
+        }
+        
+        // Default fallback
+        return 'unknown';
+    }
+    
+    /**
      * Manual mission population for testing (console command)
      */
     async populateAllStations() {
@@ -6983,6 +7131,32 @@ export class StarfieldManager {
         
         console.table(summary);
         return summary;
+    }
+    
+    /**
+     * Test mission event system (console command)
+     */
+    async testMissionEvents() {
+        console.log('🎯 Testing mission event system...');
+        
+        if (!this.missionEventService) {
+            console.error('❌ MissionEventService not available');
+            return;
+        }
+        
+        // Test enemy destroyed event
+        console.log('🎯 Testing enemy destroyed event...');
+        const result = await this.missionEventService.testEnemyDestroyed();
+        console.log('🎯 Enemy destroyed test result:', result);
+        
+        // Test location reached event
+        console.log('🎯 Testing location reached event...');
+        const locationResult = await this.missionEventService.locationReached('terra_prime', {
+            playerShip: 'starter_ship'
+        });
+        console.log('🎯 Location reached test result:', locationResult);
+        
+        return { enemyDestroyed: result, locationReached: locationResult };
     }
     
     /**
