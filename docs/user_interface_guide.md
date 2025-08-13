@@ -18,8 +18,8 @@
 ## 🎨 Design Philosophy
 
 ### **Retro-Futuristic Aesthetic**
-- **Theme:** Classic sci-fi computer interfaces from the 80s/90s
-- **Style:** Clean, minimal, high-contrast terminal-inspired design
+- **Theme:** Classic sci-fi computer interfaces from the 70s/80s
+- **Style:** Clean, minimal, high-contrast green screen terminal-inspired design
 - **Feel:** Professional space operator workstation
 - **Inspiration:** Star Trek LCARS, Alien Nostromo computer, retro arcade games
 
@@ -616,5 +616,3 @@ This guide establishes the visual language and interaction patterns for PlanetZ.
 
 ---
 
-*Last Updated: January 2025*  
-*Version: 1.0*

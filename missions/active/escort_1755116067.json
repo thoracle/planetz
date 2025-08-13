@@ -1,18 +1,18 @@
 {
-  "id": "escort_1755063983",
+  "id": "escort_1755116067",
   "title": "Convoy Escort Mission",
   "description": "Provide protection for valuable cargo convoy",
   "mission_type": "escort",
-  "location": "terra_prime",
+  "location": "hermes_refinery",
   "faction": "terran_republic_alliance",
   "reward_package_id": 5,
-  "client": "Mission Control",
-  "state": "Completed",
+  "client": "Republic Fleet Command",
+  "state": "Mentioned",
   "is_botched": false,
   "objectives": [
     {
       "id": "1",
-      "description": "Rendezvous with convoy at {meeting_point}",
+      "description": "Rendezvous with convoy at jump_gate_7",
       "is_achieved": false,
       "is_optional": false,
       "is_ordered": true,
@@ -20,7 +20,7 @@
     },
     {
       "id": "2",
-      "description": "Escort convoy safely to {destination}",
+      "description": "Escort convoy safely to alliance_starbase",
       "is_achieved": false,
       "is_optional": false,
       "is_ordered": true,
@@ -35,8 +35,8 @@
       "achieved_at": null
     }
   ],
-  "created_at": "2025-08-13T05:46:23.904332+00:00",
-  "updated_at": "2025-08-13T20:09:27.570366+00:00",
+  "created_at": "2025-08-13T20:14:27.631570+00:00",
+  "updated_at": "2025-08-13T20:14:27.631600+00:00",
   "custom_fields": {
     "convoy_ships": [
       {
@@ -89,7 +89,7 @@
     "on_complete": "debrief_escort_mission"
   },
   "progress": {
-    "state": "Completed",
+    "state": "Mentioned",
     "is_botched": false,
     "total_objectives": 3,
     "achieved_objectives": 0,

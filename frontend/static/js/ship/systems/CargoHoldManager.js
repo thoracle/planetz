@@ -22,8 +22,8 @@ export class CargoHoldManager {
     initializeFromCards() {
         console.log('🚛 CargoHoldManager: initializeFromCards() called');
         
-        if (!this.ship.cardInventory) {
-            console.log('🚛 No cardInventory available on ship');
+        if (!this.ship.cardSystemIntegration) {
+            console.log('🚛 No cardSystemIntegration available on ship');
             return;
         }
         
@@ -32,7 +32,7 @@ export class CargoHoldManager {
         this.totalCapacity = 0;
         
         // Find all cargo hold cards installed on ship
-        const installedCards = this.ship.cardInventory.getInstalledCards();
+        const installedCards = this.ship.cardSystemIntegration.installedCards;
         console.log(`🚛 Checking ${installedCards.size} installed cards for cargo holds`);
         let holdSlot = 0;
         
@@ -422,10 +422,10 @@ export class CargoHoldManager {
     debugCargoStatus() {
         console.log('🚛 === CARGO HOLD DEBUG ===');
         console.log('🚛 Ship reference:', this.ship ? 'Available' : 'Missing');
-        console.log('🚛 CardInventory reference:', this.ship?.cardInventory ? 'Available' : 'Missing');
+        console.log('🚛 CardSystemIntegration reference:', this.ship?.cardSystemIntegration ? 'Available' : 'Missing');
         
-        if (this.ship?.cardInventory) {
-            const installedCards = this.ship.cardInventory.getInstalledCards();
+        if (this.ship?.cardSystemIntegration) {
+            const installedCards = this.ship.cardSystemIntegration.installedCards;
             console.log('🚛 Installed cards:', installedCards.size);
             
             let cargoCardCount = 0;

@@ -138,7 +138,7 @@ export class CommodityExchange {
         returnBtn.addEventListener('click', () => {
             this.hide();
             if (this.dockingInterface) {
-                this.dockingInterface.show(this.currentStation);
+                this.dockingInterface.returnToStationMenu();
             }
         });
         
@@ -264,9 +264,18 @@ export class CommodityExchange {
         const manifest = ship.cargoHoldManager.getCargoManifest();
         console.log('🚛 CommodityExchange: Cargo manifest:', manifest);
         
-        // Update capacity display
+        // Update capacity display with red highlighting for zero capacity
         const capacityEl = this.container.querySelector('#cargo-capacity');
         capacityEl.textContent = `${manifest.usedCapacity}/${manifest.totalCapacity}`;
+        
+        // Highlight in red if no cargo capacity available
+        if (manifest.totalCapacity === 0) {
+            capacityEl.style.color = '#ff4444';
+            capacityEl.style.fontWeight = 'bold';
+        } else {
+            capacityEl.style.color = '#888';
+            capacityEl.style.fontWeight = 'normal';
+        }
         
         // Update credits display (mock for now)
         const creditsEl = this.container.querySelector('#player-credits');
@@ -470,6 +479,10 @@ export class CommodityExchange {
         if (result.success) {
             console.log(`✅ Purchase successful: ${quantity} units loaded`);
             
+            // Show success notification
+            const commodityData = this.getCommodityData(commodityId);
+            this.showTradeNotification(`✅ Purchased ${quantity} units of ${commodityData.name}`, 'success');
+            
             // TODO: Deduct credits from player
             // TODO: Reduce station availability
             
@@ -487,8 +500,8 @@ export class CommodityExchange {
                 );
             }
         } else {
-            console.error(`❌ Purchase failed: ${result.error}`);
-            alert(`Purchase failed: ${result.error}`);
+            console.log(`🏪 Purchase failed: ${result.error}`);
+            this.showTradeNotification(`Purchase failed: ${result.error}`, 'error');
         }
     }
     
@@ -507,6 +520,9 @@ export class CommodityExchange {
         
         if (result.success) {
             console.log(`✅ Sale successful: ${quantity} units sold for ${totalValue} CR`);
+            
+            // Show success notification
+            this.showTradeNotification(`✅ Sold ${quantity} units of ${cargoItem.name} for ${totalValue} CR`, 'success');
             
             // TODO: Add credits to player
             // TODO: Update station availability
@@ -528,8 +544,8 @@ export class CommodityExchange {
                 );
             }
         } else {
-            console.error(`❌ Sale failed: ${result.error}`);
-            alert(`Sale failed: ${result.error}`);
+            console.log(`🏪 Sale failed: ${result.error}`);
+            this.showTradeNotification(`Sale failed: ${result.error}`, 'error');
         }
     }
     
@@ -589,5 +605,208 @@ export class CommodityExchange {
             button.style.borderColor = borderColor;
             button.style.transform = 'scale(1)';
         });
+    }
+    
+    /**
+     * Show in-game trade notification as centered modal popup
+     * @param {string} message - The notification message
+     * @param {string} type - Notification type ('info', 'success', 'error', 'warning')
+     */
+    showTradeNotification(message, type = 'info') {
+        // Use centered modal popup for trading notifications
+        // This ensures visibility over station interfaces and docking UI
+        this.createTradingModal(message, type);
+    }
+    
+    /**
+     * Create centered modal popup for trading notifications
+     * @param {string} message - The notification message  
+     * @param {string} type - Notification type
+     */
+    createTradingModal(message, type) {
+        // Remove any existing trading modal
+        const existingModal = document.querySelector('.trading-notification-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        const colors = {
+            'info': '#00ff41',
+            'success': '#44ff44', 
+            'error': '#ff4444',
+            'warning': '#ffff44'
+        };
+        
+        const icons = {
+            'info': 'ℹ️',
+            'success': '✅', 
+            'error': '❌',
+            'warning': '⚠️'
+        };
+        
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'trading-notification-modal';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 15000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        `;
+        
+        // Create modal content
+        const modal = document.createElement('div');
+        modal.className = `trading-notification-content ${type}`;
+        modal.style.cssText = `
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            border: 3px solid ${colors[type]};
+            color: ${colors[type]};
+            padding: 30px 40px;
+            border-radius: 12px;
+            font-family: 'VT323', monospace;
+            font-size: 20px;
+            text-align: center;
+            max-width: 500px;
+            min-width: 300px;
+            box-shadow: 0 0 40px ${colors[type]}40, inset 0 0 20px rgba(0, 0, 0, 0.3);
+            animation: scaleIn 0.3s ease;
+            position: relative;
+        `;
+        
+        // Create modal header with icon
+        const header = document.createElement('div');
+        header.style.cssText = `
+            font-size: 24px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        `;
+        
+        const iconSpan = document.createElement('span');
+        iconSpan.textContent = icons[type];
+        iconSpan.style.fontSize = '28px';
+        
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = type.toUpperCase();
+        
+        header.appendChild(iconSpan);
+        header.appendChild(titleSpan);
+        
+        // Create message content
+        const messageDiv = document.createElement('div');
+        messageDiv.style.cssText = `
+            font-size: 18px;
+            line-height: 1.4;
+            margin-bottom: 20px;
+        `;
+        messageDiv.textContent = message;
+        
+        // Create OK button
+        const okButton = document.createElement('button');
+        okButton.textContent = 'OK';
+        okButton.style.cssText = `
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid ${colors[type]};
+            color: ${colors[type]};
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-family: 'VT323', monospace;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 80px;
+        `;
+        
+        // Add hover effects to OK button
+        okButton.addEventListener('mouseenter', () => {
+            okButton.style.background = `${colors[type]}20`;
+            okButton.style.transform = 'scale(1.05)';
+        });
+        
+        okButton.addEventListener('mouseleave', () => {
+            okButton.style.background = 'rgba(0, 0, 0, 0.6)';
+            okButton.style.transform = 'scale(1)';
+        });
+        
+        // Close modal function
+        const closeModal = () => {
+            overlay.style.animation = 'fadeOut 0.3s ease';
+            modal.style.animation = 'scaleOut 0.3s ease';
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
+        };
+        
+        // Event listeners
+        okButton.addEventListener('click', closeModal);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                closeModal();
+            }
+        });
+        
+        // Escape key to close
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
+        
+        // Assemble modal
+        modal.appendChild(header);
+        modal.appendChild(messageDiv);
+        modal.appendChild(okButton);
+        overlay.appendChild(modal);
+        
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+            @keyframes scaleIn {
+                from { transform: scale(0.8); opacity: 0; }
+                to { transform: scale(1); opacity: 1; }
+            }
+            @keyframes scaleOut {
+                from { transform: scale(1); opacity: 1; }
+                to { transform: scale(0.8); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Add to DOM
+        document.body.appendChild(overlay);
+        
+        // Auto-close after 5 seconds if user doesn't interact
+        setTimeout(() => {
+            if (overlay.parentNode) {
+                closeModal();
+            }
+        }, 5000);
+        
+        // Focus the OK button for keyboard accessibility
+        setTimeout(() => {
+            okButton.focus();
+        }, 100);
     }
 }

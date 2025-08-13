@@ -63,7 +63,7 @@ This document defines the wireframe shapes and visual representations for all ob
 - **Scale Factor**: 1.5x (large industrial facility)
 
 #### **Refinery**
-- **Wireframe**: `BoxGeometry` with multiple connected sections
+- **Wireframe**: `TorusGeometry` - donut shapped
 - **Color**: `0xff4500` (orange red - industrial heat)
 - **Radar Blip**: `BoxGeometry` (industrial block)
 - **Scale Factor**: 1.3x (substantial industrial facility)

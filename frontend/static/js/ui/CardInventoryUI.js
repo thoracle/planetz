@@ -878,18 +878,16 @@ export default class CardInventoryUI {
         this.isShopMode = false;
         
         // Return to station menu
-        if (this.dockingInterface && this.dockedLocation) {
+        if (this.dockingInterface) {
             console.log('Attempting to show station menu...');
             try {
-                this.dockingInterface.show(this.dockedLocation);
+                this.dockingInterface.returnToStationMenu();
                 console.log('Successfully returned to station menu');
             } catch (error) {
                 console.error('Error showing station menu:', error);
             }
         } else {
-            console.error('Cannot return to station menu - missing reference or location');
-            console.log('dockingInterface:', this.dockingInterface);
-            console.log('dockedLocation:', this.dockedLocation);
+            console.error('Cannot return to station menu - missing docking interface reference');
         }
         
         console.log('Card shop closed');
@@ -2193,8 +2191,8 @@ export default class CardInventoryUI {
         this.isShopMode = false;
         
         // Return to station menu
-        if (this.dockingInterface && this.dockedLocation) {
-            this.dockingInterface.show(this.dockedLocation);
+        if (this.dockingInterface) {
+            this.dockingInterface.returnToStationMenu();
         }
         
         console.log('Ship inventory closed');

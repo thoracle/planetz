@@ -176,9 +176,8 @@ export class DockingInterface {
         this.header.appendChild(this.launchButton);
     }
 
-    createStationWireframe() {
-        // Create animated wireframe station visualization matching target CPU design
-        // Use torus ring design like the target computer for consistency
+    createStationWireframe(objectType = 'station') {
+        // Create animated wireframe visualization matching target CPU design based on object type
         const wireframe = document.createElement('div');
         wireframe.style.cssText = `
             width: 80px;
@@ -187,6 +186,43 @@ export class DockingInterface {
             animation: station-pulse 3s ease-in-out infinite;
         `;
         
+        // Create different wireframes based on object type (matching TargetComputerManager patterns)
+        switch (objectType?.toLowerCase()) {
+            case 'station':
+                this.createTorusWireframe(wireframe);
+                break;
+            case 'planet':
+                this.createPlanetWireframe(wireframe);
+                break;
+            case 'moon':
+                this.createMoonWireframe(wireframe);
+                break;
+            default:
+                // Default to torus for unknown types
+                this.createTorusWireframe(wireframe);
+                break;
+        }
+
+        this.stationVisualization.appendChild(wireframe);
+        
+        // Add station name below wireframe
+        const stationName = document.createElement('div');
+        stationName.style.cssText = `
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #00ff41;
+            text-align: center;
+            opacity: 0.8;
+        `;
+        stationName.textContent = 'STATION\nWIREFRAME';
+        this.stationVisualization.appendChild(stationName);
+    }
+    
+    createTorusWireframe(wireframe) {
+        // Torus ring design for stations (matching target CPU)
         // Main torus ring (outer ring)
         const outerRing = document.createElement('div');
         outerRing.style.cssText = `
@@ -247,24 +283,126 @@ export class DockingInterface {
             `;
             wireframe.appendChild(spoke);
         }
-
-        this.stationVisualization.appendChild(wireframe);
-        
-        // Add station name below wireframe
-        const stationName = document.createElement('div');
-        stationName.style.cssText = `
+    }
+    
+    createPlanetWireframe(wireframe) {
+        // Icosahedron-like design for planets (triangular faces)
+        const planetCore = document.createElement('div');
+        planetCore.style.cssText = `
+            width: 60px;
+            height: 60px;
+            border: 2px solid #00ff41;
+            border-radius: 50%;
             position: absolute;
-            bottom: 20px;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
-            font-size: 12px;
-            color: #00ff41;
-            text-align: center;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 255, 65, 0.1);
+        `;
+        wireframe.appendChild(planetCore);
+        
+        // Create triangular wireframe pattern
+        for (let i = 0; i < 8; i++) {
+            const triangle = document.createElement('div');
+            triangle.style.cssText = `
+                width: 0;
+                height: 0;
+                border-left: 8px solid transparent;
+                border-right: 8px solid transparent;
+                border-bottom: 14px solid #00ff41;
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform-origin: 50% 100%;
+                transform: translate(-50%, -100%) rotate(${i * 45}deg);
+                opacity: 0.6;
+            `;
+            wireframe.appendChild(triangle);
+        }
+    }
+    
+    createMoonWireframe(wireframe) {
+        // Octahedron-like design for moons (angular/crystalline)
+        const moonCore = document.createElement('div');
+        moonCore.style.cssText = `
+            width: 50px;
+            height: 50px;
+            border: 2px solid #00ff41;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+            background: rgba(0, 255, 65, 0.1);
+        `;
+        wireframe.appendChild(moonCore);
+        
+        // Add diagonal cross pattern
+        const cross1 = document.createElement('div');
+        cross1.style.cssText = `
+            width: 60px;
+            height: 1px;
+            background: #00ff41;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
             opacity: 0.8;
         `;
-        stationName.textContent = 'STATION\nWIREFRAME';
-        this.stationVisualization.appendChild(stationName);
+        wireframe.appendChild(cross1);
+        
+        const cross2 = document.createElement('div');
+        cross2.style.cssText = `
+            width: 60px;
+            height: 1px;
+            background: #00ff41;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            opacity: 0.8;
+        `;
+        wireframe.appendChild(cross2);
     }
+    
+    updateStationWireframe(stationName, objectType = null) {
+        // Clear existing wireframe
+        const existingWireframe = this.stationVisualization.querySelector('div:first-child');
+        if (existingWireframe && existingWireframe !== this.stationVisualization.querySelector('div:last-child')) {
+            existingWireframe.remove();
+        }
+        
+        // Create new wireframe with correct type
+        if (objectType) {
+            this.createStationWireframe(objectType);
+        }
+        
+        // Update station name
+        const stationNameEl = this.stationVisualization.querySelector('div:last-child');
+        if (stationNameEl) {
+            stationNameEl.textContent = stationName.toUpperCase();
+        }
+    }
+
+    updateHeader() {
+        if (!this.dockedLocation) return;
+
+        // Get location info from solar system manager
+        const info = this.starfieldManager.solarSystemManager.getCelestialBodyInfo(this.dockedLocation);
+        
+        // Update header title section (don't overwrite the whole header which contains launch button)
+        this.headerTitle.innerHTML = `
+            <div style="font-size: 16px; margin-bottom: 8px; opacity: 0.8; letter-spacing: 1px; font-family: 'VT323', monospace;">STATION MENU</div>
+            <div style="font-size: 28px; font-weight: bold; color: #00ff41; margin-bottom: 8px; font-family: 'VT323', monospace;">${info?.name || 'UNKNOWN LOCATION'}</div>
+            <div style="font-size: 16px; opacity: 0.9; font-family: 'VT323', monospace;">
+                ${info?.diplomacy?.toUpperCase() || 'NEUTRAL'} • ${info?.type?.toUpperCase() || 'UNKNOWN'}
+            </div>
+        `;
+        
+        // Update station wireframe with correct type
+        this.updateStationWireframe(info?.name || 'UNKNOWN', info?.type);
+    }
+
+
 
     createActionButtons() {
         // Remove launch button from services (now in header)
@@ -359,6 +497,9 @@ export class DockingInterface {
         this.dockedLocation = dockedLocation;
         this.isVisible = true;
         
+        // Store original docked location for service screens to return to
+        this.originalDockedLocation = dockedLocation;
+        
         // **CRITICAL FIX**: Refresh current ship type from the actual ship instance
         // This ensures the correct ship type is displayed after ship switching
         const currentShip = this.starfieldManager.ship;
@@ -393,32 +534,23 @@ export class DockingInterface {
         this.container.style.display = 'none';
         console.log('Station menu hidden');
     }
-
-    updateHeader() {
-        if (!this.dockedLocation) return;
-
-        // Get location info from solar system manager
-        const info = this.starfieldManager.solarSystemManager.getCelestialBodyInfo(this.dockedLocation);
-        
-        // Update header title section (don't overwrite the whole header which contains launch button)
-        this.headerTitle.innerHTML = `
-            <div style="font-size: 16px; margin-bottom: 8px; opacity: 0.8; letter-spacing: 1px; font-family: 'VT323', monospace;">STATION MENU</div>
-            <div style="font-size: 28px; font-weight: bold; color: #00ff41; margin-bottom: 8px; font-family: 'VT323', monospace;">${info?.name || 'UNKNOWN LOCATION'}</div>
-            <div style="font-size: 16px; opacity: 0.9; font-family: 'VT323', monospace;">
-                ${info?.diplomacy?.toUpperCase() || 'NEUTRAL'} • ${info?.type?.toUpperCase() || 'UNKNOWN'}
-            </div>
-        `;
-        
-        // Update station wireframe name
-        this.updateStationWireframe(info?.name || 'UNKNOWN');
-    }
-
-    updateStationWireframe(stationName) {
-        const stationNameEl = this.stationVisualization.querySelector('div:last-child');
-        if (stationNameEl) {
-            stationNameEl.textContent = stationName.toUpperCase();
+    
+    /**
+     * Return to station menu from service screens
+     * Uses the stored original docked location to ensure proper info display
+     */
+    returnToStationMenu() {
+        if (this.originalDockedLocation) {
+            this.show(this.originalDockedLocation);
+        } else {
+            console.warn('No original docked location stored - using current dockedLocation');
+            if (this.dockedLocation) {
+                this.show(this.dockedLocation);
+            }
         }
     }
+
+
 
     updateButtonStates() {
         if (!this.dockedLocation) return;

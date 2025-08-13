@@ -809,9 +809,9 @@ export class MissionBoard {
         this.acceptButton.disabled = true;
         
         // Return to station menu if available
-        if (this.dockingInterface && this.currentLocation) {
+        if (this.dockingInterface) {
             console.log('🎯 Returning to station menu...');
-            this.dockingInterface.show(this.currentLocation);
+            this.dockingInterface.returnToStationMenu();
         }
         
         console.log('🎯 Mission Board closed');

@@ -457,6 +457,9 @@ export default class CardSystemIntegration {
      * This ensures that if a card is installed, the corresponding system exists
      */
     async createSystemsFromCards() {
+        // STEP 0: Refresh card data to ensure we have the latest levels and configuration
+        this.initializeCardData();
+        
         // STEP 1: Clean up orphaned systems that no longer have cards
         await this.cleanupOrphanedSystems();
         
