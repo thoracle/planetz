@@ -2369,7 +2369,7 @@ export default class CardInventoryUI {
      * Upgrade a card stack to the next level
      * @param {string} cardType - Type of card to upgrade
      */
-    upgradeCard(cardType) {
+    async upgradeCard(cardType) {
         console.log(`🔧 UPGRADE CLICKED: Attempting to upgrade ${cardType}`);
         console.log(`💰 Current credits: ${this.credits}`);
         
@@ -2459,6 +2459,27 @@ export default class CardInventoryUI {
             if (cardStack.count <= 0) {
                 console.log(`📦 Card stack ${cardType} depleted (Level ${cardStack.level} progress retained)`);
                 // Don't remove from inventory, just set count to 0 - level progress is preserved
+            }
+            
+            // Refresh ship systems and cargo holds to reflect the upgrade
+            try {
+                if (window.viewManager && window.viewManager.ship) {
+                    const ship = window.viewManager.ship;
+                    
+                    // Refresh ship systems from updated card configuration
+                    if (ship.cardSystemIntegration) {
+                        await ship.cardSystemIntegration.createSystemsFromCards();
+                        console.log('🔄 Ship systems refreshed after card upgrade');
+                        
+                        // Re-initialize cargo holds from updated cards
+                        if (ship.cargoHoldManager) {
+                            ship.cargoHoldManager.initializeFromCards();
+                            console.log('🚛 Cargo holds refreshed after card upgrade');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('⚠️ Failed to refresh ship systems after upgrade:', error);
             }
             
             // Re-render the inventory to reflect changes
