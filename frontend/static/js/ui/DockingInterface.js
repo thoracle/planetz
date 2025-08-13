@@ -66,34 +66,67 @@ export class DockingInterface {
 
 
 
-        // Create header section
+        // Create header section with launch button
         this.header = document.createElement('div');
         this.header.className = 'docking-header';
         this.header.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             border-bottom: 2px solid #00ff41;
             padding-bottom: 15px;
             margin-bottom: 20px;
-            text-align: center;
         `;
         this.container.appendChild(this.header);
 
-        // Create content wrapper (consistent with other UIs)
+        // Create header title section
+        this.headerTitle = document.createElement('div');
+        this.headerTitle.className = 'header-title';
+        this.headerTitle.style.cssText = `
+            flex: 1;
+            text-align: center;
+        `;
+        this.header.appendChild(this.headerTitle);
+
+        // Create launch button in header
+        this.createHeaderLaunchButton();
+
+        // Create content wrapper with two-column layout
         this.contentWrapper = document.createElement('div');
         this.contentWrapper.className = 'content-wrapper';
         this.contentWrapper.style.cssText = `
             flex: 1;
+            display: flex;
+            gap: 20px;
             overflow-y: auto;
             margin-bottom: 20px;
         `;
         this.container.appendChild(this.contentWrapper);
 
-        // Create services container
+        // Create wireframe station visualization area
+        this.stationVisualization = document.createElement('div');
+        this.stationVisualization.className = 'station-wireframe';
+        this.stationVisualization.style.cssText = `
+            flex: 0 0 250px;
+            border: 1px solid #00ff41;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            position: relative;
+        `;
+        this.contentWrapper.appendChild(this.stationVisualization);
+
+        // Create services container with improved layout
         this.servicesContainer = document.createElement('div');
         this.servicesContainer.className = 'docking-services';
         this.servicesContainer.style.cssText = `
+            flex: 1;
             display: grid;
-            gap: 15px;
-            grid-template-columns: 1fr;
+            gap: 10px;
+            grid-template-columns: 1fr 1fr;
+            align-content: start;
         `;
         this.contentWrapper.appendChild(this.servicesContainer);
 
@@ -107,21 +140,110 @@ export class DockingInterface {
         document.body.appendChild(this.container);
         
         // Add styles
+        // Create wireframe station animation
+        this.createStationWireframe();
+        
         this.addStyles();
     }
 
+    createHeaderLaunchButton() {
+        this.launchButton = document.createElement('button');
+        this.launchButton.className = 'launch-button-header';
+        this.launchButton.textContent = 'LAUNCH';
+        this.launchButton.style.cssText = `
+            background: rgba(0, 255, 65, 0.1);
+            border: 2px solid #00ff41;
+            color: #00ff41;
+            font-family: 'VT323', monospace;
+            font-size: 16px;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 4px;
+        `;
+        
+        this.launchButton.addEventListener('mouseenter', () => {
+            this.launchButton.style.background = 'rgba(0, 255, 65, 0.2)';
+            this.launchButton.style.transform = 'scale(1.05)';
+        });
+        
+        this.launchButton.addEventListener('mouseleave', () => {
+            this.launchButton.style.background = 'rgba(0, 255, 65, 0.1)';
+            this.launchButton.style.transform = 'scale(1)';
+        });
+        
+        this.launchButton.addEventListener('click', () => this.handleLaunch());
+        this.header.appendChild(this.launchButton);
+    }
+
+    createStationWireframe() {
+        // Create animated wireframe station visualization
+        const wireframe = document.createElement('div');
+        wireframe.style.cssText = `
+            width: 80px;
+            height: 80px;
+            border: 2px solid #00ff41;
+            border-radius: 50%;
+            position: relative;
+            animation: station-pulse 3s ease-in-out infinite;
+        `;
+        
+        // Add station details
+        const stationCore = document.createElement('div');
+        stationCore.style.cssText = `
+            width: 20px;
+            height: 20px;
+            border: 1px solid #00ff41;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 255, 65, 0.3);
+        `;
+        wireframe.appendChild(stationCore);
+
+        // Add docking arms
+        for (let i = 0; i < 4; i++) {
+            const arm = document.createElement('div');
+            arm.style.cssText = `
+                width: 30px;
+                height: 2px;
+                background: #00ff41;
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform-origin: 0 50%;
+                transform: translate(-50%, -50%) rotate(${i * 90}deg);
+                opacity: 0.7;
+            `;
+            wireframe.appendChild(arm);
+        }
+
+        this.stationVisualization.appendChild(wireframe);
+        
+        // Add station name below wireframe
+        const stationName = document.createElement('div');
+        stationName.style.cssText = `
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #00ff41;
+            text-align: center;
+            opacity: 0.8;
+        `;
+        stationName.textContent = 'STATION\nWIREFRAME';
+        this.stationVisualization.appendChild(stationName);
+    }
+
     createActionButtons() {
-        // Launch button
-        this.launchButton = this.createServiceButton(
-            'LAUNCH',
-            'Return to your ship and launch into space',
-            'launch-button',
-            () => this.handleLaunch()
-        );
+        // Remove launch button from services (now in header)
 
         // Repair button
         this.repairButton = this.createServiceButton(
-            'REPAIR SHIP',
+            '🔧 REPAIR SHIP',
             'Repair hull damage and system malfunctions',
             'repair-button',
             () => this.handleRepair()
@@ -129,7 +251,7 @@ export class DockingInterface {
 
         // Shop button
         this.shopButton = this.createServiceButton(
-            'UPGRADE SHIP',
+            '🏪 UPGRADE SHIP',
             'Purchase and upgrade ship component cards',
             'shop-button',
             () => this.handleShop()
@@ -137,7 +259,7 @@ export class DockingInterface {
 
         // Mission Board button
         this.missionButton = this.createServiceButton(
-            'MISSION BOARD',
+            '🎯 MISSION BOARD',
             'View and accept available missions and contracts',
             'mission-button',
             () => this.handleMissionBoard()
@@ -145,14 +267,13 @@ export class DockingInterface {
 
         // Commodity Exchange button
         this.commodityButton = this.createServiceButton(
-            'COMMODITY EXCHANGE',
+            '🚛 COMMODITY EXCHANGE',
             'Buy and sell commodities and cargo',
             'commodity-button',
             () => this.handleCommodityExchange()
         );
 
-        // Add buttons to services container
-        this.servicesContainer.appendChild(this.launchButton);
+        // Add buttons to services container (no launch button)
         this.servicesContainer.appendChild(this.repairButton);
         this.servicesContainer.appendChild(this.shopButton);
         this.servicesContainer.appendChild(this.missionButton);
@@ -165,19 +286,25 @@ export class DockingInterface {
         buttonContainer.style.cssText = `
             background: rgba(0, 0, 0, 0.5);
             border: 1px solid #00ff41;
-            padding: 20px;
+            padding: 12px;
             cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
             font-family: 'VT323', monospace;
+            border-radius: 4px;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         `;
 
         buttonContainer.innerHTML = `
-            <div class="service-title" style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">
+            <div class="service-title" style="font-size: 16px; font-weight: bold; margin-bottom: 4px;">
                 ${title}
             </div>
-            <div class="service-description" style="font-size: 16px; opacity: 0.8; line-height: 1.4;">
+            <div class="service-description" style="font-size: 10px; opacity: 0.7; line-height: 1.2;">
                 ${description}
             </div>
         `;
@@ -186,11 +313,13 @@ export class DockingInterface {
         buttonContainer.addEventListener('mouseenter', () => {
             buttonContainer.style.background = 'rgba(0, 255, 65, 0.2)';
             buttonContainer.style.borderColor = '#44ff44';
+            buttonContainer.style.transform = 'scale(1.05)';
         });
 
         buttonContainer.addEventListener('mouseleave', () => {
             buttonContainer.style.background = 'rgba(0, 0, 0, 0.5)';
             buttonContainer.style.borderColor = '#00ff41';
+            buttonContainer.style.transform = 'scale(1)';
         });
 
         buttonContainer.addEventListener('click', clickHandler);
@@ -243,13 +372,24 @@ export class DockingInterface {
         // Get location info from solar system manager
         const info = this.starfieldManager.solarSystemManager.getCelestialBodyInfo(this.dockedLocation);
         
-        this.header.innerHTML = `
+        // Update header title section (don't overwrite the whole header which contains launch button)
+        this.headerTitle.innerHTML = `
             <div style="font-size: 16px; margin-bottom: 8px; opacity: 0.8; letter-spacing: 1px; font-family: 'VT323', monospace;">DOCKED AT</div>
             <div style="font-size: 28px; font-weight: bold; color: #00ff41; margin-bottom: 8px; font-family: 'VT323', monospace;">${info?.name || 'UNKNOWN LOCATION'}</div>
             <div style="font-size: 16px; opacity: 0.9; font-family: 'VT323', monospace;">
                 ${info?.type?.toUpperCase() || 'UNKNOWN'} • ${info?.diplomacy?.toUpperCase() || 'NEUTRAL'}
             </div>
         `;
+        
+        // Update station wireframe name
+        this.updateStationWireframe(info?.name || 'UNKNOWN');
+    }
+
+    updateStationWireframe(stationName) {
+        const stationNameEl = this.stationVisualization.querySelector('div:last-child');
+        if (stationNameEl) {
+            stationNameEl.textContent = stationName.toUpperCase();
+        }
     }
 
     updateButtonStates() {
@@ -506,6 +646,18 @@ export class DockingInterface {
             
             .docking-interface .close-button:hover {
                 background: rgba(0, 255, 65, 0.2) !important;
+            }
+            
+            /* Station wireframe animation */
+            @keyframes station-pulse {
+                0%, 100% {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+                50% {
+                    opacity: 0.7;
+                    transform: scale(1.05);
+                }
             }
         `;
         
