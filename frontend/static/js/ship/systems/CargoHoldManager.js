@@ -384,7 +384,7 @@ export class CargoHoldManager {
             },
             'raw_materials': {
                 name: 'Raw Materials',
-                volume: 2,
+                volume: 1,
                 base_price: 15,
                 legal_status: 'legal',
                 special_requirements: []
@@ -398,7 +398,7 @@ export class CargoHoldManager {
             },
             'illegal_weapons': {
                 name: 'Illegal Weapons',
-                volume: 3,
+                volume: 1,
                 base_price: 500,
                 legal_status: 'illegal',
                 special_requirements: ['scan_resistance']
