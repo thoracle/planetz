@@ -407,10 +407,52 @@ export class CargoHoldManager {
     }
     
     /**
+     * Debug cargo hold status
+     */
+    debugCargoStatus() {
+        console.log('🚛 === CARGO HOLD DEBUG ===');
+        console.log('🚛 Ship reference:', this.ship ? 'Available' : 'Missing');
+        console.log('🚛 CardInventory reference:', this.ship?.cardInventory ? 'Available' : 'Missing');
+        
+        if (this.ship?.cardInventory) {
+            const installedCards = this.ship.cardInventory.getInstalledCards();
+            console.log('🚛 Installed cards:', installedCards.size);
+            
+            let cargoCardCount = 0;
+            for (const [slotId, card] of installedCards) {
+                if (this.isCargoHoldCard(card.cardType)) {
+                    cargoCardCount++;
+                    console.log(`🚛 Found cargo card: ${card.cardType} (Lv.${card.level}) in slot ${slotId}`);
+                }
+            }
+            console.log(`🚛 Total cargo hold cards: ${cargoCardCount}`);
+        }
+        
+        console.log(`🚛 Initialized cargo holds: ${this.cargoHolds.size}`);
+        console.log(`🚛 Total capacity: ${this.totalCapacity} units`);
+        console.log(`🚛 Used capacity: ${this.usedCapacity} units`);
+        console.log(`🚛 Available capacity: ${this.getAvailableCapacity()} units`);
+        
+        // Show hold details
+        for (const [slotId, hold] of this.cargoHolds) {
+            console.log(`🚛 Hold ${slotId}: ${hold.name} - ${this.getHoldUsedCapacity(hold)}/${hold.capacity} units`);
+        }
+        
+        const manifest = this.getCargoManifest();
+        console.log('🚛 Cargo manifest:', manifest);
+        console.log('🚛 === END DEBUG ===');
+        
+        return manifest;
+    }
+    
+    /**
      * Test cargo operations (for debugging)
      */
     testCargoOperations() {
         console.log('🚛 Testing cargo operations...');
+        
+        // First debug status
+        this.debugCargoStatus();
         
         // Test loading
         const loadResult = this.loadCargo('medical_supplies', 50);

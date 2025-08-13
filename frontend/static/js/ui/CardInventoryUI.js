@@ -1454,6 +1454,13 @@ export default class CardInventoryUI {
                 // Refresh ship systems from the updated card configuration
                 try {
                     await window.viewManager.ship.cardSystemIntegration.createSystemsFromCards();
+                    
+                    // Re-initialize cargo holds from updated cards
+                    if (window.viewManager.ship.cargoHoldManager) {
+                        window.viewManager.ship.cargoHoldManager.initializeFromCards();
+                        console.log('🚛 Cargo holds refreshed after card installation');
+                    }
+                    
                     console.log('🔄 Ship systems refreshed after card installation');
                 } catch (error) {
                     console.error('⚠️ Failed to refresh ship systems:', error);
@@ -1578,6 +1585,13 @@ export default class CardInventoryUI {
                 // Refresh ship systems from the updated card configuration
                 try {
                     await window.viewManager.ship.cardSystemIntegration.createSystemsFromCards();
+                    
+                    // Re-initialize cargo holds from updated cards
+                    if (window.viewManager.ship.cargoHoldManager) {
+                        window.viewManager.ship.cargoHoldManager.initializeFromCards();
+                        console.log('🚛 Cargo holds refreshed after card removal');
+                    }
+                    
                     console.log('🔄 Ship systems refreshed after card removal');
                 } catch (error) {
                     console.error('⚠️ Failed to refresh ship systems:', error);

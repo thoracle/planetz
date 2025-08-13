@@ -1562,6 +1562,13 @@ export class ViewManager {
                     
                     // Initialize systems from the loaded cards
                     await this.ship.cardSystemIntegration.createSystemsFromCards();
+                    
+                    // Re-initialize cargo holds from updated cards
+                    if (this.ship.cargoHoldManager) {
+                        this.ship.cargoHoldManager.initializeFromCards();
+                        console.log('🚛 Cargo holds initialized from saved configuration');
+                    }
+                    
                     console.log('✅ Card systems initialized from saved configuration');
                     
                 } else {
@@ -1585,6 +1592,13 @@ export class ViewManager {
                         
                         // Initialize systems from starter cards
                         await this.ship.cardSystemIntegration.createSystemsFromCards();
+                        
+                        // Re-initialize cargo holds from starter cards
+                        if (this.ship.cargoHoldManager) {
+                            this.ship.cargoHoldManager.initializeFromCards();
+                            console.log('🚛 Cargo holds initialized from starter cards');
+                        }
+                        
                         console.log('✅ Starter card systems initialized');
                     }
                 }

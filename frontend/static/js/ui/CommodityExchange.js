@@ -55,10 +55,10 @@ export class CommodityExchange {
         this.container.className = 'commodity-exchange';
         this.container.style.cssText = `
             position: fixed;
-            top: 5%;
-            left: 5%;
-            width: 90%;
-            height: 90%;
+            top: 15%;
+            left: 15%;
+            width: 70%;
+            height: 70%;
             background: linear-gradient(145deg, #1a1a2e, #16213e);
             border: 2px solid #00ff41;
             border-radius: 12px;
@@ -239,9 +239,16 @@ export class CommodityExchange {
      */
     refreshCargoDisplay() {
         const ship = this.starfieldManager.ship;
-        if (!ship || !ship.cargoHoldManager) return;
+        if (!ship || !ship.cargoHoldManager) {
+            console.warn('🚛 CommodityExchange: No ship or cargoHoldManager available');
+            return;
+        }
+        
+        // Force refresh cargo holds from cards
+        ship.cargoHoldManager.initializeFromCards();
         
         const manifest = ship.cargoHoldManager.getCargoManifest();
+        console.log('🚛 CommodityExchange: Cargo manifest:', manifest);
         
         // Update capacity display
         const capacityEl = this.container.querySelector('#cargo-capacity');

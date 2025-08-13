@@ -2334,6 +2334,12 @@ export class StarfieldManager {
                 // Force reload cards and refresh systems
                 ship.cardSystemIntegration.loadCards().then(() => {
                     ship.cardSystemIntegration.createSystemsFromCards().then(() => {
+                        // Re-initialize cargo holds from updated cards
+                        if (ship.cargoHoldManager) {
+                            ship.cargoHoldManager.initializeFromCards();
+                            console.log('🚛 Cargo holds refreshed from updated cards');
+                        }
+                        
                         // Show the damage control HUD after systems are refreshed
                         this.damageControlHUD.show();
                         console.log('🔧 Damage control HUD shown with refreshed systems');
@@ -5951,6 +5957,12 @@ export class StarfieldManager {
                 
                 // Recreate all systems from the refreshed card data
                 await ship.cardSystemIntegration.createSystemsFromCards();
+                
+                // Re-initialize cargo holds from updated cards
+                if (ship.cargoHoldManager) {
+                    ship.cargoHoldManager.initializeFromCards();
+                    console.log('🚛 Cargo holds refreshed from updated cards');
+                }
                 
                 console.log('✅ Ship systems refreshed from cards - equipment changes applied');
             } catch (error) {
