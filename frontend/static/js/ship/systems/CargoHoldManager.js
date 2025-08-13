@@ -171,6 +171,14 @@ export class CargoHoldManager {
         
         // Check if we have enough capacity
         if (totalVolume > this.getAvailableCapacity()) {
+            console.log(`🚛 ❌ PURCHASE FAILED: Insufficient capacity`);
+            console.log(`🚛    - Commodity: ${commodityId}`);
+            console.log(`🚛    - Quantity: ${quantity} units`);
+            console.log(`🚛    - Volume per unit: ${commodityData.volume}`);
+            console.log(`🚛    - Total volume needed: ${totalVolume} space`);
+            console.log(`🚛    - Available capacity: ${this.getAvailableCapacity()} space`);
+            console.log(`🚛    - Total capacity: ${this.totalCapacity} space`);
+            console.log(`🚛    - Used capacity: ${this.usedCapacity} space`);
             return {
                 success: false,
                 error: 'Insufficient cargo capacity',
