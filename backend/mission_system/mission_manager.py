@@ -192,6 +192,26 @@ class MissionManager:
         logger.debug(f"🎯 Found {len(active)} active missions")
         return active
     
+    def clear_active_missions(self, player_context: Dict[str, Any] = None) -> int:
+        """
+        Clear all active missions (useful for new game sessions)
+        Marks active missions as completed to clear them from active list
+        Returns the number of missions cleared
+        """
+        cleared_count = 0
+        
+        for mission in self.missions.values():
+            if mission.state == MissionState.ACCEPTED and not mission.is_botched:
+                # Mark as completed to remove from active missions
+                # Since mission states can only progress forward, we complete them
+                mission.set_state(MissionState.COMPLETED)
+                # Save the updated mission
+                self.save_mission(mission)
+                cleared_count += 1
+        
+        logger.info(f"🎯 Cleared {cleared_count} active missions by marking them completed")
+        return cleared_count
+    
     def accept_mission(self, mission_id: str, player_context: Dict[str, Any] = None) -> bool:
         """
         Accept a mission (change state to ACCEPTED)

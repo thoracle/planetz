@@ -1,0 +1,72 @@
+{
+  "id": "trader_delivery_001",
+  "title": "Medical Supply Run",
+  "description": "Deliver emergency medical supplies to mining colony suffering equipment failures",
+  "mission_type": "delivery",
+  "location": "terra_prime",
+  "faction": "traders_guild",
+  "reward_package_id": 4,
+  "state": "Completed",
+  "is_botched": false,
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Pick up medical supplies from Terra Prime",
+      "is_achieved": false,
+      "is_optional": false,
+      "is_ordered": true,
+      "achieved_at": null
+    },
+    {
+      "id": "2",
+      "description": "Deliver cargo to Mining Colony Beta",
+      "is_achieved": false,
+      "is_optional": false,
+      "is_ordered": true,
+      "achieved_at": null
+    },
+    {
+      "id": "3",
+      "description": "Maintain cargo integrity above 90%",
+      "is_achieved": false,
+      "is_optional": true,
+      "is_ordered": false,
+      "achieved_at": null
+    }
+  ],
+  "created_at": "2024-01-15T09:30:00+00:00",
+  "updated_at": "2025-08-13T05:52:52.766587+00:00",
+  "custom_fields": {
+    "cargo_type": "medical_supplies",
+    "pickup_location": "terra_prime",
+    "delivery_location": "mining_colony_beta",
+    "cargo_value": 5000,
+    "cargo_mass": 50,
+    "time_limit": 7200,
+    "cargo_fragile": true,
+    "delivery_bonus": 750,
+    "reputation_gain": 15,
+    "mission_giver": "Trader Captain Morrison",
+    "urgency": "high",
+    "cargo_manifest": [
+      "Advanced Medical Scanner x2",
+      "Emergency Surgery Kit x5",
+      "Pharmaceutical Supplies x10"
+    ]
+  },
+  "triggers": {
+    "on_accept": "reserve_cargo_bay",
+    "on_pickup": "load_cargo_manifest",
+    "on_delivery": "process_payment",
+    "on_complete": "update_trader_reputation"
+  },
+  "progress": {
+    "state": "Completed",
+    "is_botched": false,
+    "total_objectives": 3,
+    "achieved_objectives": 0,
+    "required_objectives": 2,
+    "achieved_required": 0,
+    "completion_percentage": 0.0
+  }
+}

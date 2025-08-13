@@ -124,6 +124,31 @@ def get_active_missions():
         return jsonify({'error': str(e)}), 500
 
 
+@missions_bp.route('/api/missions/active/clear', methods=['POST'])
+def clear_active_missions():
+    """
+    Clear all active missions (useful for new game sessions)
+    """
+    if not mission_manager:
+        return jsonify({'error': 'Mission system not initialized'}), 500
+    
+    try:
+        # Get player context from request if needed
+        player_context = {}
+        
+        cleared_count = mission_manager.clear_active_missions(player_context)
+        
+        return jsonify({
+            'success': True,
+            'cleared_count': cleared_count,
+            'message': f'Cleared {cleared_count} active missions'
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Clear active missions failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @missions_bp.route('/api/missions/<mission_id>', methods=['GET'])
 def get_mission_details(mission_id: str):
     """

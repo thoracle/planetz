@@ -102,6 +102,44 @@ export class MissionAPIService {
     }
     
     /**
+     * Clear all active missions (useful for new game sessions)
+     */
+    async clearActiveMissions() {
+        try {
+            const response = await fetch(`${this.baseURL}/active/clear`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Clear local cache
+                this.activeMissions.clear();
+                console.log(`🎯 MissionAPIService: Cleared ${result.cleared_count} active missions`);
+                
+                // Trigger event
+                this.triggerEvent('activeMissionsCleared', { 
+                    clearedCount: result.cleared_count,
+                    message: result.message
+                });
+            }
+            
+            return result;
+            
+        } catch (error) {
+            console.error('🎯 MissionAPIService: Failed to clear active missions:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    /**
      * Get mission details by ID
      */
     async getMissionDetails(missionId) {

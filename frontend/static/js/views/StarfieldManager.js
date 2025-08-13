@@ -6650,6 +6650,15 @@ export class StarfieldManager {
             
             if (isConnected) {
                 console.log('🎯 Mission API connected, pre-populating stations...');
+                
+                // Optional: Clear old active missions for fresh start
+                // Uncomment the next 4 lines if you want to clear old missions on game start
+                // const activeCount = await this.missionAPI.getActiveMissions();
+                // if (activeCount.length > 0) {
+                //     console.log(`🎯 Found ${activeCount.length} old active missions, clearing for fresh start...`);
+                //     await this.missionAPI.clearActiveMissions();
+                // }
+                
                 await this.prePopulateStationMissions();
             } else {
                 console.log('🎯 Mission API not available, missions will use fallback data');
@@ -6945,6 +6954,49 @@ export class StarfieldManager {
         
         console.table(summary);
         return summary;
+    }
+    
+    /**
+     * Clear all active missions (console command)
+     */
+    async clearActiveMissions() {
+        console.log('🎯 Clearing all active missions...');
+        
+        try {
+            const result = await this.missionAPI.clearActiveMissions();
+            
+            if (result.success) {
+                console.log(`✅ Successfully cleared ${result.cleared_count} active missions`);
+                
+                // Refresh Mission Status HUD if it's visible
+                if (this.missionStatusHUD && this.missionStatusHUD.visible) {
+                    this.missionStatusHUD.refreshMissions();
+                    console.log('🎯 Mission Status HUD refreshed after clearing');
+                }
+                
+                // Show notification
+                this.showHUDMessage(
+                    'MISSIONS CLEARED', 
+                    `${result.cleared_count} active missions cleared`
+                );
+            } else {
+                console.error('❌ Failed to clear active missions:', result.error);
+                this.showHUDError(
+                    'CLEAR FAILED',
+                    result.error || 'Unknown error'
+                );
+            }
+            
+            return result;
+            
+        } catch (error) {
+            console.error('🎯 Failed to clear active missions:', error);
+            this.showHUDError(
+                'CLEAR FAILED',
+                'Connection error'
+            );
+            return { success: false, error: error.message };
+        }
     }
 
 } 

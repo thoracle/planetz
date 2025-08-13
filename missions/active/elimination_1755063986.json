@@ -1,12 +1,12 @@
 {
-  "id": "elimination_1755063878",
+  "id": "elimination_1755063986",
   "title": "Enemy Elimination Contract",
   "description": "Eliminate hostile targets in the specified sector",
   "mission_type": "elimination",
-  "location": "terra_prime",
+  "location": "mars_base",
   "faction": "terran_republic_alliance",
   "reward_package_id": 3,
-  "state": "Accepted",
+  "state": "Mentioned",
   "is_botched": false,
   "objectives": [
     {
@@ -18,8 +18,8 @@
       "achieved_at": null
     }
   ],
-  "created_at": "2025-08-13T05:44:38.251596+00:00",
-  "updated_at": "2025-08-13T05:47:47.908805+00:00",
+  "created_at": "2025-08-13T05:46:26.663849+00:00",
+  "updated_at": "2025-08-13T05:46:26.663875+00:00",
   "custom_fields": {
     "target_enemy_type": "enemy_fighter",
     "enemy_count": 3,
@@ -38,7 +38,7 @@
     "on_complete": "award_combat_bonus"
   },
   "progress": {
-    "state": "Accepted",
+    "state": "Mentioned",
     "is_botched": false,
     "total_objectives": 1,
     "achieved_objectives": 0,
