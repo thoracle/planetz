@@ -1,18 +1,18 @@
 {
-  "id": "escort_1755065801",
+  "id": "escort_1755066186",
   "title": "Convoy Escort Mission",
   "description": "Provide protection for valuable cargo convoy",
   "mission_type": "escort",
-  "location": "callisto_defense_platform",
+  "location": "helios_solar_array",
   "faction": "terran_republic_alliance",
   "reward_package_id": 5,
-  "client": "Mission Control",
+  "client": "Republic Fleet Command",
   "state": "Completed",
   "is_botched": false,
   "objectives": [
     {
       "id": "1",
-      "description": "Rendezvous with convoy at {meeting_point}",
+      "description": "Rendezvous with convoy at jump_gate_7",
       "is_achieved": false,
       "is_optional": false,
       "is_ordered": true,
@@ -20,7 +20,7 @@
     },
     {
       "id": "2",
-      "description": "Escort convoy safely to {destination}",
+      "description": "Escort convoy safely to alliance_starbase",
       "is_achieved": false,
       "is_optional": false,
       "is_ordered": true,
@@ -35,8 +35,8 @@
       "achieved_at": null
     }
   ],
-  "created_at": "2025-08-13T06:16:41.218774+00:00",
-  "updated_at": "2025-08-13T06:31:42.159273+00:00",
+  "created_at": "2025-08-13T06:23:06.523157+00:00",
+  "updated_at": "2025-08-13T06:31:42.156891+00:00",
   "custom_fields": {
     "convoy_ships": [
       {

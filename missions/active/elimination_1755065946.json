@@ -7,7 +7,7 @@
   "faction": "terran_republic_alliance",
   "reward_package_id": 3,
   "client": "Terra Prime Command",
-  "state": "Mentioned",
+  "state": "Accepted",
   "is_botched": false,
   "objectives": [
     {
@@ -20,7 +20,7 @@
     }
   ],
   "created_at": "2025-08-13T06:19:06.228409+00:00",
-  "updated_at": "2025-08-13T06:19:06.228426+00:00",
+  "updated_at": "2025-08-13T06:32:38.122920+00:00",
   "custom_fields": {
     "target_enemy_type": "enemy_fighter",
     "enemy_count": 3,
@@ -31,7 +31,8 @@
     ],
     "required_faction_standing": -10,
     "completion_bonus": 500,
-    "time_limit": 3600
+    "time_limit": 3600,
+    "kills_made": 1
   },
   "triggers": {
     "on_accept": "spawn_elimination_targets",
@@ -39,7 +40,7 @@
     "on_complete": "award_combat_bonus"
   },
   "progress": {
-    "state": "Mentioned",
+    "state": "Accepted",
     "is_botched": false,
     "total_objectives": 1,
     "achieved_objectives": 0,

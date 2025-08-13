@@ -5,6 +5,7 @@
 import { StationRepairInterface } from './StationRepairInterface.js';
 import CardInventoryUI from './CardInventoryUI.js';
 import { MissionBoard } from './MissionBoard.js';
+import { CommodityExchange } from './CommodityExchange.js';
 
 export class DockingInterface {
     constructor(starfieldManager) {
@@ -16,6 +17,7 @@ export class DockingInterface {
         this.stationRepairInterface = new StationRepairInterface(starfieldManager);
         this.cardInventoryUI = new CardInventoryUI(null);
         this.missionBoard = new MissionBoard(starfieldManager);
+        this.commodityExchange = new CommodityExchange(starfieldManager);
         
         // Properly initialize the CardInventoryUI for ship integration
         this.cardInventoryUI.init(); // This will load test data since no container
@@ -141,11 +143,20 @@ export class DockingInterface {
             () => this.handleMissionBoard()
         );
 
+        // Commodity Exchange button
+        this.commodityButton = this.createServiceButton(
+            'COMMODITY EXCHANGE',
+            'Buy and sell commodities and cargo',
+            'commodity-button',
+            () => this.handleCommodityExchange()
+        );
+
         // Add buttons to services container
         this.servicesContainer.appendChild(this.launchButton);
         this.servicesContainer.appendChild(this.repairButton);
         this.servicesContainer.appendChild(this.shopButton);
         this.servicesContainer.appendChild(this.missionButton);
+        this.servicesContainer.appendChild(this.commodityButton);
     }
 
     createServiceButton(title, description, className, clickHandler) {
@@ -369,6 +380,36 @@ export class DockingInterface {
             this.missionBoard.show();
         } else {
             console.error('❌ Cannot access mission board: mission board or location data unavailable');
+        }
+    }
+
+    handleCommodityExchange() {
+        console.log('🏪 Commodity Exchange requested');
+        
+        // Play command sound
+        if (this.starfieldManager.playCommandSound) {
+            this.starfieldManager.playCommandSound();
+        }
+        
+        // Store the docked location BEFORE hiding the interface
+        const dockedLocation = this.dockedLocation;
+        
+        // Hide docking interface
+        this.hide();
+        
+        // Show commodity exchange with location context
+        if (this.commodityExchange && dockedLocation) {
+            // Normalize location for market data (string key)
+            const locName = dockedLocation?.userData?.name || dockedLocation?.name || 'terra_prime';
+            const locKey = String(locName).toLowerCase().replace(/\s+/g, '_');
+            
+            // Store reference for return navigation
+            this.commodityExchange.dockingInterface = this;
+            
+            // Show commodity exchange
+            this.commodityExchange.show(locKey);
+        } else {
+            console.error('❌ Cannot access commodity exchange: exchange or location data unavailable');
         }
     }
 

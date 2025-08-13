@@ -1,26 +1,26 @@
 {
-  "id": "elimination_1755065545",
+  "id": "elimination_1755066186",
   "title": "Enemy Elimination Contract",
   "description": "Eliminate hostile targets in the specified sector",
   "mission_type": "elimination",
-  "location": "terra_prime",
+  "location": "helios_solar_array",
   "faction": "terran_republic_alliance",
   "reward_package_id": 3,
-  "client": "Mission Control",
+  "client": "Republic Fleet Command",
   "state": "Completed",
   "is_botched": false,
   "objectives": [
     {
       "id": "1",
-      "description": "Eliminate {enemy_count} {target_enemy_type} ships",
+      "description": "Eliminate 3 enemy_fighter ships",
       "is_achieved": false,
       "is_optional": false,
       "is_ordered": false,
       "achieved_at": null
     }
   ],
-  "created_at": "2025-08-13T06:12:25.633331+00:00",
-  "updated_at": "2025-08-13T06:31:42.162095+00:00",
+  "created_at": "2025-08-13T06:23:06.511180+00:00",
+  "updated_at": "2025-08-13T06:31:42.161596+00:00",
   "custom_fields": {
     "target_enemy_type": "enemy_fighter",
     "enemy_count": 3,

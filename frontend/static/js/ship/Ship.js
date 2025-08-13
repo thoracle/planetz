@@ -1,5 +1,6 @@
 import { getShipConfig, validateShipConfig } from './ShipConfigs.js';
 import CardSystemIntegration from './CardSystemIntegration.js';
+import { CargoHoldManager } from './systems/CargoHoldManager.js';
 import * as THREE from 'three';
 
 /**
@@ -38,6 +39,9 @@ export default class Ship {
         this.systems = new Map();
         this.upgrades = new Map();
         
+        // Cargo system
+        this.cargoHoldManager = new CargoHoldManager(this);
+        
         // System slots (still needed for installation limits)
         this.totalSlots = this.shipConfig.systemSlots;
         this.usedSlots = 0;
@@ -65,6 +69,9 @@ export default class Ship {
         this.cardSystemIntegration.initializeCardData().then(async () => {
             // Create additional systems based on installed cards
             await this.cardSystemIntegration.createSystemsFromCards();
+            
+            // Initialize cargo holds from installed cards
+            this.cargoHoldManager.initializeFromCards();
             
             // Initialize weapons system after all systems are loaded
             await this.initializeWeaponSystem();

@@ -294,6 +294,8 @@ class MissionManager:
             return self._handle_location_reached(mission, event_data)
         elif event_type == 'cargo_delivered':
             return self._handle_cargo_delivered(mission, event_data)
+        elif event_type == 'cargo_loaded':
+            return self._handle_cargo_loaded(mission, event_data)
         
         return False
     
@@ -350,21 +352,92 @@ class MissionManager:
         return False
     
     def _handle_cargo_delivered(self, mission: Mission, event_data: Dict[str, Any]) -> bool:
-        """Handle cargo delivery for trading missions"""
+        """Handle cargo delivery for delivery missions"""
         if mission.mission_type != 'delivery':
             return False
         
         cargo_type = event_data.get('cargo_type')
         delivery_location = event_data.get('location')
+        delivered_quantity = event_data.get('quantity', 0)
+        cargo_integrity = event_data.get('integrity', 1.0)
         
         target_cargo = mission.custom_fields.get('cargo_type')
-        target_location = mission.custom_fields.get('delivery_location')
+        target_location = mission.custom_fields.get('destination')  # Changed from delivery_location
+        required_quantity = mission.custom_fields.get('cargo_amount', 1)
+        min_integrity = mission.custom_fields.get('min_integrity', 90) / 100.0
         
+        # Check if this is the right cargo and destination
         if cargo_type == target_cargo and delivery_location == target_location:
-            # Find delivery objective
+            # Track delivery progress
+            delivered_so_far = mission.custom_fields.get('cargo_delivered', 0) + delivered_quantity
+            mission.custom_fields['cargo_delivered'] = delivered_so_far
+            
+            logger.info(f"🚛 Mission {mission.id}: Cargo delivery progress {delivered_so_far}/{required_quantity}")
+            
+            # Check integrity requirement for bonus objective
+            if cargo_integrity >= min_integrity:
+                mission.custom_fields['integrity_maintained'] = True
+                logger.info(f"🚛 Mission {mission.id}: Cargo integrity maintained ({cargo_integrity:.1%})")
+            else:
+                mission.custom_fields['integrity_maintained'] = False
+                logger.info(f"🚛 Mission {mission.id}: Cargo integrity compromised ({cargo_integrity:.1%})")
+            
+            # Find delivery objective and update progress
             for obj in mission.objectives:
                 if 'deliver' in obj.description.lower() and not obj.is_achieved:
-                    return mission.set_state(MissionState.ACHIEVED, obj.id)
+                    # Update objective progress
+                    obj.progress = min(delivered_so_far / required_quantity, 1.0)
+                    
+                    # Check if delivery is complete
+                    if delivered_so_far >= required_quantity:
+                        success = mission.set_state(MissionState.ACHIEVED, obj.id)
+                        if success:
+                            logger.info(f"🎉 Delivery objective completed: {delivered_so_far}/{required_quantity} units delivered")
+                        return success
+                    else:
+                        # Save progress update
+                        self.save_mission(mission)
+                        return True
+        
+        return False
+    
+    def _handle_cargo_loaded(self, mission: Mission, event_data: Dict[str, Any]) -> bool:
+        """Handle cargo loading for delivery missions"""
+        if mission.mission_type != 'delivery':
+            return False
+        
+        cargo_type = event_data.get('cargo_type')
+        loading_location = event_data.get('location')
+        loaded_quantity = event_data.get('quantity', 0)
+        
+        target_cargo = mission.custom_fields.get('cargo_type')
+        pickup_location = mission.custom_fields.get('pickup_location')
+        required_quantity = mission.custom_fields.get('cargo_amount', 1)
+        
+        # Check if this is the right cargo and pickup location
+        if cargo_type == target_cargo and (not pickup_location or loading_location == pickup_location):
+            # Track loading progress
+            loaded_so_far = mission.custom_fields.get('cargo_loaded', 0) + loaded_quantity
+            mission.custom_fields['cargo_loaded'] = loaded_so_far
+            
+            logger.info(f"🚛 Mission {mission.id}: Cargo loading progress {loaded_so_far}/{required_quantity}")
+            
+            # Find loading objective and update progress
+            for obj in mission.objectives:
+                if 'load' in obj.description.lower() and not obj.is_achieved:
+                    # Update objective progress
+                    obj.progress = min(loaded_so_far / required_quantity, 1.0)
+                    
+                    # Check if loading is complete
+                    if loaded_so_far >= required_quantity:
+                        success = mission.set_state(MissionState.ACHIEVED, obj.id)
+                        if success:
+                            logger.info(f"🎉 Loading objective completed: {loaded_so_far}/{required_quantity} units loaded")
+                        return success
+                    else:
+                        # Save progress update
+                        self.save_mission(mission)
+                        return True
         
         return False
     

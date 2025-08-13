@@ -119,15 +119,67 @@ export class MissionEventService {
     }
     
     /**
+     * Send cargo loaded event
+     */
+    async cargoLoaded(commodityId, quantity, location, playerContext = {}) {
+        if (!this.enabled) return;
+        
+        try {
+            const eventData = {
+                cargo_type: commodityId,
+                quantity: quantity,
+                location: location,
+                player_context: {
+                    player_ship: playerContext.playerShip || 'starter_ship',
+                    timestamp: Date.now()
+                }
+            };
+            
+            console.log('🎯 MissionEventService: Sending cargo loaded event:', eventData);
+            
+            const response = await fetch(`${this.baseURL}/cargo_loaded`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(eventData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success && result.updated_missions.length > 0) {
+                console.log(`🎯 MissionEventService: ${result.updated_missions.length} missions updated from cargo loading`);
+                
+                // Trigger mission update events
+                for (const mission of result.updated_missions) {
+                    this.triggerMissionUpdateEvent('cargo_loaded', mission, eventData);
+                }
+            }
+            
+            return result;
+            
+        } catch (error) {
+            console.error('🎯 MissionEventService: Failed to send cargo loaded event:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    /**
      * Send cargo delivered event
      */
-    async cargoDelivered(cargoType, location, playerContext = {}) {
+    async cargoDelivered(cargoType, quantity, location, playerContext = {}) {
         if (!this.enabled) return;
         
         try {
             const eventData = {
                 cargo_type: cargoType,
+                quantity: quantity,
                 location: location,
+                integrity: playerContext.integrity || 1.0,
                 player_context: {
                     player_ship: playerContext.playerShip || 'starter_ship',
                     timestamp: Date.now()

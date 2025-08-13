@@ -622,6 +622,50 @@ def handle_cargo_delivered():
         return jsonify({'error': str(e)}), 500
 
 
+@missions_bp.route('/api/missions/events/cargo_loaded', methods=['POST'])
+def handle_cargo_loaded():
+    """Handle cargo loaded events for mission progress"""
+    if not mission_manager:
+        return jsonify({'error': 'Mission system not initialized'}), 500
+    
+    try:
+        data = request.get_json() or {}
+        cargo_type = data.get('cargo_type')
+        quantity = data.get('quantity', 0)
+        location = data.get('location')
+        player_context = data.get('player_context', {})
+        
+        # Check all active missions for loading objectives
+        updated_missions = []
+        
+        for mission in mission_manager.missions.values():
+            if (mission.state == MissionState.ACCEPTED and 
+                mission.mission_type == 'delivery'):
+                
+                success = mission_manager.update_mission_progress(
+                    mission.id,
+                    event_data={
+                        'type': 'cargo_loaded',
+                        'cargo_type': cargo_type,
+                        'quantity': quantity,
+                        'location': location
+                    }
+                )
+                
+                if success:
+                    updated_missions.append(mission.to_dict())
+        
+        return jsonify({
+            'success': True,
+            'updated_missions': updated_missions,
+            'count': len(updated_missions)
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Handle cargo loaded failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 # Admin/Debug Endpoints
 
 @missions_bp.route('/api/missions/admin/cleanup', methods=['POST'])
