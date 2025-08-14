@@ -104,10 +104,8 @@ export class CommodityExchange {
                                 <div id="cargo-progress-fill" class="progress-fill" style="
                                     height: 100%;
                                     width: 0%;
-                                    transition: width 0.3s ease;
+                                    transition: width 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
                                     border-radius: 5px;
-                                    background: linear-gradient(90deg, #00ff41 0%, #44ff44 100%);
-                                    box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
                                 "></div>
                                 <div id="cargo-progress-text" class="progress-text" style="
                                     position: absolute;

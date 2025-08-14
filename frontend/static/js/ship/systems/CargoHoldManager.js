@@ -284,7 +284,16 @@ export class CargoHoldManager {
         const hold = this.cargoHolds.get(cargoItem.holdSlot);
         if (hold) {
             const currentQuantity = hold.cargo.get(cargoItem.commodityId);
-            hold.cargo.set(cargoItem.commodityId, currentQuantity - unloadQuantity);
+            const newQuantity = currentQuantity - unloadQuantity;
+            
+            if (newQuantity <= 0) {
+                // Remove entry entirely when quantity reaches 0
+                hold.cargo.delete(cargoItem.commodityId);
+                console.log(`🚛 CLEANUP: Removed ${cargoItem.commodityId} from hold slot ${cargoItem.holdSlot} (quantity reached 0)`);
+            } else {
+                // Update quantity if still has remaining cargo
+                hold.cargo.set(cargoItem.commodityId, newQuantity);
+            }
         }
         
         // Remove from manifest if fully unloaded
