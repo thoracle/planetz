@@ -12,6 +12,11 @@ export class DockingInterface {
         this.starfieldManager = starfieldManager;
         this.isVisible = false;
         this.dockedLocation = null;
+        this.THREE = starfieldManager.THREE; // Get Three.js reference
+        this.wireframeScene = null;
+        this.wireframeCamera = null;
+        this.wireframeRenderer = null;
+        this.stationWireframe = null;
         
         // Initialize station services
         this.stationRepairInterface = new StationRepairInterface(starfieldManager);
@@ -103,7 +108,7 @@ export class DockingInterface {
         `;
         this.container.appendChild(this.contentWrapper);
 
-        // Create wireframe station visualization area
+        // Create wireframe station visualization area (3D canvas)
         this.stationVisualization = document.createElement('div');
         this.stationVisualization.className = 'station-wireframe';
         this.stationVisualization.style.cssText = `
@@ -827,7 +832,190 @@ export class DockingInterface {
         }
     }
 
+    createStationWireframe(objectType = 'station') {
+        // Create 3D wireframe using same system as TargetComputerManager
+        this.initializeWireframeRenderer();
+        
+        // Clear existing wireframe
+        if (this.stationWireframe) {
+            this.wireframeScene.remove(this.stationWireframe);
+            this.stationWireframe = null;
+        }
+        
+        // Create wireframe based on object type (using same logic as target computer)
+        const radius = 2; // Standard size for station menu
+        let wireframeColor = 0x00ff41; // Neon green for friendly stations
+        let baseGeometry = null;
+        
+        // Get the docked location info to determine object type
+        if (this.dockedLocation) {
+            const info = this.starfieldManager.solarSystemManager?.getCelestialBodyInfo(this.dockedLocation);
+            if (info) {
+                objectType = info.type || 'station';
+                
+                // Set color based on diplomacy (same as target computer)
+                if (info.diplomacy?.toLowerCase() === 'friendly') {
+                    wireframeColor = 0x00ff41; // Friendly green
+                } else if (info.diplomacy?.toLowerCase() === 'neutral') {
+                    wireframeColor = 0xffff00; // Neutral yellow
+                } else if (info.diplomacy?.toLowerCase() === 'enemy') {
+                    wireframeColor = 0xff3333; // Enemy red
+                }
+            }
+        }
+        
+        switch (objectType?.toLowerCase()) {
+            case 'station':
+                // Torus ring for stations (same as target computer)
+                const ringR = Math.max(radius * 0.8, 1.0);
+                const ringTube = Math.max(radius * 0.25, 0.3);
+                baseGeometry = new this.THREE.TorusGeometry(ringR, ringTube, 8, 16);
+                break;
+            case 'planet':
+                // Icosahedron for planets (same as target computer)
+                baseGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
+                break;
+            case 'moon':
+                // Octahedron for moons (same as target computer)
+                baseGeometry = new this.THREE.OctahedronGeometry(radius, 0);
+                break;
+            default:
+                // Default to torus for unknown types
+                const defaultRingR = Math.max(radius * 0.8, 1.0);
+                const defaultRingTube = Math.max(radius * 0.25, 0.3);
+                baseGeometry = new this.THREE.TorusGeometry(defaultRingR, defaultRingTube, 8, 16);
+                break;
+        }
+        
+        if (baseGeometry) {
+            const wireframeMaterial = new this.THREE.LineBasicMaterial({
+                color: wireframeColor,
+                linewidth: 1,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            // Create wireframe from edges (same as target computer)
+            const edgesGeometry = new this.THREE.EdgesGeometry(baseGeometry);
+            this.stationWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
+            
+            // Add to scene
+            this.wireframeScene.add(this.stationWireframe);
+            
+            // Start animation
+            this.animateWireframe();
+        }
+        
+        // Add station name below wireframe
+        this.addStationLabel();
+    }
+    
+    initializeWireframeRenderer() {
+        if (this.wireframeRenderer) return; // Already initialized
+        
+        // Create 3D scene for wireframe
+        this.wireframeScene = new this.THREE.Scene();
+        
+        // Create camera
+        this.wireframeCamera = new this.THREE.PerspectiveCamera(
+            50, // FOV
+            1, // Aspect ratio (will be updated)
+            0.1, // Near
+            100 // Far
+        );
+        this.wireframeCamera.position.set(0, 0, 8);
+        
+        // Create renderer
+        this.wireframeRenderer = new this.THREE.WebGLRenderer({ 
+            alpha: true, 
+            antialias: true 
+        });
+        this.wireframeRenderer.setSize(200, 200); // Fixed size for station menu
+        this.wireframeRenderer.setClearColor(0x000000, 0); // Transparent background
+        
+        // Add canvas to visualization container
+        this.stationVisualization.appendChild(this.wireframeRenderer.domElement);
+        
+        // Style the canvas
+        this.wireframeRenderer.domElement.style.cssText = `
+            border: 1px solid #00ff41;
+            border-radius: 4px;
+        `;
+    }
+    
+    animateWireframe() {
+        if (!this.stationWireframe || !this.wireframeRenderer) return;
+        
+        // Rotate wireframe (same animation as target computer)
+        this.stationWireframe.rotation.x += 0.01;
+        this.stationWireframe.rotation.y += 0.015;
+        
+        // Render scene
+        this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
+        
+        // Continue animation
+        if (this.isVisible) {
+            requestAnimationFrame(() => this.animateWireframe());
+        }
+    }
+    
+    addStationLabel() {
+        // Add station name below wireframe
+        const existingLabel = this.stationVisualization.querySelector('.station-label');
+        if (existingLabel) {
+            existingLabel.remove();
+        }
+        
+        const stationName = document.createElement('div');
+        stationName.className = 'station-label';
+        stationName.style.cssText = `
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: #00ff41;
+            text-align: center;
+            opacity: 0.7;
+            font-family: 'VT323', monospace;
+        `;
+        
+        // Show station name if available
+        const stationName_text = this.dockedLocation?.name || 'STATION';
+        stationName.textContent = stationName_text.toUpperCase();
+        this.stationVisualization.appendChild(stationName);
+    }
+    
+    updateStationWireframe(stationName, objectType = null) {
+        // Update wireframe when docking location changes
+        if (objectType) {
+            this.createStationWireframe(objectType);
+        }
+        
+        // Update station label
+        this.addStationLabel();
+    }
+    
     dispose() {
+        // Clean up 3D resources
+        if (this.wireframeRenderer) {
+            this.wireframeRenderer.dispose();
+            this.wireframeRenderer = null;
+        }
+        
+        if (this.stationWireframe) {
+            this.wireframeScene.remove(this.stationWireframe);
+            this.stationWireframe = null;
+        }
+        
+        if (this.wireframeScene) {
+            this.wireframeScene = null;
+        }
+        
+        if (this.wireframeCamera) {
+            this.wireframeCamera = null;
+        }
+        
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }
