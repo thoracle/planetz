@@ -5,7 +5,7 @@
 
 set -e
 
-RESTART_FILE="docs/restart_condensed.md"
+RESTART_FILE="docs/restart.md"
 TEMP_FILE=$(mktemp)
 
 echo "🔄 Updating project status in $RESTART_FILE..."
