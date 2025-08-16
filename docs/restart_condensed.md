@@ -4,6 +4,27 @@
 
 You're joining the development of **Planetz**, a fully functional 3D web-based space simulation game inspired by Elite, Privateer, and Star Raiders. Built with Three.js (frontend) and Flask/Python (backend).
 
+## 🔄 Keeping This File Current
+
+**This file contains dynamic sections that auto-update from Git data:**
+
+```bash
+# Update current status before new chat sessions
+./scripts/update_status.sh
+```
+
+**What gets updated automatically:**
+- Current branch and repository status
+- Recent commit history (last 5 commits)
+- File counts and codebase statistics
+- Last updated timestamp
+
+**When to run the update:**
+- Before starting new chat sessions
+- After major feature completions or commits
+- When switching branches
+- Weekly maintenance updates
+
 ## 🎯 Core Game Vision
 
 **Production-ready space shooter** featuring:
@@ -18,14 +39,14 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `enemy-ai` | **Status**: In Development (3 uncommitted changes) | **Last Updated**: 2025-08-15
+**Branch**: `enemy-ai` | **Status**: In Development (1 uncommitted changes) | **Last Updated**: 2025-08-15
 
 **Recent Work** (Last 5 commits):
+- Implement Condensed Dynamic Restart System
 - Clean up generated test missions from missions/active directory
 - Complete Cut Scene System Specification & Mission System Enhancements
 - 🐛 Fix critical cargo system bugs and progress bar styling
 - ✨ Replace station menu wireframe with 3D system from target computer
-- ✨ Enhance cargo progress bar with neon green styling
 
 **Codebase Stats**: 
 - JavaScript Files: 124 | Python Files: 1606 | Documentation: 65 files
@@ -135,4 +156,17 @@ unknown: '#44ffff'   // Cyan for unknown
 **Next Steps**: Content creation, advanced gameplay mechanics, multiplayer foundation.
 
 ---
-*This condensed restart.md focuses on essential context while linking to detailed documentation. Run `./scripts/update_status.sh` to refresh dynamic sections.*
+
+## 📝 Maintenance Notes
+
+**To update this file's dynamic content:**
+```bash
+./scripts/update_status.sh
+```
+
+**File Structure:**
+- **Static sections**: Manually maintained core context (game vision, architecture, controls)
+- **Dynamic sections**: Auto-generated from Git (marked with `<!-- DYNAMIC_*_START/END -->`)
+- **Documentation links**: Auto-discovered from `docs/` directory
+
+*This condensed restart.md focuses on essential context while linking to detailed documentation. Always run the update script before new chat sessions to ensure current status.*
