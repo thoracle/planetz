@@ -28,8 +28,9 @@
   "custom_fields": {
     "cargo_type": "medical_supplies",
     "cargo_amount": 50,
-    "destination": "europa_station",
+    "destination": "europa_research_station",
     "pickup_location": "terra_prime",
+    "delivery_type": "auto_delivery",
     "min_integrity": 90,
     "time_limit": 3600,
     "delivery_bonus": 800,
@@ -47,7 +48,8 @@
       "description": "Emergency medical supplies needed at Europa Station",
       "custom_fields": {
         "cargo_type": "medical_supplies",
-        "destination": "europa_station",
+        "destination": "europa_research_station",
+        "delivery_type": "auto_delivery",
         "time_limit": 1800,
         "delivery_bonus": 1000,
         "urgency_level": "high"
@@ -60,6 +62,7 @@
         "cargo_type": "raw_materials",
         "cargo_amount": 100,
         "destination": "ceres_outpost",
+        "delivery_type": "market_sale",
         "delivery_bonus": 600,
         "urgency_level": "medium"
       }
@@ -71,6 +74,7 @@
         "cargo_type": "food_rations",
         "cargo_amount": 75,
         "destination": "mars_base",
+        "delivery_type": "auto_delivery",
         "time_limit": 2400,
         "delivery_bonus": 500,
         "urgency_level": "medium"

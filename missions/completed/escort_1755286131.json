@@ -1,0 +1,103 @@
+{
+  "id": "escort_1755286131",
+  "title": "Convoy Escort Mission",
+  "description": "Provide protection for valuable cargo convoy",
+  "mission_type": "escort",
+  "location": "l4_trading_post",
+  "faction": "terran_republic_alliance",
+  "reward_package_id": 5,
+  "client": "Republic Fleet Command",
+  "state": "Completed",
+  "is_botched": false,
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Rendezvous with convoy at jump_gate_7",
+      "is_achieved": false,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 0.0,
+      "achieved_at": null
+    },
+    {
+      "id": "2",
+      "description": "Escort convoy safely to alliance_starbase",
+      "is_achieved": false,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 0.0,
+      "achieved_at": null
+    },
+    {
+      "id": "3",
+      "description": "Ensure no convoy ships are lost",
+      "is_achieved": false,
+      "is_optional": true,
+      "is_ordered": false,
+      "progress": 0.0,
+      "achieved_at": null
+    }
+  ],
+  "created_at": "2025-08-15T19:28:51.608277+00:00",
+  "updated_at": "2025-08-16T01:37:30.462513+00:00",
+  "custom_fields": {
+    "convoy_ships": [
+      {
+        "type": "merchant_freighter",
+        "name": "Stellar Trader",
+        "hull": 1000,
+        "cargo_value": 50000
+      },
+      {
+        "type": "escort_fighter",
+        "name": "Guardian-1",
+        "hull": 400,
+        "role": "point_defense"
+      }
+    ],
+    "route_waypoints": [
+      {
+        "x": 100,
+        "y": 50,
+        "z": 200,
+        "name": "Waypoint Alpha"
+      },
+      {
+        "x": 300,
+        "y": 75,
+        "z": 400,
+        "name": "Waypoint Beta"
+      }
+    ],
+    "threat_level": "medium",
+    "meeting_point": "jump_gate_7",
+    "destination": "alliance_starbase",
+    "patrol_routes": [
+      "outer_rim_patrol",
+      "merchant_corridor"
+    ],
+    "emergency_protocols": {
+      "retreat_threshold": 0.3,
+      "distress_frequency": "121.5"
+    },
+    "escort_bonus": 1200,
+    "no_losses_bonus": 800,
+    "reputation_gain": 20
+  },
+  "triggers": {
+    "on_accept": "notify_convoy_commander",
+    "on_rendezvous": "begin_escort_formation",
+    "on_attack": "activate_defense_protocols",
+    "on_convoy_ship_destroyed": "trigger_emergency_response",
+    "on_complete": "debrief_escort_mission"
+  },
+  "progress": {
+    "state": "Completed",
+    "is_botched": false,
+    "total_objectives": 3,
+    "achieved_objectives": 0,
+    "required_objectives": 2,
+    "achieved_required": 0,
+    "completion_percentage": 0.0
+  }
+}

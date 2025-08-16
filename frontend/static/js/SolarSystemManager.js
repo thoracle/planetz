@@ -933,12 +933,12 @@ export class SolarSystemManager {
                 color: 0x44ffff, // Corporate cyan
                 size: 0.8
             },
-            // Mars System
+            // Mars System (moved closer for starter system accessibility)
             {
-                name: 'Olympus Mons Base',
+                name: 'Mars Base',
                 faction: 'Terran Republic Alliance',
                 type: 'Repair Station',
-                position: this.getOrbitPosition(1.52, 0), // Mars orbit
+                position: this.getOrbitPosition(1.25, 90), // Moved closer - accessible for repairs
                 description: 'Fleet maintenance and military training',
                 color: 0x00ff44, // Alliance green
                 size: 0.9
@@ -947,7 +947,7 @@ export class SolarSystemManager {
                 name: 'Phobos Mining Station',
                 faction: 'Free Trader Consortium',
                 type: 'Mining Station',
-                position: this.getOrbitPosition(1.521, 30), // Just outside Mars (Phobos)
+                position: this.getOrbitPosition(1.26, 120), // Moved closer - near Olympus
                 description: 'Mining station and cargo depot',
                 color: 0xffff00, // Trade yellow
                 size: 0.4
@@ -956,17 +956,17 @@ export class SolarSystemManager {
                 name: 'Deimos Research Facility',
                 faction: 'Scientists Consortium',
                 type: 'Research Lab',
-                position: this.getOrbitPosition(1.523, 330), // Just outside Mars (Deimos)
+                position: this.getOrbitPosition(1.27, 60), // Moved closer - near Olympus
                 description: 'Research facility and communication relay',
                 color: 0x44ff44, // Science green
                 size: 0.4
             },
-            // Asteroid Belt
+            // Asteroid Belt (moved closer for starter system accessibility)
             {
-                name: 'Ceres Research Station',
+                name: 'Ceres Outpost',
                 faction: 'Scientists Consortium',
                 type: 'Research Lab',
-                position: this.getOrbitPosition(2.77, 0), // Ceres orbit
+                position: this.getOrbitPosition(1.4, 180), // Moved closer - opposite side from Terra Prime
                 description: 'Research on dwarf planet and asteroid mining',
                 color: 0x44ff44, // Science green
                 size: 0.7
@@ -975,7 +975,7 @@ export class SolarSystemManager {
                 name: 'Vesta Mining Complex',
                 faction: 'Free Trader Consortium',
                 type: 'Mining Station',
-                position: this.getOrbitPosition(2.36, 120), // Vesta orbit
+                position: this.getOrbitPosition(1.3, 135), // Moved closer - accessible for missions
                 description: 'Major asteroid mining operations',
                 color: 0xffff00, // Trade yellow
                 size: 0.6
@@ -985,19 +985,10 @@ export class SolarSystemManager {
                 name: 'Europa Research Station',
                 faction: 'Scientists Consortium',
                 type: 'Research Lab',
-                position: this.getOrbitPosition(5.203, 0), // Europa orbit (Jupiter system)
+                position: this.getEuropaMoonOrbitPosition(), // Near Europa moon around Terra Prime
                 description: 'Research stations studying subsurface ocean',
                 color: 0x44ff44, // Science green
                 size: 0.8
-            },
-            {
-                name: 'Ganymede Shipyards',
-                faction: 'Terran Republic Alliance',
-                type: 'Shipyard',
-                position: this.getOrbitPosition(5.207, 90), // Ganymede orbit
-                description: 'Major colony and shipyards',
-                color: 0x00ff44, // Alliance green
-                size: 1.0
             },
             {
                 name: 'Callisto Defense Platform',
@@ -1277,6 +1268,37 @@ export class SolarSystemManager {
             Math.cos(angle) * distance,
             (Math.random() - 0.5) * 2, // Small random Y variation
             Math.sin(angle) * distance
+        );
+    }
+
+    /**
+     * Get position near Europa moon around Terra Prime
+     */
+    getEuropaMoonOrbitPosition() {
+        // Terra Prime is at ~1 AU (100 units from star)
+        const terraPrimeDistance = 1.0 * this.VISUAL_SCALE;
+        const terraPrimeAngle = 0; // Terra Prime is at 0 degrees
+        
+        // Europa moon orbits Terra Prime at ~16 units distance (moonIndex 1 * 8.0 * 2)
+        const europaMoonDistance = 16.0;
+        const europaMoonAngle = Math.PI * 0.5; // 90 degrees from Terra Prime
+        
+        // Calculate Terra Prime position
+        const terraPrimeX = Math.cos(terraPrimeAngle) * terraPrimeDistance;
+        const terraPrimeZ = Math.sin(terraPrimeAngle) * terraPrimeDistance;
+        
+        // Calculate Europa moon position relative to Terra Prime
+        const europaMoonX = terraPrimeX + Math.cos(europaMoonAngle) * europaMoonDistance;
+        const europaMoonZ = terraPrimeZ + Math.sin(europaMoonAngle) * europaMoonDistance;
+        
+        // Position station slightly offset from Europa moon (2 units away)
+        const stationOffset = 2.0;
+        const stationAngle = Math.PI * 0.25; // 45 degrees offset
+        
+        return new THREE.Vector3(
+            europaMoonX + Math.cos(stationAngle) * stationOffset,
+            (Math.random() - 0.5) * 2, // Small random Y variation
+            europaMoonZ + Math.sin(stationAngle) * stationOffset
         );
     }
 } 

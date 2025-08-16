@@ -12,12 +12,13 @@ import CardInventory from '../ship/CardInventory.js';
 import { CARD_TYPES, CARD_ICONS } from '../ship/NFTCard.js';
 import { SHIP_CONFIGS, getAvailableShipTypes, getStarterCards } from '../ship/ShipConfigs.js';
 import NFTCard from '../ship/NFTCard.js';
+import { playerCredits } from '../utils/PlayerCredits.js';
 
 // Simple player data structure for ship ownership
 class PlayerData {
     constructor() {
         this.ownedShips = new Set(['starter_ship']); // Player starts with starter ship
-        this.credits = 50000;
+        // this.credits = 50000; // Removed - using unified credits system
         this.shipConfigurations = new Map(); // Store equipped cards for each ship
         
         // Initialize starter ship using centralized starter card configuration
@@ -65,10 +66,11 @@ class PlayerData {
      * @returns {boolean} - Whether purchase was successful
      */
     purchaseShip(shipType, cost) {
-        if (this.credits >= cost && !this.ownedShips.has(shipType)) {
-            this.credits -= cost;
-            this.addShip(shipType);
-            return true;
+        if (playerCredits.canAfford(cost) && !this.ownedShips.has(shipType)) {
+            if (playerCredits.spendCredits(cost, `Purchase ship: ${shipType}`)) {
+                this.addShip(shipType);
+                return true;
+            }
         }
         return false;
     }
@@ -126,7 +128,7 @@ export default class CardInventoryUI {
         this.container = containerId ? document.getElementById(containerId) : null;
         this.inventory = new CardInventory();
         this.shipSlots = new Map(); // Map of slotId -> card
-        this.credits = 50000; // Starting credits
+        // this.credits = 50000; // Removed - using unified credits system
         this.currentShipType = 'starter_ship';
         this.currentShipConfig = SHIP_CONFIGS[this.currentShipType];
         this.isShopMode = false;
@@ -2085,7 +2087,7 @@ export default class CardInventoryUI {
         
         const upgradeCost = upgradeCosts[nextLevel];
         const hasEnoughCards = canUpgrade && stack.count >= upgradeCost?.cards;
-        const hasEnoughCredits = canUpgrade && this.credits >= (upgradeCost?.credits || 0);
+        const hasEnoughCredits = canUpgrade && playerCredits.canAfford(upgradeCost?.credits || 0);
         const canAffordUpgrade = hasEnoughCards && hasEnoughCredits;
         
         // Determine the appropriate CSS class and button content
@@ -2107,7 +2109,7 @@ export default class CardInventoryUI {
         } else if (!hasEnoughCredits) {
             buttonClass = 'insufficient-credits';
             buttonIcon = '⚫'; // Gray circle for insufficient  
-            buttonText = `Need ${(upgradeCost.credits - this.credits).toLocaleString()} More Credits`;
+            buttonText = `Need ${(upgradeCost.credits - playerCredits.getCredits()).toLocaleString()} More Credits`;
         }
         
         // Create tooltip text for upgrade requirements
@@ -2189,10 +2191,15 @@ export default class CardInventoryUI {
                 `;
                 document.body.appendChild(creditsDisplay);
             }
-            creditsDisplay.innerHTML = `💰 Credits: ${this.credits.toLocaleString()}`;
+            creditsDisplay.innerHTML = `💰 Credits: ${playerCredits.getFormattedCredits()}`;
+            
+            // Register for automatic updates
+            playerCredits.registerDisplay(creditsDisplay, (el, credits) => {
+                el.innerHTML = `💰 Credits: ${credits.toLocaleString()}`;
+            });
         }
         
-        console.log(`💰 Credits: ${this.credits.toLocaleString()}`);
+        console.log(`💰 Credits: ${playerCredits.getFormattedCredits()}`);
     }
 
     /**
@@ -2840,8 +2847,8 @@ export default class CardInventoryUI {
             return;
         }
         
-        if (this.credits < upgradeCost.credits) {
-            console.error(`❌ Not enough credits for upgrade. Have ${this.credits}, need ${upgradeCost.credits}`);
+        if (!playerCredits.canAfford(upgradeCost.credits)) {
+            console.error(`❌ Not enough credits for upgrade. Have ${playerCredits.getCredits()}, need ${upgradeCost.credits}`);
             return;
         }
         
@@ -2854,8 +2861,12 @@ export default class CardInventoryUI {
             console.log(`📦 Cards consumed: ${upgradeCost.cards}, remaining: ${cardStack.count}`);
             
             // Consume credits
-            this.credits -= upgradeCost.credits;
-            console.log(`💰 Credits consumed: ${upgradeCost.credits}, remaining: ${this.credits}`);
+            const creditsSpent = playerCredits.spendCredits(upgradeCost.credits, `Upgrade ${cardType} to level ${nextLevel}`);
+            if (!creditsSpent) {
+                console.error('❌ Failed to spend credits for upgrade');
+                return;
+            }
+            console.log(`💰 Credits consumed: ${upgradeCost.credits}, remaining: ${playerCredits.getCredits()}`);
             
             // Increase level in the source card stack
             cardStack.level = nextLevel;

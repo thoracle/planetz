@@ -320,6 +320,14 @@ export class PhysicsDockingManager {
                 this.isDocked = true;
                 this.lastDockingTime = Date.now();
                 console.log(`🚀 Successfully docked with ${stationData.name}`);
+                
+                // Check for cargo deliveries upon successful docking
+                if (target && target.userData && target.userData.name) {
+                    const stationKey = String(target.userData.name).toLowerCase().replace(/\s+/g, '_');
+                    // Check for auto-delivery missions (but not market-sale missions)
+                    await this.starfieldManager.checkCargoDeliveries(stationKey);
+                }
+                
                 return true;
             } else {
                 this.dockingInProgress = false;

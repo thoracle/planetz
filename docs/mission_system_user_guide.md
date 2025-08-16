@@ -377,7 +377,15 @@ curl http://localhost:5001/api/missions/stats
 
 ### 3. Delivery Missions
 
-**Purpose**: Cargo transport and trading
+**Purpose**: Cargo transport and trading with flexible delivery mechanics
+
+Delivery missions support **two distinct completion methods** for maximum design flexibility:
+
+#### Auto-Delivery Missions (`delivery_type: "auto_delivery"`)
+
+**Use Case**: Emergency deliveries, government contracts, official shipments
+**Completion**: Automatically completes when docking at destination station
+**Player Experience**: Player docks → Mission automatically completes
 
 **Example**:
 ```json
@@ -386,14 +394,48 @@ curl http://localhost:5001/api/missions/stats
   "custom_fields": {
     "cargo_type": "medical_supplies",
     "pickup_location": "terra_prime", 
-    "delivery_location": "mining_colony_beta",
-    "cargo_value": 5000,
+    "destination": "europa_research_station",
+    "delivery_type": "auto_delivery",
+    "cargo_amount": 50,
+    "time_limit": 3600
+  }
+}
+```
+
+#### Market Sale Missions (`delivery_type: "market_sale"`)
+
+**Use Case**: Trading contracts, commercial ventures, profit-based missions
+**Completion**: Completes when cargo is sold at commodity exchange
+**Player Experience**: Player docks → Goes to market → Sells cargo → Mission completes
+
+**Example**:
+```json
+{
+  "mission_type": "delivery", 
+  "custom_fields": {
+    "cargo_type": "luxury_goods",
+    "pickup_location": "terra_prime",
+    "destination": "ceres_outpost", 
+    "delivery_type": "market_sale",
+    "cargo_amount": 25,
     "time_limit": 7200
   }
 }
 ```
 
-**Triggers**: Progress when cargo is picked up and delivered
+#### Delivery Mission Fields
+
+- **`delivery_type`**: `"auto_delivery"` or `"market_sale"` (required)
+- **`cargo_type`**: Type of cargo to transport (required)
+- **`pickup_location`**: Where to load cargo (required)
+- **`destination`**: Where to deliver/sell cargo (required)
+- **`cargo_amount`**: Quantity to transport (required)
+- **`min_integrity`**: Minimum cargo condition % (optional)
+- **`time_limit`**: Mission deadline in seconds (optional)
+
+**Triggers**: 
+- Auto-delivery: Progress when cargo is loaded and when docking at destination
+- Market sale: Progress when cargo is loaded and when sold at commodity exchange
 
 ### 4. Escort Missions
 

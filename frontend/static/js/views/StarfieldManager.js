@@ -737,7 +737,6 @@ export class StarfieldManager {
             button.style.cursor = isRepairing ? 'not-allowed' : 'pointer';
         });
     }
-
     /**
      * Display individual weapons from the weapons system
      * @param {Object} weaponsSystemData - The weapons system data
@@ -1198,7 +1197,6 @@ export class StarfieldManager {
             if (!this.weaponHUD) console.log('  - WeaponHUD initializing...');
         }
     }
-
     bindKeyEvents() {
         // Track key presses for speed control
         this.keys = {
@@ -1984,7 +1982,6 @@ export class StarfieldManager {
                     );
                 }
             }
-
             // Add Proximity Detector View Mode Toggle key binding (\\ key)
             if (event.key === '\\') {
                 // Only allow view mode toggle when not docked and proximity detector is visible
@@ -2541,7 +2538,6 @@ export class StarfieldManager {
             }
         }
     }
-
     update(deltaTime) {
         if (!deltaTime) deltaTime = 1/60;
 
@@ -3330,7 +3326,6 @@ export class StarfieldManager {
         this.updateIntelDisplay();
         this.updateIntelIconDisplay();
     }
-
     /**
      * Toggle proximity detector display
      */
@@ -3884,15 +3879,112 @@ export class StarfieldManager {
         // Update the dock button to show "LAUNCH"
         this.updateTargetDisplay();
         
-        // Refresh missions for the docked station
+        // Refresh missions for the docked station (cargo deliveries handled by physics docking for stations)
         if (target && target.userData && target.userData.name) {
             const stationKey = String(target.userData.name).toLowerCase().replace(/\s+/g, '_');
+            
+            // Refresh missions for the docked station
             setTimeout(() => {
                 this.refreshStationMissions(stationKey);
             }, 1000);
         }
         
         return true;
+    }
+
+    /**
+     * Check for cargo deliveries upon docking
+     */
+    async checkCargoDeliveries(stationKey) {
+        try {
+            const ship = this.viewManager?.getShip();
+            if (!ship || !ship.cargoHoldManager) {
+                console.log('🚛 No ship or cargo hold manager available for delivery check');
+                return;
+            }
+            
+            // Get all loaded cargo
+            const loadedCargo = ship.cargoHoldManager.getLoadedCargo();
+            if (!loadedCargo || loadedCargo.size === 0) {
+                console.log('🚛 No cargo loaded - skipping delivery check');
+                return;
+            }
+            
+            console.log(`🚛 Checking for cargo deliveries at ${stationKey} with ${loadedCargo.size} cargo items`);
+            
+            // Check each cargo item for delivery opportunities
+            const cargoToRemove = [];
+            
+            for (const [cargoId, cargoItem] of loadedCargo.entries()) {
+                if (cargoItem && cargoItem.commodityId) {
+                    console.log(`🚛 Attempting delivery of ${cargoItem.quantity} units of ${cargoItem.commodityId} to ${stationKey}`);
+                    
+                    // Trigger cargo delivery event
+                    if (this.missionEventService) {
+                        const result = await this.missionEventService.cargoDelivered(
+                            cargoItem.commodityId,
+                            cargoItem.quantity,
+                            stationKey,
+                            { 
+                                playerShip: ship.shipType,
+                                integrity: cargoItem.integrity || 1.0,
+                                source: 'docking'  // Indicate this is auto-delivery on docking
+                            }
+                        );
+                        
+                        // If any missions were updated (cargo was delivered), calculate required quantity to remove
+                        if (result && result.success && result.updated_missions.length > 0) {
+                            console.log(`🚛 Auto-delivery successful for ${cargoItem.commodityId}, calculating quantity to remove`);
+                            
+                            // Find the mission that was updated for this cargo type
+                            let quantityToRemove = 0;
+                            for (const mission of result.updated_missions) {
+                                if (mission.mission_type === 'delivery' && 
+                                    mission.custom_fields.cargo_type === cargoItem.commodityId &&
+                                    mission.custom_fields.destination === stationKey) {
+                                    
+                                    const requiredQuantity = mission.custom_fields.cargo_amount || 50;
+                                    const alreadyDelivered = mission.custom_fields.cargo_delivered || 0;
+                                    
+                                    // Calculate how much we need to remove (up to what we have in cargo)
+                                    quantityToRemove = Math.min(requiredQuantity, cargoItem.quantity);
+                                    
+                                    console.log(`🚛 Mission ${mission.id} requires ${requiredQuantity} units, delivered so far: ${alreadyDelivered}, removing: ${quantityToRemove} from available ${cargoItem.quantity}`);
+                                    break;
+                                }
+                            }
+                            
+                            // Only remove if we found a valid quantity
+                            if (quantityToRemove > 0) {
+                                cargoToRemove.push({
+                                    cargoId: cargoId,
+                                    commodityId: cargoItem.commodityId,
+                                    quantity: quantityToRemove
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Remove delivered cargo from ship
+            for (const cargo of cargoToRemove) {
+                const removeResult = ship.cargoHoldManager.unloadCargo(cargo.cargoId, cargo.quantity);
+                if (removeResult.success) {
+                    console.log(`🚛 Removed ${cargo.quantity} units of ${cargo.commodityId} from cargo hold (auto-delivery)`);
+                } else {
+                    console.error(`🚛 Failed to remove cargo ${cargo.commodityId}: ${removeResult.error}`);
+                }
+            }
+            
+            // Refresh cargo display if cargo was removed
+            if (cargoToRemove.length > 0 && this.commodityExchange) {
+                this.commodityExchange.refreshCargoDisplay();
+            }
+            
+        } catch (error) {
+            console.error('🚛 Error checking cargo deliveries:', error);
+        }
     }
 
     /**
@@ -3954,7 +4046,6 @@ export class StarfieldManager {
         this.playCommandSound();
         return true;
     }
-
     undock() {
         if (!this.isDocked) {
             return;
@@ -4084,6 +4175,19 @@ export class StarfieldManager {
                 }
             }
             
+            // Restore Mission Status HUD after launch (it was hidden during docking)
+            if (this.missionStatusHUD && !this.missionStatusHUD.isVisible) {
+                // Only show if there are active missions
+                this.missionStatusHUD.refreshMissions().then(() => {
+                    if (this.missionStatusHUD.activeMissions && this.missionStatusHUD.activeMissions.length > 0) {
+                        this.missionStatusHUD.show();
+                        console.log('🚀 Mission Status HUD restored after launch');
+                    }
+                }).catch(error => {
+                    console.log('🚀 Mission Status HUD: No active missions to display after launch');
+                });
+            }
+            
             // Remove flawed subspace radio state restoration - systems will be properly initialized above
         }
         
@@ -4095,6 +4199,11 @@ export class StarfieldManager {
         // Update the dock button to show "DOCK"
         this.updateTargetDisplay();
         this.updateSpeedIndicator();
+
+        // Notify systems that launch has occurred to allow deferred notifications
+        try {
+            window.dispatchEvent(new CustomEvent('shipLaunched'));
+        } catch (_) {}
     }
 
     /**
@@ -4739,7 +4848,6 @@ export class StarfieldManager {
     getTargetDummyShip(mesh) {
         return mesh.userData?.ship || null;
     }
-
     /**
      * Show a temporary error message in the HUD
      * @param {string} title - Error title
@@ -5521,7 +5629,6 @@ export class StarfieldManager {
             console.log(`   • targetOutlineObject: ${this.targetOutlineObject}`);
         }
     }
-    
     /**
      * Toggle the outline system on/off
      */
@@ -6214,7 +6321,6 @@ export class StarfieldManager {
             }
         }
     }
-
     /**
      * Get sub-targeting availability and display information
      * @param {Object} ship Current ship
@@ -6740,15 +6846,22 @@ export class StarfieldManager {
                         console.log('🧪 TESTING MODE: No old missions found - clean start');
                     }
                     
-                    // Future: Could also clear other persistent data here
+                    // Clear other persistent data for fresh testing session
                     // - Player progress/stats
                     // - Ship configurations
-                    // - Credits/inventory
+                    // - Credits/inventory ✅ Implemented
                     // - Faction standings
-                    console.log('🧪 TESTING MODE: Fresh session initialized');
+                    
+                    // Reset credits to starting amount
+                    const { playerCredits } = await import('../utils/PlayerCredits.js');
+                    playerCredits.reset();
+                    console.log('🧪 TESTING MODE: Credits reset to starting amount');
+                    
+                    console.log('🧪 TESTING MODE: Fresh session initialized - NO mission pre-population');
+                } else {
+                    // Only pre-populate missions when NOT in testing mode
+                    await this.prePopulateStationMissions();
                 }
-                
-                await this.prePopulateStationMissions();
             } else {
                 console.log('🎯 Mission API not available, missions will use fallback data');
             }
@@ -6795,7 +6908,7 @@ export class StarfieldManager {
                 maxMissions: 6
             },
             {
-                key: 'europa_station',
+                key: 'europa_research_station',
                 name: 'Europa Station',
                 type: 'research_station',
                 faction: 'scientists_consortium',
@@ -6968,7 +7081,6 @@ export class StarfieldManager {
     async delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-    
     /**
      * Test mission UI systems
      */

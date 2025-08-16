@@ -12,6 +12,7 @@
  */
 
 import { getSystemDisplayName } from '../ship/System.js';
+import { playerCredits } from '../utils/PlayerCredits.js';
 
 export class StationRepairInterface {
     constructor(starfieldManager) {
@@ -58,8 +59,8 @@ export class StationRepairInterface {
             }
         };
         
-        // Player credits (would be loaded from save data)
-        this.playerCredits = 5000;
+        // Use unified credits system
+        // this.playerCredits = 5000; // Removed - using unified system
         
         console.log('Station Repair Interface initialized');
     }
@@ -219,9 +220,13 @@ export class StationRepairInterface {
         const creditsElement = document.getElementById('credits-display');
         if (!creditsElement) return;
         
-        creditsElement.textContent = this.playerCredits.toLocaleString();
-        creditsElement.style.color = this.playerCredits > 0 ? '#00ff41' : '#ff4444';
-        creditsElement.style.textShadow = this.playerCredits > 0 ? '0 0 5px rgba(0, 255, 65, 0.5)' : '0 0 5px rgba(255, 68, 68, 0.5)';
+        const credits = playerCredits.getCredits();
+        creditsElement.textContent = playerCredits.getFormattedCredits();
+        creditsElement.style.color = credits > 0 ? '#00ff41' : '#ff4444';
+        creditsElement.style.textShadow = credits > 0 ? '0 0 5px rgba(0, 255, 65, 0.5)' : '0 0 5px rgba(255, 68, 68, 0.5)';
+        
+        // Register for automatic updates
+        playerCredits.registerDisplay(creditsElement);
     }
     
     /**
@@ -1202,7 +1207,7 @@ export class StationRepairInterface {
         
         panel.innerHTML = `
             <div style="font-size: 16px; font-weight: bold; color: #00ff41; margin-bottom: 15px; text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);">CREDITS AVAILABLE</div>
-            <div id="credits-display" style="font-size: 24px; font-weight: bold; text-align: center; padding: 15px; border: 1px solid rgba(0, 255, 65, 0.5); background: rgba(0, 0, 0, 0.3); color: #00ff41; text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);">${this.playerCredits.toLocaleString()}</div>
+            <div id="credits-display" style="font-size: 24px; font-weight: bold; text-align: center; padding: 15px; border: 1px solid rgba(0, 255, 65, 0.5); background: rgba(0, 0, 0, 0.3); color: #00ff41; text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);">${playerCredits.getFormattedCredits()}</div>
         `;
         
         this.contentWrapper.appendChild(panel);

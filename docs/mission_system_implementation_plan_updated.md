@@ -2250,8 +2250,18 @@ class MissionCustomFields:
     
     @staticmethod
     def validate_delivery_fields(fields):
-        required = ['cargo_type', 'pickup_location', 'delivery_location', 'cargo_value']
-        return all(field in fields for field in required)
+        required = ['cargo_type', 'pickup_location', 'destination', 'delivery_type', 'cargo_amount']
+        
+        # Validate required fields
+        if not all(field in fields for field in required):
+            return False
+            
+        # Validate delivery_type values
+        delivery_type = fields.get('delivery_type')
+        if delivery_type not in ['auto_delivery', 'market_sale']:
+            return False
+            
+        return True
 
 # Example custom fields structure
 ESCORT_MISSION_CUSTOM_FIELDS = {
@@ -2269,6 +2279,131 @@ ESCORT_MISSION_CUSTOM_FIELDS = {
         "retreat_threshold": 0.3,
         "distress_frequency": "121.5"
     }
+}
+```
+
+### 12.1.2 Dual Delivery System Implementation
+
+The delivery mission system supports two distinct completion mechanisms for maximum design flexibility:
+
+#### Auto-Delivery System
+
+**Purpose**: Emergency deliveries, government contracts, official shipments
+**Trigger**: Completion occurs automatically when docking at destination station
+**Implementation**:
+
+```python
+class AutoDeliveryHandler:
+    def handle_docking_event(self, station_key, ship_cargo):
+        """Handle auto-delivery when ship docks at station"""
+        for mission in self.get_active_delivery_missions():
+            if mission.custom_fields.get('delivery_type') == 'auto_delivery':
+                if self.validate_auto_delivery(mission, station_key, ship_cargo):
+                    self.complete_delivery_objective(mission, 'docking')
+    
+    def validate_auto_delivery(self, mission, station_key, ship_cargo):
+        """Validate auto-delivery conditions"""
+        destination = mission.custom_fields.get('destination')
+        cargo_type = mission.custom_fields.get('cargo_type')
+        required_amount = mission.custom_fields.get('cargo_amount')
+        
+        # Check correct destination
+        if station_key != destination:
+            return False
+            
+        # Check cargo presence and quantity
+        cargo_item = ship_cargo.get(cargo_type)
+        if not cargo_item or cargo_item.quantity < required_amount:
+            return False
+            
+        return True
+```
+
+#### Market Sale System
+
+**Purpose**: Trading contracts, commercial ventures, profit-based missions
+**Trigger**: Completion occurs when cargo is sold at commodity exchange
+**Implementation**:
+
+```python
+class MarketSaleHandler:
+    def handle_cargo_sale(self, commodity_id, quantity, station_key, sale_data):
+        """Handle market sale delivery completion"""
+        for mission in self.get_active_delivery_missions():
+            if mission.custom_fields.get('delivery_type') == 'market_sale':
+                if self.validate_market_sale(mission, commodity_id, quantity, station_key):
+                    self.complete_delivery_objective(mission, 'market', sale_data)
+    
+    def validate_market_sale(self, mission, commodity_id, quantity, station_key):
+        """Validate market sale conditions"""
+        destination = mission.custom_fields.get('destination')
+        cargo_type = mission.custom_fields.get('cargo_type')
+        required_amount = mission.custom_fields.get('cargo_amount')
+        
+        # Check correct destination and cargo type
+        if station_key != destination or commodity_id != cargo_type:
+            return False
+            
+        # Check quantity sold meets mission requirements
+        if quantity < required_amount:
+            return False
+            
+        return True
+```
+
+#### Event Source Tracking
+
+The system uses event source tracking to ensure delivery completion matches mission type:
+
+```javascript
+// Frontend - Auto-delivery trigger (docking)
+missionEventService.cargoDelivered(
+    cargoType, quantity, stationKey,
+    { source: 'docking', integrity: cargoIntegrity }
+);
+
+// Frontend - Market sale trigger (commodity exchange)
+missionEventService.cargoDelivered(
+    cargoType, quantity, stationKey, 
+    { source: 'market', integrity: cargoIntegrity }
+);
+```
+
+#### Mission Template Examples
+
+**Auto-Delivery Mission**:
+```json
+{
+  "template_id": "emergency_delivery",
+  "mission_type": "delivery",
+  "objectives": [
+    {"id": "1", "description": "Load {cargo_amount} units of {cargo_type}"},
+    {"id": "2", "description": "Deliver cargo to {destination}"}
+  ],
+  "custom_fields": {
+    "delivery_type": "auto_delivery",
+    "cargo_type": "medical_supplies",
+    "destination": "europa_research_station",
+    "cargo_amount": 50
+  }
+}
+```
+
+**Market Sale Mission**:
+```json
+{
+  "template_id": "trading_contract", 
+  "mission_type": "delivery",
+  "objectives": [
+    {"id": "1", "description": "Load {cargo_amount} units of {cargo_type}"},
+    {"id": "2", "description": "Sell cargo at {destination} market"}
+  ],
+  "custom_fields": {
+    "delivery_type": "market_sale",
+    "cargo_type": "luxury_goods",
+    "destination": "ceres_outpost", 
+    "cargo_amount": 25
+  }
 }
 ```
 

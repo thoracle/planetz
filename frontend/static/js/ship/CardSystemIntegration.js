@@ -678,6 +678,7 @@ export default class CardSystemIntegration {
             'target_computer', 'impulse_engines', 'energy_reactor', 'subspace_radio',
             'long_range_scanner', 'galactic_chart', 'shields', 'hull_plating',
             'cargo_hold', 'reinforced_cargo_hold', 'shielded_cargo_hold', 'warp_drive',
+            'radar', // Proximity detector system
             // Individual weapon systems
             'laser_cannon', 'plasma_cannon', 'pulse_cannon', 'phaser_array',
             'disruptor_cannon', 'particle_beam', 'standard_missile', 'homing_missile',
@@ -761,6 +762,15 @@ export default class CardSystemIntegration {
             installedCardTypes.includes('long_range_scanner') || 
             installedCardTypes.includes('quantum_scanner') || 
             installedCardTypes.includes('dimensional_radar')
+        )) {
+            return true;
+        }
+        
+        // Radar system variants (proximity detector)
+        if (systemName === 'radar' && (
+            installedCardTypes.includes('basic_radar') || 
+            installedCardTypes.includes('advanced_radar') || 
+            installedCardTypes.includes('tactical_radar')
         )) {
             return true;
         }

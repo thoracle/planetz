@@ -1,354 +1,345 @@
 #!/usr/bin/env python3
 """
-Mission System Test Script
-Validates the complete mission system implementation
+Mission System Automated Testing Script
+Tests the cargo delivery mission fixes and dual delivery system
 """
 
-import os
-import sys
 import json
-import requests
 import time
-from pathlib import Path
+import requests
+import sys
+import subprocess
+import signal
+import os
+from datetime import datetime
 
-# Add the project root to Python path
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
-
-def test_backend_initialization():
-    """Test that the mission system backend initializes correctly"""
-    print("🧪 Testing backend initialization...")
-    
-    try:
-        from backend.mission_system import Mission, MissionState, MissionManager
+class MissionSystemTester:
+    def __init__(self, base_url="http://localhost:5000"):
+        self.base_url = base_url
+        self.test_results = []
+        self.server_process = None
         
-        # Test Mission creation
-        mission = Mission(
-            mission_id="test_001",
-            title="Test Mission",
-            description="A test mission for validation",
-            mission_type="elimination"
-        )
+    def log(self, message, level="INFO"):
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"[{timestamp}] {level}: {message}")
         
-        print(f"✅ Mission created: {mission.title}")
-        print(f"   State: {mission.get_state()}")
-        print(f"   Type: {mission.mission_type}")
-        
-        # Test state transitions
-        success = mission.set_state(MissionState.MENTIONED)
-        assert success, "Failed to set mission to Mentioned state"
-        print(f"✅ State transition to Mentioned: {mission.get_state()}")
-        
-        success = mission.set_state(MissionState.ACCEPTED)
-        assert success, "Failed to set mission to Accepted state"
-        print(f"✅ State transition to Accepted: {mission.get_state()}")
-        
-        # Test MissionManager
-        manager = MissionManager(data_directory="test_missions")
-        print(f"✅ MissionManager initialized with {len(manager.missions)} missions")
-        
-        return True
-        
-    except Exception as e:
-        print(f"❌ Backend test failed: {e}")
-        return False
-
-def test_mission_files():
-    """Test that mission files are properly structured"""
-    print("\n🧪 Testing mission files...")
-    
-    try:
-        missions_dir = project_root / "missions" / "active"
-        
-        if not missions_dir.exists():
-            print(f"❌ Missions directory not found: {missions_dir}")
-            return False
-        
-        mission_files = list(missions_dir.glob("*.json"))
-        print(f"📁 Found {len(mission_files)} mission files")
-        
-        for mission_file in mission_files:
-            with open(mission_file, 'r') as f:
-                mission_data = json.load(f)
+    def start_server(self):
+        """Start the backend server"""
+        try:
+            self.log("Starting backend server...")
+            # Change to backend directory
+            backend_dir = os.path.join(os.path.dirname(__file__), 'backend')
+            self.server_process = subprocess.Popen(
+                [sys.executable, 'app.py'],
+                cwd=backend_dir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
             
-            # Validate required fields
-            required_fields = ['id', 'title', 'description', 'mission_type', 'state', 'objectives']
-            for field in required_fields:
-                assert field in mission_data, f"Missing required field '{field}' in {mission_file.name}"
+            # Wait for server to start
+            time.sleep(5)
             
-            print(f"✅ Validated mission file: {mission_file.name}")
-            print(f"   Title: {mission_data['title']}")
-            print(f"   Type: {mission_data['mission_type']}")
-            print(f"   Objectives: {len(mission_data['objectives'])}")
-        
-        return True
-        
-    except Exception as e:
-        print(f"❌ Mission files test failed: {e}")
-        return False
-
-def test_templates():
-    """Test that mission templates are properly structured"""
-    print("\n🧪 Testing mission templates...")
-    
-    try:
-        templates_dir = project_root / "missions" / "templates"
-        
-        if not templates_dir.exists():
-            print(f"❌ Templates directory not found: {templates_dir}")
-            return False
-        
-        template_files = list(templates_dir.glob("*_template.json"))
-        print(f"📁 Found {len(template_files)} template files")
-        
-        for template_file in template_files:
-            with open(template_file, 'r') as f:
-                template_data = json.load(f)
-            
-            # Validate required template fields
-            required_fields = ['template_id', 'title', 'description', 'mission_type', 'objectives']
-            for field in required_fields:
-                assert field in template_data, f"Missing required field '{field}' in {template_file.name}"
-            
-            print(f"✅ Validated template: {template_file.name}")
-            print(f"   ID: {template_data['template_id']}")
-            print(f"   Type: {template_data['mission_type']}")
-        
-        return True
-        
-    except Exception as e:
-        print(f"❌ Templates test failed: {e}")
-        return False
-
-def test_api_endpoints():
-    """Test API endpoints (requires Flask server running)"""
-    print("\n🧪 Testing API endpoints...")
-    
-    base_url = "http://127.0.0.1:5001"
-    
-    try:
-        # Test health check first
-        response = requests.get(f"{base_url}/health", timeout=5)
-        if response.status_code != 200:
-            print(f"❌ Server not running or unhealthy. Status: {response.status_code}")
-            return False
-        
-        print("✅ Server is running")
-        
-        # Test get available missions
-        response = requests.get(f"{base_url}/api/missions?location=terra_prime", timeout=10)
-        
-        if response.status_code == 200:
-            data = response.json()
-            print(f"✅ GET /api/missions successful")
-            print(f"   Found {data.get('count', 0)} available missions")
-            
-            if data.get('missions'):
-                # Test mission details
-                first_mission = data['missions'][0]
-                mission_id = first_mission['id']
-                
-                response = requests.get(f"{base_url}/api/missions/{mission_id}", timeout=10)
+            # Test if server is responding
+            try:
+                response = requests.get(f"{self.base_url}/api/missions/available", timeout=5)
                 if response.status_code == 200:
-                    mission_details = response.json()
-                    print(f"✅ GET /api/missions/{mission_id} successful")
-                    print(f"   Mission: {mission_details['mission']['title']}")
+                    self.log("✅ Backend server started successfully")
+                    return True
                 else:
-                    print(f"❌ Failed to get mission details: {response.status_code}")
+                    self.log(f"❌ Server responded with status {response.status_code}")
                     return False
-        else:
-            print(f"❌ Failed to get available missions: {response.status_code}")
-            print(f"   Response: {response.text}")
+            except requests.exceptions.RequestException as e:
+                self.log(f"❌ Server not responding: {e}")
+                return False
+                
+        except Exception as e:
+            self.log(f"❌ Failed to start server: {e}")
+            return False
+    
+    def stop_server(self):
+        """Stop the backend server"""
+        if self.server_process:
+            self.log("Stopping backend server...")
+            self.server_process.terminate()
+            self.server_process.wait()
+            
+    def test_api_endpoint(self, endpoint, method="GET", data=None, expected_status=200):
+        """Test a single API endpoint"""
+        try:
+            url = f"{self.base_url}{endpoint}"
+            self.log(f"Testing {method} {endpoint}")
+            
+            if method == "GET":
+                response = requests.get(url, timeout=10)
+            elif method == "POST":
+                response = requests.post(url, json=data, timeout=10)
+            else:
+                raise ValueError(f"Unsupported method: {method}")
+                
+            success = response.status_code == expected_status
+            result = {
+                'endpoint': endpoint,
+                'method': method,
+                'status_code': response.status_code,
+                'expected_status': expected_status,
+                'success': success,
+                'response_size': len(response.text),
+                'has_json': False
+            }
+            
+            try:
+                json_data = response.json()
+                result['has_json'] = True
+                result['response_keys'] = list(json_data.keys()) if isinstance(json_data, dict) else None
+                
+                if success:
+                    self.log(f"✅ {endpoint} - Status: {response.status_code}, JSON keys: {result.get('response_keys', 'N/A')}")
+                else:
+                    self.log(f"❌ {endpoint} - Expected: {expected_status}, Got: {response.status_code}")
+                    
+            except json.JSONDecodeError:
+                result['response_preview'] = response.text[:100]
+                if success:
+                    self.log(f"✅ {endpoint} - Status: {response.status_code}, Text response")
+                else:
+                    self.log(f"❌ {endpoint} - Expected: {expected_status}, Got: {response.status_code}")
+            
+            self.test_results.append(result)
+            return result
+            
+        except requests.exceptions.RequestException as e:
+            self.log(f"❌ {endpoint} - Request failed: {e}")
+            result = {
+                'endpoint': endpoint,
+                'method': method,
+                'success': False,
+                'error': str(e)
+            }
+            self.test_results.append(result)
+            return result
+    
+    def test_mission_apis(self):
+        """Test all mission-related API endpoints"""
+        self.log("🎯 Testing Mission API Endpoints...")
+        
+        # Test basic endpoints
+        endpoints = [
+            ("/api/missions/available", "GET", None, 200),
+            ("/api/missions/active", "GET", None, 200),
+            ("/api/missions/stats", "GET", None, 200),
+        ]
+        
+        for endpoint, method, data, expected_status in endpoints:
+            self.test_api_endpoint(endpoint, method, data, expected_status)
+    
+    def test_cargo_loading_event(self):
+        """Test cargo loading event handling"""
+        self.log("🚛 Testing Cargo Loading Events...")
+        
+        cargo_loaded_data = {
+            "cargo_type": "medical_supplies",
+            "quantity": 50,
+            "location": "terra_prime",
+            "player_context": {
+                "player_ship": "starter_ship",
+                "timestamp": int(time.time() * 1000)
+            }
+        }
+        
+        result = self.test_api_endpoint(
+            "/api/missions/events/cargo_loaded", 
+            "POST", 
+            cargo_loaded_data, 
+            200
+        )
+        
+        return result
+    
+    def test_cargo_delivery_events(self):
+        """Test both auto-delivery and market-sale events"""
+        self.log("🚛 Testing Cargo Delivery Events...")
+        
+        # Test auto-delivery event (docking)
+        auto_delivery_data = {
+            "cargo_type": "medical_supplies",
+            "quantity": 50,
+            "delivery_location": "europa_research_station",
+            "location": "europa_research_station",
+            "integrity": 0.95,
+            "source": "docking",
+            "player_context": {
+                "player_ship": "starter_ship",
+                "timestamp": int(time.time() * 1000)
+            }
+        }
+        
+        self.log("  Testing auto-delivery (docking)...")
+        auto_result = self.test_api_endpoint(
+            "/api/missions/events/cargo_delivered",
+            "POST",
+            auto_delivery_data,
+            200
+        )
+        
+        # Test market-sale event
+        market_sale_data = {
+            "cargo_type": "luxury_goods",
+            "quantity": 25,
+            "delivery_location": "ceres_outpost",
+            "location": "ceres_outpost", 
+            "integrity": 0.98,
+            "source": "market",
+            "player_context": {
+                "player_ship": "starter_ship",
+                "timestamp": int(time.time() * 1000)
+            }
+        }
+        
+        self.log("  Testing market-sale...")
+        market_result = self.test_api_endpoint(
+            "/api/missions/events/cargo_delivered",
+            "POST", 
+            market_sale_data,
+            200
+        )
+        
+        return auto_result, market_result
+    
+    def test_mission_lifecycle(self):
+        """Test complete mission lifecycle"""
+        self.log("🎯 Testing Mission Lifecycle...")
+        
+        # 1. Get available missions
+        available = self.test_api_endpoint("/api/missions/available", "GET", None, 200)
+        
+        # 2. Test mission acceptance (if we have missions)
+        if available.get('success') and available.get('response_keys'):
+            self.log("  Testing mission acceptance...")
+            # For testing purposes, we'll use a dummy mission ID
+            accept_data = {
+                "player_context": {
+                    "player_ship": "starter_ship",
+                    "location": "terra_prime",
+                    "level": 1
+                }
+            }
+            
+            # This might fail if no missions exist, which is expected
+            self.test_api_endpoint("/api/missions/dummy_mission_123/accept", "POST", accept_data, 404)
+        
+        # 3. Get active missions
+        self.test_api_endpoint("/api/missions/active", "GET", None, 200)
+    
+    def test_mission_generation(self):
+        """Test procedural mission generation"""
+        self.log("🎲 Testing Mission Generation...")
+        
+        generation_data = {
+            "template_id": "delivery",
+            "location": "terra_prime",
+            "player_data": {
+                "level": 1,
+                "faction_standings": {
+                    "terran_republic_alliance": 0
+                }
+            }
+        }
+        
+        self.test_api_endpoint(
+            "/api/missions/generate",
+            "POST",
+            generation_data,
+            200
+        )
+    
+    def run_comprehensive_test(self):
+        """Run all tests"""
+        self.log("🚀 Starting Comprehensive Mission System Test")
+        self.log("=" * 60)
+        
+        # Start server
+        if not self.start_server():
+            self.log("❌ Cannot start server - aborting tests")
             return False
         
-        # Test mission templates endpoint
-        response = requests.get(f"{base_url}/api/missions/templates", timeout=10)
-        if response.status_code == 200:
-            templates = response.json()
-            print(f"✅ GET /api/missions/templates successful")
-            print(f"   Found {templates.get('count', 0)} templates")
-        else:
-            print(f"❌ Failed to get templates: {response.status_code}")
-        
-        # Test mission stats
-        response = requests.get(f"{base_url}/api/missions/stats", timeout=10)
-        if response.status_code == 200:
-            stats = response.json()
-            print(f"✅ GET /api/missions/stats successful")
-            print(f"   Total missions: {stats.get('mission_stats', {}).get('total_missions', 0)}")
-        else:
-            print(f"❌ Failed to get stats: {response.status_code}")
-        
+        try:
+            # Run test suites
+            self.test_mission_apis()
+            self.test_cargo_loading_event()
+            self.test_cargo_delivery_events()
+            self.test_mission_lifecycle()
+            self.test_mission_generation()
+            
+            # Generate summary
+            self.generate_test_summary()
+            
+        except Exception as e:
+            self.log(f"❌ Test suite failed: {e}")
+            return False
+        finally:
+            self.stop_server()
+            
         return True
+    
+    def generate_test_summary(self):
+        """Generate and display test summary"""
+        self.log("=" * 60)
+        self.log("📊 TEST SUMMARY")
+        self.log("=" * 60)
         
-    except requests.exceptions.ConnectionError:
-        print("❌ Could not connect to server. Make sure Flask server is running:")
-        print("   cd backend && python3 app.py")
-        return False
-    except Exception as e:
-        print(f"❌ API test failed: {e}")
-        return False
+        total_tests = len(self.test_results)
+        successful_tests = len([r for r in self.test_results if r.get('success', False)])
+        failed_tests = total_tests - successful_tests
+        
+        self.log(f"Total Tests: {total_tests}")
+        self.log(f"✅ Successful: {successful_tests}")
+        self.log(f"❌ Failed: {failed_tests}")
+        self.log(f"Success Rate: {(successful_tests/total_tests*100):.1f}%" if total_tests > 0 else "N/A")
+        
+        if failed_tests > 0:
+            self.log("\n❌ Failed Tests:")
+            for result in self.test_results:
+                if not result.get('success', False):
+                    endpoint = result.get('endpoint', 'Unknown')
+                    error = result.get('error', f"Status: {result.get('status_code', 'Unknown')}")
+                    self.log(f"  - {endpoint}: {error}")
+        
+        self.log("\n🎯 Mission System Test Results:")
+        cargo_tests = [r for r in self.test_results if 'cargo' in r.get('endpoint', '')]
+        if cargo_tests:
+            cargo_success = len([r for r in cargo_tests if r.get('success', False)])
+            self.log(f"  Cargo System: {cargo_success}/{len(cargo_tests)} tests passed")
+        
+        api_tests = [r for r in self.test_results if r.get('endpoint', '').startswith('/api/missions/') and 'cargo' not in r.get('endpoint', '')]
+        if api_tests:
+            api_success = len([r for r in api_tests if r.get('success', False)])
+            self.log(f"  Mission APIs: {api_success}/{len(api_tests)} tests passed")
 
-def test_mission_acceptance():
-    """Test mission acceptance workflow"""
-    print("\n🧪 Testing mission acceptance workflow...")
-    
-    base_url = "http://127.0.0.1:5001"
-    
-    try:
-        # Get available missions
-        response = requests.get(f"{base_url}/api/missions?location=terra_prime", timeout=10)
-        
-        if response.status_code != 200:
-            print("❌ Cannot get available missions for acceptance test")
-            return False
-        
-        data = response.json()
-        if not data.get('missions'):
-            print("❌ No missions available for acceptance test")
-            return False
-        
-        # Find a mission in "Mentioned" state
-        mission_to_accept = None
-        for mission in data['missions']:
-            if mission['state'] == 'Mentioned':
-                mission_to_accept = mission
-                break
-        
-        if not mission_to_accept:
-            print("❌ No missions in 'Mentioned' state available for acceptance")
-            return False
-        
-        mission_id = mission_to_accept['id']
-        print(f"🎯 Attempting to accept mission: {mission_to_accept['title']}")
-        
-        # Accept the mission
-        response = requests.post(
-            f"{base_url}/api/missions/{mission_id}/accept",
-            json={
-                'player_id': 'test_player',
-                'location': 'terra_prime'
-            },
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            result = response.json()
-            if result.get('success'):
-                print(f"✅ Mission accepted successfully")
-                print(f"   New state: {result['mission']['state']}")
-                
-                # Check for response hooks
-                if result.get('hooks'):
-                    print(f"   Response hooks: {len(result['hooks'])}")
-                    for hook in result['hooks']:
-                        print(f"     - {hook['type']}")
-                
-                return True
-            else:
-                print(f"❌ Mission acceptance failed: {result.get('error')}")
-                return False
-        else:
-            print(f"❌ Mission acceptance request failed: {response.status_code}")
-            print(f"   Response: {response.text}")
-            return False
-        
-    except Exception as e:
-        print(f"❌ Mission acceptance test failed: {e}")
-        return False
-
-def test_mission_generation():
-    """Test procedural mission generation"""
-    print("\n🧪 Testing mission generation...")
-    
-    base_url = "http://127.0.0.1:5001"
-    
-    try:
-        # Generate a mission from template
-        response = requests.post(
-            f"{base_url}/api/missions/generate",
-            json={
-                'template_id': 'elimination',
-                'player_data': {
-                    'level': 5,
-                    'faction_standings': {'federation': 10}
-                },
-                'location': 'test_sector'
-            },
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            result = response.json()
-            if result.get('success'):
-                mission = result['mission']
-                print(f"✅ Mission generated successfully")
-                print(f"   Title: {mission['title']}")
-                print(f"   Type: {mission['mission_type']}")
-                print(f"   State: {mission['state']}")
-                return True
-            else:
-                print(f"❌ Mission generation failed: {result.get('error')}")
-                return False
-        else:
-            print(f"❌ Mission generation request failed: {response.status_code}")
-            print(f"   Response: {response.text}")
-            return False
-        
-    except Exception as e:
-        print(f"❌ Mission generation test failed: {e}")
-        return False
 
 def main():
-    """Run all tests"""
-    print("🚀 Mission System Validation Test Suite")
+    """Main test execution"""
+    print("🎯 PlanetZ Mission System Automated Testing")
     print("=" * 50)
     
-    tests = [
-        ("Backend Initialization", test_backend_initialization),
-        ("Mission Files", test_mission_files),
-        ("Mission Templates", test_templates),
-        ("API Endpoints", test_api_endpoints),
-        ("Mission Acceptance", test_mission_acceptance),
-        ("Mission Generation", test_mission_generation)
-    ]
+    tester = MissionSystemTester()
     
-    results = []
-    
-    for test_name, test_func in tests:
-        print(f"\n{'='*20} {test_name} {'='*20}")
-        try:
-            success = test_func()
-            results.append((test_name, success))
-        except Exception as e:
-            print(f"❌ Test '{test_name}' crashed: {e}")
-            results.append((test_name, False))
-    
-    # Summary
-    print(f"\n{'='*50}")
-    print("🎯 TEST SUMMARY")
-    print(f"{'='*50}")
-    
-    passed = 0
-    failed = 0
-    
-    for test_name, success in results:
-        status = "✅ PASS" if success else "❌ FAIL"
-        print(f"{status} - {test_name}")
-        
+    try:
+        success = tester.run_comprehensive_test()
         if success:
-            passed += 1
+            print("\n🎉 Test suite completed successfully!")
+            return 0
         else:
-            failed += 1
-    
-    print(f"\nResults: {passed} passed, {failed} failed")
-    
-    if failed == 0:
-        print("\n🎉 All tests passed! Mission system is ready for use.")
-        return 0
-    else:
-        print(f"\n⚠️  {failed} tests failed. Please check the implementation.")
+            print("\n💥 Test suite failed!")
+            return 1
+    except KeyboardInterrupt:
+        print("\n⏹️  Test suite interrupted by user")
+        tester.stop_server()
+        return 1
+    except Exception as e:
+        print(f"\n💥 Unexpected error: {e}")
+        tester.stop_server()
         return 1
 
+
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())

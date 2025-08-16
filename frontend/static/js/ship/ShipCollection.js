@@ -12,6 +12,7 @@
 import Ship from './Ship.js';
 import CardInventory from './CardInventory.js';
 import { CARD_TYPES } from './NFTCard.js';
+import { playerCredits } from '../utils/PlayerCredits.js';
 
 // Ship class definitions with base stats and slot configurations
 export const SHIP_CLASSES = {
@@ -92,8 +93,8 @@ export default class ShipCollection {
         // Ship counter for unique IDs
         this.shipIdCounter = 1;
         
-        // Player credits for purchasing ships
-        this.credits = 100000; // Starting credits
+        // Use unified credits system
+        // this.credits = 100000; // Removed - using unified system
         
         // Initialize with a basic scout ship
         this.addShip(SHIP_CLASSES.SCOUT, 'USS Pioneer');
@@ -151,15 +152,21 @@ export default class ShipCollection {
             };
         }
 
-        if (this.credits < shipClass.cost) {
+        if (!playerCredits.canAfford(shipClass.cost)) {
             return {
                 success: false,
-                error: `Insufficient credits. Need ${shipClass.cost}, have ${this.credits}`
+                error: `Insufficient credits. Need ${shipClass.cost}, have ${playerCredits.getCredits()}`
             };
         }
 
-        // Deduct credits
-        this.credits -= shipClass.cost;
+        // Deduct credits using unified system
+        const creditsSpent = playerCredits.spendCredits(shipClass.cost, `Purchase ship: ${shipClass.name}`);
+        if (!creditsSpent) {
+            return {
+                success: false,
+                error: 'Failed to process credit transaction'
+            };
+        }
         
         // Add ship to collection
         const result = this.addShip(shipClass, customName);
@@ -167,7 +174,7 @@ export default class ShipCollection {
         return {
             ...result,
             creditsSpent: shipClass.cost,
-            remainingCredits: this.credits
+            remainingCredits: playerCredits.getCredits()
         };
     }
 
@@ -442,7 +449,7 @@ export default class ShipCollection {
             ships: Array.from(this.ships.entries()),
             activeShipId: this.activeShipId,
             shipIdCounter: this.shipIdCounter,
-            credits: this.credits
+            credits: playerCredits.getCredits() // Get current credits from unified system
         };
     }
 
@@ -464,7 +471,8 @@ export default class ShipCollection {
         }
         
         if (data.credits !== undefined) {
-            this.credits = data.credits;
+            // Set unified credits from saved data
+            playerCredits.setCredits(data.credits);
         }
     }
 
@@ -475,7 +483,9 @@ export default class ShipCollection {
         this.ships.clear();
         this.activeShipId = null;
         this.shipIdCounter = 1;
-        this.credits = 100000;
+        
+        // Reset unified credits system
+        playerCredits.reset();
         
         // Add default scout ship
         this.addShip(SHIP_CLASSES.SCOUT, 'USS Pioneer');

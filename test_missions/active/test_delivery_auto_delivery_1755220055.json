@@ -1,0 +1,52 @@
+{
+  "id": "test_delivery_auto_delivery_1755220055",
+  "title": "Test Auto Delivery Mission",
+  "description": "Test delivery mission with auto_delivery completion",
+  "mission_type": "delivery",
+  "location": "terra_prime",
+  "faction": "terran_republic_alliance",
+  "reward_package_id": 1,
+  "client": "Mission Control",
+  "state": "Accepted",
+  "is_botched": false,
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Load 50 units of medical_supplies",
+      "is_achieved": false,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 0.0,
+      "achieved_at": null
+    },
+    {
+      "id": "2",
+      "description": "Deliver cargo to europa_research_station",
+      "is_achieved": false,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 0.0,
+      "achieved_at": null
+    }
+  ],
+  "created_at": "2025-08-15T01:07:35.026542+00:00",
+  "updated_at": "2025-08-15T01:07:35.026546+00:00",
+  "custom_fields": {
+    "cargo_type": "medical_supplies",
+    "cargo_amount": 50,
+    "destination": "europa_research_station",
+    "pickup_location": "terra_prime",
+    "delivery_type": "auto_delivery",
+    "min_integrity": 90
+  },
+  "triggers": {},
+  "progress": {
+    "state": "Accepted",
+    "is_botched": false,
+    "total_objectives": 2,
+    "achieved_objectives": 0,
+    "required_objectives": 2,
+    "achieved_required": 0,
+    "completion_percentage": 0.0
+  }
+}

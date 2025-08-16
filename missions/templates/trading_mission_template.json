@@ -1,0 +1,71 @@
+{
+  "template_id": "trading_mission",
+  "title": "Commodity Trading Contract",
+  "description": "Buy and sell goods at designated markets for profit",
+  "mission_type": "delivery",
+  "faction": "free_traders_guild",
+  "reward_package_id": 3,
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Load {cargo_amount} units of {cargo_type}",
+      "is_optional": false,
+      "is_ordered": true
+    },
+    {
+      "id": "2", 
+      "description": "Sell cargo at {destination} market",
+      "is_optional": false,
+      "is_ordered": true
+    },
+    {
+      "id": "3",
+      "description": "Maintain cargo value above {min_value}%",
+      "is_optional": true,
+      "is_ordered": false
+    }
+  ],
+  "custom_fields": {
+    "cargo_type": "luxury_goods",
+    "cargo_amount": 25,
+    "destination": "europa_research_station",
+    "pickup_location": "terra_prime",
+    "delivery_type": "market_sale",
+    "min_value": 95,
+    "time_limit": 7200,
+    "trading_bonus": 1200,
+    "market_bonus": 300
+  },
+  "triggers": {
+    "on_accept": "notify_trading_coordinator",
+    "on_cargo_loaded": "begin_trading_mission",
+    "on_cargo_sold": "verify_market_completion",
+    "on_complete": "award_trading_bonus"
+  },
+  "location_variants": {
+    "terra_prime": {
+      "title": "Luxury Goods Trade",
+      "description": "High-value luxury items for Europa Station market",
+      "custom_fields": {
+        "cargo_type": "luxury_goods",
+        "destination": "europa_research_station",
+        "delivery_type": "market_sale",
+        "time_limit": 3600,
+        "trading_bonus": 1500,
+        "urgency_level": "medium"
+      }
+    },
+    "europa_station": {
+      "title": "Industrial Equipment Sale",
+      "description": "Sell industrial equipment at Ceres market",
+      "custom_fields": {
+        "cargo_type": "industrial_equipment",
+        "cargo_amount": 50,
+        "destination": "ceres_outpost",
+        "delivery_type": "market_sale",
+        "trading_bonus": 800,
+        "urgency_level": "low"
+      }
+    }
+  }
+}

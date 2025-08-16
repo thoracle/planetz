@@ -5,6 +5,7 @@
  */
 
 import { MissionAPIService } from '../services/MissionAPIService.js';
+import { playerCredits } from '../utils/PlayerCredits.js';
 
 export class MissionBoard {
     constructor(starfieldManager) {
@@ -15,6 +16,7 @@ export class MissionBoard {
         this.availableMissions = [];
         this.acceptedMissions = [];
         this.selectedMission = null;
+        this.activeTab = 'available'; // new
         
         // Initialize Mission API Service
         this.missionAPI = new MissionAPIService();
@@ -34,12 +36,24 @@ export class MissionBoard {
                 traders_guild: 0,
                 scientists_consortium: 0
             },
-            credits: 50000,
+            credits: playerCredits.getCredits(),
             ship_type: 'starter_ship'
         };
         
         this.createMissionBoardUI();
         this.loadAvailableMissions();
+        // also load active missions for the new tab
+        if (typeof this.loadActiveMissions === 'function') {
+            this.loadActiveMissions();
+        }
+    }
+
+    // Helper: determine if objective is completed (matches M-key HUD logic)
+    isObjectiveCompleted(obj) {
+        const achievedFlag = obj && (obj.is_achieved === true);
+        const completedStatus = obj && (obj.status === 'COMPLETED');
+        const fullProgress = obj && (typeof obj.progress === 'number' && obj.progress >= 1);
+        return Boolean(achievedFlag || completedStatus || fullProgress);
     }
     
     createMissionBoardUI() {
@@ -92,6 +106,8 @@ export class MissionBoard {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: relative;
+            z-index: 1;
         `;
         
         // Title
@@ -119,6 +135,33 @@ export class MissionBoard {
         this.header.appendChild(title);
         this.header.appendChild(locationInfo);
         this.container.appendChild(this.header);
+        
+        // Tabs under header to avoid overlapping the separator text
+        const tabs = document.createElement('div');
+        tabs.className = 'mission-board-tabs';
+        tabs.style.cssText = `
+            display: flex;
+            gap: 10px;
+            margin: -10px 0 15px 0;
+            border-bottom: 1px solid #00ff41;
+            padding-bottom: 8px;
+        `;
+        
+        this.availableTabBtn = document.createElement('button');
+        this.availableTabBtn.textContent = 'Available';
+        this.availableTabBtn.className = 'mission-board-btn';
+        this.availableTabBtn.style.cssText += 'padding: 8px 12px;';
+        this.availableTabBtn.addEventListener('click', () => { this.playCommandSound(); this.switchTab('available'); });
+        
+        this.activeTabBtn = document.createElement('button');
+        this.activeTabBtn.textContent = 'Active';
+        this.activeTabBtn.className = 'mission-board-btn';
+        this.activeTabBtn.style.cssText += 'padding: 8px 12px;';
+        this.activeTabBtn.addEventListener('click', () => { this.playCommandSound(); this.switchTab('active'); });
+        
+        tabs.appendChild(this.availableTabBtn);
+        tabs.appendChild(this.activeTabBtn);
+        this.container.appendChild(tabs);
     }
     
     createContentArea() {
@@ -131,10 +174,12 @@ export class MissionBoard {
             overflow: hidden;
         `;
         
-        // Create mission list panel
+        // Available missions panel
         this.createMissionListPanel();
+        // Active missions panel
+        this.createActiveListPanel();
         
-        // Create mission details panel
+        // Details panel
         this.createMissionDetailsPanel();
         
         this.container.appendChild(this.contentArea);
@@ -166,6 +211,39 @@ export class MissionBoard {
         
         this.listPanel.appendChild(this.missionList);
         this.contentArea.appendChild(this.listPanel);
+    }
+    
+    createActiveListPanel() {
+        this.activePanel = document.createElement('div');
+        this.activePanel.className = 'active-list-panel';
+        this.activePanel.style.cssText = `
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            border: 1px solid #00ff41;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+        `;
+        
+        const label = document.createElement('div');
+        label.textContent = 'Active Missions';
+        label.style.cssText = `
+            font-size: 16px;
+            color: #00ff41;
+            border-bottom: 1px solid #00ff41;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        `;
+        this.activePanel.appendChild(label);
+        
+        this.activeMissionList = document.createElement('div');
+        this.activeMissionList.className = 'active-mission-list';
+        this.activeMissionList.style.cssText = `
+            flex: 1;
+            overflow-y: auto;
+        `;
+        this.activePanel.appendChild(this.activeMissionList);
+        this.contentArea.appendChild(this.activePanel);
     }
     
     createFilters() {
@@ -291,9 +369,13 @@ export class MissionBoard {
         const statusInfo = document.createElement('div');
         statusInfo.className = 'status-info';
         statusInfo.innerHTML = `
-            <div>Credits: <span class="player-credits">${this.playerData.credits.toLocaleString()}</span></div>
+            <div>Credits: <span class="player-credits">${playerCredits.getFormattedCredits()}</span></div>
             <div>Active Missions: <span class="active-mission-count">0</span></div>
         `;
+        
+        // Register credits display for automatic updates
+        const creditsSpan = statusInfo.querySelector('.player-credits');
+        playerCredits.registerDisplay(creditsSpan);
         
         // Action buttons
         const buttonContainer = document.createElement('div');
@@ -323,7 +405,10 @@ export class MissionBoard {
         const button = document.createElement('button');
         button.textContent = text;
         button.className = 'mission-board-btn';
-        button.addEventListener('click', onClick);
+        button.addEventListener('click', (e) => {
+            this.playCommandSound();
+            if (typeof onClick === 'function') onClick(e);
+        });
         return button;
     }
     
@@ -423,7 +508,6 @@ export class MissionBoard {
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div style="flex: 1;">
                     <h4 style="margin: 0 0 5px 0; color: ${typeColor};">${mission.title}</h4>
-                    <p style="margin: 0 0 10px 0; font-size: 14px; color: #ccc;">${mission.description}</p>
                     <div style="display: flex; gap: 15px; font-size: 12px;">
                         <span>Type: ${mission.mission_type}</span>
                         <span>Faction: ${mission.faction}</span>
@@ -483,6 +567,27 @@ export class MissionBoard {
     }
     
     displayMissionDetails(mission) {
+        // Build objectives list with checkmarks like M-key HUD
+        let objectivesHTML = '';
+        if (Array.isArray(mission.objectives) && mission.objectives.length > 0) {
+            const rows = mission.objectives.map((obj) => {
+                const done = this.isObjectiveCompleted(obj);
+                const mark = done ? '✔' : '○';
+                const markColor = done ? '#00ff41' : '#666';
+                return `
+                    <div style="padding: 8px; margin-bottom: 5px; background: rgba(0, 0, 0, 0.3); border-left: 3px solid ${obj.is_optional ? '#ffff44' : '#00ff41'}; display:flex; gap:8px; align-items:flex-start;">
+                        <span style="color:${markColor}; min-width:16px;">${mark}</span>
+                        <div style="flex:1;">
+                            <div style="font-weight: bold;">${obj.description}</div>
+                            <div style="font-size: 12px; color: #ccc;">
+                                ${obj.is_optional ? 'Optional' : 'Required'} ${obj.is_ordered ? '• Ordered' : ''}
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            objectivesHTML = rows.join('');
+        }
+
         this.detailsContent.innerHTML = `
             <div class="mission-details">
                 <h3 style="color: #00ff41; margin-top: 0;">${mission.title}</h3>
@@ -517,15 +622,7 @@ export class MissionBoard {
                 <div style="margin-bottom: 20px;">
                     <h4>Objectives</h4>
                     <div class="objectives-list">
-                        ${mission.objectives.map(obj => `
-                            <div style="padding: 8px; margin-bottom: 5px; background: rgba(0, 0, 0, 0.3); border-left: 3px solid ${obj.is_optional ? '#ffff44' : '#00ff41'};">
-                                <div style="font-weight: bold;">${obj.description}</div>
-                                <div style="font-size: 12px; color: #ccc;">
-                                    ${obj.is_optional ? 'Optional' : 'Required'} 
-                                    ${obj.is_ordered ? '• Ordered' : ''}
-                                </div>
-                            </div>
-                        `).join('')}
+                        ${objectivesHTML}
                     </div>
                 </div>
                 
@@ -564,6 +661,7 @@ export class MissionBoard {
                 
                 // Reload available missions
                 this.loadAvailableMissions();
+                this.loadActiveMissions(); // Reload active missions
                 
                 // Clear selection
                 this.selectedMission = null;
@@ -612,7 +710,7 @@ export class MissionBoard {
 
             // Create a clean copy of location data to avoid circular references
             const cleanLocation = this.currentLocation ? {
-                name: String(this.currentLocation.name || ''),
+                name: String(this.currentLocation.userData?.name || this.currentLocation.name || ''),
                 type: String(this.currentLocation.type || ''),
                 faction: String(this.currentLocation.faction || ''),
                 sector: String(this.currentLocation.sector || '')
@@ -646,6 +744,7 @@ export class MissionBoard {
                 console.log(`🎲 Generated mission: ${result.mission.title}`);
                 this.showSuccess(`Generated new mission: ${result.mission.title}`);
                 this.loadAvailableMissions();
+                this.loadActiveMissions(); // Reload active missions
             } else {
                 throw new Error(result.error || 'Failed to generate mission');
             }
@@ -777,7 +876,7 @@ export class MissionBoard {
         // Create clean copy of only primitive values to avoid circular references
         const cleanData = {
             level: Number(playerData.level) || this.playerData.level || 1,
-            credits: Number(playerData.credits) || this.playerData.credits || 50000,
+            credits: playerCredits.getCredits(), // Always use unified credits
             ship_type: String(playerData.ship_type) || this.playerData.ship_type || 'starter_ship',
             faction_standings: {
                 terran_republic_alliance: Number(playerData.faction_standings?.terran_republic_alliance) || this.playerData.faction_standings?.terran_republic_alliance || 0,
@@ -788,17 +887,16 @@ export class MissionBoard {
         
         this.playerData = cleanData;
         
-        // Update credits display
-        const creditsElement = this.footer.querySelector('.player-credits');
-        if (creditsElement) {
-            creditsElement.textContent = this.playerData.credits.toLocaleString();
-        }
+        // Credits display is automatically updated by PlayerCredits system
     }
     
     show() {
         this.isVisible = true;
         this.container.style.display = 'flex';
         this.loadAvailableMissions();
+        if (typeof this.loadActiveMissions === 'function') {
+            this.loadActiveMissions();
+        }
         console.log('🎯 Mission Board opened');
     }
     
@@ -893,6 +991,8 @@ export class MissionBoard {
             .objectives-list::-webkit-scrollbar-thumb:hover {
                 background: rgba(0, 255, 65, 0.8);
             }
+            .mission-board-tabs .mission-board-btn { border: 1px solid #00ff41; }
+            .mission-board-tabs .mission-board-btn.active { background: rgba(0, 255, 65, 0.2); border-color: #44ff44; }
         `;
         
         document.head.appendChild(style);
@@ -904,7 +1004,7 @@ export class MissionBoard {
     getStationTemplates(stationKey) {
         const stationTemplateMap = {
             'terra_prime': ['elimination', 'escort'],
-            'europa_station': ['exploration', 'delivery'],
+            'europa_research_station': ['exploration', 'delivery'],
             'ceres_outpost': ['delivery', 'escort'],
             'mars_base': ['elimination', 'escort'],
             'luna_port': ['delivery', 'escort'],
@@ -935,5 +1035,109 @@ export class MissionBoard {
         } catch (error) {
             console.error('❌ Failed to generate station missions:', error);
         }
+    }
+    
+    createActiveMissionItem(mission) {
+        const item = document.createElement('div');
+        item.className = 'mission-item';
+        item.style.cssText = `
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid #00ff41;
+            background: rgba(0, 255, 65, 0.08);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        `;
+
+        // Build objectives summary with checkmarks (up to 3)
+        let objectivesSummaryHTML = '';
+        if (Array.isArray(mission.objectives) && mission.objectives.length > 0) {
+            const maxShow = 3;
+            const parts = [];
+            mission.objectives.slice(0, maxShow).forEach((o) => {
+                const done = this.isObjectiveCompleted(o);
+                const mark = done ? '✔' : '○';
+                const markColor = done ? '#00ff41' : '#666';
+                parts.push(`<div><span style="color:${markColor}; margin-right:6px;">${mark}</span>${o.description}</div>`);
+            });
+            if (mission.objectives.length > maxShow) {
+                parts.push(`<div style="color:#888;">… (${mission.objectives.length - maxShow} more)</div>`);
+            }
+            objectivesSummaryHTML = `<div style="margin-top:8px; font-size:12px; color:#ccc;">${parts.join('')}</div>`;
+        }
+
+        item.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="flex: 1;">
+                    <h4 style="margin: 0 0 5px 0; color: #00ff41;">${mission.title}</h4>
+                    <div style="display: flex; gap: 15px; font-size: 12px;">
+                        <span>State: ${mission.state}</span>
+                        <span>Type: ${mission.mission_type}</span>
+                        <span>Destination: ${mission.custom_fields?.destination || mission.location}</span>
+                    </div>
+                    ${objectivesSummaryHTML}
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 12px;">${mission.objectives?.length || 0} objectives</div>
+                </div>
+            </div>
+        `;
+        item.addEventListener('click', () => this.selectMission(mission));
+        item.addEventListener('mouseenter', () => { item.style.backgroundColor = 'rgba(0, 255, 65, 0.18)'; });
+        item.addEventListener('mouseleave', () => { item.style.backgroundColor = 'rgba(0, 255, 65, 0.08)'; });
+        return item;
+    }
+    
+    updateActiveMissionList() {
+        if (!this.activeMissionList) return;
+        this.activeMissionList.innerHTML = '';
+        const missions = this.acceptedMissions || [];
+        if (missions.length === 0) {
+            this.activeMissionList.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: #666;">No active missions</div>
+            `;
+            return;
+        }
+        missions.forEach(m => this.activeMissionList.appendChild(this.createActiveMissionItem(m)));
+    }
+    
+    async loadActiveMissions() {
+        try {
+            const missions = await this.missionAPI.getActiveMissions();
+            this.acceptedMissions = Array.isArray(missions) ? missions : [];
+            this.updateActiveMissionList();
+            this.updateMissionCount();
+        } catch (e) {
+            console.error('❌ Failed to load active missions:', e);
+        }
+    }
+    
+    switchTab(tab) {
+        if (tab === this.activeTab) return;
+        this.activeTab = tab;
+        if (this.activeTab === 'available') {
+            if (this.listPanel) this.listPanel.style.display = 'flex';
+            if (this.activePanel) this.activePanel.style.display = 'none';
+        } else {
+            if (this.listPanel) this.listPanel.style.display = 'none';
+            if (this.activePanel) this.activePanel.style.display = 'flex';
+            this.loadActiveMissions?.();
+        }
+        if (this.availableTabBtn) this.availableTabBtn.classList.toggle('active', this.activeTab === 'available');
+        if (this.activeTabBtn) this.activeTabBtn.classList.toggle('active', this.activeTab === 'active');
+    }
+
+    // Play UI command click sound
+    playCommandSound() {
+        const audioManager = this.starfieldManager?.audioManager || window.starfieldAudioManager;
+        if (audioManager && typeof audioManager.playSound === 'function') {
+            audioManager.playSound('command', 0.5);
+            return;
+        }
+        try {
+            const audio = new Audio('static/audio/command.wav');
+            audio.volume = 0.5;
+            audio.play().catch(() => {});
+        } catch (_) {}
     }
 }

@@ -1,0 +1,53 @@
+{
+  "id": "demo_market_sale_001",
+  "title": "Luxury Goods Trading Contract",
+  "description": "Transport and sell luxury goods at Ceres Market",
+  "mission_type": "delivery",
+  "location": "terra_prime",
+  "faction": "free_traders_guild",
+  "reward_package_id": 1,
+  "client": "Mission Control",
+  "state": "Accepted",
+  "is_botched": false,
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Load 25 units of luxury_goods",
+      "is_achieved": true,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 1.0,
+      "achieved_at": "2025-08-15T01:09:37.648211+00:00"
+    },
+    {
+      "id": "2",
+      "description": "Sell cargo at ceres_outpost market",
+      "is_achieved": false,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 0.0,
+      "achieved_at": null
+    }
+  ],
+  "created_at": "2025-08-15T01:09:37.647845+00:00",
+  "updated_at": "2025-08-15T01:09:37.648212+00:00",
+  "custom_fields": {
+    "cargo_type": "luxury_goods",
+    "cargo_amount": 25,
+    "destination": "ceres_outpost",
+    "pickup_location": "terra_prime",
+    "delivery_type": "market_sale",
+    "min_value": 95,
+    "cargo_loaded": 25
+  },
+  "triggers": {},
+  "progress": {
+    "state": "Accepted",
+    "is_botched": false,
+    "total_objectives": 2,
+    "achieved_objectives": 1,
+    "required_objectives": 2,
+    "achieved_required": 1,
+    "completion_percentage": 50.0
+  }
+}

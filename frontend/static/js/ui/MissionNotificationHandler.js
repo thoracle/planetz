@@ -107,9 +107,12 @@ export class MissionNotificationHandler {
     onObjectiveComplete(objective, mission) {
         const settings = this.notificationSettings.objectiveComplete;
         
+        // Get contextual message based on objective type
+        const { npcName, message } = this.createObjectiveCompletionMessage(objective, mission);
+        
         this.commHUD.showMessage(
-            this.getMissionGiver(mission) || 'Mission Control',
-            `Objective completed: ${objective.description}`,
+            npcName,
+            message,
             {
                 channel: settings.channel,
                 status: settings.status,
@@ -127,9 +130,12 @@ export class MissionNotificationHandler {
     onMissionComplete(mission) {
         const settings = this.notificationSettings.missionComplete;
         
+        // Get contextual message based on mission type and destination
+        const { npcName, message } = this.createMissionCompletionMessage(mission);
+        
         this.commHUD.showMessage(
-            this.getMissionGiver(mission) || 'Mission Control',
-            `Mission complete: ${mission.title}`,
+            npcName,
+            message,
             {
                 channel: settings.channel,
                 status: settings.status,
@@ -298,6 +304,242 @@ export class MissionNotificationHandler {
         console.log(`📢 Urgent alert: ${alertText}`);
     }
     
+    /**
+     * Station NPC mapping for personalized communications
+     */
+    getStationNPCs() {
+        return {
+            // Terran Republic Alliance stations
+            'terra_prime': {
+                commander: 'Director Lisa Park',
+                title: 'Earth Orbital Command',
+                faction: 'Terran Republic Alliance'
+            },
+            'luna_station': {
+                commander: 'Admiral Sarah Chen',
+                title: 'Luna Station Command',
+                faction: 'Terran Republic Alliance'
+            },
+            'europa_station': {
+                commander: 'Ambassador Elena Rodriguez',
+                title: 'Europa Diplomatic Hub',
+                faction: 'Terran Republic Alliance'
+            },
+            'europa_research_station': {
+                commander: 'Dr. Marcus Webb',
+                title: 'Europa Research Division',
+                faction: 'Terran Republic Alliance'
+            },
+            'ceres_outpost': {
+                commander: 'Dr. Marcus Webb',
+                title: 'Ceres Research Lab',
+                faction: 'Terran Republic Alliance'
+            },
+            'mars_base': {
+                commander: 'Captain James Sullivan',
+                title: 'Mars Orbital Defense',
+                faction: 'Terran Republic Alliance'
+            },
+            'mars_orbital': {
+                commander: 'Captain James Sullivan',
+                title: 'Mars Orbital Command',
+                faction: 'Terran Republic Alliance'
+            },
+            
+            // Free Trader Consortium stations
+            'freeport_prime': {
+                commander: 'Guildmaster Korvak Steelhand',
+                title: 'Freeport Prime Trade Authority',
+                faction: 'Free Trader Consortium'
+            },
+            'merchants_paradise_station': {
+                commander: 'Trade Baron Viktor Thorne',
+                title: 'Merchant\'s Paradise Station',
+                faction: 'Free Trader Consortium'
+            },
+            
+            // Nexus Corporate Syndicate stations
+            'corporate_headquarters': {
+                commander: 'Executive Director Yuki Tanaka',
+                title: 'Nexus Corporate HQ',
+                faction: 'Nexus Corporate Syndicate'
+            },
+            'innovation_labs': {
+                commander: 'Dr. Alex Morrison',
+                title: 'Nexus Innovation Labs',
+                faction: 'Nexus Corporate Syndicate'
+            },
+            
+            // Zephyrian Collective stations
+            'crystal_haven_station': {
+                commander: 'Resonance Speaker Zyx\'thala',
+                title: 'Crystal Haven Station',
+                faction: 'Zephyrian Collective'
+            },
+            'ancient_archive': {
+                commander: 'Keeper Vel\'nara',
+                title: 'Ancient Archive',
+                faction: 'Zephyrian Collective'
+            },
+            
+            // Default fallback
+            'default': {
+                commander: 'Station Commander',
+                title: 'Station Operations',
+                faction: 'Local Authority'
+            }
+        };
+    }
+
+    /**
+     * Get appropriate NPC for a station
+     */
+    getStationNPC(stationKey) {
+        const npcs = this.getStationNPCs();
+        const normalizedKey = stationKey ? stationKey.toLowerCase().replace(/\s+/g, '_') : null;
+        return npcs[normalizedKey] || npcs['default'];
+    }
+
+    /**
+     * Create personalized objective completion message
+     */
+    createObjectiveCompletionMessage(objective, mission) {
+        const objDesc = objective.description || '';
+        
+        // Detect objective type from description
+        const lowerDesc = objDesc.toLowerCase();
+        
+        // Check for cargo loading - look for "load" and either "cargo" or "units of"
+        if (lowerDesc.includes('load') && (lowerDesc.includes('cargo') || lowerDesc.includes('units of'))) {
+            // Cargo loading objective
+            const cargoType = mission.custom_fields?.cargo_type || 'cargo';
+            const quantity = mission.custom_fields?.cargo_amount || 'specified amount of';
+            
+            // Safety check for undefined values
+            const safeCargoType = cargoType === undefined || cargoType === null ? 'cargo' : cargoType;
+            const safeQuantity = quantity === undefined || quantity === null ? 'specified amount of' : quantity;
+            
+            return {
+                npcName: 'Cargo Coordinator',
+                message: `Cargo manifest confirmed. ${safeQuantity} units of ${safeCargoType} loaded and secured for transport.`
+            };
+        } else if (lowerDesc.includes('deliver') && (lowerDesc.includes('cargo') || mission.mission_type === 'delivery')) {
+            // Cargo delivery objective - get destination NPC
+            const destination = mission.custom_fields?.destination;
+            const stationNPC = this.getStationNPC(destination);
+            const cargoType = mission.custom_fields?.cargo_type || 'cargo';
+            
+            // Safety checks for undefined values
+            const safeCargoType = cargoType === undefined || cargoType === null ? 'cargo' : cargoType;
+            const safeNPCName = stationNPC?.commander || 'Station Commander';
+            
+            return {
+                npcName: safeNPCName,
+                message: `Delivery confirmed. ${safeCargoType} received and accounted for. Thank you for your service.`
+            };
+        } else if (objDesc.toLowerCase().includes('eliminate') || objDesc.toLowerCase().includes('destroy')) {
+            // Combat objective
+            return {
+                npcName: 'Tactical Command',
+                message: `Target eliminated. Excellent work, pilot. Return to base for debrief.`
+            };
+        } else if (objDesc.toLowerCase().includes('escort') || objDesc.toLowerCase().includes('protect')) {
+            // Escort objective
+            return {
+                npcName: 'Fleet Command',
+                message: `Escort objective complete. All assets secure. Well done, commander.`
+            };
+        }
+        
+        // Fallback for unknown objective types
+        return {
+            npcName: this.getMissionGiver(mission) || 'Mission Control',
+            message: `Objective completed: ${objDesc}`
+        };
+    }
+
+    /**
+     * Create personalized mission completion message
+     */
+    createMissionCompletionMessage(mission) {
+        const missionType = mission.mission_type || '';
+        const title = mission.title || 'Unknown Mission';
+        
+        if (missionType === 'delivery') {
+            // Delivery mission completion
+            const destination = mission.custom_fields?.destination;
+            const stationNPC = this.getStationNPC(destination);
+            const cargoType = mission.custom_fields?.cargo_type || 'cargo';
+            const deliveryType = mission.custom_fields?.delivery_type || 'auto_delivery';
+            
+            // Safety checks for undefined values
+            const safeCargoType = cargoType === undefined || cargoType === null ? 'cargo' : cargoType;
+            
+            // Create faction-appropriate response
+            const messages = {
+                'terran_republic_alliance': [
+                    `Outstanding work, pilot. The ${safeCargoType} delivery has significantly aided our operations.`,
+                    `Mission accomplished. Your efficiency in this delivery operation reflects well on Alliance standards.`,
+                    `Excellent execution. The timely delivery of ${safeCargoType} will save lives. Alliance Command commends you.`
+                ],
+                'free_trader_consortium': [
+                    `Profit margins achieved! Your delivery was on time and in perfect condition. The Guild is pleased.`,
+                    `Business concluded successfully. Your reputation as a reliable trader continues to grow.`,
+                    `Cargo delivered, credits transferred. You've proven yourself a valuable trading partner.`
+                ],
+                'nexus_corporate_syndicate': [
+                    `Delivery parameters met within acceptable tolerances. Performance metrics updated accordingly.`,
+                    `Corporate objectives achieved. Your contract completion rate remains optimal.`,
+                    `Logistics successful. The corporation values efficient contractors like yourself.`
+                ],
+                'default': [
+                    `Mission complete. The station appreciates your reliable service.`,
+                    `Delivery successful. Thank you for your professional service.`,
+                    `Cargo received in good condition. Mission parameters satisfied.`
+                ]
+            };
+            
+            // Safety checks for station NPC data
+            const safeFaction = stationNPC?.faction || 'terran_republic_alliance';
+            const safeNPCName = stationNPC?.commander || 'Station Commander';
+            
+            const factionMessages = messages[safeFaction.toLowerCase().replace(/\s+/g, '_')] || messages['terran_republic_alliance'];
+            const randomMessage = factionMessages[Math.floor(Math.random() * factionMessages.length)];
+            
+            return {
+                npcName: safeNPCName,
+                message: randomMessage
+            };
+            
+        } else if (missionType === 'elimination') {
+            // Combat mission completion
+            return {
+                npcName: 'Admiral Sarah Chen',
+                message: `Combat mission successful. Hostile threats neutralized. Return to base for debriefing and reward distribution.`
+            };
+            
+        } else if (missionType === 'escort') {
+            // Escort mission completion
+            return {
+                npcName: 'Fleet Command',
+                message: `Escort mission complete. All convoy assets arrived safely. Your protection was invaluable.`
+            };
+            
+        } else if (missionType === 'exploration') {
+            // Exploration mission completion
+            return {
+                npcName: 'Dr. Marcus Webb',
+                message: `Fascinating discoveries! Your exploration data will advance our understanding significantly.`
+            };
+        }
+        
+        // Fallback for unknown mission types
+        return {
+            npcName: this.getMissionGiver(mission) || 'Mission Control',
+            message: `Mission "${title}" completed successfully. Thank you for your service.`
+        };
+    }
+
     /**
      * Get mission giver name
      */

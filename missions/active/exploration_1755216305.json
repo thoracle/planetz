@@ -1,0 +1,68 @@
+{
+  "id": "exploration_1755216305",
+  "title": "Exploration Survey",
+  "description": "Conduct reconnaissance of uncharted systems",
+  "mission_type": "exploration",
+  "location": "europa_research_station",
+  "faction": "scientists_consortium",
+  "reward_package_id": 2,
+  "client": "Research Consortium",
+  "state": "Mentioned",
+  "is_botched": false,
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Reach the target coordinates at nebula_sector_7",
+      "is_achieved": false,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 0.0,
+      "achieved_at": null
+    },
+    {
+      "id": "2",
+      "description": "Scan 3 points of interest",
+      "is_achieved": false,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 0.0,
+      "achieved_at": null
+    },
+    {
+      "id": "3",
+      "description": "Collect mineral samples",
+      "is_achieved": false,
+      "is_optional": true,
+      "is_ordered": false,
+      "progress": 0.0,
+      "achieved_at": null
+    }
+  ],
+  "created_at": "2025-08-15T00:05:05.964014+00:00",
+  "updated_at": "2025-08-15T00:05:05.964041+00:00",
+  "custom_fields": {
+    "target_location": "nebula_sector_7",
+    "scan_count": 3,
+    "required_ship_equipment": [
+      "long_range_scanner"
+    ],
+    "discovery_bonus": 300,
+    "research_data_value": 1500,
+    "hazard_level": "low"
+  },
+  "triggers": {
+    "on_accept": "mark_exploration_waypoints",
+    "on_location_reached": "begin_scanning_protocol",
+    "on_scan_complete": "update_star_charts",
+    "on_complete": "submit_research_data"
+  },
+  "progress": {
+    "state": "Mentioned",
+    "is_botched": false,
+    "total_objectives": 3,
+    "achieved_objectives": 0,
+    "required_objectives": 2,
+    "achieved_required": 0,
+    "completion_percentage": 0.0
+  }
+}

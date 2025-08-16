@@ -508,6 +508,14 @@ export class CargoHoldManager {
     }
     
     /**
+     * Get all loaded cargo
+     * @returns {Map} Map of cargoId -> CargoItem
+     */
+    getLoadedCargo() {
+        return this.loadedCargo;
+    }
+    
+    /**
      * Get cargo contents for a specific hold
      * @param {number} holdSlot - Hold slot to check
      * @returns {Array} Array of cargo items in the hold

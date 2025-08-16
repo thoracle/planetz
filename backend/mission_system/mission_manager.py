@@ -185,8 +185,8 @@ class MissionManager:
         active = []
         
         for mission in self.missions.values():
-            # Only include accepted missions that aren't botched
-            if mission.state == MissionState.ACCEPTED and not mission.is_botched:
+            # Include both accepted and achieved missions that aren't botched
+            if mission.state in [MissionState.ACCEPTED, MissionState.ACHIEVED] and not mission.is_botched:
                 active.append(mission)
         
         logger.debug(f"🎯 Found {len(active)} active missions")
@@ -356,15 +356,35 @@ class MissionManager:
         if mission.mission_type != 'delivery':
             return False
         
+        # Check delivery type - only process if it matches the mission's delivery method
+        delivery_type = mission.custom_fields.get('delivery_type', 'auto_delivery')
+        event_source = event_data.get('source', 'unknown')
+        
+        # Skip if delivery type doesn't match event source
+        if delivery_type == 'auto_delivery' and event_source != 'docking':
+            return False
+        if delivery_type == 'market_sale' and event_source != 'market':
+            return False
+        
         cargo_type = event_data.get('cargo_type')
-        delivery_location = event_data.get('location')
+        delivery_location = event_data.get('delivery_location') or event_data.get('location')
         delivered_quantity = event_data.get('quantity', 0)
         cargo_integrity = event_data.get('integrity', 1.0)
+        
+        # DEBUG: Check if quantity is being passed correctly
+        if delivered_quantity == 0:
+            logger.warning(f"🚛 No quantity in cargo delivery event data: {event_data}")
+            # For delivery completion, assume full cargo amount if no quantity specified
+            delivered_quantity = event_data.get('cargo_amount', 50)
+        
+        logger.info(f"🚛 _handle_cargo_delivered: cargo={cargo_type}, location={delivery_location}, quantity={delivered_quantity}, delivery_type={delivery_type}, source={event_source}")
         
         target_cargo = mission.custom_fields.get('cargo_type')
         target_location = mission.custom_fields.get('destination')  # Changed from delivery_location
         required_quantity = mission.custom_fields.get('cargo_amount', 1)
         min_integrity = mission.custom_fields.get('min_integrity', 90) / 100.0
+        
+        logger.info(f"🚛 Mission {mission.id} requirements: cargo={target_cargo}, destination={target_location}, quantity={required_quantity}")
         
         # Check if this is the right cargo and destination
         if cargo_type == target_cargo and delivery_location == target_location:
@@ -383,21 +403,45 @@ class MissionManager:
                 logger.info(f"🚛 Mission {mission.id}: Cargo integrity compromised ({cargo_integrity:.1%})")
             
             # Find delivery objective and update progress
-            for obj in mission.objectives:
+            logger.info(f"🚛 Looking for delivery objective in {len(mission.objectives)} objectives")
+            for i, obj in enumerate(mission.objectives):
+                logger.info(f"🚛 Objective {i+1}: '{obj.description}' (achieved: {obj.is_achieved})")
                 if 'deliver' in obj.description.lower() and not obj.is_achieved:
+                    logger.info(f"🚛 Found delivery objective: '{obj.description}'")
                     # Update objective progress
                     obj.progress = min(delivered_so_far / required_quantity, 1.0)
                     
                     # Check if delivery is complete
                     if delivered_so_far >= required_quantity:
-                        success = mission.set_state(MissionState.ACHIEVED, obj.id)
-                        if success:
-                            logger.info(f"🎉 Delivery objective completed: {delivered_so_far}/{required_quantity} units delivered")
-                        return success
+                        logger.info(f"🚛 Delivery complete: {delivered_so_far} >= {required_quantity}, marking objective {obj.id} as achieved")
+                        
+                        # Achieve the objective without changing mission state
+                        obj.achieve()
+                        mission.updated_at = datetime.now(timezone.utc)
+                        
+                        # Save mission with achieved objective
+                        self.save_mission(mission)
+                        
+                        logger.info(f"🎉 Delivery objective completed: {delivered_so_far}/{required_quantity} units delivered")
+                        
+                        # Check if mission should advance to ACHIEVED (all objectives done)
+                        if mission.check_completion():
+                            if mission.state == MissionState.ACCEPTED:
+                                mission.set_state(MissionState.ACHIEVED)
+                                logger.info(f"🎯 Mission {mission.id} achieved (all objectives completed)!")
+                                
+                                # Auto-advance to completed for now (can add special processing later)
+                                mission.set_state(MissionState.COMPLETED)
+                                logger.info(f"🎉 Mission {mission.id} auto-completed!")
+                        
+                        return True
                     else:
                         # Save progress update
+                        logger.info(f"🚛 Partial delivery: {delivered_so_far}/{required_quantity}, saving progress")
                         self.save_mission(mission)
                         return True
+            
+            logger.warning(f"🚛 No matching delivery objective found for mission {mission.id}")
         
         return False
     
@@ -430,10 +474,26 @@ class MissionManager:
                     
                     # Check if loading is complete
                     if loaded_so_far >= required_quantity:
-                        success = mission.set_state(MissionState.ACHIEVED, obj.id)
-                        if success:
-                            logger.info(f"🎉 Loading objective completed: {loaded_so_far}/{required_quantity} units loaded")
-                        return success
+                        # Achieve the objective without changing mission state
+                        obj.achieve()
+                        mission.updated_at = datetime.now(timezone.utc)
+                        
+                        # Save mission with achieved objective
+                        self.save_mission(mission)
+                        
+                        logger.info(f"🎉 Loading objective completed: {loaded_so_far}/{required_quantity} units loaded")
+                        
+                        # Check if mission should advance to ACHIEVED (all objectives done)
+                        if mission.check_completion():
+                            if mission.state == MissionState.ACCEPTED:
+                                mission.set_state(MissionState.ACHIEVED)
+                                logger.info(f"🎯 Mission {mission.id} achieved (all objectives completed)!")
+                                
+                                # Auto-advance to completed for now (can add special processing later)
+                                mission.set_state(MissionState.COMPLETED)
+                                logger.info(f"🎉 Mission {mission.id} auto-completed!")
+                        
+                        return True
                     else:
                         # Save progress update
                         self.save_mission(mission)

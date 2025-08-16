@@ -7,6 +7,7 @@ export class MissionEventService {
     constructor() {
         this.baseURL = '/api/missions/events';
         this.enabled = true;
+        this.pendingNotifications = [];
         
         console.log('🎯 MissionEventService: Initialized');
     }
@@ -154,9 +155,37 @@ export class MissionEventService {
             if (result.success && result.updated_missions.length > 0) {
                 console.log(`🎯 MissionEventService: ${result.updated_missions.length} missions updated from cargo loading`);
                 
+                const sm = window.starfieldManager;
+                const isDocked = Boolean(sm && sm.isDocked);
+
                 // Trigger mission update events
                 for (const mission of result.updated_missions) {
                     this.triggerMissionUpdateEvent('cargo_loaded', mission, eventData);
+                    
+                    const fireMissionComplete = () => this.triggerMissionCompletionNotification(mission);
+                    const fireObjective = (objective) => this.triggerObjectiveCompletionNotification(objective, mission);
+                    
+                    if (mission.state === 'COMPLETED') {
+                        if (isDocked) this.queueNotification(fireMissionComplete); else fireMissionComplete();
+                    }
+                    
+                    if (mission.objectives) {
+                        for (const objective of mission.objectives) {
+                            if (objective.is_achieved && !objective._notified) {
+                                if (isDocked) this.queueNotification(() => fireObjective(objective)); else fireObjective(objective);
+                                objective._notified = true; // Prevent duplicate notifications
+                            }
+                        }
+                    }
+                }
+                
+                // Always update HUD immediately
+                if (window.starfieldManager?.missionStatusHUD) {
+                    if (typeof window.starfieldManager.missionStatusHUD.updateMissionsData === 'function') {
+                        window.starfieldManager.missionStatusHUD.updateMissionsData(result.updated_missions);
+                    } else {
+                        window.starfieldManager.missionStatusHUD.refreshMissions();
+                    }
                 }
             }
             
@@ -178,8 +207,10 @@ export class MissionEventService {
             const eventData = {
                 cargo_type: cargoType,
                 quantity: quantity,
-                location: location,
+                delivery_location: location,  // Backend expects delivery_location
+                location: location,           // Keep for backward compatibility  
                 integrity: playerContext.integrity || 1.0,
+                source: playerContext.source || 'unknown',  // Track delivery method
                 player_context: {
                     player_ship: playerContext.playerShip || 'starter_ship',
                     timestamp: Date.now()
@@ -202,12 +233,44 @@ export class MissionEventService {
             
             const result = await response.json();
             
+            console.log('🎯 MissionEventService: Cargo delivered response:', result);
+            
             if (result.success && result.updated_missions.length > 0) {
                 console.log(`🎯 MissionEventService: ${result.updated_missions.length} missions updated from cargo delivery`);
                 
                 // Trigger mission update events
                 for (const mission of result.updated_missions) {
                     this.triggerMissionUpdateEvent('cargo_delivered', mission, eventData);
+                    
+                    // Check for mission completion and trigger notifications
+                    if (mission.state === 'COMPLETED') {
+                        this.triggerMissionCompletionNotification(mission);
+                    }
+                    
+                    // Check for completed objectives and trigger notifications
+                    if (mission.objectives) {
+                        for (const objective of mission.objectives) {
+                            if (objective.is_achieved && !objective._notified) {
+                                this.triggerObjectiveCompletionNotification(objective, mission);
+                                objective._notified = true; // Prevent duplicate notifications
+                            }
+                        }
+                    }
+                }
+                
+                // Refresh mission status HUD with updated data if available
+                if (window.starfieldManager?.missionStatusHUD) {
+                    // Pass the updated missions directly to avoid race condition with API call
+                    if (typeof window.starfieldManager.missionStatusHUD.updateMissionsData === 'function') {
+                        window.starfieldManager.missionStatusHUD.updateMissionsData(result.updated_missions);
+                    } else {
+                        window.starfieldManager.missionStatusHUD.refreshMissions();
+                    }
+                }
+            } else {
+                console.log('🎯 MissionEventService: No missions updated from cargo delivery');
+                if (result.success) {
+                    console.log('🎯 MissionEventService: Response was successful but no missions matched');
                 }
             }
             
@@ -232,7 +295,69 @@ export class MissionEventService {
         });
         
         window.dispatchEvent(event);
-        console.log(`🎯 MissionEventService: Triggered missionProgressUpdate event for mission ${mission.id}`);
+        // Only log events that might need debugging - reduce spam
+        if (eventType !== 'cargo_loaded' && eventType !== 'cargo_delivered') {
+            console.log(`🎯 MissionEventService: Triggered missionProgressUpdate event for mission ${mission.id}`);
+        }
+    }
+    
+    /**
+     * Trigger mission completion notification
+     */
+    triggerMissionCompletionNotification(mission) {
+        console.log(`🎯 MissionEventService: Mission completed - ${mission.title || mission.id}`);
+        
+        // Try to use the notification handler if available
+        if (window.missionNotificationHandler) {
+            window.missionNotificationHandler.onMissionComplete(mission);
+        }
+        
+        // Also trigger a custom event for other listeners
+        const event = new CustomEvent('missionCompleted', {
+            detail: { mission: mission }
+        });
+        window.dispatchEvent(event);
+    }
+    
+    /**
+     * Trigger objective completion notification
+     */
+    triggerObjectiveCompletionNotification(objective, mission) {
+        // Reduced logging - only log significant objective completions
+        if (objective.description.includes('deliver') || objective.description.includes('eliminate')) {
+            console.log(`🎯 MissionEventService: Objective completed - ${objective.description}`);
+        }
+        
+        // Try to use the notification handler if available
+        if (window.missionNotificationHandler) {
+            window.missionNotificationHandler.onObjectiveComplete(objective, mission);
+        }
+        
+        // Also trigger a custom event for other listeners
+        const event = new CustomEvent('objectiveCompleted', {
+            detail: { 
+                objective: objective,
+                mission: mission 
+            }
+        });
+        window.dispatchEvent(event);
+    }
+
+    queueNotification(fn) {
+        this.pendingNotifications.push(fn);
+        // Attach a one-time hook to run after launch
+        const sm = window.starfieldManager;
+        if (sm) {
+            const runPending = () => {
+                if (this.pendingNotifications.length === 0) return;
+                const tasks = [...this.pendingNotifications];
+                this.pendingNotifications = [];
+                tasks.forEach((f) => { try { f(); } catch (_) {} });
+                window.removeEventListener('shipLaunched', runPending);
+            };
+            window.removeEventListener('shipLaunched', runPending);
+            window.addEventListener('shipLaunched', runPending, { once: true });
+        }
     }
     
     /**

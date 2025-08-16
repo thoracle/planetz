@@ -1,0 +1,61 @@
+{
+  "id": "demo_progress_001",
+  "title": "Progress Tracking Demo",
+  "description": "Mission to demonstrate progress tracking",
+  "mission_type": "delivery",
+  "location": "unknown",
+  "faction": "neutral",
+  "reward_package_id": 1,
+  "client": "Mission Control",
+  "state": "Accepted",
+  "is_botched": false,
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Load test cargo",
+      "is_achieved": true,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 1.0,
+      "achieved_at": "2025-08-15T01:09:37.648770+00:00"
+    },
+    {
+      "id": "2",
+      "description": "Deliver test cargo",
+      "is_achieved": true,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 1.0,
+      "achieved_at": "2025-08-15T01:09:37.648902+00:00"
+    },
+    {
+      "id": "3",
+      "description": "Maintain 95% integrity",
+      "is_achieved": false,
+      "is_optional": true,
+      "is_ordered": false,
+      "progress": 0.0,
+      "achieved_at": null
+    }
+  ],
+  "created_at": "2025-08-15T01:09:37.648641+00:00",
+  "updated_at": "2025-08-15T01:09:37.648902+00:00",
+  "custom_fields": {
+    "cargo_type": "test_cargo",
+    "destination": "test_destination",
+    "delivery_type": "auto_delivery",
+    "cargo_loaded": 100,
+    "cargo_delivered": 50,
+    "integrity_maintained": true
+  },
+  "triggers": {},
+  "progress": {
+    "state": "Accepted",
+    "is_botched": false,
+    "total_objectives": 3,
+    "achieved_objectives": 2,
+    "required_objectives": 2,
+    "achieved_required": 2,
+    "completion_percentage": 100.0
+  }
+}

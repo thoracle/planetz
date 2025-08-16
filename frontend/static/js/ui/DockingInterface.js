@@ -47,6 +47,19 @@ export class DockingInterface {
         this.createDockingUI();
     }
 
+    playCommandSound() {
+        const audioManager = this.starfieldManager?.audioManager || window.starfieldAudioManager;
+        if (audioManager && typeof audioManager.playSound === 'function') {
+            audioManager.playSound('command', 0.5);
+            return;
+        }
+        try {
+            const audio = new Audio('static/audio/command.wav');
+            audio.volume = 0.5;
+            audio.play().catch(() => {});
+        } catch (_) {}
+    }
+
     createDockingUI() {
         // Create main station menu container (after docking is complete)
         this.container = document.createElement('div');
@@ -177,7 +190,7 @@ export class DockingInterface {
             this.launchButton.style.transform = 'scale(1)';
         });
         
-        this.launchButton.addEventListener('click', () => this.handleLaunch());
+        this.launchButton.addEventListener('click', () => { this.playCommandSound(); this.handleLaunch(); });
         this.header.appendChild(this.launchButton);
     }
 
@@ -493,7 +506,7 @@ export class DockingInterface {
             buttonContainer.style.transform = 'scale(1)';
         });
 
-        buttonContainer.addEventListener('click', clickHandler);
+        buttonContainer.addEventListener('click', (e) => { this.playCommandSound(); clickHandler(e); });
 
         return buttonContainer;
     }

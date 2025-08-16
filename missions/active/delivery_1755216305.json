@@ -1,0 +1,71 @@
+{
+  "id": "delivery_1755216305",
+  "title": "Cargo Delivery Contract",
+  "description": "Transport cargo safely to the specified destination",
+  "mission_type": "delivery",
+  "location": "europa_research_station",
+  "faction": "terran_republic_alliance",
+  "reward_package_id": 4,
+  "client": "Republic Fleet Command",
+  "state": "Mentioned",
+  "is_botched": false,
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Load 50 units of medical_supplies",
+      "is_achieved": false,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 0.0,
+      "achieved_at": null
+    },
+    {
+      "id": "2",
+      "description": "Deliver cargo to europa_research_station",
+      "is_achieved": false,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 0.0,
+      "achieved_at": null
+    },
+    {
+      "id": "3",
+      "description": "Maintain cargo integrity above 90%",
+      "is_achieved": false,
+      "is_optional": true,
+      "is_ordered": false,
+      "progress": 0.0,
+      "achieved_at": null
+    }
+  ],
+  "created_at": "2025-08-15T00:05:05.757127+00:00",
+  "updated_at": "2025-08-15T00:05:05.757161+00:00",
+  "custom_fields": {
+    "cargo_type": "medical_supplies",
+    "cargo_amount": 50,
+    "destination": "europa_research_station",
+    "pickup_location": "terra_prime",
+    "min_integrity": 90,
+    "time_limit": 3600,
+    "delivery_bonus": 800,
+    "integrity_bonus": 200,
+    "cargo_loaded": 51,
+    "cargo_delivered": 100,
+    "integrity_maintained": true
+  },
+  "triggers": {
+    "on_accept": "notify_cargo_coordinator",
+    "on_cargo_loaded": "begin_transport_mission",
+    "on_cargo_delivered": "verify_delivery_completion",
+    "on_complete": "award_delivery_bonus"
+  },
+  "progress": {
+    "state": "Mentioned",
+    "is_botched": false,
+    "total_objectives": 3,
+    "achieved_objectives": 0,
+    "required_objectives": 2,
+    "achieved_required": 0,
+    "completion_percentage": 0.0
+  }
+}

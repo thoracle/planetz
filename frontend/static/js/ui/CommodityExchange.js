@@ -3,6 +3,8 @@
  * Phase 1 Implementation: Basic buy/sell interface
  */
 
+import { playerCredits } from '../utils/PlayerCredits.js';
+
 export class CommodityExchange {
     constructor(starfieldManager) {
         this.starfieldManager = starfieldManager;
@@ -218,7 +220,7 @@ export class CommodityExchange {
                     'raw_materials': { buy_price: 18, sell_price: 12, available: 1000 }
                 }
             },
-            'europa_station': {
+            'europa_research_station': {
                 name: 'Europa Station',
                 commodities: {
                     'medical_supplies': { buy_price: 75, sell_price: 55, available: 80 },
@@ -333,9 +335,12 @@ export class CommodityExchange {
         // Update cargo progress bar
         this.updateCargoProgressBar(manifest);
         
-        // Update credits display (mock for now)
+        // Update credits display using unified system
         const creditsEl = this.container.querySelector('#player-credits');
-        creditsEl.textContent = '15,000'; // TODO: Get from player data
+        creditsEl.textContent = playerCredits.getFormattedCredits();
+        
+        // Register for automatic updates
+        playerCredits.registerDisplay(creditsEl);
         
         // Update cargo list
         const cargoListEl = this.container.querySelector('#cargo-list');
@@ -578,31 +583,48 @@ export class CommodityExchange {
         const totalCost = quantity * unitPrice;
         console.log(`🏪 Buying ${quantity} units of ${commodityId} for ${totalCost} CR`);
         
+        // Check if player has enough credits
+        if (!playerCredits.canAfford(totalCost)) {
+            this.showTradeNotification(`❌ Insufficient credits - Need ${totalCost.toLocaleString()} CR`, 'error');
+            return;
+        }
+        
         // Load cargo into ship
         const result = ship.cargoHoldManager.loadCargo(commodityId, quantity);
         
         if (result.success) {
-            console.log(`✅ Purchase successful: ${quantity} units loaded`);
+            // Deduct credits from player
+            const creditDeducted = playerCredits.spendCredits(totalCost, `Purchase ${quantity} ${commodityId}`);
             
-            // Show success notification
-            const commodityData = this.getCommodityData(commodityId);
-            this.showTradeNotification(`✅ Purchased ${quantity} units of ${commodityData.name}`, 'success');
-            
-            // TODO: Deduct credits from player
-            // TODO: Reduce station availability
+            if (creditDeducted) {
+                console.log(`✅ Purchase successful: ${quantity} units loaded`);
+                
+                // Show success notification
+                const commodityData = this.getCommodityData(commodityId);
+                this.showTradeNotification(`✅ Purchased ${quantity} units of ${commodityData.name} for ${totalCost.toLocaleString()} CR`, 'success');
+                
+                // TODO: Reduce station availability
+            } else {
+                // Failed to deduct credits - this should not happen after canAfford check
+                console.error('❌ Failed to deduct credits after successful cargo load');
+                this.showTradeNotification(`❌ Credit transaction failed`, 'error');
+                return;
+            }
             
             // Refresh displays
             this.refreshCargoDisplay();
             this.refreshMarketDisplay();
             
             // Send mission event if applicable
-            if (this.starfieldManager.missionEventService) {
+            if (this.starfieldManager?.missionEventService) {
                 this.starfieldManager.missionEventService.cargoLoaded(
                     commodityId, 
                     quantity, 
                     this.currentStation,
                     { playerShip: ship.shipType }
-                );
+                ).catch(error => {
+                    console.error('🎯 Failed to send cargo loaded event:', error);
+                });
             }
         } else {
             console.log(`🏪 Purchase failed: ${result.error}`);
@@ -624,27 +646,36 @@ export class CommodityExchange {
         const result = ship.cargoHoldManager.unloadCargo(cargoItem.id, quantity);
         
         if (result.success) {
-            console.log(`✅ Sale successful: ${quantity} units sold for ${totalValue} CR`);
+            // Add credits to player
+            const creditsAdded = playerCredits.addCredits(totalValue, `Sale ${quantity} ${cargoItem.commodityId}`);
             
-            // Show success notification
-            this.showTradeNotification(`✅ Sold ${quantity} units of ${cargoItem.name} for ${totalValue} CR`, 'success');
-            
-            // TODO: Add credits to player
-            // TODO: Update station availability
+            if (creditsAdded) {
+                console.log(`✅ Sale successful: ${quantity} units sold for ${totalValue} CR`);
+                
+                // Show success notification
+                this.showTradeNotification(`✅ Sold ${quantity} units of ${cargoItem.name} for ${totalValue.toLocaleString()} CR`, 'success');
+                
+                // TODO: Update station availability
+            } else {
+                console.error('❌ Failed to add credits after successful cargo unload');
+                this.showTradeNotification(`❌ Credit transaction failed`, 'error');
+                return;
+            }
             
             // Refresh displays
             this.refreshCargoDisplay();
             this.refreshMarketDisplay();
             
-            // Send mission event if applicable
+            // Send mission event if applicable  
             if (this.starfieldManager.missionEventService) {
                 this.starfieldManager.missionEventService.cargoDelivered(
-                    result.commodityId,
-                    quantity,
-                    this.currentStation,
+                    result.commodityId,  // cargoType
+                    quantity,            // quantity  
+                    this.currentStation, // delivery location
                     { 
                         integrity: result.integrity,
-                        playerShip: this.starfieldManager.ship?.shipType || 'starter_ship'
+                        playerShip: this.starfieldManager.ship?.shipType || 'starter_ship',
+                        source: 'market'  // Indicate this is a market sale
                     }
                 );
             }

@@ -17,6 +17,10 @@ export class CommunicationHUD {
         // Animation state
         this.avatarAnimationFrame = 0;
         this.animationFrames = 8; // Number of wireframe animation frames
+        this.typingInterval = null; // active typewriter interval
+        this.hideTimeout = null; // scheduled hide timeout
+        // Test/demo mode flag (off by default)
+        this.enableTestSequence = false;
         
         this.initialize();
     }
@@ -40,8 +44,8 @@ export class CommunicationHUD {
             position: fixed;
             top: 50px;
             left: 10px;
-            width: 320px;
-            height: 120px;
+            width: 360px;
+            height: 140px;
             background: rgba(0, 0, 0, 0.85);
             border: 2px solid #00ff41;
             border-radius: 4px;
@@ -118,7 +122,7 @@ export class CommunicationHUD {
         this.contentArea.className = 'comm-content';
         this.contentArea.style.cssText = `
             display: flex;
-            height: 60px;
+            height: 80px;
             gap: 10px;
         `;
         
@@ -138,8 +142,8 @@ export class CommunicationHUD {
         this.avatarArea = document.createElement('div');
         this.avatarArea.className = 'comm-avatar';
         this.avatarArea.style.cssText = `
-            width: 60px;
-            height: 60px;
+            width: 80px;
+            height: 80px;
             border: 1px solid #00ff41;
             background: rgba(0, 40, 0, 0.3);
             position: relative;
@@ -149,9 +153,9 @@ export class CommunicationHUD {
         
         // Create SVG for wireframe avatar animation
         this.avatarSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        this.avatarSVG.setAttribute('width', '58');
-        this.avatarSVG.setAttribute('height', '58');
-        this.avatarSVG.setAttribute('viewBox', '0 0 58 58');
+        this.avatarSVG.setAttribute('width', '78');
+        this.avatarSVG.setAttribute('height', '78');
+        this.avatarSVG.setAttribute('viewBox', '0 0 78 78');
         this.avatarSVG.style.cssText = `
             position: absolute;
             top: 1px;
@@ -253,13 +257,14 @@ export class CommunicationHUD {
         this.dialogueText = document.createElement('div');
         this.dialogueText.className = 'dialogue-text';
         this.dialogueText.style.cssText = `
-            font-size: 14px;
-            line-height: 1.4;
+            font-size: 16px;
+            line-height: 1.5;
             color: #ffffff;
             text-shadow: 0 0 3px #00ff41;
             word-wrap: break-word;
-            overflow: hidden;
-            max-height: 56px;
+            overflow-y: auto;
+            max-height: 80px;
+            padding-right: 5px;
         `;
         this.dialogueText.textContent = 'Incoming transmission...';
         
@@ -317,8 +322,10 @@ export class CommunicationHUD {
         this.playCommandSound();
         
         if (this.isVisible) {
-            // Start test animation and dialogue
-            this.startTestSequence();
+            // Start test animation and dialogue (disabled by default)
+            if (this.enableTestSequence) {
+                this.startTestSequence();
+            }
         } else {
             // Stop animations
             this.stopAnimations();
@@ -447,15 +454,21 @@ export class CommunicationHUD {
      * Typewriter effect for dialogue
      */
     typewriterEffect(text, callback) {
+        // Stop any previous interval to avoid interleaving characters from old messages
+        if (this.typingInterval) {
+            clearInterval(this.typingInterval);
+            this.typingInterval = null;
+        }
         this.dialogueText.textContent = '';
         let index = 0;
         
-        const typeInterval = setInterval(() => {
-            this.dialogueText.textContent += text[index];
+        this.typingInterval = setInterval(() => {
+            this.dialogueText.textContent += text[index] || '';
             index++;
             
             if (index >= text.length) {
-                clearInterval(typeInterval);
+                clearInterval(this.typingInterval);
+                this.typingInterval = null;
                 if (callback) callback();
             }
         }, 50); // Typing speed
@@ -482,29 +495,61 @@ export class CommunicationHUD {
             channel = 'COMM.1',
             signalStrength = '████████░',
             status = '■ LIVE',
-            duration = 5000
+            duration = 10000
         } = options;
         
         if (!this.isVisible) {
-            this.toggle();
+            // Show without auto-running the test sequence
+            this.isVisible = true;
+            this.commContainer.style.display = 'block';
+            console.log('🗣️ CommunicationHUD: Enabled');
+            this.playCommandSound();
         }
         
         // Play communication sound if audio manager is available
         this.playCommSound();
         
-        this.npcNameDisplay.textContent = npcName.toUpperCase();
+        // Cancel any pending hide from a previous message
+        if (this.hideTimeout) {
+            clearTimeout(this.hideTimeout);
+            this.hideTimeout = null;
+        }
+
+        this.npcNameDisplay.textContent = (npcName || 'MISSION CONTROL').toUpperCase();
         this.commStatus.textContent = status;
         this.channelInfo.textContent = `CH: ${channel}`;
         this.signalStrength.textContent = `SIG: ${signalStrength}`;
         
+        // Reset any pending test queue and animations before showing real message
+        this.messageQueue = [];
+        this.isProcessingMessage = false;
         this.startAvatarAnimation();
-        this.typewriterEffect(message);
-        
-        if (duration > 0) {
-            setTimeout(() => {
-                this.hide();
-            }, duration);
-        }
+        // Ensure message is a clean string to avoid gibberish rendering
+        const coerceToString = (val) => {
+            if (typeof val === 'string') return val;
+            try { return JSON.stringify(val); } catch (e) { return String(val); }
+        };
+        const sanitize = (text) => {
+            if (typeof text !== 'string') return 'Transmission received. Mission update acknowledged.';
+            // Remove non-printable characters and template braces, collapse whitespace
+            return text
+                .replace(/[{}]/g, '')
+                .replace(/[\u0000-\u001F\u007F\u0080-\u009F]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        };
+        const safeMessage = sanitize(coerceToString(message));
+        this.typewriterEffect(
+            safeMessage.length ? safeMessage : 'Transmission received. Mission update acknowledged.',
+            () => {
+                // Start visibility timer AFTER typing completes
+                if (duration > 0) {
+                    this.hideTimeout = setTimeout(() => {
+                        this.hide();
+                    }, duration);
+                }
+            }
+        );
     }
     
     /**
@@ -512,6 +557,10 @@ export class CommunicationHUD {
      */
     hide() {
         if (this.isVisible) {
+            if (this.hideTimeout) {
+                clearTimeout(this.hideTimeout);
+                this.hideTimeout = null;
+            }
             this.toggle();
         }
     }

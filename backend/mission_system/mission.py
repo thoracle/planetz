@@ -59,11 +59,13 @@ class Objective:
         self.is_optional = is_optional
         self.is_ordered = is_ordered
         self.achieved_at = None
+        self.progress = 0.0  # Progress between 0.0 and 1.0
         
     def achieve(self):
         """Mark objective as achieved"""
         if not self.is_achieved:
             self.is_achieved = True
+            self.progress = 1.0
             self.achieved_at = datetime.now(timezone.utc)
             logger.info(f"📋 Objective achieved: {self.description}")
     
@@ -75,6 +77,7 @@ class Objective:
             'is_achieved': self.is_achieved,
             'is_optional': self.is_optional,
             'is_ordered': self.is_ordered,
+            'progress': self.progress,
             'achieved_at': self.achieved_at.isoformat() if self.achieved_at else None
         }
     
@@ -88,6 +91,7 @@ class Objective:
             is_ordered=data.get('is_ordered', False)
         )
         obj.is_achieved = data.get('is_achieved', False)
+        obj.progress = data.get('progress', 0.0)
         if data.get('achieved_at'):
             obj.achieved_at = parse_iso_datetime(data['achieved_at'])
         return obj

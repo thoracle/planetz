@@ -163,6 +163,38 @@ export class MissionStatusHUD {
     }
     
     /**
+     * Show the HUD
+     */
+    show() {
+        if (!this.isVisible) {
+            this.isVisible = true;
+            this.hudContainer.style.display = 'block';
+            console.log('🎯 MissionStatusHUD: Shown');
+            
+            // Start periodic updates
+            this.startUpdates();
+            // Initial load of missions
+            this.refreshMissions();
+        }
+        return true;
+    }
+    
+    /**
+     * Hide the HUD
+     */
+    hide() {
+        if (this.isVisible) {
+            this.isVisible = false;
+            this.hudContainer.style.display = 'none';
+            console.log('🎯 MissionStatusHUD: Hidden');
+            
+            // Stop updates
+            this.stopUpdates();
+        }
+        return true;
+    }
+    
+    /**
      * Toggle HUD visibility
      */
     toggle() {
@@ -235,6 +267,26 @@ export class MissionStatusHUD {
         }
     }
     
+    /**
+     * Update missions data directly with provided mission objects
+     * This avoids race conditions with API calls when we already have fresh data
+     */
+    updateMissionsData(updatedMissions) {
+        try {
+            // Process and display the updated missions directly
+            
+            // Process missions for UI display
+            this.activeMissions = updatedMissions.map(mission => this.processMissionForUI(mission));
+            
+            this.renderMissions();
+            console.log(`🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} missions directly`);
+        } catch (error) {
+            console.error('🎯 MissionStatusHUD: Error updating missions data:', error);
+            // Fallback to refresh if direct update fails
+            this.refreshMissions();
+        }
+    }
+
     /**
      * Update mission status (called periodically)
      */
@@ -420,6 +472,9 @@ export class MissionStatusHUD {
      * Create individual objective element
      */
     createObjectiveElement(objective) {
+        // Normalize objective data from backend format
+        const normalizedObjective = this.normalizeObjective(objective);
+        
         const objElement = document.createElement('div');
         objElement.style.cssText = `
             display: flex;
@@ -438,14 +493,14 @@ export class MissionStatusHUD {
             flex: 1;
         `;
         
-        const icon = this.getObjectiveIcon(objective.status);
+        const icon = this.getObjectiveIcon(normalizedObjective.status);
         const iconSpan = document.createElement('span');
         iconSpan.textContent = icon.symbol;
         iconSpan.style.color = icon.color;
         
         const descText = document.createElement('span');
-        descText.textContent = objective.description;
-        descText.style.color = objective.isOptional ? '#00aaff' : '#ffffff';
+        descText.textContent = normalizedObjective.description;
+        descText.style.color = normalizedObjective.isOptional ? '#00aaff' : '#ffffff';
         
         description.appendChild(iconSpan);
         description.appendChild(descText);
@@ -457,7 +512,7 @@ export class MissionStatusHUD {
             font-size: 13px;
             text-transform: uppercase;
         `;
-        status.textContent = this.getObjectiveStatus(objective);
+        status.textContent = this.getObjectiveStatus(normalizedObjective);
         
         objElement.appendChild(description);
         objElement.appendChild(status);
@@ -482,6 +537,25 @@ export class MissionStatusHUD {
     }
     
     /**
+     * Convert backend objective data to frontend format
+     */
+    normalizeObjective(objective) {
+        // Convert backend format to frontend format with robust coercion
+        const achieved = (objective.is_achieved === true)
+            || (objective.status === 'COMPLETED')
+            || (typeof objective.progress === 'number' && objective.progress >= 1);
+        const status = achieved ? 'COMPLETED' : (objective.status || 'PENDING');
+        
+        // Silence noisy logging in production. If needed, add gated debug here.
+        
+        return {
+            ...objective,
+            status: status,
+            isOptional: objective.is_optional || false
+        };
+    }
+    
+    /**
      * Get objective status text
      */
     getObjectiveStatus(objective) {
@@ -496,8 +570,9 @@ export class MissionStatusHUD {
      * Get mission progress summary
      */
     getMissionProgress(mission) {
-        const completed = mission.objectives.filter(obj => obj.status === 'COMPLETED').length;
-        const total = mission.objectives.filter(obj => !obj.isOptional).length;
+        const normalizedObjectives = mission.objectives.map(obj => this.normalizeObjective(obj));
+        const completed = normalizedObjectives.filter(obj => obj.status === 'COMPLETED').length;
+        const total = normalizedObjectives.filter(obj => !obj.isOptional).length;
         return `${completed}/${total}`;
     }
     
@@ -735,7 +810,12 @@ export class MissionStatusHUD {
         
         this.missionAPI.addEventListener('objectiveCompleted', (data) => {
             console.log('🎯 MissionStatusHUD: Objective completed', data);
-            this.refreshMissions();
+            // Use direct update if we have mission data, otherwise refresh from API
+            if (data.mission && Array.isArray([data.mission])) {
+                this.updateMissionsData([data.mission]);
+            } else {
+                this.refreshMissions();
+            }
         });
         
         console.log('🎯 MissionStatusHUD: Event listeners ready');

@@ -1,0 +1,71 @@
+{
+  "id": "delivery_1755216163",
+  "title": "Cargo Delivery Contract",
+  "description": "Transport cargo safely to the specified destination",
+  "mission_type": "delivery",
+  "location": "l4_trading_post",
+  "faction": "terran_republic_alliance",
+  "reward_package_id": 4,
+  "client": "Republic Fleet Command",
+  "state": "Accepted",
+  "is_botched": false,
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Load 50 units of medical_supplies",
+      "is_achieved": true,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 1.0,
+      "achieved_at": "2025-08-15T00:03:58.248251+00:00"
+    },
+    {
+      "id": "2",
+      "description": "Deliver cargo to europa_research_station",
+      "is_achieved": true,
+      "is_optional": false,
+      "is_ordered": true,
+      "progress": 1.0,
+      "achieved_at": "2025-08-15T00:05:04.750442+00:00"
+    },
+    {
+      "id": "3",
+      "description": "Maintain cargo integrity above 90%",
+      "is_achieved": false,
+      "is_optional": true,
+      "is_ordered": false,
+      "progress": 0.0,
+      "achieved_at": null
+    }
+  ],
+  "created_at": "2025-08-15T00:02:43.458222+00:00",
+  "updated_at": "2025-08-15T00:05:04.750548+00:00",
+  "custom_fields": {
+    "cargo_type": "medical_supplies",
+    "cargo_amount": 50,
+    "destination": "europa_research_station",
+    "pickup_location": "terra_prime",
+    "min_integrity": 90,
+    "time_limit": 3600,
+    "delivery_bonus": 800,
+    "integrity_bonus": 200,
+    "cargo_loaded": 51,
+    "cargo_delivered": 100,
+    "integrity_maintained": true
+  },
+  "triggers": {
+    "on_accept": "notify_cargo_coordinator",
+    "on_cargo_loaded": "begin_transport_mission",
+    "on_cargo_delivered": "verify_delivery_completion",
+    "on_complete": "award_delivery_bonus"
+  },
+  "progress": {
+    "state": "Accepted",
+    "is_botched": false,
+    "total_objectives": 3,
+    "achieved_objectives": 2,
+    "required_objectives": 2,
+    "achieved_required": 2,
+    "completion_percentage": 100.0
+  }
+}

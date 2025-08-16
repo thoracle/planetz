@@ -514,8 +514,10 @@ def handle_enemy_destroyed():
                         }
                     )
                     
-                    if success:
-                        updated_missions.append(mission.to_dict())
+                if success:
+                    # Get the latest state of the mission after update
+                    updated_mission_obj = mission_manager.get_mission(mission.id)
+                    updated_missions.append(updated_mission_obj.to_dict())
         
         return jsonify({
             'success': True,
@@ -560,7 +562,9 @@ def handle_location_reached():
                     )
                     
                     if success:
-                        updated_missions.append(mission.to_dict())
+                        # Get the latest state of the mission after update
+                        updated_mission_obj = mission_manager.get_mission(mission.id)
+                        updated_missions.append(updated_mission_obj.to_dict())
         
         return jsonify({
             'success': True,
@@ -584,18 +588,25 @@ def handle_cargo_delivered():
         cargo_type = data.get('cargo_type')
         delivery_location = data.get('delivery_location')
         cargo_value = data.get('cargo_value', 0)
+        quantity = data.get('quantity', 0)
+        integrity = data.get('integrity', 1.0)
+        source = data.get('source', 'unknown')
         player_context = data.get('player_context', {})
         
         # Check all active missions for delivery objectives
         updated_missions = []
         
         for mission in mission_manager.missions.values():
-            if (mission.state == MissionState.ACCEPTED and 
+            if (mission.state in [MissionState.ACCEPTED, MissionState.ACHIEVED] and 
                 mission.mission_type == 'delivery'):
                 
                 # Check if cargo and location match mission requirements
                 target_cargo = mission.custom_fields.get('cargo_type')
-                target_location = mission.custom_fields.get('delivery_location')
+                target_location = mission.custom_fields.get('destination')  # Use 'destination' not 'delivery_location'
+                
+                logger.info(f"🚛 Checking mission {mission.id}: cargo={target_cargo}, destination={target_location}")
+                logger.info(f"🚛 Event: cargo={cargo_type}, delivery_location={delivery_location}, source={source}")
+                logger.info(f"🚛 Mission delivery_type: {mission.custom_fields.get('delivery_type', 'auto_delivery')}")
                 
                 if cargo_type == target_cargo and delivery_location == target_location:
                     success = mission_manager.update_mission_progress(
@@ -604,12 +615,18 @@ def handle_cargo_delivered():
                             'type': 'cargo_delivered',
                             'cargo_type': cargo_type,
                             'delivery_location': delivery_location,
+                            'location': delivery_location,
+                            'quantity': quantity,
+                            'integrity': integrity,
+                            'source': source,
                             'cargo_value': cargo_value
                         }
                     )
                     
                     if success:
-                        updated_missions.append(mission.to_dict())
+                        # Get the latest state of the mission after update
+                        updated_mission_obj = mission_manager.get_mission(mission.id)
+                        updated_missions.append(updated_mission_obj.to_dict())
         
         return jsonify({
             'success': True,
@@ -635,12 +652,18 @@ def handle_cargo_loaded():
         location = data.get('location')
         player_context = data.get('player_context', {})
         
+        logger.info(f"🚛 Cargo loaded event: cargo={cargo_type}, quantity={quantity}, location={location}")
+        
         # Check all active missions for loading objectives
         updated_missions = []
         
         for mission in mission_manager.missions.values():
             if (mission.state == MissionState.ACCEPTED and 
                 mission.mission_type == 'delivery'):
+                
+                logger.info(f"🚛 Checking delivery mission {mission.id}: {mission.title}")
+                target_cargo = mission.custom_fields.get('cargo_type')
+                logger.info(f"🚛 Mission expects cargo: {target_cargo}, event has: {cargo_type}")
                 
                 success = mission_manager.update_mission_progress(
                     mission.id,
@@ -653,7 +676,9 @@ def handle_cargo_loaded():
                 )
                 
                 if success:
-                    updated_missions.append(mission.to_dict())
+                    # Get the latest state of the mission after update
+                    updated_mission_obj = mission_manager.get_mission(mission.id)
+                    updated_missions.append(updated_mission_obj.to_dict())
         
         return jsonify({
             'success': True,
