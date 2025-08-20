@@ -5,6 +5,10 @@
  */
 
 import { WeaponCard } from './WeaponCard.js';
+import { castLaserRay } from './services/HitScanService.js';
+
+// Feature flag to enable simplified center-ray firing path safely
+const USE_SIMPLE_FIRING = false;
 
 export class WeaponSlot {
     constructor(weaponNumber, ship, starfieldManager, weaponSystem = null) {
@@ -506,69 +510,21 @@ export class WeaponSlot {
         // DEBUG MODE: Set this to true to disable fallback and force physics-only
         const FORCE_PHYSICS_ONLY = false; // Physics working perfectly - restore Three.js fallback as backup
 
-        // Perform raycast for each laser beam (left and right)
-        let closestHit = null;
-        let closestDistance = Infinity;
-
-        // Treat only stars/planets/moons as celestial. Stations/beacons should be hittable per design.
-        const isCelestial = (e) => !!e && (e.type === 'star' || e.type === 'planet' || e.type === 'moon');
-        const isDamageable = (e) => !!e && (!isCelestial(e));
-
-        for (let i = 0; i < startPositions.length; i++) {
-            const startPos = startPositions[i];
-            const endPos = endPositions[i];
-            
-            // Calculate ray direction
-            const direction = new THREE.Vector3().subVectors(endPos, startPos).normalize();
-            
-            // Limit ray to the visible beam segment (world units = km)
-            const segmentDistanceKm = startPos.distanceTo(endPos);
-            let currentOrigin = startPos.clone();
-            let remainingKm = Math.min(segmentDistanceKm, maxDistanceKmAllowed);
-            let steps = 0;
-            const maxSteps = 5; // allow a few skips past celestials
-            
-            while (remainingKm > 0.01 && steps < maxSteps) {
-                const hitResult = physicsManager.raycast(currentOrigin, direction, remainingKm);
-                if (!hitResult || !hitResult.hit) {
-                    break; // nothing along remaining segment
+        // Feature flag to use simplified center-ray service
+        if (USE_SIMPLE_FIRING) {
+            try {
+                const result = castLaserRay(this.ship, weaponRange, target || null);
+                if (result && result.hit) {
+                    return {
+                        hit: true,
+                        position: result.point,
+                        entity: result.entity,
+                        distance: result.distance
+                    };
                 }
-                const entity = hitResult.entity;
-                const distanceKm = hitResult.distance;
-                
-                if (isDamageable(entity)) {
-                    // Consider this damageable hit
-                    if (distanceKm < closestDistance) {
-                        closestDistance = distanceKm;
-                        closestHit = {
-                            hit: true,
-                            position: hitResult.point,
-                            entity: entity,
-                            distance: distanceKm,
-                            normal: hitResult.normal,
-                            body: hitResult.body,
-                            beamIndex: i
-                        };
-                    }
-                    break; // stop stepping on this beam
-                }
-                
-                // If we hit a celestial, skip past it and continue searching along the beam
-                if (isCelestial(entity)) {
-                    const advanceKm = Math.max(0.05, Math.min(0.2, remainingKm * 0.1)); // 50–200 meters
-                    const advanceVec = direction.clone().multiplyScalar(distanceKm + advanceKm);
-                    currentOrigin = currentOrigin.clone().add(advanceVec);
-                    remainingKm -= (distanceKm + advanceKm);
-                    steps++;
-                    continue;
-                }
-                
-                // Unknown or non-damageable, advance a small step and continue
-                const advanceKm = Math.max(0.05, Math.min(0.2, remainingKm * 0.1));
-                const advanceVec = direction.clone().multiplyScalar(distanceKm + advanceKm);
-                currentOrigin = currentOrigin.clone().add(advanceVec);
-                remainingKm -= (distanceKm + advanceKm);
-                steps++;
+                // fall through to miss handling below
+            } catch (e) {
+                console.warn('HitScanService.castLaserRay failed or unavailable:', e?.message || e);
             }
         }
 
@@ -585,10 +541,7 @@ export class WeaponSlot {
             }
         }
 
-        if (closestHit) {
-            console.log(`💥 PHYSICS LASER HIT: ${closestHit.entity?.type || 'unknown'} at ${closestDistance.toFixed(2)}km`);
-            return closestHit;
-        }
+        // Legacy per-beam search path (kept for fallback) has been bypassed by service. If needed, restore above block.
 
         // No physics hits found
         if (now - this.lastDebugTime > this.debugInterval) {
