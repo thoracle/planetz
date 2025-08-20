@@ -964,7 +964,7 @@ export class WeaponSlot {
             console.log('THREE.js not available for weapon effects');
             return;
         }
-        
+        try {
         // Get weapon position (for now use ship position, later we'll add weapon hardpoints)
         const weaponPosition = ship.position.clone();
         const weaponDirection = new THREE.Vector3(0, 0, 1); // Default forward direction
@@ -1171,6 +1171,16 @@ export class WeaponSlot {
             // For projectile weapons, the projectile will handle its own trail effects
             // The explosion will be handled when the projectile detonates
             console.log(`Projectile launched: ${weapon.name} (effects will be handled by projectile)`);
+        }
+        } catch (e) {
+            try {
+                console.error('❌ triggerWeaponEffects error:', e?.message || e);
+                if (e && e.stack) {
+                    console.error(e.stack);
+                }
+            } catch (_) {
+                // swallow secondary logging errors
+            }
         }
     }
     
