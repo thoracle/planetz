@@ -154,7 +154,7 @@ The project continues focused optimization work:
 - **Movement Control**: 0-9 speed settings with energy consumption
 - **View Management**: F (front), A (aft), G (galactic chart), L (long-range scanner)
 - **System Control**: S (shields), D (damage control), T (targeting), I (intel)
-- **Weapon Control**: Z/X (cycle weapons), Space (fire), \ (autofire), Tab (cycle targets)
+- **Weapon Control**: Z/X (cycle weapons), Space (fire), C (autofire), Tab (cycle targets)
 - **Enhanced Targeting**: Improved target computer with automatic cycling and proper wireframes
 - **Special Modes**: Edit mode for planet terraforming, FPS display toggle
 

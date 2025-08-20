@@ -597,9 +597,11 @@ cd backend && python app.py  # python works in venv
 ### **Controls**
 - **Tab**: Cycle through available targets
 - **Q**: Create target dummy ships (preserves current target)
-- **R**: Fire weapons (autofire available)
+- **Space**: Fire weapons
 - **< / >**: Cycle sub-targets (beam weapons with Level 2+ target computer)
-- **A**: Toggle autofire for current weapon
+- **Z / X**: Previous / Next weapon
+- **C**: Toggle autofire for current weapon
+- **R**: Subspace Radio (communications)
 - **N**: Toggle Communication HUD (shows test NPC dialogue sequence)
 - **H**: Toggle help screen with complete command reference
 

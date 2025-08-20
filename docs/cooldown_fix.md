@@ -111,7 +111,7 @@ updateAutofire(deltaTime) {
 - ✅ Rapid pressing Space key is blocked by cooldown
 - ✅ Player must wait for cooldown to complete before firing again
 
-### Autofire Mode (\\ Key)
+### Autofire Mode (C Key)
 - ✅ Weapons automatically fire at their maximum rate when autofire is enabled
 - ✅ Each weapon respects its individual cooldown time
 - ✅ Multiple weapons can fire independently based on their cooldowns

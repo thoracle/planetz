@@ -828,7 +828,7 @@
     - [X] Implement weapon slots array management
     - [X] Add active weapon slot tracking (activeSlotIndex)
     - [X] Create weapon slot cycling logic ([ and ] keys)
-    - [X] Implement autofire mode toggle (\ key)
+    - [X] Implement autofire mode toggle (C key)
     - [X] Add weapon equip/unequip functionality
     - [X] Create weapon slot validation system
   - [X] Weapon Selection Logic
@@ -893,7 +893,7 @@
 
 ### Autofire System
 - [X] **Autofire Mode Implementation** ⬅️ **MOSTLY COMPLETED**
-  - [X] Create autofire toggle system (\ key)
+  - [X] Create autofire toggle system (C key)
     - [X] Add autofire status tracking
     - [X] Implement autofire eligibility checking
     - [X] Create autofire update loop integration

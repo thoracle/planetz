@@ -39,17 +39,13 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `enemy-ai` | **Status**: In Development (4 uncommitted changes) | **Last Updated**: 2025-08-15
+**Branch**: `unknown` | **Status**: unknown | **Last Updated**: unknown
 
 **Recent Work** (Last 5 commits):
-- Add self-documentation to restart_condensed.md for update script
-- Implement Condensed Dynamic Restart System
-- Clean up generated test missions from missions/active directory
-- Complete Cut Scene System Specification & Mission System Enhancements
-- 🐛 Fix critical cargo system bugs and progress bar styling
+- No commits found
 
 **Codebase Stats**: 
-- JavaScript Files: 124 | Python Files: 1606 | Documentation: 65 files
+- JavaScript Files: 0 | Python Files: 0 | Documentation: 0 files
 - Total Lines: 30,000+ | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
@@ -82,19 +78,23 @@ open http://127.0.0.1:5001
 ## 🎮 Essential Controls & Features
 
 ### **Combat System**
-- **Tab**: Cycle targets | **Q**: Create target dummies | **R**: Fire weapons
-- **< / >**: Sub-targeting (beam weapons) | **A**: Toggle autofire
+- **Tab**: Cycle targets | **Q**: Create target dummies | **Space**: Fire weapons
+- **Z**: Previous weapon | **X**: Next weapon | **C**: Toggle autofire | **< / ,**: Previous sub-target | **> / .**: Next sub-target
 - **Beam weapons**: Instant hit with sub-system targeting (+30% damage)
 - **Projectiles**: Physics-based flight with random subsystem damage
 
 ### **Navigation & UI**
-- **N**: Communication HUD | **M**: Mission Status | **H**: Help screen
-- **L**: Long Range Scanner | **G**: Galactic Chart
+- **R**: Subspace Radio | **N**: Communication HUD | **M**: Mission Status | **H**: Help screen
+- **L**: Long Range Scanner | **G**: Galactic Chart | **F**: Fore View | **A**: Aft View | **D**: Damage Control
 - **Docking**: Automatic when approaching stations
 
+### **Speed Controls**
+- **0-9**: Set impulse speed | **+ / =**: Increase speed | **- / _**: Decrease speed | **\**: Emergency stop
+
 ### **AI Debug Controls** (Mac: Cmd+Shift+[Key])
-- **A**: Toggle AI debug | **S**: State display | **E/F**: Force engage/flee
-- **V/C/L**: Formation patterns | **P**: Performance stats
+- **A**: Toggle AI debug
+
+
 
 ## 📋 Key Documentation
 

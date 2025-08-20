@@ -5,7 +5,7 @@ This diagram shows the complete flow of laser weapon firing from user input thro
 ```mermaid
 sequenceDiagram
     participant User
-    participant InputHandler as Input Handler
+    participant StarfieldManager as Input Handler (Space key)
     participant WeaponSystemCore as Weapon System Core
     participant WeaponSlot as Weapon Slot
     participant WeaponCard as Weapon Card (Laser)
@@ -17,11 +17,11 @@ sequenceDiagram
     participant WeaponHUD as Weapon HUD
     participant AudioSystem as Audio System
 
-    User->>InputHandler: Click to fire weapon
-    InputHandler->>WeaponSystemCore: triggerWeaponFire(slotIndex)
+    User->>StarfieldManager: Press Space to fire weapon
+    StarfieldManager->>WeaponSystemCore: fireActiveWeapon()
     WeaponSystemCore->>WeaponSlot: fire()
     
-    WeaponSlot->>WeaponCard: fire(target, effectsManager, origin)
+    WeaponSlot->>WeaponCard: fire(origin, target)
     
     Note over WeaponCard: BEAM WEAPON - No target lock required
     WeaponCard->>Ship: hasEnoughEnergy(energyCost)
@@ -34,14 +34,14 @@ sequenceDiagram
         WeaponCard->>Ship: consumeEnergy(energyCost)
         
         Note over WeaponCard: Get camera aim direction for crosshair targeting
-        WeaponCard->>WeaponCard: getCameraAimDirection()
+        WeaponSlot->>WeaponSlot: computeAimAndConvergence(camera, target)
         
         Note over WeaponCard: BEAM WEAPON FEATURE - Sub-targeting Support
-        WeaponCard->>TargetComputerManager: getCurrentTarget()
-        TargetComputerManager-->>WeaponCard: target + targetedSubsystem
+        WeaponSlot->>TargetComputerManager: getCurrentTarget()
+        TargetComputerManager-->>WeaponSlot: target + targetedSubsystem
         
-        WeaponCard->>PhysicsManager: raycast(origin, direction, range)
-        PhysicsManager-->>WeaponCard: hitResult + hitEntity
+        WeaponSlot->>PhysicsManager: raycast(startPositions[2], endPositions[2], range)
+        PhysicsManager-->>WeaponSlot: hitResult + hitEntity
         
         alt Hit Target
             Note over WeaponCard: Calculate damage with sub-targeting bonus
@@ -57,17 +57,19 @@ sequenceDiagram
                 WeaponCard->>AudioSystem: playSuccessSound()
             end
             
-            WeaponCard->>WeaponEffectsManager: createLaserBeam(origin, hitPoint)
-            WeaponCard->>WeaponEffectsManager: createImpactEffect(hitPoint)
-            WeaponCard->>AudioSystem: playSound("laser", origin, 1.0)
+            WeaponEffectsManager->>WeaponEffectsManager: createLaserBeam(leftOrigin, hitPoint)
+            WeaponEffectsManager->>WeaponEffectsManager: createLaserBeam(rightOrigin, hitPoint)
+            WeaponEffectsManager->>WeaponEffectsManager: createImpactEffect(hitPoint)
+            StarfieldManager->>AudioSystem: playSound("laser", origin, 1.0)
             
         else Miss
-            WeaponCard->>WeaponEffectsManager: createLaserBeam(origin, missPoint)
-            WeaponCard->>AudioSystem: playSound("laser", origin, 1.0)
+            WeaponEffectsManager->>WeaponEffectsManager: createLaserBeam(leftOrigin, missPoint)
+            WeaponEffectsManager->>WeaponEffectsManager: createLaserBeam(rightOrigin, missPoint)
+            StarfieldManager->>AudioSystem: playSound("laser", origin, 1.0)
         end
         
-        WeaponCard->>WeaponCard: startCooldown()
-        WeaponCard->>WeaponHUD: updateWeaponStatus(slotIndex)
+        WeaponSlot->>WeaponCard: startCooldown()
+        WeaponSystemCore->>WeaponHUD: updateWeaponStatus(activeSlot)
     end
     
     WeaponCard-->>WeaponSlot: firing complete

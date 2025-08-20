@@ -282,7 +282,7 @@ Each ship class offers distinct roles with balanced slot distributions and weapo
 ### Next Phase: Enhancement Features 🔄 COMPLETED
 
 #### Autofire System ✅ IMPLEMENTED
-- ✅ **Autofire Toggle**: \ key enables/disables autofire mode
+- ✅ **Autofire Toggle**: C key enables/disables autofire mode
 - ✅ **Automatic Target Selection**: Closest enemy targeting
 - ✅ **Range Validation**: Proper target lock requirements
 

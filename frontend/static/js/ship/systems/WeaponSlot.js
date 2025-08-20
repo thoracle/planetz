@@ -453,20 +453,21 @@ export class WeaponSlot {
         const aimDirection = new THREE.Vector3(0, 0, -1);
         aimDirection.applyQuaternion(camera.quaternion);
         
-        // Cast a ray from camera position in aim direction
-        const weaponRange = this.equippedWeapon?.range || 24000;
+        // Cast a ray from camera position in aim direction (world units are kilometers)
+        const weaponRange = this.equippedWeapon?.range || 24000; // meters by convention in definitions
+        const maxDistanceKm = this.getWeaponRangeKm(weaponRange);
         const raycastResult = physicsManager.raycast(
             camera.position,
             aimDirection,
-            weaponRange / 1000 // Convert to world units (km)
+            maxDistanceKm
         );
         
         if (raycastResult && raycastResult.hit && raycastResult.distance) {
-            // Hit something - return actual distance in meters
-            return raycastResult.distance * 1000; // Convert from world units to meters
+            // Hit something - return actual distance in meters (raycast returns km)
+            return raycastResult.distance * 1000;
         } else {
             // No hit within range - return weapon max range
-            return weaponRange;
+            return maxDistanceKm * 1000;
         }
     }
     
@@ -492,12 +493,12 @@ export class WeaponSlot {
         }
 
         const physicsManager = window.physicsManager;
-        const weaponRangeInWorldUnits = weaponRange / 1000; // Convert meters to world units (km)
+        const maxDistanceKmAllowed = this.getWeaponRangeKm(weaponRange); // Normalize to km
 
         // Throttled range debugging
         const now = Date.now();
         if (now - this.lastDebugTime > this.debugInterval) {
-            const weaponRangeKm = (weaponRange / 1000).toFixed(1);
+            const weaponRangeKm = maxDistanceKmAllowed.toFixed(1);
             // Physics raycast (max range ${weaponRangeKm}km)
             this.lastDebugTime = now;
         }
@@ -509,6 +510,10 @@ export class WeaponSlot {
         let closestHit = null;
         let closestDistance = Infinity;
 
+        // Treat only stars/planets/moons as celestial. Stations/beacons should be hittable per design.
+        const isCelestial = (e) => !!e && (e.type === 'star' || e.type === 'planet' || e.type === 'moon');
+        const isDamageable = (e) => !!e && (!isCelestial(e));
+
         for (let i = 0; i < startPositions.length; i++) {
             const startPos = startPositions[i];
             const endPos = endPositions[i];
@@ -516,25 +521,54 @@ export class WeaponSlot {
             // Calculate ray direction
             const direction = new THREE.Vector3().subVectors(endPos, startPos).normalize();
             
-            // Perform physics raycast - this will find ANY targets along the beam path
-            const hitResult = physicsManager.raycast(startPos, direction, weaponRangeInWorldUnits);
+            // Limit ray to the visible beam segment (world units = km)
+            const segmentDistanceKm = startPos.distanceTo(endPos);
+            let currentOrigin = startPos.clone();
+            let remainingKm = Math.min(segmentDistanceKm, maxDistanceKmAllowed);
+            let steps = 0;
+            const maxSteps = 5; // allow a few skips past celestials
             
-            if (hitResult && hitResult.hit) {
-                // Check if this hit is closer than previous hits
-                if (hitResult.distance < closestDistance) {
-                    closestDistance = hitResult.distance;
-                    closestHit = {
-                        hit: true,
-                        position: hitResult.point,
-                        entity: hitResult.entity,
-                        distance: hitResult.distance,
-                        normal: hitResult.normal,
-                        body: hitResult.body,
-                        beamIndex: i // Track which beam hit (0 = left, 1 = right)
-                    };
+            while (remainingKm > 0.01 && steps < maxSteps) {
+                const hitResult = physicsManager.raycast(currentOrigin, direction, remainingKm);
+                if (!hitResult || !hitResult.hit) {
+                    break; // nothing along remaining segment
+                }
+                const entity = hitResult.entity;
+                const distanceKm = hitResult.distance;
+                
+                if (isDamageable(entity)) {
+                    // Consider this damageable hit
+                    if (distanceKm < closestDistance) {
+                        closestDistance = distanceKm;
+                        closestHit = {
+                            hit: true,
+                            position: hitResult.point,
+                            entity: entity,
+                            distance: distanceKm,
+                            normal: hitResult.normal,
+                            body: hitResult.body,
+                            beamIndex: i
+                        };
+                    }
+                    break; // stop stepping on this beam
                 }
                 
-                                    // Physics hit detected
+                // If we hit a celestial, skip past it and continue searching along the beam
+                if (isCelestial(entity)) {
+                    const advanceKm = Math.max(0.05, Math.min(0.2, remainingKm * 0.1)); // 50–200 meters
+                    const advanceVec = direction.clone().multiplyScalar(distanceKm + advanceKm);
+                    currentOrigin = currentOrigin.clone().add(advanceVec);
+                    remainingKm -= (distanceKm + advanceKm);
+                    steps++;
+                    continue;
+                }
+                
+                // Unknown or non-damageable, advance a small step and continue
+                const advanceKm = Math.max(0.05, Math.min(0.2, remainingKm * 0.1));
+                const advanceVec = direction.clone().multiplyScalar(distanceKm + advanceKm);
+                currentOrigin = currentOrigin.clone().add(advanceVec);
+                remainingKm -= (distanceKm + advanceKm);
+                steps++;
             }
         }
 
@@ -558,7 +592,7 @@ export class WeaponSlot {
 
         // No physics hits found
         if (now - this.lastDebugTime > this.debugInterval) {
-            console.log(`🎯 PHYSICS LASER MISS: No targets hit within ${(weaponRange/1000).toFixed(1)}km range`);
+            console.log(`🎯 PHYSICS LASER MISS: No targets hit within ${maxDistanceKmAllowed.toFixed(1)}km range`);
         }
 
         // FORCE PHYSICS ONLY MODE: Skip fallback to debug physics issues
@@ -575,6 +609,33 @@ export class WeaponSlot {
 
         // Final miss case - no physics hit and no target for fallback
         return { hit: false, position: null, entity: null, distance: 0 };
+    }
+
+    /**
+     * Normalize a weapon range value to kilometers.
+     * Accepts values in km (small numbers) or legacy meters (large numbers).
+     * Heuristic: values <= 200 treated as kilometers, else meters.
+     * @param {number} rangeValue
+     * @returns {number} range in kilometers
+     */
+    getWeaponRangeKm(rangeValue) {
+        if (typeof rangeValue !== 'number' || !isFinite(rangeValue)) {
+            return 24; // default 24km
+        }
+        return rangeValue <= 200 ? rangeValue : rangeValue / 1000;
+    }
+
+    /**
+     * Normalize a weapon range value to meters. Accepts values in km or meters.
+     * Heuristic: values < 1000 are treated as kilometers.
+     * @param {number} rangeValue
+     * @returns {number} range in meters
+     */
+    normalizeRangeToMeters(rangeValue) {
+        if (typeof rangeValue !== 'number' || !isFinite(rangeValue)) {
+            return 24000; // sensible default (24 km)
+        }
+        return rangeValue < 1000 ? rangeValue * 1000 : rangeValue;
     }
 
     /**
@@ -1018,13 +1079,13 @@ export class WeaponSlot {
         // Handle weapon-type-specific effects
         if (weapon.weaponType === 'scan-hit') {
             // Weapons fire from cockpit corners but converge toward the crosshairs center
-            const maxRange = weapon.range; // Use weapon's actual range
+            const maxRangeKm = this.getWeaponRangeKm(weapon.range); // world units = km
             
             // Calculate convergence distance based on target distance if available, otherwise use medium range
-            let convergenceDistance = maxRange * 0.5; // Default to half max range
+            let convergenceDistance = maxRangeKm * 0.5; // Default to half max range (visual only)
             if (target && target.position && camera) {
                 const targetPos = new THREE.Vector3(target.position.x, target.position.y, target.position.z);
-                convergenceDistance = Math.min(camera.position.distanceTo(targetPos), maxRange);
+                convergenceDistance = Math.min(camera.position.distanceTo(targetPos), maxRangeKm);
             }
             
             // Calculate center aim point at convergence distance (where crosshairs are pointing)
@@ -1036,7 +1097,7 @@ export class WeaponSlot {
             const leftEndPosition = centerAimPoint.clone();
             const rightEndPosition = centerAimPoint.clone();
             
-            // Create dual laser beams that converge at the aim point (no extension)
+            // Create dual laser beams that converge at the aim point (visual only)
             effectsManager.createLaserBeam(leftWeaponPos, leftEndPosition, weapon.cardType);
             effectsManager.createLaserBeam(rightWeaponPos, rightEndPosition, weapon.cardType);
             
@@ -1045,12 +1106,17 @@ export class WeaponSlot {
             let anyHit = false;
             let hitTargets = [];
             
-            // Use physics raycasting to detect hits (no need to manually iterate through all ships)
+            // Use physics raycasting to detect hits along full weapon range toward crosshair
+            // Build far end points along the precise visual aim direction (centerAimPoint → far)
+            const preciseAimDir = centerAimPoint.clone().sub(camera.position).normalize();
+            const farAimPoint = camera.position.clone().add(
+                preciseAimDir.clone().multiplyScalar(maxRangeKm)
+            );
             const physicsHitResult = this.checkLaserBeamHit(
-                [leftWeaponPos, rightWeaponPos], 
-                [leftEndPosition, rightEndPosition], 
+                [leftWeaponPos, rightWeaponPos],
+                [farAimPoint, farAimPoint],
                 target, // Optional target for validation
-                maxRange
+                maxRangeKm
             );
             
             if (physicsHitResult && physicsHitResult.hit && physicsHitResult.entity) {
@@ -1061,6 +1127,10 @@ export class WeaponSlot {
                 
                 // Physics laser hit detected
                 
+                // Replace visual beams to extend to the actual hit point for feedback
+                effectsManager.createLaserBeam(leftWeaponPos, hitPosition, weapon.cardType);
+                effectsManager.createLaserBeam(rightWeaponPos, hitPosition, weapon.cardType);
+
                 // Create explosion at the physics hit point
                 const baseExplosionRadius = Math.min(weapon.damage * 2, 100); // 2 meters per damage point, max 100m
                 const explosionRadiusMeters = baseExplosionRadius;

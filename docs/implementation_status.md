@@ -177,7 +177,7 @@
 | **Ship Movement** | 0-9 (speed), Arrow keys (rotation) | ✅ COMPLETE |
 | **View Control** | F/A/G/L (view modes) | ✅ COMPLETE |
 | **System Control** | S (shields), D (damage), T (targeting), I (intel) | ✅ COMPLETE |
-| **Weapon Control** | Z/X (cycle), Space (fire), \ (autofire), Tab (targets) | ✅ COMPLETE |
+| **Weapon Control** | Z/X (cycle), Space (fire), C (autofire), Tab (targets) | ✅ COMPLETE |
 | **Special Modes** | Ctrl+E (edit), Ctrl+D (debug) | ✅ COMPLETE |
 
 ### User Interface ✅ 100% COMPLETE

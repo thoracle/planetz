@@ -1634,9 +1634,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Handle window resize
     window.addEventListener('resize', () => {
         console.log('Window resized');
-        camera.aspect = container.clientWidth / container.clientHeight;
+        const w = Math.max(1, container.clientWidth || 0);
+        const h = Math.max(1, container.clientHeight || 0);
+        camera.aspect = w / Math.max(1, h);
         camera.updateProjectionMatrix();
-        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setSize(w, h);
+        // Let Three.js manage viewport; manual gl.viewport can cause INVALID_VALUE if sizes race
     });
     
     // Animation loop
