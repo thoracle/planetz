@@ -39,13 +39,17 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `unknown` | **Status**: unknown | **Last Updated**: unknown
+**Branch**: `enemy-ai` | **Status**: In Development (8 uncommitted changes) | **Last Updated**: 2025-08-19
 
 **Recent Work** (Last 5 commits):
-- No commits found
+- chore(weapons): wrap triggerWeaponEffects body in try/catch with detailed error logging to locate throw site
+- feat(weapons): enable simplified center-ray for lasers; bias aim toward locked target; add defensive try/catch around laser damage/effects
+- feat(weapons): scaffold simple firing services (AimResolver, HitScanService, ProjectileService, DamageService, RangeUnits, TargetFilter); wire optional center-ray path behind flag; preserve HUD/slot/card APIs
+- chore: checkpoint before weapon firing refactor; fix docs generation accuracy; laser raycast filters and WebGL resize fixes
+- Replace restart.md with condensed dynamic version
 
 **Codebase Stats**: 
-- JavaScript Files: 0 | Python Files: 0 | Documentation: 0 files
+- JavaScript Files: 130 | Python Files: 1606 | Documentation: 67 files
 - Total Lines: 30,000+ | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
@@ -92,7 +96,9 @@ open http://127.0.0.1:5001
 - **0-9**: Set impulse speed | **+ / =**: Increase speed | **- / _**: Decrease speed | **\**: Emergency stop
 
 ### **AI Debug Controls** (Mac: Cmd+Shift+[Key])
-- **A**: Toggle AI debug
+- **A**: Toggle AI debug | **S**: Show AI stats | **E**: Force engage | **F**: Force flee | **I**: Force idle
+- **V**: V-Formation | **C**: Column formation | **L**: Line formation | **B**: Show flocking stats
+- **T**: Combat stats | **W**: Weapon debug | **X**: Target player | **P**: Performance stats | **D**: Debug visualization
 
 
 
@@ -121,10 +127,10 @@ open http://127.0.0.1:5001
 - **Files**: JSON-based storage in `missions/` directories
 
 ### **Physics & Combat**
-- **Complete Ammo.js**: 1.9MB build with native collision detection
-- **Velocity Compensation**: Missiles account for ship movement during targeting
-- **Collision System**: Distance-based delays prevent physics tunneling
-- **Range**: 100% hit rate from 2m to 15km when properly aimed
+- **Ammo.js physics**: Build with native collision detection
+- **Missile targeting**: Velocity-compensated projectiles
+- **Collision system**: Distance-based delays reduce tunneling at high speeds
+- **Hitscan lasers**: Tolerance-based hitscan with weapon-specific ranges; ongoing tuning for crosshair alignment and ship resolution
 
 ### **Faction Color System**
 ```javascript
@@ -143,11 +149,11 @@ unknown: '#44ffff'   // Cyan for unknown
 
 ## 🎊 Current Development Status
 
-**PRODUCTION-READY** ✅ All major systems implemented, debugged, and optimized:
+**IN DEVELOPMENT** ✅ Core systems implemented; active tuning and validation:
 
 - ✅ **Complete Mission System** with cargo delivery, unified economy, station positioning
 - ✅ **Cut Scene System Specification** with visual storyboards and implementation guidance  
-- ✅ **Advanced Combat** with 100% reliable physics, faction colors, audio feedback
+- ✅ **Advanced Combat** with faction colors and audio feedback (ongoing hitscan alignment improvements)
 - ✅ **Enemy AI Framework** with 8 ship types, flocking, and combat behaviors
 - ✅ **Faction Universe** with 10 factions, 50+ NPCs, diplomatic complexity
 - ✅ **Navigation Systems** with 3D radar, long-range scanner, beacon network

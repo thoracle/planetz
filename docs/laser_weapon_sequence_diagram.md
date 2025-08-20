@@ -98,3 +98,79 @@ sequenceDiagram
 - **No Target Lock Required**: Fire toward crosshairs like free-aim
 - **Camera-Based Direction**: Uses camera quaternion for aim direction
 - **Manual Aiming**: Player skill-based targeting system 
+
+---
+
+## Recent Changes (Refactor) and Updated Flow
+
+The laser firing pipeline was simplified into thin services and aligned with the active camera (fore/aft). This improves maintainability and makes the HUD/crosshair behavior consistent with firing.
+
+### What Changed
+- Introduced service layer:
+  - `AimResolver`: centralized `getActiveCamera()`, `getFireOrigin()`, `getFireDirection()`.
+  - `HitScanService.castLaserRay(...)`: physics-first raycast with celestial filtering, plus tolerance fallbacks (LOCK/XHAIR) using `CrosshairTargeting`.
+  - `RangeUnits`: consistent km/m conversions; weapons declared in meters, world in kilometers.
+  - `TargetFilter.isDamageable(...)`: accepts ships/stations/friendlies; skips stars/planets/moons.
+  - `DamageService.applyDamage(...)`: centralized damage routing and feedback hooks.
+- Visuals: beams are drawn once per shot to the final endpoint (hit point or aim point) in `WeaponSlot.triggerWeaponEffects(...)`.
+- Firing aim: uses the active camera via `AimResolver.getActiveCamera()` (fore/aft views).
+- Crosshair: `ViewManager.updateCrosshairDisplay()` now also uses the active camera to match firing.
+- Debuggability: expanded logging around hitscan tolerance and physics results.
+
+### Updated UML: Hitscan (Laser) with Services
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant WeaponSystemCore as Weapon System Core
+    participant WeaponSlot as Weapon Slot
+    participant AimResolver
+    participant HitScanService
+    participant CrosshairTargeting
+    participant PhysicsManager
+    participant TargetFilter
+    participant WeaponEffectsManager
+    participant DamageService
+    participant EnemyShip as Target Ship
+    participant WeaponHUD
+    participant ViewManager
+
+    User->>WeaponSystemCore: fireActiveWeapon()
+    WeaponSystemCore->>WeaponSlot: fire(ship, target?)
+
+    WeaponSlot->>AimResolver: getFireOrigin()/getFireDirection()
+    AimResolver-->>WeaponSlot: origin, direction (from active camera)
+
+    WeaponSlot->>HitScanService: castLaserRay(ship, weaponRange, target?)
+    HitScanService->>PhysicsManager: raycast(origin, dir, maxRangeKm)
+
+    alt Physics hit
+        PhysicsManager-->>HitScanService: hit(point, entity)
+        HitScanService->>TargetFilter: isDamageable(entity) OR entity.ship?
+        TargetFilter-->>HitScanService: true/false
+    else Miss
+        HitScanService->>CrosshairTargeting: getCrosshairTarget(camera, rangeKm, "LASER")
+        Note over HitScanService,CrosshairTargeting: LOCK/XHAIR tolerance fallback (meters-scaled)
+        HitScanService-->>WeaponSlot: tolerant hit (with ship) OR miss
+    end
+
+    WeaponSlot->>WeaponEffectsManager: createLaserBeam(leftOrigin, endPoint)
+    WeaponSlot->>WeaponEffectsManager: createLaserBeam(rightOrigin, endPoint)
+
+    alt entity has ship
+        WeaponSlot->>DamageService: applyDamage(entity.ship, damage, "energy", subTarget?)
+        DamageService->>EnemyShip: applyDamage / applySubsystemDamage
+        EnemyShip-->>WeaponHUD: damage feedback
+    else no ship resolved
+        WeaponSlot->>WeaponHUD: showMissFeedback()
+    end
+
+    WeaponSlot->>ViewManager: updateCrosshairDisplay()
+    WeaponSlot-->>WeaponSystemCore: cooldown / status
+```
+
+### Notes
+- Physics-first: lasers prefer actual physics hits and only use tolerance as a fallback.
+- Celestial filtering: stars/planets/moons are ignored for combat hits.
+- Single-render beams: visuals are created once to the final endpoint per shot.
+- Active camera: both crosshair display and firing use the same camera to avoid drift.

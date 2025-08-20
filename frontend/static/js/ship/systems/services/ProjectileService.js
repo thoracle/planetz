@@ -1,11 +1,10 @@
 // ProjectileService - spawns projectiles using current aiming
-import { getFireOrigin, getFireDirection } from './AimResolver.js';
+import { getFireOrigin } from './AimResolver.js';
 
 export function spawnProjectileForWeapon(ship, weaponCard) {
 	try {
 		const origin = getFireOrigin(ship);
-		const dir = getFireDirection(ship);
-		if (!origin || !dir) return null;
+		if (!origin) return null;
 		// Defer to existing weapon card API to preserve behavior
 		return weaponCard.createProjectile(origin, ship?.weaponSystem?.lockedTarget || null);
 	} catch (e) {

@@ -31,6 +31,15 @@ else
     STATUS="In Development ($REPO_STATUS uncommitted changes)"
 fi
 
+# Export values so the Python step can access them via os.environ
+export CURRENT_BRANCH
+export LAST_COMMIT_DATE
+export STATUS
+export JS_FILES
+export PY_FILES
+export DOC_FILES
+export RECENT_COMMITS
+
 # Create enhanced update script using Python for complex parsing
 python3 << 'EOF'
 import re
@@ -99,35 +108,48 @@ def extract_key_bindings():
         if re.search(pattern, starfield_content):
             basic_controls[key] = description
     
-    # Extract AI debug controls (Cmd+Shift combinations)
-    # Look for the metaKey && shiftKey section and extract the entire switch block
-    ai_debug_pattern = r"if \(event\.metaKey && event\.shiftKey\) \{(.*?)(?=\n\s*\}\s*\n)"
-    ai_debug_match = re.search(ai_debug_pattern, starfield_content, re.DOTALL)
-    
-    if ai_debug_match:
-        ai_debug_section = ai_debug_match.group(1)
-        
-        # Parse individual AI debug commands - simple case detection
-        case_patterns = [
-            ('a', "Toggle AI debug"),
-            ('e', "Force engage"), 
-            ('i', "Force idle"),
-            ('f', "Force flee"),
-            ('s', "Show AI stats"),
-            ('v', "V-Formation"),
-            ('c', "Column formation"),
-            ('l', "Line formation"),
-            ('b', "Show flocking stats"),
-            ('t', "Combat stats"),
-            ('w', "Weapon debug"),
-            ('x', "Target player"),
-            ('p', "Performance stats"),
-            ('d', "Debug visualization"),
-        ]
-        
-        for case_key, description in case_patterns:
-            if f"case '{case_key}':" in ai_debug_section:
-                ai_debug_controls[case_key.upper()] = description
+    # Extract AI debug controls (Cmd+Shift combinations) using brace matching
+    guard = 'if (event.metaKey && event.shiftKey)'
+    idx = starfield_content.find(guard)
+    if idx != -1:
+        # Find the opening brace after the guard
+        brace_start = starfield_content.find('{', idx)
+        if brace_start != -1:
+            depth = 0
+            end = brace_start
+            while end < len(starfield_content):
+                ch = starfield_content[end]
+                if ch == '{':
+                    depth += 1
+                elif ch == '}':
+                    depth -= 1
+                    if depth == 0:
+                        end += 1
+                        break
+                end += 1
+            ai_debug_section = starfield_content[brace_start:end]
+
+            # Map known cases
+            case_map = {
+                'a': "Toggle AI debug",
+                'e': "Force engage",
+                'i': "Force idle",
+                'f': "Force flee",
+                's': "Show AI stats",
+                'v': "V-Formation",
+                'c': "Column formation",
+                'l': "Line formation",
+                'b': "Show flocking stats",
+                't': "Combat stats",
+                'w': "Weapon debug",
+                'x': "Target player",
+                'p': "Performance stats",
+                'd': "Debug visualization",
+            }
+
+            for m in re.findall(r"case\s+'([a-zA-Z])':", ai_debug_section):
+                key = m.lower()
+                ai_debug_controls[key.upper()] = case_map.get(key, "Debug action")
     
     return basic_controls, ai_debug_controls
 

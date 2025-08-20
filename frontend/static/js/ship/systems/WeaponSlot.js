@@ -528,20 +528,7 @@ export class WeaponSlot {
             }
         }
 
-        // If we have a hit, check if it matches the intended target (if target was specified)
-        if (closestHit && target) {
-            // Validate that we hit the intended target
-            const hitEntity = closestHit.entity;
-            const targetValid = this.validateTargetHit(hitEntity, target);
-            
-            if (!targetValid) {
-                console.log(`🎯 PHYSICS HIT MISMATCH: Hit ${hitEntity?.type || 'unknown'} instead of intended target - REJECTING HIT`);
-                // Reject hits on non-target entities (like celestial bodies)
-                closestHit = null;
-            }
-        }
-
-        // Legacy per-beam search path (kept for fallback) has been bypassed by service. If needed, restore above block.
+        // Legacy per-beam search path (kept for fallback) has been bypassed by service.
 
         // No physics hits found
         if (now - this.lastDebugTime > this.debugInterval) {
@@ -1050,11 +1037,7 @@ export class WeaponSlot {
             const leftEndPosition = centerAimPoint.clone();
             const rightEndPosition = centerAimPoint.clone();
             
-            // Create dual laser beams that converge at the aim point (visual only)
-            effectsManager.createLaserBeam(leftWeaponPos, leftEndPosition, weapon.cardType);
-            effectsManager.createLaserBeam(rightWeaponPos, rightEndPosition, weapon.cardType);
-            
-            // Perform physics-based laser hit detection
+            // Perform physics-based/tolerance-based laser hit detection first, then draw beams once
             // For scan-hit weapons (lasers), physics raycast determines hit, not accuracy roll
             let anyHit = false;
             let hitTargets = [];
@@ -1072,7 +1055,7 @@ export class WeaponSlot {
                 maxRangeKm
             );
             
-            if (physicsHitResult && physicsHitResult.hit && physicsHitResult.entity) {
+            if (physicsHitResult && physicsHitResult.hit && physicsHitResult.entity && (physicsHitResult.entity.ship || physicsHitResult.entity.type === 'enemy_ship')) {
                 // Physics raycast found a hit!
                 const hitEntity = physicsHitResult.entity;
                 const hitPosition = physicsHitResult.position;
@@ -1080,7 +1063,7 @@ export class WeaponSlot {
                 
                 // Physics laser hit detected
                 
-                // Replace visual beams to extend to the actual hit point for feedback
+                // Draw beams to the actual hit point for feedback (draw once)
                 effectsManager.createLaserBeam(leftWeaponPos, hitPosition, weapon.cardType);
                 effectsManager.createLaserBeam(rightWeaponPos, hitPosition, weapon.cardType);
 
@@ -1154,11 +1137,11 @@ export class WeaponSlot {
                     console.warn('Failed to apply laser damage/effects:', err?.message || err);
                 }
             } else {
+                // No hit - draw a single pair of beams to the aim point (visual only) once
+                effectsManager.createLaserBeam(leftWeaponPos, leftEndPosition, weapon.cardType);
+                effectsManager.createLaserBeam(rightWeaponPos, rightEndPosition, weapon.cardType);
                 console.log('🎯 Physics laser beams missed all targets');
-                // Show miss feedback only if we haven't already shown it
-                if (!anyHit) {
-                    this.showMissFeedback(weapon.name);
-                }
+                if (!anyHit) { this.showMissFeedback(weapon.name); }
             }
             
             // Handle case where no physics result was obtained at all
@@ -1167,6 +1150,11 @@ export class WeaponSlot {
                 this.showMissFeedback(weapon.name);
             }
             
+            // Refresh crosshair display after firing to restore in-range indicator if applicable
+            try {
+                this.ship?.starfieldManager?.viewManager?.updateCrosshairDisplay?.();
+            } catch (_) {}
+
         } else if (weapon.weaponType === 'splash-damage') {
             // For projectile weapons, the projectile will handle its own trail effects
             // The explosion will be handled when the projectile detonates

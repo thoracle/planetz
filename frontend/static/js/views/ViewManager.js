@@ -14,6 +14,7 @@ import SubspaceRadioSystem from '../ship/systems/SubspaceRadioSystem.js';
 import SubspaceRadio from '../ui/SubspaceRadio.js';
 import { CrosshairTargeting } from '../utils/CrosshairTargeting.js';
 import { targetingService } from '../services/TargetingService.js';
+import { getActiveCamera } from '../ship/systems/services/AimResolver.js';
 import { getStarterCardsArray } from '../ship/ShipConfigs.js';
 
 export const VIEW_TYPES = {
@@ -1027,9 +1028,9 @@ export class ViewManager {
         let targetDistance = null;
         
         // Only check for targets if we have a weapon and access to the scene
-        if (currentWeaponRange > 0 && this.starfieldManager?.camera && this.starfieldManager?.scene) {
-            // Use unified targeting service to ensure consistency with weapon system
-            const camera = this.starfieldManager.camera;
+        if (currentWeaponRange > 0 && this.starfieldManager?.scene) {
+            // Use the active camera (fore/aft) to match firing logic and crosshair
+            const camera = getActiveCamera(this.ship) || this.starfieldManager.camera;
             
             const targetingResult = targetingService.getCurrentTarget({
                 camera: camera,
