@@ -11,12 +11,23 @@ export function castLaserRay(ship, weaponRangeValueKmOrM, intendedTarget = null)
 	}
 
 	const origin = getFireOrigin(ship);
-	const dir = getFireDirection(ship);
+	let dir = getFireDirection(ship);
 	if (!origin || !dir) {
 		return { hit: false, point: null, entity: null, distance: 0 };
 	}
 
 	const maxRangeKm = normalizeRangeKm(weaponRangeValueKmOrM);
+
+	// Bias direction toward intended target center if available to reduce parallax
+	try {
+		if (intendedTarget && intendedTarget.position && THREE) {
+			const targetPos = new THREE.Vector3(intendedTarget.position.x, intendedTarget.position.y, intendedTarget.position.z);
+			const toTarget = targetPos.clone().sub(origin).normalize();
+			dir = toTarget.multiplyScalar(0.7).add(dir.clone().multiplyScalar(0.3)).normalize();
+		}
+	} catch (e) {
+		// ignore blend errors
+	}
 	let remainingKm = maxRangeKm;
 	let currentOrigin = origin.clone();
 	let steps = 0;

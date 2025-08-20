@@ -8,7 +8,7 @@ import { WeaponCard } from './WeaponCard.js';
 import { castLaserRay } from './services/HitScanService.js';
 
 // Feature flag to enable simplified center-ray firing path safely
-const USE_SIMPLE_FIRING = false;
+const USE_SIMPLE_FIRING = true;
 
 export class WeaponSlot {
     constructor(weaponNumber, ship, starfieldManager, weaponSystem = null) {
@@ -1092,6 +1092,7 @@ export class WeaponSlot {
                 effectsManager.createExplosion(hitPosition, explosionRadiusMeters, 'damage', hitPosition);
                 
                 // Apply damage to the hit entity
+                try {
                 if (hitEntity.ship && typeof hitEntity.ship.applyDamage === 'function') {
                     // Check if we have sub-targeting for more precise damage
                     const subTargetSystem = this.ship?.getSystem('target_computer')?.currentSubTarget;
@@ -1148,6 +1149,9 @@ export class WeaponSlot {
                     console.log(`💥 Physics laser beam hit confirmed with explosion radius ${explosionRadiusMeters}m`);
                 } else {
                     console.log('Hit entity does not have a ship with applyDamage method:', hitEntity);
+                }
+                } catch (err) {
+                    console.warn('Failed to apply laser damage/effects:', err?.message || err);
                 }
             } else {
                 console.log('🎯 Physics laser beams missed all targets');
