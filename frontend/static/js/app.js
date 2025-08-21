@@ -8,8 +8,10 @@ import { ViewManager } from './views/ViewManager.js';
 import { StarfieldManager } from './views/StarfieldManager.js';
 import { SolarSystemManager } from './SolarSystemManager.js';
 import { WeaponEffectsManager } from './ship/systems/WeaponEffectsManager.js';
-import PhysicsManager from './PhysicsManager.js';
-import './ship/systems/services/HitScanService.js'; // Load simplified hit scan service
+import SpatialManager from './SpatialManager.js';
+import SimpleCollisionManager from './SimpleCollisionManager.js';
+import SimpleDockingManager from './SimpleDockingManager.js';
+import './ship/systems/services/HitScanService.js'; // Load Three.js hit scan service
 import './cache-test.js'; // Cache test - TIMESTAMP: 1755751628397
 
 // Global variables for warp control mode
@@ -24,48 +26,27 @@ let guiContainer = null;
 let viewManager = null;
 let solarSystemManager = null;
 let debugManager = null;
-let physicsManager = null;
+let spatialManager = null;
+let collisionManager = null;
+let dockingManager = null;
 
 /**
- * Check if Ammo.js is available for instant local loading
- * @returns {boolean} True if Ammo.js is available, false otherwise
+ * Initialize Three.js-based spatial and collision systems
+ * Replaces Ammo.js physics with simple, performant Three.js systems
  */
-function isAmmoAvailable() {
-    // Check explicit load flag (most reliable)
-    if (window.AmmoLoaded === true && window.Ammo) {
-        return true;
-    }
+function initializeThreeJSSystems(scene) {
+    console.log('🌌 Initializing Three.js spatial and collision systems...');
     
-    // Direct global Ammo access
-    if (typeof Ammo !== 'undefined' && Ammo) {
-        window.Ammo = Ammo; // Ensure it's on window object too
-        window.AmmoLoaded = true; // Set flag for future checks
-        return true;
-    }
+    // Create spatial manager for object tracking
+    spatialManager = new SpatialManager();
+    window.spatialManager = spatialManager;
     
-    // Window.Ammo access
-    if (typeof window.Ammo !== 'undefined' && window.Ammo) {
-        // Make it available as global Ammo too
-        if (typeof globalThis !== 'undefined') {
-            globalThis.Ammo = window.Ammo;
-        }
-        window.AmmoLoaded = true; // Set flag for future checks
-        return true;
-    }
+    // Create collision manager for raycast and collision detection
+    collisionManager = new SimpleCollisionManager(scene, spatialManager);
+    window.collisionManager = collisionManager;
     
-    // Try to access Ammo with error handling
-    try {
-        if (window.Ammo && typeof window.Ammo === 'function') {
-            window.AmmoLoaded = true; // Set flag for future checks
-            return true;
-        }
-    } catch (error) {
-        console.warn('⚠️ Error accessing window.Ammo:', error.message);
-    }
-    
-    // All methods failed
-    console.warn('❌ Ammo.js not available - physics will be disabled');
-    return false;
+    console.log('✅ Three.js systems initialized successfully');
+    return true;
 }
 
 // Function to update debug info
@@ -339,60 +320,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Set initialization flag to indicate StarfieldManager is available
     window.starfieldManagerReady = true;
 
-    // Wait for the HTML-based Ammo.js loading to complete
-    let ammoAvailable = false;
-    let attempts = 0;
-    const maxAttempts = 25; // 5 seconds with 200ms intervals
+    // Three.js systems are ready immediately (no loading required)
+    console.log('🌌 Three.js spatial systems ready - no loading required');
     
-    while (!ammoAvailable && attempts < maxAttempts) {
-        attempts++;
-        
-        // Check if HTML loading completed successfully
-        if (window.AmmoLoaded === true && typeof window.Ammo !== 'undefined') {
-            ammoAvailable = true;
-            break;
-        }
-        
-        // Check if HTML loading explicitly failed
-        if (window.AmmoLoaded === false) {
-            break;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    
-    if (!ammoAvailable) {
-        console.error('❌ Ammo.js loading timed out or failed. Physics will be disabled.');
-        console.error('💡 Check browser console for Ammo.js loading errors.');
-        console.error('💡 Verify lib/ammo.js exists and is accessible.');
-    }
-    
-    if (ammoAvailable) {
-        // Initialize PhysicsManager only if Ammo.js loaded successfully
-        physicsManager = new PhysicsManager();
-        
-        // Initialize the physics engine (async) and wait for completion
-        try {
-            const success = await physicsManager.initialize();
-            if (success) {
-                window.physicsManager = physicsManager;
-                window.physicsManagerReady = true;
-            } else {
-                console.error('❌ Failed to initialize PhysicsManager - continuing without physics');
-                physicsManager = null;
-                window.physicsManager = null;
-                window.physicsManagerReady = false;
-            }
-        } catch (error) {
-            console.error('❌ PhysicsManager initialization error:', error, '- continuing without physics');
-            physicsManager = null;
-            window.physicsManager = null;
-            window.physicsManagerReady = false;
-        }
+    // Initialize Three.js-based systems (replaces Ammo.js physics)
+    const systemsInitialized = initializeThreeJSSystems(scene);
+    if (systemsInitialized) {
+        console.log('✅ Three.js spatial and collision systems ready');
+        window.spatialManagerReady = true;
+        window.collisionManagerReady = true;
     } else {
-        physicsManager = null;
-        window.physicsManager = null;
-        window.physicsManagerReady = false;
+        console.error('❌ Failed to initialize Three.js systems');
+        window.spatialManagerReady = false;
+        window.collisionManagerReady = false;
     }
 
     // Initialize SolarSystemManager and connect it to StarfieldManager
@@ -1660,9 +1600,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         solarSystemManager.update(deltaTime);
         debugManager.update();
         
-        // Update physics simulation
-        if (physicsManager && physicsManager.initialized) {
-            physicsManager.update(deltaTime);
+        // Update spatial and collision systems
+        if (spatialManager) {
+            spatialManager.update(deltaTime);
+        }
+        if (collisionManager) {
+            collisionManager.update(deltaTime);
         }
         
         // Update physics projectiles
@@ -2349,11 +2292,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.THREE = THREE;
 window.WeaponEffectsManager = WeaponEffectsManager;
 
-// Make physics manager available globally when it's created
-function setGlobalPhysicsManager(manager) {
-    window.physicsManager = manager;
-    window.physics = manager; // Alternative reference
-    console.log('🔧 Physics manager made globally available');
+// Make spatial and collision managers available globally when created
+function setGlobalSpatialManagers(spatial, collision) {
+    window.spatialManager = spatial;
+    window.collisionManager = collision;
+    console.log('🔧 Spatial and collision managers made globally available');
 }
 
 // Add projectile debugging console command

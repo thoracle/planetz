@@ -107,7 +107,12 @@ export class TargetComputerManager {
             'Void Cult': 'enemy'
         };
         
-        return factionRelations[faction] || 'neutral';
+        // Case-insensitive lookup: find faction by comparing lowercase versions
+        const factionKey = Object.keys(factionRelations).find(key => 
+            key.toLowerCase() === faction.toLowerCase()
+        );
+        
+        return factionKey ? factionRelations[factionKey] : 'neutral';
     }
 
     /**
@@ -1232,7 +1237,8 @@ export class TargetComputerManager {
             // console.warn('🎯 No SolarSystemManager available for targeting');
         }
         
-        // Note: Dummy ships will be added by addNonPhysicsTargets() to avoid duplicates
+        // Add any targets that might not have physics bodies yet (fallback)
+        this.addNonPhysicsTargets(allTargets, 150); // Use 150km as max range (same as target computer range)
         
         // Update target list
         this.targetObjects = allTargets;
@@ -1261,27 +1267,35 @@ export class TargetComputerManager {
      * Add targets that don't have physics bodies yet (fallback)
      */
     addNonPhysicsTargets(allTargets, maxRange) {
+        console.log(`🎯 addNonPhysicsTargets: Called with ${allTargets.length} existing targets, maxRange: ${maxRange}km`);
+        
         // Build sets for duplicate detection - check both names and ship objects
         const existingTargetIds = new Set(allTargets.map(t => t.physicsEntity?.id || t.name));
         const existingShipObjects = new Set(allTargets.map(t => t.ship).filter(ship => ship));
         
+        // Debug viewManager chain
+        console.log(`🎯 addNonPhysicsTargets: viewManager exists: ${!!this.viewManager}`);
+        console.log(`🎯 addNonPhysicsTargets: starfieldManager exists: ${!!this.viewManager?.starfieldManager}`);
+        console.log(`🎯 addNonPhysicsTargets: dummyShipMeshes exists: ${!!this.viewManager?.starfieldManager?.dummyShipMeshes}`);
+        console.log(`🎯 addNonPhysicsTargets: dummyShipMeshes length: ${this.viewManager?.starfieldManager?.dummyShipMeshes?.length || 0}`);
+        
         // Check for ships without physics bodies
         if (this.viewManager?.starfieldManager?.dummyShipMeshes) {
-            // console.log(`🎯 addNonPhysicsTargets: Processing ${this.viewManager.starfieldManager.dummyShipMeshes.length} dummy ships`);
-            // console.log(`🎯 addNonPhysicsTargets: Existing target IDs:`, Array.from(existingTargetIds));
+            console.log(`🎯 addNonPhysicsTargets: Processing ${this.viewManager.starfieldManager.dummyShipMeshes.length} dummy ships`);
+            console.log(`🎯 addNonPhysicsTargets: Existing target IDs:`, Array.from(existingTargetIds));
             
             this.viewManager.starfieldManager.dummyShipMeshes.forEach((mesh, index) => {
                 const ship = mesh.userData.ship;
                 const targetId = ship.shipName;
                 
-                // console.log(`🎯 addNonPhysicsTargets: Checking dummy ship ${index}: ${targetId}, hull: ${ship.currentHull}, already exists: ${existingTargetIds.has(targetId) || existingShipObjects.has(ship)}`);
+                console.log(`🎯 addNonPhysicsTargets: Checking dummy ship ${index}: ${targetId}, hull: ${ship.currentHull}, already exists: ${existingTargetIds.has(targetId) || existingShipObjects.has(ship)}`);
                 
                 // Filter out destroyed ships and check if not already in target list
                 // Check both by ID/name and by ship object reference
                 if (!existingTargetIds.has(targetId) && !existingShipObjects.has(ship) && ship && ship.currentHull > 0.001) {
                     const distance = this.calculateDistance(this.camera.position, mesh.position);
                     if (distance <= maxRange) {
-                        // console.log(`🎯 addNonPhysicsTargets: Adding dummy ship: ${targetId}`);
+                        console.log(`🎯 addNonPhysicsTargets: Adding dummy ship: ${targetId}`);
                         allTargets.push({
                             name: ship.shipName,
                             type: 'enemy_ship',
@@ -1293,7 +1307,7 @@ export class TargetComputerManager {
                             distance: distance
                         });
                     } else {
-                        // console.log(`🎯 addNonPhysicsTargets: Dummy ship ${targetId} out of range: ${distance.toFixed(1)}km > ${maxRange}km`);
+                        console.log(`🎯 addNonPhysicsTargets: Dummy ship ${targetId} out of range: ${distance.toFixed(1)}km > ${maxRange}km`);
                     }
                 } else if (ship && ship.currentHull <= 0.001) {
                     console.log(`🗑️ Fallback method filtering out destroyed ship: ${ship.shipName} (Hull: ${ship.currentHull})`);
@@ -1314,7 +1328,7 @@ export class TargetComputerManager {
                     const info = this.solarSystemManager.getCelestialBodyInfo(body);
                     if (info && !existingTargetIds.has(info.name)) {
                         // console.log(`🎯 addNonPhysicsTargets: Adding celestial body: ${info.name} (${info.type})`);
-                        allTargets.push({
+                        const targetData = {
                             name: info.name,
                             type: info.type,
                             position: body.position.toArray(),
@@ -1324,7 +1338,14 @@ export class TargetComputerManager {
                             isShip: false,
                             distance: distance,
                             ...info
+                        };
+                        console.log(`🔍 TargetComputerManager.addNonPhysicsTargets: Adding celestial body:`, {
+                            name: targetData.name,
+                            type: targetData.type,
+                            faction: targetData.faction,
+                            diplomacy: targetData.diplomacy
                         });
+                        allTargets.push(targetData);
                     }
                 }
             }
@@ -1442,7 +1463,30 @@ export class TargetComputerManager {
         if (targetComputer) {
             // For enemy ships, pass the ship instance (has systems). For others, pass the render object
             const isEnemyShip = !!(targetData?.isShip && targetData?.ship);
-            const targetForSubTargeting = isEnemyShip ? targetData.ship : (targetData?.object || targetData);
+            let targetForSubTargeting = isEnemyShip ? targetData.ship : (targetData?.object || targetData);
+            
+            // Ensure the target object has name and faction information
+            if (targetForSubTargeting && !isEnemyShip) {
+                // Copy essential information from targetData to the object
+                if (!targetForSubTargeting.name && targetData.name) {
+                    targetForSubTargeting.name = targetData.name;
+                }
+                if (!targetForSubTargeting.faction && targetData.faction) {
+                    targetForSubTargeting.faction = targetData.faction;
+                }
+                if (!targetForSubTargeting.diplomacy && targetData.diplomacy) {
+                    targetForSubTargeting.diplomacy = targetData.diplomacy;
+                }
+                
+                // For navigation beacons and other objects, also check userData as fallback
+                if (!targetForSubTargeting.name && targetForSubTargeting.userData?.name) {
+                    targetForSubTargeting.name = targetForSubTargeting.userData.name;
+                }
+                if (!targetForSubTargeting.faction && targetForSubTargeting.userData?.faction) {
+                    targetForSubTargeting.faction = targetForSubTargeting.userData.faction;
+                }
+            }
+            
             targetComputer.setTarget(targetForSubTargeting);
         }
         
@@ -1505,27 +1549,57 @@ export class TargetComputerManager {
                 radius = targetObject.geometry.boundingSphere?.radius || radius;
             }
 
-            // Determine target info
+            // Determine target info (use same logic as updateTargetDisplay)
             let info = null;
             let wireframeColor = 0x808080; // default gray
+            let isEnemyShip = false;
 
-            if (currentTargetData?.isShip) {
+            // First, try to get enhanced target info from the ship's TargetComputer system
+            const ship = this.viewManager?.getShip();
+            const targetComputer = ship?.getSystem('target_computer');
+            const enhancedTargetInfo = targetComputer?.getCurrentTargetInfo();
+            
+            if (enhancedTargetInfo) {
+                // Use the comprehensive target information from TargetComputer
+                info = enhancedTargetInfo;
+                isEnemyShip = enhancedTargetInfo.diplomacy === 'enemy' || enhancedTargetInfo.faction === 'enemy';
+            } else if (currentTargetData?.isShip) {
                 info = { type: 'enemy_ship' };
-                wireframeColor = 0xff3333; // hostile red for enemy ships
+                isEnemyShip = true;
                 radius = Math.max(radius, 2);
             } else {
                 info = currentTargetData || this.solarSystemManager.getCelestialBodyInfo(targetObject);
+            }
 
-                if (info?.type === 'star' || (this.getStarSystem() && info?.name === this.getStarSystem().star_name)) {
-                    wireframeColor = 0xffff00; // stars yellow
-                } else {
-                    let diplomacy = info?.diplomacy?.toLowerCase();
-                    if (!diplomacy && info?.faction) {
-                        diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
+            // Update wireframe color based on diplomacy (same logic as updateTargetDisplay)
+            if (isEnemyShip) {
+                wireframeColor = 0xff3333; // Enemy ships are red
+            } else if (info?.type === 'star') {
+                wireframeColor = 0xffff00; // Stars are yellow
+            } else {
+                // Convert faction to diplomacy if needed
+                let diplomacy = null;
+                
+                // Check if diplomacy is already a valid status (friendly, neutral, enemy)
+                if (info?.diplomacy) {
+                    const diplomacyLower = info.diplomacy.toLowerCase();
+                    if (['friendly', 'neutral', 'enemy'].includes(diplomacyLower)) {
+                        diplomacy = diplomacyLower;
+                    } else {
+                        // diplomacy field contains faction name, use it to lookup diplomacy
+                        diplomacy = this.getFactionDiplomacy(info.diplomacy).toLowerCase();
                     }
-                    if (diplomacy === 'enemy') wireframeColor = 0xff3333;
-                    else if (diplomacy === 'neutral') wireframeColor = 0xffff00;
-                    else if (diplomacy === 'friendly') wireframeColor = 0x00ff41;
+                } else if (info?.faction) {
+                    // Use faction field to lookup diplomacy
+                    diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
+                }
+                
+                if (diplomacy === 'enemy') {
+                    wireframeColor = 0xff3333; // Enemy red
+                } else if (diplomacy === 'neutral') {
+                    wireframeColor = 0xffff00; // Neutral yellow
+                } else if (diplomacy === 'friendly') {
+                    wireframeColor = 0x00ff41; // Friendly green
                 }
             }
 
@@ -1537,7 +1611,9 @@ export class TargetComputerManager {
             });
 
             // Build geometry per type
-            if (info && (info.type === 'star' || (this.getStarSystem() && info.name === this.getStarSystem().star_name))) {
+            console.log(`🌟 WIREFRAME: Creating wireframe for target. info.type="${info?.type}", info.name="${info?.name}"`);
+            if (info && (info.type?.toLowerCase() === 'star' || (this.getStarSystem() && info.name === this.getStarSystem().star_name))) {
+                console.log(`🌟 WIREFRAME: Creating STAR geometry for ${info.name}`);
                 const starGeometry = this.createStarGeometry(radius);
                 this.targetWireframe = new this.THREE.LineSegments(starGeometry, wireframeMaterial);
             } else {
@@ -1574,7 +1650,7 @@ export class TargetComputerManager {
             }
 
             // Add sub-target indicators only for enemy ships
-            const isEnemyShip = !!(currentTargetData?.isShip && currentTargetData?.ship);
+            // Note: isEnemyShip is already determined above in the wireframe color logic
             if (isEnemyShip) {
                 this.createSubTargetIndicators(radius, wireframeColor);
             } else {
@@ -1700,8 +1776,17 @@ export class TargetComputerManager {
         let info = null;
         let isEnemyShip = false;
         
-        // Check if this is an enemy ship
-        if (currentTargetData.isShip && currentTargetData.ship) {
+        // First, try to get enhanced target info from the ship's TargetComputer system
+        const ship = this.viewManager?.getShip();
+        const targetComputer = ship?.getSystem('target_computer');
+        const enhancedTargetInfo = targetComputer?.getCurrentTargetInfo();
+        
+        if (enhancedTargetInfo) {
+            // Use the comprehensive target information from TargetComputer
+            info = enhancedTargetInfo;
+            isEnemyShip = enhancedTargetInfo.diplomacy === 'enemy' || enhancedTargetInfo.faction === 'enemy';
+        } else if (currentTargetData.isShip && currentTargetData.ship) {
+            // Fallback: Check if this is an enemy ship
             isEnemyShip = true;
             info = {
                 type: 'enemy_ship',
@@ -1710,7 +1795,7 @@ export class TargetComputerManager {
                 shipType: currentTargetData.ship.shipType
             };
         } else {
-            // Prefer the processed target data; fall back to solar system info using the underlying object
+            // Final fallback: Prefer the processed target data; fall back to solar system info using the underlying object
             const targetObject = this.currentTarget?.object || this.currentTarget;
             info = currentTargetData || this.solarSystemManager.getCelestialBodyInfo(targetObject);
         }
@@ -1723,9 +1808,22 @@ export class TargetComputerManager {
             diplomacyColor = '#ffff00'; // Stars are neutral yellow
         } else {
             // Convert faction to diplomacy if needed
-            let diplomacy = info?.diplomacy?.toLowerCase();
-            if (!diplomacy && info?.faction) {
-                diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
+            let diplomacy = null;
+            
+            // Check if diplomacy is already a valid status (friendly, neutral, enemy)
+            if (info?.diplomacy) {
+                const diplomacyLower = info.diplomacy.toLowerCase();
+                if (['friendly', 'neutral', 'enemy'].includes(diplomacyLower)) {
+                    diplomacy = diplomacyLower;
+                                        } else {
+                            // diplomacy field contains faction name, use it to lookup diplomacy
+                            diplomacy = this.getFactionDiplomacy(info.diplomacy).toLowerCase();
+                            // console.log(`🎯 Faction mapping: "${info.diplomacy}" → "${diplomacy}"`);
+                        }
+                    } else if (info?.faction) {
+                        // Use faction field to lookup diplomacy
+                        diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
+                        // console.log(`🎯 Faction mapping: "${info.faction}" → "${diplomacy}"`);
             }
             
             if (diplomacy === 'enemy') {
@@ -1734,6 +1832,8 @@ export class TargetComputerManager {
                 diplomacyColor = '#ffff00'; // Neutral yellow
             } else if (diplomacy === 'friendly') {
                 diplomacyColor = '#00ff41'; // Friendly green
+            } else {
+                console.log(`🎯 Unknown diplomacy status: "${diplomacy}" for faction: "${info?.faction || info?.diplomacy}"`);
             }
         }
         
@@ -1744,13 +1844,12 @@ export class TargetComputerManager {
             this.wireframeContainer.style.borderColor = diplomacyColor;
         }
 
-        // Get sub-target information from targeting computer
-        const ship = this.viewManager?.getShip();
-        const targetComputer = ship?.getSystem('target_computer');
+        // Get sub-target information from targeting computer (reuse ship variable from above)
+        const targetComputerForSubTargets = ship?.getSystem('target_computer');
         let subTargetHTML = '';
         
         // Add sub-target information if available
-        if (targetComputer && targetComputer.hasSubTargeting()) {
+        if (targetComputerForSubTargets && targetComputerForSubTargets.hasSubTargeting()) {
             // For enemy ships and space stations, use actual sub-targeting
             const isSpaceStation = info?.type === 'station' || currentTargetData.type === 'station' || 
                                     (this.currentTarget?.userData?.isSpaceStation);
@@ -1764,13 +1863,13 @@ export class TargetComputerManager {
                 // The setTarget() method automatically calls updateSubTargets()
                 // So we don't need to call it again here to avoid console spam
                 
-                if (targetComputer.currentSubTarget) {
-                    const subTarget = targetComputer.currentSubTarget;
+                if (targetComputerForSubTargets.currentSubTarget) {
+                    const subTarget = targetComputerForSubTargets.currentSubTarget;
                     const healthPercent = Math.round(subTarget.health * 100);
                     
                     // Get accuracy and damage bonuses
-                    const accuracyBonus = Math.round(targetComputer.getSubTargetAccuracyBonus() * 100);
-                    const damageBonus = Math.round(targetComputer.getSubTargetDamageBonus() * 100);
+                    const accuracyBonus = Math.round(targetComputerForSubTargets.getSubTargetAccuracyBonus() * 100);
+                    const damageBonus = Math.round(targetComputerForSubTargets.getSubTargetDamageBonus() * 100);
                     
                     // Create health bar display matching main hull health style
                     const healthBarSection = `

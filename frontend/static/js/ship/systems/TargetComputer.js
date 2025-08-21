@@ -284,11 +284,69 @@ export default class TargetComputer extends System {
         // Update sub-targets for new target
         this.updateSubTargets();
         
-        console.log(`Target set: ${target ? target.name || 'Unknown' : 'None'}`);
+        // Extract comprehensive target information for display
+        if (target) {
+            const name = target.name || target.shipName || target.userData?.name || 'Unknown';
+            let faction = 'Unknown';
+            let diplomacy = 'Unknown';
+            
+            // Try multiple sources for faction/diplomacy information
+            if (target.faction) {
+                faction = target.faction;
+            } else if (target.diplomacy) {
+                faction = target.diplomacy;
+            } else if (target.userData?.faction) {
+                faction = target.userData.faction;
+            } else if (target.userData?.diplomacy) {
+                faction = target.userData.diplomacy;
+            } else if (target.shipData?.faction) {
+                faction = target.shipData.faction;
+            }
+            
+            // Set diplomacy same as faction if not explicitly set
+            diplomacy = target.diplomacy || faction;
+            
+            console.log(`Target set: ${name} (${faction})`);
+            
+            // Determine proper object type
+            let objectType = 'Unknown';
+            if (target.isShip || target.userData?.isShip) {
+                objectType = 'Ship';
+            } else if (target.userData?.type) {
+                // Use userData type (e.g., 'planet', 'moon', 'star', 'station')
+                objectType = target.userData.type.charAt(0).toUpperCase() + target.userData.type.slice(1);
+            } else if (window.spatialManager) {
+                // Try to get type from spatial manager metadata
+                const metadata = window.spatialManager.getMetadata(target);
+                if (metadata?.type) {
+                    objectType = metadata.type.charAt(0).toUpperCase() + metadata.type.slice(1);
+                }
+            }
+            
+            // Store enhanced target info for HUD display
+            this.currentTargetInfo = {
+                name: name,
+                faction: faction,
+                diplomacy: diplomacy,
+                type: objectType
+            };
+        } else {
+            console.log(`Target set: None`);
+            this.currentTargetInfo = null;
+        }
+        
         if (this.hasSubTargeting() && this.availableSubTargets.length > 0) {
             console.log(`Sub-targeting available: ${this.availableSubTargets.length} systems detected`);
         }
         return true;
+    }
+    
+    /**
+     * Get current target information for HUD display
+     * @returns {Object|null} Target information object or null
+     */
+    getCurrentTargetInfo() {
+        return this.currentTargetInfo || null;
     }
     
     /**

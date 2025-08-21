@@ -2,7 +2,7 @@
 import { DockingInterface } from '../ui/DockingInterface.js';
 import { HelpInterface } from '../ui/HelpInterface.js';
 import DockingSystemManager from '../ship/DockingSystemManager.js';
-import { PhysicsDockingManager } from '../ship/PhysicsDockingManager.js';
+import SimpleDockingManager from '../SimpleDockingManager.js';
 import { getSystemDisplayName } from '../ship/System.js';
 import DamageControlHUD from '../ui/DamageControlHUD.js';
 import { CommunicationHUD } from '../ui/CommunicationHUD.js';
@@ -145,22 +145,10 @@ export class StarfieldManager {
         this.proximityDetector3D = new ProximityDetector3D(this, document.body);
         console.log('🎯 StarfieldManager: 3D Proximity Detector initialized');
         
-        // Ensure physics-based docking initializes as soon as physics is ready
-        if (!this._physicsDockingInitTried) {
-            this._physicsDockingInitTried = true;
-            const initIfReady = () => {
-                if (window.physicsManagerReady) {
-                    this.initializePhysicsDocking();
-                    if (this._physicsDockingInitInterval) {
-                        clearInterval(this._physicsDockingInitInterval);
-                        this._physicsDockingInitInterval = null;
-                    }
-                }
-            };
-            initIfReady();
-            if (!this.physicsDockingManager) {
-                this._physicsDockingInitInterval = setInterval(initIfReady, 250);
-            }
+        // Initialize simple docking system
+        if (!this._dockingInitTried) {
+            this._dockingInitTried = true;
+            this.initializeSimpleDocking();
         }
         
         // Add intel state
@@ -1245,34 +1233,17 @@ export class StarfieldManager {
                 // Toggle weapon debug mode
                 this.toggleDebugMode();
                 
-                // Toggle physics debug visualization
-                if (window.physicsManager && window.physicsManager.initialized) {
-                    console.log(`🔧 PhysicsManager Status: Initialized and ready`);
-                    console.log(`   • Current debug mode: ${window.physicsManager.debugMode ? 'ENABLED' : 'DISABLED'}`);
+                // Toggle spatial debug visualization (placeholder for future implementation)
+                if (window.spatialManager) {
+                    console.log(`🔧 SpatialManager Status: Initialized and ready`);
+                    const stats = window.spatialManager.getStats();
+                    console.log(`   • Tracked objects: ${stats.totalObjects}`);
+                    console.log(`   • Object types: ${Object.keys(stats.typeBreakdown).join(', ')}`);
                     
-                    const physicsDebugEnabled = window.physicsManager.toggleDebugMode(this.scene);
-                    console.log(`🔍 Physics debug visualization ${physicsDebugEnabled ? 'ENABLED' : 'DISABLED'}`);
-                    
-                    // If enabling debug mode, sync all physics body positions first
-                    if (physicsDebugEnabled) {
-                        window.physicsManager.updateAllRigidBodyPositions();
-                        console.log(`👁️ PHYSICS DEBUG WIREFRAMES NOW VISIBLE:`);
-                        console.log(`   • Enemy ships: MAGENTA wireframes`);
-                        console.log(`   • Celestial bodies: CYAN wireframes`);
-                        console.log(`   • Unknown objects: YELLOW wireframes`);
-                        console.log(`   • Look for bright colored wireframe outlines around objects`);
-                        console.log(`💡 TIP: Fire torpedoes to see their bright collision shapes in motion!`);
-                        console.log(`💡 TIP: Press Ctrl+Shift+P to enhance wireframe visibility if you can't see them`);
-                    } else {
-                        console.log(`🧹 Physics debug disabled - debug wireframes hidden`);
-                    }
+                    // Future: Add debug visualization for spatial bounding volumes
+                    console.log(`🔍 Spatial debug info displayed in console`);
                 } else {
-                    console.warn(`⚠️ PhysicsManager not available for debug visualization`);
-                    if (window.physicsManager) {
-                        console.warn(`   • PhysicsManager exists but not initialized: ${window.physicsManager.initialized}`);
-                    } else {
-                        console.warn(`   • PhysicsManager is not loaded`);
-                    }
+                    console.warn(`⚠️ SpatialManager not available for debug visualization`);
                 }
                 
                 console.log(`✅ CTRL+O DEBUG TOGGLE COMPLETE`);
@@ -3655,10 +3626,14 @@ export class StarfieldManager {
     /**
      * Initialize physics-based docking when physics system is ready
      */
-    initializePhysicsDocking() {
-        if (window.physicsManagerReady && !this.physicsDockingManager) {
-            this.physicsDockingManager = new PhysicsDockingManager(this);
-            console.log('🚀 Physics-based docking system initialized');
+    initializeSimpleDocking() {
+        if (window.spatialManagerReady && window.collisionManagerReady && !this.simpleDockingManager) {
+            this.simpleDockingManager = new SimpleDockingManager(
+                this, 
+                window.spatialManager, 
+                window.collisionManager
+            );
+            console.log('🚀 Simple docking system initialized');
         }
     }
 
@@ -3692,22 +3667,16 @@ export class StarfieldManager {
         if (typeof this._inPhysicsDocking !== 'boolean') {
             this._inPhysicsDocking = false;
         }
-        // Initialize physics docking if not already done
-        this.initializePhysicsDocking();
+        // Initialize simple docking if not already done
+        this.initializeSimpleDocking();
 
-        // Decide whether to use physics docking (stations) or distance docking (planets/moons)
+        // Use simple docking system for all targets
         const targetObject = target?.object || target;
-        const isStationTarget = !!(targetObject?.userData?.dockingCollisionBox || targetObject?.userData?.type === 'station');
-        const canUsePhysicsDocking = !!(
-            this.physicsDockingManager &&
-            !this.physicsDockingManager.dockingInProgress &&
-            (this.physicsDockingManager.isInDockingZone() || isStationTarget)
-        );
-
-        if (canUsePhysicsDocking && !this._inPhysicsDocking) {
-            // Avoid recursion: if physics path calls back into dock(), skip here
+        
+        if (this.simpleDockingManager && !this._inPhysicsDocking) {
+            // Avoid recursion: if docking path calls back into dock(), skip here
             this._inPhysicsDocking = true;
-            const res = this.physicsDockingManager.initiateDocking(target);
+            const res = this.simpleDockingManager.initiateDocking(targetObject);
             this._inPhysicsDocking = false;
             return res;
         }
@@ -4051,9 +4020,9 @@ export class StarfieldManager {
             return;
         }
 
-        // Use physics-based launch if available
-        if (this.physicsDockingManager && this.physicsDockingManager.isDocked) {
-            return this.physicsDockingManager.initiateLaunch();
+        // Use simple docking system launch if available
+        if (this.simpleDockingManager && this.simpleDockingManager.isDocked) {
+            return this.simpleDockingManager.launchFromStation();
         }
 
         // Get ship instance for launch procedures
@@ -4593,39 +4562,39 @@ export class StarfieldManager {
                 this.targetDummyShips.push(dummyShip);
                 this.dummyShipMeshes.push(shipMesh);
                 
-                // Add physics body for the ship (static body for target practice)
-                if (window.physicsManager && window.physicsManagerReady) {
-                    // Calculate actual mesh size: 2.0m base * 1.5 scale = 3.0m
+                // Add to spatial tracking for collision detection
+                if (window.spatialManager && window.spatialManagerReady) {
+                    // Calculate actual mesh size: 1.0m base * 1.5 scale = 1.5m
                     const baseMeshSize = 1.0; // REDUCED: 50% smaller target dummies (was 2.0)
                     const meshScale = 1.5; // From createDummyShipMesh()
-                    const actualMeshSize = baseMeshSize * meshScale; // 1.5m visual size (was 3.0m)
+                    const actualMeshSize = baseMeshSize * meshScale; // 1.5m visual size
                     
                     // Use collision size that matches visual mesh (what you see is what you get)
                     const useRealistic = window.useRealisticCollision !== false; // Default to realistic
                     const collisionSize = useRealistic ? actualMeshSize : 4.0; // Match visual or weapon-friendly
                     
-                    const physicsBody = window.physicsManager.createShipRigidBody(shipMesh, {
-                        mass: 1000, // Dynamic body with mass for better collision detection (was 0)
-                        width: collisionSize,  // Match actual visual mesh size (3.0m) for honest hit detection
-                        height: collisionSize,
-                        depth: collisionSize,
+                    window.spatialManager.addObject(shipMesh, {
+                        type: 'enemy_ship',
+                        name: `target_dummy_${i + 1}`,
+                        radius: collisionSize / 2, // Convert diameter to radius
+                        canCollide: true,
+                        isTargetable: true,
+                        layer: 'ships',
                         entityType: 'enemy_ship',
                         entityId: `target_dummy_${i + 1}`,
                         health: dummyShip.currentHull || 100,
-                        damping: 0.99 // High damping to keep ships mostly stationary despite having mass
+                        ship: dummyShip
                     });
                     
-                    console.log(`🎯 Target dummy collision: Visual=${actualMeshSize}m, Physics=${collisionSize}m (what you see is what you get, realistic=${useRealistic})`);
-                    
-                    if (physicsBody) {
-                        console.log(`🚀 Physics body created for Target Dummy ${i + 1}`);
-                        // Store physics body reference in mesh userData
-                        shipMesh.userData.physicsBody = physicsBody;
-                    } else {
-                        console.warn(`❌ Failed to create physics body for Target Dummy ${i + 1}`);
+                    // Also add to collision manager's ship layer
+                    if (window.collisionManager) {
+                        window.collisionManager.addObjectToLayer(shipMesh, 'ships');
                     }
+                    
+                    console.log(`🎯 Target dummy added to spatial tracking: Visual=${actualMeshSize}m, Collision=${collisionSize}m (realistic=${useRealistic})`);
+                    console.log(`🚀 Spatial tracking created for Target Dummy ${i + 1}`);
                 } else {
-                    console.warn('⚠️ PhysicsManager not ready - skipping physics body creation for ships');
+                    console.warn('⚠️ SpatialManager not ready - skipping spatial tracking for ships');
                 }
                 
                 // Additional debug log with intended vs calculated distance
@@ -4636,19 +4605,8 @@ export class StarfieldManager {
                 // console.log(`🎯   Intended distance: ${(distance/1000).toFixed(1)}km, angle: ${(angle * 180 / Math.PI).toFixed(1)}°, height: ${(height*1000).toFixed(0)}m`);
                 // console.log(`🎯   Calculated distance: ${(calculatedDistance/1000).toFixed(1)}km`);
                 
-                // CRITICAL: Update physics body position to match mesh position
-                if (window.physicsManager && window.physicsManager.initialized) {
-                    try {
-                        // Try transform update first
-                        window.physicsManager.updateRigidBodyPosition(shipMesh);
-                        console.log(`🔄 Synced physics body position for Target Dummy ${i + 1}`);
-                    } catch (error) {
-                        console.warn(`Transform update failed for Target Dummy ${i + 1}, trying recreation:`, error);
-                        // Fallback: recreate physics body at new position  
-                        window.physicsManager.recreateRigidBodyAtPosition(shipMesh);
-                        console.log(`🔄 Recreated physics body for Target Dummy ${i + 1}`);
-                    }
-                }
+                // Note: No physics body position sync needed with Three.js-based system
+                // Spatial manager tracks objects directly by their Three.js positions
                 
             } catch (error) {
                 console.error(`Failed to create target dummy ${i + 1}:`, error);

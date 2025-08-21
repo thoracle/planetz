@@ -40,66 +40,14 @@
     <!-- Three.js Library -->
     <script src="static/lib/three.min.js"></script>
     
-    <!-- Ammo.js Physics Engine - Dynamic loading for both Flask and Python servers -->
+    <!-- Three.js-based collision and spatial systems (replaces Ammo.js) -->
     <script>
-        // Dynamic Ammo.js loading to work with both Flask (port 5001) and Python HTTP server (port 8081)
-        function loadAmmoJS() {
-            const ammoPath = `static/lib/ammo.js?v=${Date.now()}`; // Use static path with cache-busting  
-            console.log(`🔍 Dynamic Ammo.js loading: port=${window.location.port}, using path: ${ammoPath}`);
-            
-            // Create preload link
-            const preloadLink = document.createElement('link');
-            preloadLink.rel = 'preload';
-            preloadLink.href = ammoPath;
-            preloadLink.as = 'script';
-            document.head.appendChild(preloadLink);
-            
-            // Create script tag
-            const script = document.createElement('script');
-            script.src = ammoPath;
-            script.async = true; // Use async instead of defer for dynamic loading
-            script.onload = function() {
-                console.log(`✅ Ammo.js loaded successfully from ${ammoPath}`);
-                window.AmmoLoaded = true;
-                if (typeof Ammo !== 'undefined') {
-                    window.Ammo = Ammo;
-                    console.log(`✅ Ammo object available:`, typeof Ammo);
-                } else {
-                    console.warn(`⚠️ Script loaded but Ammo not defined`);
-                }
-            };
-            script.onerror = function(error) {
-                console.error(`❌ Failed to load Ammo.js from ${ammoPath}:`, error);
-                window.AmmoLoaded = false;
-            };
-            document.head.appendChild(script);
-        }
+        console.log('🌌 Using Three.js-based spatial and collision systems');
+        console.log('✅ No physics engine loading required - using native Three.js');
         
-        // Load Ammo.js based on server type - with timing protection
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', loadAmmoJS);
-        } else {
-            loadAmmoJS();
-        }
-        
-        // Wait for Ammo.js to load completely before making it available
-        window.addEventListener('load', function() {
-            if (typeof Ammo !== 'undefined') {
-                window.Ammo = Ammo;
-                window.AmmoLoaded = true;
-                console.log('✅ Ammo.js successfully loaded and made globally available');
-            } else if (!window.AmmoLoaded) {
-                console.error('❌ Ammo.js failed to load - trying fallback');
-                window.AmmoLoaded = false;
-            }
-        });
-        
-        // Immediate check for early loading
-        if (typeof Ammo !== 'undefined') {
-            window.Ammo = Ammo;
-            window.AmmoLoaded = true;
-            console.log('✅ Ammo.js loaded immediately');
-        }
+        // Set flags for compatibility with existing code
+        window.spatialSystemsReady = true;
+        window.collisionSystemsReady = true;
     </script>
     
     <!-- Game Application -->

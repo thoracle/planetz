@@ -232,29 +232,37 @@ export class SolarSystemManager {
             this.celestialBodies.set('star', star);
             console.log('Star created and added to scene');
 
+                    // Set name directly on star object for target computer
+        star.name = this.starSystem.star_name || 'Unknown Star';
+        
+        // Add metadata to star object
+        star.userData = {
+            name: this.starSystem.star_name || 'Unknown Star',
+            type: 'star',
+            faction: 'neutral',
+            diplomacy: 'neutral'
+        };
+            
             // Add physics body for the star
-            if (window.physicsManager && window.physicsManagerReady) {
+            if (window.spatialManager && window.spatialManagerReady) {
                 // Use realistic collision size matching visual mesh (can be toggled with window.useRealisticCollision = false)
                 const useRealistic = window.useRealisticCollision !== false; // Default to realistic
                 const collisionRadius = useRealistic ? starSize : Math.min(starSize, 0.5);
                 
-                const physicsBody = window.physicsManager.createPlanetRigidBody(star, {
+                window.spatialManager.addObject(star, {
+                    type: 'star',
+                    name: this.starSystem.star_name || 'Unknown Star',
+                    faction: 'neutral', // Stars are neutral
+                    diplomacy: 'neutral',
                     radius: collisionRadius, // Match visual mesh size for realistic collision detection
                     entityType: 'star',
                     entityId: this.starSystem.star_name || 'Unknown Star',
                     health: 50000 // Stars are essentially indestructible
                 });
                 
-                console.log(`🌟 Star collision: Visual=${starSize}m, Physics=${collisionRadius}m (realistic=${useRealistic})`);
-                
-                if (physicsBody) {
-                    console.log('🌟 Physics body created for star');
-                    star.userData.physicsBody = physicsBody;
-                } else {
-                    console.warn('❌ Failed to create physics body for star');
-                }
+                console.log(`🌟 Star added to spatial tracking: ${this.starSystem.star_name}, radius=${collisionRadius}m`);
             } else {
-                console.warn('⚠️ PhysicsManager not ready - skipping physics body creation for star');
+                console.warn('⚠️ SpatialManager not ready - skipping spatial tracking for star');
             }
 
             // Add star light with increased intensity and range
@@ -391,28 +399,35 @@ export class SolarSystemManager {
             this.celestialBodies.set(`planet_${index}`, planet);
             
             // Add physics body for the planet
-            if (window.physicsManager && window.physicsManagerReady) {
+            if (window.spatialManager && window.spatialManagerReady) {
                 // Use realistic collision size matching visual mesh (can be toggled with window.useRealisticCollision = false)
                 const useRealistic = window.useRealisticCollision !== false; // Default to realistic
                 const collisionRadius = useRealistic ? planetSize : Math.min(planetSize, 0.5);
                 
-                const physicsBody = window.physicsManager.createPlanetRigidBody(planet, {
+                // Set the name and diplomacy on the planet object for target computer
+                planet.name = planetData.planet_name || `Planet ${index}`;
+                planet.diplomacy = planetData.diplomacy || 'neutral';
+                planet.faction = planetData.diplomacy || 'neutral'; // Use diplomacy as faction for planets
+                
+                window.spatialManager.addObject(planet, {
+                    type: 'planet',
+                    name: planetData.planet_name || `Planet ${index}`,
                     radius: collisionRadius, // Match visual mesh size for realistic collision detection
                     entityType: 'planet',
                     entityId: planetData.planet_name || `Planet ${index}`,
-                    health: 20000 // Planets are very durable
+                    health: 20000, // Planets are very durable
+                    diplomacy: planetData.diplomacy || 'neutral',
+                    faction: planetData.diplomacy || 'neutral', // Use diplomacy as faction for planets
+                    government: planetData.government,
+                    economy: planetData.economy,
+                    technology: planetData.technology
                 });
                 
                 console.log(`🌍 Planet collision: Visual=${planetSize}m, Physics=${collisionRadius}m (realistic=${useRealistic})`);
                 
-                if (physicsBody) {
-                    console.log(`🌍 Physics body created for planet ${planetData.planet_name || index}`);
-                    planet.userData.physicsBody = physicsBody;
-                } else {
-                    console.warn(`❌ Failed to create physics body for planet ${index}`);
-                }
+                console.log(`🪐 Planet added to spatial tracking: ${planetData.planet_name || index}, radius=${collisionRadius}m`);
             } else {
-                console.warn('⚠️ PhysicsManager not ready - skipping physics body creation for planets');
+                console.warn('⚠️ SpatialManager not ready - skipping spatial tracking for planets');
             }
             
             // Add orbital elements with mass and proper initialization
@@ -500,29 +515,34 @@ export class SolarSystemManager {
             this.scene.add(moon);
             this.celestialBodies.set(`moon_${planetIndex}_${moonIndex}`, moon);
             
+            // Set name and diplomacy directly on moon object for target computer
+            moon.name = moonData.moon_name || `Moon ${moonIndex} of Planet ${planetIndex}`;
+            moon.diplomacy = moonData.diplomacy || 'neutral';
+            moon.faction = moonData.diplomacy || 'neutral'; // Use diplomacy as faction for moons
+            
             // Add physics body for the moon
-            if (window.physicsManager && window.physicsManagerReady) {
+            if (window.spatialManager && window.spatialManagerReady) {
                 // Use realistic collision size matching visual mesh (can be toggled with window.useRealisticCollision = false)
                 const useRealistic = window.useRealisticCollision !== false; // Default to realistic
                 const collisionRadius = useRealistic ? moonSize : Math.min(moonSize, 0.1);
                 
-                const physicsBody = window.physicsManager.createPlanetRigidBody(moon, {
-                    radius: collisionRadius, // Match visual mesh size for realistic collision detection
-                    entityType: 'moon',
-                    entityId: moonData.moon_name || `Moon ${moonIndex} of Planet ${planetIndex}`,
-                    health: 10000 // Moons are durable but less than planets
+                window.spatialManager.addObject(moon, {
+                    type: 'moon',
+                    name: moonData.moon_name || `Moon ${moonIndex} of Planet ${planetIndex}`,
+                    radius: collisionRadius,
+                    canCollide: true,
+                    isTargetable: true,
+                    layer: 'planets',
+                    diplomacy: moonData.diplomacy || 'neutral',
+                    faction: moonData.diplomacy || 'neutral', // Use diplomacy as faction for moons
+                    government: moonData.government,
+                    economy: moonData.economy,
+                    technology: moonData.technology
                 });
                 
-                console.log(`🌙 Moon collision: Visual=${moonSize}m, Physics=${collisionRadius}m (realistic=${useRealistic})`);
-                
-                if (physicsBody) {
-                    console.log(`🌙 Physics body created for moon ${moonData.moon_name || `${planetIndex}_${moonIndex}`}`);
-                    moon.userData.physicsBody = physicsBody;
-                } else {
-                    console.warn(`❌ Failed to create physics body for moon ${planetIndex}_${moonIndex}`);
-                }
+                console.log(`🌙 Moon added to spatial tracking: ${moonData.moon_name || `${planetIndex}_${moonIndex}`}, radius=${collisionRadius}m`);
             } else {
-                console.warn('⚠️ PhysicsManager not ready - skipping physics body creation for moons');
+                console.warn('⚠️ SpatialManager not ready - skipping spatial tracking for moons');
             }
             
             // Add orbital elements with mass and proper initialization
@@ -562,10 +582,10 @@ export class SolarSystemManager {
                 // Remove from scene
                 this.scene.remove(body);
                 
-                // Remove physics body if it exists
-                if (body.userData?.physicsBody && window.physicsManager) {
-                    window.physicsManager.removeRigidBody(body);
-                    console.log(`🧹 Physics body removed for ${id}`);
+                // Remove from spatial tracking if it exists
+                if (window.spatialManager) {
+                    window.spatialManager.removeObject(body);
+                    console.log(`🧹 Object removed from spatial tracking: ${id}`);
                 }
                 
                 // Dispose of geometry
@@ -741,6 +761,30 @@ export class SolarSystemManager {
     }
 
     getCelestialBodyInfo(body) {
+        // First try to get metadata from spatial manager (includes faction info)
+        if (window.spatialManager && body) {
+            const metadata = window.spatialManager.getMetadata(body);
+            if (metadata) {
+                // console.log(`🔍 SolarSystemManager.getCelestialBodyInfo: Found spatial metadata for ${metadata.name}:`, {
+                //     name: metadata.name,
+                //     type: metadata.type,
+                //     faction: metadata.faction,
+                //     diplomacy: metadata.diplomacy
+                // });
+                return {
+                    name: metadata.name || 'Unknown',
+                    type: metadata.type || 'unknown',
+                    classification: metadata.classification || metadata.type || 'Unknown',
+                    faction: metadata.faction || 'Unknown',
+                    diplomacy: metadata.diplomacy,
+                    description: metadata.description || 'No description available.',
+                    intel_brief: metadata.intel_brief || metadata.faction ? `${metadata.type || 'Object'} operated by ${metadata.faction}` : 'No intelligence data available.',
+                    canDock: !!metadata.canDock,
+                    ...metadata
+                };
+            }
+        }
+        
         // Find the key for this body - first try by reference
         let key = Array.from(this.celestialBodies.entries())
             .find(([_, value]) => value === body)?.[0];
@@ -1074,6 +1118,9 @@ export class SolarSystemManager {
             
             // console.log(`📡 Beacon ${i + 1} created at position (${bx.toFixed(1)}, ${by.toFixed(1)}, ${bz.toFixed(1)})`);
 
+            // Set name directly on beacon object for target computer
+            beacon.name = `Navigation Beacon #${i + 1}`;
+            
             beacon.userData = {
                 name: `Navigation Beacon #${i + 1}`,
                 type: 'beacon',
@@ -1083,23 +1130,26 @@ export class SolarSystemManager {
 
             this.scene.add(beacon);
 
-            // Add a small static physics body tagged as beacon with low health
-            if (window.physicsManager && window.physicsManagerReady) {
-                const rb = window.physicsManager.createStationRigidBody(beacon, {
-                    width: 1.0,
-                    height: 1.2,
-                    depth: 1.0,
+            // Add to spatial tracking for collision detection
+            if (window.spatialManager && window.spatialManagerReady) {
+                window.spatialManager.addObject(beacon, {
+                    type: 'beacon',
+                    name: `Navigation Beacon #${i + 1}`,
+                    radius: 0.6, // Small collision radius
+                    canCollide: true,
+                    isTargetable: true,
+                    layer: 'stations',
                     entityType: 'beacon',
                     entityId: `navigation_beacon_${i + 1}`,
                     health: 150 // 1–2 laser hits from starter weapons
                 });
-                if (rb) {
-                    // Tag metadata with a friendly name for HUD/logs
-                    const meta = window.physicsManager.entityMetadata.get(rb);
-                    if (meta) {
-                        meta.name = `Navigation Beacon #${i + 1}`;
-                    }
+                
+                // Also add to collision manager's station layer
+                if (window.collisionManager) {
+                    window.collisionManager.addObjectToLayer(beacon, 'stations');
                 }
+                
+                console.log(`📡 Navigation beacon ${i + 1} added to spatial tracking`);
             }
 
             // Track in StarfieldManager so we can clean up on destroy
@@ -1156,6 +1206,9 @@ export class SolarSystemManager {
         station.rotation.y = Math.random() * Math.PI * 2;
         station.rotation.z = Math.random() * Math.PI * 2;
 
+        // Set name directly on station object for target computer
+        station.name = stationData.name;
+        
         // Store station metadata for interactions
         station.userData = {
             name: stationData.name,
@@ -1166,6 +1219,22 @@ export class SolarSystemManager {
             canDock: true // Space stations should be dockable
         };
 
+        // Add station to spatial manager with metadata
+        if (window.spatialManager) {
+            window.spatialManager.addObject(station, {
+                type: 'station',
+                name: stationData.name,
+                faction: stationData.faction,
+                diplomacy: this.getFactionDiplomacy(stationData.faction),
+                radius: stationData.size,
+                canCollide: true,
+                isTargetable: true,
+                layer: 'stations',
+                entityType: 'station',
+                entityId: `station_${stationData.name.toLowerCase().replace(/\s+/g, '_')}`
+            });
+        }
+
         // Add docking collision box for physics-based docking
         this.addDockingCollisionBox(station, stationData);
 
@@ -1173,12 +1242,29 @@ export class SolarSystemManager {
     }
 
     /**
+     * Get diplomacy status for a faction
+     */
+    getFactionDiplomacy(faction) {
+        // Map faction names to diplomacy status
+        const factionDiplomacy = {
+            'Terran Republic Alliance': 'friendly',
+            'Free Trader Consortium': 'neutral',
+            'Nexus Corporate Syndicate': 'neutral',
+            'Ethereal Wanderers': 'neutral',
+            'Scientists Consortium': 'friendly',
+            'Miners Union': 'neutral'
+        };
+        
+        return factionDiplomacy[faction] || 'neutral';
+    }
+
+    /**
      * Add docking collision box to a space station
      */
     addDockingCollisionBox(station, stationData) {
-        // Only add docking collision if physics manager is available
-        if (!window.physicsManager || !window.physicsManagerReady) {
-            console.warn('🚀 Physics manager not ready - docking collision box will be added later');
+        // Only add docking collision if spatial manager is available
+        if (!window.spatialManager || !window.spatialManagerReady) {
+            console.warn('🚀 Spatial manager not ready - docking collision box will be added later');
             // Store the data for later addition
             station.userData.pendingDockingCollision = {
                 stationData: stationData,
@@ -1233,27 +1319,33 @@ export class SolarSystemManager {
         // Add to scene
         this.scene.add(dockingBox);
 
-        // Add physics collision detection
+        // Add spatial tracking for docking detection
         try {
-            // Create physics rigid body for the docking box
-            const rigidBody = window.physicsManager.createRigidBody(dockingBox, {
-                mass: 0, // Static body
-                shape: 'box',
-                isTrigger: true, // This is a trigger volume, not a solid collision
+            // Add docking zone to spatial manager
+            window.spatialManager.addObject(dockingBox, {
+                type: 'docking_zone',
+                name: `${stationData.name} Docking Zone`,
+                radius: dockingBoxSize / 2,
+                canCollide: true,
+                isTargetable: false,
+                layer: 'docking',
                 entityType: 'docking_zone',
                 entityId: `docking_${stationData.name.toLowerCase().replace(/\s+/g, '_')}`,
-                canCollideWith: ['ship'] // Only collide with ships
+                parentStation: station,
+                stationName: stationData.name
             });
 
-            if (rigidBody) {
-                // Store reference for cleanup
-                station.userData.dockingCollisionBox = dockingBox;
-                station.userData.dockingRigidBody = rigidBody;
-                
-                console.log(`🚀 Created docking collision box for ${stationData.name} (${dockingBoxSize.toFixed(1)}m range)`);
+            // Also add to collision manager's docking layer
+            if (window.collisionManager) {
+                window.collisionManager.addObjectToLayer(dockingBox, 'docking');
             }
+
+            // Store reference for cleanup
+            station.userData.dockingCollisionBox = dockingBox;
+            
+            console.log(`🚀 Created docking collision zone for ${stationData.name} (${dockingBoxSize.toFixed(1)}m range)`);
         } catch (error) {
-            console.error(`❌ Failed to create docking physics for ${stationData.name}:`, error);
+            console.error(`❌ Failed to create docking zone for ${stationData.name}:`, error);
         }
     }
 
