@@ -39,17 +39,17 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `enemy-ai` | **Status**: In Development (8 uncommitted changes) | **Last Updated**: 2025-08-19
+**Branch**: `enemy-ai` | **Status**: In Development (9 uncommitted changes) | **Last Updated**: 2025-08-20
 
 **Recent Work** (Last 5 commits):
+- feat(weapons/hitscan): camera-aligned ray, single-render beams, broader ship resolution, tolerance tuning; docs+script updates
 - chore(weapons): wrap triggerWeaponEffects body in try/catch with detailed error logging to locate throw site
 - feat(weapons): enable simplified center-ray for lasers; bias aim toward locked target; add defensive try/catch around laser damage/effects
 - feat(weapons): scaffold simple firing services (AimResolver, HitScanService, ProjectileService, DamageService, RangeUnits, TargetFilter); wire optional center-ray path behind flag; preserve HUD/slot/card APIs
 - chore: checkpoint before weapon firing refactor; fix docs generation accuracy; laser raycast filters and WebGL resize fixes
-- Replace restart.md with condensed dynamic version
 
 **Codebase Stats**: 
-- JavaScript Files: 130 | Python Files: 1606 | Documentation: 67 files
+- JavaScript Files: 131 | Python Files: 1606 | Documentation: 67 files
 - Total Lines: 30,000+ | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 

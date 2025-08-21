@@ -9,6 +9,8 @@ import { StarfieldManager } from './views/StarfieldManager.js';
 import { SolarSystemManager } from './SolarSystemManager.js';
 import { WeaponEffectsManager } from './ship/systems/WeaponEffectsManager.js';
 import PhysicsManager from './PhysicsManager.js';
+import './ship/systems/services/HitScanService.js'; // Load simplified hit scan service
+import './cache-test.js'; // Cache test - TIMESTAMP: 1755751628397
 
 // Global variables for warp control mode
 let warpControlMode = false;
@@ -2346,6 +2348,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Make classes available globally for other modules
 window.THREE = THREE;
 window.WeaponEffectsManager = WeaponEffectsManager;
+
+// Make physics manager available globally when it's created
+function setGlobalPhysicsManager(manager) {
+    window.physicsManager = manager;
+    window.physics = manager; // Alternative reference
+    console.log('🔧 Physics manager made globally available');
+}
 
 // Add projectile debugging console command
 window.checkActiveProjectiles = () => {

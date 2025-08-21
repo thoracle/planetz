@@ -1427,6 +1427,15 @@ export class TargetComputerManager {
         const targetData = this.targetObjects[this.targetIndex];
         this.currentTarget = targetData; // Store the full target data, not just the object
         
+        // Debug target name for troubleshooting
+        if (targetData && targetData.ship && targetData.ship.shipName) {
+            console.log(`Target set: ${targetData.ship.shipName}`);
+        } else if (targetData && targetData.name) {
+            console.log(`Target set: ${targetData.name}`);
+        } else {
+            console.log(`Target set: Unknown (missing name data)`, targetData);
+        }
+        
         // Sync with ship's TargetComputer system for sub-targeting
         const ship = this.viewManager?.getShip();
         const targetComputer = ship?.getSystem('target_computer');

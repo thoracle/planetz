@@ -2,10 +2,13 @@
  * WeaponSlot - Manages individual weapon slot state and firing
  * Based on docs/weapons_system_spec.md and docs/system_architecture.md
  * Handles weapon installation, cooldown management, and firing logic
+ * CACHE_BUST_1755751628397 - Updated to filter celestial objects
  */
 
 import { WeaponCard } from './WeaponCard.js';
-import { castLaserRay } from './services/HitScanService.js';
+// HitScanService is now accessed via window.HitScanService (no import needed)
+
+const DEBUG_LOG_HITSCAN = true;
 
 // Feature flag to enable simplified center-ray firing path safely
 const USE_SIMPLE_FIRING = true;
@@ -103,12 +106,14 @@ export class WeaponSlot {
             distanceToTarget = this.calculateDistanceToTarget(target);
             isOutOfRange = !weapon.isValidTarget(target, distanceToTarget);
         } else {
-            // Free-aim mode: check distance to crosshair intersection
+            // Free-aim mode: Allow firing within weapon range (no specific target required)
             distanceToTarget = this.calculateCrosshairDistance();
             const distanceKm = distanceToTarget / 1000; // Convert meters to km for comparison
             const weaponRangeKm = weapon.range / 1000; // Convert weapon range from meters to km
-            isOutOfRange = distanceKm > weaponRangeKm;
-            // Debug: Range calculation (removed to prevent spam)
+            
+            // CRITICAL FIX: For free-aim mode, be more permissive with range checking
+            // Only block if distance is clearly beyond weapon range AND we have a valid distance
+            isOutOfRange = (distanceToTarget > 0) && (distanceKm > weaponRangeKm * 1.2); // 20% tolerance for free-aim
         }
         
         // ENFORCE WEAPON RANGE: Prevent firing beyond weapon effective range
@@ -1001,9 +1006,10 @@ export class WeaponSlot {
                 .add(cameraDown.clone().multiplyScalar(bottomOffset))   // Down
                 .add(cameraForward.clone().multiplyScalar(forwardOffset)); // Slightly forward
             
-            // Get the camera's forward direction for aiming
+            // CROSSHAIR AIMING: Always fire where the player is aiming (camera direction)
+            // The target computer is just for assistance - weapons always follow crosshairs
             aimDirection = cameraForward.clone();
-            console.log('🎯 Using camera aim direction and screen corner positioning for weapon fire');
+            console.log('🎯 Using crosshair aim direction (camera forward) - target computer is assistive only');
         } else {
             // Fallback to ship-relative positioning if no camera available
             leftWeaponPos = weaponPosition.clone().add(new THREE.Vector3(-2.5, -1.5, 1.0));
@@ -1042,24 +1048,45 @@ export class WeaponSlot {
             let anyHit = false;
             let hitTargets = [];
             
-            // Use physics raycasting to detect hits along full weapon range toward crosshair
-            // Build far end points along the precise visual aim direction (centerAimPoint → far)
+            // SIMPLIFIED: Use direct physics raycast from camera position
+            console.log('🚀 Projectile origin: Lower center screen position (unified for all weapons)');
             const preciseAimDir = centerAimPoint.clone().sub(camera.position).normalize();
-            const farAimPoint = camera.position.clone().add(
-                preciseAimDir.clone().multiplyScalar(maxRangeKm)
-            );
-            const physicsHitResult = this.checkLaserBeamHit(
-                [leftWeaponPos, rightWeaponPos],
-                [farAimPoint, farAimPoint],
-                target, // Optional target for validation
-                maxRangeKm
-            );
             
-            if (physicsHitResult && physicsHitResult.hit && physicsHitResult.entity && (physicsHitResult.entity.ship || physicsHitResult.entity.type === 'enemy_ship')) {
-                // Physics raycast found a hit!
-                const hitEntity = physicsHitResult.entity;
-                const hitPosition = physicsHitResult.position;
-                const hitDistance = physicsHitResult.distance;
+            // Use our simple HitScanService for direct physics raycast
+            if (!window.HitScanService) {
+                console.log('❌ WEAPON: HitScanService not available on window object');
+                console.log('Available on window:', Object.keys(window).filter(k => k.includes('Hit') || k.includes('Scan')));
+            }
+            
+            const physicsHitResult = window.HitScanService ? 
+                window.HitScanService.performHitScan(camera.position, preciseAimDir, maxRangeKm, this.ship) : 
+                null;
+                
+            if (DEBUG_LOG_HITSCAN) {
+                console.log(`🔫 WEAPON: HitScanService available: ${!!window.HitScanService}, result: ${!!physicsHitResult}`);
+            }
+            
+            // Convert to expected format for compatibility
+            const hitResult = physicsHitResult ? {
+                hit: true,
+                entity: physicsHitResult.target,
+                position: physicsHitResult.hitPoint,
+                distance: physicsHitResult.distance,
+                metadata: physicsHitResult.metadata
+            } : { hit: false };
+            
+            // FILTER OUT CELESTIAL OBJECTS - they should not block weapon fire - CACHE_BUST_1755751628397
+            let filteredHitResult = physicsHitResult;
+            if (physicsHitResult && physicsHitResult.hit && physicsHitResult.metadata && (physicsHitResult.metadata.type === 'star' || physicsHitResult.metadata.type === 'planet' || physicsHitResult.metadata.type === 'moon')) {
+                console.log(`🌟 WEAPON IGNORING CELESTIAL HIT: ${physicsHitResult.metadata.type} - celestial objects don't block weapons - TIMESTAMP: ${Date.now()}`);
+                filteredHitResult = null; // Ignore celestial hits
+            }
+            
+            if (filteredHitResult && filteredHitResult.hit) {
+                // SIMPLIFIED: Physics raycast found a hit!
+                const hitEntity = filteredHitResult.metadata;
+                const hitPosition = filteredHitResult.hitPoint;
+                const hitDistance = filteredHitResult.distance;
                 
                 // Physics laser hit detected
                 
@@ -1145,7 +1172,7 @@ export class WeaponSlot {
             }
             
             // Handle case where no physics result was obtained at all
-            if (!physicsHitResult && !anyHit) {
+            if (!filteredHitResult && !anyHit) {
                 console.log('🎯 No physics result - laser missed');
                 this.showMissFeedback(weapon.name);
             }

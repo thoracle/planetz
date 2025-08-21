@@ -261,7 +261,7 @@ export class LaserCannon extends WeaponSystem {
             energyPerShot: 15,
             fireRate: 2.0, // Fast firing
             accuracy: 0.95, // High accuracy
-            range: 120,
+            range: 35000, // 35km range - enough to reach target dummies at 30km
             maxHealth: 75
         });
     }

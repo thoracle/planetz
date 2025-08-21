@@ -24,14 +24,9 @@ export class CrosshairTargeting {
                 aimToleranceKm = 0.040 + Math.min((targetDistance - 20) * 0.0010, 0.020); // cap ~60 m
             }
         } else {
-            // Weapon firing tolerance is slightly stricter, but still generous for cockpit aim offsets
-            if (targetDistance < 10) {
-                aimToleranceKm = 0.015; // 15 m base at close range
-            } else if (targetDistance < 20) {
-                aimToleranceKm = 0.015 + (targetDistance - 10) * 0.0015; // up to ~30 m at 20 km
-            } else {
-                aimToleranceKm = 0.030 + Math.min((targetDistance - 20) * 0.0008, 0.010); // cap ~40 m
-            }
+            // SIMPLIFIED: No tolerance system - physics raycast handles all hit detection
+            // This is kept for compatibility but not used in combat
+            aimToleranceKm = 0.001; // Minimal tolerance for legacy systems
         }
         return aimToleranceKm;
     }

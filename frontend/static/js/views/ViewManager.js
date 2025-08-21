@@ -1039,15 +1039,14 @@ export class ViewManager {
                 enableFallback: false // Crosshair only shows precise targets
             });
 
+            // Apply results to ViewManager state
+            targetState = targetingResult.crosshairState;
+            targetShip = targetingResult.targetShip;
+            targetDistance = targetingResult.targetDistance;
             
-                    // Apply results to ViewManager state
-        targetState = targetingResult.crosshairState;
-        targetShip = targetingResult.targetShip;
-        targetDistance = targetingResult.targetDistance;
-        
-        if (targetShip) {
-            targetFaction = this.getFactionColor(targetShip);
-        }
+            if (targetShip) {
+                targetFaction = this.getFactionColor(targetShip);
+            }
         }
         
         // Apply visual changes based on target state and faction
