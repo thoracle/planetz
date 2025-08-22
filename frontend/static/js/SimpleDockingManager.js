@@ -84,9 +84,11 @@ export class SimpleDockingManager {
         const shipPosition = this.starfieldManager.camera.position;
 
         // Find nearby dockable objects (stations, planets, moons)
+        // Use larger search radius for stations to detect them at reasonable distance
+        const stationSearchRadius = 50.0; // 50km search radius for stations (much larger than docking range)
         const nearbyStations = this.spatialManager.queryNearby(
             shipPosition, 
-            this.dockingRange * 2, // Search radius
+            stationSearchRadius,
             'station'
         );
         
@@ -155,6 +157,18 @@ export class SimpleDockingManager {
             }
         }
         
+        // Fallback: Check userData for station information
+        if (!targetMetadata && target.userData) {
+            if (target.userData.isSpaceStation || target.userData.type === 'station') {
+                targetMetadata = {
+                    type: 'station',
+                    name: target.userData.name || target.name,
+                    faction: target.userData.faction,
+                    canDock: target.userData.canDock !== false
+                };
+            }
+        }
+        
         if (!targetMetadata) {
             return { canDock: false, reason: 'Missing target metadata' };
         }
@@ -164,16 +178,9 @@ export class SimpleDockingManager {
         
         // Check distance - use appropriate range based on target type
         const distance = shipPosition.distanceTo(target.position);
-        let requiredRange = this.dockingRange; // Default 1.5km
         
-        // Set docking range based on target type (matching DockingModal.js logic)
-        if (targetMetadata.type === 'planet') {
-            requiredRange = 4.0; // Planets have 4.0km docking range
-        } else if (targetMetadata.type === 'moon') {
-            requiredRange = 1.5; // Moons have 1.5km docking range
-        } else if (targetMetadata.type === 'station') {
-            requiredRange = this.dockingRange; // Stations use default range
-        }
+        // UNIFIED: Use centralized docking range calculation
+        const requiredRange = this.getUnifiedDockingRange(targetMetadata.type, target);
         
         if (distance > requiredRange) {
             return { 
@@ -236,10 +243,19 @@ export class SimpleDockingManager {
     }
 
     /**
-     * Initiate docking sequence
+     * DEPRECATED: Use initiateUnifiedDocking instead
+     * Legacy docking method - redirects to unified system
      * @param {THREE.Object3D} target - Target to dock with (station, planet, or moon)
      */
     async initiateDocking(target) {
+        console.warn('🚀 DEPRECATED: initiateDocking called - redirecting to initiateUnifiedDocking');
+        return await this.initiateUnifiedDocking(target);
+    }
+
+    /**
+     * LEGACY: Old docking validation method (kept for reference)
+     */
+    async _legacyInitiateDocking(target) {
         if (this.isDocked || this.dockingInProgress) {
             console.warn('🚀 Docking already in progress or docked');
             return false;
@@ -607,6 +623,138 @@ export class SimpleDockingManager {
     }
 
     /**
+     * UNIFIED: Initiate docking with any dockable object (planets, moons, stations)
+     * Replaces separate physics-based and distance-based docking paths
+     * @param {THREE.Object3D} target - Target to dock with
+     * @returns {Promise<boolean>} Success status
+     */
+    async initiateUnifiedDocking(target) {
+        console.log('🚀 UNIFIED: Initiating docking sequence with', target.name || 'unnamed target');
+        
+        // Check if already docked to THIS target
+        if (this.isDocked && this.currentDockingTarget === target) {
+            console.warn('🚀 Already docked to this target, cannot dock again');
+            console.log('🚀 State check: isDocked=true, currentTarget=', this.currentDockingTarget?.name || 'null');
+            return false;
+        }
+        
+        // Check if already docked to DIFFERENT target
+        if (this.isDocked && this.currentDockingTarget !== target) {
+            console.warn('🚀 Already docked to different target, must undock first');
+            console.log('🚀 Current target:', this.currentDockingTarget?.name || 'null', 'New target:', target?.name || 'null');
+            return false;
+        }
+        
+        // Prevent multiple simultaneous docking attempts
+        if (this.dockingInProgress) {
+            console.warn('🚀 Docking already in progress, ignoring new request');
+            return false;
+        }
+        
+        this.dockingInProgress = true;
+        this.currentDockingTarget = target;
+        
+        try {
+            // Unified eligibility check (works for all object types)
+            const eligibility = this.checkDockingEligibility(null, target);
+            if (!eligibility.canDock) {
+                console.warn('🚀 Docking eligibility failed:', eligibility.reason);
+                this.dockingInProgress = false;
+                this.currentDockingTarget = null;
+                return false;
+            }
+            
+            // Get ship for energy consumption
+            const ship = this.starfieldManager.viewManager?.getShip();
+            if (ship) {
+                const dockingEnergyCost = 25;
+                if (!ship.consumeEnergy(dockingEnergyCost)) {
+                    console.warn('🚀 Docking failed: Insufficient energy for docking procedures');
+                    this.dockingInProgress = false;
+                    this.currentDockingTarget = null;
+                    return false;
+                }
+            }
+            
+            // Stop ship movement
+            this.starfieldManager.targetSpeed = 0;
+            this.starfieldManager.currentSpeed = 0;
+            this.starfieldManager.decelerating = false;
+            
+            // Use StarfieldManager's unified dock method (works for all object types)
+            const dockingSuccess = this.starfieldManager.dock(target);
+            
+            if (dockingSuccess) {
+                this.isDocked = true;
+                this.lastDockingTime = Date.now();
+                this.dockingInProgress = false;
+                
+                // Ensure StarfieldManager state is synchronized
+                this.starfieldManager.isDocked = true;
+                this.starfieldManager.dockedTo = target;
+                
+                console.log(`🚀 Successfully docked with ${target.name || 'target'}`);
+                
+                // Show docking interface (station menu)
+                console.log(`🚀 Showing docking interface for ${target.name || 'target'}`);
+                this.starfieldManager.showDockingInterface(target);
+                
+                // Check for cargo deliveries upon successful docking (stations only)
+                const targetMetadata = this.spatialManager.getMetadata(target);
+                if (targetMetadata?.type === 'station' && target?.userData?.name) {
+                    const stationKey = String(target.userData.name).toLowerCase().replace(/\s+/g, '_');
+                    await this.starfieldManager.checkCargoDeliveries(stationKey);
+                }
+                
+                // KEEP currentDockingTarget until launch - don't set to null
+                // this.currentDockingTarget = null;
+                return true;
+            } else {
+                console.error('🚀 StarfieldManager.dock() failed');
+                this.dockingInProgress = false;
+                this.currentDockingTarget = null;
+                return false;
+            }
+            
+        } catch (error) {
+            console.error('🚀 Error during unified docking:', error);
+            this.dockingInProgress = false;
+            this.currentDockingTarget = null;
+            return false;
+        }
+    }
+
+    /**
+     * UNIFIED: Get docking range for any dockable object type
+     * Centralizes all docking range logic in one place
+     * @param {string} targetType - Type of target (planet, moon, station)
+     * @param {THREE.Object3D} target - Target object (for station-specific overrides)
+     * @returns {number} Docking range in kilometers
+     */
+    getUnifiedDockingRange(targetType, target) {
+        switch (targetType) {
+            case 'planet':
+                return 4.0; // Planets have 4.0km docking range
+            case 'moon':
+                return 1.5; // Moons have 1.5km docking range
+            case 'station':
+                // Check for station-specific docking range override
+                if (target?.userData?.dockingRange) {
+                    return target.userData.dockingRange;
+                }
+                // Check for active zone range (from collision detection)
+                if (target?.userData?.activeZoneRange) {
+                    return target.userData.activeZoneRange;
+                }
+                // Default station range
+                return 1.8; // Stations default to 1.8km (slightly larger than moons)
+            default:
+                console.warn(`Unknown dockable object type: ${targetType}, using default range`);
+                return this.dockingRange; // Fallback to default
+        }
+    }
+
+    /**
      * Complete launch process
      */
     completeLaunch() {
@@ -619,8 +767,13 @@ export class SimpleDockingManager {
         this.isDocked = false;
         this.launchInProgress = false;
         this.currentDockingTarget = null; // Clear the docking target
+        this.dockingInProgress = false; // Also clear this flag
         this.lastLaunchTime = Date.now();
         this.dockingCooldown = true;
+        
+        // Ensure StarfieldManager state is synchronized
+        this.starfieldManager.isDocked = false;
+        this.starfieldManager.dockedTo = null;
         
         // Clear stored approach position after launch
         this.approachPosition = null;

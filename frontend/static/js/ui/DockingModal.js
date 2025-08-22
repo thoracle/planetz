@@ -314,7 +314,9 @@ export default class DockingModal {
     
     checkDockingConditions() {
         // Don't check if already docked or modal is showing
-        if (this.starfieldManager.isDocked || this.isVisible) {
+        const isDockedAnywhere = this.starfieldManager.isDocked || 
+                                this.starfieldManager.simpleDockingManager?.isDocked;
+        if (isDockedAnywhere || this.isVisible) {
             return;
         }
         
@@ -478,15 +480,22 @@ export default class DockingModal {
         let closestDistance = Infinity;
         let closestTarget = null;
         
+        // Station detection - debug logging removed
+        
         // Iterate through all celestial bodies in the current system (Map.forEach)
         celestialBodies.forEach((body, bodyId) => {
-            // Only consider planets and moons (skip star)
-            if (!bodyId.startsWith('planet_') && !bodyId.startsWith('moon_')) {
+            // Only consider planets, moons, and stations (skip star)
+            if (!bodyId.startsWith('planet_') && !bodyId.startsWith('moon_') && !bodyId.startsWith('station_')) {
                 return;
             }
             
             // Determine body type from the ID
-            const bodyType = bodyId.startsWith('planet_') ? 'planet' : 'moon';
+            let bodyType = 'moon'; // Default
+            if (bodyId.startsWith('planet_')) {
+                bodyType = 'planet';
+            } else if (bodyId.startsWith('station_')) {
+                bodyType = 'station';
+            }
             
             // Get detailed info about this celestial body
             const bodyInfo = this.starfieldManager.solarSystemManager.getCelestialBodyInfo(body);
@@ -496,13 +505,26 @@ export default class DockingModal {
                 return;
             }
             
-            // Calculate distance
+            // Calculate distance (with safety check)
+            if (!body.position) {
+                console.warn(`🚀 DockingModal: Skipping ${bodyId} - missing position`);
+                return;
+            }
             const distance = this.starfieldManager.calculateDistance(playerPosition, body.position);
             
             // Determine docking range based on type
             let dockingRange = 1.5; // Default for moons
             if (bodyType === 'planet') {
                 dockingRange = 4.0;
+            } else if (bodyType === 'station') {
+                // Use unified docking range calculation (same as SimpleDockingManager)
+                if (body?.userData?.dockingRange) {
+                    dockingRange = body.userData.dockingRange;
+                } else if (body?.userData?.activeZoneRange) {
+                    dockingRange = body.userData.activeZoneRange;
+                } else {
+                    dockingRange = 1.8; // Default station range
+                }
             }
             
             // Add dockingRange to the bodyInfo for consistency
@@ -528,7 +550,7 @@ export default class DockingModal {
                     dockingRange: dockingRange
                 });
                 
-                // Removed debug logs - were causing spam
+                // Station found in range - no debug logging needed
             }
         });
         
@@ -926,26 +948,21 @@ export default class DockingModal {
             verificationId: targetToUse._dockingModalId
         });
         
-        // Prefer physics-based docking for stations. Also cut speed immediately on dock.
-        const info = this.starfieldManager.solarSystemManager?.getCelestialBodyInfo(targetToUse) || {};
-        const isStation = info.type === 'station' || !!targetToUse?.userData?.dockingCollisionBox;
+        // UNIFIED: Use single docking path for all object types (planets, moons, stations)
+        console.log('🚀 DockingModal: Using unified docking system for all targets');
 
-        // Cut speed to 0 to satisfy docking requirements
-        this.starfieldManager.targetSpeed = 0;
-        this.starfieldManager.currentSpeed = 0;
-        this.starfieldManager.decelerating = false;
-
-        if (isStation && this.starfieldManager.physicsDockingManager) {
-            const success = await this.starfieldManager.physicsDockingManager.initiateDocking(targetToUse);
+        // Use the unified docking system from SimpleDockingManager
+        if (this.starfieldManager.simpleDockingManager) {
+            const success = await this.starfieldManager.simpleDockingManager.initiateUnifiedDocking(targetToUse);
             if (success) {
-                // Successful physics docking hides HUDs; close modal too
+                // Successful docking hides HUDs; close modal too
                 this.hide();
                 return;
             }
-            // Fall through to show error details if physics initiation was rejected
+            // Fall through to show error details if unified docking was rejected
         }
 
-        // Fallback: distance-based validation (planets/moons)
+        // Fallback: direct StarfieldManager docking (legacy path)
         if (this.starfieldManager.canDockWithLogging(targetToUse)) {
             console.log('✅ Docking validation passed - proceeding with dock');
             

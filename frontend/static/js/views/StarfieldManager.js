@@ -3699,13 +3699,15 @@ export class StarfieldManager {
         // Use simple docking system for all targets
         const targetObject = target?.object || target;
         
-        if (this.simpleDockingManager && !this._inPhysicsDocking) {
-            // Avoid recursion: if docking path calls back into dock(), skip here
-            this._inPhysicsDocking = true;
-            const res = this.simpleDockingManager.initiateDocking(targetObject);
-            this._inPhysicsDocking = false;
-            return res;
-        }
+        // DISABLED: This creates duplicate calls when SimpleDockingManager calls dock()
+        // The unified docking system should handle everything
+        // if (this.simpleDockingManager && !this._inPhysicsDocking) {
+        //     // Avoid recursion: if docking path calls back into dock(), skip here
+        //     this._inPhysicsDocking = true;
+        //     const res = this.simpleDockingManager.initiateUnifiedDocking(targetObject);
+        //     this._inPhysicsDocking = false;
+        //     return res;
+        // }
 
         // Fallback to original distance-based docking (planets/moons)
         if (!this.canDockWithLogging(target)) {
@@ -4306,7 +4308,7 @@ export class StarfieldManager {
         // Use the new SimpleDockingManager for docking
         if (this.simpleDockingManager) {
             console.log('🚀 Using SimpleDockingManager for docking');
-            const result = await this.simpleDockingManager.initiateDocking(target);
+            const result = await this.simpleDockingManager.initiateUnifiedDocking(target);
             return result;
         } else {
             console.error('🚀 SimpleDockingManager could not be initialized - spatial/collision managers not ready');
