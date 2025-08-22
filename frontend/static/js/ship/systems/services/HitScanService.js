@@ -6,7 +6,7 @@
  * Optimized for retro space shooter gameplay.
  */
 
-const DEBUG_LOG_HITSCAN = false;
+const DEBUG_LOG_HITSCAN = true;
 
 /**
  * Simple weapon hit detection using Three.js Raycaster
@@ -78,10 +78,16 @@ function performHitScan(origin, dir, maxRangeKm, ship) {
 	}
 }
 
-// Export the function for use by weapon systems
+// Create HitScanService object for weapon systems
+const HitScanService = {
+    performHitScan: performHitScan
+};
+
+// Export both ways for compatibility
+window.HitScanService = HitScanService;
 window.performHitScan = performHitScan;
 
 // Also make it available as a module export
-export { performHitScan };
+export { performHitScan, HitScanService };
 
 console.log('🎯 HitScanService loaded - Three.js Raycaster implementation');
