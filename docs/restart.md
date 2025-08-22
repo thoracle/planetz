@@ -37,6 +37,8 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 - Space stations (13 types) and complete Sol system implementation
 - 3D radar, docking, trading, and ship upgrade systems
 
+> 📖 **Essential Reading**: See [`docs/design_pillars.md`](design_pillars.md) for the foundational design philosophy, including player agency, strategic depth through collection mechanics, and the dynamic reactive universe that drives all game systems.
+
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
