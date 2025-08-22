@@ -6,7 +6,7 @@
  * Optimized for retro space shooter gameplay.
  */
 
-const DEBUG_LOG_HITSCAN = true;
+const DEBUG_LOG_HITSCAN = false;
 
 /**
  * Simple weapon hit detection using Three.js Raycaster
@@ -65,6 +65,8 @@ function performHitScan(origin, dir, maxRangeKm, ship) {
 			hit: true,
 			object: result.object,
 			point: result.point,
+			hitPoint: result.point,  // Weapon system expects hitPoint
+			target: result.metadata?.type || 'unknown',  // Weapon system expects target
 			distance: result.distanceKm,
 			normal: result.normal || new THREE.Vector3(0, 1, 0),
 			targetType: result.metadata?.type || 'unknown',
