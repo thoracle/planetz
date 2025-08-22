@@ -158,11 +158,34 @@ export class WeaponCard {
     
         }
 
-        // Try to create physics-based projectile first
+        // NEW: Try simplified Three.js projectile system first
+        if (window.simpleProjectileManager && window.SimpleProjectile) {
+            try {
+                console.log(`🚀 Using simplified Three.js projectile for ${this.name}`);
+                
+                const simpleProjectile = new window.SimpleProjectile({
+                    origin: origin,
+                    direction: direction,
+                    target: target,
+                    damage: this.damage,
+                    blastRadius: this.blastRadius,
+                    flightRange: this.flightRange,
+                    isHoming: this.homingCapability,
+                    weaponName: this.name,
+                    maxRange: this.range,
+                    scene: window.starfieldManager?.scene
+                });
+                
+                return simpleProjectile;
+                
+            } catch (error) {
+                console.log('Failed to create simple projectile, falling back to physics projectile:', error);
+            }
+        }
+        
+        // Try to create physics-based projectile as fallback
         if (window.physicsManager && window.physicsManager.isReady()) {
             try {
-    
-                
                 const physicsProjectile = new PhysicsProjectile({
                     origin: origin,
                     direction: direction,
@@ -178,14 +201,13 @@ export class WeaponCard {
                     scene: window.starfieldManager?.scene || window.scene
                 });
                 
-
                 return physicsProjectile;
                 
             } catch (error) {
                 console.log('Failed to create physics projectile, falling back to simple projectile:', error);
             }
         } else {
-
+            console.log('⚠️ PhysicsManager not available, using simple projectile system');
         }
         
         // Fallback to simple projectile if physics not available
@@ -797,7 +819,16 @@ export class SplashDamageWeapon extends WeaponCard {
      * @param {Projectile} projectile Projectile to add
      */
     addProjectileToGame(projectile) {
-        // Add to global projectile tracking for frame updates
+        // Check if it's our new SimpleProjectile
+        if (window.SimpleProjectile && projectile instanceof window.SimpleProjectile) {
+            // SimpleProjectiles are managed by SimpleProjectileManager
+            if (window.simpleProjectileManager) {
+                window.simpleProjectileManager.addProjectile(projectile);
+            }
+            return;
+        }
+        
+        // Add to global projectile tracking for frame updates (legacy system)
         if (!window.activeProjectiles) {
             window.activeProjectiles = [];
         }

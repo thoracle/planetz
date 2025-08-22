@@ -12,6 +12,7 @@ import SpatialManager from './SpatialManager.js';
 import SimpleCollisionManager from './SimpleCollisionManager.js';
 import SimpleDockingManager from './SimpleDockingManager.js';
 import './ship/systems/services/HitScanService.js'; // Load Three.js hit scan service
+import './ship/systems/services/SimpleProjectileService.js'; // Load simplified projectile system
 import './cache-test.js'; // Cache test - TIMESTAMP: 1755751628397
 
 // Global variables for warp control mode
@@ -1606,6 +1607,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (collisionManager) {
             collisionManager.update(deltaTime);
+        }
+        
+        // Update simple projectile system  
+        if (window.simpleProjectileManager) {
+            window.simpleProjectileManager.update();
         }
         
         // Update physics projectiles
