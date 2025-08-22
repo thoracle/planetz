@@ -28,7 +28,8 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 🎯 Core Game Vision
 
 **Production-ready space shooter** featuring:
-- Complete weapon systems (lasers, torpedoes, missiles) with physics
+- **Simplified Three.js physics** - Recently refactored from Ammo.js for better maintainability
+- Complete weapon systems (lasers, torpedoes, missiles) with raycasting collision
 - Advanced targeting with sub-system precision and faction colors  
 - Enemy AI system (8 ship types, state machines, flocking behaviors)
 - Mission framework with cargo delivery, elimination, and escort missions
@@ -120,17 +121,41 @@ open http://127.0.0.1:5001
 
 ## 🔧 Critical Technical Context
 
+### **Physics Engine Refactor** ⬅️ **CURRENT BRANCH: `noammo`**
+
+**MAJOR ARCHITECTURAL CHANGE**: The game has been refactored from Ammo.js physics engine back to pure Three.js for simplicity and maintainability.
+
+#### **What Changed**:
+- ✅ **Removed Ammo.js dependency** - No more complex physics engine loading
+- ✅ **Three.js native collision** - Simplified collision detection using Three.js raycasting
+- ✅ **Unified docking system** - Single code path for stations and planets/moons
+- ✅ **Simplified spatial management** - Direct Three.js vector math and positioning
+- ✅ **Performance improvements** - Eliminated physics engine overhead
+
+#### **What Stayed the Same**:
+- ✅ **All gameplay mechanics** - Combat, targeting, navigation work identically
+- ✅ **Visual effects** - No changes to rendering or particle systems
+- ✅ **UI and controls** - All keybindings and interfaces unchanged
+- ✅ **Mission system** - Complete mission framework unaffected
+- ✅ **AI behaviors** - Enemy AI and ship behaviors preserved
+
+#### **Current Validation Status**:
+- ✅ **Docking/Launch** - Station and planetary docking working
+- 🔄 **Weapons testing** - Next priority for validation
+- 🔄 **AI combat** - Needs testing with new collision system
+- 🔄 **Mission integration** - Verify mission mechanics work with new physics
+
 ### **Mission System Architecture**
 - **States**: UNKNOWN → MENTIONED → ACCEPTED → ACHIEVED → COMPLETED
 - **Dual Delivery Types**: `auto_delivery` (on docking) vs `market_sale` (on selling)
 - **Event-Driven**: Frontend triggers backend via `MissionEventService`
 - **Files**: JSON-based storage in `missions/` directories
 
-### **Physics & Combat**
-- **Ammo.js physics**: Build with native collision detection
-- **Missile targeting**: Velocity-compensated projectiles
-- **Collision system**: Distance-based delays reduce tunneling at high speeds
-- **Hitscan lasers**: Tolerance-based hitscan with weapon-specific ranges; ongoing tuning for crosshair alignment and ship resolution
+### **Combat & Collision System**
+- **Three.js collision detection**: Native raycasting for hit detection
+- **Missile targeting**: Velocity-compensated projectiles with Three.js physics
+- **Hitscan weapons**: Direct raycasting for instant-hit weapons (lasers, pulse)
+- **Spatial management**: Three.js Vector3 math for all positioning and movement
 
 ### **Faction Color System**
 ```javascript
@@ -142,10 +167,25 @@ unknown: '#44ffff'   // Cyan for unknown
 ```
 
 ### **Key Architectural Decisions**
+- **Three.js Physics**: Transitioned from Ammo.js to native Three.js for simplicity
 - **Target Preservation**: Q-key dummy creation maintains current target via identifier matching
 - **Unified Credits**: Single `PlayerCredits.js` manages economy across all systems
 - **Modular Cards**: Ship systems installed via card-based upgrade system
 - **Event-Driven UI**: Real-time updates via direct mission data passing (no stale API calls)
+
+### **For New Developers - Current Focus**
+
+🎯 **Understanding the Physics Refactor**:
+- The `noammo` branch represents a major architectural simplification
+- All Ammo.js physics code has been replaced with Three.js native collision detection
+- Docking system has been unified between stations and celestial bodies
+- Core gameplay mechanics remain unchanged, but underlying collision detection is simplified
+
+🔧 **Current Testing Priorities**:
+1. **Weapon systems** - Validate all weapon types work with Three.js collision
+2. **AI combat** - Ensure enemy ships can engage properly with new physics
+3. **Mission mechanics** - Verify mission objectives work with simplified collision
+4. **Performance** - Confirm frame rate improvements from removing Ammo.js overhead
 
 ## 🎊 Current Development Status
 
