@@ -24,6 +24,9 @@ export default class DockingModal {
         this.failureCooldowns = new Map(); // targetName -> timestamp
         this.failureCooldownMs = 5000; // 5 seconds
         
+        // Docking state tracking
+        this.dockingInitiated = false; // Prevents modal reappearing during docking initiation
+        
         // Debug state tracking to prevent spam - separated by message type
         this.lastDebugState = {
             nearbyCount: 0,
@@ -315,12 +318,22 @@ export default class DockingModal {
             return;
         }
         
+        // Check if docking initiation is in progress (prevents modal reappearing during docking sequence)
+        if (this.dockingInitiated || this.starfieldManager.simpleDockingManager?.dockingInProgress) {
+            // Only log occasionally to avoid spam
+            if (!this.lastDockingInProgressLog || (Date.now() - this.lastDockingInProgressLog) > 5000) {
+                console.log('🚀 Docking in progress - modal suppressed');
+                this.lastDockingInProgressLog = Date.now();
+            }
+            return;
+        }
+        
         // Check if undock cooldown is active
         if (this.starfieldManager.undockCooldown && Date.now() < this.starfieldManager.undockCooldown) {
             // Only log occasionally to avoid spam
             if (!this.lastUndockCooldownLog || (Date.now() - this.lastUndockCooldownLog) > 5000) {
                 const remaining = Math.ceil((this.starfieldManager.undockCooldown - Date.now()) / 1000);
-                // Removed debug log - was causing spam
+                console.log(`🚀 Undock cooldown active - modal suppressed (${remaining}s remaining)`);
                 this.lastUndockCooldownLog = Date.now();
             }
             return;
@@ -548,6 +561,11 @@ export default class DockingModal {
     
     show(target, targetInfo, distance, currentSpeed) {
         console.log('🎬 DockingModal.show() called with:', {target, targetInfo, distance});
+        console.log('🎬 Current docking states:');
+        console.log(`🎬   StarfieldManager.isDocked: ${this.starfieldManager.isDocked}`);
+        console.log(`🎬   StarfieldManager.dockedTo: ${this.starfieldManager.dockedTo?.name}`);
+        console.log(`🎬   SimpleDockingManager.isDocked: ${this.starfieldManager.simpleDockingManager?.isDocked}`);
+        console.log(`🎬   SimpleDockingManager.currentDockingTarget: ${this.starfieldManager.simpleDockingManager?.currentDockingTarget?.name}`);
         
         if (this.isVisible) {
             console.log('⚠️ Modal already visible, skipping show()');
@@ -930,8 +948,22 @@ export default class DockingModal {
         // Fallback: distance-based validation (planets/moons)
         if (this.starfieldManager.canDockWithLogging(targetToUse)) {
             console.log('✅ Docking validation passed - proceeding with dock');
+            
+            // Set a temporary flag to prevent modal reappearing during docking initiation
+            this.dockingInitiated = true;
+            console.log('🚀 Set dockingInitiated=true to prevent modal reappearing');
+            
             this.hide();
-            this.starfieldManager.dockWithDebug(targetToUse);
+            
+            try {
+                await this.starfieldManager.dockWithDebug(targetToUse);
+                // Clear the flag after successful docking
+                this.dockingInitiated = false;
+            } catch (error) {
+                console.error('🚀 Docking failed, clearing dockingInitiated flag:', error);
+                this.dockingInitiated = false;
+                throw error; // Re-throw to maintain error handling
+            }
         } else {
             console.warn('❌ Docking validation failed');
             const distance = this.starfieldManager.calculateDistance(

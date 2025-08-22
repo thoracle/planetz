@@ -190,7 +190,13 @@ export class DockingInterface {
             this.launchButton.style.transform = 'scale(1)';
         });
         
-        this.launchButton.addEventListener('click', () => { this.playCommandSound(); this.handleLaunch(); });
+        this.launchButton.addEventListener('click', () => { 
+            console.log('🚀🚀🚀 LAUNCH BUTTON CLICKED - Event listener fired 🚀🚀🚀');
+            console.log('🚀 About to call this.handleLaunch()');
+            this.playCommandSound(); 
+            this.handleLaunch(); 
+            console.log('🚀 this.handleLaunch() completed');
+        });
         this.header.appendChild(this.launchButton);
     }
 
@@ -586,6 +592,7 @@ export class DockingInterface {
 
     handleLaunch() {
         console.log('Launch button clicked from station menu');
+        console.log(`🚀 DockingInterface calling starfieldManager.undock()`);
         
         // Play command sound
         if (this.starfieldManager.playCommandSound) {
@@ -597,6 +604,7 @@ export class DockingInterface {
         
         // Trigger undocking
         this.starfieldManager.undock();
+        console.log('🚀 DockingInterface.handleLaunch() completed');
     }
 
     handleRepair() {

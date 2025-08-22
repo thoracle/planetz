@@ -39,17 +39,17 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `enemy-ai` | **Status**: In Development (9 uncommitted changes) | **Last Updated**: 2025-08-20
+**Branch**: `noammo` | **Status**: In Development (6 uncommitted changes) | **Last Updated**: 2025-08-21
 
 **Recent Work** (Last 5 commits):
+- Complete Ammo.js refactor and faction color fixes
+- Fix hitscan raycast system for target dummy collision detection
 - feat(weapons/hitscan): camera-aligned ray, single-render beams, broader ship resolution, tolerance tuning; docs+script updates
 - chore(weapons): wrap triggerWeaponEffects body in try/catch with detailed error logging to locate throw site
 - feat(weapons): enable simplified center-ray for lasers; bias aim toward locked target; add defensive try/catch around laser damage/effects
-- feat(weapons): scaffold simple firing services (AimResolver, HitScanService, ProjectileService, DamageService, RangeUnits, TargetFilter); wire optional center-ray path behind flag; preserve HUD/slot/card APIs
-- chore: checkpoint before weapon firing refactor; fix docs generation accuracy; laser raycast filters and WebGL resize fixes
 
 **Codebase Stats**: 
-- JavaScript Files: 131 | Python Files: 1606 | Documentation: 67 files
+- JavaScript Files: 134 | Python Files: 1606 | Documentation: 68 files
 - Total Lines: 30,000+ | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 

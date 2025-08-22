@@ -3050,6 +3050,9 @@ export class StarfieldManager {
 
     // Update the setView method to handle view changes
     setView(viewType) {
+        console.log(`🎯 StarfieldManager.setView('${viewType}') called`);
+        console.trace('🎯 setView call stack');
+        
         // Hide damage control UI when switching to any other view
         if (this.damageControlVisible && viewType !== 'DAMAGE') {
             this.damageControlVisible = false;
@@ -3634,6 +3637,29 @@ export class StarfieldManager {
                 window.collisionManager
             );
             console.log('🚀 Simple docking system initialized');
+            
+            // Start monitoring for docking opportunities
+            this.simpleDockingManager.startDockingMonitoring();
+        } else if (!this.simpleDockingManager) {
+            console.warn('🚀 Cannot initialize SimpleDockingManager:', {
+                spatialManagerReady: window.spatialManagerReady,
+                collisionManagerReady: window.collisionManagerReady,
+                spatialManager: !!window.spatialManager,
+                collisionManager: !!window.collisionManager
+            });
+        }
+    }
+
+    /**
+     * Show docking interface when docked to a station
+     * @param {THREE.Object3D} target - The docked target (station/planet/moon)
+     */
+    showDockingInterface(target) {
+        if (this.dockingInterface) {
+            console.log('🚀 Showing docking interface for', target.name);
+            this.dockingInterface.show(target);
+        } else {
+            console.warn('🚀 DockingInterface not available');
         }
     }
 
@@ -4016,14 +4042,27 @@ export class StarfieldManager {
         return true;
     }
     undock() {
+        console.log('🚀 StarfieldManager.undock() called');
+        console.log(`🚀 this.isDocked: ${this.isDocked}`);
+        console.log(`🚀 this.simpleDockingManager exists: ${!!this.simpleDockingManager}`);
+        console.log(`🚀 this.simpleDockingManager.isDocked: ${this.simpleDockingManager?.isDocked}`);
+        
         if (!this.isDocked) {
+            console.log('🚀 Not docked - returning early');
             return;
         }
 
         // Use simple docking system launch if available
         if (this.simpleDockingManager && this.simpleDockingManager.isDocked) {
-            return this.simpleDockingManager.launchFromStation();
+            console.log('🚀 Using SimpleDockingManager for launch - skipping old undock logic');
+            const result = this.simpleDockingManager.launchFromStation();
+            console.log('🚀 SimpleDockingManager.launchFromStation() returned:', result);
+            return result;
         }
+        
+        console.log('🚀 SimpleDockingManager not available or not docked - using old undock logic');
+        console.log(`🚀 simpleDockingManager exists: ${!!this.simpleDockingManager}`);
+        console.log(`🚀 simpleDockingManager.isDocked: ${this.simpleDockingManager?.isDocked}`);
 
         // Get ship instance for launch procedures
         const ship = this.viewManager?.getShip();
@@ -4209,6 +4248,12 @@ export class StarfieldManager {
 
     updateOrbit(deltaTime) {
         if (!this.isDocked || !this.dockedTo) return;
+        
+        // Debug: Log when orbit update is moving the camera
+        if (Date.now() % 5000 < 100) { // Log every 5 seconds
+            console.log(`🔄 updateOrbit() moving camera - isDocked: ${this.isDocked}, dockedTo: ${this.dockedTo?.name}`);
+            console.log(`🔄 Camera position being set to orbit around: (${this.dockedTo.position.x.toFixed(2)}, ${this.dockedTo.position.y.toFixed(2)}, ${this.dockedTo.position.z.toFixed(2)})`);
+        }
 
         // Handle docking transition
         if (this.dockingState && this.dockingState.transitioning) {
@@ -4251,11 +4296,22 @@ export class StarfieldManager {
     }
 
     // Add new debug methods for dock/undock
-    dockWithDebug(target) {
-        const result = this.dock(target);
-        if (!result) {
+    async dockWithDebug(target) {
+        // Ensure SimpleDockingManager is initialized
+        if (!this.simpleDockingManager) {
+            console.log('🚀 Initializing SimpleDockingManager for docking');
+            this.initializeSimpleDocking();
         }
-        return result;
+        
+        // Use the new SimpleDockingManager for docking
+        if (this.simpleDockingManager) {
+            console.log('🚀 Using SimpleDockingManager for docking');
+            const result = await this.simpleDockingManager.initiateDocking(target);
+            return result;
+        } else {
+            console.error('🚀 SimpleDockingManager could not be initialized - spatial/collision managers not ready');
+            return false;
+        }
     }
 
     undockWithDebug() {
@@ -5939,57 +5995,30 @@ export class StarfieldManager {
         return true;
     }
 
-    // NEW: Calculate safe launch distance to avoid nearby dockable objects
+    // NEW: Calculate safe launch distance - simple 2x docking distance rule + object radius
     calculateSafeLaunchDistance(launchTarget) {
-        const minBaseDistance = this.orbitRadius * 2; // Minimum distance (original logic)
-        let safeDistance = minBaseDistance;
+        // Get the docking range for the target we're launching from
+        const targetInfo = this.solarSystemManager?.getCelestialBodyInfo(launchTarget);
+        let dockingRange = 1.5; // Default for moons
         
-        // Get all celestial bodies and filter for dockable objects (planets and moons)
-        const celestialBodies = this.solarSystemManager?.getCelestialBodies();
-        if (!celestialBodies) {
-            console.log(`🚀 Launch distance calculated: ${safeDistance.toFixed(1)}km (no solar system manager)`);
-            return safeDistance;
+        if (targetInfo?.type === 'planet') {
+            dockingRange = 4.0; // Planets have 4km docking range
+        } else if (targetInfo?.type === 'station') {
+            // For stations, check if they have a custom docking range
+            dockingRange = launchTarget.userData?.dockingRange || 2.0;
         }
         
-        const dockableObjects = [];
-        celestialBodies.forEach((body, bodyId) => {
-            // Only consider planets and moons (skip star)
-            if (bodyId.startsWith('planet_') || bodyId.startsWith('moon_')) {
-                dockableObjects.push(body);
-            }
-        });
+        // Get the object's radius to ensure we launch from the surface, not the center
+        const objectRadius = launchTarget.geometry?.parameters?.radius || 
+                           launchTarget.userData?.radius || 
+                           (targetInfo?.type === 'planet' ? 1.2 : 0.3); // Default radii
         
-        // Check distance to all other dockable objects
-        for (const obj of dockableObjects) {
-            if (obj === launchTarget) continue; // Skip the object we're launching from
-            
-            const distanceToObject = this.camera.position.distanceTo(obj.position);
-            const objectInfo = this.solarSystemManager.getCelestialBodyInfo(obj);
-            
-            // Get the docking range for this object
-            let objectDockingRange = 1.5; // Default for moons
-            if (objectInfo?.type === 'planet') {
-                objectDockingRange = 4.0;
-            }
-            
-            // If this object is close to our launch target, ensure we launch far enough
-            // to be outside its docking range plus a safety buffer
-            const safetyBuffer = 2.0; // 2km additional safety margin
-            const requiredDistance = objectDockingRange + safetyBuffer;
-            
-            // If the object is within a dangerous proximity to our launch point
-            if (distanceToObject < requiredDistance * 3) {
-                // Calculate how far we need to launch to clear this object's docking range
-                const neededDistance = requiredDistance + distanceToObject * 0.5;
-                safeDistance = Math.max(safeDistance, neededDistance);
-            }
-        }
+        // Launch distance = object radius + (2x docking range)
+        // This ensures we're 2x docking range away from the surface, not the center
+        const launchDistance = objectRadius + (dockingRange * 2.0);
         
-        // Ensure we don't launch too far (maximum of 20km)
-        safeDistance = Math.min(safeDistance, 20.0);
-        
-        console.log(`🚀 Launch distance calculated: ${safeDistance.toFixed(1)}km (base: ${minBaseDistance.toFixed(1)}km)`);
-        return safeDistance;
+        console.log(`🚀 Launch distance calculated: ${launchDistance.toFixed(1)}km (${objectRadius.toFixed(1)}km radius + 2x ${dockingRange.toFixed(1)}km docking range)`);
+        return launchDistance;
     }
 
     /**
