@@ -39,17 +39,17 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `noammo` | **Status**: In Development (6 uncommitted changes) | **Last Updated**: 2025-08-21
+**Branch**: `noammo` | **Status**: In Development (7 uncommitted changes) | **Last Updated**: 2025-08-22
 
 **Recent Work** (Last 5 commits):
+- Implement unified docking system and comprehensive refactor specification
+- feat(docking): implement simple launch system with AFT view and impulse activation
 - Complete Ammo.js refactor and faction color fixes
 - Fix hitscan raycast system for target dummy collision detection
 - feat(weapons/hitscan): camera-aligned ray, single-render beams, broader ship resolution, tolerance tuning; docs+script updates
-- chore(weapons): wrap triggerWeaponEffects body in try/catch with detailed error logging to locate throw site
-- feat(weapons): enable simplified center-ray for lasers; bias aim toward locked target; add defensive try/catch around laser damage/effects
 
 **Codebase Stats**: 
-- JavaScript Files: 134 | Python Files: 1606 | Documentation: 68 files
+- JavaScript Files: 134 | Python Files: 1606 | Documentation: 69 files
 - Total Lines: 30,000+ | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
