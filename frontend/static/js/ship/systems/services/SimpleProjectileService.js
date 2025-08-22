@@ -339,5 +339,3 @@ if (typeof window !== 'undefined') {
     window.SimpleProjectileManager = SimpleProjectileManager;
     console.log('🚀 SimpleProjectileService loaded - Three.js projectile system');
 }
-
-export { SimpleProjectile };
