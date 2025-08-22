@@ -322,6 +322,7 @@ try:
     )
     
     # Replace the controls section (everything between "## 🎮 Essential Controls & Features" and the next "##")
+    # NOTE: Static sections like "Physics Engine Refactor" and "Core Game Vision" are preserved
     controls_replacement = f"""## 🎮 Essential Controls & Features
 
 {combat_section}
