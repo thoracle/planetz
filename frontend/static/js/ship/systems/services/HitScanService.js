@@ -6,7 +6,7 @@
  * Optimized for retro space shooter gameplay.
  */
 
-const DEBUG_LOG_HITSCAN = false;
+const DEBUG_LOG_HITSCAN = true;
 
 /**
  * Simple weapon hit detection using Three.js Raycaster

@@ -69,6 +69,14 @@ export class SimpleCollisionManager {
         // Filter hits by maximum distance (enforce range limit)
         const validHits = intersects.filter(hit => hit.distance <= maxDistance);
         
+        // Debug logging for range enforcement
+        if (intersects.length > 0) {
+            const firstHit = intersects[0];
+            console.log(`🎯 COLLISION: Hit at ${firstHit.distance.toFixed(1)}m, maxRange: ${maxDistance.toFixed(1)}m`);
+            console.log(`🎯 COLLISION: Hit distance in km: ${(firstHit.distance/1000).toFixed(1)}km`);
+            console.log(`🎯 COLLISION: Valid hits after filtering: ${validHits.length}/${intersects.length}`);
+        }
+        
         if (validHits.length === 0) {
             return null; // No hits within range
         }
@@ -185,6 +193,7 @@ export class SimpleCollisionManager {
      */
     weaponRaycast(origin, direction, maxRangeKm, firingShip = null) {
         const maxRangeM = maxRangeKm * 1000; // Convert to meters
+        console.log(`🎯 COLLISION DEBUG: maxRangeKm=${maxRangeKm}, maxRangeM=${maxRangeM}`);
         const excludeObjects = firingShip ? [firingShip] : [];
         
         // Only hit ships, stations, and other targetable objects
