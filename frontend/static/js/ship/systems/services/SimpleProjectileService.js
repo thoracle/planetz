@@ -189,7 +189,10 @@ export class SimpleProjectile {
      * Apply damage to hit target
      */
     applyDamage() {
-        if (!this.hitTarget) return;
+        if (!this.hitTarget) {
+            console.log(`💥 ${this.weaponName}: No hit target to damage`);
+            return;
+        }
         
         // Find the actual target object for damage application
         const targetShip = this.findTargetShip();
@@ -201,12 +204,22 @@ export class SimpleProjectile {
             // Apply damage to target
             if (targetShip.takeDamage) {
                 targetShip.takeDamage(this.damage, this.weaponName);
+                console.log(`✅ ${this.weaponName}: Used takeDamage() method`);
             } else if (targetShip.hull) {
+                const oldHull = targetShip.hull.current;
                 targetShip.hull.current = Math.max(0, targetShip.hull.current - this.damage);
+                console.log(`✅ ${this.weaponName}: Direct hull damage: ${oldHull} -> ${targetShip.hull.current}`);
+            } else {
+                console.log(`❌ ${this.weaponName}: Target has no takeDamage() or hull property`);
+                console.log(`   Target object:`, targetShip);
             }
             
             // Show damage feedback
             this.showDamageEffects(targetShip);
+        } else {
+            console.log(`❌ ${this.weaponName}: Could not find target ship for damage application`);
+            console.log(`   Hit result:`, this.hitResult);
+            console.log(`   Hit target metadata:`, this.hitTarget);
         }
     }
     
@@ -214,38 +227,65 @@ export class SimpleProjectile {
      * Find the actual ship object from hit metadata
      */
     findTargetShip() {
+        console.log(`🔍 ${this.weaponName}: Finding target ship...`);
+        
         // FIXED: Use hit result object directly instead of distance-based search
         if (this.hitResult && this.hitResult.object) {
+            console.log(`   Hit result object:`, this.hitResult.object);
+            console.log(`   Hit result object userData:`, this.hitResult.object.userData);
+            
             // Check if the hit object has ship data
             if (this.hitResult.object.userData?.ship) {
+                console.log(`   ✅ Found ship in hit object userData`);
                 return this.hitResult.object.userData.ship;
             }
             
             // Check parent objects for ship data
             let parent = this.hitResult.object.parent;
-            while (parent) {
+            let parentLevel = 0;
+            while (parent && parentLevel < 10) { // Prevent infinite loops
+                console.log(`   Checking parent level ${parentLevel}:`, parent);
+                console.log(`   Parent userData:`, parent.userData);
+                
                 if (parent.userData?.ship) {
+                    console.log(`   ✅ Found ship in parent level ${parentLevel}`);
                     return parent.userData.ship;
                 }
                 parent = parent.parent;
+                parentLevel++;
             }
+        } else {
+            console.log(`   No hit result or hit result object`);
         }
         
         // FALLBACK: Try to find target ship in dummy ships using distance
+        console.log(`   Trying fallback distance-based search...`);
         if (window.starfieldManager?.dummyShipMeshes) {
-            for (const dummyMesh of window.starfieldManager.dummyShipMeshes) {
+            console.log(`   Found ${window.starfieldManager.dummyShipMeshes.length} dummy ship meshes`);
+            
+            for (let i = 0; i < window.starfieldManager.dummyShipMeshes.length; i++) {
+                const dummyMesh = window.starfieldManager.dummyShipMeshes[i];
+                console.log(`   Checking dummy mesh ${i}:`, dummyMesh);
+                console.log(`   Dummy mesh userData:`, dummyMesh.userData);
+                
                 if (dummyMesh.userData?.ship) {
                     const ship = dummyMesh.userData.ship;
                     const shipPos = dummyMesh.position;
                     const distance = shipPos.distanceTo(this.targetPosition);
                     
+                    console.log(`   Distance to dummy ${i}: ${distance.toFixed(1)}m`);
+                    
                     if (distance < 50) { // Within 50m of impact point
+                        console.log(`   ✅ Found ship via distance search (${distance.toFixed(1)}m)`);
                         return ship;
                     }
                 }
             }
+        } else {
+            console.log(`   No dummy ship meshes available`);
         }
         
+        console.log(`   ❌ No target ship found`);
         return null;
     }
     
