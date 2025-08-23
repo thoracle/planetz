@@ -6636,9 +6636,17 @@ export class StarfieldManager {
                     this.targetComputerManager.updateTargetDisplay();
                 }
                 
-                // Show brief confirmation
+                // Show brief confirmation - different message based on weapon capability
                 const subTargetName = targetComputer.currentSubTarget?.displayName || 'Unknown';
-                ship.weaponSystem?.showMessage(`Targeting: ${subTargetName}`, 2000);
+                
+                if (canActuallyTarget) {
+                    // Scan-hit weapons can actually target sub-systems
+                    ship.weaponSystem?.showMessage(`Targeting: ${subTargetName}`, 2000);
+                } else {
+                    // Projectile weapons can only scan, not target
+                    const weaponTypeName = weaponType === 'splash-damage' ? 'projectiles' : weaponType;
+                    ship.weaponSystem?.showMessage(`System Targeting unavailable for ${weaponTypeName}`, 3000);
+                }
             } else {
                 this.playCommandFailedSound();
             }

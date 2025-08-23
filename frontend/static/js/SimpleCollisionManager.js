@@ -69,6 +69,13 @@ export class SimpleCollisionManager {
         // Filter hits by maximum distance (enforce range limit)
         const validHits = intersects.filter(hit => hit.distance <= maxDistance);
         
+        // Debug logging for range enforcement
+        if (intersects.length > 0) {
+            const firstHit = intersects[0];
+            console.log(`🎯 COLLISION: Hit at ${firstHit.distance.toFixed(1)}m, maxRange: ${maxDistance.toFixed(1)}m`);
+            console.log(`🎯 COLLISION: Valid hits after filtering: ${validHits.length}/${intersects.length}`);
+        }
+        
         if (validHits.length === 0) {
             return null; // No hits within range
         }
