@@ -201,8 +201,12 @@ export class SimpleProjectile {
                 console.log(`💥 ${this.weaponName}: Applying ${this.damage} damage to ${targetShip.shipName || 'target'}`);
             }
             
-            // Apply damage to target
-            if (targetShip.takeDamage) {
+            // Apply damage to target using the same method as lasers
+            if (targetShip.applyDamage) {
+                // Use the same damage application method as lasers
+                targetShip.applyDamage(this.damage, 'kinetic', null); // No specific system targeting for missiles
+                console.log(`✅ ${this.weaponName}: Used applyDamage() method (${this.damage} kinetic damage)`);
+            } else if (targetShip.takeDamage) {
                 targetShip.takeDamage(this.damage, this.weaponName);
                 console.log(`✅ ${this.weaponName}: Used takeDamage() method`);
             } else if (targetShip.hull) {
@@ -210,8 +214,9 @@ export class SimpleProjectile {
                 targetShip.hull.current = Math.max(0, targetShip.hull.current - this.damage);
                 console.log(`✅ ${this.weaponName}: Direct hull damage: ${oldHull} -> ${targetShip.hull.current}`);
             } else {
-                console.log(`❌ ${this.weaponName}: Target has no takeDamage() or hull property`);
+                console.log(`❌ ${this.weaponName}: Target has no applyDamage(), takeDamage(), or hull property`);
                 console.log(`   Target object:`, targetShip);
+                console.log(`   Available methods:`, Object.getOwnPropertyNames(targetShip));
             }
             
             // Show damage feedback
