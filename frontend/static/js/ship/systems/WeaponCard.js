@@ -479,35 +479,11 @@ export class SplashDamageWeapon extends WeaponCard {
      */
     fire(origin, target = null, ship = null) {
         const weaponTypeDisplay = this.blastRadius > 0 ? 'splash-damage' : 'direct-hit';
-        // Debug logging removed to prevent console spam
+        console.log(`${this.name} firing (${weaponTypeDisplay})`);
         
-        // RANGE ENFORCEMENT: Prevent firing beyond weapon range (for ALL firing modes)
-        if (window.starfieldManager?.camera) {
-            const camera = window.starfieldManager.camera;
-            
-            // Check if we have a valid target within weapon range
-            const targetingResult = targetingService.getCurrentTarget({
-                camera: camera,
-                weaponRange: (this.range || 30000) / 1000, // Convert meters to kilometers for targeting service
-                requestedBy: this.name + '_range_check',
-                enableFallback: false // Only precise targeting for range validation
-            });
-            
-            // STRICT ENFORCEMENT: No firing beyond weapon range, period
-            if (!targetingResult.hasTarget || !targetingResult.inRange) {
-                console.log(`🎯 ${this.name}: RANGE ENFORCEMENT - No valid target within ${(this.range/1000).toFixed(1)}km range (hasTarget=${targetingResult.hasTarget}, inRange=${targetingResult.inRange})`);
-                return {
-                    success: false,
-                    reason: 'No target within range',
-                    damage: 0
-                };
-            }
-            
-            // Use the validated target for accurate collision radius calculation
-            target = targetingResult.target;
-            console.log(`🎯 ${this.name}: RANGE VALIDATED - Target within ${(this.range/1000).toFixed(1)}km range`);
-            console.log(`🎯 ${this.name}: Using precise target: ${target ? target.name || 'unnamed' : 'null'} at ${targetingResult.targetDistance ? (targetingResult.targetDistance * 1000).toFixed(0) + 'm' : 'unknown distance'}`);
-        }
+        // SIMPLIFIED: Remove range enforcement to match laser weapon behavior
+        // Our SimpleProjectile system uses HitScanService for instant hit detection,
+        // so we don't need to validate targets before firing - just like lasers
         
         // ENHANCED: Comprehensive energy validation like laser weapons
         if (ship && this.energyCost > 0) {
