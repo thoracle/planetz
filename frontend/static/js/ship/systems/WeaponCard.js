@@ -159,6 +159,10 @@ export class WeaponCard {
         }
 
         // NEW: Try simplified Three.js projectile system first
+        console.log(`🔍 PROJECTILE DEBUG: Checking SimpleProjectile availability for ${this.name}`);
+        console.log(`   - window.simpleProjectileManager: ${!!window.simpleProjectileManager}`);
+        console.log(`   - window.SimpleProjectile: ${!!window.SimpleProjectile}`);
+        
         if (window.simpleProjectileManager && window.SimpleProjectile) {
             try {
                 console.log(`🚀 Using simplified Three.js projectile for ${this.name}`);

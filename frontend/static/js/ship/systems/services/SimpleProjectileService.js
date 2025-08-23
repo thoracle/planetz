@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 
-const DEBUG_PROJECTILES = false;
+const DEBUG_PROJECTILES = true;
 
 export class SimpleProjectile {
     constructor(config) {
