@@ -203,9 +203,9 @@ export class SimpleProjectile {
             
             // Apply damage to target using the same method as lasers
             if (targetShip.applyDamage) {
-                // Use the same damage application method as lasers
-                targetShip.applyDamage(this.damage, 'kinetic', null); // No specific system targeting for missiles
-                console.log(`✅ ${this.weaponName}: Used applyDamage() method (${this.damage} kinetic damage)`);
+                // MISSILES: Apply kinetic damage to random systems (unlike lasers which do precise targeting)
+                targetShip.applyDamage(this.damage, 'kinetic', null); // null = random system targeting for missiles
+                console.log(`✅ ${this.weaponName}: Used applyDamage() method (${this.damage} kinetic damage to random systems)`);
             } else if (targetShip.takeDamage) {
                 targetShip.takeDamage(this.damage, this.weaponName);
                 console.log(`✅ ${this.weaponName}: Used takeDamage() method`);
