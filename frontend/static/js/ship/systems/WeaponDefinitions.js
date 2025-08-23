@@ -95,7 +95,7 @@ export class WeaponDefinitions {
                 weaponType: 'projectile',
                 damage: 150,
                 cooldownTime: 2.5, // seconds
-                range: 15, // km - reduced range for better balance
+                range: 30, // km - increased for testing with target dummies
                 autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 1.0, // Missiles don't miss if fired properly
                 energyCost: 8, // Moderate energy cost
@@ -118,7 +118,7 @@ export class WeaponDefinitions {
                 weaponType: 'splash-damage',
                 damage: 180,
                 cooldownTime: 2.5, // seconds
-                range: 15, // km - increased range for better balance
+                range: 35, // km - increased for testing with target dummies
                 autofireEnabled: true, // Homing missiles can autofire
                 accuracy: 1.0,
                 energyCost: 8,
@@ -140,7 +140,7 @@ export class WeaponDefinitions {
                 weaponType: 'splash-damage',
                 damage: 320,
                 cooldownTime: 4.0, // seconds
-                range: 15, // km - reduced range for better balance
+                range: 25, // km - increased for testing with target dummies
                 autofireEnabled: true, // UPDATED: All weapons support autofire
                 accuracy: 1.0,
                 energyCost: 12,

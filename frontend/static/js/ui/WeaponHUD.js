@@ -221,7 +221,7 @@ export class WeaponHUD {
             if (isActive) {
                 const rangeDisplay = document.createElement('div');
                 rangeDisplay.className = 'weapon-range-display';
-                const rangeKm = slot.equippedWeapon.range.toFixed(1);
+                const rangeKm = (slot.equippedWeapon.range / 1000).toFixed(1); // Convert meters to km for display
                 rangeDisplay.textContent = `${rangeKm}km`;
                 rangeDisplay.style.cssText = `
                     position: absolute;
