@@ -204,8 +204,20 @@ export class SimpleProjectile {
             // Apply damage to target using the same method as lasers
             if (targetShip.applyDamage) {
                 // MISSILES: Apply kinetic damage to random systems (unlike lasers which do precise targeting)
-                targetShip.applyDamage(this.damage, 'kinetic', null); // null = random system targeting for missiles
+                const damageResult = targetShip.applyDamage(this.damage, 'kinetic', null); // null = random system targeting for missiles
                 console.log(`✅ ${this.weaponName}: Used applyDamage() method (${this.damage} kinetic damage to random systems)`);
+                
+                // Check if target was destroyed and remove it from the game
+                if (damageResult && damageResult.isDestroyed) {
+                    console.log(`💀 ${this.weaponName}: Target destroyed! Calling removeDestroyedTarget()`);
+                    
+                    // Remove destroyed target from game via StarfieldManager
+                    if (window.starfieldManager && window.starfieldManager.removeDestroyedTarget) {
+                        window.starfieldManager.removeDestroyedTarget(targetShip);
+                    } else {
+                        console.warn(`⚠️ ${this.weaponName}: StarfieldManager.removeDestroyedTarget not available`);
+                    }
+                }
             } else if (targetShip.takeDamage) {
                 targetShip.takeDamage(this.damage, this.weaponName);
                 console.log(`✅ ${this.weaponName}: Used takeDamage() method`);
