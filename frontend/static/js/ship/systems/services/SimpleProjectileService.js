@@ -62,6 +62,7 @@ export class SimpleProjectile {
             if (hitResult && hitResult.hit) {
                 this.targetPosition = hitResult.hitPoint.clone();
                 this.hitTarget = hitResult.metadata;
+                this.hitResult = hitResult; // Store full hit result for damage application
                 
                 if (DEBUG_PROJECTILES) {
                     console.log(`🎯 ${this.weaponName}: Hit detected at (${this.targetPosition.x.toFixed(1)}, ${this.targetPosition.y.toFixed(1)}, ${this.targetPosition.z.toFixed(1)})`);
@@ -95,7 +96,7 @@ export class SimpleProjectile {
         
         // Create glowing projectile mesh
         const geometry = new THREE.SphereGeometry(2, 8, 6); // 2m radius, low poly
-        const material = new THREE.MeshBasicMaterial({ 
+        const material = new THREE.MeshStandardMaterial({ 
             color: this.getProjectileColor(),
             emissive: this.getProjectileColor(),
             emissiveIntensity: 0.3
@@ -213,7 +214,24 @@ export class SimpleProjectile {
      * Find the actual ship object from hit metadata
      */
     findTargetShip() {
-        // Try to find target ship in dummy ships
+        // FIXED: Use hit result object directly instead of distance-based search
+        if (this.hitResult && this.hitResult.object) {
+            // Check if the hit object has ship data
+            if (this.hitResult.object.userData?.ship) {
+                return this.hitResult.object.userData.ship;
+            }
+            
+            // Check parent objects for ship data
+            let parent = this.hitResult.object.parent;
+            while (parent) {
+                if (parent.userData?.ship) {
+                    return parent.userData.ship;
+                }
+                parent = parent.parent;
+            }
+        }
+        
+        // FALLBACK: Try to find target ship in dummy ships using distance
         if (window.starfieldManager?.dummyShipMeshes) {
             for (const dummyMesh of window.starfieldManager.dummyShipMeshes) {
                 if (dummyMesh.userData?.ship) {
