@@ -196,14 +196,20 @@ export class WeaponDefinitions {
             return null;
         }
         
+        // Convert range from kilometers to meters for WeaponCard
+        const weaponDefWithMeters = {
+            ...weaponDef,
+            range: (weaponDef.range || 1) * 1000 // Convert km to meters
+        };
+        
         // Create appropriate weapon type
         if (weaponDef.weaponType === 'scan-hit') {
-            return new ScanHitWeapon(weaponDef);
+            return new ScanHitWeapon(weaponDefWithMeters);
         } else if (weaponDef.weaponType === 'splash-damage') {
-            return new SplashDamageWeapon(weaponDef);
+            return new SplashDamageWeapon(weaponDefWithMeters);
         } else if (weaponDef.weaponType === 'projectile') {
             // Direct-hit projectiles use splash damage weapon class but with blastRadius=0
-            return new SplashDamageWeapon(weaponDef);
+            return new SplashDamageWeapon(weaponDefWithMeters);
         }
         
         console.error(`Unknown weapon type: ${weaponDef.weaponType}`);
