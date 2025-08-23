@@ -6606,6 +6606,8 @@ export class StarfieldManager {
         
         if (!canActuallyTarget) {
             // Show message that projectiles can't target but allow scanning to continue
+            this.playCommandFailedSound();
+            
             if (weaponType === 'splash-damage') {
                 ship.weaponSystem?.showMessage(`${weaponName}: Projectile weapons don't support sub-targeting`, 4000);
             } else {

@@ -66,8 +66,15 @@ export class SimpleCollisionManager {
             return null;
         }
 
-        // Return first hit
-        const hit = intersects[0];
+        // Filter hits by maximum distance (enforce range limit)
+        const validHits = intersects.filter(hit => hit.distance <= maxDistance);
+        
+        if (validHits.length === 0) {
+            return null; // No hits within range
+        }
+
+        // Return first hit within range
+        const hit = validHits[0];
         const metadata = this.spatialManager.getMetadata(hit.object);
         
         return {
