@@ -659,6 +659,35 @@ export class SplashDamageWeapon extends WeaponCard {
 
         }
 
+        // NEW: Try simplified Three.js projectile system first
+        console.log(`🔍 SPLASH PROJECTILE DEBUG: Checking SimpleProjectile availability for ${this.name}`);
+        console.log(`   - window.simpleProjectileManager: ${!!window.simpleProjectileManager}`);
+        console.log(`   - window.SimpleProjectile: ${!!window.SimpleProjectile}`);
+        
+        if (window.simpleProjectileManager && window.SimpleProjectile) {
+            try {
+                console.log(`🚀 Using simplified Three.js projectile for ${this.name}`);
+                
+                const simpleProjectile = new window.SimpleProjectile({
+                    origin: origin,
+                    direction: direction,
+                    target: target,
+                    damage: this.damage,
+                    blastRadius: this.blastRadius,
+                    flightRange: this.flightRange,
+                    isHoming: this.homingCapability,
+                    weaponName: this.name,
+                    maxRange: this.range,
+                    scene: window.starfieldManager?.scene
+                });
+                
+                return simpleProjectile;
+                
+            } catch (error) {
+                console.log('Failed to create simple projectile in SplashDamageWeapon, falling back to physics projectile:', error);
+            }
+        }
+        
         // ENHANCED: Try to create physics-based projectile with comprehensive error handling
         if (window.physicsManager) {
             if (!window.physicsManager.isReady()) {
