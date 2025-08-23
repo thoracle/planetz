@@ -6602,15 +6602,16 @@ export class StarfieldManager {
         console.log(`🎯 Weapon card:`, weaponCard);
 
         // Check if current weapon supports sub-targeting (scan-hit weapons only)
-        if (weaponType !== 'scan-hit') {
-            this.playCommandFailedSound();
-            
+        const canActuallyTarget = (weaponType === 'scan-hit');
+        
+        if (!canActuallyTarget) {
+            // Show message that projectiles can't target but allow scanning to continue
             if (weaponType === 'splash-damage') {
                 ship.weaponSystem?.showMessage(`${weaponName}: Projectile weapons don't support sub-targeting`, 4000);
             } else {
                 ship.weaponSystem?.showMessage(`${weaponName}: Sub-targeting not supported (type: ${weaponType})`, 4000);
             }
-            return;
+            // Don't return - allow scanning to continue
         }
 
         // All requirements met - proceed with sub-targeting

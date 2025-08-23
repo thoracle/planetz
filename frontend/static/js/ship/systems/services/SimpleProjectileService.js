@@ -211,6 +211,13 @@ export class SimpleProjectile {
                 if (damageResult && damageResult.isDestroyed) {
                     console.log(`💀 ${this.weaponName}: Target destroyed! Calling removeDestroyedTarget()`);
                     
+                    // Play success sound for target destruction (like lasers do)
+                    if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
+                        const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
+                        effectsManager.playSuccessSound(null, 0.8); // 80% volume for target destruction
+                        console.log(`🎉 ${this.weaponName}: Playing target destruction success sound`);
+                    }
+                    
                     // Remove destroyed target from game via StarfieldManager
                     if (window.starfieldManager && window.starfieldManager.removeDestroyedTarget) {
                         window.starfieldManager.removeDestroyedTarget(targetShip);
