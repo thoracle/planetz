@@ -218,6 +218,7 @@ export class MissionEventService {
             };
             
             console.log('🎯 MissionEventService: Sending cargo delivered event:', eventData);
+            console.log(`🚛 DEBUG: Delivery location being sent: "${eventData.delivery_location}"`);
             
             const response = await fetch(`${this.baseURL}/cargo_delivered`, {
                 method: 'POST',

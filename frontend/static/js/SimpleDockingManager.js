@@ -702,7 +702,9 @@ export class SimpleDockingManager {
                 // Check for cargo deliveries upon successful docking (stations only)
                 const targetMetadata = this.spatialManager.getMetadata(target);
                 if (targetMetadata?.type === 'station' && target?.userData?.name) {
-                    const stationKey = String(target.userData.name).toLowerCase().replace(/\s+/g, '_');
+                    const originalName = target.userData.name;
+                    const stationKey = String(originalName).toLowerCase().replace(/\s+/g, '_');
+                    console.log(`🚛 DEBUG: Station name conversion: "${originalName}" → "${stationKey}"`);
                     await this.starfieldManager.checkCargoDeliveries(stationKey);
                 }
                 

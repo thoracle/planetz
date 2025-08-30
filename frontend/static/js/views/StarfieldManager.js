@@ -3925,6 +3925,7 @@ export class StarfieldManager {
             for (const [cargoId, cargoItem] of loadedCargo.entries()) {
                 if (cargoItem && cargoItem.commodityId) {
                     console.log(`🚛 Attempting delivery of ${cargoItem.quantity} units of ${cargoItem.commodityId} to ${stationKey}`);
+                    console.log(`🚛 DEBUG: Original station name: "${stationKey}" (converted from docking target)`);
                     
                     // Trigger cargo delivery event
                     if (this.missionEventService) {
