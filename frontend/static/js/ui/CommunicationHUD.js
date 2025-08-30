@@ -276,7 +276,7 @@ export class CommunicationHUD {
             object-fit: cover;
             display: block;
         `;
-        this.videoElement.src = 'static/video/test_comms_001.mov';
+        this.videoElement.src = 'static/video/test_comms_001.MP4';
         this.videoElement.loop = true;
         this.videoElement.muted = true;
         this.videoElement.playsInline = true;
