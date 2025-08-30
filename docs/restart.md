@@ -103,6 +103,17 @@ open http://127.0.0.1:5001
 - **V**: V-Formation | **C**: Column formation | **L**: Line formation | **B**: Show flocking stats
 - **T**: Combat stats | **W**: Weapon debug | **X**: Target player | **P**: Performance stats | **D**: Debug visualization
 
+### **Communication HUD Testing** (Browser Console)
+```javascript
+// Test faction-based communication HUD with video/wireframe modes
+communicationHUD.testMissionComm()    // Green (friendly) - Admiral Chen
+communicationHUD.testHostileComm()    // Red (hostile) - Enemy faction
+communicationHUD.testNeutralComm()    // Yellow (neutral) - Trader
+communicationHUD.testDirectText()     // Direct text without typewriter effect
+```
+- **N Key**: Toggle communication HUD visibility / Switch video/wireframe modes
+- **Faction Colors**: HUD borders, wireframe, and speaker name match diplomatic status
+
 
 
 ## 📋 Key Documentation
@@ -199,7 +210,7 @@ unknown: '#44ffff'   // Cyan for unknown
 - ✅ **Enemy AI Framework** with 8 ship types, flocking, and combat behaviors
 - ✅ **Faction Universe** with 10 factions, 50+ NPCs, diplomatic complexity
 - ✅ **Navigation Systems** with 3D radar, long-range scanner, beacon network
-- ✅ **Communication HUD** with animated wireframe avatars and NPC interaction
+- ✅ **Communication HUD** with video/wireframe modes, faction-based coloring, and NPC interaction
 
 **Next Steps**: Content creation, advanced gameplay mechanics, multiplayer foundation.
 

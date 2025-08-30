@@ -1982,11 +1982,21 @@ export class StarfieldManager {
             if (commandKey === 'n') {
                 // Communication HUD can be toggled anytime (for testing and mission systems)
                 if (this.communicationHUD) {
-                    if (this.communicationHUD.toggle()) {
-                        this.playCommandSound();
-                        console.log('🗣️ Communication HUD toggled:', this.communicationHUD.visible ? 'ON' : 'OFF');
+                    if (!this.communicationHUD.visible) {
+                        // If HUD is hidden, show it first
+                        if (this.communicationHUD.toggle()) {
+                            this.playCommandSound();
+                            console.log('🗣️ Communication HUD toggled: ON');
+                        } else {
+                            this.playCommandFailedSound();
+                        }
                     } else {
-                        this.playCommandFailedSound();
+                        // If HUD is visible, toggle between video and face animation modes
+                        if (this.communicationHUD.toggleVideoMode()) {
+                            console.log('🗣️ Communication HUD mode:', this.communicationHUD.videoMode ? 'VIDEO' : 'FACE ANIMATION');
+                        } else {
+                            this.playCommandFailedSound();
+                        }
                     }
                 } else {
                     this.playCommandFailedSound();
