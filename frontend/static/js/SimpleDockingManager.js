@@ -293,7 +293,7 @@ export class SimpleDockingManager {
             await this.animateDockingApproach(ship, target);
             
             // Complete docking
-            this.completeDocking(target);
+            await this.completeDocking(target);
             
             return true;
             
@@ -349,7 +349,7 @@ export class SimpleDockingManager {
      * Complete docking process
      * @param {THREE.Object3D} station - Station docked to
      */
-    completeDocking(station) {
+    async completeDocking(station) {
         this.isDocked = true;
         this.dockingInProgress = false;
         this.lastDockingTime = Date.now();
@@ -380,6 +380,8 @@ export class SimpleDockingManager {
             // CRITICAL: Shutdown all ship systems (engines, targeting, etc.)
             this.shutdownAllShipSystems();
         }
+        
+        // Note: Cargo delivery check is handled in the main docking success path
         
         // Stop monitoring while docked
         this.stopDockingMonitoring();
@@ -701,11 +703,31 @@ export class SimpleDockingManager {
                 
                 // Check for cargo deliveries upon successful docking (stations only)
                 const targetMetadata = this.spatialManager.getMetadata(target);
-                if (targetMetadata?.type === 'station' && target?.userData?.name) {
-                    const originalName = target.userData.name;
+                console.log(`🚛 DEBUG: Checking cargo delivery conditions:`);
+                console.log(`🚛 DEBUG: - targetMetadata:`, targetMetadata);
+                console.log(`🚛 DEBUG: - targetMetadata?.type:`, targetMetadata?.type);
+                console.log(`🚛 DEBUG: - target?.userData?.name:`, target?.userData?.name);
+                console.log(`🚛 DEBUG: - target.name:`, target.name);
+                
+                // Check if this is a station by name pattern or metadata
+                const isStation = (targetMetadata?.type === 'station') || 
+                                (target.name && (target.name.includes('Station') || target.name.includes('Base') || 
+                                target.name.includes('Outpost') || target.name.includes('Platform') || 
+                                target.name.includes('Array') || target.name.includes('Facility') || 
+                                target.name.includes('Complex') || target.name.includes('Shipyard') || 
+                                target.name.includes('Refinery') || target.name.includes('City')));
+                
+                const stationName = target?.userData?.name || target.name;
+                console.log(`🚛 DEBUG: - isStation:`, isStation);
+                console.log(`🚛 DEBUG: - stationName:`, stationName);
+                
+                if (isStation && stationName) {
+                    const originalName = stationName;
                     const stationKey = String(originalName).toLowerCase().replace(/\s+/g, '_');
                     console.log(`🚛 DEBUG: Station name conversion: "${originalName}" → "${stationKey}"`);
                     await this.starfieldManager.checkCargoDeliveries(stationKey);
+                } else {
+                    console.log(`🚛 DEBUG: Cargo delivery check skipped - not a station or no name`);
                 }
                 
                 // KEEP currentDockingTarget until launch - don't set to null

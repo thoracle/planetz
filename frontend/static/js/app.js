@@ -330,6 +330,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('✅ Three.js spatial and collision systems ready');
         window.spatialManagerReady = true;
         window.collisionManagerReady = true;
+        
+        // Now that spatial systems are ready, initialize SimpleDockingManager
+        if (starfieldManager && typeof starfieldManager.initializeSimpleDocking === 'function') {
+            starfieldManager.initializeSimpleDocking();
+        }
     } else {
         console.error('❌ Failed to initialize Three.js systems');
         window.spatialManagerReady = false;

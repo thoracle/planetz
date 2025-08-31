@@ -145,11 +145,11 @@ export class StarfieldManager {
         this.proximityDetector3D = new ProximityDetector3D(this, document.body);
         console.log('🎯 StarfieldManager: 3D Proximity Detector initialized');
         
-        // Initialize simple docking system
-        if (!this._dockingInitTried) {
-            this._dockingInitTried = true;
-            this.initializeSimpleDocking();
-        }
+        // Initialize simple docking system (moved to app.js after spatial systems are ready)
+        // if (!this._dockingInitTried) {
+        //     this._dockingInitTried = true;
+        //     this.initializeSimpleDocking();
+        // }
         
         // Add intel state
         this.intelVisible = false;

@@ -113,6 +113,7 @@ communicationHUD.testDirectText()     // Direct text without typewriter effect
 ```
 - **N Key**: Toggle communication HUD visibility / Switch video/wireframe modes
 - **Faction Colors**: HUD borders, wireframe, and speaker name match diplomatic status
+- **Video Source**: Uses `test_comms_002.mov` for all communications (placeholder for future NPC-specific videos)
 
 
 
@@ -163,6 +164,13 @@ communicationHUD.testDirectText()     // Direct text without typewriter effect
 - **Dual Delivery Types**: `auto_delivery` (on docking) vs `market_sale` (on selling)
 - **Event-Driven**: Frontend triggers backend via `MissionEventService`
 - **Files**: JSON-based storage in `missions/` directories
+
+### **Cargo Delivery System** (Recently Fixed)
+- **Automatic Completion**: Cargo missions complete automatically when docking at destination stations
+- **Station Detection**: Robust detection via metadata + name pattern fallback (Station, Base, Outpost, etc.)
+- **Name Conversion**: `"Europa Research Station"` → `"europa_research_station"` for backend matching
+- **Unified Docking**: Integrated with `SimpleDockingManager.initiateUnifiedDocking()` method
+- **Debug Logging**: Comprehensive console output for troubleshooting station detection and cargo events
 
 ### **Combat & Collision System**
 - **Three.js collision detection**: Native raycasting for hit detection
