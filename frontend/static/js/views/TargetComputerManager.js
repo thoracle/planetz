@@ -146,6 +146,7 @@ export class TargetComputerManager {
             pointer-events: auto;
             z-index: 1000;
             transition: border-color 0.3s ease;
+            overflow: hidden;
         `;
 
         // Create wireframe container - match original styling
@@ -268,6 +269,9 @@ export class TargetComputerManager {
         // Create direction arrows for off-screen targets
         this.createDirectionArrows();
 
+        // Add scan line effects to sync with comm HUD
+        this.addTargetScanLineEffects();
+
         // Assemble the HUD - match original order
         this.targetHUD.appendChild(this.wireframeContainer);
         this.targetHUD.appendChild(this.targetInfoDisplay);
@@ -275,6 +279,73 @@ export class TargetComputerManager {
         this.targetHUD.appendChild(this.actionButtonsContainer);
         
         document.body.appendChild(this.targetHUD);
+    }
+
+    /**
+     * Add scan line effects to the target HUD that sync with comm HUD
+     */
+    addTargetScanLineEffects() {
+        // Add CSS styles for scan line effects
+        this.addTargetScanLineStyles();
+        
+        // Create static scan line overlay (repeating lines)
+        const scanLineOverlay = document.createElement('div');
+        scanLineOverlay.className = 'target-scan-lines';
+        scanLineOverlay.style.cssText = `
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 200px;
+            height: 150px;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 65, 0.03) 2px,
+                rgba(0, 255, 65, 0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 1;
+        `;
+        
+        // Create animated scan line with delay to sync with comm HUD
+        this.animatedScanLine = document.createElement('div');
+        this.animatedScanLine.className = 'target-scan-line';
+        this.animatedScanLine.style.cssText = `
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 200px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ff41, transparent);
+            animation: targetScanLine 2s linear infinite;
+            animation-delay: 0.5s;
+            opacity: 0.6;
+            pointer-events: none;
+            z-index: 2;
+        `;
+        
+        this.targetHUD.appendChild(scanLineOverlay);
+        this.targetHUD.appendChild(this.animatedScanLine);
+    }
+    
+    /**
+     * Add CSS styles for target scan line animations
+     */
+    addTargetScanLineStyles() {
+        if (document.getElementById('target-scan-line-styles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'target-scan-line-styles';
+        style.textContent = `
+            @keyframes targetScanLine {
+                0% { transform: translateY(0); opacity: 0; }
+                50% { opacity: 0.6; }
+                100% { transform: translateY(150px); opacity: 0; }
+            }
+        `;
+
+        document.head.appendChild(style);
     }
 
     /**
@@ -2897,6 +2968,18 @@ export class TargetComputerManager {
         if (this.targetHUD) {
             this.targetHUD.style.borderColor = color;
             this.targetHUD.style.color = color;
+        }
+        
+        // Update scan line color to match faction
+        this.updateScanLineColor(color);
+    }
+    
+    /**
+     * Update scan line color to match faction
+     */
+    updateScanLineColor(color) {
+        if (this.animatedScanLine) {
+            this.animatedScanLine.style.background = `linear-gradient(90deg, transparent, ${color}, transparent)`;
         }
     }
     

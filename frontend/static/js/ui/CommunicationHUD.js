@@ -117,7 +117,11 @@ export class CommunicationHUD {
             display: none;
             user-select: none;
             backdrop-filter: blur(2px);
+            overflow: hidden;
         `;
+        
+        // Add scan line overlay effects
+        this.addScanLineEffects();
         
         // Create main content area with avatar and right-side info
         this.createContentArea();
@@ -126,6 +130,146 @@ export class CommunicationHUD {
         console.log('🗣️ CommunicationHUD: Container created');
     }
     
+    /**
+     * Add scan line effects to the communication container
+     */
+    addScanLineEffects() {
+        // Add CSS styles for scan line effects
+        this.addScanLineStyles();
+        
+        // Create static scan line overlay (repeating lines)
+        const scanLineOverlay = document.createElement('div');
+        scanLineOverlay.className = 'comm-scan-lines';
+        scanLineOverlay.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 65, 0.03) 2px,
+                rgba(0, 255, 65, 0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 1;
+        `;
+        
+        // Create animated scan line (positioned to start at video area)
+        this.animatedScanLine = document.createElement('div');
+        this.animatedScanLine.className = 'comm-scan-line';
+        this.animatedScanLine.style.cssText = `
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 200px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ff41, transparent);
+            animation: commScanLine 2s linear infinite;
+            opacity: 0.6;
+            pointer-events: none;
+            z-index: 2;
+        `;
+        
+        this.commContainer.appendChild(scanLineOverlay);
+        this.commContainer.appendChild(this.animatedScanLine);
+    }
+    
+    /**
+     * Add CSS styles for scan line animations
+     */
+    addScanLineStyles() {
+        if (document.getElementById('comm-scan-line-styles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'comm-scan-line-styles';
+        style.textContent = `
+            @keyframes commScanLine {
+                0% { transform: translateY(0); opacity: 0; }
+                50% { opacity: 0.6; }
+                100% { transform: translateY(150px); opacity: 0; }
+            }
+        `;
+
+        document.head.appendChild(style);
+    }
+    
+    /**
+     * Update scan line color to match faction
+     */
+    updateScanLineColor(color) {
+        if (this.animatedScanLine) {
+            this.animatedScanLine.style.background = `linear-gradient(90deg, transparent, ${color}, transparent)`;
+        }
+    }
+    
+    /**
+     * Update video tint to match faction color
+     */
+    updateVideoTint(color) {
+        if (this.videoElement) {
+            // Convert hex color to HSL to calculate hue rotation
+            const hueRotation = this.getHueRotationForColor(color);
+            this.videoElement.style.filter = `sepia(100%) hue-rotate(${hueRotation}deg) saturate(200%) brightness(0.8)`;
+        }
+    }
+    
+    /**
+     * Calculate hue rotation needed to achieve target color
+     */
+    getHueRotationForColor(color) {
+        // Map common faction colors to hue rotations
+        // Base sepia tone is around 39° hue, so we adjust from there
+        switch(color.toLowerCase()) {
+            case '#ff3333': // Red (enemy)
+                return 0; // Red is close to sepia base
+            case '#00ff41': // Green (friendly) 
+                return 90; // Rotate to green
+            case '#ffff00': // Yellow (neutral)
+                return 50; // Rotate to yellow
+            case '#44ffff': // Cyan (corporate)
+                return 180; // Rotate to cyan
+            case '#ff44ff': // Magenta (ethereal)
+                return 270; // Rotate to magenta
+            case '#d0d0d0': // Gray (unknown)
+                return 0; // Keep neutral
+            default:
+                // For custom colors, try to calculate approximate hue
+                return this.calculateHueFromHex(color);
+        }
+    }
+    
+    /**
+     * Calculate approximate hue rotation from hex color
+     */
+    calculateHueFromHex(hex) {
+        const rgb = this.hexToRgb(hex);
+        if (!rgb) return 90; // Default to green
+        
+        // Simple hue calculation - this is approximate
+        const max = Math.max(rgb.r, rgb.g, rgb.b);
+        const min = Math.min(rgb.r, rgb.g, rgb.b);
+        const delta = max - min;
+        
+        if (delta === 0) return 0; // Gray
+        
+        let hue = 0;
+        if (max === rgb.r) {
+            hue = ((rgb.g - rgb.b) / delta) % 6;
+        } else if (max === rgb.g) {
+            hue = (rgb.b - rgb.r) / delta + 2;
+        } else {
+            hue = (rgb.r - rgb.g) / delta + 4;
+        }
+        
+        hue = Math.round(hue * 60);
+        if (hue < 0) hue += 360;
+        
+        // Adjust for sepia base (subtract ~39° and clamp)
+        return (hue - 39 + 360) % 360;
+    }
 
     
     /**
@@ -275,6 +419,7 @@ export class CommunicationHUD {
             height: 150px;
             object-fit: cover;
             display: block;
+            filter: sepia(100%) hue-rotate(90deg) saturate(200%) brightness(0.8);
         `;
         this.videoElement.src = 'static/video/test_comms_002.mov';
         this.videoElement.loop = true;
@@ -464,6 +609,12 @@ export class CommunicationHUD {
             0 0 20px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3),
             inset 0 0 20px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)
         `;
+        
+        // Update scan line color to match faction
+        this.updateScanLineColor(color);
+        
+        // Update video tint to match faction
+        this.updateVideoTint(color);
         
         // Update SVG wireframe colors to match faction
         this.updateWireframeColors(color);
