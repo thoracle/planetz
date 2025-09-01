@@ -66,14 +66,19 @@ export class SimpleCollisionManager {
             return null;
         }
 
-        // Filter hits by maximum distance (enforce range limit)
-        const validHits = intersects.filter(hit => hit.distance <= maxDistance);
+        // SCALE FIX: Game uses 1 unit = 1 km, but raycaster measures in units
+        // Convert hit distances from game units (km) to meters for proper range comparison
+        const validHits = intersects.filter(hit => {
+            const hitDistanceInMeters = hit.distance * 1000; // Convert game units (km) to meters
+            return hitDistanceInMeters <= maxDistance;
+        });
         
         // Debug logging for range enforcement
         if (intersects.length > 0) {
             const firstHit = intersects[0];
-            console.log(`🎯 COLLISION: Hit at ${firstHit.distance.toFixed(1)}m, maxRange: ${maxDistance.toFixed(1)}m`);
-            console.log(`🎯 COLLISION: Hit distance in km: ${(firstHit.distance/1000).toFixed(1)}km`);
+            const hitDistanceInMeters = firstHit.distance * 1000;
+            console.log(`🎯 COLLISION: Hit at ${firstHit.distance.toFixed(1)} units (${hitDistanceInMeters.toFixed(1)}m), maxRange: ${maxDistance.toFixed(1)}m`);
+            console.log(`🎯 COLLISION: Hit distance in km: ${firstHit.distance.toFixed(1)}km`);
             console.log(`🎯 COLLISION: Valid hits after filtering: ${validHits.length}/${intersects.length}`);
         }
         
@@ -90,6 +95,7 @@ export class SimpleCollisionManager {
             object: hit.object,
             point: hit.point,
             distance: hit.distance,
+            distanceKm: hit.distance, // Game units are already in km (1 unit = 1 km)
             normal: hit.face ? hit.face.normal : new window.THREE.Vector3(0, 1, 0),
             metadata: metadata || {}
         };

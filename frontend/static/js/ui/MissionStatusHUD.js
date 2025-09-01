@@ -666,9 +666,9 @@ export class MissionStatusHUD {
      * Create completion data for mission completion UI
      */
     createCompletionData(mission) {
-        const completedObjectives = mission.objectives?.filter(obj => obj.state === 'COMPLETED').length || 0;
+        const completedObjectives = mission.objectives?.filter(obj => obj.is_achieved === true).length || 0;
         const totalObjectives = mission.objectives?.filter(obj => !obj.optional).length || 1;
-        const bonusObjectives = mission.objectives?.filter(obj => obj.optional && obj.state === 'COMPLETED').length || 0;
+        const bonusObjectives = mission.objectives?.filter(obj => obj.optional && obj.is_achieved === true).length || 0;
         const totalBonusObjectives = mission.objectives?.filter(obj => obj.optional).length || 0;
         
         return {

@@ -393,17 +393,28 @@ export default class EnemyShip {
         
         // Step 3: PROJECTILE WEAPONS - Random subsystem damage when damage penetrates defenses
         if (result.penetratedDefenses && (damageType === 'explosive' || damageType === 'kinetic') && this.systems.size > 0) {
-            const systemNames = Array.from(this.systems.keys());
-            const numSystemsToCheck = Math.min(3, systemNames.length); // Check up to 3 systems
+            // Filter to only include operational (non-destroyed) systems
+            const allSystemNames = Array.from(this.systems.keys());
+            const operationalSystems = allSystemNames.filter(systemName => {
+                const system = this.systems.get(systemName);
+                return system && system.currentHealth > 0; // Only target systems that aren't destroyed
+            });
             
-            console.log(`🎲 PROJECTILE DAMAGE: Checking for random subsystem hits (${numSystemsToCheck} systems)...`);
+            if (operationalSystems.length === 0) {
+                console.log(`🎲 PROJECTILE DAMAGE: No operational systems available for random damage`);
+                return result; // No systems to damage
+            }
+            
+            const numSystemsToCheck = Math.min(3, operationalSystems.length); // Check up to 3 operational systems
+            
+            console.log(`🎲 PROJECTILE DAMAGE: Checking for random subsystem hits (${numSystemsToCheck}/${operationalSystems.length} operational systems)...`);
             
             for (let i = 0; i < numSystemsToCheck; i++) {
-                const randomSystem = systemNames[Math.floor(Math.random() * systemNames.length)];
+                const randomSystem = operationalSystems[Math.floor(Math.random() * operationalSystems.length)];
                 const system = this.systems.get(randomSystem);
                 
                 // Enhanced random subsystem damage for projectiles (40% chance, increased from 30%)
-                if (system && Math.random() < 0.4) {
+                if (system && system.currentHealth > 0 && Math.random() < 0.4) {
                     // Scale subsystem damage based on penetrating damage (15-25% of penetrating damage)
                     const penetratingDamage = result.hullDamage;
                     const subsystemDamageRatio = 0.15 + Math.random() * 0.10; // 15-25%

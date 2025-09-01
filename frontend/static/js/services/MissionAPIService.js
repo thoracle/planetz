@@ -237,7 +237,7 @@ export class MissionAPIService {
                 });
                 
                 // Check if mission is complete
-                if (result.mission && result.mission.state === 'COMPLETED') {
+                if (result.mission && (result.mission.state === 'COMPLETED' || result.mission.state === 'Achieved')) {
                     this.triggerEvent('missionCompleted', { mission: result.mission });
                 }
                 

@@ -165,7 +165,7 @@ export class MissionEventService {
                     const fireMissionComplete = () => this.triggerMissionCompletionNotification(mission);
                     const fireObjective = (objective) => this.triggerObjectiveCompletionNotification(objective, mission);
                     
-                    if (mission.state === 'COMPLETED') {
+                    if (mission.state === 'COMPLETED' || mission.state === 'Achieved') {
                         if (isDocked) this.queueNotification(fireMissionComplete); else fireMissionComplete();
                     }
                     
@@ -241,11 +241,15 @@ export class MissionEventService {
                 
                 // Trigger mission update events
                 for (const mission of result.updated_missions) {
+                    console.log(`🎯 DEBUG: Processing mission ${mission.mission_id}, state: "${mission.state}"`);
                     this.triggerMissionUpdateEvent('cargo_delivered', mission, eventData);
                     
                     // Check for mission completion and trigger notifications
-                    if (mission.state === 'COMPLETED') {
+                    if (mission.state === 'COMPLETED' || mission.state === 'Achieved') {
+                        console.log(`🎯 DEBUG: Mission ${mission.mission_id} is completed, triggering completion notification`);
                         this.triggerMissionCompletionNotification(mission);
+                    } else {
+                        console.log(`🎯 DEBUG: Mission ${mission.mission_id} not completed yet, state: "${mission.state}"`);
                     }
                     
                     // Check for completed objectives and trigger notifications
@@ -307,10 +311,15 @@ export class MissionEventService {
      */
     triggerMissionCompletionNotification(mission) {
         console.log(`🎯 MissionEventService: Mission completed - ${mission.title || mission.id}`);
+        console.log(`🎯 DEBUG: triggerMissionCompletionNotification called for mission:`, mission);
+        console.log(`🎯 DEBUG: window.missionNotificationHandler available:`, !!window.missionNotificationHandler);
         
         // Try to use the notification handler if available
         if (window.missionNotificationHandler) {
+            console.log(`🎯 DEBUG: Calling missionNotificationHandler.onMissionComplete`);
             window.missionNotificationHandler.onMissionComplete(mission);
+        } else {
+            console.warn(`🎯 DEBUG: No missionNotificationHandler available!`);
         }
         
         // Also trigger a custom event for other listeners

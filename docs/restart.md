@@ -42,17 +42,13 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `noammo` | **Status**: In Development (8 uncommitted changes) | **Last Updated**: 2025-08-22
+**Branch**: `unknown` | **Status**: unknown | **Last Updated**: unknown
 
 **Recent Work** (Last 5 commits):
-- Add design pillars reference to game vision in docs/restart.md
-- Add comprehensive Ammo.js refactor context to docs/restart.md
-- Update docs/restart.md with current project status
-- Implement unified docking system and comprehensive refactor specification
-- feat(docking): implement simple launch system with AFT view and impulse activation
+- No commits found
 
 **Codebase Stats**: 
-- JavaScript Files: 134 | Python Files: 1606 | Documentation: 69 files
+- JavaScript Files: 0 | Python Files: 0 | Documentation: 0 files
 - Total Lines: 30,000+ | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
@@ -99,21 +95,7 @@ open http://127.0.0.1:5001
 - **0-9**: Set impulse speed | **+ / =**: Increase speed | **- / _**: Decrease speed | **\**: Emergency stop
 
 ### **AI Debug Controls** (Mac: Cmd+Shift+[Key])
-- **A**: Toggle AI debug | **S**: Show AI stats | **E**: Force engage | **F**: Force flee | **I**: Force idle
-- **V**: V-Formation | **C**: Column formation | **L**: Line formation | **B**: Show flocking stats
-- **T**: Combat stats | **W**: Weapon debug | **X**: Target player | **P**: Performance stats | **D**: Debug visualization
-
-### **Communication HUD Testing** (Browser Console)
-```javascript
-// Test faction-based communication HUD with video/wireframe modes
-communicationHUD.testMissionComm()    // Green (friendly) - Admiral Chen
-communicationHUD.testHostileComm()    // Red (hostile) - Enemy faction
-communicationHUD.testNeutralComm()    // Yellow (neutral) - Trader
-communicationHUD.testDirectText()     // Direct text without typewriter effect
-```
-- **N Key**: Toggle communication HUD visibility / Switch video/wireframe modes
-- **Faction Colors**: HUD borders, wireframe, and speaker name match diplomatic status
-- **Video Source**: Uses `test_comms_002.mov` for all communications (placeholder for future NPC-specific videos)
+- **A**: Toggle AI debug
 
 
 

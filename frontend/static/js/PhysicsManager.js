@@ -2355,8 +2355,14 @@ export class PhysicsManager {
                 !['hull_plating', 'energy_reactor'].includes(name)
             );
             
-            if (damageableSystemNames.length > 0) {
-                const randomSystem = damageableSystemNames[Math.floor(Math.random() * damageableSystemNames.length)];
+            // Filter to only include operational (non-destroyed) systems
+            const operationalSystems = damageableSystemNames.filter(systemName => {
+                const system = ship.getSystem(systemName);
+                return system && system.currentHealth > 0; // Only target systems that aren't destroyed
+            });
+            
+            if (operationalSystems.length > 0) {
+                const randomSystem = operationalSystems[Math.floor(Math.random() * operationalSystems.length)];
                 const system = ship.getSystem(randomSystem);
                 
                 if (system) {
@@ -2364,6 +2370,9 @@ export class PhysicsManager {
                     system.takeDamage(systemDamage);
                     console.log(`🔧 Collision damaged ${randomSystem}: ${systemDamage.toFixed(1)} damage`);
                 }
+            } else {
+                console.log(`🔧 Collision: No operational systems available for random damage`);
+            }
             }
             
         } catch (error) {

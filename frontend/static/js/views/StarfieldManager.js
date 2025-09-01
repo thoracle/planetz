@@ -1978,9 +1978,9 @@ export class StarfieldManager {
                 }
             }
 
-            // Add Communication HUD Toggle key binding (N key)
+            // Add Communication HUD Effects Toggle key binding (N key)
             if (commandKey === 'n') {
-                // Communication HUD can be toggled anytime (for testing and mission systems)
+                // Communication HUD effects can be toggled anytime
                 if (this.communicationHUD) {
                     if (!this.communicationHUD.visible) {
                         // If HUD is hidden, show it first
@@ -1991,9 +1991,9 @@ export class StarfieldManager {
                             this.playCommandFailedSound();
                         }
                     } else {
-                        // If HUD is visible, toggle between video and face animation modes
-                        if (this.communicationHUD.toggleVideoMode()) {
-                            console.log('🗣️ Communication HUD mode:', this.communicationHUD.videoMode ? 'VIDEO' : 'FACE ANIMATION');
+                        // If HUD is visible, toggle enhanced effects (video tint + scan lines)
+                        if (this.communicationHUD.toggleEffects()) {
+                            console.log('🗣️ Communication HUD effects:', this.communicationHUD.effectsEnabled ? 'ENHANCED (video tint + scan lines)' : 'MINIMAL (raw video, no scan lines)');
                         } else {
                             this.playCommandFailedSound();
                         }

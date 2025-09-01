@@ -367,9 +367,15 @@ export default class Ship {
     applySystemDamage(damage, damageType) {
         // 5% chance of system damage per hull hit (from spaceships_spec.md)
         if (Math.random() < 0.05) {
-            const systemNames = Array.from(this.systems.keys());
-            if (systemNames.length > 0) {
-                const randomSystem = systemNames[Math.floor(Math.random() * systemNames.length)];
+            // Filter to only include operational (non-destroyed) systems
+            const allSystemNames = Array.from(this.systems.keys());
+            const operationalSystems = allSystemNames.filter(systemName => {
+                const system = this.systems.get(systemName);
+                return system && system.currentHealth > 0; // Only target systems that aren't destroyed
+            });
+            
+            if (operationalSystems.length > 0) {
+                const randomSystem = operationalSystems[Math.floor(Math.random() * operationalSystems.length)];
                 const system = this.systems.get(randomSystem);
                 
                 // 10-20% damage to specific system
@@ -377,6 +383,8 @@ export default class Ship {
                 system.takeDamage(systemDamage);
                 
                 console.log(`System damage: ${randomSystem} took ${systemDamage.toFixed(1)} damage`);
+            } else {
+                console.log(`System damage: No operational systems available for random damage`);
             }
         }
     }

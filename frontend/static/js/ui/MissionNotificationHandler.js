@@ -110,15 +110,31 @@ export class MissionNotificationHandler {
         // Get contextual message based on objective type
         const { npcName, message } = this.createObjectiveCompletionMessage(objective, mission);
         
+        // Check if this is a delivery objective to trigger delivery audio
+        const isDeliveryObjective = objective.type === 'deliver_cargo' || 
+                                   (objective.description && objective.description.toLowerCase().includes('deliver'));
+        
+        // Check if this is a delivery mission (for context)
+        const isDeliveryMission = mission.type === 'delivery' || 
+                                 (mission.title && mission.title.toLowerCase().includes('delivery'));
+        
+        const showMessageOptions = {
+            channel: settings.channel,
+            status: settings.status,
+            duration: settings.duration,
+            signalStrength: '████████▓'
+        };
+        
+        // If this is a delivery objective completion on a delivery mission, trigger delivery audio
+        if (isDeliveryObjective && isDeliveryMission) {
+            console.log(`📢 Delivery objective completed - triggering delivery audio`);
+            showMessageOptions.isDeliveryComplete = true;
+        }
+        
         this.commHUD.showMessage(
             npcName,
             message,
-            {
-                channel: settings.channel,
-                status: settings.status,
-                duration: settings.duration,
-                signalStrength: '████████▓'
-            }
+            showMessageOptions
         );
         
         console.log(`📢 Objective completed: ${objective.description}`);
@@ -133,6 +149,14 @@ export class MissionNotificationHandler {
         // Get contextual message based on mission type and destination
         const { npcName, message } = this.createMissionCompletionMessage(mission);
         
+        // Check if this is a delivery mission to trigger audio
+        const isDeliveryMission = mission.type === 'delivery' || 
+                                 (mission.title && mission.title.toLowerCase().includes('delivery')) ||
+                                 (mission.objectives && mission.objectives.some(obj => 
+                                     obj.type === 'deliver_cargo' || 
+                                     (obj.description && obj.description.toLowerCase().includes('deliver'))
+                                 ));
+        
         this.commHUD.showMessage(
             npcName,
             message,
@@ -140,11 +164,12 @@ export class MissionNotificationHandler {
                 channel: settings.channel,
                 status: settings.status,
                 duration: settings.duration,
-                signalStrength: '█████████'
+                signalStrength: '█████████',
+                isDeliveryComplete: isDeliveryMission
             }
         );
         
-        console.log(`📢 Mission completed: ${mission.title}`);
+        console.log(`📢 Mission completed: ${mission.title}${isDeliveryMission ? ' (Delivery mission - playing audio)' : ''}`);
     }
     
     /**
@@ -424,18 +449,10 @@ export class MissionNotificationHandler {
                 message: `Cargo manifest confirmed. ${safeQuantity} units of ${safeCargoType} loaded and secured for transport.`
             };
         } else if (lowerDesc.includes('deliver') && (lowerDesc.includes('cargo') || mission.mission_type === 'delivery')) {
-            // Cargo delivery objective - get destination NPC
-            const destination = mission.custom_fields?.destination;
-            const stationNPC = this.getStationNPC(destination);
-            const cargoType = mission.custom_fields?.cargo_type || 'cargo';
-            
-            // Safety checks for undefined values
-            const safeCargoType = cargoType === undefined || cargoType === null ? 'cargo' : cargoType;
-            const safeNPCName = stationNPC?.commander || 'Station Commander';
-            
+            // Cargo delivery objective - always use Capt. Cooper with consistent message
             return {
-                npcName: safeNPCName,
-                message: `Delivery confirmed. ${safeCargoType} received and accounted for. Thank you for your service.`
+                npcName: 'Capt. Cooper',
+                message: 'Delivery confirmed. Medical supplies received and accounted for. Thank you for your service.'
             };
         } else if (objDesc.toLowerCase().includes('eliminate') || objDesc.toLowerCase().includes('destroy')) {
             // Combat objective
@@ -466,49 +483,10 @@ export class MissionNotificationHandler {
         const title = mission.title || 'Unknown Mission';
         
         if (missionType === 'delivery') {
-            // Delivery mission completion
-            const destination = mission.custom_fields?.destination;
-            const stationNPC = this.getStationNPC(destination);
-            const cargoType = mission.custom_fields?.cargo_type || 'cargo';
-            const deliveryType = mission.custom_fields?.delivery_type || 'auto_delivery';
-            
-            // Safety checks for undefined values
-            const safeCargoType = cargoType === undefined || cargoType === null ? 'cargo' : cargoType;
-            
-            // Create faction-appropriate response
-            const messages = {
-                'terran_republic_alliance': [
-                    `Outstanding work, pilot. The ${safeCargoType} delivery has significantly aided our operations.`,
-                    `Mission accomplished. Your efficiency in this delivery operation reflects well on Alliance standards.`,
-                    `Excellent execution. The timely delivery of ${safeCargoType} will save lives. Alliance Command commends you.`
-                ],
-                'free_trader_consortium': [
-                    `Profit margins achieved! Your delivery was on time and in perfect condition. The Guild is pleased.`,
-                    `Business concluded successfully. Your reputation as a reliable trader continues to grow.`,
-                    `Cargo delivered, credits transferred. You've proven yourself a valuable trading partner.`
-                ],
-                'nexus_corporate_syndicate': [
-                    `Delivery parameters met within acceptable tolerances. Performance metrics updated accordingly.`,
-                    `Corporate objectives achieved. Your contract completion rate remains optimal.`,
-                    `Logistics successful. The corporation values efficient contractors like yourself.`
-                ],
-                'default': [
-                    `Mission complete. The station appreciates your reliable service.`,
-                    `Delivery successful. Thank you for your professional service.`,
-                    `Cargo received in good condition. Mission parameters satisfied.`
-                ]
-            };
-            
-            // Safety checks for station NPC data
-            const safeFaction = stationNPC?.faction || 'terran_republic_alliance';
-            const safeNPCName = stationNPC?.commander || 'Station Commander';
-            
-            const factionMessages = messages[safeFaction.toLowerCase().replace(/\s+/g, '_')] || messages['terran_republic_alliance'];
-            const randomMessage = factionMessages[Math.floor(Math.random() * factionMessages.length)];
-            
+            // Delivery mission completion - always use Capt. Cooper with consistent message
             return {
-                npcName: safeNPCName,
-                message: randomMessage
+                npcName: 'Capt. Cooper',
+                message: 'Delivery confirmed. Medical supplies received and accounted for. Thank you for your service.'
             };
             
         } else if (missionType === 'elimination') {

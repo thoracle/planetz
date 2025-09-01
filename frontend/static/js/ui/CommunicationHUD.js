@@ -25,6 +25,10 @@ export class CommunicationHUD {
         // Video mode toggle state (default to video mode)
         this.videoMode = true;
         this.videoElement = null;
+        this.audioElement = null;
+        
+        // Effects toggle state (scan lines + faction colors disabled by default)
+        this.effectsEnabled = false;
         
         this.initialize();
     }
@@ -41,14 +45,15 @@ export class CommunicationHUD {
         this.testMissionComm = () => {
             console.log('🧪 Testing mission communication...');
             this.showMessage(
-                'Admiral Chen',
+                'Capt. Cooper',
                 'Mission objective completed. Proceed to extraction point for debrief.',
                 {
                     channel: 'MISSION.1',
                     status: '■ SUCCESS',
                     duration: 6000,
                     signalStrength: '█████████',
-                    faction: 'friendly'
+                    faction: 'friendly',
+                    audioType: 'mission'
                 }
             );
             console.log('🧪 Test message sent, dialogue text element:', this.dialogueText);
@@ -61,7 +66,8 @@ export class CommunicationHUD {
                 'You picked the wrong sector to fly through, pilot!',
                 {
                     faction: 'enemy',
-                    duration: 5000
+                    duration: 5000,
+                    audioType: 'hostile'
                 }
             );
         };
@@ -72,7 +78,8 @@ export class CommunicationHUD {
                 'Welcome to our trading post. Please state your business.',
                 {
                     faction: 'neutral',
-                    duration: 5000
+                    duration: 5000,
+                    audioType: 'neutral'
                 }
             );
         };
@@ -89,6 +96,49 @@ export class CommunicationHUD {
             console.log('🧪 Direct text set, element:', this.dialogueText);
             console.log('🧪 Text content:', this.dialogueText.textContent);
             console.log('🧪 Text area visible:', this.textArea.style.display !== 'none');
+        };
+        
+        // Add test for delivery completion with audio
+        this.testDeliveryComplete = () => {
+            console.log('🧪 Testing delivery completion with audio...');
+            this.showMessage(
+                'Capt. Cooper',
+                'Delivery confirmed. Medical supplies received and accounted for. Thank you for your service.',
+                {
+                    faction: 'friendly',
+                    duration: 8000,
+                    isDeliveryComplete: true
+                }
+            );
+        };
+        
+        // Add test for effects toggle
+        this.testEffectsToggle = () => {
+            console.log('🧪 Testing effects toggle...');
+            console.log(`Current effects state: ${this.effectsEnabled ? 'ENABLED' : 'DISABLED'}`);
+            this.toggleEffects();
+            console.log(`New effects state: ${this.effectsEnabled ? 'ENABLED' : 'DISABLED'}`);
+        };
+        
+        // Add manual audio initialization for testing
+        this.initAudio = () => {
+            console.log('🔊 Manually initializing all audio elements...');
+            if (this.audioElements) {
+                const initPromises = Object.entries(this.audioElements).map(([type, audio]) => {
+                    return audio.play().then(() => {
+                        audio.pause();
+                        audio.currentTime = 0;
+                        console.log(`🔊 ${type} audio initialized`);
+                    }).catch(e => {
+                        console.warn(`🔊 ${type} audio initialization failed:`, e);
+                    });
+                });
+                
+                Promise.all(initPromises).then(() => {
+                    this.audioInitialized = true;
+                    console.log('🔊 All audio contexts initialized successfully');
+                });
+            }
         };
     }
     
@@ -421,12 +471,140 @@ export class CommunicationHUD {
             display: block;
             filter: sepia(100%) hue-rotate(90deg) saturate(200%) brightness(0.8);
         `;
-        this.videoElement.src = 'static/video/test_comms_002.mov';
+        this.videoElement.src = 'static/video/cooper_comms_talking_001.mov';
         this.videoElement.loop = true;
         this.videoElement.muted = true;
         this.videoElement.playsInline = true;
         
+        // Create audio elements for different communication types
+        this.createAudioElements();
+        
         this.avatarArea.appendChild(this.videoElement);
+    }
+    
+    /**
+     * Create audio elements for different communication types
+     */
+    createAudioElements() {
+        // Create audio elements for different faction types
+        this.audioElements = {
+            delivery: this.createSingleAudioElement('static/video/cooper_delivery_ok_001.wav'),
+            hostile: this.createSingleAudioElement('static/video/cooper_taunt_pilot_001.wav'),
+            neutral: this.createSingleAudioElement('static/video/cooper_welcome_trading_post_001.wav'),
+            mission: this.createSingleAudioElement('static/video/cooper_mission_complete_001.wav')
+        };
+        
+        // Keep reference to delivery audio for backward compatibility
+        this.audioElement = this.audioElements.delivery;
+        
+        // Initialize audio context on first user interaction
+        this.audioInitialized = false;
+        this.initializeAudioOnInteraction();
+    }
+    
+    /**
+     * Create a single audio element with standard settings
+     */
+    createSingleAudioElement(src) {
+        try {
+            const audio = document.createElement('audio');
+            audio.src = src;
+            audio.preload = 'auto';
+            audio.volume = 0.7;
+            audio.muted = false;
+            
+            // Add error handling for audio loading
+            audio.addEventListener('error', (e) => {
+                console.warn(`🔊 CommunicationHUD: Audio loading error for ${src}:`, e);
+            });
+            
+            // Add to container but keep hidden
+            this.avatarArea.appendChild(audio);
+            
+            console.log(`🔊 CommunicationHUD: Created audio element for ${src}`);
+            return audio;
+        } catch (error) {
+            console.error(`🔊 CommunicationHUD: Failed to create audio element for ${src}:`, error);
+            return null;
+        }
+    }
+    
+    /**
+     * Initialize audio playback on first user interaction
+     */
+    initializeAudioOnInteraction() {
+        const initAudio = () => {
+            if (!this.audioInitialized && this.audioElements) {
+                // Try to initialize all audio elements
+                const initPromises = Object.values(this.audioElements).map(audio => {
+                    return audio.play().then(() => {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    }).catch(e => {
+                        console.warn('🔊 CommunicationHUD: Audio element initialization failed:', e);
+                    });
+                });
+                
+                Promise.all(initPromises).then(() => {
+                    this.audioInitialized = true;
+                    console.log('🔊 CommunicationHUD: All audio contexts initialized');
+                });
+                
+                // Remove event listeners after initialization
+                document.removeEventListener('click', initAudio);
+                document.removeEventListener('keydown', initAudio);
+            }
+        };
+        
+        // Listen for any user interaction to initialize audio
+        document.addEventListener('click', initAudio, { once: true });
+        document.addEventListener('keydown', initAudio, { once: true });
+    }
+    
+    /**
+     * Play audio based on communication type
+     */
+    playAudioForType(audioType) {
+        console.log(`🔊 CommunicationHUD: playAudioForType called with "${audioType}"`);
+        console.log(`🔊 CommunicationHUD: audioElements available:`, Object.keys(this.audioElements || {}));
+        console.log(`🔊 CommunicationHUD: audioInitialized:`, this.audioInitialized);
+        
+        if (!this.audioElements || !this.audioElements[audioType]) {
+            console.warn(`🔊 CommunicationHUD: Audio element for type "${audioType}" not available`);
+            return;
+        }
+        
+        const audio = this.audioElements[audioType];
+        if (!audio) {
+            console.warn(`🔊 CommunicationHUD: Audio element for "${audioType}" is null or undefined`);
+            return;
+        }
+        
+        // Always attempt to play - browser will handle autoplay restrictions
+        console.log(`🔊 CommunicationHUD: Attempting to play ${audioType} audio element:`, audio);
+        audio.currentTime = 0; // Reset to start
+        audio.play().then(() => {
+            console.log(`🔊 CommunicationHUD: Playing ${audioType} audio`);
+            // Mark as initialized if it wasn't already (successful play means user has interacted)
+            if (!this.audioInitialized) {
+                this.audioInitialized = true;
+                console.log(`🔊 CommunicationHUD: Audio marked as initialized after successful play`);
+            }
+        }).catch(e => {
+            console.warn(`🔊 CommunicationHUD: ${audioType} audio play failed:`, e);
+            if (!this.audioInitialized) {
+                console.log(`🔊 CommunicationHUD: Setting up audio initialization for future user interaction`);
+                this.initializeAudioOnInteraction();
+            }
+        });
+    }
+    
+    /**
+     * Play delivery completion audio with proper error handling (backward compatibility)
+     */
+    playDeliveryAudio() {
+        console.log('🔊 CommunicationHUD: playDeliveryAudio called');
+        this.playAudioForType('delivery');
     }
     
     /**
@@ -589,35 +767,46 @@ export class CommunicationHUD {
      * Update speaker name styling based on faction
      */
     updateSpeakerStyling(name, faction) {
+        // Store current speaker info for effects toggle
+        this.currentSpeakerName = name;
+        this.currentSpeakerFaction = faction;
+        
         const color = this.getFactionColor(faction);
         
-        // Update speaker name area
+        // Always update speaker name area and HUD styling with faction colors
+        this.speakerNameArea.textContent = (name || 'UNKNOWN CONTACT').toUpperCase();
         this.speakerNameArea.style.background = color;
         this.speakerNameArea.style.borderColor = color;
         this.speakerNameArea.style.color = '#000000'; // Always black text for readability
-        this.speakerNameArea.textContent = (name || 'UNKNOWN CONTACT').toUpperCase();
         
-        // Update HUD container border and accent colors to match faction
+        // Always update HUD container border and accent colors to match faction
         this.commContainer.style.borderColor = color;
         
-        // Update avatar area border to match
+        // Always update avatar area border to match
         this.avatarArea.style.borderColor = color;
         
-        // Update box shadow to match faction color
+        // Always update box shadow to match faction color
         const rgb = this.hexToRgb(color);
         this.commContainer.style.boxShadow = `
             0 0 20px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3),
             inset 0 0 20px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)
         `;
         
-        // Update scan line color to match faction
+        // Always update scan line color to match faction
         this.updateScanLineColor(color);
         
-        // Update video tint to match faction
-        this.updateVideoTint(color);
-        
-        // Update SVG wireframe colors to match faction
+        // Always update SVG wireframe colors to match faction
         this.updateWireframeColors(color);
+        
+        // Only apply video tint if effects are enabled
+        if (this.effectsEnabled) {
+            this.updateVideoTint(color);
+        } else {
+            // Remove video tinting when effects are disabled
+            if (this.videoElement) {
+                this.videoElement.style.filter = 'none';
+            }
+        }
     }
     
     /**
@@ -639,30 +828,63 @@ export class CommunicationHUD {
     }
     
     /**
-     * Toggle between video mode and face animation mode
+     * Toggle between enhanced effects (scan lines + faction colors) and raw video
      */
-    toggleVideoMode() {
-        this.videoMode = !this.videoMode;
+    toggleEffects() {
+        this.effectsEnabled = !this.effectsEnabled;
         
-        if (this.videoMode) {
-            // Switch to video mode
-            this.avatarSVG.style.display = 'none';
-            this.videoElement.style.display = 'block';
-            this.videoElement.play().catch(e => {
-                console.warn('🗣️ CommunicationHUD: Video play failed:', e);
-            });
-            console.log('🗣️ CommunicationHUD: Switched to video mode');
+        if (this.effectsEnabled) {
+            // Enable enhanced effects
+            this.enableEnhancedEffects();
+            console.log('🗣️ CommunicationHUD: Enhanced effects ENABLED (video tint + scan lines)');
         } else {
-            // Switch to face animation mode
-            this.videoElement.style.display = 'none';
-            this.videoElement.pause();
-            this.avatarSVG.style.display = 'block';
-            console.log('🗣️ CommunicationHUD: Switched to face animation mode');
+            // Disable enhanced effects - show raw video
+            this.disableEnhancedEffects();
+            console.log('🗣️ CommunicationHUD: Enhanced effects DISABLED (raw video, no scan lines)');
         }
         
         this.playCommandSound();
         return true;
     }
+    
+    /**
+     * Enable enhanced effects (video tint + scan lines)
+     */
+    enableEnhancedEffects() {
+        // Show scan line effects
+        if (this.animatedScanLine) {
+            this.animatedScanLine.style.display = 'block';
+        }
+        const scanLineOverlay = this.commContainer.querySelector('.comm-scan-lines');
+        if (scanLineOverlay) {
+            scanLineOverlay.style.display = 'block';
+        }
+        
+        // Re-apply video tinting
+        if (this.videoElement && this.currentSpeakerFaction) {
+            this.updateVideoTint(this.getFactionColor(this.currentSpeakerFaction));
+        }
+    }
+    
+    /**
+     * Disable enhanced effects (remove video tint + scan lines)
+     */
+    disableEnhancedEffects() {
+        // Hide scan line effects
+        if (this.animatedScanLine) {
+            this.animatedScanLine.style.display = 'none';
+        }
+        const scanLineOverlay = this.commContainer.querySelector('.comm-scan-lines');
+        if (scanLineOverlay) {
+            scanLineOverlay.style.display = 'none';
+        }
+        
+        // Remove video tinting
+        if (this.videoElement) {
+            this.videoElement.style.filter = 'none';
+        }
+    }
+
     
     /**
      * Toggle communication HUD visibility
@@ -682,19 +904,21 @@ export class CommunicationHUD {
                 this.startTestSequence();
             }
             
-            // Start appropriate display mode
-            if (this.videoMode && this.videoElement) {
+            // Start video (always in video mode now)
+            if (this.videoElement) {
                 this.videoElement.play().catch(e => {
                     console.warn('🗣️ CommunicationHUD: Video play failed:', e);
                 });
-            } else {
-                this.startAvatarAnimation();
             }
         } else {
             // Stop animations and video
             this.stopAnimations();
             if (this.videoElement) {
                 this.videoElement.pause();
+            }
+            if (this.audioElement) {
+                this.audioElement.pause();
+                this.audioElement.currentTime = 0;
             }
         }
         
@@ -860,7 +1084,9 @@ export class CommunicationHUD {
             signalStrength = '████████░',
             status = '■ LIVE',
             duration = 10000,
-            faction = null
+            faction = null,
+            isDeliveryComplete = false,
+            audioType = null
         } = options;
         
         if (!this.isVisible) {
@@ -889,13 +1115,19 @@ export class CommunicationHUD {
         this.messageQueue = [];
         this.isProcessingMessage = false;
         
-        // Start appropriate animation based on mode
-        if (this.videoMode && this.videoElement) {
+        // Start video (always in video mode now)
+        if (this.videoElement) {
+            // Start video (looped)
             this.videoElement.play().catch(e => {
                 console.warn('🗣️ CommunicationHUD: Video play failed:', e);
             });
-        } else {
-            this.startAvatarAnimation();
+            
+            // Play appropriate audio based on type or delivery completion
+            if (isDeliveryComplete) {
+                this.playDeliveryAudio();
+            } else if (audioType) {
+                this.playAudioForType(audioType);
+            }
         }
         // Ensure message is a clean string to avoid gibberish rendering
         const coerceToString = (val) => {

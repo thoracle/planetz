@@ -715,7 +715,9 @@ export class SimpleDockingManager {
                                 target.name.includes('Outpost') || target.name.includes('Platform') || 
                                 target.name.includes('Array') || target.name.includes('Facility') || 
                                 target.name.includes('Complex') || target.name.includes('Shipyard') || 
-                                target.name.includes('Refinery') || target.name.includes('City')));
+                                target.name.includes('Refinery') || target.name.includes('City') ||
+                                target.name.includes('Research') || target.name.includes('Lab') ||
+                                target.name.includes('Trading') || target.name.includes('Post')));
                 
                 const stationName = target?.userData?.name || target.name;
                 console.log(`🚛 DEBUG: - isStation:`, isStation);
