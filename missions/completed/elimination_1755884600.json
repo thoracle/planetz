@@ -1,5 +1,5 @@
 {
-  "id": "elimination_1755217772",
+  "id": "elimination_1755884600",
   "title": "Enemy Elimination Contract",
   "description": "Eliminate hostile targets in the specified sector",
   "mission_type": "elimination",
@@ -20,8 +20,8 @@
       "achieved_at": null
     }
   ],
-  "created_at": "2025-08-15T00:29:32.228387+00:00",
-  "updated_at": "2025-08-16T01:37:30.454877+00:00",
+  "created_at": "2025-08-22T17:43:20.892687+00:00",
+  "updated_at": "2025-09-01T04:49:54.406771+00:00",
   "custom_fields": {
     "target_enemy_type": "enemy_fighter",
     "enemy_count": 3,
