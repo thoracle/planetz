@@ -45,18 +45,18 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `noammo` | **Status**: In Development (2 uncommitted changes) | **Last Updated**: 2025-09-02
+**Branch**: `noammo` | **Status**: Production Ready | **Last Updated**: 2025-09-03
 
 **Recent Work** (Last 5 commits):
+- star charts with broken targeting
+- Complete Star Charts System Implementation & Infrastructure Fixes
 - Fix Mermaid syntax errors in Star Charts specification
 - Fix LRS UI inconsistencies in Star Charts specification
 - Fix keyboard controls inconsistency with LRS UI
-- Correct data source approach - all sectors from verse.py except A0 JSON override
-- Simplify complex hybrid discovery system - replace with clean single approach
 
 **Codebase Stats**:
-- JavaScript Files: 136 | Python Files: 1606 | Documentation: 71 files
-- Total Lines: 225237 | Architecture: Fully modular ES6+ modules
+- JavaScript Files: 141 | Python Files: 1606 | Documentation: 71 files
+- Total Lines: 228921 | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
 ## 🏗️ Architecture Overview
@@ -89,13 +89,13 @@ open http://127.0.0.1:5001
 
 ### **Combat System**
 - **Tab**: Cycle targets | **Q**: Create target dummies | **Space**: Fire weapons
-- **,/./</>**: Previous/Next weapon | **/**: Toggle autofire | **Z/X**: Previous/Next sub-target
+- **Z**: Previous weapon | **X**: Next weapon
 - **Beam weapons**: Instant hit with sub-system targeting (+30% damage)
 - **Projectiles**: Physics-based flight with random subsystem damage
 
 ### **Navigation & UI**
 - **R**: Subspace Radio | **N**: Communication HUD | **M**: Mission Status | **H**: Help screen
-- **L**: Long Range Scanner | **C**: Star Charts | **G**: Galactic Chart | **F**: Fore View | **A**: Aft View | **D**: Damage Control
+- **L**: Long Range Scanner | **G**: Galactic Chart | **F**: Fore View | **A**: Aft View | **D**: Damage Control
 - **Docking**: Automatic when approaching stations
 
 ### **Speed Controls**
