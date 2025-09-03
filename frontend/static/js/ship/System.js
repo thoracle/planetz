@@ -48,6 +48,7 @@ export const SYSTEM_DISPLAY_NAMES = {
     'long_range_scanner': 'Long Range Sensors',
     'subspace_radio': 'Subspace Radio',
     'galactic_chart': 'Galactic Chart',
+    'star_charts': 'Star Charts',
     'target_computer': 'Target Computer',
     
     // Legacy/alternative names

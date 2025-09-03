@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Ship Configuration</title>
+</head>
+<body>
+    <h1>Clear Stored Ship Configuration</h1>
+    <p>This will clear the stored ship configuration and force the game to use the new default starter cards.</p>
+    
+    <button onclick="clearConfig()">Clear Ship Configuration</button>
+    <button onclick="clearAll()">Clear All Game Data</button>
+    
+    <div id="output"></div>
+    
+    <script>
+        function clearConfig() {
+            const output = document.getElementById('output');
+            
+            // Clear ship configuration data
+            const keys = Object.keys(localStorage);
+            let cleared = 0;
+            
+            keys.forEach(key => {
+                if (key.includes('ship') || key.includes('card') || key.includes('player')) {
+                    localStorage.removeItem(key);
+                    cleared++;
+                }
+            });
+            
+            output.innerHTML = `<p style="color: green;">Cleared ${cleared} ship-related localStorage items.</p>
+                               <p>Refresh the main game to use new starter ship configuration.</p>`;
+        }
+        
+        function clearAll() {
+            const output = document.getElementById('output');
+            
+            localStorage.clear();
+            
+            output.innerHTML = `<p style="color: green;">Cleared all localStorage data.</p>
+                               <p>Refresh the main game to start fresh.</p>`;
+        }
+    </script>
+</body>
+</html>

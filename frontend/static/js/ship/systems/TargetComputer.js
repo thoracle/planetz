@@ -295,6 +295,11 @@ export default class TargetComputer extends System {
                 faction = target.faction;
             } else if (target.diplomacy) {
                 faction = target.diplomacy;
+            } else if (target.ship?.diplomacy) {
+                // Check ship object for target dummies and enemy ships
+                faction = target.ship.diplomacy;
+            } else if (target.ship?.faction) {
+                faction = target.ship.faction;
             } else if (target.userData?.faction) {
                 faction = target.userData.faction;
             } else if (target.userData?.diplomacy) {
@@ -304,7 +309,7 @@ export default class TargetComputer extends System {
             }
             
             // Set diplomacy same as faction if not explicitly set
-            diplomacy = target.diplomacy || faction;
+            diplomacy = target.diplomacy || target.ship?.diplomacy || faction;
             
             console.log(`Target set: ${name} (${faction})`);
             
@@ -412,9 +417,19 @@ export default class TargetComputer extends System {
         const targetableSystems = [];
         
         // Handle ships with systems property
+        // Check multiple possible locations for ship systems
+        let shipSystems = null;
         if (target.systems) {
+            shipSystems = target.systems;
+        } else if (target.ship?.systems) {
+            shipSystems = target.ship.systems;
+        } else if (target.userData?.ship?.systems) {
+            shipSystems = target.userData.ship.systems;
+        }
+        
+        if (shipSystems) {
             // Scan ship systems
-            for (const [systemName, system] of target.systems) {
+            for (const [systemName, system] of shipSystems) {
                 // Only target systems that are not completely destroyed (health > 0)
                 // Systems with 0% health are destroyed and cannot be targeted
                 if (system.healthPercentage > 0) {

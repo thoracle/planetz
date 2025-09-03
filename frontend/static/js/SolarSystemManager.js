@@ -911,25 +911,28 @@ export class SolarSystemManager {
             const solStations = infrastructureData.stations;
             console.log(`📋 Loaded ${solStations.length} stations from JSON data`);
 
-        // Create space station objects
-        for (const stationData of solStations) {
-            try {
-                const station = this.createSpaceStation(stationData);
-                if (station) {
-                    this.scene.add(station);
-                    this.celestialBodies.set(`station_${stationData.name.toLowerCase().replace(/\s+/g, '_')}`, station);
-                    console.log(`✅ Created station: ${stationData.name} (${stationData.faction})`);
+            // Create space station objects
+            for (const stationData of solStations) {
+                try {
+                    const station = this.createSpaceStation(stationData);
+                    if (station) {
+                        this.scene.add(station);
+                        this.celestialBodies.set(`station_${stationData.name.toLowerCase().replace(/\s+/g, '_')}`, station);
+                        console.log(`✅ Created station: ${stationData.name} (${stationData.faction})`);
+                    }
+                } catch (error) {
+                    console.error(`❌ Failed to create station ${stationData.name}:`, error);
                 }
-            } catch (error) {
-                console.error(`❌ Failed to create station ${stationData.name}:`, error);
             }
-        }
 
-        console.log(`🛰️ Created ${solStations.length} space stations in Sol system`);
+            console.log(`🛰️ Created ${solStations.length} space stations in Sol system`);
+        } catch (error) {
+            console.error('❌ Failed to load Sol system infrastructure:', error);
+        }
 
         // Create Navigation Beacon ring around Terra Prime on the galactic plane
         try {
-            this.createNavigationBeaconsAroundTerraPrime();
+            await this.createNavigationBeaconsAroundTerraPrime();
         } catch (e) {
             console.warn('⚠️ Failed to create navigation beacons:', e?.message || e);
         }

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Planetz Console Debug Capture</title>
+    <style>
+        body { font-family: monospace; background: #1a1a1a; color: #00ff00; padding: 20px; }
+        #console-output { 
+            background: #000; 
+            border: 1px solid #333; 
+            padding: 10px; 
+            height: 400px; 
+            overflow-y: auto; 
+            white-space: pre-wrap;
+            font-size: 12px;
+        }
+        .error { color: #ff4444; }
+        .warn { color: #ffaa00; }
+        .log { color: #00ff00; }
+        button { 
+            background: #333; 
+            color: #fff; 
+            border: 1px solid #555; 
+            padding: 10px 20px; 
+            margin: 5px; 
+            cursor: pointer;
+        }
+        button:hover { background: #555; }
+    </style>
+</head>
+<body>
+    <h1>🎮 Planetz Console Debug Capture</h1>
+    <p>This page captures console logs from the main game. Open your game in another tab, then check here for errors.</p>
+    
+    <button onclick="clearOutput()">Clear Output</button>
+    <button onclick="copyToClipboard()">Copy to Clipboard</button>
+    <button onclick="downloadLog()">Download Log</button>
+    
+    <div id="console-output"></div>
+
+    <script>
+        const output = document.getElementById('console-output');
+        let logBuffer = [];
+
+        // Override console methods to capture logs
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info
+        };
+
+        function addToOutput(type, args) {
+            const timestamp = new Date().toISOString();
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            logBuffer.push(logEntry);
+            
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = logEntry;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+            
+            // Keep only last 1000 entries
+            if (logBuffer.length > 1000) {
+                logBuffer.shift();
+                output.removeChild(output.firstChild);
+            }
+        }
+
+        // Override console methods
+        console.log = function(...args) {
+            originalConsole.log.apply(console, args);
+            addToOutput('log', args);
+        };
+
+        console.error = function(...args) {
+            originalConsole.error.apply(console, args);
+            addToOutput('error', args);
+        };
+
+        console.warn = function(...args) {
+            originalConsole.warn.apply(console, args);
+            addToOutput('warn', args);
+        };
+
+        console.info = function(...args) {
+            originalConsole.info.apply(console, args);
+            addToOutput('log', args);
+        };
+
+        // Listen for errors from other windows (if same origin)
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'console-log') {
+                addToOutput(event.data.level, [event.data.message]);
+            }
+        });
+
+        function clearOutput() {
+            output.innerHTML = '';
+            logBuffer = [];
+        }
+
+        function copyToClipboard() {
+            const text = logBuffer.join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Console log copied to clipboard!');
+            });
+        }
+
+        function downloadLog() {
+            const text = logBuffer.join('\n');
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `planetz-console-log-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Add some initial info
+        addToOutput('log', ['Console capture started. Open Planetz in another tab to capture its logs.']);
+    </script>
+</body>
+</html>

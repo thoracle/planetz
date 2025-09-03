@@ -2701,20 +2701,20 @@ export class PhysicsManager {
             let wireframe;
 
             // Determine shape type and create appropriate wireframe
-            console.log(`🔍 WIREFRAME DEBUG: Creating wireframe for ${entityType} "${entityId}"`);
+            // console.log(`🔍 WIREFRAME DEBUG: Creating wireframe for ${entityType} "${entityId}"`);
             
             // Use stored shape information instead of trying to detect from corrupted collision shapes
             const storedShapeType = metadata?.shapeType;
             const storedRadius = metadata?.shapeRadius;
             
-            console.log(`   • Stored shape type: ${storedShapeType}`);
-            console.log(`   • Stored radius: ${storedRadius}`);
+            // console.log(`   • Stored shape type: ${storedShapeType}`);
+            // console.log(`   • Stored radius: ${storedRadius}`);
             
                         if (storedShapeType === 'sphere') {
                 // Sphere shape using stored radius
-                console.log(`   • Creating SPHERE wireframe`);
+                // console.log(`   • Creating SPHERE wireframe`);
                 const radius = storedRadius || 1.0; // Use stored radius or fallback
-                console.log(`   • Using stored radius: ${radius}m`);
+                // console.log(`   • Using stored radius: ${radius}m`);
                 geometry = new THREE.SphereGeometry(radius * 1.1, 16, 16);
                 
                 // Enhanced colors for different entity types
@@ -2740,11 +2740,11 @@ export class PhysicsManager {
                 });
             } else if (storedShapeType === 'box') {
                 // Box shape using stored dimensions
-                console.log(`   • Creating BOX wireframe`);
+                // console.log(`   • Creating BOX wireframe`);
                 const width = metadata?.shapeWidth || 2;
                 const height = metadata?.shapeHeight || 2;
                 const depth = metadata?.shapeDepth || 2;
-                console.log(`   • Using stored dimensions: ${width}x${height}x${depth}`);
+                // console.log(`   • Using stored dimensions: ${width}x${height}x${depth}`);
                 geometry = new THREE.BoxGeometry(width * 1.1, height * 1.1, depth * 1.1);
                 
                 // Enhanced colors for different entity types
@@ -2907,7 +2907,7 @@ export class PhysicsManager {
                     
                     updateCount++;
                 } catch (error) {
-                    console.log('Failed to update debug wireframe - marking for removal:', error);
+                    // console.log('Failed to update debug wireframe - marking for removal:', error);
                     staleWireframes.push(rigidBody);
                 }
             }

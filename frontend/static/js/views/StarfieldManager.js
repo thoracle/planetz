@@ -2176,18 +2176,18 @@ export class StarfieldManager {
                 */
             }
 
-            // Sub-targeting key bindings (< and > keys)
-            if (event.key === '<' || event.key === ',') {
-                // Previous sub-target
+            // Sub-targeting key bindings (moved to Z/X only)
+            if (event.key === 'z' || event.key === 'Z') {
+                // Previous sub-target (moved from , to z)
                 this.handleSubTargetingKey('previous');
-            } else if (event.key === '>' || event.key === '.') {
-                // Next sub-target
+            } else if (event.key === 'x' || event.key === 'X') {
+                // Next sub-target (moved from . to x)
                 this.handleSubTargetingKey('next');
             }
 
-            // Weapon key bindings
-            if (event.key === 'z' || event.key === 'Z') {
-                // Previous weapon selection
+            // Weapon key bindings (moved to ,/. and </> keys)
+            if (event.key === ',' || event.key === '<') {
+                // Previous weapon selection (moved from z to , and <)
                 if (!this.isDocked) {
                     const ship = this.viewManager?.getShip();
                     if (ship && ship.weaponSystem) {
@@ -2196,8 +2196,8 @@ export class StarfieldManager {
                         }
                     }
                 }
-            } else if (event.key === 'x' || event.key === 'X') {
-                // Next weapon selection
+            } else if (event.key === '.' || event.key === '>') {
+                // Next weapon selection (moved from x to . and >)
                 if (!this.isDocked) {
                     const ship = this.viewManager?.getShip();
                     if (ship && ship.weaponSystem) {
@@ -2219,8 +2219,8 @@ export class StarfieldManager {
                         }
                     }
                 }
-            } else if (event.key === 'c' || event.key === 'C') {
-                // Toggle autofire
+            } else if (event.key === '/' || event.key === '?') {
+                // Toggle autofire (moved from C key)
                 if (!this.isDocked) {
                     const ship = this.viewManager?.getShip();
                     if (ship && ship.weaponSystem) {
@@ -2371,7 +2371,7 @@ export class StarfieldManager {
     }
 
     updateTargetList() {
-        console.log(`🎯 StarfieldManager.updateTargetList() called`);
+        // console.log(`🎯 StarfieldManager.updateTargetList() called`); // Reduce spam
         const targetBeforeUpdate = this.targetComputerManager.currentTarget;
         const indexBeforeUpdate = this.targetComputerManager.targetIndex;
         
@@ -2389,6 +2389,8 @@ export class StarfieldManager {
         
         // Update local state to match
         this.targetObjects = this.targetComputerManager.targetObjects;
+        this.targetIndex = this.targetComputerManager.targetIndex;
+        this.currentTarget = this.targetComputerManager.currentTarget?.object || this.targetComputerManager.currentTarget;
         
         // Clear targeting cache when target list changes to prevent stale crosshair results
         if (window.targetingService) {
@@ -2404,6 +2406,11 @@ export class StarfieldManager {
         this.currentTarget = this.targetComputerManager.currentTarget?.object || this.targetComputerManager.currentTarget;
         this.targetIndex = this.targetComputerManager.targetIndex;
         this.targetObjects = this.targetComputerManager.targetObjects;
+        
+        // Update target display to reflect the new target in the UI
+        if (this.targetComputerManager.updateTargetDisplay) {
+            this.targetComputerManager.updateTargetDisplay();
+        }
         
         // Handle outline suppression logic
         if (this.currentTarget && this.outlineEnabled && !this.outlineDisabledUntilManualCycle) {
@@ -2740,12 +2747,17 @@ export class StarfieldManager {
             }
         }
 
-        // Update direction arrow after updating target display
-        if (this.targetComputerEnabled && this.currentTarget) {
-            this.updateDirectionArrow();
-        } else {
-            // Hide all arrows - delegate to target computer manager
-            this.targetComputerManager.hideAllDirectionArrows();
+        // Update direction arrow after updating target display - delegate to target computer manager
+        if (this.targetComputerManager) {
+            // Sync the target computer enabled state only, not the current target
+            this.targetComputerManager.targetComputerEnabled = this.targetComputerEnabled;
+            
+            if (this.targetComputerEnabled && this.currentTarget) {
+                this.updateDirectionArrow();
+            } else {
+                // Hide all arrows - delegate to target computer manager
+                this.targetComputerManager.hideAllDirectionArrows();
+            }
         }
         
         // Update weapon system
@@ -2753,8 +2765,13 @@ export class StarfieldManager {
         if (ship && ship.weaponSystem) {
             // Ensure WeaponHUD is connected (retry if needed)
             if (this.weaponHUD && !this.weaponHUDConnected) {
-                console.log('🔗 Attempting WeaponHUD connection during game loop...');
-                this.connectWeaponHUDToSystem();
+                // Throttle connection attempts to reduce console spam
+                const now = Date.now();
+                if (!this.lastWeaponHUDConnectionAttempt || (now - this.lastWeaponHUDConnectionAttempt) > 5000) {
+                    console.log('🔗 Attempting WeaponHUD connection during game loop...');
+                    this.connectWeaponHUDToSystem();
+                    this.lastWeaponHUDConnectionAttempt = now;
+                }
             }
             
             ship.weaponSystem.updateAutofire(deltaTime);
@@ -5277,11 +5294,22 @@ export class StarfieldManager {
             isEnemyShip = true;
             info = {
                 type: 'enemy_ship',
-                diplomacy: currentTargetData.ship.diplomacy || 'enemy',
+                diplomacy: currentTargetData.diplomacy || currentTargetData.ship.diplomacy || 'enemy',
+                faction: currentTargetData.faction || currentTargetData.ship.faction || currentTargetData.diplomacy || 'enemy',
                 name: currentTargetData.ship.shipName,
                 shipType: currentTargetData.ship.shipType
             };
             targetName = info.name || 'Enemy Ship';
+            
+            // Debug log for reticle color issue
+            console.log(`🎯 RETICLE DEBUG: Enemy ship detected - diplomacy: ${info.diplomacy}, faction: ${info.faction}, isEnemyShip: ${isEnemyShip}`);
+            console.log(`🎯 RETICLE DEBUG: currentTargetData:`, {
+                diplomacy: currentTargetData.diplomacy,
+                faction: currentTargetData.faction,
+                ship_diplomacy: currentTargetData.ship?.diplomacy,
+                ship_faction: currentTargetData.ship?.faction,
+                isShip: currentTargetData.isShip
+            });
         } else {
             // Get celestial body info - need to pass the actual Three.js object
             const targetObject = this.currentTarget?.object || this.currentTarget;
@@ -5347,6 +5375,14 @@ export class StarfieldManager {
         if (!this.currentTarget || !this.targetObjects || this.targetIndex === -1) {
             return null;
         }
+        
+        // Use the target data from TargetComputerManager which has the most up-to-date information
+        const targetComputerData = this.targetComputerManager.getCurrentTargetData();
+        if (targetComputerData) {
+            return targetComputerData;
+        }
+        
+        // Fallback to local target objects array
         return this.targetObjects[this.targetIndex];
     }
 

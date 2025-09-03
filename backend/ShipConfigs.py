@@ -29,13 +29,13 @@ SHIP_CONFIGS = {
             'impulse_engines': {'level': 1, 'slots': 1, 'energyConsumption': 8},
             'target_computer': {'level': 1, 'slots': 1, 'energyConsumption': 5},
             'long_range_scanner': {'level': 1, 'slots': 1, 'energyConsumption': 4},
-            'galactic_chart': {'level': 1, 'slots': 1, 'energyConsumption': 6}
+            'star_charts': {'level': 1, 'slots': 1, 'energyConsumption': 6}
         },
         'starterCards': {
             'utility_1': {'cardType': 'target_computer', 'level': 3},
             'utility_2': {'cardType': 'hull_plating', 'level': 1},
             'utility_3': {'cardType': 'long_range_scanner', 'level': 1},
-            'utility_4': {'cardType': 'galactic_chart', 'level': 1},
+            'utility_4': {'cardType': 'star_charts', 'level': 1},
             'engine_1': {'cardType': 'impulse_engines', 'level': 1},
             'power_1': {'cardType': 'energy_reactor', 'level': 1},
             'weapon_1': {'cardType': 'laser_cannon', 'level': 1},

@@ -89,13 +89,13 @@ open http://127.0.0.1:5001
 
 ### **Combat System**
 - **Tab**: Cycle targets | **Q**: Create target dummies | **Space**: Fire weapons
-- **Z**: Previous weapon | **X**: Next weapon | **C**: Toggle autofire | **< / ,**: Previous sub-target | **> / .**: Next sub-target
+- **,/./</>**: Previous/Next weapon | **/**: Toggle autofire | **Z/X**: Previous/Next sub-target
 - **Beam weapons**: Instant hit with sub-system targeting (+30% damage)
 - **Projectiles**: Physics-based flight with random subsystem damage
 
 ### **Navigation & UI**
 - **R**: Subspace Radio | **N**: Communication HUD | **M**: Mission Status | **H**: Help screen
-- **L**: Long Range Scanner | **G**: Galactic Chart | **F**: Fore View | **A**: Aft View | **D**: Damage Control
+- **L**: Long Range Scanner | **C**: Star Charts | **G**: Galactic Chart | **F**: Fore View | **A**: Aft View | **D**: Damage Control
 - **Docking**: Automatic when approaching stations
 
 ### **Speed Controls**

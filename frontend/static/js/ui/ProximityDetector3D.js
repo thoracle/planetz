@@ -417,13 +417,17 @@ export class ProximityDetector3D {
         this.camera.position.set(0, this.config.cameraDistance, this.config.cameraDistance * 0.7);
         this.camera.lookAt(0, 0, 0);
         
-        // Create WebGL renderer
+        // Create WebGL renderer with safe dimensions
         this.renderer = new THREE.WebGLRenderer({ 
             antialias: true,
             alpha: true,
             preserveDrawingBuffer: true
         });
-        this.renderer.setSize(this.canvasWidth, this.canvasHeight);
+        
+        // Ensure valid dimensions before setting size
+        const safeWidth = Math.max(1, this.canvasWidth || 1);
+        const safeHeight = Math.max(1, this.canvasHeight || 1);
+        this.renderer.setSize(safeWidth, safeHeight);
         this.renderer.setClearColor(0x000000, 0.0); // Transparent background
         
         // Apply retro rendering settings

@@ -1429,7 +1429,7 @@ export class TargetComputerManager {
         this.targetObjects = allTargets;
         
         // Log target list for debugging
-        console.log(`🎯 Target list updated: ${allTargets.length} targets available for cycling`, allTargets.map(t => t.name));
+        // console.log(`🎯 Target list updated: ${allTargets.length} targets available for cycling`, allTargets.map(t => t.name)); // Reduce spam
         
         // Sort targets by distance using physics-enhanced sorting
         this.sortTargetsByDistanceWithPhysics(true); // Force sort on target list update
@@ -1548,7 +1548,7 @@ export class TargetComputerManager {
         this.targetObjects = allTargets;
         
         // Log target list for debugging
-        console.log(`🎯 Target list updated (traditional): ${allTargets.length} targets available for cycling`, allTargets.map(t => t.name));
+        // console.log(`🎯 Target list updated (traditional): ${allTargets.length} targets available for cycling`, allTargets.map(t => t.name)); // Reduce spam
         
         // Sort targets by distance ONCE (sorting changes array order)
         this.sortTargetsByDistance(true);
@@ -1575,35 +1575,35 @@ export class TargetComputerManager {
      * Add targets that don't have physics bodies yet (fallback)
      */
     addNonPhysicsTargets(allTargets, maxRange) {
-        console.log(`🎯 addNonPhysicsTargets: Called with ${allTargets.length} existing targets, maxRange: ${maxRange}km`);
+        // console.log(`🎯 addNonPhysicsTargets: Called with ${allTargets.length} existing targets, maxRange: ${maxRange}km`);
         
         // Build sets for duplicate detection - check both names and ship objects
         const existingTargetIds = new Set(allTargets.map(t => t.physicsEntity?.id || t.name));
         const existingShipObjects = new Set(allTargets.map(t => t.ship).filter(ship => ship));
         
-        // Debug viewManager chain
-        console.log(`🎯 addNonPhysicsTargets: viewManager exists: ${!!this.viewManager}`);
-        console.log(`🎯 addNonPhysicsTargets: starfieldManager exists: ${!!this.viewManager?.starfieldManager}`);
-        console.log(`🎯 addNonPhysicsTargets: dummyShipMeshes exists: ${!!this.viewManager?.starfieldManager?.dummyShipMeshes}`);
-        console.log(`🎯 addNonPhysicsTargets: dummyShipMeshes length: ${this.viewManager?.starfieldManager?.dummyShipMeshes?.length || 0}`);
+        // Debug viewManager chain (reduced logging)
+        // console.log(`🎯 addNonPhysicsTargets: viewManager exists: ${!!this.viewManager}`);
+        // console.log(`🎯 addNonPhysicsTargets: starfieldManager exists: ${!!this.viewManager?.starfieldManager}`);
+        // console.log(`🎯 addNonPhysicsTargets: dummyShipMeshes exists: ${!!this.viewManager?.starfieldManager?.dummyShipMeshes}`);
+        // console.log(`🎯 addNonPhysicsTargets: dummyShipMeshes length: ${this.viewManager?.starfieldManager?.dummyShipMeshes?.length || 0}`);
         
         // Check for ships without physics bodies
         if (this.viewManager?.starfieldManager?.dummyShipMeshes) {
-            console.log(`🎯 addNonPhysicsTargets: Processing ${this.viewManager.starfieldManager.dummyShipMeshes.length} dummy ships`);
-            console.log(`🎯 addNonPhysicsTargets: Existing target IDs:`, Array.from(existingTargetIds));
+            // console.log(`🎯 addNonPhysicsTargets: Processing ${this.viewManager.starfieldManager.dummyShipMeshes.length} dummy ships`);
+            // console.log(`🎯 addNonPhysicsTargets: Existing target IDs:`, Array.from(existingTargetIds));
             
             this.viewManager.starfieldManager.dummyShipMeshes.forEach((mesh, index) => {
                 const ship = mesh.userData.ship;
                 const targetId = ship.shipName;
                 
-                console.log(`🎯 addNonPhysicsTargets: Checking dummy ship ${index}: ${targetId}, hull: ${ship.currentHull}, already exists: ${existingTargetIds.has(targetId) || existingShipObjects.has(ship)}`);
+                // console.log(`🎯 addNonPhysicsTargets: Checking dummy ship ${index}: ${targetId}, hull: ${ship.currentHull}, already exists: ${existingTargetIds.has(targetId) || existingShipObjects.has(ship)}`);
                 
                 // Filter out destroyed ships and check if not already in target list
                 // Check both by ID/name and by ship object reference
                 if (!existingTargetIds.has(targetId) && !existingShipObjects.has(ship) && ship && ship.currentHull > 0.001) {
                     const distance = this.calculateDistance(this.camera.position, mesh.position);
                     if (distance <= maxRange) {
-                        console.log(`🎯 addNonPhysicsTargets: Adding dummy ship: ${targetId}`);
+                        // console.log(`🎯 addNonPhysicsTargets: Adding dummy ship: ${targetId}`);
                         allTargets.push({
                             name: ship.shipName,
                             type: 'enemy_ship',
@@ -1612,10 +1612,12 @@ export class TargetComputerManager {
                             object: mesh,
                             isShip: true,
                             ship: ship,
-                            distance: distance
+                            distance: distance,
+                            diplomacy: ship.diplomacy || 'enemy', // Copy diplomacy from ship
+                            faction: ship.faction || ship.diplomacy || 'enemy' // Copy faction from ship
                         });
                     } else {
-                        console.log(`🎯 addNonPhysicsTargets: Dummy ship ${targetId} out of range: ${distance.toFixed(1)}km > ${maxRange}km`);
+                        // console.log(`🎯 addNonPhysicsTargets: Dummy ship ${targetId} out of range: ${distance.toFixed(1)}km > ${maxRange}km`);
                     }
                 } else if (ship && ship.currentHull <= 0.001) {
                     console.log(`🗑️ Fallback method filtering out destroyed ship: ${ship.shipName} (Hull: ${ship.currentHull})`);
@@ -1823,8 +1825,8 @@ export class TargetComputerManager {
             return;
         }
         
-        console.log(`🎯 Cycling targets - current: ${this.currentTarget?.name}, index: ${this.targetIndex}, total targets: ${this.targetObjects.length}, isFromScanner: ${this.isFromLongRangeScanner}`);
-        console.log(`🎯 Available targets for cycling:`, this.targetObjects.map(t => t.name));
+        // console.log(`🎯 Cycling targets - current: ${this.currentTarget?.name}, index: ${this.targetIndex}, total targets: ${this.targetObjects.length}, isFromScanner: ${this.isFromLongRangeScanner}`);
+        // console.log(`🎯 Available targets for cycling:`, this.targetObjects.map(t => t.name));
 
         // Hide reticle until new target is set
         if (this.targetReticle) {
@@ -1867,7 +1869,7 @@ export class TargetComputerManager {
         } else {
             // Handle edge cases where previousTarget or targetData might be undefined
             this.isFromLongRangeScanner = false;
-            console.log(`🎯 Target cycling with undefined data - clearing scanner flag for safety`);
+            console.log(`🎯 Target cycling debug - previousTarget: ${!!previousTarget}, targetData: ${!!targetData}, targetIndex: ${this.targetIndex}, targetObjects.length: ${this.targetObjects.length}`);
         }
         
         // Debug target name for troubleshooting
@@ -2033,9 +2035,9 @@ export class TargetComputerManager {
             });
 
             // Build geometry per type
-            console.log(`🌟 WIREFRAME: Creating wireframe for target. info.type="${info?.type}", info.name="${info?.name}"`);
+            // console.log(`🌟 WIREFRAME: Creating wireframe for target. info.type="${info?.type}", info.name="${info?.name}"`);
             if (info && (info.type?.toLowerCase() === 'star' || (this.getStarSystem() && info.name === this.getStarSystem().star_name))) {
-                console.log(`🌟 WIREFRAME: Creating STAR geometry for ${info.name}`);
+                // console.log(`🌟 WIREFRAME: Creating STAR geometry for ${info.name}`);
                 const starGeometry = this.createStarGeometry(radius);
                 this.targetWireframe = new this.THREE.LineSegments(starGeometry, wireframeMaterial);
             } else {
@@ -2153,6 +2155,8 @@ export class TargetComputerManager {
      * Update target display information
      */
     updateTargetDisplay() {
+        // console.log(`🎯 DEBUG: updateTargetDisplay() called - enabled: ${this.targetComputerEnabled}, currentTarget: ${this.currentTarget?.name || 'none'}`); // Reduce spam
+        
         if (!this.targetComputerEnabled) {
             return;
         }
@@ -2179,11 +2183,19 @@ export class TargetComputerManager {
         }
 
         const currentTargetData = this.getCurrentTargetData();
-        // Reduced debug noise: remove verbose per-frame logs
+        // Debug logging for target data issues
         if (!currentTargetData) {
-            console.log('🎯 No currentTargetData, returning early');
+            console.log(`🎯 No currentTargetData for target: ${this.currentTarget?.name || 'unknown'}, targetIndex: ${this.targetIndex}, targetObjects.length: ${this.targetObjects.length}`);
             return;
         }
+        
+        // console.log(`🎯 DEBUG: currentTargetData for ${currentTargetData.name}:`, {
+        //     hasShip: !!currentTargetData.ship,
+        //     shipName: currentTargetData.ship?.shipName,
+        //     isShip: currentTargetData.isShip,
+        //     type: currentTargetData.type,
+        //     rawData: currentTargetData
+        // }); // Reduce spam
 
         // Get target position safely
         const targetPos = this.getTargetPosition(this.currentTarget);
@@ -2207,6 +2219,7 @@ export class TargetComputerManager {
             // Use the comprehensive target information from TargetComputer
             info = enhancedTargetInfo;
             isEnemyShip = enhancedTargetInfo.diplomacy === 'enemy' || enhancedTargetInfo.faction === 'enemy';
+            // console.log(`🎯 Enhanced target info: diplomacy=${enhancedTargetInfo.diplomacy}, faction=${enhancedTargetInfo.faction}, isEnemyShip=${isEnemyShip}`);
         } else if (currentTargetData.isShip && currentTargetData.ship) {
             // Fallback: Check if this is an enemy ship
             isEnemyShip = true;
@@ -2275,8 +2288,9 @@ export class TargetComputerManager {
             this.wireframeContainer.style.borderColor = diplomacyColor;
         }
 
-        // Get sub-target information from targeting computer (reuse ship variable from above)
-        const targetComputerForSubTargets = ship?.getSystem('target_computer');
+        // Get sub-target information from player's targeting computer
+        const playerShip = this.viewManager?.getShip();
+        const targetComputerForSubTargets = playerShip?.getSystem('target_computer');
         let subTargetHTML = '';
         
         // Add sub-target information if available
@@ -2289,6 +2303,19 @@ export class TargetComputerManager {
             
 
             
+            // Only log for target dummies to debug the sub-targeting issue
+            if (currentTargetData.name && currentTargetData.name.includes('Target Dummy')) {
+                console.log(`🎯 Sub-targeting check: isEnemyShip=${isEnemyShip}, currentTargetData.ship=${!!currentTargetData.ship}, isSpaceStation=${isSpaceStation}`);
+                console.log(`🎯 Sub-targeting DEBUG: currentTargetData:`, {
+                    isShip: currentTargetData.isShip,
+                    type: currentTargetData.type,
+                    ship: !!currentTargetData.ship,
+                    ship_name: currentTargetData.ship?.shipName,
+                    object_userData: !!currentTargetData.object?.userData,
+                    object_userData_ship: !!currentTargetData.object?.userData?.ship,
+                    isTargetDummy: currentTargetData.ship?.isTargetDummy
+                });
+            }
             if ((isEnemyShip && currentTargetData.ship) || isSpaceStation) {
                 // Note: Target is already set via setTarget() in cycleTarget method
                 // The setTarget() method automatically calls updateSubTargets()
@@ -2327,13 +2354,13 @@ export class TargetComputerManager {
                                 <span>Dmg:</span> <span>+${damageBonus}%</span>
                             </div>
                             <div style="font-size: 9px; opacity: 0.6; margin-top: 2px;">
-                                &lt; &gt; to cycle sub-targets
+                                Z X to cycle sub-targets
                             </div>
                         </div>
                     `;
                 } else {
                     // Show available sub-targets count
-                    const availableTargets = targetComputer.availableSubTargets.length;
+                    const availableTargets = targetComputerForSubTargets.availableSubTargets.length;
                     if (availableTargets > 0) {
                         subTargetHTML = `
                             <div style="
@@ -2349,7 +2376,7 @@ export class TargetComputerManager {
                                     ${availableTargets} targetable systems detected
                                 </div>
                                 <div style="font-size: 9px; opacity: 0.6; margin-top: 2px;">
-                                    &lt; &gt; to cycle sub-targets
+                                    Z X to cycle sub-targets
                                 </div>
                             </div>
                         `;
@@ -2552,14 +2579,26 @@ export class TargetComputerManager {
 
         // Check if this is a ship (either 'ship' or 'enemy_ship' type, or has isShip flag)
         if (targetData.type === 'ship' || targetData.type === 'enemy_ship' || targetData.isShip) {
+            // Ensure we get the actual ship instance
+            let shipInstance = targetData.ship;
+            if (!shipInstance && targetData.object?.userData?.ship) {
+                shipInstance = targetData.object.userData.ship;
+            }
+            if (!shipInstance && this.currentTarget?.userData?.ship) {
+                shipInstance = this.currentTarget.userData.ship;
+            }
+            
             return {
                 object: this.currentTarget,
-                name: targetData.name || this.currentTarget.shipName || 'Enemy Ship',
+                name: targetData.name || shipInstance?.shipName || this.currentTarget?.shipName || 'Enemy Ship',
                 type: targetData.type || 'enemy_ship',
                 isShip: true,
-                ship: targetData.ship || this.currentTarget,
+                ship: shipInstance || targetData.ship || this.currentTarget,
                 distance: targetData.distance,
-                isMoon: targetData.isMoon || false
+                isMoon: targetData.isMoon || false,
+                diplomacy: targetData.diplomacy || shipInstance?.diplomacy,
+                faction: targetData.faction || shipInstance?.faction || targetData.diplomacy || shipInstance?.diplomacy,
+                ...targetData // Include all original properties
             };
         } else {
             // For non-ship targets, prefer the data we already have from target list
@@ -2802,6 +2841,7 @@ export class TargetComputerManager {
             diplomacyStatus = this.getFactionDiplomacy(info.faction);
         }
         
+        // Target dummies should use standard faction colors (red for enemy/hostile)
         if (isEnemyShip) {
             reticleColor = '#ff3333'; // Enemy ships are darker neon red
         } else if (info?.type === 'star') {
@@ -2895,16 +2935,19 @@ export class TargetComputerManager {
                 target: this.currentTarget.name,
                 screenPos: { x: screenPosition.x.toFixed(2), y: screenPosition.y.toFixed(2), z: screenPosition.z.toFixed(2) },
                 isOffScreen: isOffScreen,
-                shouldShowArrow: shouldShowArrow
+                shouldShowArrow: shouldShowArrow,
+                targetComputerEnabled: this.targetComputerEnabled,
+                hasDirectionArrows: !!this.directionArrows
             };
-            // Only log when state changes to avoid spam
-            if (this.lastDebugState !== shouldShowArrow) {
-                console.log('🎯 Direction Arrow Debug:', debugInfo);
-                this.lastDebugState = shouldShowArrow;
-            }
+            // Debug logging disabled to reduce console spam
+            // if (!this.lastArrowDebugTime || (Date.now() - this.lastArrowDebugTime) > 2000) {
+            //     console.log('🎯 Direction Arrow Debug:', debugInfo);
+            //     this.lastArrowDebugTime = Date.now();
+            // }
         }
 
         if (shouldShowArrow) {
+            // console.log(`🎯 ARROW: Showing direction arrow for ${this.currentTarget?.name}`); // Reduce spam
             // Get camera's view direction and relative position
             const cameraDirection = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
             const relativePosition = targetPosition.clone().sub(this.camera.position);
@@ -2940,7 +2983,12 @@ export class TargetComputerManager {
             // Position and show the appropriate arrow
             const arrow = this.directionArrows[primaryDirection];
             if (arrow) {
-                // Position arrow at edge of screen
+                // Position arrow at edge of screen - clear conflicting properties first
+                arrow.style.left = '';
+                arrow.style.right = '';
+                arrow.style.top = '';
+                arrow.style.bottom = '';
+                
                 if (primaryDirection === 'top') {
                     arrow.style.left = '50%';
                     arrow.style.top = '20px';
@@ -2971,6 +3019,8 @@ export class TargetComputerManager {
                 }
                 
                 arrow.style.display = 'block';
+                // console.log(`🎯 ARROW POSITIONED: ${primaryDirection} arrow shown for ${this.currentTarget?.name}`); // Reduce spam
+                // console.log(`🎯 ARROW STYLE: display=${arrow.style.display}, left=${arrow.style.left}, top=${arrow.style.top}`); // Reduce spam
                 
                 // Hide other arrows
                 Object.keys(this.directionArrows).forEach(dir => {
@@ -3997,5 +4047,164 @@ export class TargetComputerManager {
         // No valid targets found
         // console.warn('🎯 No valid targets found in target list');
         this.clearCurrentTarget();
+    }
+
+    /**
+     * Star Charts Integration Methods
+     * These methods provide decoupled targeting for the Star Charts system
+     */
+
+    /**
+     * Set target by object ID (Star Charts integration)
+     * Searches current target list by ID, name, or userData.id
+     * @param {string} objectId - The object ID to target
+     * @returns {boolean} - True if target was found and set
+     */
+    setTargetById(objectId) {
+        if (!objectId) {
+            console.warn('🎯 setTargetById: No object ID provided');
+            return false;
+        }
+
+        // Search through current target objects
+        for (let i = 0; i < this.targetObjects.length; i++) {
+            const target = this.targetObjects[i];
+            
+            // Check various ID fields
+            const matchesId = target.id === objectId ||
+                            target.name === objectId ||
+                            (target.object && target.object.userData && target.object.userData.id === objectId) ||
+                            (target.object && target.object.name === objectId);
+            
+            if (matchesId) {
+                this.targetIndex = i;
+                this.currentTarget = target;
+                this.updateTargetDisplay();
+                
+                console.log(`🎯 Star Charts: Target set to ${target.name} (ID: ${objectId})`);
+                return true;
+            }
+        }
+
+        console.warn(`🎯 Star Charts: Object not found in target list: ${objectId}`);
+        return false;
+    }
+
+    /**
+     * Set virtual target (Mission waypoint integration)
+     * Creates a virtual target object for mission waypoints
+     * @param {Object} waypointData - Waypoint data with id, name, position, etc.
+     * @returns {boolean} - True if virtual target was created and set
+     */
+    setVirtualTarget(waypointData) {
+        if (!waypointData || !waypointData.position) {
+            console.warn('🎯 setVirtualTarget: Invalid waypoint data');
+            return false;
+        }
+
+        // Create virtual target object
+        const virtualTarget = {
+            id: waypointData.id,
+            name: waypointData.name || 'Mission Waypoint',
+            type: 'virtual_waypoint',
+            position: {
+                x: waypointData.position[0],
+                y: waypointData.position[1],
+                z: waypointData.position[2]
+            },
+            isVirtual: true,
+            waypointData: waypointData
+        };
+
+        // Add to target list if not already present
+        const existingIndex = this.targetObjects.findIndex(t => t.id === virtualTarget.id);
+        
+        if (existingIndex >= 0) {
+            // Update existing virtual target
+            this.targetObjects[existingIndex] = virtualTarget;
+            this.targetIndex = existingIndex;
+        } else {
+            // Add new virtual target
+            this.targetObjects.push(virtualTarget);
+            this.targetIndex = this.targetObjects.length - 1;
+        }
+
+        this.currentTarget = virtualTarget;
+        this.updateTargetDisplay();
+
+        console.log(`🎯 Star Charts: Virtual target set to ${virtualTarget.name}`);
+        return true;
+    }
+
+    /**
+     * Remove virtual target by ID
+     * @param {string} waypointId - The waypoint ID to remove
+     * @returns {boolean} - True if target was found and removed
+     */
+    removeVirtualTarget(waypointId) {
+        const targetIndex = this.targetObjects.findIndex(t => 
+            t.isVirtual && t.id === waypointId
+        );
+
+        if (targetIndex >= 0) {
+            // Remove from target list
+            this.targetObjects.splice(targetIndex, 1);
+
+            // Adjust current target index if necessary
+            if (this.targetIndex >= targetIndex) {
+                this.targetIndex = Math.max(0, this.targetIndex - 1);
+            }
+
+            // Update current target if we removed the active target
+            if (this.currentTarget && this.currentTarget.id === waypointId) {
+                if (this.targetObjects.length > 0) {
+                    this.currentTarget = this.targetObjects[this.targetIndex];
+                    this.updateTargetDisplay();
+                } else {
+                    this.clearCurrentTarget();
+                }
+            }
+
+            console.log(`🎯 Star Charts: Removed virtual target ${waypointId}`);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get all virtual targets
+     * @returns {Array} - Array of virtual target objects
+     */
+    getVirtualTargets() {
+        return this.targetObjects.filter(t => t.isVirtual);
+    }
+
+    /**
+     * Check if current target is virtual
+     * @returns {boolean} - True if current target is virtual
+     */
+    isCurrentTargetVirtual() {
+        return this.currentTarget && this.currentTarget.isVirtual;
+    }
+
+    /**
+     * Get Star Charts compatible object data
+     * @returns {Object|null} - Object data for Star Charts integration
+     */
+    getCurrentTargetData() {
+        if (!this.currentTarget) {
+            return null;
+        }
+
+        return {
+            id: this.currentTarget.id,
+            name: this.currentTarget.name,
+            type: this.currentTarget.type,
+            position: this.currentTarget.position,
+            isVirtual: this.currentTarget.isVirtual || false,
+            distance: this.currentTarget.distance,
+            bearing: this.currentTarget.bearing
+        };
     }
 } 

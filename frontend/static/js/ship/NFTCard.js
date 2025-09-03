@@ -93,6 +93,7 @@ export const CARD_TYPES = {
     LONG_RANGE_SCANNER: 'long_range_scanner',
     SUBSPACE_RADIO: 'subspace_radio',
     GALACTIC_CHART: 'galactic_chart',
+    STAR_CHARTS: 'star_charts',
     TARGET_COMPUTER: 'target_computer',
     
     // Radar systems

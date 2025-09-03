@@ -137,6 +137,7 @@ export default class Ship {
             const { default: Weapons } = await import('./systems/Weapons.js');
             const { default: LongRangeScanner } = await import('./systems/LongRangeScanner.js');
             const { default: GalacticChartSystem } = await import('./systems/GalacticChartSystem.js');
+            const { default: StarChartsSystem } = await import('./systems/StarChartsSystem.js');
             const { default: SubspaceRadioSystem } = await import('./systems/SubspaceRadioSystem.js');
             const { default: TargetComputer } = await import('./systems/TargetComputer.js');
             
@@ -193,6 +194,13 @@ export default class Ship {
                 // Override slot cost from ship configuration
                 galacticChart.slotCost = defaultSystems.galactic_chart.slots;
                 this.addSystem('galactic_chart', galacticChart);
+            }
+            
+            if (defaultSystems.star_charts) {
+                const starCharts = new StarChartsSystem(defaultSystems.star_charts.level);
+                // Override slot cost from ship configuration
+                starCharts.slotCost = defaultSystems.star_charts.slots;
+                this.addSystem('star_charts', starCharts);
             }
             
             // Add new gear systems that provide base ship stats
@@ -773,6 +781,7 @@ export default class Ship {
             'subspace_radio': 'subspace_radio',
             'long_range_scanner': 'long_range_scanner',
             'galactic_chart': 'galactic_chart',
+            'star_charts': 'star_charts',
             'basic_radar': 'radar',
             'advanced_radar': 'radar',
             'tactical_radar': 'radar',

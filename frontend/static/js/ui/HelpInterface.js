@@ -80,7 +80,7 @@ export class HelpInterface {
         // Check which systems are available based on cards
         const systemsToCheck = [
             'impulse_engines', 'warp_drive', 'shields', 'target_computer',
-            'long_range_scanner', 'subspace_radio', 'galactic_chart', 'radar'
+            'long_range_scanner', 'subspace_radio', 'galactic_chart', 'star_charts', 'radar'
         ];
         
         for (const systemName of systemsToCheck) {
@@ -274,6 +274,16 @@ export class HelpInterface {
             `;
         }
 
+        // Star Charts
+        if (context.availableSystems.star_charts) {
+            systemsHTML += `
+                <div class="control-entry">
+                    <span class="key-binding">C</span>
+                    <span class="control-desc">Star Charts Navigation System (Lv.${context.availableSystems.star_charts.level})</span>
+                </div>
+            `;
+        }
+
         // Subspace Radio
         if (context.availableSystems.subspace_radio) {
             systemsHTML += `
@@ -373,7 +383,7 @@ export class HelpInterface {
             if (context.hasSubTargeting) {
                 combatHTML += `
                     <div class="control-entry">
-                        <span class="key-binding">&lt; &gt;</span>
+                        <span class="key-binding">Z X</span>
                         <span class="control-desc">Sub-System Targeting</span>
                     </div>
                 `;
@@ -392,11 +402,11 @@ export class HelpInterface {
                         <span class="control-desc">Fire Active Weapon</span>
                     </div>
                     <div class="control-entry">
-                        <span class="key-binding">Z / X</span>
+                        <span class="key-binding">, . &lt; &gt;</span>
                         <span class="control-desc">Cycle Weapons</span>
                     </div>
                     <div class="control-entry">
-                        <span class="key-binding">C</span>
+                        <span class="key-binding">/</span>
                         <span class="control-desc">Toggle Autofire</span>
                     </div>
                 </div>

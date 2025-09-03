@@ -173,6 +173,7 @@ export default class CardSystemIntegration {
             'subspace_radio': [CARD_TYPES.SUBSPACE_RADIO],
             'long_range_scanner': [CARD_TYPES.LONG_RANGE_SCANNER],
             'galactic_chart': [CARD_TYPES.GALACTIC_CHART],
+            'star_charts': [CARD_TYPES.STAR_CHARTS],
             'target_computer': [CARD_TYPES.TARGET_COMPUTER, CARD_TYPES.TACTICAL_COMPUTER, CARD_TYPES.COMBAT_COMPUTER, CARD_TYPES.STRATEGIC_COMPUTER],
             'radar': [CARD_TYPES.BASIC_RADAR, CARD_TYPES.ADVANCED_RADAR, CARD_TYPES.TACTICAL_RADAR],
             'tactical_computer': [CARD_TYPES.TACTICAL_COMPUTER],     // Advanced intel-enabled target computer
@@ -470,6 +471,7 @@ export default class CardSystemIntegration {
             'subspace_radio': 'SubspaceRadioSystem',
             'long_range_scanner': 'LongRangeScanner', 
             'galactic_chart': 'GalacticChartSystem',
+            'star_charts': 'StarChartsSystem',
             'basic_radar': 'RadarSystem',
             'advanced_radar': 'RadarSystem',
             'tactical_radar': 'RadarSystem',
@@ -549,7 +551,7 @@ export default class CardSystemIntegration {
             const cardType = cardData.cardType;
             const systemName = this.getSystemNameForCard(cardType);
             
-            console.log(`🔧 Processing card: ${cardType} → ${systemName}`);
+            // console.log(`🔧 Processing card: ${cardType} → ${systemName}`); // Reduce spam
             
             // Skip weapon cards - they're handled by WeaponSyncManager
             if (this.isWeaponCard(cardType)) {
@@ -676,7 +678,7 @@ export default class CardSystemIntegration {
         // List of systems that should be removed if their cards are not installed
         const systemsToCheck = [
             'target_computer', 'impulse_engines', 'energy_reactor', 'subspace_radio',
-            'long_range_scanner', 'galactic_chart', 'shields', 'hull_plating',
+            'long_range_scanner', 'galactic_chart', 'star_charts', 'shields', 'hull_plating',
             'cargo_hold', 'reinforced_cargo_hold', 'shielded_cargo_hold', 'warp_drive',
             'radar', // Proximity detector system
             // Individual weapon systems
@@ -862,7 +864,8 @@ export default class CardSystemIntegration {
             'energy_reactor': 'energy_reactor',
             'subspace_radio': 'subspace_radio',
             'long_range_scanner': 'long_range_scanner',
-            'galactic_chart': 'galactic_chart', 
+            'galactic_chart': 'galactic_chart',
+            'star_charts': 'star_charts', 
             'basic_radar': 'radar',        // Map basic radar card to radar system
             'advanced_radar': 'radar',     // Map advanced radar card to radar system
             'tactical_radar': 'radar',     // Map tactical radar card to radar system

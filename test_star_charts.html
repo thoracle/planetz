@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Charts System Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            border: 1px solid #00ff00;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 255, 0, 0.05);
+        }
+        
+        .test-button {
+            background: #003300;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        .test-button:hover {
+            background: #006600;
+        }
+        
+        .test-output {
+            background: #001100;
+            border: 1px solid #004400;
+            padding: 10px;
+            margin: 10px 0;
+            min-height: 100px;
+            overflow-y: auto;
+            max-height: 300px;
+        }
+        
+        .status-good { color: #00ff00; }
+        .status-warning { color: #ffff00; }
+        .status-error { color: #ff0000; }
+        
+        .performance-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .metric {
+            background: rgba(0, 255, 0, 0.1);
+            padding: 10px;
+            border: 1px solid #004400;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🚀 Star Charts System Test - Phase 0</h1>
+        <p>Testing the A0 sector proof of concept with all strategic optimizations</p>
+        
+        <div class="test-section">
+            <h2>📊 Database Status</h2>
+            <button class="test-button" onclick="testDatabase()">Test Database Loading</button>
+            <button class="test-button" onclick="showDatabaseStats()">Show Database Stats</button>
+            <div id="database-output" class="test-output"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔍 Discovery System</h2>
+            <button class="test-button" onclick="testDiscovery()">Test Discovery Mechanics</button>
+            <button class="test-button" onclick="simulateDiscovery()">Simulate Object Discovery</button>
+            <button class="test-button" onclick="showDiscoveredObjects()">Show Discovered Objects</button>
+            <div id="discovery-output" class="test-output"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎯 Target Computer Integration</h2>
+            <button class="test-button" onclick="testTargeting()">Test Object Targeting</button>
+            <button class="test-button" onclick="testVirtualWaypoints()">Test Virtual Waypoints</button>
+            <div id="targeting-output" class="test-output"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📈 Performance Monitoring</h2>
+            <button class="test-button" onclick="showPerformanceMetrics()">Show Performance Metrics</button>
+            <button class="test-button" onclick="runPerformanceTest()">Run Performance Test</button>
+            <div id="performance-output" class="test-output"></div>
+            <div id="performance-metrics" class="performance-metrics"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔄 System Health</h2>
+            <button class="test-button" onclick="checkSystemHealth()">Check System Health</button>
+            <button class="test-button" onclick="testFallback()">Test Fallback Mechanism</button>
+            <div id="health-output" class="test-output"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🗺️ UI Integration</h2>
+            <button class="test-button" onclick="showStarCharts()">Show Star Charts UI</button>
+            <button class="test-button" onclick="showLongRangeScanner()">Show Long Range Scanner</button>
+            <button class="test-button" onclick="toggleNavigationSystem()">Toggle Navigation System</button>
+            <div id="ui-output" class="test-output"></div>
+        </div>
+    </div>
+
+    <!-- Load Three.js globally first (required for ES6 modules) -->
+    <script src="./frontend/static/lib/three.min.js"></script>
+    
+    <!-- Import map to resolve 'three' module -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./frontend/static/lib/three-module.js"
+        }
+    }
+    </script>
+    
+    <!-- Load the Star Charts system -->
+    <script type="module">
+        // Import Star Charts modules
+        import { StarChartsManager } from './frontend/static/js/views/StarChartsManager.js';
+        import { StarChartsUI } from './frontend/static/js/views/StarChartsUI.js';
+        import { NavigationSystemManager } from './frontend/static/js/views/NavigationSystemManager.js';
+        
+        // Mock dependencies for testing
+        const mockScene = { add: () => {}, remove: () => {} };
+        const mockCamera = { position: { x: 0, y: 0, z: 0 } };
+        const mockViewManager = { 
+            restorePreviousView: () => console.log('Restored previous view'),
+            setView: (type) => console.log(`Set view to ${type}`),
+            getSolarSystemManager: () => mockSolarSystemManager,
+            getShip: () => mockSolarSystemManager.ship,
+            getCamera: () => mockCamera,
+            starfieldManager: {
+                targetComputerEnabled: true,
+                velocity: 0,
+                isDocked: false
+            }
+        };
+        const mockSolarSystemManager = {
+            ship: { 
+                position: { x: 0, y: 0, z: 0 },
+                systems: new Map([
+                    ['long_range_scanner', {
+                        canActivate: () => true,
+                        isOperational: () => true,
+                        level: 1
+                    }]
+                ])
+            },
+            starSystem: {
+                star: {
+                    name: 'Sol',
+                    type: 'G-class',
+                    position: [0, 0, 0],
+                    radius: 696340
+                },
+                planets: [
+                    {
+                        name: 'Terra Prime',
+                        type: 'terrestrial',
+                        position: [149597870.7, 0, 0], // 1 AU from star
+                        radius: 6371,
+                        color: '#4A90E2'
+                    }
+                ],
+                asteroids: [],
+                stations: [],
+                beacons: []
+            }
+        };
+        const mockTargetComputerManager = {
+            setTargetById: (id) => { console.log(`Target set to ${id}`); return true; },
+            setVirtualTarget: (waypoint) => { console.log(`Virtual target set: ${waypoint.name}`); return true; }
+        };
+        
+        // Initialize systems
+        let starChartsManager;
+        let starChartsUI;
+        let navigationSystemManager;
+        
+        async function initializeSystems() {
+            try {
+                // Create Star Charts Manager
+                starChartsManager = new StarChartsManager(
+                    mockScene, 
+                    mockCamera, 
+                    mockViewManager, 
+                    mockSolarSystemManager, 
+                    mockTargetComputerManager
+                );
+                
+                // Wait for StarChartsManager to fully initialize (database loading is async)
+                console.log('⏳ Waiting for StarChartsManager database to load...');
+                let attempts = 0;
+                const maxAttempts = 50; // 5 seconds max wait
+                while (!starChartsManager.objectDatabase && attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 100)); // Wait 100ms
+                    attempts++;
+                }
+                
+                if (!starChartsManager.objectDatabase) {
+                    throw new Error('StarChartsManager database failed to load within timeout');
+                }
+                
+                console.log('✅ StarChartsManager database loaded successfully');
+                
+                // Create Star Charts UI
+                starChartsUI = new StarChartsUI(mockViewManager, starChartsManager);
+                
+                // Create Navigation System Manager
+                navigationSystemManager = new NavigationSystemManager(
+                    mockViewManager,
+                    mockScene,
+                    mockCamera,
+                    mockSolarSystemManager,
+                    mockTargetComputerManager
+                );
+                
+                console.log('✅ Star Charts system initialized successfully');
+                
+                // Make available globally for testing
+                window.starChartsManager = starChartsManager;
+                window.starChartsUI = starChartsUI;
+                window.navigationSystemManager = navigationSystemManager;
+                
+                // Update UI to show initialization status
+                setTimeout(() => {
+                    const statusElements = document.querySelectorAll('.test-output');
+                    statusElements.forEach(el => {
+                        if (el.innerHTML === '') {
+                            el.innerHTML = '<div class="status-good">✅ System initialized - ready for testing</div>';
+                        }
+                    });
+                }, 1000);
+                
+            } catch (error) {
+                console.error('❌ Failed to initialize Star Charts system:', error);
+            }
+        }
+        
+        // Initialize on page load
+        initializeSystems();
+        
+        // Make systems available globally for debugging
+        window.starChartsManager = null;
+        window.starChartsUI = null;
+        window.navigationSystemManager = null;
+        
+        // Test functions - properly expose to global scope
+        window.testDatabase = async function() {
+            const output = document.getElementById('database-output');
+            output.innerHTML = '<div class="status-good">Testing database loading...</div>';
+            
+            try {
+                // Check if StarChartsManager exists
+                if (!window.starChartsManager) {
+                    output.innerHTML = '<div class="status-error">❌ StarChartsManager not initialized</div>';
+                    return;
+                }
+                
+                // Check if database is loaded
+                if (!window.starChartsManager.objectDatabase) {
+                    output.innerHTML = '<div class="status-warning">⚠️ Database still loading... Please wait and try again</div>';
+                    return;
+                }
+                
+                const db = window.starChartsManager.objectDatabase;
+                
+                // Validate database structure
+                if (!db.metadata || !db.sectors) {
+                    output.innerHTML = '<div class="status-error">❌ Database structure invalid</div>';
+                    return;
+                }
+                
+                output.innerHTML = `
+                    <div class="status-good">✅ Database loaded successfully!</div>
+                    <div>Universe Seed: ${db.metadata.universe_seed}</div>
+                    <div>Total Sectors: ${db.metadata.total_sectors}</div>
+                    <div>Generated: ${db.metadata.generation_timestamp}</div>
+                    <div>A0 Objects: ${db.sectors.A0 ? db.sectors.A0.objects.length : 0}</div>
+                    <div>A0 Stations: ${db.sectors.A0?.infrastructure?.stations?.length || 0}</div>
+                    <div>A0 Beacons: ${db.sectors.A0?.infrastructure?.beacons?.length || 0}</div>
+                `;
+            } catch (error) {
+                output.innerHTML = `<div class="status-error">❌ Database test failed: ${error.message}</div>`;
+            }
+        };
+        
+        window.showDatabaseStats = function() {
+            const output = document.getElementById('database-output');
+            
+            if (!window.starChartsManager || !window.starChartsManager.objectDatabase) {
+                output.innerHTML = '<div class="status-warning">⚠️ Database not available</div>';
+                return;
+            }
+            
+            const db = window.starChartsManager.objectDatabase;
+            const a0Data = db.sectors.A0;
+            
+            if (a0Data) {
+                const allObjects = [
+                    a0Data.star,
+                    ...a0Data.objects,
+                    ...(a0Data.infrastructure?.stations || []),
+                    ...(a0Data.infrastructure?.beacons || [])
+                ];
+                
+                const objectTypes = {};
+                allObjects.forEach(obj => {
+                    if (obj && obj.type) {
+                        objectTypes[obj.type] = (objectTypes[obj.type] || 0) + 1;
+                    }
+                });
+                
+                let statsHTML = '<div class="status-good">📊 A0 Sector Statistics:</div>';
+                Object.entries(objectTypes).forEach(([type, count]) => {
+                    statsHTML += `<div>${type}: ${count}</div>`;
+                });
+                
+                output.innerHTML = statsHTML;
+            }
+        };
+        
+        window.testDiscovery = function() {
+            const output = document.getElementById('discovery-output');
+            output.innerHTML = '<div class="status-good">Testing discovery system...</div>';
+            
+            if (!window.starChartsManager) {
+                output.innerHTML = '<div class="status-error">❌ Star Charts Manager not available</div>';
+                return;
+            }
+            
+            const discoveredCount = window.starChartsManager.getDiscoveredObjects().length;
+            const discoveryRadius = window.starChartsManager.getDiscoveryRadius();
+            
+            output.innerHTML = `
+                <div class="status-good">✅ Discovery system operational</div>
+                <div>Discovered Objects: ${discoveredCount}</div>
+                <div>Discovery Radius: ${discoveryRadius} km</div>
+                <div>Current Sector: ${window.starChartsManager.getCurrentSector()}</div>
+            `;
+        };
+        
+        window.simulateDiscovery = function() {
+            const output = document.getElementById('discovery-output');
+            
+            if (!window.starChartsManager || !window.starChartsManager.objectDatabase) {
+                output.innerHTML = '<div class="status-error">❌ System not ready</div>';
+                return;
+            }
+            
+            // Simulate discovering Terra Prime
+            const terraPrimeId = 'A0_terra_prime';
+            window.starChartsManager.addDiscoveredObject(terraPrimeId);
+            
+            output.innerHTML = `
+                <div class="status-good">✅ Simulated discovery of Terra Prime</div>
+                <div>Total discovered: ${window.starChartsManager.getDiscoveredObjects().length}</div>
+            `;
+        };
+        
+        window.showDiscoveredObjects = function() {
+            const output = document.getElementById('discovery-output');
+            
+            if (!window.starChartsManager) {
+                output.innerHTML = '<div class="status-error">❌ System not available</div>';
+                return;
+            }
+            
+            const discovered = window.starChartsManager.getDiscoveredObjects();
+            let html = '<div class="status-good">🔍 Discovered Objects:</div>';
+            
+            discovered.forEach(objectId => {
+                const objectData = window.starChartsManager.getObjectData(objectId);
+                if (objectData) {
+                    html += `<div>• ${objectData.name} (${objectData.type})</div>`;
+                } else {
+                    html += `<div>• ${objectId} (data not found)</div>`;
+                }
+            });
+            
+            output.innerHTML = html;
+        };
+        
+        window.testTargeting = function() {
+            const output = document.getElementById('targeting-output');
+            
+            if (!window.starChartsManager) {
+                output.innerHTML = '<div class="status-error">❌ System not available</div>';
+                return;
+            }
+            
+            // Test targeting Sol star
+            const success = window.starChartsManager.selectObjectById('A0_star');
+            
+            output.innerHTML = `
+                <div class="${success ? 'status-good' : 'status-error'}">
+                    ${success ? '✅' : '❌'} Target selection test: ${success ? 'PASSED' : 'FAILED'}
+                </div>
+            `;
+        };
+        
+        window.testVirtualWaypoints = function() {
+            const output = document.getElementById('targeting-output');
+            
+            if (!window.starChartsManager) {
+                output.innerHTML = '<div class="status-error">❌ System not available</div>';
+                return;
+            }
+            
+            // Create test waypoint
+            const waypointId = window.starChartsManager.createWaypoint({
+                name: 'Test Waypoint',
+                position: [100, 0, 100],
+                triggerRadius: 10,
+                actions: [{ type: 'test_action', params: {} }]
+            });
+            
+            output.innerHTML = `
+                <div class="status-good">✅ Virtual waypoint created: ${waypointId}</div>
+                <div>Total waypoints: ${window.starChartsManager.virtualWaypoints.size}</div>
+            `;
+        };
+        
+        window.showPerformanceMetrics = function() {
+            const output = document.getElementById('performance-output');
+            const metricsDiv = document.getElementById('performance-metrics');
+            
+            if (!window.starChartsManager) {
+                output.innerHTML = '<div class="status-error">❌ System not available</div>';
+                return;
+            }
+            
+            const metrics = window.starChartsManager.getPerformanceMetrics();
+            
+            output.innerHTML = `
+                <div class="status-good">📈 Performance Metrics:</div>
+                <div>Average Discovery Check: ${metrics.averageDiscoveryCheckTime.toFixed(2)}ms</div>
+                <div>Max Discovery Check: ${metrics.maxDiscoveryCheckTime.toFixed(2)}ms</div>
+                <div>Total Discoveries: ${metrics.totalDiscoveries}</div>
+                <div>Spatial Grid Cells: ${metrics.spatialGridCells}</div>
+            `;
+            
+            metricsDiv.innerHTML = `
+                <div class="metric">
+                    <strong>Avg Check Time</strong><br>
+                    ${metrics.averageDiscoveryCheckTime.toFixed(2)}ms
+                </div>
+                <div class="metric">
+                    <strong>Max Check Time</strong><br>
+                    ${metrics.maxDiscoveryCheckTime.toFixed(2)}ms
+                </div>
+                <div class="metric">
+                    <strong>Discoveries</strong><br>
+                    ${metrics.totalDiscoveries}
+                </div>
+                <div class="metric">
+                    <strong>Grid Cells</strong><br>
+                    ${metrics.spatialGridCells}
+                </div>
+            `;
+        };
+        
+        window.runPerformanceTest = function() {
+            const output = document.getElementById('performance-output');
+            
+            if (!window.starChartsManager) {
+                output.innerHTML = '<div class="status-error">❌ System not available</div>';
+                return;
+            }
+            
+            output.innerHTML = '<div class="status-good">Running performance test...</div>';
+            
+            // Simulate multiple discovery checks
+            const startTime = performance.now();
+            for (let i = 0; i < 100; i++) {
+                window.starChartsManager.checkDiscoveryRadius();
+            }
+            const endTime = performance.now();
+            
+            const avgTime = (endTime - startTime) / 100;
+            const status = avgTime < 5 ? 'status-good' : avgTime < 16 ? 'status-warning' : 'status-error';
+            
+            output.innerHTML = `
+                <div class="${status}">
+                    Performance Test Results:
+                </div>
+                <div>100 discovery checks: ${(endTime - startTime).toFixed(2)}ms</div>
+                <div>Average per check: ${avgTime.toFixed(2)}ms</div>
+                <div>Status: ${avgTime < 5 ? '✅ Excellent' : avgTime < 16 ? '⚠️ Acceptable' : '❌ Poor'}</div>
+            `;
+        };
+        
+        window.checkSystemHealth = function() {
+            const output = document.getElementById('health-output');
+            
+            if (!window.navigationSystemManager) {
+                output.innerHTML = '<div class="status-error">❌ Navigation System Manager not available</div>';
+                return;
+            }
+            
+            const status = window.navigationSystemManager.getSystemStatus();
+            
+            output.innerHTML = `
+                <div class="status-good">🏥 System Health Check:</div>
+                <div>Active System: ${status.activeSystem}</div>
+                <div>Star Charts: ${status.systemHealth.starCharts}</div>
+                <div>Long Range Scanner: ${status.systemHealth.longRangeScanner}</div>
+                <div>Star Charts Available: ${status.starChartsAvailable ? '✅' : '❌'}</div>
+                <div>LRS Available: ${status.longRangeScannerAvailable ? '✅' : '❌'}</div>
+                <div>System Switches: ${status.performanceMetrics.systemSwitches}</div>
+                <div>Fallback Activations: ${status.performanceMetrics.fallbackActivations}</div>
+            `;
+        };
+        
+        window.testFallback = function() {
+            const output = document.getElementById('health-output');
+            
+            if (!window.navigationSystemManager) {
+                output.innerHTML = '<div class="status-error">❌ System not available</div>';
+                return;
+            }
+            
+            // Simulate system failure
+            window.navigationSystemManager.handleSystemFailure('star_charts', new Error('Test failure'));
+            
+            const status = window.navigationSystemManager.getSystemStatus();
+            
+            output.innerHTML = `
+                <div class="status-warning">⚠️ Fallback test executed</div>
+                <div>Active System: ${status.activeSystem}</div>
+                <div>Fallback Activations: ${status.performanceMetrics.fallbackActivations}</div>
+            `;
+        };
+        
+        window.showStarCharts = function() {
+            const output = document.getElementById('ui-output');
+            
+            if (!window.starChartsUI) {
+                output.innerHTML = '<div class="status-error">❌ Star Charts UI not available</div>';
+                return;
+            }
+            
+            window.starChartsUI.show();
+            output.innerHTML = '<div class="status-good">✅ Star Charts UI shown</div>';
+        };
+        
+        window.showLongRangeScanner = function() {
+            const output = document.getElementById('ui-output');
+            
+            if (!window.navigationSystemManager || !window.navigationSystemManager.longRangeScanner) {
+                output.innerHTML = '<div class="status-error">❌ Long Range Scanner not available</div>';
+                return;
+            }
+            
+            window.navigationSystemManager.longRangeScanner.show();
+            output.innerHTML = '<div class="status-good">✅ Long Range Scanner shown</div>';
+        };
+        
+        window.toggleNavigationSystem = function() {
+            const output = document.getElementById('ui-output');
+            
+            if (!window.navigationSystemManager) {
+                output.innerHTML = '<div class="status-error">❌ Navigation System Manager not available</div>';
+                return;
+            }
+            
+            window.navigationSystemManager.toggleNavigationSystem();
+            const status = window.navigationSystemManager.getSystemStatus();
+            
+            output.innerHTML = `
+                <div class="status-good">🔄 Navigation system toggled</div>
+                <div>Active System: ${status.activeSystem}</div>
+            `;
+        };
+    </script>
+</body>
+</html>

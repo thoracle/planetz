@@ -56,7 +56,7 @@ export class CargoHoldManager {
                 console.log(`🚛 Cargo Hold ${holdSlot}: ${cargoHold.name} (Level ${cargoHold.level}) in slot ${slotId} (${cargoHold.capacity} units)`);
                 holdSlot++;
             } else {
-                console.log(`🚛 ❌ Not a cargo hold card: ${card.cardType}`);
+                // console.log(`🚛 ❌ Not a cargo hold card: ${card.cardType}`); // Reduce spam
             }
         }
         

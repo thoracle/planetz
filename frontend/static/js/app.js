@@ -14,6 +14,7 @@ import SimpleDockingManager from './SimpleDockingManager.js';
 import './ship/systems/services/HitScanService.js'; // Load Three.js hit scan service
 import './ship/systems/services/SimpleProjectileService.js'; // Load simplified projectile system
 import './cache-test.js'; // Cache test - TIMESTAMP: 1755751628397
+import './utils/ErrorReporter.js'; // Error reporting system for debugging
 
 // Global variables for warp control mode
 let warpControlMode = false;
@@ -1581,13 +1582,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Handle window resize
     window.addEventListener('resize', () => {
-        console.log('Window resized');
-        const w = Math.max(1, container.clientWidth || 0);
-        const h = Math.max(1, container.clientHeight || 0);
-        camera.aspect = w / Math.max(1, h);
+        // console.log('Window resized'); // Reduce console spam
+        
+        // Ensure container exists and has valid dimensions
+        if (!container) return;
+        
+        const w = Math.max(1, container.clientWidth || window.innerWidth || 1);
+        const h = Math.max(1, container.clientHeight || window.innerHeight || 1);
+        
+        // Validate dimensions before setting
+        if (w <= 0 || h <= 0) {
+            console.warn('Invalid resize dimensions:', { w, h, containerWidth: container.clientWidth, containerHeight: container.clientHeight });
+            return;
+        }
+        
+        camera.aspect = w / h;
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
-        // Let Three.js manage viewport; manual gl.viewport can cause INVALID_VALUE if sizes race
     });
     
     // Animation loop
@@ -1718,12 +1729,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     renderer.domElement.addEventListener('mousedown', (event) => {
         if (!editMode) return;
-        console.debug('[Roll Debug] mousedown', {
-            altKey: event.altKey,
-            metaKey: event.metaKey,
-            button: event.button,
-            buttons: event.buttons
-        });
+        // console.debug('[Roll Debug] mousedown', {
+        //     altKey: event.altKey,
+        //     metaKey: event.metaKey,
+        //     button: event.button,
+        //     buttons: event.buttons
+        // });
         if ((event.button === 0 || event.button === 2) && event.altKey && event.metaKey) {
             isRolling = true;
             lastRollX = event.clientX;
@@ -1731,7 +1742,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             controls.enabled = false; // Temporarily disable OrbitControls
             controls._screenSpacePanningBeforeRoll = controls.screenSpacePanning;
             controls.screenSpacePanning = false; // Prevent OrbitControls from snapping up vector
-            console.debug('[Roll Debug] Roll mode STARTED');
+            // console.debug('[Roll Debug] Roll mode STARTED');
             event.preventDefault();
         }
     }, true);
@@ -1750,7 +1761,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             camera.up.normalize();
             controls.target = controls.target.clone(); // Force OrbitControls to recalc
             controls.update();
-            console.debug('[Roll Debug] Rolling', { deltaX, rollAngle: -deltaX * rollSensitivity });
+            // console.debug('[Roll Debug] Rolling', { deltaX, rollAngle: -deltaX * rollSensitivity });
             event.preventDefault();
         }
     }, true);
@@ -1762,7 +1773,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             controls.screenSpacePanning = controls._screenSpacePanningBeforeRoll !== undefined ? controls._screenSpacePanningBeforeRoll : true;
             delete controls._screenSpacePanningBeforeRoll;
             controls.update();
-            console.debug('[Roll Debug] Roll mode ENDED');
+            // console.debug('[Roll Debug] Roll mode ENDED');
             event.preventDefault();
         }
     }, true);

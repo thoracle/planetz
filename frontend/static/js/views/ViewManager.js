@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GalacticChart } from './GalacticChart.js';
 import { LongRangeScanner } from './LongRangeScanner.js';
+import { NavigationSystemManager } from './NavigationSystemManager.js';
 import WarpFeedback from '../WarpFeedback.js';
 import WarpDriveManager from '../WarpDriveManager.js';
 import Ship from '../ship/Ship.js';
@@ -75,8 +76,17 @@ export class ViewManager {
         // Create galactic chart and ensure it's hidden
         this.galacticChart = new GalacticChart(this);
         
-        // Create long range scanner and ensure it's hidden
-        this.longRangeScanner = new LongRangeScanner(this);
+        // Create navigation system manager (handles both LRS and Star Charts)
+        this.navigationSystemManager = new NavigationSystemManager(
+            this, 
+            this.scene, 
+            this.camera, 
+            this.starfieldManager, 
+            this.starfieldManager?.targetComputerManager
+        );
+        
+        // Keep legacy reference for compatibility
+        this.longRangeScanner = this.navigationSystemManager.longRangeScanner;
         
         // Initialize damage control interface - DISABLED (using SimplifiedDamageControl instead)
         // The old DamageControlInterface has been replaced with SimplifiedDamageControl
@@ -266,7 +276,7 @@ export class ViewManager {
             
             const key = event.key.toLowerCase();
             const isGalacticChartVisible = this.galacticChart.isVisible();
-            const isLongRangeScannerVisible = this.longRangeScanner.isVisible();
+            const isLongRangeScannerVisible = this.navigationSystemManager.isNavigationVisible();
             const isDocked = this.starfieldManager?.isDocked;
             
             if (key === 'g') {
@@ -386,13 +396,13 @@ export class ViewManager {
                         if (scannerSystem) {
                             scannerSystem.stopScan();
                         }
-                        this.longRangeScanner.hide(false);
+                        this.navigationSystemManager.hideNavigationInterface();
                     }
                     console.log('Setting view to GALACTIC');
                     this.setView(VIEW_TYPES.GALACTIC);
                 }
             } else if (key === 'l') {
-                // Block long range scanner completely when docked
+                // L key - Long Range Scanner only
                 if (isDocked) {
                     return; // Early return - completely ignore the key when docked
                 }
@@ -403,26 +413,22 @@ export class ViewManager {
                 // Get the long range scanner system from ship
                 const scannerSystem = this.ship.systems.get('long_range_scanner');
                 
-                if (isLongRangeScannerVisible) {
-                    console.log('Restoring previous view');
+                if (this.navigationSystemManager.longRangeScanner && this.navigationSystemManager.longRangeScanner.isVisible()) {
+                    console.log('Hiding Long Range Scanner');
                     // Stop scanning when hiding scanner
                     if (scannerSystem) {
                         scannerSystem.stopScan();
                     }
-                    this.longRangeScanner.hide(true);
+                    this.navigationSystemManager.longRangeScanner.hide();
                 } else {
                     // Check if scanner system is operational
                     if (!scannerSystem) {
                         console.warn('No Long Range Scanner system found on ship');
-                        // Show HUD error message instead of just console warning
-                        console.log('🔍 ViewManager L key: starfieldManager available?', !!this.starfieldManager);
                         if (this.starfieldManager && this.starfieldManager.showHUDError) {
                             this.starfieldManager.showHUDError(
                                 'LONG RANGE SCANNER UNAVAILABLE',
                                 'System not installed on this ship'
                             );
-                        } else {
-                            console.warn('StarfieldManager not available for HUD error display');
                         }
                         if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
                             this.starfieldManager.playCommandFailedSound();
@@ -433,7 +439,6 @@ export class ViewManager {
                     if (!scannerSystem.canActivate(this.ship)) {
                         if (!scannerSystem.isOperational()) {
                             console.warn('Cannot activate Long Range Scanner: System damaged or offline');
-                            // Show HUD error message
                             if (this.starfieldManager && this.starfieldManager.showHUDError) {
                                 this.starfieldManager.showHUDError(
                                     'LONG RANGE SCANNER DAMAGED',
@@ -442,7 +447,6 @@ export class ViewManager {
                             }
                         } else {
                             console.warn('Cannot activate Long Range Scanner: Insufficient energy');
-                            // Show HUD error message
                             if (this.starfieldManager && this.starfieldManager.showHUDError) {
                                 this.starfieldManager.showHUDError(
                                     'INSUFFICIENT ENERGY',
@@ -456,7 +460,7 @@ export class ViewManager {
                         return;
                     }
                     
-                    // Play command sound like other command keys
+                    // Play command sound
                     if (this.starfieldManager && this.starfieldManager.playCommandSound) {
                         this.starfieldManager.playCommandSound();
                     }
@@ -468,7 +472,7 @@ export class ViewManager {
                         return;
                     }
                     
-                    // If galactic chart is visible, hide it first and deactivate the system
+                    // Hide other navigation interfaces
                     if (isGalacticChartVisible) {
                         console.log('Hiding galactic chart before showing scanner');
                         const chartSystem = this.ship.systems.get('galactic_chart');
@@ -477,8 +481,100 @@ export class ViewManager {
                         }
                         this.galacticChart.hide(false);
                     }
-                    console.log('Setting view to SCANNER');
-                    this.setView(VIEW_TYPES.SCANNER);
+                    
+                    // Hide Star Charts if visible
+                    if (this.navigationSystemManager.starChartsUI && this.navigationSystemManager.starChartsUI.isVisible()) {
+                        this.navigationSystemManager.starChartsUI.hide();
+                    }
+                    
+                    console.log('Showing Long Range Scanner');
+                    this.navigationSystemManager.longRangeScanner.show();
+                }
+            } else if (key === 'c') {
+                // C key - Star Charts
+                if (isDocked) {
+                    return; // Early return - completely ignore the key when docked
+                }
+                
+                event.preventDefault();
+                event.stopPropagation();
+                
+                if (this.navigationSystemManager.starChartsUI && this.navigationSystemManager.starChartsUI.isVisible()) {
+                    console.log('Hiding Star Charts');
+                    this.navigationSystemManager.starChartsUI.hide();
+                } else {
+                    // Check if Star Charts system is available
+                    if (!this.navigationSystemManager.starChartsManager || !this.navigationSystemManager.starChartsManager.isEnabled()) {
+                        console.warn('Star Charts system not available');
+                        if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                            this.starfieldManager.showHUDError(
+                                'STAR CHARTS UNAVAILABLE',
+                                'System not initialized or failed'
+                            );
+                        }
+                        if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+                            this.starfieldManager.playCommandFailedSound();
+                        }
+                        return;
+                    }
+                    
+                    // Check if ship has Star Charts cards
+                    let hasStarChartsCards = false;
+                    try {
+                        if (this.ship.hasSystemCards && typeof this.ship.hasSystemCards === 'function') {
+                            hasStarChartsCards = this.ship.hasSystemCards('star_charts');
+                            console.log(`🗺️ ViewManager C key: Star Charts card check result:`, hasStarChartsCards);
+                        } else {
+                            // Fallback for synchronous check
+                            if (this.ship.hasSystemCardsSync && typeof this.ship.hasSystemCardsSync === 'function') {
+                                hasStarChartsCards = this.ship.hasSystemCardsSync('star_charts');
+                                console.log(`🗺️ ViewManager C key: Star Charts card check (sync) result:`, hasStarChartsCards);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error checking Star Charts cards:', error);
+                    }
+                    
+                    if (!hasStarChartsCards) {
+                        console.warn('Cannot use Star Charts: No star charts cards installed');
+                        if (this.starfieldManager && this.starfieldManager.showHUDError) {
+                            this.starfieldManager.showHUDError(
+                                'STAR CHARTS CARDS MISSING',
+                                'Install star charts cards to enable navigation'
+                            );
+                        }
+                        if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
+                            this.starfieldManager.playCommandFailedSound();
+                        }
+                        return;
+                    }
+                    
+                    // Play command sound
+                    if (this.starfieldManager && this.starfieldManager.playCommandSound) {
+                        this.starfieldManager.playCommandSound();
+                    }
+                    
+                    // Hide other navigation interfaces
+                    if (isGalacticChartVisible) {
+                        console.log('Hiding galactic chart before showing Star Charts');
+                        const chartSystem = this.ship.systems.get('galactic_chart');
+                        if (chartSystem) {
+                            chartSystem.deactivateChart();
+                        }
+                        this.galacticChart.hide(false);
+                    }
+                    
+                    // Hide Long Range Scanner if visible
+                    if (this.navigationSystemManager.longRangeScanner && this.navigationSystemManager.longRangeScanner.isVisible()) {
+                        const scannerSystem = this.ship.systems.get('long_range_scanner');
+                        if (scannerSystem) {
+                            scannerSystem.stopScan();
+                        }
+                        this.navigationSystemManager.longRangeScanner.hide();
+                    }
+                    
+                    console.log('Showing Star Charts');
+                    this.navigationSystemManager.starChartsUI.show();
                 }
             } else if (key === 's' && !isDocked) {
                 // Shield toggle - DISABLED (now handled by StarfieldManager)
@@ -544,7 +640,7 @@ export class ViewManager {
             viewType,
             currentView: this.currentView,
             isGalacticVisible: this.galacticChart.isVisible(),
-            isLongRangeScannerVisible: this.longRangeScanner.isVisible(),
+            isLongRangeScannerVisible: this.navigationSystemManager.isNavigationVisible(),
             isDocked: this.starfieldManager?.isDocked
         });
         
@@ -595,12 +691,12 @@ export class ViewManager {
         if (viewType === VIEW_TYPES.SCANNER) {
             const scannerSystem = this.ship.systems.get('long_range_scanner');
             
-            if (this.longRangeScanner.isVisible()) {
+            if (this.navigationSystemManager.isNavigationVisible()) {
                 // Stop scanning when hiding scanner
                 if (scannerSystem) {
                     scannerSystem.stopScan();
                 }
-                this.longRangeScanner.hide();
+                this.navigationSystemManager.hideNavigationInterface();
                 return;
             } else {
                 // Check if scanner system can be activated (already handled in L key binding)
@@ -612,7 +708,7 @@ export class ViewManager {
                     }
                 }
                 
-                this.longRangeScanner.show();
+                this.navigationSystemManager.showNavigationInterface();
                 this.previousView = this.currentView;
                 this.savedCameraState.position.copy(this.camera.position);
                 this.savedCameraState.quaternion.copy(this.camera.quaternion);
@@ -654,7 +750,7 @@ export class ViewManager {
                     scannerSystem.stopScan();
                 }
                 this.galacticChart.hide(false);
-                this.longRangeScanner.hide();
+                this.navigationSystemManager.hideNavigationInterface();
                 // Only show crosshair if not docked
                 if (!this.starfieldManager?.isDocked) {
                     this.frontCrosshair.style.display = 'block';
@@ -680,7 +776,7 @@ export class ViewManager {
                     scannerSystemAft.stopScan();
                 }
                 this.galacticChart.hide(false);
-                this.longRangeScanner.hide();
+                this.navigationSystemManager.hideNavigationInterface();
                 // Only show crosshair if not docked
                 if (!this.starfieldManager?.isDocked) {
                     this.aftCrosshair.style.display = 'block';
@@ -869,8 +965,8 @@ export class ViewManager {
         if (this.galacticChart) {
             this.galacticChart.dispose();
         }
-        if (this.longRangeScanner) {
-            this.longRangeScanner.dispose();
+        if (this.navigationSystemManager) {
+            this.navigationSystemManager.destroy();
         }
         if (this.subspaceRadio) {
             this.subspaceRadio.dispose();

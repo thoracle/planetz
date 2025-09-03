@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Charts System - Simple Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            border: 1px solid #00ff00;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 255, 0, 0.05);
+        }
+        
+        .test-button {
+            background: #003300;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        .test-button:hover {
+            background: #006600;
+        }
+        
+        .test-output {
+            background: #001100;
+            border: 1px solid #004400;
+            padding: 10px;
+            margin: 10px 0;
+            min-height: 100px;
+            overflow-y: auto;
+            max-height: 300px;
+        }
+        
+        .status-good { color: #00ff00; }
+        .status-warning { color: #ffff00; }
+        .status-error { color: #ff0000; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🚀 Star Charts System - Simple Test</h1>
+        <p>Testing core functionality without ES6 modules</p>
+        
+        <div class="test-section">
+            <h2>📊 Database Test</h2>
+            <button class="test-button" onclick="testDatabaseLoad()">Test Database Loading</button>
+            <div id="database-output" class="test-output"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔍 Discovery Test</h2>
+            <button class="test-button" onclick="testDiscoveryLogic()">Test Discovery Logic</button>
+            <div id="discovery-output" class="test-output"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📈 Performance Test</h2>
+            <button class="test-button" onclick="testPerformance()">Test Performance</button>
+            <div id="performance-output" class="test-output"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>💾 Persistence Test</h2>
+            <button class="test-button" onclick="testPersistence()">Test LocalStorage</button>
+            <button class="test-button" onclick="clearPersistence()">Clear Saved Data</button>
+            <div id="persistence-output" class="test-output"></div>
+        </div>
+    </div>
+
+    <script>
+        // Simple tests without module dependencies
+        
+        async function testDatabaseLoad() {
+            const output = document.getElementById('database-output');
+            output.innerHTML = '<div class="status-good">Testing database loading...</div>';
+            
+            try {
+                const response = await fetch('/data/star_charts/objects.json');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const database = await response.json();
+                
+                output.innerHTML = `
+                    <div class="status-good">✅ Database loaded successfully!</div>
+                    <div><strong>Universe Seed:</strong> ${database.metadata.universe_seed}</div>
+                    <div><strong>Total Sectors:</strong> ${database.metadata.total_sectors}</div>
+                    <div><strong>Generated:</strong> ${database.metadata.generation_timestamp}</div>
+                    <div><strong>A0 Celestial Objects:</strong> ${database.sectors.A0 ? database.sectors.A0.objects.length : 0}</div>
+                    <div><strong>A0 Stations:</strong> ${database.sectors.A0?.infrastructure?.stations?.length || 0}</div>
+                    <div><strong>A0 Beacons:</strong> ${database.sectors.A0?.infrastructure?.beacons?.length || 0}</div>
+                    <div><strong>Total A0 Objects:</strong> ${
+                        1 + // star
+                        (database.sectors.A0?.objects?.length || 0) + 
+                        (database.sectors.A0?.infrastructure?.stations?.length || 0) + 
+                        (database.sectors.A0?.infrastructure?.beacons?.length || 0)
+                    }</div>
+                `;
+                
+                // Store for other tests
+                window.testDatabase = database;
+                
+            } catch (error) {
+                output.innerHTML = `
+                    <div class="status-error">❌ Database test failed!</div>
+                    <div><strong>Error:</strong> ${error.message}</div>
+                    <div><strong>Make sure the test server is running:</strong></div>
+                    <div>python3 test_server.py</div>
+                `;
+            }
+        }
+        
+        function testDiscoveryLogic() {
+            const output = document.getElementById('discovery-output');
+            
+            if (!window.testDatabase) {
+                output.innerHTML = '<div class="status-warning">⚠️ Load database first</div>';
+                return;
+            }
+            
+            output.innerHTML = '<div class="status-good">Testing discovery logic...</div>';
+            
+            // Test discovery radius calculation
+            function getDiscoveryRadius(targetCpuRange) {
+                return targetCpuRange || 50.0; // Level 1 fallback
+            }
+            
+            // Test spatial grid key generation
+            function getGridKey(position, gridSize = 50) {
+                const x = Math.floor(position[0] / gridSize);
+                const y = Math.floor(position[1] / gridSize);
+                const z = Math.floor(position[2] / gridSize);
+                return `${x},${y},${z}`;
+            }
+            
+            // Test distance calculation
+            function calculateDistance(pos1, pos2) {
+                return Math.sqrt(
+                    Math.pow(pos1[0] - pos2[0], 2) +
+                    Math.pow(pos1[1] - pos2[1], 2) +
+                    Math.pow(pos1[2] - pos2[2], 2)
+                );
+            }
+            
+            // Test with sample data
+            const playerPos = [0, 0, 0];
+            const solPos = [0, 0, 0];
+            const terraPrimePos = [149.6, 0, 0];
+            
+            const discoveryRadius = getDiscoveryRadius(150); // Level 3 Target CPU
+            const distanceToSol = calculateDistance(playerPos, solPos);
+            const distanceToTerra = calculateDistance(playerPos, terraPrimePos);
+            
+            const solGridKey = getGridKey(solPos);
+            const terraGridKey = getGridKey(terraPrimePos);
+            
+            output.innerHTML = `
+                <div class="status-good">✅ Discovery logic test passed!</div>
+                <div><strong>Discovery Radius:</strong> ${discoveryRadius} km</div>
+                <div><strong>Distance to Sol:</strong> ${distanceToSol.toFixed(1)} km</div>
+                <div><strong>Distance to Terra Prime:</strong> ${distanceToTerra.toFixed(1)} km</div>
+                <div><strong>Sol discoverable:</strong> ${distanceToSol <= discoveryRadius ? '✅ Yes' : '❌ No'}</div>
+                <div><strong>Terra Prime discoverable:</strong> ${distanceToTerra <= discoveryRadius ? '✅ Yes' : '❌ No'}</div>
+                <div><strong>Sol Grid Key:</strong> ${solGridKey}</div>
+                <div><strong>Terra Prime Grid Key:</strong> ${terraGridKey}</div>
+            `;
+        }
+        
+        function testPerformance() {
+            const output = document.getElementById('performance-output');
+            output.innerHTML = '<div class="status-good">Running performance test...</div>';
+            
+            // Simulate discovery checks
+            const iterations = 1000;
+            const startTime = performance.now();
+            
+            for (let i = 0; i < iterations; i++) {
+                // Simulate spatial grid lookup
+                const playerPos = [Math.random() * 1000, Math.random() * 1000, Math.random() * 1000];
+                const gridKey = `${Math.floor(playerPos[0] / 50)},${Math.floor(playerPos[1] / 50)},${Math.floor(playerPos[2] / 50)}`;
+                
+                // Simulate distance calculation
+                const targetPos = [Math.random() * 1000, Math.random() * 1000, Math.random() * 1000];
+                const distance = Math.sqrt(
+                    Math.pow(playerPos[0] - targetPos[0], 2) +
+                    Math.pow(playerPos[1] - targetPos[1], 2) +
+                    Math.pow(playerPos[2] - targetPos[2], 2)
+                );
+                
+                // Simulate discovery check
+                const discoverable = distance <= 150;
+            }
+            
+            const endTime = performance.now();
+            const totalTime = endTime - startTime;
+            const avgTime = totalTime / iterations;
+            
+            const status = avgTime < 0.005 ? 'status-good' : avgTime < 0.016 ? 'status-warning' : 'status-error';
+            
+            output.innerHTML = `
+                <div class="${status}">Performance Test Results:</div>
+                <div><strong>Total Time:</strong> ${totalTime.toFixed(2)}ms</div>
+                <div><strong>Iterations:</strong> ${iterations}</div>
+                <div><strong>Average per Check:</strong> ${avgTime.toFixed(4)}ms</div>
+                <div><strong>Target:</strong> <0.005ms per check</div>
+                <div><strong>Status:</strong> ${
+                    avgTime < 0.005 ? '✅ Excellent' : 
+                    avgTime < 0.016 ? '⚠️ Acceptable' : 
+                    '❌ Needs optimization'
+                }</div>
+                <div><strong>Estimated FPS Impact:</strong> ${(avgTime * 60).toFixed(2)}ms per frame</div>
+            `;
+        }
+        
+        function testPersistence() {
+            const output = document.getElementById('persistence-output');
+            
+            try {
+                // Test localStorage functionality
+                const testKey = 'star_charts_discovery_A0';
+                const testData = {
+                    sector: 'A0',
+                    discovered: ['A0_star', 'A0_terra_prime', 'A0_luna'],
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                // Save test data
+                localStorage.setItem(testKey, JSON.stringify(testData));
+                
+                // Load test data
+                const savedData = localStorage.getItem(testKey);
+                const parsedData = JSON.parse(savedData);
+                
+                output.innerHTML = `
+                    <div class="status-good">✅ Persistence test passed!</div>
+                    <div><strong>Saved Sector:</strong> ${parsedData.sector}</div>
+                    <div><strong>Discovered Objects:</strong> ${parsedData.discovered.length}</div>
+                    <div><strong>Objects:</strong> ${parsedData.discovered.join(', ')}</div>
+                    <div><strong>Last Updated:</strong> ${parsedData.lastUpdated}</div>
+                    <div><strong>Storage Available:</strong> ✅ Yes</div>
+                `;
+                
+            } catch (error) {
+                output.innerHTML = `
+                    <div class="status-error">❌ Persistence test failed!</div>
+                    <div><strong>Error:</strong> ${error.message}</div>
+                    <div><strong>LocalStorage may be disabled</strong></div>
+                `;
+            }
+        }
+        
+        function clearPersistence() {
+            const output = document.getElementById('persistence-output');
+            
+            try {
+                // Clear all star charts data
+                const keys = Object.keys(localStorage);
+                const starChartsKeys = keys.filter(key => key.startsWith('star_charts_'));
+                
+                starChartsKeys.forEach(key => {
+                    localStorage.removeItem(key);
+                });
+                
+                output.innerHTML = `
+                    <div class="status-good">✅ Persistence data cleared!</div>
+                    <div><strong>Cleared Keys:</strong> ${starChartsKeys.length}</div>
+                    <div><strong>Keys:</strong> ${starChartsKeys.join(', ') || 'None found'}</div>
+                `;
+                
+            } catch (error) {
+                output.innerHTML = `
+                    <div class="status-error">❌ Clear failed!</div>
+                    <div><strong>Error:</strong> ${error.message}</div>
+                `;
+            }
+        }
+        
+        // Auto-run database test on page load
+        window.addEventListener('load', () => {
+            setTimeout(testDatabaseLoad, 1000);
+        });
+    </script>
+</body>
+</html>

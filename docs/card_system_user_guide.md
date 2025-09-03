@@ -157,6 +157,7 @@ Every card has these core properties:
 - **Long Range Scanner**: Deep space detection
 - **Subspace Radio**: Galactic communication  
 - **Galactic Chart**: Navigation database
+- **Star Charts**: Advanced navigation and discovery tracking
 - **Target Computer**: Weapon targeting and sub-system selection
 - **Radar Systems**: Local area detection (Basic/Advanced/Tactical)
 
@@ -538,7 +539,7 @@ Cards use the **Clash Royale upgrade model** where identical cards stack togethe
 ### Starter Configurations
 
 #### Starter Ship Default Loadout
-- **Utility Slots**: Target Computer (L3), Hull Plating (L1), Long Range Scanner (L1), Galactic Chart (L1), Basic Radar (L1)
+- **Utility Slots**: Target Computer (L3), Hull Plating (L1), Long Range Scanner (L1), Star Charts (L1), Basic Radar (L1)
 - **Engine Slot**: Impulse Engines (L1)
 - **Reactor Slot**: Energy Reactor (L1)  
 - **Weapon Slots**: Laser Cannon (L1), Standard Missile (L1), Photon Torpedo (L1), Homing Missile (L1)

@@ -29,7 +29,8 @@ export default class AutoRepairSystem {
             'hull_plating': 0,      
             'long_range_scanner': 0,
             'subspace_radio': 0,    
-            'galactic_chart': 0     
+            'galactic_chart': 0,
+            'star_charts': 0     
         };
         
         this.priorities = { ...this.defaultPriorities };
