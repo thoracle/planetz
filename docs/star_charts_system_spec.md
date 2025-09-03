@@ -532,19 +532,21 @@ sequenceDiagram
 ### **Main Star Charts Interface**
 - **Layout**: Identical to current Long Range Scanner
 - **Zoom Levels**:
-  - **System Overview**: Zoom level 1 (default)
-  - **Step Zoom**: Zoom levels 2-3 (progressive zoom in)
-  - **Super Zoom**: Zoom level 0.4 (shows full beacon ring)
+  - **System Overview**: Zoom level 1 (default, most zoomed out)
+  - **Medium Zoom**: Zoom level 2 (zoomed in to show details)
+  - **Detail Zoom**: Zoom level 3 (maximum zoom, closest view)
+  - **Beacon Ring**: Zoom level 0.4 (special zoom showing full beacon ring)
 - **Controls** (Mac-compatible, same as current LRS):
   - **Click on objects**: Select for targeting → sends object ID to Target Computer
-  - **Click on empty space**: Zoom out (step by step: 3→2→1→0.4)
+  - **Click on empty space**: Zoom out one level (current level - 1, or to 0.4 if at level 1)
   - **Double-click**: Force super zoom to show beacon ring
   - **No mouse wheel**: Mac compatibility
   - **No right-click**: Mac compatibility
 
 ### **Object Selection**
-- **Click Behavior**: Click on discovered objects to select them for targeting
-- **Empty Space Behavior**: Click on empty space zooms out (progressive: 3→2→1→0.4)
+- **Click Behavior**: Click on discovered objects to select them for targeting and show details
+- **Details Panel**: Object information displayed in side panel (not separate view)
+- **Empty Space Behavior**: Click on empty space zooms out one level
 - **Target Computer Integration**:
   ```javascript
   // Decoupled targeting system - sends object ID instead of reference
@@ -559,9 +561,10 @@ sequenceDiagram
   - Both methods call `updateTargetDisplay()` to refresh the HUD
 
 ### **Zoom Behavior**
-- **Default**: Opens at zoom level 1 (system overview)
-- **Progressive Zoom Out**: Click empty space to step through zoom levels
-- **Super Zoom**: Double-click to zoom to level 0.4 (shows beacon ring)
+- **Default**: Opens at zoom level 1 (system overview, most zoomed out)
+- **Zoom In**: Click on objects to zoom in one level (up to level 3) and center on object
+- **Zoom Out**: Click empty space to zoom out one level (down to level 0.4)
+- **Super Zoom**: Double-click to force zoom to level 0.4 (beacon ring view)
 - **Reset**: Opening interface always resets to zoom level 1
 
 #### **Keyboard Controls** (Same as LRS)
@@ -573,31 +576,19 @@ sequenceDiagram
 stateDiagram-v2
     [*] --> Closed: L key press
     Closed --> Opening: L key press
-    Opening --> SystemView: Load data
-    SystemView --> ObjectView: Click object
-    SystemView --> ZoomedOutView: Click empty space
-    SystemView --> SuperZoomView: Double-click
-    ZoomedOutView --> SystemView: Click empty space
-    SuperZoomView --> SystemView: Click empty space
-    ObjectView --> SystemView: |Back or Close|
-    SystemView --> Closing: L key press
+    Opening --> MapView: Load data
+    MapView --> MapView: Click object (show details panel)
+    MapView --> MapView: Click empty space (zoom out)
+    MapView --> MapView: Double-click (super zoom)
+    MapView --> Closing: L key press
     Closing --> [*]: Animation complete
 
-    note right of SystemView
-        Default zoom level 1
-        showing discovered objects
-        with fog of war
-    end note
-
-    note right of ObjectView
-        Object details panel
-        with targeting option
-    end note
-
-    note right of SuperZoomView
-        Zoom level 0.4
-        shows full beacon ring
-        (2500x2500 viewBox)
+    note right of MapView
+        Single map view with:
+        - Zoom levels 1, 2, 3, 0.4
+        - Details panel for selected objects
+        - Fog of war for undiscovered areas
+        - Targeting integration
     end note
 ```
 
