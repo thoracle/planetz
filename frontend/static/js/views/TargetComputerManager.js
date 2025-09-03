@@ -1713,7 +1713,8 @@ export class TargetComputerManager {
             type: targetData.type,
             hasObject: !!targetData.object,
             currentTargetCount: this.targetObjects.length,
-            previousTarget: this.currentTarget?.name
+            previousTarget: this.currentTarget?.name,
+            isFromLongRangeScanner: this.isFromLongRangeScanner
         });
 
         // Set the target directly without cycling through the normal target list
@@ -1736,8 +1737,10 @@ export class TargetComputerManager {
         this.updateDirectionArrow();
         
         // Update target display
+        console.log(`🎯 About to call updateTargetDisplay() for scanner target: ${targetData.name}`);
         this.updateTargetDisplay();
-        
+        console.log(`🎯 updateTargetDisplay() completed for scanner target`);
+
         // Start range monitoring for the scanner target
         this.startRangeMonitoring();
         

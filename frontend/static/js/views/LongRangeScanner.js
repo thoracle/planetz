@@ -847,12 +847,15 @@ export class LongRangeScanner {
 
                 starfieldManager.targetComputerManager.updateTargetList();
 
-                // Try to restore the current target index after list update
+                // Try to restore the current target after list update
                 if (currentTargetName && currentTargetIndex >= 0) {
                     const restoredIndex = tcm.targetObjects.findIndex(t => t.name === currentTargetName);
-                    if (restoredIndex !== -1 && restoredIndex !== currentTargetIndex) {
+                    if (restoredIndex !== -1) {
                         console.log(`🔧 LRS: Restoring target index from ${currentTargetIndex} to ${restoredIndex} for ${currentTargetName}`);
                         tcm.targetIndex = restoredIndex;
+                        // Ensure currentTarget points to the correct object in the updated list
+                        tcm.currentTarget = tcm.targetObjects[restoredIndex];
+                        console.log(`🔧 LRS: Updated currentTarget reference to match target list object`);
                     }
                 }
 
@@ -908,6 +911,14 @@ export class LongRangeScanner {
                     // Always set the scanner target to ensure proper synchronization
                     // The previous condition was preventing updates when target list indices changed
                     console.log(`🔍 LRS: Setting scanner target: ${targetData.name} (index: ${idx})`);
+                    console.log(`🔍 LRS: Target data details:`, {
+                        name: targetData.name,
+                        type: targetData.type,
+                        hasObject: !!targetData.object,
+                        outOfRange: targetData.outOfRange,
+                        targetListSize: tcm.targetObjects.length
+                    });
+
                     starfieldManager.setTargetFromScanner(targetData);
                 }
             } else {
