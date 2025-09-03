@@ -50,12 +50,12 @@ graph TD
     SCM --> SCDS
     SCM --> SCFOG
 
-    SCDB -.-> UG: |Object IDs &amp; Positions|
-    SCDS -.-> SCM: |Discovered IDs|
-    SCFOG -.-> SCM: |Visibility Rules|
+    SCDB -.-> UG: "Object IDs &amp; Positions"
+    SCDS -.-> SCM: "Discovered IDs"
+    SCFOG -.-> SCM: "Visibility Rules"
 
-    SCM --> TCM: |Object Targeting|
-    SCM --> MM: |Waypoint Creation|
+    SCM --> TCM: "Object Targeting"
+    SCM --> MM: "Waypoint Creation"
 ```
 
 ### **Data Flow Integration**
@@ -232,9 +232,9 @@ graph TB
         AS[Audio System]
     end
 
-    SM -.-> |getDiscoveryRadius| SM
-    TC -.-> |setTargetById| TC
-    TC -.-> |setVirtualTarget| TC
+    SM -.-> SM: "getDiscoveryRadius"
+    TC -.-> TC: "setTargetById"
+    TC -.-> TC: "setVirtualTarget"
 
     SC --> SCUI
     SC --> SCR
@@ -423,14 +423,14 @@ sequenceDiagram
     loop Every 5 seconds
         PS->>SCM: checkDiscoveryRadius()
         SCM->>DB: getUndiscoveredObjects()
-        DB-->>SCM: |return object list|
+        DB-->>SCM: "return object list"
 
         alt Object within range
             SCM->>SCM: markDiscovered(objectId)
             SCM->>AS: playAudio('blurb.mp3')
             SCM->>NS: showNotification("Object discovered!")
             SCM->>SP: saveDiscoveryState()
-            SP-->>SCM: |confirmation|
+            SP-->>SCM: "confirmation"
         end
     end
 ```
@@ -502,26 +502,26 @@ sequenceDiagram
     participant PS as Player Ship
     participant WS as World State
 
-    MS->>SCM: |createWaypoint(config)|
-    SCM->>SCM: |generate waypointId|
+    MS->>SCM: "createWaypoint(config)"
+    SCM->>SCM: "generate waypointId"
     SCM->>TC: setVirtualTarget(waypointId)
-    TC-->>SCM: |target set confirmation|
+    TC-->>SCM: "target set confirmation"
 
     loop Game loop
-        PS->>SCM: |checkWaypointTriggers()|
-        SCM->>SCM: |calculate distance to waypoints|
+        PS->>SCM: "checkWaypointTriggers()"
+        SCM->>SCM: "calculate distance to waypoints"
 
         alt Within trigger radius
-            SCM->>SCM: |executeWaypointActions()|
+            SCM->>SCM: "executeWaypointActions()"
             alt Spawn ships action
-                SCM->>WS: |spawnShips(params)|
+                SCM->>WS: "spawnShips(params)"
             else Play comm action
-                SCM->>WS: |playCommunication(audioFile)|
+                SCM->>WS: "playCommunication(audioFile)"
             else Next waypoint action
-                SCM->>SCM: |advanceToNextWaypoint()|
+                SCM->>SCM: "advanceToNextWaypoint()"
                 SCM->>TC: setVirtualTarget(newWaypointId)
             else Mission update action
-                SCM->>MS: |updateMissionStatus(params)|
+                SCM->>MS: "updateMissionStatus(params)"
             end
         end
     end
@@ -611,21 +611,21 @@ sequenceDiagram
     User->>SCUI: Click on object
     SCUI->>SCM: selectObject(objectId)
     SCM->>DB: getObjectData(objectId)
-    DB-->>SCM: |return object data|
+    DB-->>SCM: "return object data"
 
     alt Object is physical
         SCM->>TC: setTargetById(objectId) ✅
         TC->>TC: search target list by ID
-        TC-->>SCM: |target set successfully|
+        TC-->>SCM: "target set successfully"
         TC->>TC: updateTargetDisplay()
     else Object is virtual waypoint
         SCM->>TC: setVirtualTarget(waypointId) ✅
         TC->>TC: create virtual target object
-        TC-->>SCM: |virtual target set|
+        TC-->>SCM: "virtual target set"
     end
 
     SCM->>SCUI: update UI feedback
-    SCUI-->>User: |Show targeting confirmation|
+    SCUI-->>User: "Show targeting confirmation"
 ```
 
 ## 💾 **Persistence System**
@@ -742,13 +742,13 @@ graph TD
     SCM --> NS
     SCM --> AS
 
-    SM -.-> |getDiscoveryRadius| SM
-    TCM -.-> |setTargetById| TCM
-    TCM -.-> |setVirtualTarget| TCM
+    SM -.-> SM: "getDiscoveryRadius"
+    TCM -.-> TCM: "setTargetById"
+    TCM -.-> TCM: "setVirtualTarget"
 
-    MS -.-> SCM: |waypoint creation|
-    SM -.-> OBJ: |celestial data|
-    SM -.-> DISC: |infrastructure data|
+    MS -.-> SCM: "waypoint creation"
+    SM -.-> OBJ: "celestial data"
+    SM -.-> DISC: "infrastructure data"
 
     style SCM fill:#4CAF50
     style SCUI fill:#FFC107
