@@ -150,7 +150,7 @@ def extract_sector_data(star_system):
             "class": star_system['star_type'],
             "position": [0, 0, 0],
             "visualRadius": star_system['star_size'],
-            "discoveryRadius": get_dynamic_discovery_radius(),  # Dynamic based on Target CPU
+            # discoveryRadius: calculated at runtime (not stored statically)
             "description": star_system['description']
         },
         "objects": []
@@ -165,7 +165,7 @@ def extract_sector_data(star_system):
             "class": planet['planet_type'],
             "position": calculate_planet_position(planet),
             "visualRadius": planet['planet_size'],
-            "discoveryRadius": get_dynamic_discovery_radius(),  # Dynamic based on Target CPU
+            # discoveryRadius: calculated at runtime (not stored statically)
             "orbit": {
                 "parent": f"{star_system['sector']}_star",
                 "radius": calculate_orbit_radius(planet),
@@ -184,7 +184,7 @@ def extract_sector_data(star_system):
                 "class": moon['moon_type'],
                 "position": calculate_moon_position(moon, planet),
                 "visualRadius": moon['moon_size'],
-                "discoveryRadius": get_dynamic_discovery_radius(),  # Dynamic based on Target CPU
+                # discoveryRadius: calculated at runtime (not stored statically)
                 "orbit": {
                     "parent": planet_data["id"],
                     "radius": calculate_moon_orbit_radius(moon),
@@ -207,30 +207,39 @@ This process ensures that:
 
 ```mermaid
 graph TB
-    subgraph "Frontend"
+    subgraph "✅ Implemented"
+        TC[Target Computer ⭐]
+        SM[SolarSystemManager ⭐]
+    end
+
+    subgraph "🚧 Proposed"
         SC[StarChartsManager]
         SCUI[StarChartsUI]
         SCR[StarChartsRenderer]
         SCP[StarChartsPersistence]
     end
 
-    subgraph "Backend/Data"
+    subgraph "📄 Data Files"
         DB[(Object Database)]
         DP[(Discovery State)]
         WP[(Waypoint Data)]
+        INF[(Infrastructure JSON)]
     end
 
-    subgraph "Integration Points"
-        TC[Target Computer]
+    subgraph "🎮 Game Systems"
         MS[Mission System]
         NS[Notification System]
         AS[Audio System]
     end
 
+    SM -.-> |getDiscoveryRadius| SM
+    TC -.-> |setTargetById| TC
+    TC -.-> |setVirtualTarget| TC
+
     SC --> SCUI
     SC --> SCR
     SC --> SCP
-    SCUI --> TC
+    SCUI -.-> TC
     SC --> MS
     SC --> NS
     SC --> AS
@@ -239,10 +248,37 @@ graph TB
     SCP --> DP
     SCP --> WP
 
-    style SC fill:#e1f5fe
-    style TC fill:#f3e5f5
-    style MS fill:#e8f5e8
+    SM -.-> INF
+
+    style TC fill:#4CAF50
+    style SM fill:#4CAF50
+    style SC fill:#FFC107
+    style INF fill:#2196F3
 ```
+
+## 📊 **Implementation Status**
+
+### **✅ What's Implemented**
+- **Target Computer Integration**: `setTargetById()` and `setVirtualTarget()` methods added
+- **Dynamic Discovery Radius**: `getDiscoveryRadius()` method in SolarSystemManager
+- **Infrastructure JSON**: Starter system infrastructure moved to `data/starter_system_infrastructure.json`
+- **Long Range Scanner Controls**: Documented and verified to match existing LRS
+
+### **🚧 What's Proposed (Not Yet Implemented)**
+- **StarChartsManager.js**: Main manager class
+- **StarChartsUI.js**: User interface components
+- **StarChartsRenderer.js**: 3D rendering system
+- **StarChartsPersistence.js**: Discovery state management
+- **Static Database**: JSON files for universe data
+
+### **📋 Implementation Priority**
+1. **High**: Target Computer integration (✅ Done)
+2. **High**: Discovery mechanics (✅ Core logic done)
+3. **Medium**: Static database generation
+4. **Medium**: UI components
+5. **Low**: Advanced features (fog of war, waypoints)
+
+---
 
 ## 📊 **Core Architecture**
 
@@ -259,7 +295,7 @@ graph TB
       "class": "G-type main-sequence star",
       "position": [0, 0, 0],
       "visualRadius": 2.0,
-      "discoveryRadius": "dynamic", // Calculated at runtime based on Target CPU
+      // discoveryRadius: calculated at runtime based on Target CPU
       "description": "The central star of the Sol system"
     },
     "terra_prime": {
@@ -269,7 +305,7 @@ graph TB
       "class": "terrestrial",
       "position": [149.6, 0, 0],
       "visualRadius": 1.2,
-      "discoveryRadius": "dynamic", // Calculated at runtime based on Target CPU
+      // discoveryRadius: calculated at runtime based on Target CPU
       "orbit": {
         "parent": "sol_star",
         "radius": 149.6,
@@ -513,9 +549,14 @@ sequenceDiagram
   ```javascript
   // Decoupled targeting system - sends object ID instead of reference
   starCharts.selectObject(objectId) {
-    targetComputer.setTargetById(objectId);
+    targetComputer.setTargetById(objectId); // ✅ Now implemented
   }
   ```
+
+  **Implementation Notes**:
+  - `setTargetById()`: Searches current target list by ID, name, or userData.id
+  - `setVirtualTarget()`: Creates virtual waypoint targets for mission system
+  - Both methods call `updateTargetDisplay()` to refresh the HUD
 
 ### **Zoom Behavior**
 - **Default**: Opens at zoom level 1 (system overview)
@@ -526,8 +567,8 @@ sequenceDiagram
 #### **Keyboard Controls** (Same as LRS)
 - **'L' or 'Escape'**: Close Star Charts interface
 - **'B' or 'b'**: Super zoom to show beacon ring
-- **'A'**: Switch to aft view
-- **'F'**: Switch to fore view
+- **'A'**: Switch to aft view *(handled by ViewManager)*
+- **'F'**: Switch to fore view *(handled by ViewManager)*
 
 #### **UI State Diagram**
 ```mermaid
@@ -584,13 +625,13 @@ sequenceDiagram
     DB-->>SCM: |return object data|
 
     alt Object is physical
-        SCM->>TC: setTargetById(objectId)
-        TC->>TC: lookup object in 3D space
+        SCM->>TC: setTargetById(objectId) ✅
+        TC->>TC: search target list by ID
         TC-->>SCM: |target set successfully|
-        TC->>Starfield: updateTargetOutline()
+        TC->>TC: updateTargetDisplay()
     else Object is virtual waypoint
-        SCM->>TC: setVirtualTarget(waypointId)
-        TC->>TC: create virtual target display
+        SCM->>TC: setVirtualTarget(waypointId) ✅
+        TC->>TC: create virtual target object
         TC-->>SCM: |virtual target set|
     end
 

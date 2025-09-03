@@ -3388,6 +3388,65 @@ export class TargetComputerManager {
     /**
      * Set the target HUD border color
      */
+    /**
+     * Set target by object ID (for Star Charts integration)
+     * @param {string} objectId - The ID of the object to target
+     */
+    setTargetById(objectId) {
+        console.log(`🎯 Setting target by ID: ${objectId}`);
+
+        // Find the object in the current target list
+        const targetIndex = this.targetObjects.findIndex(target =>
+            target.id === objectId ||
+            target.name?.toLowerCase().replace(/\s+/g, '_') === objectId ||
+            target.object?.userData?.id === objectId
+        );
+
+        if (targetIndex !== -1) {
+            this.targetIndex = targetIndex;
+            this.currentTarget = this.targetObjects[targetIndex];
+            this.updateTargetDisplay();
+            console.log(`🎯 Target set by ID: ${objectId} at index ${targetIndex}`);
+            return true;
+        }
+
+        console.warn(`🎯 Target not found by ID: ${objectId}`);
+        return false;
+    }
+
+    /**
+     * Set a virtual target (for mission waypoints)
+     * @param {string} waypointId - The ID of the waypoint
+     */
+    setVirtualTarget(waypointId) {
+        console.log(`🎯 Setting virtual target: ${waypointId}`);
+
+        // Create a virtual target object
+        const virtualTarget = {
+            id: waypointId,
+            name: `Mission Waypoint #${waypointId}`,
+            type: 'waypoint',
+            isVirtual: true,
+            position: [0, 0, 0], // Would need to be set by mission system
+            virtual: true
+        };
+
+        // Add to target list if not already there
+        const existingIndex = this.targetObjects.findIndex(target => target.id === waypointId);
+        if (existingIndex === -1) {
+            this.targetObjects.push(virtualTarget);
+            this.targetIndex = this.targetObjects.length - 1;
+        } else {
+            this.targetIndex = existingIndex;
+            this.targetObjects[existingIndex] = virtualTarget;
+        }
+
+        this.currentTarget = virtualTarget;
+        this.updateTargetDisplay();
+        console.log(`🎯 Virtual target set: ${waypointId}`);
+        return true;
+    }
+
     setTargetHUDBorderColor(color) {
         if (this.targetHUD) {
             this.targetHUD.style.borderColor = color;
