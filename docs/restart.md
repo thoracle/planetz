@@ -45,18 +45,18 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `noammo` | **Status**: In Development (2 uncommitted changes) | **Last Updated**: 2025-09-02
+**Branch**: `noammo` | **Status**: In Development (5 uncommitted changes) | **Last Updated**: 2025-09-02
 
 **Recent Work** (Last 5 commits):
+- Fix LRS target selection issue - remove restrictive condition check
+- Fix critical documentation inconsistencies
 - Fix targeting system issues and update documentation
 - chore: Clean up temporary mission files
 - feat: Complete communication HUD audio/video system with delivery mission integration
-- Add faction-colored scan line effects and video tinting to communication HUD
-- fix(missions): resolve cargo delivery system and update communication HUD
 
 **Codebase Stats**:
 - JavaScript Files: 136 | Python Files: 1606 | Documentation: 70 files
-- Total Lines: 223654 | Architecture: Fully modular ES6+ modules
+- Total Lines: 223704 | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
 ## 🏗️ Architecture Overview

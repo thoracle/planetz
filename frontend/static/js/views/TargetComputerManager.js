@@ -1775,6 +1775,12 @@ export class TargetComputerManager {
             console.log(`🎯 Cannot cycle targets - enabled: ${this.targetComputerEnabled}, targets: ${this.targetObjects.length}`);
             return;
         }
+
+        // Additional debugging for target cycling issues
+        if (this.preventTargetChanges) {
+            console.log(`🎯 Target cycling blocked by preventTargetChanges flag`);
+            return;
+        }
         
         console.log(`🎯 Cycling targets - current: ${this.currentTarget?.name}, index: ${this.targetIndex}, total targets: ${this.targetObjects.length}, isFromScanner: ${this.isFromLongRangeScanner}`);
         console.log(`🎯 Available targets for cycling:`, this.targetObjects.map(t => t.name));
@@ -1807,13 +1813,20 @@ export class TargetComputerManager {
         const targetData = this.targetObjects[this.targetIndex];
         this.currentTarget = targetData; // Store the full target data, not just the object
         
-        // Only clear scanner flag if we're cycling to a different target
-        // If we cycle back to the same scanner target, preserve the flag
-        if (previousTarget && targetData && previousTarget.name !== targetData.name) {
-            this.isFromLongRangeScanner = false; // Clear scanner flag when switching to different target
-            console.log(`🎯 Cycling to different target - clearing scanner flag`);
-        } else if (previousTarget && targetData && previousTarget.name === targetData.name && this.isFromLongRangeScanner) {
-            console.log(`🎯 Cycling back to same scanner target - preserving scanner flag`);
+        // Handle scanner flag management more robustly
+        if (previousTarget && targetData) {
+            if (previousTarget.name !== targetData.name) {
+                // Cycling to a different target - clear scanner flag
+                this.isFromLongRangeScanner = false;
+                console.log(`🎯 Cycling to different target - clearing scanner flag`);
+            } else if (previousTarget.name === targetData.name && this.isFromLongRangeScanner) {
+                // Cycling back to the same scanner target - preserve the flag
+                console.log(`🎯 Cycling back to same scanner target - preserving scanner flag`);
+            }
+        } else {
+            // Handle edge cases where previousTarget or targetData might be undefined
+            this.isFromLongRangeScanner = false;
+            console.log(`🎯 Target cycling with undefined data - clearing scanner flag for safety`);
         }
         
         // Debug target name for troubleshooting

@@ -139,7 +139,7 @@ export class LongRangeScanner {
                 clearInterval(this._readyInterval);
                 this._readyInterval = null;
             }
-            window.removeEventListener('starSystemReady', this._onStarSystemReady);
+            // Note: onReady function is defined locally in show() method and cleaned up there
             if (shouldRestoreView && this.viewManager) {
                 this.viewManager.restorePreviousView();
             }
@@ -836,12 +836,29 @@ export class LongRangeScanner {
         if (setAsTarget && starfieldManager && starfieldManager.targetComputerEnabled) {
             // Ensure TargetComputerManager exists and has a fresh list
             if (starfieldManager.targetComputerManager) {
-                console.log(`🔍 LRS: Updating target list before setting scanner target for ${bodyName}`);
-                starfieldManager.targetComputerManager.updateTargetList();
                 const tcm = starfieldManager.targetComputerManager;
+
+                // Store current target information before updating list
+                const currentTargetName = tcm.currentTarget?.name;
+                const currentTargetIndex = tcm.targetIndex;
+
+                console.log(`🔍 LRS: Updating target list before setting scanner target for ${bodyName}`);
+                console.log(`🔍 LRS: Current target before update: ${currentTargetName} at index ${currentTargetIndex}`);
+
+                starfieldManager.targetComputerManager.updateTargetList();
+
+                // Try to restore the current target index after list update
+                if (currentTargetName && currentTargetIndex >= 0) {
+                    const restoredIndex = tcm.targetObjects.findIndex(t => t.name === currentTargetName);
+                    if (restoredIndex !== -1 && restoredIndex !== currentTargetIndex) {
+                        console.log(`🔧 LRS: Restoring target index from ${currentTargetIndex} to ${restoredIndex} for ${currentTargetName}`);
+                        tcm.targetIndex = restoredIndex;
+                    }
+                }
+
                 let idx = tcm.targetObjects.findIndex(t => (t.name === bodyName) || (t.object?.userData?.name === bodyName));
                 console.log(`🔍 LRS: Found ${bodyName} at index ${idx} in target list (${tcm.targetObjects.length} total targets)`);
-                
+
                 // If body not found in range, force-add it as an out-of-range target
                 if (idx === -1) {
                     console.log(`🔍 Long Range Scanner: Adding out-of-range celestial body ${bodyName} to target list`);
@@ -862,6 +879,26 @@ export class LongRangeScanner {
                     };
                     tcm.targetObjects.push(outOfRangeTarget);
                     idx = tcm.targetObjects.length - 1;
+
+                    // Ensure target computer can cycle through this new target
+                    console.log(`🔍 LRS: Added out-of-range target at index ${idx}, ensuring cycling is possible`);
+                } else {
+                    // Target already exists - check if we need to update its data
+                    const existingTarget = tcm.targetObjects[idx];
+                    if (existingTarget.outOfRange && !existingTarget.object) {
+                        // Update existing out-of-range target with current object reference
+                        console.log(`🔍 LRS: Updating existing out-of-range target ${bodyName} with current object reference`);
+                        existingTarget.object = targetBody;
+                        existingTarget.distance = starfieldManager.camera.position.distanceTo(targetBody.position);
+                    }
+                }
+
+                // Additional safeguard: ensure target index is valid
+                if (idx >= 0 && idx < tcm.targetObjects.length) {
+                    console.log(`🔍 LRS: Target index ${idx} is valid for target list of size ${tcm.targetObjects.length}`);
+                } else {
+                    console.warn(`🔍 LRS: Target index ${idx} is invalid for target list of size ${tcm.targetObjects.length}`);
+                    idx = -1; // Reset to prevent errors
                 }
                 
                 if (idx !== -1) {
@@ -877,8 +914,11 @@ export class LongRangeScanner {
                 // Fallback to previous behavior using SFManager list
                 const targetIndex = starfieldManager.targetObjects.findIndex(obj => obj.name === bodyName);
                 if (targetIndex !== -1) {
-                    starfieldManager.targetIndex = targetIndex - 1;
-                    starfieldManager.cycleTarget();
+                    // Set target directly without off-by-one error
+                    starfieldManager.targetIndex = targetIndex;
+                    // Create a target data object similar to what TargetComputerManager expects
+                    const fallbackTargetData = starfieldManager.targetObjects[targetIndex];
+                    starfieldManager.setTargetFromScanner(fallbackTargetData);
                 }
             }
         }
@@ -1003,6 +1043,15 @@ export class LongRangeScanner {
                 };
                 tcm.targetObjects.push(outOfRangeTarget);
                 idx = tcm.targetObjects.length - 1;
+            } else {
+                // Beacon already exists - update its position and distance if needed
+                const existingTarget = tcm.targetObjects[idx];
+                if (existingTarget.outOfRange) {
+                    const distance = starfieldManager.camera.position.distanceTo(beacon.position);
+                    console.log(`🔍 LRS: Updating existing out-of-range beacon ${beacon.userData?.name || 'Navigation Beacon'} (distance: ${distance.toFixed(1)}km)`);
+                    existingTarget.position = beacon.position.toArray();
+                    existingTarget.distance = distance;
+                }
             }
             
             if (idx !== -1) {
