@@ -50,12 +50,12 @@ graph TD
     SCM --> SCDS
     SCM --> SCFOG
 
-    SCDB -.-> UG: "Object IDs & Positions"
-    SCDS -.-> SCM: "Discovered IDs"
-    SCFOG -.-> SCM: "Visibility Rules"
+    SCDB -.-> UG: |Object IDs & Positions|
+    SCDS -.-> SCM: |Discovered IDs|
+    SCFOG -.-> SCM: |Visibility Rules|
 
-    SCM --> TCM: "Object Targeting"
-    SCM --> MM: "Waypoint Creation"
+    SCM --> TCM: |Object Targeting|
+    SCM --> MM: |Waypoint Creation|
 ```
 
 ### **Data Flow Integration**
@@ -490,25 +490,40 @@ sequenceDiagram
 ## 🖥️ **User Interface**
 
 ### **Main Star Charts Interface**
-- **Layout**: Similar to current Long Range Scanner
+- **Layout**: Identical to current Long Range Scanner
 - **Zoom Levels**:
-  - **System Overview**: Full solar system view
-  - **Sector Detail**: Close-up of specific areas
-  - **Object Focus**: Detailed view of selected object
-- **Controls**:
-  - Mouse wheel: Zoom in/out
-  - Click: Select object for targeting
-  - Right-click: Center on object
+  - **System Overview**: Zoom level 1 (default)
+  - **Step Zoom**: Zoom levels 2-3 (progressive zoom in)
+  - **Super Zoom**: Zoom level 0.4 (shows full beacon ring)
+- **Controls** (Mac-compatible, same as current LRS):
+  - **Click on objects**: Select for targeting → sends object ID to Target Computer
+  - **Click on empty space**: Zoom out (step by step: 3→2→1→0.4)
+  - **Double-click**: Force super zoom to show beacon ring
+  - **No mouse wheel**: Mac compatibility
+  - **No right-click**: Mac compatibility
 
 ### **Object Selection**
-- **Click Behavior**: Send object ID to Target Computer
+- **Click Behavior**: Click on discovered objects to select them for targeting
+- **Empty Space Behavior**: Click on empty space zooms out (progressive: 3→2→1→0.4)
 - **Target Computer Integration**:
   ```javascript
-  // Decoupled targeting system
+  // Decoupled targeting system - sends object ID instead of reference
   starCharts.selectObject(objectId) {
     targetComputer.setTargetById(objectId);
   }
   ```
+
+### **Zoom Behavior**
+- **Default**: Opens at zoom level 1 (system overview)
+- **Progressive Zoom Out**: Click empty space to step through zoom levels
+- **Super Zoom**: Double-click or press 'B' to zoom to level 0.4 (shows beacon ring)
+- **Reset**: Opening interface always resets to zoom level 1
+
+#### **Keyboard Controls** (Same as LRS)
+- **'L' or 'Escape'**: Close Star Charts interface
+- **'B' or 'b'**: Super zoom to show beacon ring
+- **'A'**: Switch to aft view
+- **'F'**: Switch to fore view
 
 #### **UI State Diagram**
 ```mermaid
@@ -517,27 +532,29 @@ stateDiagram-v2
     Closed --> Opening: L key press
     Opening --> SystemView: Load data
     SystemView --> ObjectView: Click object
-    SystemView --> ZoomedView: Mouse wheel
-    ZoomedView --> SystemView: Mouse wheel
+    SystemView --> ZoomedOutView: Click empty space
+    SystemView --> SuperZoomView: Double-click or B key
+    ZoomedOutView --> SystemView: Click empty space
+    SuperZoomView --> SystemView: Click empty space
     ObjectView --> SystemView: Back/Close
     SystemView --> Closing: L key press
     Closing --> [*]: Animation complete
 
     note right of SystemView
-        Default view showing
-        discovered objects with
-        fog of war
+        Default zoom level 1
+        showing discovered objects
+        with fog of war
     end note
 
     note right of ObjectView
-        Detailed view of
-        selected object
+        Object details panel
         with targeting option
     end note
 
-    note right of ZoomedView
-        Close-up view of
-        specific area or object
+    note right of SuperZoomView
+        Zoom level 0.4
+        shows full beacon ring
+        (2500x2500 viewBox)
     end note
 ```
 
@@ -912,7 +929,6 @@ The infrastructure data is stored in `data/starter_system_infrastructure.json`:
       "position": [0.39, 45],
       "size": 0.8,
       "color": "#00ff44",
-      "discoveryRadius": 100.0,
       "services": ["repair", "refuel", "energy_recharge", "research"],
       "description": "Solar energy research and power generation",
       "intel_brief": "Alliance solar research facility powering Terra Prime"
@@ -924,10 +940,25 @@ The infrastructure data is stored in `data/starter_system_infrastructure.json`:
       "name": "Navigation Beacon #1",
       "type": "navigation_beacon",
       "position": [175, 0, 0],
-      "discoveryRadius": 25.0,
       "description": "Automated navigation aid for Sol system"
     }
   ]
+}
+```
+
+### **Dynamic Discovery Radius**
+
+**Discovery radius is now calculated dynamically** based on the player's equipped Target CPU card:
+
+- **Equipped Target CPU**: Uses the range of the equipped card (e.g., 150km for Level 3)
+- **No Target CPU**: Falls back to Level 1 Target CPU range (50km)
+- **All Objects**: Same discovery radius for all object types (stations, beacons, celestial bodies)
+
+```javascript
+getDiscoveryRadius() {
+    // Get player's equipped target CPU range
+    const targetComputer = ship.systems?.get('target_computer');
+    return targetComputer?.range || 50; // Level 1 fallback
 }
 ```
 
@@ -1145,6 +1176,7 @@ This integration approach provides the best of both worlds:
 ### **Functional Requirements**
 - ✅ All celestial objects discoverable through proximity
 - ✅ **NEW**: All infrastructure objects (stations, beacons) discoverable through proximity
+- ✅ **NEW**: Dynamic discovery radius based on equipped Target CPU card
 - ✅ Persistent discovery state across sessions (celestial + infrastructure)
 - ✅ Fog of war with gradual exploration (revealing both celestial and infrastructure)
 - ✅ Mission waypoint system functional
