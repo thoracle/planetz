@@ -1006,8 +1006,7 @@ export class SolarSystemManager {
                     faction: 'Neutral',
                     isBeacon: true,
                     description: beaconInfo.description,
-                    id: beaconInfo.id,
-                    discoveryRadius: beaconInfo.discoveryRadius
+                    id: beaconInfo.id
                 };
 
                 this.scene.add(beacon);
@@ -1043,6 +1042,33 @@ export class SolarSystemManager {
             console.log(`📡 Created ${beaconData.length} Navigation Beacons from JSON data`);
         } catch (error) {
             console.error('❌ Failed to create navigation beacons from JSON:', error);
+        }
+    }
+
+    /**
+     * Get discovery radius based on player's target CPU card
+     * @returns {number} Discovery radius in kilometers
+     */
+    getDiscoveryRadius() {
+        try {
+            // Try to get the player's ship and target CPU system
+            if (this.starfieldManager && this.starfieldManager.ship) {
+                const ship = this.starfieldManager.ship;
+                const targetComputer = ship.systems?.get('target_computer');
+
+                if (targetComputer && targetComputer.range) {
+                    // Use the equipped target CPU's range
+                    console.log(`🎯 Using equipped target CPU range: ${targetComputer.range}km for discovery radius`);
+                    return targetComputer.range;
+                }
+            }
+
+            // Fallback to level 1 target CPU range if no target CPU equipped
+            console.log(`🎯 No target CPU equipped, using level 1 range: 50km for discovery radius`);
+            return 50; // Level 1 target CPU range
+        } catch (error) {
+            console.warn('⚠️ Failed to get target CPU range, using default 50km:', error);
+            return 50;
         }
     }
 
@@ -1120,6 +1146,9 @@ export class SolarSystemManager {
             faction: stationData.faction,
             type: stationData.type,
             description: stationData.description,
+            services: stationData.services || [],
+            intel_brief: stationData.intel_brief || stationData.description,
+            discoveryRadius: this.getDiscoveryRadius(), // Dynamic based on target CPU
             isSpaceStation: true,
             canDock: true // Space stations should be dockable
         };

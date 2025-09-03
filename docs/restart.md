@@ -45,18 +45,18 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `noammo` | **Status**: In Development (5 uncommitted changes) | **Last Updated**: 2025-09-02
+**Branch**: `noammo` | **Status**: In Development (2 uncommitted changes) | **Last Updated**: 2025-09-02
 
 **Recent Work** (Last 5 commits):
-- Fix LRS target selection issue - remove restrictive condition check
-- Fix critical documentation inconsistencies
-- Fix targeting system issues and update documentation
-- chore: Clean up temporary mission files
-- feat: Complete communication HUD audio/video system with delivery mission integration
+- Fix Mermaid syntax errors in Star Charts specification
+- Fix LRS UI inconsistencies in Star Charts specification
+- Fix keyboard controls inconsistency with LRS UI
+- Correct data source approach - all sectors from verse.py except A0 JSON override
+- Simplify complex hybrid discovery system - replace with clean single approach
 
 **Codebase Stats**:
-- JavaScript Files: 136 | Python Files: 1606 | Documentation: 70 files
-- Total Lines: 223704 | Architecture: Fully modular ES6+ modules
+- JavaScript Files: 136 | Python Files: 1606 | Documentation: 71 files
+- Total Lines: 225237 | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
 ## 🏗️ Architecture Overview

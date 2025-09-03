@@ -3427,7 +3427,7 @@ export class TargetComputerManager {
             name: `Mission Waypoint #${waypointId}`,
             type: 'waypoint',
             isVirtual: true,
-            position: [0, 0, 0], // Would need to be set by mission system
+            position: [0, 0, 0], // Position should be provided by Star Charts or mission system
             virtual: true
         };
 
