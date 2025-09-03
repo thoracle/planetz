@@ -267,14 +267,16 @@ graph TB
 ### **🚧 What's Proposed (Simple Implementation)**
 - **StarChartsManager.js**: Main manager with simple proximity discovery
 - **StarChartsUI.js**: Clean UI matching LRS controls
-- **Static Database**: Single JSON file (either from verse.py or JSON)
+- **Static Database**: JSON files generated from verse.py (with A0 JSON override)
 - **Basic Fog of War**: Simple reveal system
 
-### **📋 Simple Implementation Priority**
-1. **High**: Choose data source approach (verse.py expansion vs JSON)
-2. **High**: Basic proximity discovery system
-3. **Medium**: UI implementation matching LRS
-4. **Low**: Visual polish and advanced features
+### **📋 Implementation Priority**
+1. **High**: Expand verse.py to generate stations/beacons for all sectors
+2. **High**: Create A0 JSON infrastructure file for consistent starting system
+3. **High**: Generate static database from verse.py (with A0 override)
+4. **Medium**: Implement basic proximity discovery system
+5. **Medium**: UI implementation matching LRS controls
+6. **Low**: Visual polish and advanced features
 
 ---
 
@@ -1112,25 +1114,26 @@ Star Charts uses a **single, simple discovery mechanism**:
 - **Unified System**: Same discovery logic for all object types
 
 #### **Data Sources**
-Choose one approach:
+**Corrected Approach:**
 
-**Option A: Expand verse.py** (Recommended)
-- verse.py generates **everything**: stars, planets, moons, stations, beacons
-- Star Charts reads complete static database from verse.py output
+**All Sectors from verse.py** (A1, A2, B1, etc.)
+- verse.py generates all sectors procedurally
+- Ensures consistent universe across all exploration
 - Single source of truth for universe generation
 
-**Option B: JSON for Starting System**
-- verse.py generates celestial bodies only
-- Starting system infrastructure loaded from JSON file
-- Clean separation between procedural generation and static content
+**A0 Starting System Override** (JSON file)
+- A0 sector uses JSON file for consistent starting experience
+- Contains predefined stations, beacons, and infrastructure
+- Players always start with the same initial setup
+- Allows for mission-critical locations and tutorials
 
 ## 🔧 **Simplified Implementation Phases**
 
-### **Phase 0: Choose Data Source**
-1. **Option A**: Expand verse.py to generate stations and beacons
-2. **Option B**: Create JSON file for starting system infrastructure
-3. Generate static database from chosen source
-4. Test database generation and loading
+### **Phase 0: Database Generation**
+1. **Expand verse.py**: Add station/beacon generation to verse.py for all sectors
+2. **Create A0 JSON**: Define A0 starting system infrastructure in JSON file
+3. **Generate Static Database**: Create JSON database from verse.py output (with A0 override)
+4. **Test Generation**: Verify database generation and loading works correctly
 
 ### **Phase 1: Core Discovery System**
 1. Implement basic StarChartsManager with proximity discovery
@@ -1184,7 +1187,8 @@ planetPosition = [orbitRadius * Math.cos(angle), 0, orbitRadius * Math.sin(angle
 
 ### **Seed Consistency**
 - **Environment Variable**: Uses same `UNIVERSE_SEED` as game
-- **Deterministic Generation**: Same seed always produces same universe
+- **Deterministic Generation**: Same seed produces same universe for all sectors except A0
+- **A0 Override**: A0 sector uses JSON file instead of procedural generation for consistency
 - **Version Tracking**: Database includes generation timestamp and seed
 - **Regeneration Support**: Can regenerate database when universe logic changes
 
