@@ -50,7 +50,7 @@ graph TD
     SCM --> SCDS
     SCM --> SCFOG
 
-    SCDB -.-> UG: |Object IDs & Positions|
+    SCDB -.-> UG: |Object IDs &amp; Positions|
     SCDS -.-> SCM: |Discovered IDs|
     SCFOG -.-> SCM: |Visibility Rules|
 
@@ -536,7 +536,7 @@ stateDiagram-v2
     SystemView --> SuperZoomView: Double-click or B key
     ZoomedOutView --> SystemView: Click empty space
     SuperZoomView --> SystemView: Click empty space
-    ObjectView --> SystemView: Back/Close
+    ObjectView --> SystemView: |Back or Close|
     SystemView --> Closing: L key press
     Closing --> [*]: Animation complete
 
