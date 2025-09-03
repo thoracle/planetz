@@ -361,7 +361,11 @@ export class HelpInterface {
                     </div>
                     <div class="control-entry">
                         <span class="key-binding">Tab</span>
-                        <span class="control-desc">Cycle Targets</span>
+                        <span class="control-desc">Cycle Targets (Next)</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Shift+Tab</span>
+                        <span class="control-desc">Cycle Targets (Previous)</span>
                     </div>
             `;
 

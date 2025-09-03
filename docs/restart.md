@@ -206,6 +206,28 @@ unknown: '#44ffff'   // Cyan for unknown
 
 ---
 
+## ⚠️ Known Issues
+
+### **Long Range Scanner (LRS) Target Selection**
+**Issue**: After selecting a target from the Long Range Scanner for the first time, subsequent attempts to select different targets from the LRS may fail to properly update the target computer.
+
+**Status**: Under Investigation
+- **First Selection**: Works correctly - target is set and protected from auto-switching
+- **Subsequent Selections**: May not properly update the target computer with new selection
+- **Workaround**: Close and reopen the Long Range Scanner, or use Tab targeting to cycle through available targets
+
+**Technical Details**:
+- Target index management between LRS and TargetComputerManager may have synchronization issues
+- `setTargetFromScanner()` method appears to work but target computer may not reflect the change
+- Logs show successful target setting but UI/behavior doesn't update accordingly
+
+**Related Systems**: 
+- `LongRangeScanner.js` - Target selection logic
+- `TargetComputerManager.js` - Target index and state management
+- `StarfieldManager.js` - Target synchronization between systems
+
+---
+
 ## 📝 Maintenance Notes
 
 **To update this file's dynamic content:**

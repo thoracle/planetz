@@ -1,0 +1,36 @@
+stateDiagram-v2
+    [*] --> TargetComputerOff : System Start
+    
+    TargetComputerOff --> TargetComputerEnabled : User Activates (T key)
+    TargetComputerEnabled --> TargetComputerOff : User Deactivates (T key)
+    
+    TargetComputerEnabled --> ScanningForTargets : Auto Scan
+    
+    ScanningForTargets --> NoTargetsFound : No Objects in Range
+    ScanningForTargets --> TargetsDetected : Objects Found
+    
+    NoTargetsFound --> NoTargetsMode : Display "No Targets"
+    NoTargetsMode --> TargetsDetected : New Objects Enter Range
+    NoTargetsMode --> TargetComputerOff : User Deactivates
+    
+    TargetsDetected --> NormalTargetAcquired : First Target Auto-Selected<br/>(isFromLongRangeScanner = false)
+    TargetsDetected --> NormalTargetSelected : User Cycles Target (TAB/Shift+TAB)<br/>(isFromLongRangeScanner = false)
+    TargetsDetected --> ScannerTargetSelected : Long-Range Scanner Selection<br/>(isFromLongRangeScanner = true)
+    
+    NormalTargetAcquired --> NormalTargetSelected : User Cycles (TAB/Shift+TAB)<br/>(isFromLongRangeScanner = false)
+    NormalTargetAcquired --> AutoTargetSwitched : Target Out of Range (>150km)<br/>(Auto Switch Allowed)
+    NormalTargetAcquired --> NoTargetsFound : All Targets Lost
+    
+    NormalTargetSelected --> NormalTargetSelected : User Cycles (TAB/Shift+TAB)<br/>(Forward/Backward)
+    NormalTargetSelected --> AutoTargetSwitched : Target Out of Range (>150km)<br/>(Auto Switch Allowed)
+    NormalTargetSelected --> NoTargetsFound : All Targets Lost
+    
+    ScannerTargetSelected --> NormalTargetSelected : User Cycles (TAB/Shift+TAB)<br/>(Switches to Normal Target)
+    ScannerTargetSelected --> ScannerTargetProtected : Target Out of Range (>150km)<br/>(Scanner Protection Active)
+    ScannerTargetSelected --> NoTargetsFound : All Targets Lost
+    
+    ScannerTargetProtected --> ScannerTargetSelected : Target Still Locked<br/>(Extended Range Maintained)
+    ScannerTargetProtected --> NoTargetsFound : User Cycles to Available
+    
+    AutoTargetSwitched --> NormalTargetAcquired : New Auto Target
+    AutoTargetSwitched --> NoTargetsFound : No Alternatives

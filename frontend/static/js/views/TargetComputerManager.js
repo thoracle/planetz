@@ -31,6 +31,12 @@ export class TargetComputerManager {
         this.previousTarget = null;
         this.targetedObject = null;
         this.lastTargetedObjectId = null;
+        this.isFromLongRangeScanner = false; // Track if current target was selected from long-range scanner
+        
+        // Persistent target cache for better cycling experience
+        this.knownTargets = new Map(); // Cache of all known targets by name
+        this.lastFullScanTime = 0;
+        this.fullScanInterval = 30000; // 30 seconds between full scans
         
         // UI elements
         this.targetHUD = null;
@@ -583,7 +589,7 @@ export class TargetComputerManager {
                     this.targetIndex = -1;
                     if (this.targetObjects.length > 0) {
                         // Call cycleTarget directly and then sync with StarfieldManager
-                        this.cycleTarget(false); // false = automatic cycle
+                        this.cycleTarget(); // Auto-select first target
                         
                         // Stop no targets monitoring since we have a target
                         this.stopNoTargetsMonitoring();
@@ -606,6 +612,9 @@ export class TargetComputerManager {
                                 this.viewManager.starfieldManager.updateTargetOutline(this.currentTarget?.object || this.currentTarget, 0);
                             }
                         }
+                        
+                        // Force direction arrow update when target changes
+                        this.updateDirectionArrow();
 
                     } else {
                         console.log('🎯 No targets available for initial selection');
@@ -766,6 +775,7 @@ export class TargetComputerManager {
         this.targetInfoDisplay.innerHTML = '';
         this.currentTarget = null;
         this.targetIndex = -1;
+        this.isFromLongRangeScanner = false; // Reset scanner flag
     }
 
     /**
@@ -866,12 +876,34 @@ export class TargetComputerManager {
                 console.log(`🎯 Targets detected while monitoring - automatically acquiring nearest target`);
                 this.stopNoTargetsMonitoring();
                 
-                // Select nearest target
-                this.targetIndex = -1;
-                this.cycleTarget(false); // false = automatic cycle
-                
-                // Play audio feedback for automatic target reacquisition
-                this.playAudio('frontend/static/audio/blurb.mp3');
+                // If no current target is set, automatically select the nearest one
+                if (!this.currentTarget) {
+                    console.log(`🎯 No current target - automatically selecting nearest target`);
+                    this.targetIndex = -1;
+                    this.cycleTarget(); // Auto-select nearest target
+                    
+                    // Play audio feedback for automatic target reacquisition
+                    this.playAudio('frontend/static/audio/blurb.mp3');
+                } else {
+                    // Update target index to match the current target (scanner or normal)
+                    console.log(`🎯 Current target exists - updating target index for ${this.currentTarget.name}`);
+                    const currentIndex = this.targetObjects.findIndex(target => target.name === this.currentTarget.name);
+                    if (currentIndex !== -1) {
+                        this.targetIndex = currentIndex;
+                        this.updateTargetDisplay();
+                    } else {
+                        // Current target not found in list - this can happen during list rebuilding
+                        // Don't automatically cycle if it's a scanner target, just update the display
+                        if (this.isFromLongRangeScanner) {
+                            console.log(`🎯 Scanner target ${this.currentTarget.name} not in current list - maintaining lock`);
+                            this.updateTargetDisplay();
+                        } else {
+                            console.log(`🎯 Current target not found - selecting nearest available target`);
+                            this.targetIndex = -1;
+                            this.cycleTarget();
+                        }
+                    }
+                }
                 
                 // Start monitoring the acquired target's range
                 this.startRangeMonitoring();
@@ -888,6 +920,9 @@ export class TargetComputerManager {
                         this.viewManager.starfieldManager.updateTargetOutline(this.currentTarget?.object || this.currentTarget, 0);
                     }
                 }
+                
+                // Force direction arrow update when target changes
+                this.updateDirectionArrow();
             }
         }, 2000); // Check every 2 seconds
     }
@@ -941,7 +976,8 @@ export class TargetComputerManager {
             
             // Check if current target is out of range
             if (distance > maxRange) {
-                console.log(`🎯 Current target out of range (${distance.toFixed(1)}km > ${maxRange}km) - searching for new target`);
+                console.log(`🎯 Current target out of range (${distance.toFixed(1)}km > ${maxRange}km) - handling out of range`);
+                this.stopRangeMonitoring(); // Stop monitoring before handling to prevent loops
                 this.handleTargetOutOfRange();
             }
         }, 3000); // Check every 3 seconds
@@ -962,14 +998,29 @@ export class TargetComputerManager {
      * Handle when current target goes out of range
      */
     handleTargetOutOfRange() {
+        // Protect targets selected from long-range scanner - they have extended targeting info
+        if (this.isFromLongRangeScanner) {
+            console.log(`🎯 Current target out of range but was selected from long-range scanner - maintaining target lock`);
+            return; // Don't auto-switch scanner targets
+        }
+        
+        console.log(`🎯 Current target out of range - clearing target and searching for alternatives`);
+        
+        // Store current target info for logging
+        const outOfRangeTargetName = this.currentTarget?.name || this.currentTarget?.ship?.shipName || 'Unknown';
+        
+        // Clear the current target immediately to prevent loops
+        this.currentTarget = null;
+        this.targetIndex = -1;
+        this.isFromLongRangeScanner = false;
+        
         // Update target list to see what's currently in range
         this.updateTargetList();
         
-        // If we have targets in range, select the nearest one
+        // Check if we have any targets in range
         if (this.targetObjects && this.targetObjects.length > 0) {
-            console.log(`🎯 Switching to nearest target in range`);
-            this.targetIndex = -1;
-            this.cycleTarget(false); // false = automatic cycle
+            console.log(`🎯 Found ${this.targetObjects.length} alternative targets - selecting nearest`);
+            this.cycleTarget(); // Auto-select nearest target
             
             // Play audio feedback for automatic target switch
             this.playAudio('frontend/static/audio/blurb.mp3');
@@ -988,9 +1039,7 @@ export class TargetComputerManager {
             }
         } else {
             // No targets in range - show no targets display
-            console.log(`🎯 No targets in range - showing no targets display`);
-            this.currentTarget = null;
-            this.targetIndex = -1;
+            console.log(`🎯 No alternative targets found after ${outOfRangeTargetName} went out of range - showing no targets display`);
             this.stopRangeMonitoring();
             
             // Clear target on ship's TargetComputer system
@@ -1062,6 +1111,9 @@ export class TargetComputerManager {
     updateTargetList() {
         // console.log(`🎯 updateTargetList called: physicsManager=${!!window.physicsManager}, physicsManagerReady=${!!window.physicsManagerReady}`);
         
+        // Store previous target list for comparison
+        const previousTargets = [...this.targetObjects];
+        
         // Use physics-based spatial queries if available, otherwise fall back to traditional method
         if (window.physicsManager && window.physicsManagerReady) {
             // console.log(`🎯 Using updateTargetListWithPhysics()`);
@@ -1069,6 +1121,97 @@ export class TargetComputerManager {
         } else {
             // console.log(`🎯 Using updateTargetListTraditional()`);
             this.updateTargetListTraditional();
+        }
+        
+        // Update the known targets cache with current targets
+        this.updateKnownTargetsCache(this.targetObjects);
+        
+        // If we have a scanner target and the new list is very small, enhance it with cached targets
+        if (this.isFromLongRangeScanner && this.targetObjects.length <= 2) {
+            console.log(`🎯 Scanner target active with small target list (${this.targetObjects.length}) - enhancing with cached targets for better cycling`);
+            
+            const enhancedTargets = this.enhanceTargetListWithCache(this.targetObjects);
+            if (enhancedTargets.length > this.targetObjects.length) {
+                this.targetObjects = enhancedTargets;
+                console.log(`🎯 Enhanced target list for cycling: ${this.targetObjects.length} targets available`);
+            }
+        }
+    }
+
+    /**
+     * Update the known targets cache with current targets
+     */
+    updateKnownTargetsCache(currentTargets) {
+        const now = Date.now();
+        
+        // Add current targets to cache
+        for (const target of currentTargets) {
+            if (target && target.name) {
+                this.knownTargets.set(target.name, {
+                    ...target,
+                    lastSeen: now,
+                    distance: this.calculateTargetDistance(target)
+                });
+            }
+        }
+        
+        // Clean up old entries (older than 5 minutes)
+        const maxAge = 5 * 60 * 1000; // 5 minutes
+        for (const [name, cachedTarget] of this.knownTargets.entries()) {
+            if (now - cachedTarget.lastSeen > maxAge) {
+                this.knownTargets.delete(name);
+            }
+        }
+    }
+
+    /**
+     * Enhance target list with cached targets for better cycling
+     */
+    enhanceTargetListWithCache(currentTargets) {
+        const enhancedTargets = [...currentTargets];
+        const currentTargetNames = new Set(currentTargets.map(t => t.name));
+        const maxCyclingRange = 500; // 500km for cycling purposes
+        
+        // Add cached targets that are within reasonable range
+        for (const [name, cachedTarget] of this.knownTargets.entries()) {
+            // Skip if already in current list
+            if (currentTargetNames.has(name)) {
+                continue;
+            }
+            
+            // Calculate current distance to cached target
+            const distance = this.calculateTargetDistance(cachedTarget);
+            
+            // Include if within cycling range
+            if (distance <= maxCyclingRange) {
+                console.log(`🎯 Adding cached target for cycling: ${name} (${distance.toFixed(1)}km)`);
+                enhancedTargets.push({
+                    ...cachedTarget,
+                    distance: distance,
+                    isCached: true // Mark as cached for debugging
+                });
+            }
+        }
+        
+        return enhancedTargets;
+    }
+
+    /**
+     * Calculate distance to a target
+     */
+    calculateTargetDistance(target) {
+        if (!target || !target.position || !this.camera) {
+            return Infinity;
+        }
+        
+        try {
+            const targetPos = Array.isArray(target.position) 
+                ? new this.THREE.Vector3(...target.position)
+                : target.position;
+            return this.camera.position.distanceTo(targetPos) / 1000; // Convert to km
+        } catch (error) {
+            console.warn(`🎯 Error calculating distance to ${target.name}:`, error);
+            return Infinity;
         }
     }
 
@@ -1120,6 +1263,12 @@ export class TargetComputerManager {
             }
             
             const distance = this.calculateDistance(this.camera.position, entity.threeObject.position);
+            
+            // Skip entities beyond target computer range (double-check spatial query results)
+            if (distance > maxTargetingRange) {
+                // console.log(`🎯 Skipping ${entity.name || entity.id} - beyond range (${distance.toFixed(1)}km > ${maxTargetingRange}km)`);
+                return;
+            }
             
             // Create target data based on entity type
             let targetData = null;
@@ -1227,11 +1376,32 @@ export class TargetComputerManager {
         // Add any targets that might not have physics bodies yet (fallback)
         this.addNonPhysicsTargets(allTargets, maxTargetingRange);
         
+        // Preserve scanner targets when rebuilding target list
+        if (this.currentTarget && this.isFromLongRangeScanner) {
+            // Check if scanner target is already in the list
+            const scannerTargetExists = allTargets.some(target => target.name === this.currentTarget.name);
+            if (!scannerTargetExists) {
+                console.log(`🎯 Preserving scanner target: ${this.currentTarget.name} (out of normal range)`);
+                allTargets.push(this.currentTarget);
+            }
+        }
+        
         // Update target list
         this.targetObjects = allTargets;
         
+        // Log target list for debugging
+        console.log(`🎯 Target list updated: ${allTargets.length} targets available for cycling`, allTargets.map(t => t.name));
+        
         // Sort targets by distance using physics-enhanced sorting
         this.sortTargetsByDistanceWithPhysics(true); // Force sort on target list update
+        
+        // Update target index AFTER sorting (sorting changes array order)
+        if (this.currentTarget) {
+            const newIndex = this.targetObjects.findIndex(target => target.name === this.currentTarget.name);
+            if (newIndex !== -1) {
+                this.targetIndex = newIndex;
+            }
+        }
         
         // Update target display (unless power-up animation is running or in no targets monitoring mode)
         if (!this.isPoweringUp && !this.isInNoTargetsMode) {
@@ -1246,6 +1416,11 @@ export class TargetComputerManager {
      */
     updateTargetListTraditional() {
         let allTargets = [];
+        
+        // Get the actual range from the target computer system
+        const ship = this.viewManager?.getShip();
+        const targetComputer = ship?.getSystem('target_computer');
+        const maxTargetingRange = targetComputer?.range || 150; // Fallback to 150km if system not found
         
         // Add comprehensive debugging
         // console.log('🎯 TargetComputerManager.updateTargetListTraditional() called');
@@ -1287,6 +1462,13 @@ export class TargetComputerManager {
                         return null;
                     }
                     
+                    const distance = this.calculateDistance(this.camera.position, body.position);
+                    
+                    // Skip bodies beyond target computer range
+                    if (distance > maxTargetingRange) {
+                        return null;
+                    }
+                    
                     return {
                         name: info.name,
                         type: info.type,
@@ -1294,7 +1476,7 @@ export class TargetComputerManager {
                         isMoon: key.startsWith('moon_'),
                         object: body,  // Store the actual THREE.js object
                         isShip: false,
-                        distance: this.calculateDistance(this.camera.position, body.position)
+                        distance: distance
                     };
                 })
                 .filter(body => body !== null); // Remove any invalid bodies
@@ -1311,8 +1493,32 @@ export class TargetComputerManager {
         // Add any targets that might not have physics bodies yet (fallback)
         this.addNonPhysicsTargets(allTargets, 150); // Use 150km as max range (same as target computer range)
         
+        // Preserve scanner targets when rebuilding target list
+        if (this.currentTarget && this.isFromLongRangeScanner) {
+            // Check if scanner target is already in the list
+            const scannerTargetExists = allTargets.some(target => target.name === this.currentTarget.name);
+            if (!scannerTargetExists) {
+                console.log(`🎯 Preserving scanner target: ${this.currentTarget.name} (out of normal range)`);
+                allTargets.push(this.currentTarget);
+            }
+        }
+        
         // Update target list
         this.targetObjects = allTargets;
+        
+        // Log target list for debugging
+        console.log(`🎯 Target list updated (traditional): ${allTargets.length} targets available for cycling`, allTargets.map(t => t.name));
+        
+        // Sort targets by distance
+        this.sortTargetsByDistance(true); // Force sort on target list update
+        
+        // Update target index AFTER sorting (sorting changes array order)
+        if (this.currentTarget) {
+            const newIndex = this.targetObjects.findIndex(target => target.name === this.currentTarget.name);
+            if (newIndex !== -1) {
+                this.targetIndex = newIndex;
+            }
+        }
         
         // If target computer is enabled and we have targets, ensure current target is valid
         if (this.targetComputerEnabled && allTargets.length > 0) {
@@ -1448,6 +1654,15 @@ export class TargetComputerManager {
                 // Fallback to regular distance calculation
                 targetData.distance = this.calculateDistance(this.camera.position, targetData.object.position);
             }
+            
+            // Clear outOfRange flag if target is back within normal range
+            const ship = this.viewManager?.getShip();
+            const targetComputer = ship?.getSystem('target_computer');
+            const maxRange = targetComputer?.range || 150;
+            if (targetData.outOfRange && targetData.distance <= maxRange) {
+                console.log(`🎯 Target ${targetData.name} back in range (${targetData.distance.toFixed(1)}km) - clearing outOfRange flag`);
+                targetData.outOfRange = false;
+            }
         });
 
         // Sort by distance
@@ -1467,6 +1682,15 @@ export class TargetComputerManager {
         // Update distances for all targets
         this.targetObjects.forEach(targetData => {
             targetData.distance = this.calculateDistance(this.camera.position, targetData.object.position);
+            
+            // Clear outOfRange flag if target is back within normal range
+            const ship = this.viewManager?.getShip();
+            const targetComputer = ship?.getSystem('target_computer');
+            const maxRange = targetComputer?.range || 150;
+            if (targetData.outOfRange && targetData.distance <= maxRange) {
+                console.log(`🎯 Target ${targetData.name} back in range (${targetData.distance.toFixed(1)}km) - clearing outOfRange flag`);
+                targetData.outOfRange = false;
+            }
         });
 
         // Sort by distance
@@ -1474,16 +1698,63 @@ export class TargetComputerManager {
     }
 
     /**
-     * Cycle to the next target
+     * Set target from long-range scanner
+     * @param {Object} targetData - Target data from long-range scanner
      */
-    cycleTarget(isManualCycle = true) {
+    setTargetFromScanner(targetData) {
+        if (!targetData) {
+            console.warn('🎯 Cannot set target from scanner - no target data provided');
+            return;
+        }
+
+        console.log(`🎯 Setting target from long-range scanner: ${targetData.name || 'Unknown'}`);
+        
+        // Set the target directly without cycling through the normal target list
+        this.currentTarget = targetData;
+        this.isFromLongRangeScanner = true; // Mark as scanner target for protection
+        
+        // Find and set the target index in the current target list
+        const targetIndex = this.targetObjects.findIndex(target => target.name === targetData.name);
+        if (targetIndex !== -1) {
+            this.targetIndex = targetIndex;
+            console.log(`🎯 Scanner target index set to ${targetIndex}`);
+        } else {
+            // If target is not in the current list, add it and set the index
+            this.targetObjects.push(targetData);
+            this.targetIndex = this.targetObjects.length - 1;
+            console.log(`🎯 Scanner target added to list at index ${this.targetIndex}`);
+        }
+        
+        // Force direction arrow update
+        this.updateDirectionArrow();
+        
+        // Update target display
+        this.updateTargetDisplay();
+        
+        // Start range monitoring for the scanner target
+        this.startRangeMonitoring();
+        
+        // Sync with StarfieldManager
+        if (this.viewManager?.starfieldManager) {
+            this.viewManager.starfieldManager.currentTarget = this.currentTarget?.object || this.currentTarget;
+            this.viewManager.starfieldManager.targetIndex = this.targetIndex;
+        }
+        
+        console.log(`🎯 Scanner target set successfully - protected from auto-switching`);
+    }
+
+    /**
+     * Cycle to the next or previous target
+     * @param {boolean} forward - Whether to cycle forward (true) or backward (false). Default: true
+     */
+    cycleTarget(forward = true) {
         // Prevent cycling targets while docked
         if (this.viewManager?.starfieldManager?.isDocked) {
             return;
         }
 
-        // Prevent manual cycling during undock cooldown, but allow automatic initial selection
-        if (isManualCycle && this.viewManager?.starfieldManager?.undockCooldown && Date.now() < this.viewManager.starfieldManager.undockCooldown) {
+        // Prevent cycling during undock cooldown
+        if (this.viewManager?.starfieldManager?.undockCooldown && Date.now() < this.viewManager.starfieldManager.undockCooldown) {
             return;
         }
 
@@ -1494,8 +1765,12 @@ export class TargetComputerManager {
         }
 
         if (!this.targetComputerEnabled || this.targetObjects.length === 0) {
+            console.log(`🎯 Cannot cycle targets - enabled: ${this.targetComputerEnabled}, targets: ${this.targetObjects.length}`);
             return;
         }
+        
+        console.log(`🎯 Cycling targets - current: ${this.currentTarget?.name}, index: ${this.targetIndex}, total targets: ${this.targetObjects.length}, isFromScanner: ${this.isFromLongRangeScanner}`);
+        console.log(`🎯 Available targets for cycling:`, this.targetObjects.map(t => t.name));
 
         // Hide reticle until new target is set
         if (this.targetReticle) {
@@ -1505,19 +1780,34 @@ export class TargetComputerManager {
         // Keep target HUD visible
         this.targetHUD.style.display = 'block';
 
-        // Cycle to next target
+        // Cycle to next or previous target
         const previousIndex = this.targetIndex;
         const previousTarget = this.currentTarget;
         
         if (this.targetIndex === -1 || !this.currentTarget) {
             this.targetIndex = 0;
         } else {
-            this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
+            if (forward) {
+                // Cycle forward (next target)
+                this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
+            } else {
+                // Cycle backward (previous target)
+                this.targetIndex = (this.targetIndex - 1 + this.targetObjects.length) % this.targetObjects.length;
+            }
         }
 
         // Get the target data directly from our target list
         const targetData = this.targetObjects[this.targetIndex];
         this.currentTarget = targetData; // Store the full target data, not just the object
+        
+        // Only clear scanner flag if we're cycling to a different target
+        // If we cycle back to the same scanner target, preserve the flag
+        if (previousTarget && targetData && previousTarget.name !== targetData.name) {
+            this.isFromLongRangeScanner = false; // Clear scanner flag when switching to different target
+            console.log(`🎯 Cycling to different target - clearing scanner flag`);
+        } else if (previousTarget && targetData && previousTarget.name === targetData.name && this.isFromLongRangeScanner) {
+            console.log(`🎯 Cycling back to same scanner target - preserving scanner flag`);
+        }
         
         // Debug target name for troubleshooting
         if (targetData && targetData.ship && targetData.ship.shipName) {
@@ -2005,6 +2295,20 @@ export class TargetComputerManager {
             typeDisplay = info.shipType;
         }
         
+        // Clear outOfRange flag if target is back within normal range
+        if (currentTargetData?.outOfRange && distance <= 150) {
+            console.log(`🎯 Target ${currentTargetData.name} back in range (${distance.toFixed(1)}km) - clearing outOfRange flag`);
+            currentTargetData.outOfRange = false;
+            
+            // Also clear the flag in the original target object in targetObjects array
+            if (this.targetIndex >= 0 && this.targetIndex < this.targetObjects.length) {
+                const originalTargetData = this.targetObjects[this.targetIndex];
+                if (originalTargetData) {
+                    originalTargetData.outOfRange = false;
+                }
+            }
+        }
+        
         // Format distance for display - check if target is flagged as out of range
         const formattedDistance = currentTargetData.outOfRange ? 'Out of Range' : this.formatDistance(distance);
         
@@ -2441,6 +2745,21 @@ export class TargetComputerManager {
 
         // Update distance display - check if target is flagged as out of range
         const targetData = this.getCurrentTargetData();
+        
+        // Clear outOfRange flag if target is back within normal range
+        if (targetData?.outOfRange && distance <= 150) {
+            console.log(`🎯 Target ${targetData.name} back in range (${distance.toFixed(1)}km) - clearing outOfRange flag`);
+            targetData.outOfRange = false;
+            
+            // Also clear the flag in the original target object in targetObjects array
+            if (this.targetIndex >= 0 && this.targetIndex < this.targetObjects.length) {
+                const originalTargetData = this.targetObjects[this.targetIndex];
+                if (originalTargetData) {
+                    originalTargetData.outOfRange = false;
+                }
+            }
+        }
+        
         this.targetDistanceDisplay.textContent = targetData?.outOfRange ? 'Out of Range' : this.formatDistance(distance);
         this.targetDistanceDisplay.style.color = reticleColor;
         this.targetDistanceDisplay.style.textShadow = `0 0 4px ${reticleColor}`;
@@ -2477,10 +2796,38 @@ export class TargetComputerManager {
         const targetPosition = targetPos.clone();
         const screenPosition = targetPosition.clone().project(this.camera);
         
-        // Check if target is near or off screen edges (arrows appear sooner)
-        const isOffScreen = Math.abs(screenPosition.x) > 0.85 || Math.abs(screenPosition.y) > 0.85;
+        // Check if target is off screen or behind camera
+        // Use 0.95 threshold for better edge detection, and check depth
+        const isOffScreen = Math.abs(screenPosition.x) > 0.95 || 
+                           Math.abs(screenPosition.y) > 0.95 || 
+                           screenPosition.z > 1.0; // Behind camera
 
-        if (isOffScreen) {
+        // Add hysteresis to prevent flickering at screen edges
+        if (!this.lastArrowState) this.lastArrowState = false;
+        const shouldShowArrow = isOffScreen || (this.lastArrowState && (
+            Math.abs(screenPosition.x) > 0.90 || 
+            Math.abs(screenPosition.y) > 0.90 || 
+            screenPosition.z > 1.0
+        ));
+        
+        this.lastArrowState = shouldShowArrow;
+
+        // Debug logging (remove after testing)
+        if (this.currentTarget && this.currentTarget.name) {
+            const debugInfo = {
+                target: this.currentTarget.name,
+                screenPos: { x: screenPosition.x.toFixed(2), y: screenPosition.y.toFixed(2), z: screenPosition.z.toFixed(2) },
+                isOffScreen: isOffScreen,
+                shouldShowArrow: shouldShowArrow
+            };
+            // Only log when state changes to avoid spam
+            if (this.lastDebugState !== shouldShowArrow) {
+                console.log('🎯 Direction Arrow Debug:', debugInfo);
+                this.lastDebugState = shouldShowArrow;
+            }
+        }
+
+        if (shouldShowArrow) {
             // Get camera's view direction and relative position
             const cameraDirection = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
             const relativePosition = targetPosition.clone().sub(this.camera.position);
@@ -3248,6 +3595,7 @@ export class TargetComputerManager {
         this.targetComputerEnabled = false;
         this.currentTarget = null;
         this.targetIndex = -1;
+        this.isFromLongRangeScanner = false; // Reset scanner flag
         
         if (this.targetHUD) {
             this.targetHUD.style.display = 'none';
@@ -3348,7 +3696,7 @@ export class TargetComputerManager {
             if (this.targetComputerEnabled) {
                 setTimeout(() => {
                     this.updateTargetList();
-                    this.cycleTarget();
+                    this.cycleTarget(); // Auto-select nearest target
                 }, 100); // Small delay to ensure new system is fully generated
             }
         }
@@ -3376,6 +3724,7 @@ export class TargetComputerManager {
         this.targetObjects = [];
         this.validTargets = [];
         this.lastTargetCycleTime = 0;
+        this.isFromLongRangeScanner = false; // Reset scanner flag
         
         // Clear target computer system state if available
         const ship = this.viewManager?.getShip();

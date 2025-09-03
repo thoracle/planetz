@@ -125,11 +125,19 @@ export class CommunicationHUD {
             console.log('🔊 Manually initializing all audio elements...');
             if (this.audioElements) {
                 const initPromises = Object.entries(this.audioElements).map(([type, audio]) => {
+                    // Store original volume and set to 0 for silent initialization
+                    const originalVolume = audio.volume;
+                    audio.volume = 0;
+                    
                     return audio.play().then(() => {
                         audio.pause();
                         audio.currentTime = 0;
+                        // Restore original volume
+                        audio.volume = originalVolume;
                         console.log(`🔊 ${type} audio initialized`);
                     }).catch(e => {
+                        // Restore original volume even on error
+                        audio.volume = originalVolume;
                         console.warn(`🔊 ${type} audio initialization failed:`, e);
                     });
                 });
@@ -535,12 +543,20 @@ export class CommunicationHUD {
     initializeAudioOnInteraction() {
         const initAudio = () => {
             if (!this.audioInitialized && this.audioElements) {
-                // Try to initialize all audio elements
+                // Try to initialize all audio elements (silently)
                 const initPromises = Object.values(this.audioElements).map(audio => {
+                    // Store original volume and set to 0 for silent initialization
+                    const originalVolume = audio.volume;
+                    audio.volume = 0;
+                    
                     return audio.play().then(() => {
                         audio.pause();
                         audio.currentTime = 0;
+                        // Restore original volume
+                        audio.volume = originalVolume;
                     }).catch(e => {
+                        // Restore original volume even on error
+                        audio.volume = originalVolume;
                         console.warn('🔊 CommunicationHUD: Audio element initialization failed:', e);
                     });
                 });
@@ -1184,7 +1200,13 @@ export class CommunicationHUD {
         // Try to access audio manager through starfield manager or global
         const audioManager = this.starfieldManager?.audioManager || window.starfieldAudioManager;
         if (audioManager && typeof audioManager.playSound === 'function') {
-            audioManager.playSound('blurb', 0.6); // Use blurb sound at 60% volume
+            // Only play if user has interacted (to prevent startup audio)
+            if (audioManager.userHasInteracted) {
+                console.log('🗣️ CommunicationHUD: Playing comm sound (user has interacted)');
+                audioManager.playSound('blurb', 0.6); // Use blurb sound at 60% volume
+            } else {
+                console.log('🗣️ CommunicationHUD: Skipping comm sound (no user interaction yet)');
+            }
         } else {
             console.log('🗣️ CommunicationHUD: Audio manager not available');
         }
@@ -1196,7 +1218,13 @@ export class CommunicationHUD {
     playCommandSound() {
         const audioManager = this.starfieldManager?.audioManager || window.starfieldAudioManager;
         if (audioManager && typeof audioManager.playSound === 'function') {
-            audioManager.playSound('command', 0.5);
+            // Only play if user has interacted (to prevent startup audio)
+            if (audioManager.userHasInteracted) {
+                console.log('🗣️ CommunicationHUD: Playing command sound (user has interacted)');
+                audioManager.playSound('command', 0.5);
+            } else {
+                console.log('🗣️ CommunicationHUD: Skipping command sound (no user interaction yet)');
+            }
         }
     }
 }

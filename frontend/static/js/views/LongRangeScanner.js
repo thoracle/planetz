@@ -753,11 +753,13 @@ export class LongRangeScanner {
 
         // Default selection: star of current sector if nothing selected yet
         if (!this.lastClickedBody && starSystem.star_name) {
-            this.showCelestialBodyDetails(starSystem.star_name);
+            this.showCelestialBodyDetails(starSystem.star_name, false); // false = don't set target, just show details
         }
     }
 
-    showCelestialBodyDetails(bodyName) {
+    showCelestialBodyDetails(bodyName, setAsTarget = true) {
+        console.log(`🔍 LRS: showCelestialBodyDetails called - bodyName: ${bodyName}, setAsTarget: ${setAsTarget}`);
+        
         const solarSystemManager = this.viewManager.getSolarSystemManager();
         if (!solarSystemManager) return;
 
@@ -827,9 +829,11 @@ export class LongRangeScanner {
             this.updateScannerMap();
         }
 
-        // If targeting computer is enabled, set this body as the target robustly
+        // If targeting computer is enabled and this is a user click, set this body as the target robustly
         const starfieldManager = this.viewManager.starfieldManager;
-        if (starfieldManager && starfieldManager.targetComputerEnabled) {
+        console.log(`🔍 LRS: Target setting check - setAsTarget: ${setAsTarget}, starfieldManager: ${!!starfieldManager}, targetComputerEnabled: ${starfieldManager?.targetComputerEnabled}`);
+        
+        if (setAsTarget && starfieldManager && starfieldManager.targetComputerEnabled) {
             // Ensure TargetComputerManager exists and has a fresh list
             if (starfieldManager.targetComputerManager) {
                 starfieldManager.targetComputerManager.updateTargetList();
@@ -859,14 +863,18 @@ export class LongRangeScanner {
                 }
                 
                 if (idx !== -1) {
-                    tcm.targetIndex = idx;
-                    tcm.currentTarget = tcm.targetObjects[idx];
-                    starfieldManager.currentTarget = tcm.currentTarget?.object || tcm.currentTarget;
-                    starfieldManager.targetIndex = tcm.targetIndex;
-                    starfieldManager.targetObjects = tcm.targetObjects;
+                    // Use proper scanner target selection method
+                    const targetData = tcm.targetObjects[idx];
                     
-                    // Update the target display to show the new target
-                    tcm.updateTargetDisplay();
+                    // Only set target if it's not already the current target
+                    if (tcm.currentTarget?.name !== targetData.name) {
+                        console.log(`🔍 LRS: Setting scanner target: ${targetData.name}`);
+                        starfieldManager.setTargetFromScanner(targetData);
+                    } else {
+                        console.log(`🔍 LRS: Target ${targetData.name} already selected - refreshing target state`);
+                        // Refresh the target state to ensure proper index and display
+                        starfieldManager.setTargetFromScanner(targetData);
+                    }
                 }
             } else {
                 // Fallback to previous behavior using SFManager list
@@ -1001,14 +1009,12 @@ export class LongRangeScanner {
             }
             
             if (idx !== -1) {
-                tcm.targetIndex = idx;
-                tcm.currentTarget = tcm.targetObjects[idx];
-                starfieldManager.currentTarget = tcm.currentTarget?.object || tcm.currentTarget;
-                starfieldManager.targetIndex = tcm.targetIndex;
-                starfieldManager.targetObjects = tcm.targetObjects;
+                // Use proper scanner target selection method
+                const targetData = tcm.targetObjects[idx];
                 
-                // Update the target display to show the new target
-                tcm.updateTargetDisplay();
+                // Always set the scanner target to ensure proper flag setting
+                console.log(`🔍 LRS: Setting scanner target: ${targetData.name}`);
+                starfieldManager.setTargetFromScanner(targetData);
             }
         }
 

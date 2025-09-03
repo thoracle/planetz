@@ -1461,11 +1461,11 @@ export class StarfieldManager {
                 }
             }
             
-            // Handle Tab key for cycling targets
+            // Handle Tab key for cycling targets (Tab = forward, Shift+Tab = backward)
             if (event.key === 'Tab') {
                 event.preventDefault(); // Prevent Tab from changing focus
-                // Removed target cycling key press log to prevent console spam
-                // console.log('🎯 TAB key pressed for target cycling');
+                const forward = !event.shiftKey; // Shift+Tab cycles backward
+                // console.log(`🎯 ${event.shiftKey ? 'Shift+' : ''}TAB key pressed for ${forward ? 'forward' : 'backward'} target cycling`);
                 
                 // Block target cycling when docked
                 if (this.isDocked) {
@@ -1497,8 +1497,10 @@ export class StarfieldManager {
                     if (targetComputer && targetComputer.canActivate(ship) && this.targetComputerEnabled) {
                         // Target computer is operational and activated - allow cycling
                         // Removed target cycling call log to prevent console spam
-                        // console.log('🎯 Cycling target from TAB key press');
-                        this.cycleTarget();
+                        // console.log(`🎯 Cycling target ${forward ? 'forward' : 'backward'} from ${event.shiftKey ? 'Shift+' : ''}TAB key press`);
+                        this.cycleTarget(forward); // Manual cycle via TAB key
+                        // Reset outline suppression for manual cycles
+                        this.outlineDisabledUntilManualCycle = false;
                         this.playCommandSound();
                     } else {
                         // Target computer cannot function - provide specific feedback
@@ -2394,9 +2396,9 @@ export class StarfieldManager {
         }
     }
 
-    cycleTarget(isManualCycle = true) {
+    cycleTarget(forward = true) {
         // Delegate to target computer manager
-        this.targetComputerManager.cycleTarget(isManualCycle);
+        this.targetComputerManager.cycleTarget(forward);
         
         // Update local state to match
         this.currentTarget = this.targetComputerManager.currentTarget?.object || this.targetComputerManager.currentTarget;
@@ -2404,15 +2406,33 @@ export class StarfieldManager {
         this.targetObjects = this.targetComputerManager.targetObjects;
         
         // Handle outline suppression logic
-        if (this.currentTarget && this.outlineEnabled && (isManualCycle || !this.outlineDisabledUntilManualCycle)) {
+        if (this.currentTarget && this.outlineEnabled && !this.outlineDisabledUntilManualCycle) {
             this.updateTargetOutline(this.currentTarget, 0);
         }
+
+        // Update weapon system target
+        const ship = this.viewManager?.getShip();
+        if (ship && ship.weaponSystem) {
+            ship.weaponSystem.setLockedTarget(this.currentTarget);
+        }
+    }
+
+    /**
+     * Set target from long-range scanner
+     * @param {Object} targetData - Target data from long-range scanner
+     */
+    setTargetFromScanner(targetData) {
+        // Delegate to target computer manager
+        this.targetComputerManager.setTargetFromScanner(targetData);
         
-        if (isManualCycle) {
-            this.outlineDisabledUntilManualCycle = false;
-            console.log('🎯 Manual target cycle - outline suppression cleared');
-        } else {
-            console.log('🔄 Automatic target cycle - outline suppression maintained');
+        // Update local state to match
+        this.currentTarget = this.targetComputerManager.currentTarget?.object || this.targetComputerManager.currentTarget;
+        this.targetIndex = this.targetComputerManager.targetIndex;
+        this.targetObjects = this.targetComputerManager.targetObjects;
+        
+        // Handle outline for scanner targets
+        if (this.currentTarget && this.outlineEnabled) {
+            this.updateTargetOutline(this.currentTarget, 0);
         }
 
         // Update weapon system target
