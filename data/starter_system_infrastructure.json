@@ -17,7 +17,6 @@
       "description": "Solar energy research and power generation",
       "color": "#00ff44",
       "size": 0.8,
-      "discoveryRadius": 100.0,
       "services": ["repair", "refuel", "energy_recharge", "research"],
       "intel_brief": "Alliance solar research facility powering Terra Prime. Advanced energy technology available."
     },
@@ -30,7 +29,6 @@
       "description": "Processing rare metals from Mercury mining",
       "color": "#ffff00",
       "size": 0.6,
-      "discoveryRadius": 75.0,
       "services": ["trade", "refuel", "cargo_handling"],
       "intel_brief": "Major rare metals processing facility. Competitive pricing on refined materials."
     },
@@ -43,7 +41,6 @@
       "description": "Atmospheric research and chemical extraction",
       "color": "#44ffff",
       "size": 0.7,
-      "discoveryRadius": 85.0,
       "services": ["research", "repair", "chemical_supplies"],
       "intel_brief": "Corporate atmospheric research station. Access to advanced chemical compounds."
     },
@@ -56,7 +53,6 @@
       "description": "Spiritual retreat and meditation center",
       "color": "#ff44ff",
       "size": 0.5,
-      "discoveryRadius": 65.0,
       "services": ["rest", "meditation", "spiritual_guidance"],
       "intel_brief": "Ethereal spiritual retreat. Peaceful environment for crew rest and contemplation."
     },
@@ -69,7 +65,6 @@
       "description": "Central communication hub for Alliance",
       "color": "#00ff44",
       "size": 1.0,
-      "discoveryRadius": 120.0,
       "services": ["communications", "navigation_data", "repair"],
       "intel_brief": "Alliance communications hub. Real-time tactical updates and fleet coordination available."
     },
@@ -82,7 +77,6 @@
       "description": "Construction of Alliance starships",
       "color": "#00ff44",
       "size": 1.2,
-      "discoveryRadius": 140.0,
       "services": ["ship_construction", "major_repairs", "upgrades"],
       "intel_brief": "Alliance ship construction facility. Full shipyard services available."
     },
@@ -95,7 +89,6 @@
       "description": "Major trading hub and cargo distribution",
       "color": "#ffff00",
       "size": 0.9,
-      "discoveryRadius": 110.0,
       "services": ["trade", "cargo_handling", "commodity_exchange"],
       "intel_brief": "Major trading hub. Best prices in the system for cargo and commodities."
     },
@@ -108,7 +101,6 @@
       "description": "Automated manufacturing and rare earth processing",
       "color": "#44ffff",
       "size": 0.8,
-      "discoveryRadius": 100.0,
       "services": ["manufacturing", "rare_earths", "equipment"],
       "intel_brief": "Corporate manufacturing facility. High-quality equipment and rare earth materials."
     },
@@ -121,7 +113,6 @@
       "description": "Fleet maintenance and military training",
       "color": "#00ff44",
       "size": 0.9,
-      "discoveryRadius": 110.0,
       "services": ["major_repairs", "military_equipment", "training"],
       "intel_brief": "Alliance military base. Fleet maintenance and tactical training available."
     },
@@ -134,7 +125,6 @@
       "description": "Mining station and cargo depot",
       "color": "#ffff00",
       "size": 0.4,
-      "discoveryRadius": 55.0,
       "services": ["mining", "cargo_handling", "fuel"],
       "intel_brief": "Mining operations depot. Raw materials and refined fuel available."
     },
@@ -147,7 +137,6 @@
       "description": "Research facility and communication relay",
       "color": "#44ff44",
       "size": 0.4,
-      "discoveryRadius": 55.0,
       "services": ["research", "communications", "data_analysis"],
       "intel_brief": "Scientific research facility. Advanced data analysis and communication services."
     },
@@ -160,7 +149,6 @@
       "description": "Research on dwarf planet and asteroid mining",
       "color": "#44ff44",
       "size": 0.7,
-      "discoveryRadius": 90.0,
       "services": ["research", "mining", "asteroid_data"],
       "intel_brief": "Scientific outpost on Ceres. Asteroid research and mining data available."
     },
@@ -173,7 +161,6 @@
       "description": "Major asteroid mining operations",
       "color": "#ffff00",
       "size": 0.6,
-      "discoveryRadius": 75.0,
       "services": ["mining", "bulk_cargo", "industrial_supplies"],
       "intel_brief": "Major mining complex. Bulk cargo handling and industrial supplies."
     },
@@ -186,7 +173,6 @@
       "description": "Research stations studying subsurface ocean",
       "color": "#44ff44",
       "size": 0.8,
-      "discoveryRadius": 100.0,
       "services": ["research", "ocean_studies", "biological_samples"],
       "intel_brief": "Europa subsurface research station. Biological samples and ocean data available."
     },
@@ -199,7 +185,6 @@
       "description": "Military bases and defensive installations",
       "color": "#ff6600",
       "size": 0.9,
-      "discoveryRadius": 110.0,
       "services": ["military_repairs", "defense_systems", "security"],
       "intel_brief": "Alliance defense platform. Military repairs and security services available."
     }
@@ -210,7 +195,6 @@
       "name": "Navigation Beacon #1",
       "type": "navigation_beacon",
       "position": [175, 0, 0],
-      "discoveryRadius": 25.0,
       "description": "Automated navigation aid for Sol system",
       "color": "#ffff44"
     },
@@ -219,7 +203,6 @@
       "name": "Navigation Beacon #2",
       "type": "navigation_beacon",
       "position": [0, 175, 0],
-      "discoveryRadius": 25.0,
       "description": "Automated navigation aid for Sol system",
       "color": "#ffff44"
     },
@@ -228,7 +211,6 @@
       "name": "Navigation Beacon #3",
       "type": "navigation_beacon",
       "position": [-175, 0, 0],
-      "discoveryRadius": 25.0,
       "description": "Automated navigation aid for Sol system",
       "color": "#ffff44"
     },
@@ -237,7 +219,6 @@
       "name": "Navigation Beacon #4",
       "type": "navigation_beacon",
       "position": [0, -175, 0],
-      "discoveryRadius": 25.0,
       "description": "Automated navigation aid for Sol system",
       "color": "#ffff44"
     },
@@ -246,7 +227,6 @@
       "name": "Navigation Beacon #5",
       "type": "navigation_beacon",
       "position": [123.74, 123.74, 0],
-      "discoveryRadius": 25.0,
       "description": "Automated navigation aid for Sol system",
       "color": "#ffff44"
     },
@@ -255,7 +235,6 @@
       "name": "Navigation Beacon #6",
       "type": "navigation_beacon",
       "position": [-123.74, 123.74, 0],
-      "discoveryRadius": 25.0,
       "description": "Automated navigation aid for Sol system",
       "color": "#ffff44"
     },
@@ -264,7 +243,6 @@
       "name": "Navigation Beacon #7",
       "type": "navigation_beacon",
       "position": [-123.74, -123.74, 0],
-      "discoveryRadius": 25.0,
       "description": "Automated navigation aid for Sol system",
       "color": "#ffff44"
     },
@@ -273,7 +251,6 @@
       "name": "Navigation Beacon #8",
       "type": "navigation_beacon",
       "position": [123.74, -123.74, 0],
-      "discoveryRadius": 25.0,
       "description": "Automated navigation aid for Sol system",
       "color": "#ffff44"
     }
