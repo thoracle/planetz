@@ -871,11 +871,11 @@ export class LongRangeScanner {
                         type: bodyInfo.type,
                         position: targetBody.position.toArray(),
                         isMoon: bodyInfo.type === 'moon',
-                        isSpaceStation: bodyInfo.type === 'station',
-                        object: targetBody,
+                        object: targetBody,  // Store the actual THREE.js object
                         isShip: false,
                         distance: distance,
                         outOfRange: true, // Flag to indicate this is out of range
+                        // Include additional info for compatibility with target system
                         faction: bodyInfo.faction || 'Neutral',
                         diplomacy: bodyInfo.diplomacy || 'Neutral',
                         ...bodyInfo
@@ -1042,8 +1042,7 @@ export class LongRangeScanner {
                     type: 'beacon',
                     position: beacon.position.toArray(),
                     isMoon: false,
-                    isSpaceStation: false,
-                    object: beacon,
+                    object: beacon,  // Store the actual THREE.js object
                     isShip: false,
                     distance: distance,
                     outOfRange: true, // Flag to indicate this is out of range

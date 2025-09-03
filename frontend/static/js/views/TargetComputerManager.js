@@ -1492,14 +1492,21 @@ export class TargetComputerManager {
         
         // Add any targets that might not have physics bodies yet (fallback)
         this.addNonPhysicsTargets(allTargets, 150); // Use 150km as max range (same as target computer range)
-        
+
         // Preserve scanner targets when rebuilding target list
         if (this.currentTarget && this.isFromLongRangeScanner) {
             // Check if scanner target is already in the list
             const scannerTargetExists = allTargets.some(target => target.name === this.currentTarget.name);
             if (!scannerTargetExists) {
-                console.log(`🎯 Preserving scanner target: ${this.currentTarget.name} (out of normal range)`);
+                console.log(`🎯 Preserving scanner target: ${this.currentTarget.name} (out of normal range)`, {
+                    currentTargetType: typeof this.currentTarget,
+                    hasObject: !!this.currentTarget.object,
+                    targetIndex: this.targetIndex,
+                    currentTargetName: this.currentTarget.name
+                });
                 allTargets.push(this.currentTarget);
+            } else {
+                console.log(`🎯 Scanner target ${this.currentTarget.name} already exists in updated list`);
             }
         }
         
@@ -2448,10 +2455,20 @@ export class TargetComputerManager {
             if (targetData) {
                 // For targets from addNonPhysicsTargets, the Three.js object is in targetData.object
                 // For other targets, the targetData might be the object itself
-                if (targetData === this.currentTarget || 
+                if (targetData === this.currentTarget ||
                     targetData.object === this.currentTarget ||
                     (targetData.object && targetData.object.uuid === this.currentTarget?.uuid)) {
                     return this.processTargetData(targetData);
+                } else {
+                    console.log(`🔍 getCurrentTargetData: Index ${this.targetIndex} target mismatch:`, {
+                        targetDataName: targetData.name,
+                        targetDataObject: !!targetData.object,
+                        currentTargetName: this.currentTarget?.name,
+                        currentTargetType: typeof this.currentTarget,
+                        isSameObject: targetData === this.currentTarget,
+                        hasSameObject: targetData.object === this.currentTarget,
+                        uuidMatch: targetData.object?.uuid === this.currentTarget?.uuid
+                    });
                 }
             }
         }
