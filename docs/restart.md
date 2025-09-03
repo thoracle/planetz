@@ -9,7 +9,10 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 **This file contains dynamic sections that auto-update from Git data:**
 
 ```bash
-# Update current status before new chat sessions
+# Update current status before new chat sessions (recommended)
+./scripts/update_status_enhanced.sh
+
+# Alternative: Basic version without key binding extraction
 ./scripts/update_status.sh
 ```
 
@@ -42,14 +45,18 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `unknown` | **Status**: unknown | **Last Updated**: unknown
+**Branch**: `noammo` | **Status**: In Development (2 uncommitted changes) | **Last Updated**: 2025-09-02
 
 **Recent Work** (Last 5 commits):
-- No commits found
+- Fix targeting system issues and update documentation
+- chore: Clean up temporary mission files
+- feat: Complete communication HUD audio/video system with delivery mission integration
+- Add faction-colored scan line effects and video tinting to communication HUD
+- fix(missions): resolve cargo delivery system and update communication HUD
 
-**Codebase Stats**: 
-- JavaScript Files: 0 | Python Files: 0 | Documentation: 0 files
-- Total Lines: 30,000+ | Architecture: Fully modular ES6+ modules
+**Codebase Stats**:
+- JavaScript Files: 136 | Python Files: 1606 | Documentation: 70 files
+- Total Lines: 223654 | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
 ## 🏗️ Architecture Overview
@@ -111,7 +118,7 @@ open http://127.0.0.1:5001
 
 **Technical References**:
 - [Card System](card_system_user_guide.md) - Ship upgrade mechanics
-- [Space Station System](space_station_system_guide.md) - Station types and functions
+- [Space Station System](space_station_user_guide.md) - Station types and functions
 - [Sol System Layout](sol_system_layout.md) - Universe structure
 <!-- DYNAMIC_DOCS_END -->
 

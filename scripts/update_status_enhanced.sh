@@ -20,6 +20,7 @@ REPO_STATUS=$(git status --porcelain | wc -l | tr -d ' ')
 JS_FILES=$(find frontend/static/js -name "*.js" 2>/dev/null | wc -l | tr -d ' ')
 PY_FILES=$(find backend -name "*.py" 2>/dev/null | wc -l | tr -d ' ')
 DOC_FILES=$(find docs -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
+TOTAL_LINES=$(find . -name "*.js" -o -name "*.py" -o -name "*.md" | grep -v node_modules | grep -v venv | grep -v __pycache__ | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')
 
 # Get recent commits (last 5)
 RECENT_COMMITS=$(git log --oneline -5 --format="- %s")
@@ -30,6 +31,16 @@ if [ "$REPO_STATUS" -eq 0 ]; then
 else
     STATUS="In Development ($REPO_STATUS uncommitted changes)"
 fi
+
+# Export values so the Python step can access them via os.environ
+export CURRENT_BRANCH
+export LAST_COMMIT_DATE
+export STATUS
+export JS_FILES
+export PY_FILES
+export DOC_FILES
+export TOTAL_LINES
+export RECENT_COMMITS
 
 # Create enhanced update script using Python for complex parsing
 python3 << 'EOF'
@@ -261,15 +272,18 @@ try:
     # Generate documentation sections
     combat_section, nav_section, speed_section, ai_section = generate_controls_documentation(basic_controls, ai_debug_controls)
     
+    # Get actual line count
+    total_lines = os.environ.get('TOTAL_LINES', '30,000+')
+
     # Generate dynamic status section
     dynamic_status = f"""**Branch**: `{os.environ.get('CURRENT_BRANCH', 'unknown')}` | **Status**: {os.environ.get('STATUS', 'unknown')} | **Last Updated**: {os.environ.get('LAST_COMMIT_DATE', 'unknown')}
 
 **Recent Work** (Last 5 commits):
 {os.environ.get('RECENT_COMMITS', '- No commits found')}
 
-**Codebase Stats**: 
+**Codebase Stats**:
 - JavaScript Files: {os.environ.get('JS_FILES', '0')} | Python Files: {os.environ.get('PY_FILES', '0')} | Documentation: {os.environ.get('DOC_FILES', '0')} files
-- Total Lines: 30,000+ | Architecture: Fully modular ES6+ modules"""
+- Total Lines: {total_lines} | Architecture: Fully modular ES6+ modules"""
 
     # Generate dynamic docs section
     dynamic_docs = """**Core Systems**:
@@ -281,7 +295,7 @@ try:
 
 **Technical References**:
 - [Card System](card_system_user_guide.md) - Ship upgrade mechanics
-- [Space Station System](space_station_system_guide.md) - Station types and functions
+- [Space Station System](space_station_user_guide.md) - Station types and functions
 - [Sol System Layout](sol_system_layout.md) - Universe structure"""
 
     # Replace dynamic sections
