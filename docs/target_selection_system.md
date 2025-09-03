@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Target Selection System in Planetz provides intelligent targeting capabilities with automatic target acquisition and bidirectional manual cycling. The system includes special protection for targets selected from the long-range scanner, while automatically switching between targets that go out of range during normal operation.
+The Target Selection System in Planetz provides intelligent targeting capabilities with automatic target acquisition and bidirectional manual cycling. The system includes special protection for targets selected from the long-range scanner, while automatically switching between targets that go out of range during normal operation. Recent enhancements include persistent target caching, improved synchronization, and robust error handling for edge cases.
 
 ## System Architecture
 
@@ -131,6 +131,8 @@ sequenceDiagram
 - **State Tracking**: Maintains target selection state and user preferences
 - **Range Monitoring**: Continuously monitors target distances
 - **Direction Indicators**: Shows off-screen target direction arrows
+- **Persistent Cache**: Map-based system for maintaining target state across operations
+- **Robust Matching**: Multi-criteria target identification and synchronization
 
 ### 2. Target Selection States
 
@@ -143,6 +145,12 @@ sequenceDiagram
 - **Target Computer Level 3**: 150km detection range
 - **Spatial Query**: Physics-based spatial queries with distance validation
 - **Double Filtering**: Both spatial query and distance calculation ensure range compliance
+
+#### Persistent Target Cache System
+- **Map-Based Caching**: Maintains target references across target list updates
+- **Index Synchronization**: Prevents target index mismatches after sorting operations
+- **State Preservation**: Ensures target selection state persists through list changes
+- **Memory Management**: Efficient cleanup of stale cache entries
 
 ## Use Cases
 
@@ -281,8 +289,9 @@ this.noTargetsInterval = setInterval(() => {
 cycleTarget(forward = true)
 - Cycles forward (next) or backward (previous) based on forward parameter
 - Sets isFromLongRangeScanner = false for normal cycling
-- Updates currentTarget and targetIndex
+- Updates currentTarget and targetIndex with cache synchronization
 - Triggers UI updates and range monitoring
+- Integrates with persistent target cache system
 
 // Long-range scanner target selection
 setTargetFromScanner(targetData)
@@ -290,24 +299,38 @@ setTargetFromScanner(targetData)
 - Sets isFromLongRangeScanner = true for protection
 - Bypasses normal range limitations
 - Maintains target lock beyond 150km range
+- Includes target synchronization verification
+- Updates persistent cache for seamless cycling
 
 // Range monitoring
 handleTargetOutOfRange()
 - Checks isFromLongRangeScanner flag
 - Protects scanner targets from auto-switching
 - Auto-switches normal targets when out of range
+- Maintains target state through cache preservation
 
-// Range filtering
+// Range filtering with enhanced synchronization
 updateTargetList()
 - Physics-based spatial query with 150km range
 - Double validation: spatial query + distance calculation
 - Filters out all targets beyond target computer range
+- Single sort operation to prevent index mismatches
+- Cache-aware target list updates
+- Preserves scanner targets in updated lists
+
+// Robust target matching
+getCurrentTargetData()
+- Multi-criteria target identification (exact match, object match, UUID match, name/type match)
+- Handles edge cases with null/undefined values
+- Automatic fallback for diplomacy status issues
+- Enhanced debugging for synchronization problems
 
 // State management
 clearTargetComputer()
 - Resets all target state variables
 - Clears isFromLongRangeScanner flag
 - Ensures clean system state
+- Clears persistent cache entries
 ```
 
 ### State Persistence
@@ -317,6 +340,51 @@ The system maintains state across different scenarios:
 - **Undocking**: Target computer can be reactivated with fresh state
 - **Sector Changes**: State reset for new environment
 - **Combat**: Manual targets protected during engagement
+
+### Recent Fixes and Improvements
+
+#### 1. Persistent Target Cache System
+**Issue**: Tab targeting stopped working after selecting targets from Long Range Scanner
+**Solution**: Implemented Map-based persistent target caching system
+- Maintains target references across target list updates
+- Prevents target loss during list rebuilding operations
+- Enables seamless cycling between scanner and normal targets
+
+#### 2. Target Index Synchronization Fix
+**Issue**: Duplicate sorting operations caused target index mismatches
+**Solution**: Single sort operation with proper index synchronization
+- Removed duplicate `sortTargetsByDistance()` calls
+- Added robust target index restoration after sorting
+- Improved target list update reliability
+
+#### 3. Robust Target Matching System
+**Issue**: getCurrentTargetData() failed with complex target scenarios
+**Solution**: Multi-criteria target identification
+- Exact object matching
+- UUID-based matching for Three.js objects
+- Name and type fallback matching
+- Enhanced debugging for synchronization issues
+
+#### 4. Diplomacy Status Error Handling
+**Issue**: "Unknown diplomacy status null for faction undefined" errors
+**Solution**: Comprehensive null/undefined handling
+- Automatic fallback to 'neutral' diplomacy status
+- Safe target object creation in LongRangeScanner
+- Proper spread operator ordering to prevent null overrides
+
+#### 5. Enhanced Target List Preservation
+**Issue**: Scanner targets lost during target list updates
+**Solution**: Improved target preservation logic
+- Better detection of existing scanner targets
+- Enhanced target reference updating
+- Maintained target state through list rebuilding operations
+
+### 6. Known Issues
+**LRS Subsequent Selection Issue**:
+- **Status**: Under Investigation
+- **Description**: After selecting a target from Long Range Scanner for the first time, subsequent attempts to select different targets may fail to properly update the target computer
+- **Workaround**: Close and reopen the Long Range Scanner, or use Tab targeting to cycle through available targets
+- **Technical Details**: Target index management between LRS and TargetComputerManager may have synchronization issues
 
 ## Benefits
 
@@ -339,6 +407,8 @@ The system maintains state across different scenarios:
 - Proper flag management prevents edge cases
 - Clean state transitions
 - Predictable behavior across all scenarios
+- Enhanced error handling for null/undefined values
+- Persistent target caching prevents state loss
 
 ## Future Enhancements
 

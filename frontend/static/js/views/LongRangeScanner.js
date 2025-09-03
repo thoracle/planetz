@@ -845,7 +845,13 @@ export class LongRangeScanner {
                 console.log(`🔍 LRS: Updating target list before setting scanner target for ${bodyName}`);
                 console.log(`🔍 LRS: Current target before update: ${currentTargetName} at index ${currentTargetIndex}`);
 
-                starfieldManager.targetComputerManager.updateTargetList();
+                // Only update target list if we don't have a current scanner target
+                // This prevents breaking the target reference when LRS reopens
+                if (!tcm.isFromLongRangeScanner || !tcm.currentTarget) {
+                    starfieldManager.targetComputerManager.updateTargetList();
+                } else {
+                    console.log(`🔍 LRS: Skipping target list update to preserve current scanner target: ${currentTargetName}`);
+                }
 
                 // Try to restore the current target after list update
                 if (currentTargetName && currentTargetIndex >= 0) {
@@ -927,6 +933,15 @@ export class LongRangeScanner {
                     console.log(`🔍 LRS: Setting scanner target: ${targetData.name} (${targetData.type}, index: ${idx}, outOfRange: ${targetData.outOfRange})`);
 
                     starfieldManager.setTargetFromScanner(targetData);
+
+                    // Force immediate target display update to ensure HUD reflects the change
+                    console.log(`🔍 LRS: Forcing immediate target display update for ${targetData.name}`);
+                    if (tcm.updateTargetDisplay) {
+                        setTimeout(() => {
+                            tcm.updateTargetDisplay();
+                            console.log(`🔍 LRS: Target display update completed for ${targetData.name}`);
+                        }, 10); // Small delay to ensure setTargetFromScanner completes
+                    }
                 }
             } else {
                 // Fallback to previous behavior using SFManager list
@@ -1041,8 +1056,14 @@ export class LongRangeScanner {
             const currentTargetName = tcm.currentTarget?.name;
             const currentTargetIndex = tcm.targetIndex;
 
-            // Refresh list so beacon appears via physics entities if in range
-            tcm.updateTargetList();
+            // Only update target list if we don't have a current scanner target
+            // This prevents breaking the target reference when LRS reopens
+            if (!tcm.isFromLongRangeScanner || !tcm.currentTarget) {
+                // Refresh list so beacon appears via physics entities if in range
+                tcm.updateTargetList();
+            } else {
+                console.log(`🔍 LRS: Skipping target list update to preserve current scanner target: ${currentTargetName}`);
+            }
 
             // Try to restore the current target after list update (same as celestial body logic)
             if (currentTargetName && currentTargetIndex >= 0) {
@@ -1107,6 +1128,15 @@ export class LongRangeScanner {
                 // The previous condition was preventing updates when target list indices changed
                 console.log(`🔍 LRS: Setting scanner target: ${targetData.name} (index: ${idx})`);
                 starfieldManager.setTargetFromScanner(targetData);
+
+                // Force immediate target display update to ensure HUD reflects the change
+                console.log(`🔍 LRS: Forcing immediate target display update for ${targetData.name}`);
+                if (tcm.updateTargetDisplay) {
+                    setTimeout(() => {
+                        tcm.updateTargetDisplay();
+                        console.log(`🔍 LRS: Target display update completed for ${targetData.name}`);
+                    }, 10); // Small delay to ensure setTargetFromScanner completes
+                }
             }
         }
 
