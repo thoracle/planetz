@@ -1498,12 +1498,7 @@ export class TargetComputerManager {
             // Check if scanner target is already in the list
             const scannerTargetExists = allTargets.some(target => target.name === this.currentTarget.name);
             if (!scannerTargetExists) {
-                console.log(`🎯 Preserving scanner target: ${this.currentTarget.name} (out of normal range)`, {
-                    currentTargetType: typeof this.currentTarget,
-                    hasObject: !!this.currentTarget.object,
-                    targetIndex: this.targetIndex,
-                    currentTargetName: this.currentTarget.name
-                });
+                console.log(`🎯 Preserving scanner target: ${this.currentTarget.name} (out of normal range, index: ${this.targetIndex})`);
                 allTargets.push(this.currentTarget);
             } else {
                 console.log(`🎯 Scanner target ${this.currentTarget.name} already exists in updated list`);
@@ -2460,15 +2455,7 @@ export class TargetComputerManager {
                     (targetData.object && targetData.object.uuid === this.currentTarget?.uuid)) {
                     return this.processTargetData(targetData);
                 } else {
-                    console.log(`🔍 getCurrentTargetData: Index ${this.targetIndex} target mismatch:`, {
-                        targetDataName: targetData.name,
-                        targetDataObject: !!targetData.object,
-                        currentTargetName: this.currentTarget?.name,
-                        currentTargetType: typeof this.currentTarget,
-                        isSameObject: targetData === this.currentTarget,
-                        hasSameObject: targetData.object === this.currentTarget,
-                        uuidMatch: targetData.object?.uuid === this.currentTarget?.uuid
-                    });
+                    console.log(`🔍 getCurrentTargetData: Index ${this.targetIndex} target mismatch - targetData: ${targetData.name}, currentTarget: ${this.currentTarget?.name}, type: ${typeof this.currentTarget}`);
                 }
             }
         }

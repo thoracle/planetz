@@ -849,13 +849,26 @@ export class LongRangeScanner {
 
                 // Try to restore the current target after list update
                 if (currentTargetName && currentTargetIndex >= 0) {
-                    const restoredIndex = tcm.targetObjects.findIndex(t => t.name === currentTargetName);
+                    // First try to find by exact object match
+                    let restoredIndex = tcm.targetObjects.findIndex(t =>
+                        t === tcm.currentTarget ||
+                        (t.object && t.object === tcm.currentTarget.object) ||
+                        (t.object && t.object.uuid && tcm.currentTarget.object?.uuid && t.object.uuid === tcm.currentTarget.object.uuid)
+                    );
+
+                    // If no exact match, try to find by name (less reliable)
+                    if (restoredIndex === -1) {
+                        restoredIndex = tcm.targetObjects.findIndex(t => t.name === currentTargetName);
+                    }
+
                     if (restoredIndex !== -1) {
                         console.log(`🔧 LRS: Restoring target index from ${currentTargetIndex} to ${restoredIndex} for ${currentTargetName}`);
                         tcm.targetIndex = restoredIndex;
                         // Ensure currentTarget points to the correct object in the updated list
                         tcm.currentTarget = tcm.targetObjects[restoredIndex];
                         console.log(`🔧 LRS: Updated currentTarget reference to match target list object`);
+                    } else {
+                        console.warn(`🔧 LRS: Could not restore target ${currentTargetName} - not found in updated target list`);
                     }
                 }
 
@@ -910,14 +923,7 @@ export class LongRangeScanner {
 
                     // Always set the scanner target to ensure proper synchronization
                     // The previous condition was preventing updates when target list indices changed
-                    console.log(`🔍 LRS: Setting scanner target: ${targetData.name} (index: ${idx})`);
-                    console.log(`🔍 LRS: Target data details:`, {
-                        name: targetData.name,
-                        type: targetData.type,
-                        hasObject: !!targetData.object,
-                        outOfRange: targetData.outOfRange,
-                        targetListSize: tcm.targetObjects.length
-                    });
+                    console.log(`🔍 LRS: Setting scanner target: ${targetData.name} (${targetData.type}, index: ${idx}, outOfRange: ${targetData.outOfRange})`);
 
                     starfieldManager.setTargetFromScanner(targetData);
                 }
@@ -1029,8 +1035,36 @@ export class LongRangeScanner {
         // If targeting computer is enabled, set beacon as current target
         if (starfieldManager?.targetComputerEnabled && starfieldManager.targetComputerManager) {
             const tcm = starfieldManager.targetComputerManager;
+
+            // Store current target information before updating list (same as celestial body logic)
+            const currentTargetName = tcm.currentTarget?.name;
+            const currentTargetIndex = tcm.targetIndex;
+
             // Refresh list so beacon appears via physics entities if in range
             tcm.updateTargetList();
+
+            // Try to restore the current target after list update (same as celestial body logic)
+            if (currentTargetName && currentTargetIndex >= 0) {
+                // First try to find by exact object match
+                let restoredIndex = tcm.targetObjects.findIndex(t =>
+                    t === tcm.currentTarget ||
+                    (t.object && t.object === tcm.currentTarget.object) ||
+                    (t.object && t.object.uuid && tcm.currentTarget.object?.uuid && t.object.uuid === tcm.currentTarget.object.uuid)
+                );
+
+                // If no exact match, try to find by name (less reliable)
+                if (restoredIndex === -1) {
+                    restoredIndex = tcm.targetObjects.findIndex(t => t.name === currentTargetName);
+                }
+
+                if (restoredIndex !== -1) {
+                    tcm.targetIndex = restoredIndex;
+                    tcm.currentTarget = tcm.targetObjects[restoredIndex];
+                } else {
+                    console.warn(`🔧 LRS: Could not restore beacon target ${currentTargetName} - not found in updated target list`);
+                }
+            }
+
             let idx = tcm.targetObjects.findIndex(t => t.object === beacon || t.name === (beacon.userData?.name || 'Navigation Beacon'));
             
             // If beacon not found in range, force-add it as an out-of-range target
