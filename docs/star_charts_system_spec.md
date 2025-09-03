@@ -150,7 +150,7 @@ def extract_sector_data(star_system):
             "class": star_system['star_type'],
             "position": [0, 0, 0],
             "visualRadius": star_system['star_size'],
-            "discoveryRadius": 100.0,
+            "discoveryRadius": get_dynamic_discovery_radius(),  # Dynamic based on Target CPU
             "description": star_system['description']
         },
         "objects": []
@@ -165,7 +165,7 @@ def extract_sector_data(star_system):
             "class": planet['planet_type'],
             "position": calculate_planet_position(planet),
             "visualRadius": planet['planet_size'],
-            "discoveryRadius": 50.0,
+            "discoveryRadius": get_dynamic_discovery_radius(),  # Dynamic based on Target CPU
             "orbit": {
                 "parent": f"{star_system['sector']}_star",
                 "radius": calculate_orbit_radius(planet),
@@ -184,7 +184,7 @@ def extract_sector_data(star_system):
                 "class": moon['moon_type'],
                 "position": calculate_moon_position(moon, planet),
                 "visualRadius": moon['moon_size'],
-                "discoveryRadius": 25.0,
+                "discoveryRadius": get_dynamic_discovery_radius(),  # Dynamic based on Target CPU
                 "orbit": {
                     "parent": planet_data["id"],
                     "radius": calculate_moon_orbit_radius(moon),
@@ -259,7 +259,7 @@ graph TB
       "class": "G-type main-sequence star",
       "position": [0, 0, 0],
       "visualRadius": 2.0,
-      "discoveryRadius": 100.0,
+      "discoveryRadius": "dynamic", // Calculated at runtime based on Target CPU
       "description": "The central star of the Sol system"
     },
     "terra_prime": {
@@ -269,7 +269,7 @@ graph TB
       "class": "terrestrial",
       "position": [149.6, 0, 0],
       "visualRadius": 1.2,
-      "discoveryRadius": 50.0,
+      "discoveryRadius": "dynamic", // Calculated at runtime based on Target CPU
       "orbit": {
         "parent": "sol_star",
         "radius": 149.6,
@@ -343,14 +343,18 @@ classDiagram
 
 | Type | Discovery Radius | Visual Representation | Notes |
 |------|------------------|----------------------|-------|
-| `star` | 100km | Central glowing sphere | Always visible in center |
-| `planet` | 50km | Sphere with orbit line | Shows dashed orbit when discovered |
-| `moon` | 25km | Smaller sphere with orbit | Relative to parent planet |
-| `asteroid` | 10km | Irregular shape | May have asteroid fields |
-| `nebula` | 75km | Gaseous cloud | Visual effect only |
-| `space_station` | 5km | 3D structure | Docking facilities |
-| `navigation_beacon` | 5km | Rotating beacon | Navigation aids |
-| `debris_field` | 15km | Scattered objects | Mining opportunities |
+| `star` | *Dynamic* | Central glowing sphere | Always visible in center |
+| `planet` | *Dynamic* | Sphere with orbit line | Shows dashed orbit when discovered |
+| `moon` | *Dynamic* | Smaller sphere with orbit | Relative to parent planet |
+| `asteroid` | *Dynamic* | Irregular shape | May have asteroid fields |
+| `nebula` | *Dynamic* | Gaseous cloud | Visual effect only |
+| `space_station` | *Dynamic* | 3D structure | Docking facilities |
+| `navigation_beacon` | *Dynamic* | Rotating beacon | Navigation aids |
+| `debris_field` | *Dynamic* | Scattered objects | Mining opportunities |
+
+**Note**: All object types use the **same dynamic discovery radius** based on the equipped Target CPU card:
+- **Equipped Target CPU**: Uses the card's scanning range (e.g., 150km for Level 3)
+- **No Target CPU**: Falls back to 50km (Level 1 Target CPU range)
 
 ## 🔍 **Discovery Mechanics**
 
@@ -360,7 +364,7 @@ classDiagram
   ```javascript
   const discoveryRadius = ship.targetComputer ?
     ship.targetComputer.range : // Use target computer range
-    25.0; // Default fallback radius
+    50.0; // Level 1 Target CPU fallback (50km)
   ```
 - **Process**:
   1. Check distance to all undiscovered objects every 5 seconds
