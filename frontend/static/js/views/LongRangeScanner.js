@@ -879,6 +879,7 @@ export class LongRangeScanner {
                 if (idx === -1) {
                     console.log(`🔍 Long Range Scanner: Adding out-of-range celestial body ${bodyName} to target list`);
                     const distance = starfieldManager.camera.position.distanceTo(targetBody.position);
+                    // Create target with safe defaults, then spread bodyInfo but don't override faction/diplomacy if they're null/undefined
                     const outOfRangeTarget = {
                         name: bodyName,
                         type: bodyInfo.type,
@@ -888,10 +889,10 @@ export class LongRangeScanner {
                         isShip: false,
                         distance: distance,
                         outOfRange: true, // Flag to indicate this is out of range
-                        // Include additional info for compatibility with target system
+                        ...bodyInfo, // Spread first so other properties can be set
+                        // Override with safe defaults only if the original values are null/undefined
                         faction: bodyInfo.faction || 'Neutral',
-                        diplomacy: bodyInfo.diplomacy || 'Neutral',
-                        ...bodyInfo
+                        diplomacy: bodyInfo.diplomacy || 'Neutral'
                     };
                     tcm.targetObjects.push(outOfRangeTarget);
                     idx = tcm.targetObjects.length - 1;

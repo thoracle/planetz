@@ -2216,7 +2216,16 @@ export class TargetComputerManager {
             } else if (diplomacy === 'friendly') {
                 diplomacyColor = '#00ff41'; // Friendly green
             } else {
-                console.log(`🎯 Unknown diplomacy status: "${diplomacy}" for faction: "${info?.faction || info?.diplomacy}"`);
+                // If diplomacy is null/undefined, use neutral as fallback
+                if (!diplomacy) {
+                    diplomacy = 'neutral';
+                    diplomacyColor = '#ffff00'; // Neutral yellow
+                    console.log(`🎯 Fixed null diplomacy status, using 'neutral' for faction: "${info?.faction || 'unknown'}"`);
+                } else {
+                    console.warn(`🎯 Unknown diplomacy status: "${diplomacy}" for faction: "${info?.faction || info?.diplomacy}" - using neutral fallback`);
+                    diplomacy = 'neutral'; // Fallback to neutral
+                    diplomacyColor = '#ffff00'; // Neutral yellow
+                }
             }
         }
         
