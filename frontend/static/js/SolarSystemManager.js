@@ -900,150 +900,16 @@ export class SolarSystemManager {
      */
     async createSolSystemInfrastructure() {
         console.log('🛰️ Creating Sol System space stations and infrastructure...');
-        
-        // Sol System Space Stations based on the documentation
-        const solStations = [
-            // Inner System Stations
-            {
-                name: 'Helios Solar Array',
-                faction: 'Terran Republic Alliance',
-                type: 'Research Lab',
-                position: this.getOrbitPosition(0.39, 45), // Mercury orbit
-                description: 'Solar energy research and power generation',
-                color: 0x00ff44, // Alliance green
-                size: 0.8
-            },
-            {
-                name: 'Hermes Refinery',
-                faction: 'Free Trader Consortium',
-                type: 'Refinery', 
-                position: this.getOrbitPosition(0.39, 135), // Mercury orbit
-                description: 'Processing rare metals from Mercury mining',
-                color: 0xffff00, // Trade yellow
-                size: 0.6
-            },
-            {
-                name: 'Aphrodite Atmospheric Research',
-                faction: 'Nexus Corporate Syndicate',
-                type: 'Research Lab',
-                position: this.getOrbitPosition(0.72, 90), // Venus orbit
-                description: 'Atmospheric research and chemical extraction',
-                color: 0x44ffff, // Corporate cyan
-                size: 0.7
-            },
-            {
-                name: 'Venus Cloud City',
-                faction: 'Ethereal Wanderers',
-                type: 'Frontier Outpost',
-                position: this.getOrbitPosition(0.72, 270), // Venus orbit
-                description: 'Spiritual retreat and meditation center',
-                color: 0xff44ff, // Ethereal purple
-                size: 0.5
-            },
-            // Earth-Luna System
-            {
-                name: 'Terra Station',
-                faction: 'Terran Republic Alliance', 
-                type: 'Communications Array',
-                position: this.getOrbitPosition(1.0, 0), // Earth orbit
-                description: 'Central communication hub for Alliance',
-                color: 0x00ff44, // Alliance green
-                size: 1.0
-            },
-            {
-                name: 'Luna Shipyards',
-                faction: 'Terran Republic Alliance',
-                type: 'Shipyard',
-                position: this.getOrbitPosition(1.003, 60), // Just outside Earth orbit (Luna distance)
-                description: 'Construction of Alliance starships',
-                color: 0x00ff44, // Alliance green
-                size: 1.2
-            },
-            {
-                name: 'L4 Trading Post',
-                faction: 'Free Trader Consortium',
-                type: 'Storage Depot',
-                position: this.getOrbitPosition(1.0, 300), // Earth L4 Lagrange point (60° ahead of Earth)
-                description: 'Major trading hub and cargo distribution',
-                color: 0xffff00, // Trade yellow
-                size: 0.9
-            },
-            {
-                name: 'Lunar Mining Consortium',
-                faction: 'Nexus Corporate Syndicate',
-                type: 'Factory',
-                position: this.getOrbitPosition(1.003, 240), // Luna orbit
-                description: 'Automated manufacturing and rare earth processing',
-                color: 0x44ffff, // Corporate cyan
-                size: 0.8
-            },
-            // Mars System (moved closer for starter system accessibility)
-            {
-                name: 'Mars Base',
-                faction: 'Terran Republic Alliance',
-                type: 'Repair Station',
-                position: this.getOrbitPosition(1.25, 90), // Moved closer - accessible for repairs
-                description: 'Fleet maintenance and military training',
-                color: 0x00ff44, // Alliance green
-                size: 0.9
-            },
-            {
-                name: 'Phobos Mining Station',
-                faction: 'Free Trader Consortium',
-                type: 'Mining Station',
-                position: this.getOrbitPosition(1.26, 120), // Moved closer - near Olympus
-                description: 'Mining station and cargo depot',
-                color: 0xffff00, // Trade yellow
-                size: 0.4
-            },
-            {
-                name: 'Deimos Research Facility',
-                faction: 'Scientists Consortium',
-                type: 'Research Lab',
-                position: this.getOrbitPosition(1.27, 60), // Moved closer - near Olympus
-                description: 'Research facility and communication relay',
-                color: 0x44ff44, // Science green
-                size: 0.4
-            },
-            // Asteroid Belt (moved closer for starter system accessibility)
-            {
-                name: 'Ceres Outpost',
-                faction: 'Scientists Consortium',
-                type: 'Research Lab',
-                position: this.getOrbitPosition(1.4, 180), // Moved closer - opposite side from Terra Prime
-                description: 'Research on dwarf planet and asteroid mining',
-                color: 0x44ff44, // Science green
-                size: 0.7
-            },
-            {
-                name: 'Vesta Mining Complex',
-                faction: 'Free Trader Consortium',
-                type: 'Mining Station',
-                position: this.getOrbitPosition(1.3, 135), // Moved closer - accessible for missions
-                description: 'Major asteroid mining operations',
-                color: 0xffff00, // Trade yellow
-                size: 0.6
-            },
-            // Outer System
-            {
-                name: 'Europa Research Station',
-                faction: 'Scientists Consortium',
-                type: 'Research Lab',
-                position: this.getEuropaMoonOrbitPosition(), // Near Europa moon around Terra Prime
-                description: 'Research stations studying subsurface ocean',
-                color: 0x44ff44, // Science green
-                size: 0.8
-            },
-            {
-                name: 'Callisto Defense Platform',
-                faction: 'Terran Republic Alliance',
-                type: 'Defense Platform',
-                position: this.getOrbitPosition(1.05, 210), // Moved near Terra Prime orbit
-                description: 'Military bases and defensive installations',
-                color: 0xff6600, // Military orange
-                size: 0.9
+
+        try {
+            // Load infrastructure data from JSON file
+            const response = await fetch('/static/data/starter_system_infrastructure.json');
+            if (!response.ok) {
+                throw new Error(`Failed to load infrastructure data: ${response.status}`);
             }
-        ];
+            const infrastructureData = await response.json();
+            const solStations = infrastructureData.stations;
+            console.log(`📋 Loaded ${solStations.length} stations from JSON data`);
 
         // Create space station objects
         for (const stationData of solStations) {
@@ -1073,101 +939,140 @@ export class SolarSystemManager {
      * Create a ring of Navigation Beacons 200km from Sol (the star) with even spacing
      * Small neutral pyramids with low hull that can be destroyed in 1–2 shots
      */
-    createNavigationBeaconsAroundTerraPrime() {
+    async createNavigationBeaconsAroundTerraPrime() {
         if (!this.starSystem) {
             console.warn('No star system available for beacon placement');
             return;
         }
 
-        // Get Sol (the star) position - should be at origin (0,0,0)
-        const star = this.celestialBodies.get('star');
-        if (!star || !star.position) {
-            console.warn('Sol (star) not found - skipping navigation beacon creation');
-            return;
-        }
+        try {
+            // Load beacon data from JSON file
+            const response = await fetch('/static/data/starter_system_infrastructure.json');
+            if (!response.ok) {
+                throw new Error(`Failed to load beacon data: ${response.status}`);
+            }
+            const infrastructureData = await response.json();
+            const beaconData = infrastructureData.beacons;
+            console.log(`📋 Loaded ${beaconData.length} beacons from JSON data`);
 
-        const center = star.position.clone();
-        const radiusKm = 175; // ring radius from Sol
-        console.log(`📡 Creating beacons around Sol at position (${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)}) with ${radiusKm}km radius`);
-        // Create 8 beacons evenly spaced around Sol
-        const count = 8;
+            const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
+            if (!THREE) return;
 
-        const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
-        if (!THREE) return;
+            // Ensure StarfieldManager has a tracking array
+            if (!this.starfieldManager) this.starfieldManager = window.starfieldManager;
+            if (this.starfieldManager && !Array.isArray(this.starfieldManager.navigationBeacons)) {
+                this.starfieldManager.navigationBeacons = [];
+            }
 
-        // Ensure StarfieldManager has a tracking array
-        if (!this.starfieldManager) this.starfieldManager = window.starfieldManager;
-        if (this.starfieldManager && !Array.isArray(this.starfieldManager.navigationBeacons)) {
-            this.starfieldManager.navigationBeacons = [];
-        }
+            // Create beacons from JSON data
+            for (let i = 0; i < beaconData.length; i++) {
+                const beaconInfo = beaconData[i];
+                const position = beaconInfo.position;
 
-        for (let i = 0; i < count; i++) {
-            const angle = (i / count) * Math.PI * 2;
-            const bx = center.x + radiusKm * Math.cos(angle);
-            const by = center.y; // Galactic plane (same Y as Terra Prime)
-            const bz = center.z + radiusKm * Math.sin(angle);
+                // Small pyramid (4-sided cone) geometry
+                const height = 0.8;
+                const baseRadius = 0.5;
+                const geometry = new THREE.ConeGeometry(baseRadius, height, 4);
 
-            // Small pyramid (4-sided cone) geometry
-            const height = 0.8;
-            const baseRadius = 0.5;
-            const geometry = new THREE.ConeGeometry(baseRadius, height, 4);
-            const material = new THREE.MeshPhongMaterial({ color: 0xffff00, emissive: 0x222200, shininess: 10 });
-            const beacon = new THREE.Mesh(geometry, material);
-            beacon.position.set(bx, by, bz);
-            beacon.rotation.y = angle;
-            
-            // console.log(`📡 Beacon ${i + 1} created at position (${bx.toFixed(1)}, ${by.toFixed(1)}, ${bz.toFixed(1)})`);
-
-            // Set name directly on beacon object for target computer
-            beacon.name = `Navigation Beacon #${i + 1}`;
-            
-            beacon.userData = {
-                name: `Navigation Beacon #${i + 1}`,
-                type: 'beacon',
-                faction: 'Neutral',
-                isBeacon: true
-            };
-
-            this.scene.add(beacon);
-
-            // Add to spatial tracking for collision detection
-            if (window.spatialManager && window.spatialManagerReady) {
-                window.spatialManager.addObject(beacon, {
-                    type: 'beacon',
-                    name: `Navigation Beacon #${i + 1}`,
-                    radius: 0.6, // Small collision radius
-                    canCollide: true,
-                    isTargetable: true,
-                    layer: 'stations',
-                    entityType: 'beacon',
-                    entityId: `navigation_beacon_${i + 1}`,
-                    health: 150 // 1–2 laser hits from starter weapons
-                });
-                
-                // Also add to collision manager's station layer
-                if (window.collisionManager) {
-                    window.collisionManager.addObjectToLayer(beacon, 'stations');
+                // Handle color conversion from hex string to number
+                let color;
+                if (typeof beaconInfo.color === 'string') {
+                    color = parseInt(beaconInfo.color.replace('#', ''), 16);
+                } else {
+                    color = 0xffff00; // Default yellow
                 }
-                
-                console.log(`📡 Navigation beacon ${i + 1} added to spatial tracking`);
+
+                const material = new THREE.MeshPhongMaterial({
+                    color: color,
+                    emissive: 0x222200,
+                    shininess: 10
+                });
+
+                const beacon = new THREE.Mesh(geometry, material);
+                beacon.position.set(position[0], position[1], position[2]);
+
+                // Calculate rotation based on position
+                const angle = Math.atan2(position[2], position[0]);
+                beacon.rotation.y = angle;
+
+                console.log(`📡 Beacon ${i + 1} created at position (${position[0].toFixed(1)}, ${position[1].toFixed(1)}, ${position[2].toFixed(1)})`);
+
+                // Set name directly on beacon object for target computer
+                beacon.name = beaconInfo.name;
+
+                beacon.userData = {
+                    name: beaconInfo.name,
+                    type: 'beacon',
+                    faction: 'Neutral',
+                    isBeacon: true,
+                    description: beaconInfo.description,
+                    id: beaconInfo.id,
+                    discoveryRadius: beaconInfo.discoveryRadius
+                };
+
+                this.scene.add(beacon);
+
+                // Add to spatial tracking for collision detection
+                if (window.spatialManager && window.spatialManagerReady) {
+                    window.spatialManager.addObject(beacon, {
+                        type: 'beacon',
+                        name: beaconInfo.name,
+                        radius: 0.6, // Small collision radius
+                        canCollide: true,
+                        isTargetable: true,
+                        layer: 'stations',
+                        entityType: 'beacon',
+                        entityId: beaconInfo.id,
+                        health: 150 // 1–2 laser hits from starter weapons
+                    });
+
+                    // Also add to collision manager's station layer
+                    if (window.collisionManager) {
+                        window.collisionManager.addObjectToLayer(beacon, 'stations');
+                    }
+
+                    console.log(`📡 Navigation beacon ${beaconInfo.name} added to spatial tracking`);
+                }
+
+                // Track in StarfieldManager so we can clean up on destroy
+                if (this.starfieldManager) {
+                    this.starfieldManager.navigationBeacons.push(beacon);
+                }
             }
 
-            // Track in StarfieldManager so we can clean up on destroy
-            if (this.starfieldManager) {
-                this.starfieldManager.navigationBeacons.push(beacon);
-            }
+            console.log(`📡 Created ${beaconData.length} Navigation Beacons from JSON data`);
+        } catch (error) {
+            console.error('❌ Failed to create navigation beacons from JSON:', error);
         }
-
-        console.log(`📡 Created ${count} Navigation Beacons around Sol at ${radiusKm}km radius`);
     }
 
     /**
      * Create a space station mesh
      */
     createSpaceStation(stationData) {
+        // Handle position conversion from JSON array to THREE.Vector3
+        let position;
+        if (Array.isArray(stationData.position)) {
+            // JSON format: [distance, angle] - convert to 3D position
+            position = this.getOrbitPosition(stationData.position[0], stationData.position[1]);
+        } else {
+            // Legacy format: already a THREE.Vector3
+            position = stationData.position;
+        }
+
+        // Handle color conversion from hex string to number
+        let color;
+        if (typeof stationData.color === 'string') {
+            // JSON format: "#00ff44" -> 0x00ff44
+            color = parseInt(stationData.color.replace('#', ''), 16);
+        } else {
+            // Legacy format: already a number
+            color = stationData.color;
+        }
+
         // Create station geometry (simple geometric shape for now)
         let stationGeometry;
-        
+
         switch (stationData.type) {
             case 'Shipyard':
                 // Larger, more complex structure for shipyards
@@ -1192,14 +1097,14 @@ export class SolarSystemManager {
 
         // Create station material with faction colors
         const stationMaterial = new THREE.MeshPhongMaterial({
-            color: stationData.color,
+            color: color,
             shininess: 30,
             transparent: true,
             opacity: 0.9
         });
 
         const station = new THREE.Mesh(stationGeometry, stationMaterial);
-        station.position.copy(stationData.position);
+        station.position.copy(position);
         
         // Add some random rotation to make stations look more dynamic
         station.rotation.x = Math.random() * Math.PI * 2;
