@@ -383,14 +383,14 @@ sequenceDiagram
     loop Every 5 seconds
         PS->>SCM: checkDiscoveryRadius()
         SCM->>DB: getUndiscoveredObjects()
-        DB-->>SCM: return object list
+        DB-->>SCM: |return object list|
 
         alt Object within range
             SCM->>SCM: markDiscovered(objectId)
             SCM->>AS: playAudio('blurb.mp3')
             SCM->>NS: showNotification("Object discovered!")
             SCM->>SP: saveDiscoveryState()
-            SP-->>SCM: confirmation
+            SP-->>SCM: |confirmation|
         end
     end
 ```
@@ -462,26 +462,26 @@ sequenceDiagram
     participant PS as Player Ship
     participant WS as World State
 
-    MS->>SCM: createWaypoint(config)
-    SCM->>SCM: generate waypointId
+    MS->>SCM: |createWaypoint(config)|
+    SCM->>SCM: |generate waypointId|
     SCM->>TC: setVirtualTarget(waypointId)
-    TC-->>SCM: target set confirmation
+    TC-->>SCM: |target set confirmation|
 
     loop Game loop
-        PS->>SCM: checkWaypointTriggers()
-        SCM->>SCM: calculate distance to waypoints
+        PS->>SCM: |checkWaypointTriggers()|
+        SCM->>SCM: |calculate distance to waypoints|
 
         alt Within trigger radius
-            SCM->>SCM: executeWaypointActions()
+            SCM->>SCM: |executeWaypointActions()|
             alt Spawn ships action
-                SCM->>WS: spawnShips(params)
+                SCM->>WS: |spawnShips(params)|
             else Play comm action
-                SCM->>WS: playCommunication(audioFile)
+                SCM->>WS: |playCommunication(audioFile)|
             else Next waypoint action
-                SCM->>SCM: advanceToNextWaypoint()
+                SCM->>SCM: |advanceToNextWaypoint()|
                 SCM->>TC: setVirtualTarget(newWaypointId)
             else Mission update action
-                SCM->>MS: updateMissionStatus(params)
+                SCM->>MS: |updateMissionStatus(params)|
             end
         end
     end
@@ -577,21 +577,21 @@ sequenceDiagram
     User->>SCUI: Click on object
     SCUI->>SCM: selectObject(objectId)
     SCM->>DB: getObjectData(objectId)
-    DB-->>SCM: return object data
+    DB-->>SCM: |return object data|
 
     alt Object is physical
         SCM->>TC: setTargetById(objectId)
         TC->>TC: lookup object in 3D space
-        TC-->>SCM: target set successfully
+        TC-->>SCM: |target set successfully|
         TC->>Starfield: updateTargetOutline()
     else Object is virtual waypoint
         SCM->>TC: setVirtualTarget(waypointId)
         TC->>TC: create virtual target display
-        TC-->>SCM: virtual target set
+        TC-->>SCM: |virtual target set|
     end
 
     SCM->>SCUI: update UI feedback
-    SCUI-->>User: Show targeting confirmation
+    SCUI-->>User: |Show targeting confirmation|
 ```
 
 ## 💾 **Persistence System**
@@ -717,9 +717,9 @@ graph TD
     SCP --> DISC
     SCP --> WP
 
-    MS -.-> SCM: waypoint creation
-    TC -.-> SCM: virtual target support
-    SF -.-> SCR: 3D rendering data
+    MS -.-> SCM: |waypoint creation|
+    TC -.-> SCM: |virtual target support|
+    SF -.-> SCR: |3D rendering data|
 
     style SCM fill:#e1f5fe
     style SCUI fill:#f3e5f5
