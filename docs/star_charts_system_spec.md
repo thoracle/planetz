@@ -270,13 +270,13 @@ graph TB
 - **Static Database**: JSON files generated from verse.py (with A0 JSON override)
 - **Basic Fog of War**: Simple reveal system
 
-### **📋 Implementation Priority**
-1. **High**: Expand verse.py to generate stations/beacons for all sectors
-2. **High**: Create A0 JSON infrastructure file for consistent starting system
-3. **High**: Generate static database from verse.py (with A0 override)
-4. **Medium**: Implement basic proximity discovery system
-5. **Medium**: UI implementation matching LRS controls
-6. **Low**: Visual polish and advanced features
+### **📋 Realistic Implementation Priority**
+1. **High**: Create basic StarChartsManager.js with proximity discovery logic
+2. **High**: Generate static celestial database from verse.py output
+3. **High**: Implement Target CPU integration (setTargetById, setVirtualTarget)
+4. **Medium**: Create StarChartsUI.js matching LRS controls and layout
+5. **Medium**: Add A0 infrastructure JSON loading
+6. **Low**: Visual enhancements and advanced features
 
 ---
 
@@ -561,14 +561,12 @@ sequenceDiagram
 ### **Zoom Behavior**
 - **Default**: Opens at zoom level 1 (system overview)
 - **Progressive Zoom Out**: Click empty space to step through zoom levels
-- **Super Zoom**: Double-click or press 'B' to zoom to level 0.4 (shows beacon ring)
+- **Super Zoom**: Double-click to zoom to level 0.4 (shows beacon ring)
 - **Reset**: Opening interface always resets to zoom level 1
 
 #### **Keyboard Controls** (Same as LRS)
 - **'L' or 'Escape'**: Close Star Charts interface
-- **'B' or 'b'**: Super zoom to show beacon ring
-- **'A'**: Switch to aft view *(handled by ViewManager)*
-- **'F'**: Switch to fore view *(handled by ViewManager)*
+- **No other keyboard controls specific to Star Charts**
 
 #### **UI State Diagram**
 ```mermaid
@@ -578,7 +576,7 @@ stateDiagram-v2
     Opening --> SystemView: Load data
     SystemView --> ObjectView: Click object
     SystemView --> ZoomedOutView: Click empty space
-    SystemView --> SuperZoomView: Double-click or B key
+    SystemView --> SuperZoomView: Double-click
     ZoomedOutView --> SystemView: Click empty space
     SuperZoomView --> SystemView: Click empty space
     ObjectView --> SystemView: |Back or Close|
@@ -708,29 +706,27 @@ class StarChartsManager {
 ### **File Structure**
 ```
 frontend/static/js/views/
-├── StarChartsManager.js          # Main system controller
-├── StarChartsUI.js               # UI rendering and interaction
-├── StarChartsRenderer.js         # 3D visualization
-└── StarChartsPersistence.js      # Data loading/saving
+├── StarChartsManager.js          # NEW: Main system controller
+├── StarChartsUI.js               # NEW: UI rendering and interaction
+├── LongRangeScanner.js           # EXISTING: Reference for controls/layout
+└── TargetComputerManager.js      # EXISTING: Enhanced with setTargetById/setVirtualTarget
 
-data/star_charts/
-├── objects.json                  # Static object database
-├── sectors/                      # Sector-specific discovery data
-│   ├── A0.json
-│   ├── A1.json
-│   └── ...
-└── waypoints/                    # Mission waypoint templates
-    ├── templates.json
-    └── active.json
+data/
+├── star_charts_celestial.json    # NEW: Static celestial database from verse.py
+├── starter_system_infrastructure.json  # EXISTING: A0 infrastructure
+└── star_charts_discovery/        # NEW: Discovery state persistence
+    ├── A0.json
+    ├── A1.json
+    └── ...
 
 #### **Component Interaction Diagram**
 ```mermaid
 graph TD
     subgraph "Star Charts System"
-        SCM[StarChartsManager]
-        SCUI[StarChartsUI]
-        SCR[StarChartsRenderer]
-        SCP[StarChartsPersistence]
+        SCM[StarChartsManager ⭐]
+        SCUI[StarChartsUI ⭐]
+        SM[SolarSystemManager ⭐]
+        TCM[TargetComputerManager ⭐]
     end
 
     subgraph "External Systems"
@@ -748,28 +744,25 @@ graph TD
     end
 
     SCM --> SCUI
-    SCM --> SCR
-    SCM --> SCP
+    SCUI --> TCM
 
-    SCUI --> TC
-    SCUI --> SF
-
+    SCM --> SM
     SCM --> MS
     SCM --> NS
     SCM --> AS
 
-    SCP --> OBJ
-    SCP --> DISC
-    SCP --> WP
+    SM -.-> |getDiscoveryRadius| SM
+    TCM -.-> |setTargetById| TCM
+    TCM -.-> |setVirtualTarget| TCM
 
     MS -.-> SCM: |waypoint creation|
-    TC -.-> SCM: |virtual target support|
-    SF -.-> SCR: |3D rendering data|
+    SM -.-> OBJ: |celestial data|
+    SM -.-> DISC: |infrastructure data|
 
-    style SCM fill:#e1f5fe
-    style SCUI fill:#f3e5f5
-    style SCR fill:#fff3e0
-    style SCP fill:#e8f5e8
+    style SCM fill:#4CAF50
+    style SCUI fill:#FFC107
+    style SM fill:#4CAF50
+    style TCM fill:#4CAF50
 ```
 
 ## 🚀 **Implementation Phases**
@@ -1114,26 +1107,26 @@ Star Charts uses a **single, simple discovery mechanism**:
 - **Unified System**: Same discovery logic for all object types
 
 #### **Data Sources**
-**Corrected Approach:**
+**Realistic Approach:**
 
-**All Sectors from verse.py** (A1, A2, B1, etc.)
-- verse.py generates all sectors procedurally
-- Ensures consistent universe across all exploration
-- Single source of truth for universe generation
+**Celestial Bodies from verse.py** (All sectors A0-J8)
+- verse.py generates stars, planets, moons for all sectors
+- Provides consistent universe foundation
+- Deterministic generation using UNIVERSE_SEED
 
-**A0 Starting System Override** (JSON file)
-- A0 sector uses JSON file for consistent starting experience
-- Contains predefined stations, beacons, and infrastructure
-- Players always start with the same initial setup
-- Allows for mission-critical locations and tutorials
+**Infrastructure Sources** (Multiple approaches)
+- **A0 Sector**: JSON file for consistent starting experience
+- **Other Sectors**: Generated by SolarSystemManager.js at runtime
+- **Stations & Beacons**: Created dynamically as needed
+- **Mission Objects**: Added programmatically by mission system
 
 ## 🔧 **Simplified Implementation Phases**
 
-### **Phase 0: Database Generation**
-1. **Expand verse.py**: Add station/beacon generation to verse.py for all sectors
-2. **Create A0 JSON**: Define A0 starting system infrastructure in JSON file
-3. **Generate Static Database**: Create JSON database from verse.py output (with A0 override)
-4. **Test Generation**: Verify database generation and loading works correctly
+### **Phase 0: Foundation Setup**
+1. **Create Static Database**: Generate JSON from verse.py output (celestial bodies only)
+2. **A0 Infrastructure JSON**: Create JSON file for A0 starting system
+3. **Basic File Structure**: Create placeholder StarChartsManager.js and StarChartsUI.js files
+4. **Test Data Loading**: Verify celestial database loads and A0 JSON works
 
 ### **Phase 1: Core Discovery System**
 1. Implement basic StarChartsManager with proximity discovery
