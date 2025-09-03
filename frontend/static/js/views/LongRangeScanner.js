@@ -836,9 +836,11 @@ export class LongRangeScanner {
         if (setAsTarget && starfieldManager && starfieldManager.targetComputerEnabled) {
             // Ensure TargetComputerManager exists and has a fresh list
             if (starfieldManager.targetComputerManager) {
+                console.log(`🔍 LRS: Updating target list before setting scanner target for ${bodyName}`);
                 starfieldManager.targetComputerManager.updateTargetList();
                 const tcm = starfieldManager.targetComputerManager;
                 let idx = tcm.targetObjects.findIndex(t => (t.name === bodyName) || (t.object?.userData?.name === bodyName));
+                console.log(`🔍 LRS: Found ${bodyName} at index ${idx} in target list (${tcm.targetObjects.length} total targets)`);
                 
                 // If body not found in range, force-add it as an out-of-range target
                 if (idx === -1) {
@@ -865,16 +867,11 @@ export class LongRangeScanner {
                 if (idx !== -1) {
                     // Use proper scanner target selection method
                     const targetData = tcm.targetObjects[idx];
-                    
-                    // Only set target if it's not already the current target
-                    if (tcm.currentTarget?.name !== targetData.name) {
-                        console.log(`🔍 LRS: Setting scanner target: ${targetData.name}`);
-                        starfieldManager.setTargetFromScanner(targetData);
-                    } else {
-                        console.log(`🔍 LRS: Target ${targetData.name} already selected - refreshing target state`);
-                        // Refresh the target state to ensure proper index and display
-                        starfieldManager.setTargetFromScanner(targetData);
-                    }
+
+                    // Always set the scanner target to ensure proper synchronization
+                    // The previous condition was preventing updates when target list indices changed
+                    console.log(`🔍 LRS: Setting scanner target: ${targetData.name} (index: ${idx})`);
+                    starfieldManager.setTargetFromScanner(targetData);
                 }
             } else {
                 // Fallback to previous behavior using SFManager list
@@ -1011,9 +1008,10 @@ export class LongRangeScanner {
             if (idx !== -1) {
                 // Use proper scanner target selection method
                 const targetData = tcm.targetObjects[idx];
-                
-                // Always set the scanner target to ensure proper flag setting
-                console.log(`🔍 LRS: Setting scanner target: ${targetData.name}`);
+
+                // Always set the scanner target to ensure proper synchronization
+                // The previous condition was preventing updates when target list indices changed
+                console.log(`🔍 LRS: Setting scanner target: ${targetData.name} (index: ${idx})`);
                 starfieldManager.setTargetFromScanner(targetData);
             }
         }

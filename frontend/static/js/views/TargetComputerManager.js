@@ -1708,21 +1708,28 @@ export class TargetComputerManager {
         }
 
         console.log(`🎯 Setting target from long-range scanner: ${targetData.name || 'Unknown'}`);
-        
+        console.log(`🎯 Scanner target details:`, {
+            name: targetData.name,
+            type: targetData.type,
+            hasObject: !!targetData.object,
+            currentTargetCount: this.targetObjects.length,
+            previousTarget: this.currentTarget?.name
+        });
+
         // Set the target directly without cycling through the normal target list
         this.currentTarget = targetData;
         this.isFromLongRangeScanner = true; // Mark as scanner target for protection
-        
+
         // Find and set the target index in the current target list
         const targetIndex = this.targetObjects.findIndex(target => target.name === targetData.name);
         if (targetIndex !== -1) {
             this.targetIndex = targetIndex;
-            console.log(`🎯 Scanner target index set to ${targetIndex}`);
+            console.log(`🎯 Scanner target index set to ${targetIndex} (existing in list)`);
         } else {
             // If target is not in the current list, add it and set the index
             this.targetObjects.push(targetData);
             this.targetIndex = this.targetObjects.length - 1;
-            console.log(`🎯 Scanner target added to list at index ${this.targetIndex}`);
+            console.log(`🎯 Scanner target added to list at index ${this.targetIndex} (newly added)`);
         }
         
         // Force direction arrow update
