@@ -78,6 +78,9 @@ export class TargetComputerManager {
         // Range monitoring state
         this.rangeMonitoringInterval = null;
         this.isRangeMonitoringActive = false;
+
+        // Temporary "no targets" message timeout
+        this.noTargetsTimeout = null;
         
         // Audio for targeting events (using HTML5 Audio for simplicity)
         this.audioElements = new Map();
@@ -1019,24 +1022,29 @@ export class TargetComputerManager {
         
         // Check if we have any targets in range
         if (this.targetObjects && this.targetObjects.length > 0) {
-            console.log(`🎯 Found ${this.targetObjects.length} alternative targets - selecting nearest`);
-            this.cycleTarget(); // Auto-select nearest target
-            
-            // Play audio feedback for automatic target switch
-            this.playAudio('frontend/static/audio/blurb.mp3');
-            
-            // Sync with StarfieldManager
-            if (this.viewManager?.starfieldManager) {
-                this.viewManager.starfieldManager.currentTarget = this.currentTarget?.object || this.currentTarget;
-                this.viewManager.starfieldManager.targetIndex = this.targetIndex;
-                this.viewManager.starfieldManager.targetObjects = this.targetObjects;
-                
-                // Update 3D outline for automatic cycle (if enabled)
-                if (this.currentTarget && this.viewManager.starfieldManager.outlineEnabled && 
-                    !this.viewManager.starfieldManager.outlineDisabledUntilManualCycle) {
-                    this.viewManager.starfieldManager.updateTargetOutline(this.currentTarget?.object || this.currentTarget, 0);
+            console.log(`🎯 Found ${this.targetObjects.length} alternative targets - will auto-select nearest after 1 second delay`);
+
+            // Show temporary "No targets in range" message for 1 second before auto-switching
+            this.showTemporaryNoTargetsMessage(() => {
+                console.log(`🎯 Auto-selecting nearest target after delay`);
+                this.cycleTarget(); // Auto-select nearest target
+
+                // Play audio feedback for automatic target switch
+                this.playAudio('frontend/static/audio/blurb.mp3');
+
+                // Sync with StarfieldManager
+                if (this.viewManager?.starfieldManager) {
+                    this.viewManager.starfieldManager.currentTarget = this.currentTarget?.object || this.currentTarget;
+                    this.viewManager.starfieldManager.targetIndex = this.targetIndex;
+                    this.viewManager.starfieldManager.targetObjects = this.targetObjects;
+
+                    // Update 3D outline for automatic cycle (if enabled)
+                    if (this.currentTarget && this.viewManager.starfieldManager.outlineEnabled &&
+                        !this.viewManager.starfieldManager.outlineDisabledUntilManualCycle) {
+                        this.viewManager.starfieldManager.updateTargetOutline(this.currentTarget?.object || this.currentTarget, 0);
+                    }
                 }
-            }
+            });
         } else {
             // No targets in range - show no targets display
             console.log(`🎯 No alternative targets found after ${outOfRangeTargetName} went out of range - showing no targets display`);
@@ -1060,6 +1068,37 @@ export class TargetComputerManager {
                 this.viewManager.starfieldManager.targetObjects = [];
             }
         }
+    }
+
+    /**
+     * Show temporary "No targets in range" message for specified duration
+     * @param {Function} callback - Function to call after the delay
+     * @param {number} duration - Duration in milliseconds (default: 1000ms)
+     */
+    showTemporaryNoTargetsMessage(callback, duration = 1000) {
+        // Show "No targets in range" message with switching indicator
+        this.targetInfoDisplay.innerHTML = `
+            <div style="background-color: #2a2a2a; color: #D0D0D0; padding: 8px; border-radius: 4px; margin-bottom: 8px; text-align: center; border: 1px solid #555555;">
+                <div style="font-weight: bold; font-size: 12px;">No Targets In Range</div>
+                <div style="font-size: 10px;">Switching to nearest target...</div>
+            </div>
+        `;
+
+        // Hide service icons during the delay
+        if (this.statusIconsContainer) {
+            this.statusIconsContainer.style.display = 'none';
+        }
+
+        // Clear any existing timeout
+        if (this.noTargetsTimeout) {
+            clearTimeout(this.noTargetsTimeout);
+        }
+
+        // Set timeout to execute callback after delay
+        this.noTargetsTimeout = setTimeout(() => {
+            this.noTargetsTimeout = null;
+            callback();
+        }, duration);
     }
 
     /**

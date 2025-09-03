@@ -215,15 +215,16 @@ if (this.isFromLongRangeScanner) {
 
 **Scenario**: Normal target goes out of range
 - **Condition**: `isFromLongRangeScanner = false` AND target distance > 150km
-- **Behavior**: Automatically switches to nearest available target within range
+- **Behavior**: Shows "No targets in range" for 1 second, then switches to nearest available target
 - **Message**: "Current target out of range - switching to nearest available target"
-- **Seamless**: No user intervention required
+- **UX Enhancement**: Provides visual feedback before auto-switching
 
 ```javascript
-if (this.targetObjects.length > 0) {
-    console.log(`🎯 Found ${this.targetObjects.length} alternative targets - selecting nearest`);
-    this.cycleTarget(); // Auto-switch to nearest
-}
+// Show temporary "No targets in range" message for 1 second
+this.showTemporaryNoTargetsMessage(() => {
+    console.log(`🎯 Auto-selecting nearest target after delay`);
+    this.cycleTarget(); // Auto-switch to nearest target after delay
+}, 1000); // 1 second delay
 ```
 
 ### 5. 📡 **No Targets Monitoring**
@@ -331,6 +332,13 @@ clearTargetComputer()
 - Clears isFromLongRangeScanner flag
 - Ensures clean system state
 - Clears persistent cache entries
+
+// Temporary "no targets" message display
+showTemporaryNoTargetsMessage(callback, duration)
+- Shows "No Targets In Range" message with switching indicator
+- Hides service icons during delay period
+- Executes callback after specified duration (default: 1000ms)
+- Provides visual feedback before auto-switching to new target
 ```
 
 ### State Persistence
@@ -379,7 +387,15 @@ The system maintains state across different scenarios:
 - Enhanced target reference updating
 - Maintained target state through list rebuilding operations
 
-### 6. Known Issues
+#### 6. Auto-Switch Delay with Visual Feedback
+**Issue**: Immediate auto-switching to new targets provided no visual feedback
+**Solution**: Added 1-second delay with "No targets in range" message
+- Shows "No Targets In Range" message for 1 second before auto-switching
+- Provides clear visual feedback that target went out of range
+- Maintains user awareness of target state changes
+- Improves overall user experience with smooth transitions
+
+### 7. Known Issues
 **LRS Subsequent Selection Issue**:
 - **Status**: Under Investigation
 - **Description**: After selecting a target from Long Range Scanner for the first time, subsequent attempts to select different targets may fail to properly update the target computer
