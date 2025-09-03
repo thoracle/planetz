@@ -1511,31 +1511,21 @@ export class TargetComputerManager {
         // Log target list for debugging
         console.log(`🎯 Target list updated (traditional): ${allTargets.length} targets available for cycling`, allTargets.map(t => t.name));
         
-        // Sort targets by distance
-        this.sortTargetsByDistance(true); // Force sort on target list update
-        
+        // Sort targets by distance ONCE (sorting changes array order)
+        this.sortTargetsByDistance(true);
+
         // Update target index AFTER sorting (sorting changes array order)
         if (this.currentTarget) {
             const newIndex = this.targetObjects.findIndex(target => target.name === this.currentTarget.name);
             if (newIndex !== -1) {
                 this.targetIndex = newIndex;
+                console.log(`🎯 Target index updated after sort: ${this.targetIndex} for ${this.currentTarget.name}`);
+            } else {
+                console.warn(`🎯 Could not find current target ${this.currentTarget.name} in sorted list - clearing target`);
+                this.clearCurrentTarget();
             }
         }
-        
-        // If target computer is enabled and we have targets, ensure current target is valid
-        if (this.targetComputerEnabled && allTargets.length > 0) {
-            if (this.targetIndex >= 0 && this.targetIndex < allTargets.length) {
-                this.updateTargetDisplay();
-            }
-        }
-        
-        // console.log(`🎯 Final target list: ${allTargets.length} targets total`,
-        //     allTargets.map((t, index) => ({ index, name: t.name, type: t.type, isShip: t.isShip }))
-        // );
-        
-        // Sort targets by distance
-        this.sortTargetsByDistance(true); // Force sort on target list update
-        
+
         // Update target display (unless power-up animation is running or in no targets monitoring mode)
         if (!this.isPoweringUp && !this.isInNoTargetsMode) {
             this.updateTargetDisplay();
@@ -1738,10 +1728,17 @@ export class TargetComputerManager {
         // Force direction arrow update
         this.updateDirectionArrow();
         
-        // Update target display
+        // Ensure target synchronization - force update target display immediately
         console.log(`🎯 About to call updateTargetDisplay() for scanner target: ${targetData.name}`);
         this.updateTargetDisplay();
         console.log(`🎯 updateTargetDisplay() completed for scanner target`);
+
+        // Additional safeguard: verify the target was set correctly
+        if (this.currentTarget?.name !== targetData.name) {
+            console.warn(`🎯 Scanner target synchronization issue - expected ${targetData.name}, got ${this.currentTarget?.name}`);
+            this.currentTarget = targetData;
+            this.updateTargetDisplay();
+        }
 
         // Start range monitoring for the scanner target
         this.startRangeMonitoring();
@@ -2464,17 +2461,22 @@ export class TargetComputerManager {
         if (this.currentTarget && typeof this.currentTarget === 'object') {
             for (let i = 0; i < this.targetObjects.length; i++) {
                 const targetData = this.targetObjects[i];
-                if (targetData && 
-                    (targetData === this.currentTarget || 
-                     targetData.object === this.currentTarget ||
-                     (targetData.name === this.currentTarget.name && targetData.type === this.currentTarget.type))) {
-                    // Update the index to match the found target
-                    this.targetIndex = i;
-                    this.currentTarget = targetData; // Ensure we have the full target data
-                    console.log(`🔧 Fixed target index mismatch: set to ${i} for target ${targetData.name}`);
-                    
-                    // Process and return the target data
-                    return this.processTargetData(targetData);
+                if (targetData) {
+                    // More robust target matching - check multiple criteria
+                    const isExactMatch = targetData === this.currentTarget;
+                    const isObjectMatch = targetData.object === this.currentTarget;
+                    const isUUIDMatch = targetData.object?.uuid && this.currentTarget.uuid && targetData.object.uuid === this.currentTarget.uuid;
+                    const isNameTypeMatch = targetData.name === this.currentTarget.name && targetData.type === this.currentTarget.type;
+
+                    if (isExactMatch || isObjectMatch || isUUIDMatch || isNameTypeMatch) {
+                        // Update the index to match the found target
+                        this.targetIndex = i;
+                        this.currentTarget = targetData; // Ensure we have the full target data
+                        console.log(`🔧 Fixed target index mismatch: set to ${i} for target ${targetData.name} (${isExactMatch ? 'exact' : isObjectMatch ? 'object' : isUUIDMatch ? 'uuid' : 'name/type'})`);
+
+                        // Process and return the target data
+                        return this.processTargetData(targetData);
+                    }
                 }
             }
         }
