@@ -45,18 +45,18 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `noammo` | **Status**: Production Ready | **Last Updated**: 2025-09-03
+**Branch**: `noammo` | **Status**: In Development (22 uncommitted changes) | **Last Updated**: 2025-09-03
 
 **Recent Work** (Last 5 commits):
+- updated restart.md
 - star charts with broken targeting
 - Complete Star Charts System Implementation & Infrastructure Fixes
 - Fix Mermaid syntax errors in Star Charts specification
 - Fix LRS UI inconsistencies in Star Charts specification
-- Fix keyboard controls inconsistency with LRS UI
 
 **Codebase Stats**:
 - JavaScript Files: 141 | Python Files: 1606 | Documentation: 71 files
-- Total Lines: 228921 | Architecture: Fully modular ES6+ modules
+- Total Lines: 231539 | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
 ## 🏗️ Architecture Overview
@@ -95,7 +95,7 @@ open http://127.0.0.1:5001
 
 ### **Navigation & UI**
 - **R**: Subspace Radio | **N**: Communication HUD | **M**: Mission Status | **H**: Help screen
-- **L**: Long Range Scanner | **G**: Galactic Chart | **F**: Fore View | **A**: Aft View | **D**: Damage Control
+- **L**: Long Range Scanner | **C**: Star Charts (navigation database) | **G**: Galactic Chart | **F**: Fore View | **A**: Aft View | **D**: Damage Control
 - **Docking**: Automatic when approaching stations
 
 ### **Speed Controls**
@@ -167,6 +167,20 @@ open http://127.0.0.1:5001
 - **Hitscan weapons**: Direct raycasting for instant-hit weapons (lasers, pulse)
 - **Spatial management**: Three.js Vector3 math for all positioning and movement
 
+### **Star Charts System (Phase 0)**
+- **Status**: Implemented and under UX parity tuning with LRS
+- **Discovery**: Proximity-based discovery (major/minor/background pacing) with HUD banners + audio
+- **UI Parity**:
+  - Planet rings normalized to LRS layout (100/250/400/…) and parent-centered orbits
+  - Dedicated beacon ring at 350 with matching iconography
+  - Click-to-recenter and step-zoom; B toggles full beacon ring view
+  - Scales initial view from Long Range Scanner range to match sizes
+- **Test Mode**: Discover-all for sector A0 to compare with LRS
+  - Enable one of:
+    - `window.STAR_CHARTS_DISCOVER_ALL = true` (console)
+    - `localStorage.setItem('star_charts_test_discover_all','true')`
+  - Reload; all A0 objects appear in Star Charts for 1:1 visual comparison
+
 ### **Faction Color System**
 ```javascript
 // Universal color coding across all UI elements
@@ -215,23 +229,30 @@ unknown: '#44ffff'   // Cyan for unknown
 
 ## ⚠️ Known Issues
 
-### **Long Range Scanner (LRS) Target Selection**
+### **Long Range Scanner (LRS) Target Selection** ✅ **FIXED**
 **Issue**: After selecting a target from the Long Range Scanner for the first time, subsequent attempts to select different targets from the LRS may fail to properly update the target computer.
 
-**Status**: Under Investigation
-- **First Selection**: Works correctly - target is set and protected from auto-switching
-- **Subsequent Selections**: May not properly update the target computer with new selection
-- **Workaround**: Close and reopen the Long Range Scanner, or use Tab targeting to cycle through available targets
+**Status**: ✅ **RESOLVED** - Implemented robust target selection synchronization
+- **Solution**: Refactored target selection logic with `setScannerTargetRobustly()` method
+- **Key Improvements**:
+  - Forced fresh target list updates before each selection
+  - Proper state preservation and restoration
+  - Enhanced error handling and recovery
+  - Consistent synchronization between all target management systems
 
 **Technical Details**:
-- Target index management between LRS and TargetComputerManager may have synchronization issues
-- `setTargetFromScanner()` method appears to work but target computer may not reflect the change
-- Logs show successful target setting but UI/behavior doesn't update accordingly
+- **Root Cause**: Race conditions between target list rebuilding and stale index references
+- **Fix**: New `setScannerTargetRobustly()` method that:
+  - Always forces fresh target list updates
+  - Handles out-of-range targets properly
+  - Ensures proper synchronization between LRS, TargetComputerManager, and StarfieldManager
+  - Includes error recovery and state restoration
+  - Uses immediate + delayed UI updates for reliability
 
-**Related Systems**: 
-- `LongRangeScanner.js` - Target selection logic
-- `TargetComputerManager.js` - Target index and state management
-- `StarfieldManager.js` - Target synchronization between systems
+**Related Systems**:
+- `LongRangeScanner.js` - Updated with robust target selection method
+- `TargetComputerManager.js` - Existing `setTargetFromScanner()` method preserved
+- `StarfieldManager.js` - Enhanced synchronization handling
 
 ---
 

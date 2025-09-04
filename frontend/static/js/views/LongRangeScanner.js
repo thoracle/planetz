@@ -832,128 +832,9 @@ export class LongRangeScanner {
         // If targeting computer is enabled and this is a user click, set this body as the target robustly
         const starfieldManager = this.viewManager.starfieldManager;
         console.log(`🔍 LRS: Target setting check - setAsTarget: ${setAsTarget}, starfieldManager: ${!!starfieldManager}, targetComputerEnabled: ${starfieldManager?.targetComputerEnabled}`);
-        
+
         if (setAsTarget && starfieldManager && starfieldManager.targetComputerEnabled) {
-            // Ensure TargetComputerManager exists and has a fresh list
-            if (starfieldManager.targetComputerManager) {
-                const tcm = starfieldManager.targetComputerManager;
-
-                // Store current target information before updating list
-                const currentTargetName = tcm.currentTarget?.name;
-                const currentTargetIndex = tcm.targetIndex;
-
-                console.log(`🔍 LRS: Updating target list before setting scanner target for ${bodyName}`);
-                console.log(`🔍 LRS: Current target before update: ${currentTargetName} at index ${currentTargetIndex}`);
-
-                // Only update target list if we don't have a current scanner target
-                // This prevents breaking the target reference when LRS reopens
-                if (!tcm.isFromLongRangeScanner || !tcm.currentTarget) {
-                    starfieldManager.targetComputerManager.updateTargetList();
-                } else {
-                    console.log(`🔍 LRS: Skipping target list update to preserve current scanner target: ${currentTargetName}`);
-                }
-
-                // Try to restore the current target after list update
-                if (currentTargetName && currentTargetIndex >= 0) {
-                    // First try to find by exact object match
-                    let restoredIndex = tcm.targetObjects.findIndex(t =>
-                        t === tcm.currentTarget ||
-                        (t.object && t.object === tcm.currentTarget.object) ||
-                        (t.object && t.object.uuid && tcm.currentTarget.object?.uuid && t.object.uuid === tcm.currentTarget.object.uuid)
-                    );
-
-                    // If no exact match, try to find by name (less reliable)
-                    if (restoredIndex === -1) {
-                        restoredIndex = tcm.targetObjects.findIndex(t => t.name === currentTargetName);
-                    }
-
-                    if (restoredIndex !== -1) {
-                        console.log(`🔧 LRS: Restoring target index from ${currentTargetIndex} to ${restoredIndex} for ${currentTargetName}`);
-                        tcm.targetIndex = restoredIndex;
-                        // Ensure currentTarget points to the correct object in the updated list
-                        tcm.currentTarget = tcm.targetObjects[restoredIndex];
-                        console.log(`🔧 LRS: Updated currentTarget reference to match target list object`);
-                    } else {
-                        console.warn(`🔧 LRS: Could not restore target ${currentTargetName} - not found in updated target list`);
-                    }
-                }
-
-                let idx = tcm.targetObjects.findIndex(t => (t.name === bodyName) || (t.object?.userData?.name === bodyName));
-                console.log(`🔍 LRS: Found ${bodyName} at index ${idx} in target list (${tcm.targetObjects.length} total targets)`);
-
-                // If body not found in range, force-add it as an out-of-range target
-                if (idx === -1) {
-                    console.log(`🔍 Long Range Scanner: Adding out-of-range celestial body ${bodyName} to target list`);
-                    const distance = starfieldManager.camera.position.distanceTo(targetBody.position);
-                    // Create target with safe defaults, then spread bodyInfo but don't override faction/diplomacy if they're null/undefined
-                    const outOfRangeTarget = {
-                        name: bodyName,
-                        type: bodyInfo.type,
-                        position: targetBody.position.toArray(),
-                        isMoon: bodyInfo.type === 'moon',
-                        object: targetBody,  // Store the actual THREE.js object
-                        isShip: false,
-                        distance: distance,
-                        outOfRange: true, // Flag to indicate this is out of range
-                        ...bodyInfo, // Spread first so other properties can be set
-                        // Override with safe defaults only if the original values are null/undefined
-                        faction: bodyInfo.faction || 'Neutral',
-                        diplomacy: bodyInfo.diplomacy || 'Neutral'
-                    };
-                    tcm.targetObjects.push(outOfRangeTarget);
-                    idx = tcm.targetObjects.length - 1;
-
-                    // Ensure target computer can cycle through this new target
-                    console.log(`🔍 LRS: Added out-of-range target at index ${idx}, ensuring cycling is possible`);
-                } else {
-                    // Target already exists - check if we need to update its data
-                    const existingTarget = tcm.targetObjects[idx];
-                    if (existingTarget.outOfRange && !existingTarget.object) {
-                        // Update existing out-of-range target with current object reference
-                        console.log(`🔍 LRS: Updating existing out-of-range target ${bodyName} with current object reference`);
-                        existingTarget.object = targetBody;
-                        existingTarget.distance = starfieldManager.camera.position.distanceTo(targetBody.position);
-                    }
-                }
-
-                // Additional safeguard: ensure target index is valid
-                if (idx >= 0 && idx < tcm.targetObjects.length) {
-                    console.log(`🔍 LRS: Target index ${idx} is valid for target list of size ${tcm.targetObjects.length}`);
-                } else {
-                    console.warn(`🔍 LRS: Target index ${idx} is invalid for target list of size ${tcm.targetObjects.length}`);
-                    idx = -1; // Reset to prevent errors
-                }
-                
-                if (idx !== -1) {
-                    // Use proper scanner target selection method
-                    const targetData = tcm.targetObjects[idx];
-
-                    // Always set the scanner target to ensure proper synchronization
-                    // The previous condition was preventing updates when target list indices changed
-                    console.log(`🔍 LRS: Setting scanner target: ${targetData.name} (${targetData.type}, index: ${idx}, outOfRange: ${targetData.outOfRange})`);
-
-                    starfieldManager.setTargetFromScanner(targetData);
-
-                    // Force immediate target display update to ensure HUD reflects the change
-                    console.log(`🔍 LRS: Forcing immediate target display update for ${targetData.name}`);
-                    if (tcm.updateTargetDisplay) {
-                        setTimeout(() => {
-                            tcm.updateTargetDisplay();
-                            console.log(`🔍 LRS: Target display update completed for ${targetData.name}`);
-                        }, 10); // Small delay to ensure setTargetFromScanner completes
-                    }
-                }
-            } else {
-                // Fallback to previous behavior using SFManager list
-                const targetIndex = starfieldManager.targetObjects.findIndex(obj => obj.name === bodyName);
-                if (targetIndex !== -1) {
-                    // Set target directly without off-by-one error
-                    starfieldManager.targetIndex = targetIndex;
-                    // Create a target data object similar to what TargetComputerManager expects
-                    const fallbackTargetData = starfieldManager.targetObjects[targetIndex];
-                    starfieldManager.setTargetFromScanner(fallbackTargetData);
-                }
-            }
+            this.setScannerTargetRobustly(bodyName, bodyInfo, targetBody);
         }
 
         // Build the details HTML
@@ -1049,95 +930,18 @@ export class LongRangeScanner {
         }
 
         // If targeting computer is enabled, set beacon as current target
-        if (starfieldManager?.targetComputerEnabled && starfieldManager.targetComputerManager) {
-            const tcm = starfieldManager.targetComputerManager;
+        if (starfieldManager?.targetComputerEnabled) {
+            const beaconName = beacon.userData?.name || 'Navigation Beacon';
+            const beaconInfo = {
+                name: beaconName,
+                type: 'beacon',
+                faction: 'Neutral',
+                diplomacy: 'Neutral',
+                description: 'A navigation marker for local traffic lanes',
+                intel_brief: 'Transmits local traffic advisories on subspace band'
+            };
 
-            // Store current target information before updating list (same as celestial body logic)
-            const currentTargetName = tcm.currentTarget?.name;
-            const currentTargetIndex = tcm.targetIndex;
-
-            // Only update target list if we don't have a current scanner target
-            // This prevents breaking the target reference when LRS reopens
-            if (!tcm.isFromLongRangeScanner || !tcm.currentTarget) {
-                // Refresh list so beacon appears via physics entities if in range
-                tcm.updateTargetList();
-            } else {
-                console.log(`🔍 LRS: Skipping target list update to preserve current scanner target: ${currentTargetName}`);
-            }
-
-            // Try to restore the current target after list update (same as celestial body logic)
-            if (currentTargetName && currentTargetIndex >= 0) {
-                // First try to find by exact object match
-                let restoredIndex = tcm.targetObjects.findIndex(t =>
-                    t === tcm.currentTarget ||
-                    (t.object && t.object === tcm.currentTarget.object) ||
-                    (t.object && t.object.uuid && tcm.currentTarget.object?.uuid && t.object.uuid === tcm.currentTarget.object.uuid)
-                );
-
-                // If no exact match, try to find by name (less reliable)
-                if (restoredIndex === -1) {
-                    restoredIndex = tcm.targetObjects.findIndex(t => t.name === currentTargetName);
-                }
-
-                if (restoredIndex !== -1) {
-                    tcm.targetIndex = restoredIndex;
-                    tcm.currentTarget = tcm.targetObjects[restoredIndex];
-                } else {
-                    console.warn(`🔧 LRS: Could not restore beacon target ${currentTargetName} - not found in updated target list`);
-                }
-            }
-
-            let idx = tcm.targetObjects.findIndex(t => t.object === beacon || t.name === (beacon.userData?.name || 'Navigation Beacon'));
-            
-            // If beacon not found in range, force-add it as an out-of-range target
-            if (idx === -1) {
-                console.log(`🔍 Long Range Scanner: Adding out-of-range beacon ${beacon.userData?.name || 'Navigation Beacon'} to target list`);
-                const distance = starfieldManager.camera.position.distanceTo(beacon.position);
-                const outOfRangeTarget = {
-                    name: beacon.userData?.name || 'Navigation Beacon',
-                    type: 'beacon',
-                    position: beacon.position.toArray(),
-                    isMoon: false,
-                    object: beacon,  // Store the actual THREE.js object
-                    isShip: false,
-                    distance: distance,
-                    outOfRange: true, // Flag to indicate this is out of range
-                    faction: 'Neutral',
-                    description: 'A navigation marker for local traffic lanes',
-                    intel_brief: 'Transmits local traffic advisories on subspace band',
-                    diplomacy: 'Neutral'
-                };
-                tcm.targetObjects.push(outOfRangeTarget);
-                idx = tcm.targetObjects.length - 1;
-            } else {
-                // Beacon already exists - update its position and distance if needed
-                const existingTarget = tcm.targetObjects[idx];
-                if (existingTarget.outOfRange) {
-                    const distance = starfieldManager.camera.position.distanceTo(beacon.position);
-                    console.log(`🔍 LRS: Updating existing out-of-range beacon ${beacon.userData?.name || 'Navigation Beacon'} (distance: ${distance.toFixed(1)}km)`);
-                    existingTarget.position = beacon.position.toArray();
-                    existingTarget.distance = distance;
-                }
-            }
-            
-            if (idx !== -1) {
-                // Use proper scanner target selection method
-                const targetData = tcm.targetObjects[idx];
-
-                // Always set the scanner target to ensure proper synchronization
-                // The previous condition was preventing updates when target list indices changed
-                console.log(`🔍 LRS: Setting scanner target: ${targetData.name} (index: ${idx})`);
-                starfieldManager.setTargetFromScanner(targetData);
-
-                // Force immediate target display update to ensure HUD reflects the change
-                console.log(`🔍 LRS: Forcing immediate target display update for ${targetData.name}`);
-                if (tcm.updateTargetDisplay) {
-                    setTimeout(() => {
-                        tcm.updateTargetDisplay();
-                        console.log(`🔍 LRS: Target display update completed for ${targetData.name}`);
-                    }, 10); // Small delay to ensure setTargetFromScanner completes
-                }
-            }
+            this.setScannerTargetRobustly(beaconName, beaconInfo, beacon);
         }
 
         // Details panel for beacon
@@ -1169,6 +973,121 @@ export class LongRangeScanner {
         }
         if (this.tooltip && this.tooltip.parentNode) {
             this.tooltip.parentNode.removeChild(this.tooltip);
+        }
+    }
+
+    /**
+     * Robust method for setting scanner targets that handles synchronization issues
+     * @param {string} bodyName - Name of the celestial body
+     * @param {Object} bodyInfo - Information about the celestial body
+     * @param {THREE.Object3D} targetBody - The THREE.js object representing the target
+     */
+    setScannerTargetRobustly(bodyName, bodyInfo, targetBody) {
+        const starfieldManager = this.viewManager.starfieldManager;
+        if (!starfieldManager?.targetComputerManager) {
+            console.warn('🔍 LRS: No TargetComputerManager available for robust target setting');
+            return;
+        }
+
+        const tcm = starfieldManager.targetComputerManager;
+
+        // Step 1: Store current state for restoration if needed
+        const previousTargetState = {
+            name: tcm.currentTarget?.name,
+            index: tcm.targetIndex,
+            isFromScanner: tcm.isFromLongRangeScanner
+        };
+
+        console.log(`🔍 LRS: Robust target setting for ${bodyName} - previous state:`, previousTargetState);
+
+        // Step 2: Force a fresh target list update to ensure accuracy
+        // This is safer than trying to preserve stale indices
+        console.log(`🔍 LRS: Forcing fresh target list update for robust synchronization`);
+        tcm.updateTargetList();
+
+        // Step 3: Find the target in the updated list
+        let targetIndex = tcm.targetObjects.findIndex(t =>
+            t.name === bodyName ||
+            (t.object?.userData?.name === bodyName) ||
+            (t.object === targetBody)
+        );
+
+        // Step 4: If not found, create an out-of-range target
+        if (targetIndex === -1) {
+            console.log(`🔍 LRS: Target ${bodyName} not in range - creating out-of-range entry`);
+            const distance = starfieldManager.camera.position.distanceTo(targetBody.position);
+            const outOfRangeTarget = {
+                name: bodyName,
+                type: bodyInfo.type,
+                position: targetBody.position.toArray(),
+                isMoon: bodyInfo.type === 'moon',
+                object: targetBody,
+                isShip: false,
+                distance: distance,
+                outOfRange: true,
+                faction: bodyInfo.faction || 'Neutral',
+                diplomacy: bodyInfo.diplomacy || 'Neutral',
+                ...bodyInfo
+            };
+            tcm.targetObjects.push(outOfRangeTarget);
+            targetIndex = tcm.targetObjects.length - 1;
+        }
+
+        // Step 5: Validate the target index
+        if (targetIndex < 0 || targetIndex >= tcm.targetObjects.length) {
+            console.error(`🔍 LRS: Invalid target index ${targetIndex} for target list of size ${tcm.targetObjects.length}`);
+            return;
+        }
+
+        // Step 6: Set the target using the robust scanner method
+        const targetData = tcm.targetObjects[targetIndex];
+        console.log(`🔍 LRS: Setting scanner target: ${targetData.name} at index ${targetIndex}`);
+
+        try {
+            // Use the TargetComputerManager's setTargetFromScanner method
+            tcm.setTargetFromScanner(targetData);
+
+            // Step 7: Force synchronization with StarfieldManager
+            starfieldManager.currentTarget = tcm.currentTarget?.object || tcm.currentTarget;
+            starfieldManager.targetIndex = tcm.targetIndex;
+            starfieldManager.targetObjects = tcm.targetObjects;
+
+            // Step 8: Ensure UI updates immediately
+            if (tcm.updateTargetDisplay) {
+                // Use a more reliable timing approach
+                const updateUI = () => {
+                    tcm.updateTargetDisplay();
+                    console.log(`🔍 LRS: UI update completed for ${targetData.name}`);
+                };
+
+                // Try immediate update first
+                updateUI();
+
+                // Also schedule a backup update in case of timing issues
+                setTimeout(updateUI, 50);
+            }
+
+            // Step 9: Update 3D outline if enabled
+            if (starfieldManager.outlineEnabled && targetData.object) {
+                starfieldManager.updateTargetOutline(targetData.object, 0);
+            }
+
+            console.log(`🔍 LRS: Robust target setting completed successfully for ${bodyName}`);
+
+        } catch (error) {
+            console.error(`🔍 LRS: Error during robust target setting:`, error);
+
+            // Attempt recovery by restoring previous state if possible
+            if (previousTargetState.name) {
+                console.log(`🔍 LRS: Attempting to restore previous target state`);
+                const restoreIndex = tcm.targetObjects.findIndex(t => t.name === previousTargetState.name);
+                if (restoreIndex !== -1) {
+                    tcm.targetIndex = restoreIndex;
+                    tcm.currentTarget = tcm.targetObjects[restoreIndex];
+                    tcm.isFromLongRangeScanner = previousTargetState.isFromScanner;
+                    tcm.updateTargetDisplay();
+                }
+            }
         }
     }
 

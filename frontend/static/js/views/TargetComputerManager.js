@@ -1572,6 +1572,40 @@ export class TargetComputerManager {
     }
 
     /**
+     * Get diplomacy status for any target type with consistent fallback logic
+     * @param {Object} targetData - Target data object
+     * @returns {string} Diplomacy status ('enemy', 'friendly', 'neutral')
+     */
+    getTargetDiplomacy(targetData) {
+        if (!targetData) return 'neutral';
+
+        // Priority order for diplomacy determination:
+        // 1. targetData.diplomacy (most reliable for processed targets)
+        if (targetData.diplomacy) {
+            return targetData.diplomacy;
+        }
+
+        // 2. targetData.ship.diplomacy (for target dummies and enemy ships)
+        if (targetData.ship?.diplomacy) {
+            return targetData.ship.diplomacy;
+        }
+
+        // 3. targetData.faction diplomacy lookup
+        if (targetData.faction) {
+            return this.getFactionDiplomacy(targetData.faction);
+        }
+
+        // 4. Celestial body info diplomacy (for planets, stations, etc.)
+        const info = this.solarSystemManager?.getCelestialBodyInfo(targetData.object || targetData);
+        if (info?.diplomacy) {
+            return info.diplomacy;
+        }
+
+        // 5. Ultimate fallback
+        return 'neutral';
+    }
+
+    /**
      * Add targets that don't have physics bodies yet (fallback)
      */
     addNonPhysicsTargets(allTargets, maxRange) {
@@ -1854,7 +1888,7 @@ export class TargetComputerManager {
 
         // Get the target data directly from our target list
         const targetData = this.targetObjects[this.targetIndex];
-        this.currentTarget = targetData; // Store the full target data, not just the object
+        this.currentTarget = targetData.object || targetData; // Store the original object, not the processed target data
         
         // Handle scanner flag management more robustly
         if (previousTarget && targetData) {
@@ -1989,42 +2023,25 @@ export class TargetComputerManager {
                 isEnemyShip = enhancedTargetInfo.diplomacy === 'enemy' || enhancedTargetInfo.faction === 'enemy';
             } else if (currentTargetData?.isShip) {
                 info = { type: 'enemy_ship' };
-                isEnemyShip = true;
+                // Check if this is an enemy ship or target dummy
+                isEnemyShip = currentTargetData.ship?.diplomacy === 'enemy' ||
+                             currentTargetData.ship?.isTargetDummy ||
+                             currentTargetData.ship?.faction === 'enemy';
                 radius = Math.max(radius, 2);
             } else {
                 info = currentTargetData || this.solarSystemManager.getCelestialBodyInfo(targetObject);
             }
 
-            // Update wireframe color based on diplomacy (same logic as updateTargetDisplay)
-            if (isEnemyShip) {
-                wireframeColor = 0xff3333; // Enemy ships are red
+            // Update wireframe color based on diplomacy using consolidated logic
+            const diplomacy = this.getTargetDiplomacy(currentTargetData);
+            if (diplomacy === 'enemy') {
+                wireframeColor = 0xff3333; // Enemy red
+            } else if (diplomacy === 'neutral') {
+                wireframeColor = 0xffff00; // Neutral yellow
+            } else if (diplomacy === 'friendly') {
+                wireframeColor = 0x00ff41; // Friendly green
             } else if (info?.type === 'star') {
                 wireframeColor = 0xffff00; // Stars are yellow
-            } else {
-                // Convert faction to diplomacy if needed
-                let diplomacy = null;
-                
-                // Check if diplomacy is already a valid status (friendly, neutral, enemy)
-                if (info?.diplomacy) {
-                    const diplomacyLower = info.diplomacy.toLowerCase();
-                    if (['friendly', 'neutral', 'enemy'].includes(diplomacyLower)) {
-                        diplomacy = diplomacyLower;
-                    } else {
-                        // diplomacy field contains faction name, use it to lookup diplomacy
-                        diplomacy = this.getFactionDiplomacy(info.diplomacy).toLowerCase();
-                    }
-                } else if (info?.faction) {
-                    // Use faction field to lookup diplomacy
-                    diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
-                }
-                
-                if (diplomacy === 'enemy') {
-                    wireframeColor = 0xff3333; // Enemy red
-                } else if (diplomacy === 'neutral') {
-                    wireframeColor = 0xffff00; // Neutral yellow
-                } else if (diplomacy === 'friendly') {
-                    wireframeColor = 0x00ff41; // Friendly green
-                }
             }
 
             const wireframeMaterial = new this.THREE.LineBasicMaterial({
@@ -2221,11 +2238,12 @@ export class TargetComputerManager {
             isEnemyShip = enhancedTargetInfo.diplomacy === 'enemy' || enhancedTargetInfo.faction === 'enemy';
             // console.log(`🎯 Enhanced target info: diplomacy=${enhancedTargetInfo.diplomacy}, faction=${enhancedTargetInfo.faction}, isEnemyShip=${isEnemyShip}`);
         } else if (currentTargetData.isShip && currentTargetData.ship) {
-            // Fallback: Check if this is an enemy ship
-            isEnemyShip = true;
+            // Use consolidated diplomacy logic for ships and target dummies
+            const diplomacy = this.getTargetDiplomacy(currentTargetData);
+            isEnemyShip = diplomacy === 'enemy';
             info = {
                 type: 'enemy_ship',
-                diplomacy: currentTargetData.ship.diplomacy || 'enemy',
+                diplomacy: diplomacy,
                 name: currentTargetData.ship.shipName,
                 shipType: currentTargetData.ship.shipType
             };
@@ -2233,52 +2251,23 @@ export class TargetComputerManager {
             // Final fallback: Prefer the processed target data; fall back to solar system info using the underlying object
             const targetObject = this.currentTarget?.object || this.currentTarget;
             info = currentTargetData || this.solarSystemManager.getCelestialBodyInfo(targetObject);
+            // For non-ship targets, use consolidated diplomacy logic
+            const diplomacy = this.getTargetDiplomacy(info);
+            isEnemyShip = diplomacy === 'enemy';
         }
         
-        // Update HUD border color based on diplomacy
+        // Update HUD border color based on diplomacy using consolidated logic
+        const diplomacy = this.getTargetDiplomacy(currentTargetData);
         let diplomacyColor = '#D0D0D0'; // Default gray
-        if (isEnemyShip) {
-            diplomacyColor = '#ff3333'; // Enemy ships are darker neon red
+
+        if (diplomacy === 'enemy') {
+            diplomacyColor = '#ff3333'; // Enemy red
+        } else if (diplomacy === 'neutral') {
+            diplomacyColor = '#ffff00'; // Neutral yellow
+        } else if (diplomacy === 'friendly') {
+            diplomacyColor = '#00ff41'; // Friendly green
         } else if (info?.type === 'star') {
             diplomacyColor = '#ffff00'; // Stars are neutral yellow
-        } else {
-            // Convert faction to diplomacy if needed
-            let diplomacy = null;
-            
-            // Check if diplomacy is already a valid status (friendly, neutral, enemy)
-            if (info?.diplomacy) {
-                const diplomacyLower = info.diplomacy.toLowerCase();
-                if (['friendly', 'neutral', 'enemy'].includes(diplomacyLower)) {
-                    diplomacy = diplomacyLower;
-                                        } else {
-                            // diplomacy field contains faction name, use it to lookup diplomacy
-                            diplomacy = this.getFactionDiplomacy(info.diplomacy).toLowerCase();
-                            // console.log(`🎯 Faction mapping: "${info.diplomacy}" → "${diplomacy}"`);
-                        }
-                    } else if (info?.faction) {
-                        // Use faction field to lookup diplomacy
-                        diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
-                        // console.log(`🎯 Faction mapping: "${info.faction}" → "${diplomacy}"`);
-            }
-            
-            if (diplomacy === 'enemy') {
-                diplomacyColor = '#ff3333'; // Enemy red
-            } else if (diplomacy === 'neutral') {
-                diplomacyColor = '#ffff00'; // Neutral yellow
-            } else if (diplomacy === 'friendly') {
-                diplomacyColor = '#00ff41'; // Friendly green
-            } else {
-                // If diplomacy is null/undefined, use neutral as fallback
-                if (!diplomacy) {
-                    diplomacy = 'neutral';
-                    diplomacyColor = '#ffff00'; // Neutral yellow
-                    console.log(`🎯 Fixed null diplomacy status, using 'neutral' for faction: "${info?.faction || 'unknown'}"`);
-                } else {
-                    console.warn(`🎯 Unknown diplomacy status: "${diplomacy}" for faction: "${info?.faction || info?.diplomacy}" - using neutral fallback`);
-                    diplomacy = 'neutral'; // Fallback to neutral
-                    diplomacyColor = '#ffff00'; // Neutral yellow
-                }
-            }
         }
         
         this.targetHUD.style.borderColor = diplomacyColor;
@@ -2546,7 +2535,7 @@ export class TargetComputerManager {
                     if (isExactMatch || isObjectMatch || isUUIDMatch || isNameTypeMatch) {
                         // Update the index to match the found target
                         this.targetIndex = i;
-                        this.currentTarget = targetData; // Ensure we have the full target data
+                        this.currentTarget = targetData.object || targetData; // Ensure we have the original object, not processed target data
                         console.log(`🔧 Fixed target index mismatch: set to ${i} for target ${targetData.name} (${isExactMatch ? 'exact' : isObjectMatch ? 'object' : isUUIDMatch ? 'uuid' : 'name/type'})`);
 
                         // Process and return the target data
@@ -2579,13 +2568,27 @@ export class TargetComputerManager {
 
         // Check if this is a ship (either 'ship' or 'enemy_ship' type, or has isShip flag)
         if (targetData.type === 'ship' || targetData.type === 'enemy_ship' || targetData.isShip) {
-            // Ensure we get the actual ship instance
+            // Ensure we get the actual ship instance - try multiple sources
             let shipInstance = targetData.ship;
+
+            // If no ship in targetData, try to get it from the object
             if (!shipInstance && targetData.object?.userData?.ship) {
                 shipInstance = targetData.object.userData.ship;
             }
+
+            // If still no ship, try from currentTarget (which should be the original mesh)
             if (!shipInstance && this.currentTarget?.userData?.ship) {
                 shipInstance = this.currentTarget.userData.ship;
+            }
+
+            // For target dummies, ensure the ship instance is preserved
+            if (!shipInstance && targetData.name?.includes('Target Dummy')) {
+                // Try to find the ship from the target dummy list
+                if (this.viewManager?.starfieldManager?.targetDummyShips) {
+                    shipInstance = this.viewManager.starfieldManager.targetDummyShips.find(
+                        dummy => dummy.shipName === targetData.name
+                    );
+                }
             }
             
             return {
@@ -2593,7 +2596,7 @@ export class TargetComputerManager {
                 name: targetData.name || shipInstance?.shipName || this.currentTarget?.shipName || 'Enemy Ship',
                 type: targetData.type || 'enemy_ship',
                 isShip: true,
-                ship: shipInstance || targetData.ship || this.currentTarget,
+                ship: shipInstance || targetData.ship, // Don't fall back to this.currentTarget as it's the target data object
                 distance: targetData.distance,
                 isMoon: targetData.isMoon || false,
                 diplomacy: targetData.diplomacy || shipInstance?.diplomacy,
@@ -2837,6 +2840,12 @@ export class TargetComputerManager {
         
         // Use diplomacy if available, otherwise try to get it from faction
         let diplomacyStatus = info?.diplomacy;
+
+        // For target dummies, get diplomacy from the ship object
+        if (!diplomacyStatus && currentTargetData?.ship?.isTargetDummy) {
+            diplomacyStatus = currentTargetData.ship.diplomacy;
+        }
+
         if (!diplomacyStatus && info?.faction) {
             diplomacyStatus = this.getFactionDiplomacy(info.faction);
         }
@@ -2960,15 +2969,16 @@ export class TargetComputerManager {
             const rightComponent = relativePosition.dot(cameraRight);
             const upComponent = relativePosition.dot(cameraUp);
 
-            // Get target info for color
-            const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
+            // Get target info for color using consolidated diplomacy logic
+            const currentTargetData = this.getCurrentTargetData();
+            const diplomacy = this.getTargetDiplomacy(currentTargetData);
             let arrowColor = '#D0D0D0';
-            
-            if (info?.diplomacy?.toLowerCase() === 'enemy') {
+
+            if (diplomacy === 'enemy') {
                 arrowColor = '#ff3333';
-            } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
+            } else if (diplomacy === 'friendly') {
                 arrowColor = '#00ff41';
-            } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
+            } else if (diplomacy === 'neutral') {
                 arrowColor = '#ffff00';
             }
 
@@ -4189,22 +4199,6 @@ export class TargetComputerManager {
     }
 
     /**
-     * Get Star Charts compatible object data
-     * @returns {Object|null} - Object data for Star Charts integration
+     * (Removed duplicate getCurrentTargetData implementation)
      */
-    getCurrentTargetData() {
-        if (!this.currentTarget) {
-            return null;
-        }
-
-        return {
-            id: this.currentTarget.id,
-            name: this.currentTarget.name,
-            type: this.currentTarget.type,
-            position: this.currentTarget.position,
-            isVirtual: this.currentTarget.isVirtual || false,
-            distance: this.currentTarget.distance,
-            bearing: this.currentTarget.bearing
-        };
-    }
 } 

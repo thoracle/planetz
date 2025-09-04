@@ -94,6 +94,11 @@ export class StarChartsManager {
             
             // Load discovery state
             await this.loadDiscoveryState();
+
+            // Optional test mode: auto-discover everything in current sector for parity testing
+            if (this.isTestDiscoverAllEnabled()) {
+                this.discoverAllInCurrentSector();
+            }
             
             // Initialize spatial grid
             this.initializeSpatialGrid();
@@ -112,6 +117,54 @@ export class StarChartsManager {
                 console.log('🔄 Falling back to Long Range Scanner');
                 this.config.enabled = false;
             }
+        }
+    }
+
+    isTestDiscoverAllEnabled() {
+        try {
+            if (typeof window !== 'undefined' && window.STAR_CHARTS_DISCOVER_ALL === true) {
+                return true;
+            }
+        } catch (e) {}
+        try {
+            const flag = localStorage.getItem('star_charts_test_discover_all');
+            return String(flag).toLowerCase() === 'true' || flag === '1';
+        } catch (e) {}
+        return false;
+    }
+
+    discoverAllInCurrentSector() {
+        try {
+            const sector = this.objectDatabase?.sectors?.[this.currentSector];
+            if (!sector) return;
+            let count = 0;
+            if (sector.star?.id) {
+                if (!this.discoveredObjects.has(sector.star.id)) count++;
+                this.discoveredObjects.add(sector.star.id);
+            }
+            (sector.objects || []).forEach(obj => {
+                if (obj?.id) {
+                    if (!this.discoveredObjects.has(obj.id)) count++;
+                    this.discoveredObjects.add(obj.id);
+                }
+            });
+            const infra = sector.infrastructure || {};
+            (infra.stations || []).forEach(st => {
+                if (st?.id) {
+                    if (!this.discoveredObjects.has(st.id)) count++;
+                    this.discoveredObjects.add(st.id);
+                }
+            });
+            (infra.beacons || []).forEach(b => {
+                if (b?.id) {
+                    if (!this.discoveredObjects.has(b.id)) count++;
+                    this.discoveredObjects.add(b.id);
+                }
+            });
+            this.saveDiscoveryState();
+            console.log(`🧪 StarCharts TEST MODE: Discovered all objects in ${this.currentSector} (+${count})`);
+        } catch (e) {
+            console.warn('🧪 StarCharts TEST MODE failed to discover all:', e);
         }
     }
     
@@ -331,8 +384,26 @@ export class StarChartsManager {
         const config = this.discoveryTypes[category];
         
         // Play audio if specified
-        if (config.audio && window.audioManager) {
-            window.audioManager.playSound(config.audio);
+        if (config.audio) {
+            let played = false;
+            try {
+                if (window.audioManager && typeof window.audioManager.playSound === 'function') {
+                    window.audioManager.playSound(config.audio);
+                    played = true;
+                }
+            } catch (e) {
+                // Fall through to HTMLAudioElement fallback
+            }
+            if (!played) {
+                try {
+                    const audio = new Audio('/static/audio/blurb.mp3');
+                    audio.volume = 0.8;
+                    // Non-blocking play; browsers may reject silently if not user-initiated
+                    audio.play().catch(() => {});
+                } catch (e) {
+                    // Ignore audio errors to avoid interrupting UX
+                }
+            }
         }
         
         // Show notification
@@ -414,37 +485,60 @@ export class StarChartsManager {
     }
     
     getPlayerPosition() {
-        //Get current player position
+        //Get current player position with robust fallbacks
         
+        // Primary: ship position from SolarSystemManager
         if (this.solarSystemManager && this.solarSystemManager.ship) {
             const position = this.solarSystemManager.ship.position;
-            return [position.x, position.y, position.z];
+            if (position && typeof position.x === 'number') {
+                return [position.x, position.y, position.z];
+            }
+        }
+        
+        // Fallback: use active camera position (always available in gameplay)
+        if (this.camera && this.camera.position) {
+            const pos = this.camera.position;
+            return [pos.x, pos.y, pos.z];
         }
         
         return null;
     }
     
     getDiscoveryRadius() {
-        //Get discovery radius based on equipped Target CPU
+        //Get discovery radius based on equipped Target CPU with method-based API
         
-        // Try to get range from target computer
+        // Prefer TargetComputerManager's system if exposed
         if (this.targetComputerManager && this.targetComputerManager.targetComputer) {
-            const range = this.targetComputerManager.targetComputer.range;
-            if (range) {
-                return range;
+            const tc = this.targetComputerManager.targetComputer;
+            if (typeof tc.getCurrentTargetingRange === 'function') {
+                const r = tc.getCurrentTargetingRange();
+                if (typeof r === 'number' && r > 0) return r;
             }
         }
         
-        // Check for ship systems
+        // Fallback: ship system lookup
         if (this.solarSystemManager && this.solarSystemManager.ship && this.solarSystemManager.ship.systems) {
             const targetComputer = this.solarSystemManager.ship.systems.get('target_computer');
-            if (targetComputer && targetComputer.range) {
-                return targetComputer.range;
+            if (targetComputer && typeof targetComputer.getCurrentTargetingRange === 'function') {
+                const r = targetComputer.getCurrentTargetingRange();
+                if (typeof r === 'number' && r > 0) return r;
+            }
+        }
+
+        // Secondary fallback: viewManager ship (available even if solarSystemManager not wired yet)
+        if (this.viewManager && typeof this.viewManager.getShip === 'function') {
+            const ship = this.viewManager.getShip();
+            if (ship && ship.systems) {
+                const targetComputer = ship.systems.get('target_computer');
+                if (targetComputer && typeof targetComputer.getCurrentTargetingRange === 'function') {
+                    const r = targetComputer.getCurrentTargetingRange();
+                    if (typeof r === 'number' && r > 0) return r;
+                }
             }
         }
         
-        // Fallback to Level 1 Target CPU range
-        return 50.0;
+        // Default baseline discovery radius (km)
+        return 150.0;
     }
     
     isDiscovered(objectId) {
@@ -598,6 +692,11 @@ export class StarChartsManager {
     selectObjectById(objectId) {
         //Select object for targeting by ID
         
+        // Lazy-acquire TargetComputerManager if not provided at construction
+        if (!this.targetComputerManager && this.viewManager?.starfieldManager?.targetComputerManager) {
+            this.targetComputerManager = this.viewManager.starfieldManager.targetComputerManager;
+        }
+
         if (this.targetComputerManager && this.targetComputerManager.setTargetById) {
             return this.targetComputerManager.setTargetById(objectId);
         }
@@ -615,6 +714,11 @@ export class StarChartsManager {
             return false;
         }
         
+        // Lazy-acquire TargetComputerManager if not provided at construction
+        if (!this.targetComputerManager && this.viewManager?.starfieldManager?.targetComputerManager) {
+            this.targetComputerManager = this.viewManager.starfieldManager.targetComputerManager;
+        }
+
         if (this.targetComputerManager && this.targetComputerManager.setVirtualTarget) {
             return this.targetComputerManager.setVirtualTarget(waypoint);
         }

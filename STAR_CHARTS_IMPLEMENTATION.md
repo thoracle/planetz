@@ -23,7 +23,8 @@ The Star Charts system has been successfully implemented with all strategic opti
 
 3. **🗺️ StarChartsUI.js** - User interface with:
    - Fog of war visualization
-   - Identical controls to Long Range Scanner
+   - Identical controls to Long Range Scanner (C to open/close, Esc closes, A/F to switch views)
+   - Layout and size aligned with LRS (shared container/content/map/details classes)
    - Object selection and targeting integration
    - Zoom levels (overview, medium, detail, beacon ring)
    - Discovery state visualization
@@ -53,6 +54,15 @@ The Star Charts system has been successfully implemented with all strategic opti
 - ✅ Major objects (stars, planets, stations): Immediate notification
 - ✅ Minor objects (moons, beacons): 10-second cooldown
 - ✅ Background objects (asteroids, debris): 30-second cooldown
+
+##### System Entry Burst Handling (New)
+- On first entry into a solar system (or sector load), discovery runs in "burst" mode:
+  - Show a single prominent banner: "Discovered <Star Name> System" (e.g., "Discovered Sol System").
+  - Mute all subsequent per-object discovery notifications and sounds for a short, configurable window (default: 10s) to avoid HUD/audio spam.
+  - During the mute window, all nearby objects that meet discovery criteria are still marked as discovered and persisted.
+  - When the player next opens Star Charts (C), those objects appear exactly as if they were discovered one-by-one.
+  - After the mute window ends, normal pacing rules resume.
+  - This behavior applies on system/sector changes and on first load with immediate proximity to multiple bodies near the star.
 
 #### **Fallback & Risk Mitigation**
 - ✅ Dual system architecture (Star Charts + LRS)
@@ -141,6 +151,26 @@ scripts/
 - **Target Computer**: Enhanced with setTargetById and setVirtualTarget
 - **Mission System**: Ready for virtual waypoint integration
 - **Audio System**: Discovery notifications with blurb.mp3
+ - **Targeting Integration Details**: Star Charts selects targets via `StarChartsManager.selectObjectById()` → `TargetComputerManager.setTargetById(objectId)`; mission waypoints via `setVirtualTarget()`
+
+### **UI Parity with LRS (Recent Updates)**
+- Planet rings normalized to LRS layout (100/250/400/…), parent-centered orbits
+- Dedicated beacon ring at radius 350 (dotted), with beacon glyphs placed using live angles
+- Click-to-recenter and step-zoom; B toggles full beacon ring view
+- Initial view centered on star at overview zoom (1x), scaled from LRS scanner range
+
+### **Discovery System Requirements & Persistence**
+- **Player Position Source**: Discovery checks use `SolarSystemManager.ship.position`; if unavailable, fall back to active camera position.
+- **Discovery Radius Source**: Uses Target Computer’s current range via `getCurrentTargetingRange()` (method-based API). If unavailable, defaults to 50km.
+- **Notifications**: Prominent for stars/planets/stations; subtle for moons/beacons. Audio played via `window.audioManager` if present.
+- **Persistence**: Discovered IDs saved in LocalStorage under `star_charts_discovery_<SECTOR>` (e.g., `star_charts_discovery_A0`). Central star is pre-discovered on first run.
+
+### **Test Mode: Discover All (A0)**
+- Purpose: visually compare Star Charts to LRS with full data
+- Enable one of:
+  - `window.STAR_CHARTS_DISCOVER_ALL = true` (DevTools console)
+  - `localStorage.setItem('star_charts_test_discover_all','true')`
+- On next load, all objects in sector A0 (star, planets, moons, stations, beacons) are marked discovered and persisted.
 
 ## 🚀 Next Steps
 
