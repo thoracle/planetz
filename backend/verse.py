@@ -53,7 +53,7 @@ def Lehmer32(seed=None):
 def initialize_rng(seed=None):
     """Initialize the RNG with a seed, using environment seed as default."""
     global initial_seed, nLehmer
-    
+
     if seed is None:
         env_seed = os.getenv('UNIVERSE_SEED')
         if env_seed:
@@ -61,7 +61,7 @@ def initialize_rng(seed=None):
                 seed = int(env_seed)
             except ValueError:
                 seed = hash(env_seed) & 0xFFFFFFFF
-    
+
     if seed is not None:
         if isinstance(seed, str):
             seed = hash(seed) & 0xFFFFFFFF
@@ -69,6 +69,20 @@ def initialize_rng(seed=None):
         nLehmer = seed & 0xFFFFFFFF  # Set nLehmer directly instead of using Lehmer32
     elif initial_seed is not None:
         nLehmer = initial_seed & 0xFFFFFFFF  # Restore initial seed directly
+
+def get_current_universe_seed():
+    """Get the current universe seed used for procedural generation."""
+    global initial_seed
+    return initial_seed
+
+def get_universe_seed_from_env():
+    """Get universe seed from environment or default to current seed."""
+    import os
+    env_seed = os.getenv('UNIVERSE_SEED', '20299999')
+    try:
+        return int(env_seed)
+    except ValueError:
+        return hash(env_seed) & 0xFFFFFFFF
 
 def generate_name(syllables, length=3, seed=None):
     """Generate a Star Trek style name."""
