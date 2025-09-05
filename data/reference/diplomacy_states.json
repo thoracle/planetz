@@ -1,0 +1,114 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "Diplomacy state definitions and relationships",
+    "lastUpdated": "2025-01-01",
+    "totalStates": 5
+  },
+  "diplomacyStates": {
+    "allied": {
+      "name": "Allied",
+      "displayName": "Allied",
+      "description": "Full cooperation and mutual support",
+      "color": "#44ff44",
+      "tradeModifier": 1.5,
+      "hostilityLevel": 0,
+      "canDock": true,
+      "canTrade": true,
+      "canAttack": false
+    },
+    "friendly": {
+      "name": "Friendly",
+      "displayName": "Friendly",
+      "description": "Positive relations with cooperation",
+      "color": "#88ff88",
+      "tradeModifier": 1.2,
+      "hostilityLevel": 0,
+      "canDock": true,
+      "canTrade": true,
+      "canAttack": false
+    },
+    "neutral": {
+      "name": "Neutral",
+      "displayName": "Neutral",
+      "description": "Standard diplomatic relations",
+      "color": "#ffff44",
+      "tradeModifier": 1.0,
+      "hostilityLevel": 1,
+      "canDock": true,
+      "canTrade": true,
+      "canAttack": true
+    },
+    "hostile": {
+      "name": "Hostile",
+      "displayName": "Hostile",
+      "description": "Aggressive relations with potential conflict",
+      "color": "#ff8844",
+      "tradeModifier": 0.5,
+      "hostilityLevel": 2,
+      "canDock": false,
+      "canTrade": false,
+      "canAttack": true
+    },
+    "war": {
+      "name": "War",
+      "displayName": "At War",
+      "description": "Active conflict and combat operations",
+      "color": "#ff4444",
+      "tradeModifier": 0.0,
+      "hostilityLevel": 3,
+      "canDock": false,
+      "canTrade": false,
+      "canAttack": true
+    }
+  },
+  "transitions": {
+    "allied": {
+      "canTransitionTo": ["friendly", "neutral", "hostile"],
+      "cooldownDays": 30
+    },
+    "friendly": {
+      "canTransitionTo": ["allied", "neutral", "hostile"],
+      "cooldownDays": 15
+    },
+    "neutral": {
+      "canTransitionTo": ["friendly", "hostile"],
+      "cooldownDays": 7
+    },
+    "hostile": {
+      "canTransitionTo": ["neutral", "war"],
+      "cooldownDays": 3
+    },
+    "war": {
+      "canTransitionTo": ["hostile", "neutral"],
+      "cooldownDays": 30
+    }
+  },
+  "events": {
+    "tradeAgreement": {
+      "description": "Successful trade agreement",
+      "diplomacyChange": 1,
+      "probability": 0.3
+    },
+    "successfulMission": {
+      "description": "Mission completed successfully",
+      "diplomacyChange": 1,
+      "probability": 0.2
+    },
+    "failedMission": {
+      "description": "Mission failed",
+      "diplomacyChange": -1,
+      "probability": 0.2
+    },
+    "combatEngagement": {
+      "description": "Combat engagement occurred",
+      "diplomacyChange": -2,
+      "probability": 0.1
+    },
+    "espionageDetected": {
+      "description": "Espionage activities detected",
+      "diplomacyChange": -3,
+      "probability": 0.05
+    }
+  }
+}

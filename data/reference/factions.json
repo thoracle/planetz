@@ -1,0 +1,72 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "Faction definitions for the Planetz universe",
+    "lastUpdated": "2025-01-01",
+    "totalFactions": 4
+  },
+  "factions": {
+    "friendly": {
+      "name": "Friendly",
+      "displayName": "Terran Republic Alliance",
+      "color": "#44ff44",
+      "description": "Allied faction with cooperative relations",
+      "defaultDiplomacy": "allied",
+      "defaultPlayerDiplomacy": "allied",
+      "icon": "friendly_icon.png"
+    },
+    "neutral": {
+      "name": "Neutral",
+      "displayName": "Independent Systems",
+      "color": "#ffff44",
+      "description": "Neutral faction with standard diplomatic protocols",
+      "defaultDiplomacy": "neutral",
+      "defaultPlayerDiplomacy": "neutral",
+      "icon": "neutral_icon.png"
+    },
+    "enemy": {
+      "name": "Enemy",
+      "displayName": "Hostile Forces",
+      "color": "#ff4444",
+      "description": "Hostile faction with aggressive intentions",
+      "defaultDiplomacy": "hostile",
+      "defaultPlayerDiplomacy": "hostile",
+      "icon": "enemy_icon.png"
+    },
+    "unknown": {
+      "name": "Unknown",
+      "displayName": "Unidentified",
+      "color": "#44ffff",
+      "description": "Unknown faction with undetermined intentions",
+      "defaultDiplomacy": "neutral",
+      "defaultPlayerDiplomacy": "neutral",
+      "icon": "unknown_icon.png"
+    }
+  },
+  "diplomacyMatrix": {
+    "friendly": {
+      "friendly": "allied",
+      "neutral": "neutral",
+      "enemy": "hostile",
+      "unknown": "neutral"
+    },
+    "neutral": {
+      "friendly": "neutral",
+      "neutral": "neutral",
+      "enemy": "hostile",
+      "unknown": "neutral"
+    },
+    "enemy": {
+      "friendly": "hostile",
+      "neutral": "hostile",
+      "enemy": "hostile",
+      "unknown": "hostile"
+    },
+    "unknown": {
+      "friendly": "neutral",
+      "neutral": "neutral",
+      "enemy": "hostile",
+      "unknown": "neutral"
+    }
+  }
+}

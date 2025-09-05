@@ -1,0 +1,104 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "Object type definitions for universe objects",
+    "lastUpdated": "2025-01-01",
+    "totalTypes": 8
+  },
+  "objectTypes": {
+    "star": {
+      "name": "Star",
+      "displayName": "Star",
+      "description": "Stellar object providing light and energy",
+      "icon": "star_icon.png",
+      "size": "large",
+      "canDock": false,
+      "canBeDestroyed": false,
+      "discoverable": true,
+      "scannable": true
+    },
+    "planet": {
+      "name": "Planet",
+      "displayName": "Planet",
+      "description": "Celestial body orbiting a star",
+      "icon": "planet_icon.png",
+      "size": "medium",
+      "canDock": true,
+      "canBeDestroyed": false,
+      "discoverable": true,
+      "scannable": true
+    },
+    "moon": {
+      "name": "Moon",
+      "displayName": "Moon",
+      "description": "Natural satellite orbiting a planet",
+      "icon": "moon_icon.png",
+      "size": "small",
+      "canDock": true,
+      "canBeDestroyed": false,
+      "discoverable": true,
+      "scannable": true
+    },
+    "space_station": {
+      "name": "Space Station",
+      "displayName": "Space Station",
+      "description": "Artificial orbital facility",
+      "icon": "station_icon.png",
+      "size": "medium",
+      "canDock": true,
+      "canBeDestroyed": true,
+      "discoverable": true,
+      "scannable": true
+    },
+    "navigation_beacon": {
+      "name": "Navigation Beacon",
+      "displayName": "Nav Beacon",
+      "description": "Automated navigation aid",
+      "icon": "beacon_icon.png",
+      "size": "small",
+      "canDock": false,
+      "canBeDestroyed": true,
+      "discoverable": true,
+      "scannable": false
+    },
+    "asteroid": {
+      "name": "Asteroid",
+      "displayName": "Asteroid",
+      "description": "Small rocky body",
+      "icon": "asteroid_icon.png",
+      "size": "small",
+      "canDock": false,
+      "canBeDestroyed": true,
+      "discoverable": true,
+      "scannable": true
+    },
+    "debris_field": {
+      "name": "Debris Field",
+      "displayName": "Debris Field",
+      "description": "Field of space debris",
+      "icon": "debris_icon.png",
+      "size": "large",
+      "canDock": false,
+      "canBeDestroyed": false,
+      "discoverable": true,
+      "scannable": false
+    },
+    "ship": {
+      "name": "Ship",
+      "displayName": "Spaceship",
+      "description": "Spacefaring vessel",
+      "icon": "ship_icon.png",
+      "size": "small",
+      "canDock": false,
+      "canBeDestroyed": true,
+      "discoverable": true,
+      "scannable": true
+    }
+  },
+  "categories": {
+    "celestial": ["star", "planet", "moon", "asteroid"],
+    "infrastructure": ["space_station", "navigation_beacon"],
+    "hazards": ["debris_field"],
+    "vessels": ["ship"]
+  }
+}

@@ -1,0 +1,216 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "Planet class definitions migrated from PlanetTypes.py",
+    "lastUpdated": "2025-01-01",
+    "totalClasses": 8,
+    "source": "PlanetTypes.py"
+  },
+  "planetClasses": {
+    "Class-M": {
+      "name": "Class-M (Earth-like)",
+      "displayName": "Earth-like Planet",
+      "description": "Earth-like planets capable of supporting humanoid life",
+      "habitability": "habitable",
+      "atmosphere": "breathable",
+      "temperature": "temperate",
+      "water": "abundant",
+      "terrain": "diverse",
+      "resources": ["minerals", "water", "organic_materials"],
+      "colonyPotential": "high",
+      "threatLevel": "low",
+      "params": {
+        "noise_scale": 1.2,
+        "octaves": 5,
+        "persistence": 0.5,
+        "lacunarity": 2.0,
+        "terrain_height": 0.15
+      }
+    },
+    "Class-L": {
+      "name": "Class-L (Marginal)",
+      "displayName": "Marginal Planet",
+      "description": "Marginally habitable with harsh conditions",
+      "habitability": "marginal",
+      "atmosphere": "thin",
+      "temperature": "variable",
+      "water": "scarce",
+      "terrain": "harsh",
+      "resources": ["minerals", "rare_elements"],
+      "colonyPotential": "medium",
+      "threatLevel": "medium",
+      "params": {
+        "noise_scale": 2.0,
+        "octaves": 6,
+        "persistence": 0.6,
+        "lacunarity": 2.2,
+        "terrain_height": 0.25
+      }
+    },
+    "Class-H": {
+      "name": "Class-H (Desert)",
+      "displayName": "Desert Planet",
+      "description": "Hot, arid worlds with little surface water",
+      "habitability": "low",
+      "atmosphere": "thin",
+      "temperature": "hot",
+      "water": "minimal",
+      "terrain": "desert",
+      "resources": ["minerals", "energy_crystals"],
+      "colonyPotential": "low",
+      "threatLevel": "medium",
+      "params": {
+        "noise_scale": 3.0,
+        "octaves": 4,
+        "persistence": 0.4,
+        "lacunarity": 2.5,
+        "terrain_height": 0.2
+      }
+    },
+    "Class-D": {
+      "name": "Class-D (Demon)",
+      "displayName": "Demon Planet",
+      "description": "Toxic atmosphere, uninhabitable",
+      "habitability": "uninhabitable",
+      "atmosphere": "toxic",
+      "temperature": "extreme",
+      "water": "none",
+      "terrain": "volcanic",
+      "resources": ["rare_elements", "volcanic_materials"],
+      "colonyPotential": "none",
+      "threatLevel": "high",
+      "params": {
+        "noise_scale": 4.0,
+        "octaves": 7,
+        "persistence": 0.7,
+        "lacunarity": 2.8,
+        "terrain_height": 0.4
+      }
+    },
+    "Class-J": {
+      "name": "Class-J (Gas Giant)",
+      "displayName": "Gas Giant",
+      "description": "Gas giants similar to Jupiter",
+      "habitability": "uninhabitable",
+      "atmosphere": "dense",
+      "temperature": "extreme",
+      "water": "gas_form",
+      "terrain": "atmospheric",
+      "resources": ["gases", "rare_elements"],
+      "colonyPotential": "atmospheric",
+      "threatLevel": "high",
+      "params": {
+        "noise_scale": 0.8,
+        "octaves": 3,
+        "persistence": 0.3,
+        "lacunarity": 1.8,
+        "terrain_height": 0.08
+      }
+    },
+    "Class-K": {
+      "name": "Class-K (Barren)",
+      "displayName": "Barren Planet",
+      "description": "Barren, rocky worlds with limited water",
+      "habitability": "low",
+      "atmosphere": "none",
+      "temperature": "extreme",
+      "water": "frozen",
+      "terrain": "rocky",
+      "resources": ["minerals", "ice"],
+      "colonyPotential": "mining",
+      "threatLevel": "medium",
+      "params": {
+        "noise_scale": 2.5,
+        "octaves": 4,
+        "persistence": 0.45,
+        "lacunarity": 2.3,
+        "terrain_height": 0.3
+      }
+    },
+    "Class-N": {
+      "name": "Class-N (Ringed)",
+      "displayName": "Ringed Planet",
+      "description": "Planets with rings similar to Saturn",
+      "habitability": "uninhabitable",
+      "atmosphere": "thin",
+      "temperature": "cold",
+      "water": "frozen",
+      "terrain": "icy",
+      "resources": ["ice", "rare_elements"],
+      "colonyPotential": "research",
+      "threatLevel": "medium",
+      "params": {
+        "noise_scale": 1.0,
+        "octaves": 4,
+        "persistence": 0.4,
+        "lacunarity": 2.0,
+        "terrain_height": 0.12
+      }
+    },
+    "Class-Y": {
+      "name": "Class-Y (Demon)",
+      "displayName": "Death Planet",
+      "description": "Extremely inhospitable with lethal conditions",
+      "habitability": "lethal",
+      "atmosphere": "corrosive",
+      "temperature": "extreme",
+      "water": "none",
+      "terrain": "deadly",
+      "resources": ["exotic_materials"],
+      "colonyPotential": "none",
+      "threatLevel": "extreme",
+      "params": {
+        "noise_scale": 4.5,
+        "octaves": 8,
+        "persistence": 0.8,
+        "lacunarity": 3.0,
+        "terrain_height": 0.5
+      }
+    }
+  },
+  "habitabilityLevels": {
+    "habitable": {
+      "description": "Suitable for humanoid life without life support",
+      "color": "#44ff44",
+      "settlementCost": "low"
+    },
+    "marginal": {
+      "description": "Requires some environmental adaptation",
+      "color": "#ffff44",
+      "settlementCost": "medium"
+    },
+    "low": {
+      "description": "Significant environmental challenges",
+      "color": "#ff8844",
+      "settlementCost": "high"
+    },
+    "uninhabitable": {
+      "description": "Not suitable for permanent settlement",
+      "color": "#ff4444",
+      "settlementCost": "extreme"
+    },
+    "lethal": {
+      "description": "Immediately dangerous to life",
+      "color": "#880000",
+      "settlementCost": "impossible"
+    }
+  },
+  "threatLevels": {
+    "low": {
+      "description": "Minimal environmental hazards",
+      "color": "#44ff44"
+    },
+    "medium": {
+      "description": "Moderate environmental hazards",
+      "color": "#ffff44"
+    },
+    "high": {
+      "description": "Significant environmental hazards",
+      "color": "#ff8844"
+    },
+    "extreme": {
+      "description": "Extreme environmental hazards",
+      "color": "#ff4444"
+    }
+  }
+}
