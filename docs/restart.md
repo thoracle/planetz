@@ -186,6 +186,23 @@ open http://127.0.0.1:5001
   - Enable: `localStorage.setItem('star_charts_test_discover_all','true')` + reload
   - Shows all objects in sector for complete system validation
 
+### **Unified Data Architecture Refactor Plan** 📋 **SPECIFICATION COMPLETE**
+- **Status**: Comprehensive technical specification with multi-round review completed
+- **Purpose**: Establish single source of truth for universe objects to eliminate data synchronization issues
+- **Architecture**: Four-layer separation of concerns:
+  - **Static Data**: Procedural universe generation (verse.py) - seed deterministic
+  - **Dynamic Data**: Runtime state changes (faction wars, object destruction, discovery)
+  - **Reference Data**: Constants and lookup tables (factions, object types, planet classes)
+  - **Metadata**: Ephemeral UI state (mission waypoints, selections, cache)
+- **Key Components**:
+  - Hierarchical Object ID system (`proc_`, `runtime_`, `mission_` namespaces)
+  - ObjectDatabase unified interface with error handling and compatibility layers
+  - Data structure adapters for seamless migration from current systems
+  - Enhanced verse.py with positioning, infrastructure, and ID generation
+- **Implementation Strategy**: 6-phase incremental rollout with compatibility bridge
+- **Documentation**: Complete specification in `docs/unified_data_architecture_refactor_plan.md`
+- **Benefits**: Eliminates targeting issues, enables scalable content, provides editor-friendly data
+
 ### **Faction Color System**
 ```javascript
 // Universal color coding across all UI elements

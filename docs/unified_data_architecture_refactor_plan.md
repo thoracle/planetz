@@ -197,7 +197,9 @@ class ObjectIDGenerator:
 # Enhanced generate_starter_system() with proper ID assignment
 def generate_starter_system():
     """Generate A0 system with proper ID assignment"""
-    id_gen = ObjectIDGenerator(get_current_universe_seed())
+    # Use existing global seed or get from environment
+    universe_seed = get_current_universe_seed()
+    id_gen = ObjectIDGenerator(universe_seed)
     
     star_system = {
         'sector': 'A0',
@@ -212,47 +214,100 @@ def generate_starter_system():
         'infrastructure': []
     }
     
-    # Generate planets with deterministic IDs
+    # Generate planets with deterministic IDs and positions
     terra_prime = {
         'id': id_gen.generate_procedural_id('A0', 'planet', 'Terra Prime'),
         'name': 'Terra Prime',
         'type': 'planet',
+        'subtype': 'Class-M',
         'parent_id': star_system['star']['id'],
-        # ... other properties
+        'position': [149.6, 0, 0],  # Earth-like orbit distance
+        'orbit': {
+            'parent': star_system['star']['id'],
+            'radius': 149.6,
+            'angle': 0,
+            'period': 365
+        },
+        'size': 1.2,
+        'initial_faction': 'friendly',
+        'initial_state': 'inhabited',
         'moons': []
     }
     
-    # Generate moons
+    # Generate moons with positions relative to planet
     luna = {
         'id': id_gen.generate_procedural_id('A0', 'moon', 'Luna'),
         'name': 'Luna',
         'type': 'moon', 
+        'subtype': 'rocky',
         'parent_id': terra_prime['id'],
-        # ... other properties
+        'position': [151.096, 0, 0],  # 1.496 units from Terra Prime
+        'orbit': {
+            'parent': terra_prime['id'],
+            'radius': 1.496,
+            'angle': 0,
+            'period': 27.3
+        },
+        'size': 0.3,
+        'initial_faction': 'friendly',
+        'initial_state': 'barren'
     }
     
     europa = {
         'id': id_gen.generate_procedural_id('A0', 'moon', 'Europa'),
         'name': 'Europa',
         'type': 'moon',
+        'subtype': 'ice',
         'parent_id': terra_prime['id'],
-        # ... other properties
+        'position': [148.104, 0, 0],  # Calculated from Terra Prime + orbital angle
+        'orbit': {
+            'parent': terra_prime['id'],
+            'radius': 1.496,
+            'angle': 180,  # Opposite side from Luna
+            'period': 27.3
+        },
+        'size': 0.25,
+        'initial_faction': 'neutral',
+        'initial_state': 'research_station'
     }
     
     terra_prime['moons'] = [luna, europa]
     star_system['celestial_bodies'] = [terra_prime]
     
     # Generate infrastructure with deterministic IDs
-    infrastructure_data = load_starter_infrastructure_template()
-    for station_template in infrastructure_data['stations']:
-        station = {
-            'id': id_gen.generate_procedural_id('A0', 'station', station_template['name']),
-            'name': station_template['name'],
-            'type': 'space_station',
-            'subtype': station_template['type'],
-            # ... copy other properties from template
-        }
-        star_system['infrastructure'].append(station)
+    # Load existing A0 infrastructure and convert to new format
+    try:
+        infrastructure_data = load_starter_infrastructure_template()
+        for station_template in infrastructure_data.get('stations', []):
+            station = {
+                'id': id_gen.generate_procedural_id('A0', 'station', station_template['name']),
+                'name': station_template['name'],
+                'type': 'space_station',
+                'subtype': station_template.get('type', 'station'),
+                'position': station_template.get('position', [0, 0, 0]),
+                'initial_faction': station_template.get('faction', 'neutral'),
+                'initial_state': 'operational',
+                'services': station_template.get('services', []),
+                'size': station_template.get('size', 1.0)
+            }
+            star_system['infrastructure'].append(station)
+        
+        # Add beacons
+        for beacon_template in infrastructure_data.get('beacons', []):
+            beacon = {
+                'id': id_gen.generate_procedural_id('A0', 'beacon', beacon_template['name']),
+                'name': beacon_template['name'],
+                'type': 'navigation_beacon',
+                'subtype': 'navigation',
+                'position': beacon_template.get('position', [0, 0, 0]),
+                'initial_faction': 'neutral',
+                'initial_state': 'active'
+            }
+            star_system['infrastructure'].append(beacon)
+            
+    except Exception as e:
+        print(f"Warning: Could not load infrastructure template: {e}")
+        # Continue without infrastructure if file not found
     
     return star_system
 ```
@@ -316,33 +371,88 @@ class RuntimeObjectManager:
 # Enhanced ObjectDatabase with ID management
 class ObjectDatabase:
     def __init__(self, universe_seed, player_id="player"):
+        self.universe_seed = universe_seed
+        self.player_id = player_id
         self.id_generator = ObjectIDGenerator(universe_seed)
-        self.verse = VerseAPI(universe_seed, self.id_generator)
+        
+        # Initialize core components first
+        self.verse = VerseAdapter(universe_seed, self.id_generator)
         self.game_state = GameStateManager(universe_seed, player_id)
+        self.reference = ReferenceDataManager()
+        
+        # Initialize dependent components after core is ready
+        self.runtime_manager = None
+        self.waypoint_manager = None
+        self._initialize_managers()
+    
+    def _initialize_managers(self):
+        """Initialize managers that depend on ObjectDatabase being ready"""
         self.runtime_manager = RuntimeObjectManager(self)
         self.waypoint_manager = MissionWaypointManager(self)
-        # ...
     
     def get_object(self, object_id):
         """Get object from appropriate source based on ID namespace"""
-        namespace = object_id.split('_')[0]
+        if not object_id:
+            return None
+            
+        try:
+            namespace = object_id.split('_')[0]
+        except (AttributeError, IndexError):
+            print(f"Warning: Invalid object ID format: {object_id}")
+            return None
         
-        if namespace == 'proc':
-            # Get from verse.py (static procedural data)
-            static_data = self.verse.get_object_static_data(object_id)
-            dynamic_state = self.game_state.get_object_current_state(object_id)
-            return self._merge_object_data(static_data, dynamic_state)
+        try:
+            if namespace == 'proc':
+                # Get from verse.py (static procedural data)
+                static_data = self.verse.get_object_static_data(object_id)
+                if not static_data:
+                    return None
+                dynamic_state = self.game_state.get_object_current_state(object_id)
+                return self._merge_object_data(static_data, dynamic_state)
+                
+            elif namespace == 'runtime':
+                # Get from runtime object manager (dynamic data)
+                return self.game_state.get_runtime_object(object_id)
+                
+            elif namespace == 'mission':
+                # Get from mission metadata (ephemeral)
+                if hasattr(self, 'metadata') and self.metadata:
+                    return self.metadata.get_waypoint(object_id)
+                return None
+                
+            else:
+                print(f"Warning: Unknown object ID namespace: {namespace}")
+                return None
+                
+        except Exception as e:
+            print(f"Error retrieving object {object_id}: {e}")
+            return None
+    
+    def _merge_object_data(self, static_data, dynamic_state):
+        """Merge static and dynamic data for an object"""
+        if not static_data:
+            return None
             
-        elif namespace == 'runtime':
-            # Get from runtime object manager (dynamic data)
-            return self.game_state.get_runtime_object(object_id)
+        # Start with static data
+        merged = dict(static_data)
+        
+        # Apply dynamic overrides if they exist
+        if dynamic_state:
+            # Update faction if changed
+            if 'current_faction' in dynamic_state:
+                merged['faction'] = dynamic_state['current_faction']
             
-        elif namespace == 'mission':
-            # Get from mission metadata (ephemeral)
-            return self.metadata.get_waypoint(object_id)
+            # Update state if changed
+            if 'current_state' in dynamic_state:
+                merged['state'] = dynamic_state['current_state']
             
+            # Add dynamic metadata
+            merged['last_updated'] = dynamic_state.get('last_updated')
+            merged['is_dynamic'] = True
         else:
-            raise ValueError(f"Unknown object ID namespace: {namespace}")
+            merged['is_dynamic'] = False
+        
+        return merged
 ```
 
 #### Benefits
@@ -898,14 +1008,53 @@ class StarChartsManager {
 // frontend/static/js/views/TargetComputerManager.js
 class TargetComputerManager {
     setTargetFromUnifiedData(objectData) {
-        // No more data format conversion needed
-        // All systems use the same unified object format
+        // Convert unified format to current TargetComputerManager expectations
+        const targetData = this.convertUnifiedToTargetFormat(objectData);
         
-        this.currentTarget = objectData;
-        this.targetIndex = this.findOrAddToTargetList(objectData);
+        this.currentTarget = targetData;
+        this.targetIndex = this.findOrAddToTargetList(targetData);
         this.updateTargetDisplay();
         
         return true;
+    }
+    
+    convertUnifiedToTargetFormat(unifiedObject) {
+        // Convert ObjectDatabase format to TargetComputerManager format
+        return {
+            id: unifiedObject.id,
+            name: unifiedObject.name,
+            type: unifiedObject.type,
+            faction: unifiedObject.faction || unifiedObject.initial_faction,
+            diplomacy: unifiedObject.faction || unifiedObject.initial_faction,
+            position: unifiedObject.position || [0, 0, 0],
+            size: unifiedObject.size || 1.0,
+            // Add object wrapper for compatibility
+            object: {
+                userData: {
+                    id: unifiedObject.id,
+                    name: unifiedObject.name
+                }
+            }
+        };
+    }
+    
+    setTargetByName(objectName) {
+        // Add missing setTargetByName method for StarCharts fallback
+        const targetIndex = this.targetObjects.findIndex(target =>
+            target.name === objectName ||
+            target.name?.toLowerCase() === objectName.toLowerCase()
+        );
+        
+        if (targetIndex !== -1) {
+            this.targetIndex = targetIndex;
+            this.currentTarget = this.targetObjects[targetIndex];
+            this.updateTargetDisplay();
+            console.log(`🎯 Target set by name: ${objectName} at index ${targetIndex}`);
+            return true;
+        }
+        
+        console.warn(`🎯 Target not found by name: ${objectName}`);
+        return false;
     }
     
     findOrAddToTargetList(objectData) {
@@ -1089,6 +1238,11 @@ backend/
 ├── reference_data.py         # Reference data manager
 ├── game_state.py             # Dynamic state manager  
 ├── object_database.py        # Unified interface
+├── verse_adapter.py          # Adapter for verse.py functions
+├── data_adapter.py           # Data structure compatibility layer
+├── game_time.py              # Game time utilities
+├── infrastructure_loader.py  # Infrastructure loading utilities
+├── verse_helpers.py          # Helper functions for verse integration
 └── routes/
     └── object_database.py    # API endpoints
 
@@ -1116,6 +1270,358 @@ backend/PlanetTypes.py                    # Moved to JSON
 data/star_charts/objects.json             # Replaced by API
 data/starter_system_infrastructure.json   # Merged into verse.py
 ```
+
+## Critical Issues Identified
+
+### ❌ Data Structure Compatibility Issues
+
+**Issue 1: Current verse.py Structure Mismatch**
+```python
+# Current verse.py returns:
+{
+    'star_type': 'yellow dwarf',
+    'star_name': 'Sol',
+    'planets': [{'planet_name': 'Terra Prime', ...}]
+}
+
+# Spec assumes:
+{
+    'star': {'id': 'proc_A0_star_sol', 'name': 'Sol'},
+    'celestial_bodies': [...],  # Different from 'planets'
+    'infrastructure': [...]     # Missing from current verse.py
+}
+```
+
+**Issue 2: Missing Universe Seed Accessor**
+```python
+# Spec shows: get_current_universe_seed()  # ❌ Function doesn't exist
+# Current: global initial_seed variable in verse.py
+```
+
+**Issue 3: ID Format Inconsistency**
+```python
+# Current Star Charts: "A0_star", "A0_terra_prime"
+# Spec proposes: "proc_A0_star_sol", "proc_A0_planet_terra_prime"
+```
+
+**Issue 4: Missing Infrastructure Generation**
+- Current verse.py only generates celestial bodies
+- No stations, beacons, or infrastructure in procedural generation
+- Infrastructure currently only in separate JSON file
+
+**Issue 5: Frontend Integration Gaps**
+```javascript
+// Current SolarSystemManager expects:
+planetData.planet_name, planetData.diplomacy
+
+// Spec ObjectDatabase would return:
+objectData.name, objectData.faction  // Different field names
+```
+
+### 🔧 Required Compatibility Layer
+
+**Phase 0.5: Compatibility Bridge (Add before Phase 1)**
+
+#### 0.5.1 Add Universe Seed Accessor
+```python
+# backend/verse.py - Add missing function
+def get_current_universe_seed():
+    """Get the current universe seed"""
+    global initial_seed
+    return initial_seed
+
+def get_universe_seed_from_env():
+    """Get universe seed from environment or default"""
+    import os
+    env_seed = os.getenv('UNIVERSE_SEED', '20299999')
+    try:
+        return int(env_seed)
+    except ValueError:
+        return hash(env_seed) & 0xFFFFFFFF
+```
+
+#### 0.5.2 Create Data Structure Adapter
+```python
+# backend/data_adapter.py - New compatibility layer
+class DataStructureAdapter:
+    """Adapter to bridge current verse.py format with new ObjectDatabase format"""
+    
+    @staticmethod
+    def verse_to_unified_format(verse_system):
+        """Convert current verse.py format to unified ObjectDatabase format"""
+        id_gen = ObjectIDGenerator(get_current_universe_seed())
+        
+        # Convert star data
+        unified_system = {
+            'sector': verse_system.get('sector', 'A0'),
+            'star': {
+                'id': id_gen.generate_procedural_id(
+                    verse_system.get('sector', 'A0'), 
+                    'star', 
+                    verse_system.get('star_name', 'Unknown')
+                ),
+                'name': verse_system.get('star_name', 'Unknown'),
+                'type': 'star',
+                'subtype': verse_system.get('star_type', 'unknown'),
+                'position': [0, 0, 0],
+                'size': verse_system.get('star_size', 2.0),
+                'initial_faction': 'neutral',
+                'initial_state': 'active'
+            },
+            'celestial_bodies': [],
+            'infrastructure': []
+        }
+        
+        # Convert planets to celestial_bodies
+        for i, planet_data in enumerate(verse_system.get('planets', [])):
+            planet = {
+                'id': id_gen.generate_procedural_id(
+                    verse_system.get('sector', 'A0'),
+                    'planet',
+                    planet_data.get('planet_name', f'Planet_{i}')
+                ),
+                'name': planet_data.get('planet_name', f'Planet {i}'),
+                'type': 'planet',
+                'subtype': planet_data.get('planet_type', 'unknown'),
+                'parent_id': unified_system['star']['id'],
+                'size': planet_data.get('planet_size', 1.0),
+                'initial_faction': planet_data.get('diplomacy', 'neutral'),
+                'initial_state': 'inhabited' if planet_data.get('has_atmosphere') else 'barren',
+                'moons': []
+            }
+            
+            # Convert moons
+            for j, moon_data in enumerate(planet_data.get('moons', [])):
+                moon = {
+                    'id': id_gen.generate_procedural_id(
+                        verse_system.get('sector', 'A0'),
+                        'moon',
+                        moon_data.get('moon_name', f'Moon_{j}')
+                    ),
+                    'name': moon_data.get('moon_name', f'Moon {j}'),
+                    'type': 'moon',
+                    'subtype': moon_data.get('moon_type', 'rocky'),
+                    'parent_id': planet['id'],
+                    'size': moon_data.get('moon_size', 0.3),
+                    'initial_faction': moon_data.get('diplomacy', 'neutral'),
+                    'initial_state': 'barren'
+                }
+                planet['moons'].append(moon)
+            
+            unified_system['celestial_bodies'].append(planet)
+        
+        return unified_system
+    
+    @staticmethod
+    def unified_to_frontend_format(unified_object):
+        """Convert unified format back to current frontend expectations"""
+        if unified_object['type'] == 'planet':
+            return {
+                'planet_name': unified_object['name'],
+                'planet_type': unified_object.get('subtype', 'Class-M'),
+                'planet_size': unified_object.get('size', 1.0),
+                'diplomacy': unified_object.get('current_faction', unified_object.get('initial_faction', 'neutral')),
+                'government': unified_object.get('government', 'Unknown'),
+                'economy': unified_object.get('economy', 'Unknown'),
+                'technology': unified_object.get('technology', 'Unknown'),
+                'moons': [DataStructureAdapter.unified_to_frontend_format(moon) 
+                         for moon in unified_object.get('moons', [])]
+            }
+        elif unified_object['type'] == 'moon':
+            return {
+                'moon_name': unified_object['name'],
+                'moon_type': unified_object.get('subtype', 'rocky'),
+                'moon_size': unified_object.get('size', 0.3),
+                'diplomacy': unified_object.get('current_faction', unified_object.get('initial_faction', 'neutral'))
+            }
+        
+        return unified_object
+```
+
+#### 0.5.3 Fix Current verse.py Syntax Error
+```python
+# backend/verse.py line 473 - Fix syntax error
+moon1 = {  # ❌ Current: missing = {
+    'moon_name': 'Luna',
+    # ... rest of moon data
+}
+```
+
+#### 0.5.4 Create VerseAdapter Class
+```python
+# backend/verse_adapter.py - New file
+from backend.verse import generate_star_system, generate_universe, get_current_universe_seed
+from backend.data_adapter import DataStructureAdapter
+
+class VerseAdapter:
+    """Adapter class to provide ObjectDatabase interface to verse.py functions"""
+    
+    def __init__(self, universe_seed, id_generator):
+        self.universe_seed = universe_seed
+        self.id_generator = id_generator
+        self._sector_cache = {}
+    
+    def get_object_static_data(self, object_id):
+        """Get static data for an object by ID"""
+        try:
+            # Parse object ID to get sector
+            parts = object_id.split('_')
+            if len(parts) < 3:
+                return None
+            
+            namespace, sector = parts[0], parts[1]
+            if namespace != 'proc':
+                return None
+            
+            # Get sector data (with caching)
+            sector_data = self._get_sector_data(sector)
+            if not sector_data:
+                return None
+            
+            # Find object in sector data
+            return self._find_object_in_sector(object_id, sector_data)
+            
+        except Exception as e:
+            print(f"Error getting static data for {object_id}: {e}")
+            return None
+    
+    def get_sector_objects(self, sector):
+        """Get all object IDs in a sector"""
+        sector_data = self._get_sector_data(sector)
+        if not sector_data:
+            return []
+        
+        object_ids = []
+        
+        # Add star
+        if sector_data.get('star'):
+            object_ids.append(sector_data['star']['id'])
+        
+        # Add celestial bodies
+        for body in sector_data.get('celestial_bodies', []):
+            object_ids.append(body['id'])
+            # Add moons
+            for moon in body.get('moons', []):
+                object_ids.append(moon['id'])
+        
+        # Add infrastructure
+        for infra in sector_data.get('infrastructure', []):
+            object_ids.append(infra['id'])
+        
+        return object_ids
+    
+    def get_all_objects(self):
+        """Get all object IDs in the universe (placeholder - implement as needed)"""
+        # For now, just return A0 objects
+        return self.get_sector_objects('A0')
+    
+    def _get_sector_data(self, sector):
+        """Get sector data with caching"""
+        if sector not in self._sector_cache:
+            try:
+                # Generate raw verse.py data
+                raw_system = generate_star_system(sector)
+                if raw_system:
+                    # Convert to unified format
+                    unified_system = DataStructureAdapter.verse_to_unified_format(raw_system)
+                    self._sector_cache[sector] = unified_system
+                else:
+                    self._sector_cache[sector] = None
+            except Exception as e:
+                print(f"Error generating sector {sector}: {e}")
+                self._sector_cache[sector] = None
+        
+        return self._sector_cache[sector]
+    
+    def _find_object_in_sector(self, object_id, sector_data):
+        """Find specific object in sector data"""
+        # Check star
+        if sector_data.get('star', {}).get('id') == object_id:
+            return sector_data['star']
+        
+        # Check celestial bodies
+        for body in sector_data.get('celestial_bodies', []):
+            if body.get('id') == object_id:
+                return body
+            # Check moons
+            for moon in body.get('moons', []):
+                if moon.get('id') == object_id:
+                    return moon
+        
+        # Check infrastructure
+        for infra in sector_data.get('infrastructure', []):
+            if infra.get('id') == object_id:
+                return infra
+        
+        return None
+```
+
+#### 0.5.5 Add Missing Helper Functions
+```python
+# backend/game_time.py - New file
+import time
+from datetime import datetime
+
+def get_game_time():
+    """Get current game time (for now, use real time)"""
+    return datetime.utcnow().isoformat()
+
+class GameTime:
+    def __init__(self):
+        self.start_time = time.time()
+    
+    def current(self):
+        return get_game_time()
+
+# backend/infrastructure_loader.py - New file
+import json
+import os
+
+def load_starter_infrastructure_template():
+    """Load A0 infrastructure from existing JSON file"""
+    file_path = 'data/starter_system_infrastructure.json'
+    
+    if not os.path.exists(file_path):
+        print(f"Warning: Infrastructure file not found: {file_path}")
+        return {'stations': [], 'beacons': []}
+    
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Error loading infrastructure file: {e}")
+        return {'stations': [], 'beacons': []}
+
+# backend/verse_helpers.py - New file  
+def get_object_last_update(object_id):
+    """Get last update time for an object (placeholder implementation)"""
+    return get_game_time()
+```
+
+### 🔧 Round 2 Fixes Applied
+
+**Issue 11: Target Computer Data Structure** - Added `convertUnifiedToTargetFormat()` method to bridge data formats
+**Issue 12: Missing setTargetByName** - Added missing `setTargetByName()` method to TargetComputerManager
+**Issue 13: Position Calculation Errors** - Fixed moon positions to use different coordinates
+**Issue 14: Missing VerseAPI Class** - Created `VerseAdapter` class to wrap verse.py functions
+**Issue 15: Faction Name Inconsistencies** - Changed to use existing faction names ('friendly', 'neutral')
+
+### 🔧 Round 3 & 4 Additional Issues
+
+**Issue 16: Import Path Dependencies** - Verified import paths match current project structure
+**Issue 17: Missing File Structure** - Added all compatibility layer files to new files list  
+**Issue 18: Frontend Module Dependencies** - Accounted for existing ES6 module import structure
+**Issue 19: Manager Initialization Order** - Noted complex dependency chain in current system
+**Issue 20: Missing Migration Strategy** - Identified need for existing data migration plan
+
+### 🎯 Final Implementation Notes
+
+**Critical Success Factors:**
+1. **Incremental Migration**: Must maintain existing functionality during transition
+2. **Compatibility Layer**: Essential for bridging old and new data formats
+3. **Initialization Order**: Must respect existing manager dependency chain
+4. **Data Migration**: Need strategy for existing save data and persistent state
+5. **Testing Strategy**: Comprehensive testing at each phase to prevent regressions
 
 ## Success Criteria
 
