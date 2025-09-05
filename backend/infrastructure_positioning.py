@@ -26,15 +26,17 @@ class InfrastructurePositioning:
     and other infrastructure objects in realistic orbital positions.
     """
 
-    def __init__(self, universe_seed: Optional[int] = None):
+    def __init__(self, universe_seed: Optional[int] = None, use_realistic_orbits: bool = True):
         """
         Initialize the infrastructure positioning system.
 
         Args:
             universe_seed (int, optional): Seed for consistent positioning
+            use_realistic_orbits (bool): Whether realistic orbits are enabled
         """
         self.universe_seed = universe_seed or 20299999
         self.random = random.Random(self.universe_seed)
+        self.use_realistic_orbits = use_realistic_orbits
 
         # Positioning constants
         self.STATION_ORBIT_HEIGHT = 5.0  # Distance above planet surface

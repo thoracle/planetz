@@ -25,19 +25,24 @@ class PositioningEnhancement:
     This class adds orbital mechanics and positioning calculations
     to existing verse.py star systems without modifying the core
     generation logic.
+
+    Supports both realistic orbital mechanics and simplified static positioning.
     """
 
-    def __init__(self, universe_seed: Optional[int] = None):
+    def __init__(self, universe_seed: Optional[int] = None, use_realistic_orbits: bool = True):
         """
         Initialize the positioning enhancement system.
 
         Args:
             universe_seed (int, optional): Universe seed for consistent positioning
+            use_realistic_orbits (bool): Whether to use realistic orbital mechanics
+                                        or simplified static positioning
         """
         if universe_seed is None:
             universe_seed = get_universe_seed_from_env()
 
         self.universe_seed = universe_seed
+        self.use_realistic_orbits = use_realistic_orbits
 
         # Orbital constants (scaled for game)
         self.AU_SCALE = 100.0  # 1 AU = 100 game units
@@ -65,21 +70,24 @@ class PositioningEnhancement:
             'period': 0.0
         }
 
-        # Calculate planet positions
+        # Calculate planet positions based on mode
         if 'planets' in enhanced:
-            enhanced['planets'] = self._position_planets(enhanced['planets'])
+            if self.use_realistic_orbits:
+                enhanced['planets'] = self._position_planets_realistic(enhanced['planets'])
+            else:
+                enhanced['planets'] = self._position_planets_simplified(enhanced['planets'])
 
         return enhanced
 
-    def _position_planets(self, planets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _position_planets_realistic(self, planets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Calculate positions for all planets in the system.
+        Calculate realistic orbital positions for all planets in the system.
 
         Args:
             planets (list): List of planet dictionaries
 
         Returns:
-            list: Planets with positioning data added
+            list: Planets with realistic positioning data added
         """
         positioned_planets = []
 
@@ -113,6 +121,85 @@ class PositioningEnhancement:
             positioned_planets.append(enhanced_planet)
 
         return positioned_planets
+
+    def _position_planets_simplified(self, planets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Calculate simplified static positions for all planets in the system.
+
+        This mimics the previous behavior where planets were in fixed positions
+        along the X-axis at regular intervals.
+
+        Args:
+            planets (list): List of planet dictionaries
+
+        Returns:
+            list: Planets with simplified positioning data added
+        """
+        positioned_planets = []
+
+        for i, planet in enumerate(planets):
+            # Simple positioning: planets along X-axis at fixed intervals
+            # This matches the previous simplified model
+            distance = 50.0 + (i * 50.0)  # 50, 100, 150, 200, etc.
+            position = [distance, 0.0, 0.0]  # Along X-axis, Y=Z=0
+
+            # Add simplified positioning data to planet
+            enhanced_planet = planet.copy()
+            enhanced_planet['position'] = position
+            enhanced_planet['orbit'] = {
+                'parent': 'star',
+                'radius': distance,
+                'angle': 0.0,  # Fixed angle for simplified mode
+                'period': 0.0  # No orbital motion in simplified mode
+            }
+
+            # Position moons in simplified mode (fixed relative positions)
+            if 'moons' in enhanced_planet:
+                enhanced_planet['moons'] = self._position_moons_simplified(
+                    enhanced_planet['moons'],
+                    position
+                )
+
+            positioned_planets.append(enhanced_planet)
+
+        return positioned_planets
+
+    def _position_moons_simplified(self, moons: List[Dict[str, Any]],
+                                  planet_position: List[float]) -> List[Dict[str, Any]]:
+        """
+        Position moons in simplified mode (fixed relative positions).
+
+        Args:
+            moons (list): List of moon dictionaries
+            planet_position (list): Planet's current position [x, y, z]
+
+        Returns:
+            list: Moons with simplified positioning data
+        """
+        positioned_moons = []
+
+        for i, moon in enumerate(moons):
+            # Simple positioning: moons at fixed offsets from planet
+            offset_x = 5.0 + (i * 5.0)  # 5, 10, 15, etc. units from planet
+            position = [
+                planet_position[0] + offset_x,
+                planet_position[1],
+                planet_position[2]
+            ]
+
+            # Add simplified positioning data to moon
+            enhanced_moon = moon.copy()
+            enhanced_moon['position'] = position
+            enhanced_moon['orbit'] = {
+                'parent': 'planet',
+                'radius': offset_x,
+                'angle': 0.0,  # Fixed angle for simplified mode
+                'period': 0.0  # No orbital motion in simplified mode
+            }
+
+            positioned_moons.append(enhanced_moon)
+
+        return positioned_moons
 
     def _position_moons(self, moons: List[Dict[str, Any]],
                        planet_position: List[float],
@@ -284,13 +371,20 @@ class PositioningEnhancement:
         """
         Update positions of all celestial bodies based on elapsed time.
 
+        Only updates positions if realistic orbits are enabled.
+        In simplified mode, positions remain static.
+
         Args:
             star_system (dict): Star system with positioning data
             time_elapsed (float): Time elapsed in Earth days
 
         Returns:
-            dict: Updated star system with new positions
+            dict: Updated star system with new positions (or unchanged in simplified mode)
         """
+        # In simplified mode, don't update positions over time
+        if not self.use_realistic_orbits:
+            return star_system.copy()
+
         updated = star_system.copy()
 
         # Update planet positions
@@ -302,6 +396,42 @@ class PositioningEnhancement:
             updated['planets'] = updated_planets
 
         return updated
+
+    def enable_realistic_orbits(self) -> None:
+        """Enable realistic orbital mechanics."""
+        self.use_realistic_orbits = True
+
+    def disable_realistic_orbits(self) -> None:
+        """Disable realistic orbital mechanics (use simplified static positioning)."""
+        self.use_realistic_orbits = False
+
+    def toggle_realistic_orbits(self) -> bool:
+        """
+        Toggle between realistic and simplified orbital modes.
+
+        Returns:
+            bool: New state of realistic orbits (True = enabled, False = disabled)
+        """
+        self.use_realistic_orbits = not self.use_realistic_orbits
+        return self.use_realistic_orbits
+
+    def is_realistic_orbits_enabled(self) -> bool:
+        """
+        Check if realistic orbital mechanics are enabled.
+
+        Returns:
+            bool: True if realistic orbits are enabled, False if simplified mode
+        """
+        return self.use_realistic_orbits
+
+    def get_positioning_mode(self) -> str:
+        """
+        Get the current positioning mode as a string.
+
+        Returns:
+            str: "realistic" or "simplified"
+        """
+        return "realistic" if self.use_realistic_orbits else "simplified"
 
     def _update_planet_position(self, planet: Dict[str, Any], time_elapsed: float) -> Dict[str, Any]:
         """
