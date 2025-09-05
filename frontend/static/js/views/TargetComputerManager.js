@@ -1789,10 +1789,18 @@ export class TargetComputerManager {
         this.isFromLongRangeScanner = true; // Mark as scanner target for protection
 
         // Find and set the target index in the current target list
-        const targetIndex = this.targetObjects.findIndex(target => target.name === targetData.name);
+        let targetIndex = this.targetObjects.findIndex(target => 
+            target.name === targetData.name || 
+            target.id === targetData.id ||
+            (target.object && target.object.userData && target.object.userData.id === targetData.id)
+        );
+        
         if (targetIndex !== -1) {
             this.targetIndex = targetIndex;
             console.log(`🎯 Scanner target index set to ${targetIndex} (existing in list)`);
+            
+            // Update the existing target data with scanner data to ensure consistency
+            this.targetObjects[targetIndex] = { ...this.targetObjects[targetIndex], ...targetData };
         } else {
             // If target is not in the current list, add it and set the index
             this.targetObjects.push(targetData);
@@ -2531,12 +2539,13 @@ export class TargetComputerManager {
                     const isObjectMatch = targetData.object === this.currentTarget;
                     const isUUIDMatch = targetData.object?.uuid && this.currentTarget.uuid && targetData.object.uuid === this.currentTarget.uuid;
                     const isNameTypeMatch = targetData.name === this.currentTarget.name && targetData.type === this.currentTarget.type;
+                    const isIdMatch = targetData.id === this.currentTarget.id;
 
-                    if (isExactMatch || isObjectMatch || isUUIDMatch || isNameTypeMatch) {
+                    if (isExactMatch || isObjectMatch || isUUIDMatch || isNameTypeMatch || isIdMatch) {
                         // Update the index to match the found target
                         this.targetIndex = i;
                         this.currentTarget = targetData.object || targetData; // Ensure we have the original object, not processed target data
-                        console.log(`🔧 Fixed target index mismatch: set to ${i} for target ${targetData.name} (${isExactMatch ? 'exact' : isObjectMatch ? 'object' : isUUIDMatch ? 'uuid' : 'name/type'})`);
+                        console.log(`🔧 Fixed target index mismatch: set to ${i} for target ${targetData.name} (${isExactMatch ? 'exact' : isObjectMatch ? 'object' : isUUIDMatch ? 'uuid' : isIdMatch ? 'ID' : 'name/type'})`);
 
                         // Process and return the target data
                         return this.processTargetData(targetData);
@@ -2553,7 +2562,13 @@ export class TargetComputerManager {
             this.lastTargetNotFoundWarning = now;
         }
         
-        // Clear the invalid target to prevent repeated warnings
+        // For scanner targets (including Star Charts), don't clear the target - return it directly
+        if (this.isFromLongRangeScanner && this.currentTarget && this.currentTarget.name && this.currentTarget.type) {
+            console.log(`🎯 Using scanner target data directly: ${this.currentTarget.name}`);
+            return this.processTargetData(this.currentTarget);
+        }
+        
+        // Clear the invalid target to prevent repeated warnings (only for non-scanner targets)
         this.clearCurrentTarget();
         return null;
     }

@@ -674,10 +674,10 @@ body.warp-control-mode .crosshair {
     font-family: 'VT323', monospace;
     z-index: 1000;
     flex-direction: row;
-    height: 64vh;
-    max-height: 72vh;
-    width: 720px;
-    min-width: 640px;
+    height: 60.8vh;
+    max-height: 68.4vh;
+    width: 684px;
+    min-width: 608px;
     box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
 }
 
@@ -704,6 +704,11 @@ body.warp-control-mode .crosshair {
 }
 
 .scanner-map-container:active {
+    cursor: grabbing;
+}
+
+/* Dragging state cursor */
+.scanner-map-container.dragging {
     cursor: grabbing;
 }
 
@@ -916,6 +921,19 @@ body.warp-control-mode .crosshair {
 .long-range-scanner .close-button:hover {
     background: #00ff41;
     color: #000;
+}
+
+.star-charts-title {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #00ff41;
+    font-size: 14px;
+    font-weight: normal;
+    text-align: center;
+    z-index: 10;
+    pointer-events: none;
 }
 
 /* Scanner Map Tooltip */

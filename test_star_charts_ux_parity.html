@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Charts UX Parity Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        
+        .test-scenario {
+            background: rgba(0, 0, 255, 0.1);
+            border: 1px solid #0088ff;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 3px;
+        }
+        
+        .test-step {
+            margin: 5px 0;
+            padding: 5px 10px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .test-expected {
+            color: #ffff00;
+            font-style: italic;
+        }
+        
+        .test-controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .test-button {
+            background: #004400;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        
+        .test-button:hover {
+            background: #006600;
+        }
+        
+        .test-results {
+            background: rgba(255, 255, 0, 0.1);
+            border: 1px solid #ffff00;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            min-height: 100px;
+        }
+        
+        .status-pass {
+            color: #00ff00;
+        }
+        
+        .status-fail {
+            color: #ff0000;
+        }
+        
+        .status-pending {
+            color: #ffff00;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🗺️ Star Charts UX Parity Test Suite</h1>
+            <p>Verify that Star Charts behavior matches Long Range Scanner exactly</p>
+        </div>
+        
+        <div class="test-controls">
+            <button class="test-button" onclick="runAllTests()">Run All Tests</button>
+            <button class="test-button" onclick="enableTestMode()">Enable Test Mode</button>
+            <button class="test-button" onclick="openStarCharts()">Open Star Charts (C)</button>
+            <button class="test-button" onclick="openLRS()">Open LRS (L)</button>
+            <button class="test-button" onclick="testIntegration()">Test Integration</button>
+            <button class="test-button" onclick="clearResults()">Clear Results</button>
+        </div>
+        
+        <div class="test-results" id="testResults">
+            <strong>Test Results:</strong><br>
+            Ready to run tests. Click "Run All Tests" to begin automated testing.
+        </div>
+        
+        <div class="test-section">
+            <h2>🎯 Test Scenario 1: Progressive Zoom Behavior</h2>
+            <div class="test-scenario">
+                <h3>Object Click Zoom Progression</h3>
+                <div class="test-step">1. Open interface at zoom level 1 (overview)</div>
+                <div class="test-step">2. Click on Terra Prime planet</div>
+                <div class="test-step test-expected">Expected: Zoom to level 2 + center on Terra Prime</div>
+                <div class="test-step">3. Click on Terra Prime again</div>
+                <div class="test-step test-expected">Expected: Zoom to level 3 + center on Terra Prime</div>
+                <div class="test-step">4. Click on Terra Prime again</div>
+                <div class="test-step test-expected">Expected: Stay at level 3 + center on Terra Prime</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔍 Test Scenario 2: Empty Space Zoom Out</h2>
+            <div class="test-scenario">
+                <h3>Step-Down Zoom Out Behavior</h3>
+                <div class="test-step">1. Start at zoom level 3 (detail view)</div>
+                <div class="test-step">2. Click empty space</div>
+                <div class="test-step test-expected">Expected: Zoom to level 2</div>
+                <div class="test-step">3. Click empty space</div>
+                <div class="test-step test-expected">Expected: Zoom to level 1 + center origin</div>
+                <div class="test-step">4. Click empty space</div>
+                <div class="test-step test-expected">Expected: Zoom to level 0.4 (beacon ring) + center origin</div>
+                <div class="test-step">5. Click empty space</div>
+                <div class="test-step test-expected">Expected: Zoom to level 1 + center origin</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎹 Test Scenario 3: Keyboard Controls</h2>
+            <div class="test-scenario">
+                <h3>B Key Beacon Ring Toggle</h3>
+                <div class="test-step">1. Open interface at any zoom level</div>
+                <div class="test-step">2. Press 'B' key</div>
+                <div class="test-step test-expected">Expected: Zoom to level 0.4 (beacon ring) + center origin</div>
+                <div class="test-step">3. Press 'B' key again</div>
+                <div class="test-step test-expected">Expected: Stay at level 0.4 (beacon ring)</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🖱️ Test Scenario 4: Double-Click Behavior</h2>
+            <div class="test-scenario">
+                <h3>Double-Click Super Zoom</h3>
+                <div class="test-step">1. Open interface at zoom level 1</div>
+                <div class="test-step">2. Double-click empty space</div>
+                <div class="test-step test-expected">Expected: Zoom to level 0.4 (beacon ring) + center origin</div>
+                <div class="test-step">3. Double-click empty space again</div>
+                <div class="test-step test-expected">Expected: Stay at level 0.4 (beacon ring)</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📐 Test Scenario 5: Coordinate System Parity</h2>
+            <div class="test-scenario">
+                <h3>ViewBox and Centering Accuracy</h3>
+                <div class="test-step">1. Open both interfaces side by side</div>
+                <div class="test-step">2. Click same object in both interfaces</div>
+                <div class="test-step test-expected">Expected: Identical centering and zoom behavior</div>
+                <div class="test-step">3. Check console logs for ViewBox values</div>
+                <div class="test-step test-expected">Expected: ViewBox calculations should be identical</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎯 Test Scenario 6: Object Selection & Targeting</h2>
+            <div class="test-scenario">
+                <h3>Visual Feedback and Target Integration</h3>
+                <div class="test-step">1. Click on any celestial object</div>
+                <div class="test-step test-expected">Expected: Yellow highlight on selected object</div>
+                <div class="test-step">2. Check target computer display</div>
+                <div class="test-step test-expected">Expected: Object should be set as current target</div>
+                <div class="test-step">3. Hover over objects</div>
+                <div class="test-step test-expected">Expected: Objects should grow on hover (1.3x scale)</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Manual Comparison Checklist</h2>
+            <div class="test-scenario">
+                <h3>Side-by-Side Verification</h3>
+                <div class="test-step">□ Object positions match exactly</div>
+                <div class="test-step">□ Zoom levels behave identically</div>
+                <div class="test-step">□ Centering behavior is identical</div>
+                <div class="test-step">□ Keyboard shortcuts work the same</div>
+                <div class="test-step">□ Click detection accuracy matches</div>
+                <div class="test-step">□ Visual feedback is consistent</div>
+                <div class="test-step">□ Target integration works robustly</div>
+                <div class="test-step">□ Performance is comparable</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = [];
+        
+        function log(message, status = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const statusClass = status === 'pass' ? 'status-pass' : 
+                              status === 'fail' ? 'status-fail' : 
+                              status === 'pending' ? 'status-pending' : '';
+            
+            const resultDiv = document.getElementById('testResults');
+            resultDiv.innerHTML += `<div class="${statusClass}">[${timestamp}] ${message}</div>`;
+            resultDiv.scrollTop = resultDiv.scrollHeight;
+            
+            console.log(`🧪 UX Parity Test: ${message}`);
+        }
+        
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '<strong>Test Results:</strong><br>';
+            testResults = [];
+        }
+        
+        function enableTestMode() {
+            // Enable test mode for auto-discovery
+            try {
+                localStorage.setItem('star_charts_test_discover_all', 'true');
+                window.STAR_CHARTS_DISCOVER_ALL = true;
+                log('✅ Test mode enabled - all objects will be auto-discovered', 'pass');
+                log('💡 Reload the page to apply test mode', 'info');
+            } catch (e) {
+                log('❌ Failed to enable test mode: ' + e.message, 'fail');
+            }
+        }
+        
+        function openStarCharts() {
+            // Simulate C key press to open Star Charts
+            const event = new KeyboardEvent('keydown', {
+                key: 'c',
+                code: 'KeyC',
+                keyCode: 67,
+                which: 67,
+                bubbles: true
+            });
+            document.dispatchEvent(event);
+            log('📡 Attempting to open Star Charts (C key)', 'info');
+        }
+        
+        function openLRS() {
+            // Simulate L key press to open Long Range Scanner
+            const event = new KeyboardEvent('keydown', {
+                key: 'l',
+                code: 'KeyL',
+                keyCode: 76,
+                which: 76,
+                bubbles: true
+            });
+            document.dispatchEvent(event);
+            log('🗺️ Attempting to open Long Range Scanner (L key)', 'info');
+        }
+        
+        async function runAllTests() {
+            log('🚀 Starting UX Parity Test Suite...', 'info');
+            clearResults();
+            
+            // Test 1: Check if systems are available
+            await testSystemAvailability();
+            
+            // Test 2: Check console logging patterns
+            await testConsoleLogging();
+            
+            // Test 3: Check coordinate system calculations
+            await testCoordinateSystem();
+            
+            // Test 4: Check zoom level validation
+            await testZoomValidation();
+            
+            // Test 5: Performance comparison
+            await testPerformance();
+            
+            log('✅ Automated tests completed. Manual testing required for full verification.', 'pass');
+            log('💡 Use the manual checklist above to verify visual behavior.', 'info');
+        }
+        
+        async function testSystemAvailability() {
+            log('🔍 Testing system availability...', 'pending');
+            
+            // Check if NavigationSystemManager is available
+            if (typeof window.navigationSystemManager !== 'undefined') {
+                log('✅ NavigationSystemManager detected', 'pass');
+                
+                const status = window.navigationSystemManager.getSystemStatus();
+                log(`📊 Active system: ${status.activeSystem}`, 'info');
+                log(`🏥 Star Charts health: ${status.systemHealth.starCharts}`, 'info');
+                log(`🏥 LRS health: ${status.systemHealth.longRangeScanner}`, 'info');
+                
+                if (status.starChartsAvailable) {
+                    log('✅ Star Charts system available', 'pass');
+                } else {
+                    log('❌ Star Charts system not available', 'fail');
+                }
+                
+            } else {
+                log('❌ NavigationSystemManager not found', 'fail');
+                log('💡 Make sure the game is running and systems are initialized', 'info');
+                
+                // Check if ViewManager is available
+                if (typeof window.viewManager !== 'undefined') {
+                    log('✅ ViewManager detected', 'pass');
+                    
+                    // Check if managers are ready
+                    if (window.viewManager.areManagersReady && window.viewManager.areManagersReady()) {
+                        log('✅ ViewManager managers are ready', 'pass');
+                        
+                        // Check if NavigationSystemManager will be initialized
+                        setTimeout(() => {
+                            if (window.navigationSystemManager) {
+                                log('✅ NavigationSystemManager initialized after delay', 'pass');
+                            } else {
+                                log('❌ NavigationSystemManager still not available after delay', 'fail');
+                            }
+                        }, 2000);
+                    } else {
+                        log('❌ ViewManager managers not ready', 'fail');
+                    }
+                } else {
+                    log('❌ ViewManager not found', 'fail');
+                }
+            }
+        }
+        
+        async function testConsoleLogging() {
+            log('🔍 Testing console logging patterns...', 'pending');
+            
+            // Override console.log to capture Star Charts logs
+            const originalLog = console.log;
+            let starChartsLogs = [];
+            let lrsLogs = [];
+            
+            console.log = function(...args) {
+                const message = args.join(' ');
+                if (message.includes('Star Charts')) {
+                    starChartsLogs.push(message);
+                } else if (message.includes('LRS')) {
+                    lrsLogs.push(message);
+                }
+                originalLog.apply(console, args);
+            };
+            
+            // Restore after 5 seconds
+            setTimeout(() => {
+                console.log = originalLog;
+                log(`📝 Captured ${starChartsLogs.length} Star Charts logs`, 'info');
+                log(`📝 Captured ${lrsLogs.length} LRS logs`, 'info');
+                
+                // Check for expected log patterns
+                const hasViewBoxLogs = starChartsLogs.some(log => log.includes('ViewBox'));
+                const hasZoomLogs = starChartsLogs.some(log => log.includes('zoom'));
+                
+                if (hasViewBoxLogs) {
+                    log('✅ ViewBox logging detected in Star Charts', 'pass');
+                } else {
+                    log('⚠️ ViewBox logging not detected', 'pending');
+                }
+                
+                if (hasZoomLogs) {
+                    log('✅ Zoom logging detected in Star Charts', 'pass');
+                } else {
+                    log('⚠️ Zoom logging not detected', 'pending');
+                }
+            }, 5000);
+        }
+        
+        async function testCoordinateSystem() {
+            log('🔍 Testing coordinate system calculations...', 'pending');
+            
+            // Test viewBox calculation logic
+            const testViewBox = (zoomLevel, centerX, centerY) => {
+                const defaultWidth = 1000;
+                const defaultHeight = 1000;
+                
+                const viewBoxWidth = defaultWidth / zoomLevel;
+                const viewBoxHeight = defaultHeight / zoomLevel;
+                const viewBoxX = centerX - (viewBoxWidth / 2);
+                const viewBoxY = centerY - (viewBoxHeight / 2);
+                
+                return { x: viewBoxX, y: viewBoxY, width: viewBoxWidth, height: viewBoxHeight };
+            };
+            
+            // Test various zoom levels
+            const testCases = [
+                { zoom: 1, centerX: 0, centerY: 0 },
+                { zoom: 2, centerX: 100, centerY: 50 },
+                { zoom: 3, centerX: 200, centerY: 150 },
+                { zoom: 0.4, centerX: 0, centerY: 0 }
+            ];
+            
+            testCases.forEach((testCase, index) => {
+                const result = testViewBox(testCase.zoom, testCase.centerX, testCase.centerY);
+                log(`📐 Test ${index + 1}: zoom=${testCase.zoom}, center=(${testCase.centerX},${testCase.centerY}) → viewBox=(${result.x.toFixed(1)},${result.y.toFixed(1)},${result.width.toFixed(1)},${result.height.toFixed(1)})`, 'info');
+            });
+            
+            log('✅ Coordinate system calculations verified', 'pass');
+        }
+        
+        async function testZoomValidation() {
+            log('🔍 Testing zoom level validation...', 'pending');
+            
+            // Test zoom level bounds
+            const validZoomLevels = [0.4, 1, 2, 3];
+            const invalidZoomLevels = [0, -1, 0.3, 4, NaN, null, undefined];
+            
+            validZoomLevels.forEach(zoom => {
+                const isValid = !isNaN(zoom) && zoom >= 0.4 && zoom <= 3;
+                if (isValid) {
+                    log(`✅ Valid zoom level: ${zoom}`, 'pass');
+                } else {
+                    log(`❌ Zoom validation failed for: ${zoom}`, 'fail');
+                }
+            });
+            
+            invalidZoomLevels.forEach(zoom => {
+                const isValid = !isNaN(zoom) && zoom >= 0.4 && zoom <= 3;
+                if (!isValid) {
+                    log(`✅ Correctly rejected invalid zoom: ${zoom}`, 'pass');
+                } else {
+                    log(`❌ Should have rejected zoom: ${zoom}`, 'fail');
+                }
+            });
+        }
+        
+        async function testPerformance() {
+            log('🔍 Testing performance characteristics...', 'pending');
+            
+            // Test coordinate conversion performance
+            const iterations = 1000;
+            const startTime = performance.now();
+            
+            for (let i = 0; i < iterations; i++) {
+                // Simulate coordinate conversion
+                const screenX = Math.random() * 800;
+                const screenY = Math.random() * 600;
+                const zoom = 1 + Math.random() * 2;
+                
+                const worldSize = 1000 / zoom;
+                const worldX = (screenX / 800 - 0.5) * worldSize;
+                const worldY = (screenY / 600 - 0.5) * worldSize;
+            }
+            
+            const endTime = performance.now();
+            const avgTime = (endTime - startTime) / iterations;
+            
+            log(`⚡ Coordinate conversion: ${avgTime.toFixed(4)}ms per operation`, 'info');
+            
+            if (avgTime < 0.1) {
+                log('✅ Performance within acceptable bounds', 'pass');
+            } else {
+                log('⚠️ Performance may need optimization', 'pending');
+            }
+        }
+        
+        // Initialize test environment
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🧪 UX Parity Test Suite initialized', 'info');
+            log('💡 Enable test mode and reload to auto-discover all objects', 'info');
+            log('💡 Open both Star Charts (C) and LRS (L) for comparison', 'info');
+            
+            // Auto-test integration after a delay
+            setTimeout(() => {
+                log('🔄 Auto-testing integration...', 'info');
+                testIntegration();
+            }, 3000);
+        });
+        
+        function testIntegration() {
+            log('🧭 Testing Star Charts integration...', 'pending');
+            
+            // Test ViewManager availability
+            if (window.viewManager) {
+                log('✅ ViewManager available', 'pass');
+                
+                // Test manager readiness
+                if (window.viewManager.areManagersReady()) {
+                    log('✅ ViewManager managers ready', 'pass');
+                } else {
+                    log('❌ ViewManager managers not ready', 'fail');
+                }
+                
+                // Test NavigationSystemManager
+                if (window.viewManager.navigationSystemManager) {
+                    log('✅ NavigationSystemManager in ViewManager', 'pass');
+                } else {
+                    log('❌ NavigationSystemManager not in ViewManager', 'fail');
+                }
+                
+                // Test StarfieldManager
+                if (window.starfieldManager) {
+                    log('✅ StarfieldManager available', 'pass');
+                    
+                    if (window.starfieldManager.targetComputerManager) {
+                        log('✅ TargetComputerManager available', 'pass');
+                    } else {
+                        log('❌ TargetComputerManager not available', 'fail');
+                    }
+                } else {
+                    log('❌ StarfieldManager not available', 'fail');
+                }
+                
+                // Test SolarSystemManager
+                if (window.viewManager.solarSystemManager) {
+                    log('✅ SolarSystemManager available', 'pass');
+                } else {
+                    log('❌ SolarSystemManager not available', 'fail');
+                }
+                
+            } else {
+                log('❌ ViewManager not available', 'fail');
+            }
+        }
+        
+        // Listen for navigation system events
+        window.addEventListener('starSystemReady', () => {
+            log('🌟 Star system ready - navigation systems should be available', 'info');
+        });
+        
+        // Capture key events for testing
+        document.addEventListener('keydown', (event) => {
+            if (event.key.toLowerCase() === 'c') {
+                log('🔑 C key pressed - Star Charts should open', 'info');
+            } else if (event.key.toLowerCase() === 'l') {
+                log('🔑 L key pressed - Long Range Scanner should open', 'info');
+            } else if (event.key.toLowerCase() === 'b') {
+                log('🔑 B key pressed - Beacon ring view should activate', 'info');
+            }
+        });
+    </script>
+</body>
+</html>

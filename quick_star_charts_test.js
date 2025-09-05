@@ -1,0 +1,4 @@
+// Quick Star Charts Test - One-liner version
+// Copy and paste this single line into the browser console:
+
+console.log('🧪 Quick Star Charts Test:'); console.log('ViewManager:', !!window.viewManager ? '✅' : '❌'); console.log('NavigationSystemManager:', !!(window.navigationSystemManager || window.viewManager?.navigationSystemManager) ? '✅' : '❌'); const nav = window.navigationSystemManager || window.viewManager?.navigationSystemManager; if (nav) { window.navigationSystemManager = nav; const status = nav.getSystemStatus?.(); console.log('Star Charts:', status?.starChartsAvailable ? '✅' : '❌'); console.log('LRS:', status?.longRangeScannerAvailable ? '✅' : '❌'); console.log('Active System:', status?.activeSystem); } console.log('💡 Press C for Star Charts, L for LRS'); console.log('💡 Run: localStorage.setItem("star_charts_test_discover_all", "true"); then reload for test mode');

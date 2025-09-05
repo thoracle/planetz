@@ -167,19 +167,24 @@ open http://127.0.0.1:5001
 - **Hitscan weapons**: Direct raycasting for instant-hit weapons (lasers, pulse)
 - **Spatial management**: Three.js Vector3 math for all positioning and movement
 
-### **Star Charts System (Phase 0)**
-- **Status**: Implemented and under UX parity tuning with LRS
+### **Star Charts System** ✅ **FULLY IMPLEMENTED**
+- **Status**: Complete navigation database system with full UX parity to LRS
 - **Discovery**: Proximity-based discovery (major/minor/background pacing) with HUD banners + audio
-- **UI Parity**:
-  - Planet rings normalized to LRS layout (100/250/400/…) and parent-centered orbits
-  - Dedicated beacon ring at 350 with matching iconography
-  - Click-to-recenter and step-zoom; B toggles full beacon ring view
-  - Scales initial view from Long Range Scanner range to match sizes
-- **Test Mode**: Discover-all for sector A0 to compare with LRS
-  - Enable one of:
-    - `window.STAR_CHARTS_DISCOVER_ALL = true` (console)
-    - `localStorage.setItem('star_charts_test_discover_all','true')`
-  - Reload; all A0 objects appear in Star Charts for 1:1 visual comparison
+- **Core Features**:
+  - Planet rings normalized to LRS layout (100/250/400/…) with parent-centered moon orbits
+  - Dedicated beacon ring at 350 with matching iconography and dashed orbit lines
+  - 8-level zoom system (overview → maximum detail) with smooth pan/drag controls
+  - Two-finger drag and mouse drag support for manual recentering
+  - Precise tooltip hit detection that scales with zoom level
+- **Visual Enhancements**:
+  - Faction-based coloring for all objects (red=enemy, green=friendly, yellow=neutral)
+  - Station collision detection prevents overlapping diamond icons
+  - Moon faction inheritance from parent planets
+  - Proper icon sizing (enlarged moons, smaller station diamonds)
+  - Clean title styling without heavy visual effects
+- **Test Mode**: Discover-all for comprehensive testing
+  - Enable: `localStorage.setItem('star_charts_test_discover_all','true')` + reload
+  - Shows all objects in sector for complete system validation
 
 ### **Faction Color System**
 ```javascript

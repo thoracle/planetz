@@ -22,13 +22,17 @@ export class StarChartsUI {
         
         // Zoom and navigation state
         this.currentZoomLevel = 1;
-        this.maxZoomLevel = 3;
-        // Match LRS zoom semantics: overview (1x), medium (2x), detail (3x), beacon ring (0.4x)
+        this.maxZoomLevel = 8; // Increased from 3 to 8 for more detailed exploration
+        // Extended zoom levels for detailed exploration
         this.zoomLevels = {
             overview: 1,
-            medium: 2,
+            close: 2,
             detail: 3,
-            beacon_ring: 0.4
+            fine: 4,
+            micro: 5,
+            ultra: 6,
+            extreme: 7,
+            maximum: 8
         };
         this.currentCenter = { x: 0, y: 0 };
         this.lastClickedObject = null;
@@ -81,7 +85,7 @@ export class StarChartsUI {
         
         // Create SVG for rendering
         this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        this.svg.style.cssText = `width: 100%; height: 100%; cursor: crosshair;`;
+        this.svg.style.cssText = `width: 100%; height: 100%; cursor: default;`; // Match LRS default cursor
         this.mapContainer.appendChild(this.svg);
         
         // Create details panel
@@ -129,15 +133,8 @@ export class StarChartsUI {
                     event.preventDefault();
                     event.stopPropagation();
                     this.viewManager.setView(VIEW_TYPES.FORE);
-                } else if (key === 'b') {
-                    // Match LRS: show full beacon ring
-                    event.preventDefault();
-                    event.stopPropagation();
-                    this.currentZoomLevel = this.zoomLevels.beacon_ring;
-                    this.currentCenter = { x: 0, y: 0 };
-                    this.lastClickedObject = null;
-                    this.render();
                 }
+                // Removed B key behavior for new zoom model
             }
         });
         
@@ -146,13 +143,10 @@ export class StarChartsUI {
             this.handleMapClick(event);
         });
         
-        // SVG double-click for super zoom
-        this.svg.addEventListener('dblclick', (event) => {
-            event.preventDefault();
-            this.currentZoomLevel = this.zoomLevels.beacon_ring;
-            this.currentCenter = { x: 0, y: 0 };
-            this.render();
-        });
+        // Double-click behavior removed for new zoom model
+        
+        // Pan/drag functionality
+        this.setupPanControls();
         
         // Mouse move for tooltips
         this.svg.addEventListener('mousemove', (event) => {
@@ -165,25 +159,46 @@ export class StarChartsUI {
     }
     
     handleMapClick(event) {
-        // Handle clicks on the map
+        // Handle clicks on the map - match LRS click detection exactly
         
-        const rect = this.svg.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        
-        // Convert screen coordinates to world coordinates
-        const worldPos = this.screenToWorld(x, y);
-        
-        // Check if click hit any object
-        const clickedObject = this.getObjectAtPosition(worldPos.x, worldPos.y);
-        
-        if (clickedObject) {
-            // Object clicked - select it
-            this.selectObject(clickedObject);
-        } else {
-            // Empty space clicked - zoom out
-            this.zoomOut();
+        // Don't process clicks if we just finished dragging
+        if (this.panState && this.panState.isDragging) {
+            return;
         }
+        
+        // Add small delay to prevent double-click interference (match LRS)
+        setTimeout(() => {
+            const clickedElement = document.elementFromPoint(event.clientX, event.clientY);
+            console.log(`🔍 Star Charts Click: element=${clickedElement.tagName}, classes=[${clickedElement.className}], zoomLevel=${this.currentZoomLevel}`);
+            
+            // Check if clicked element is interactive (match LRS logic)
+            const isInteractiveElement = clickedElement !== this.svg && (
+                clickedElement.hasAttribute('data-object-id') ||
+                clickedElement.classList.contains('scanner-star') ||
+                clickedElement.classList.contains('scanner-planet') ||
+                clickedElement.classList.contains('scanner-moon') ||
+                clickedElement.classList.contains('scanner-moon-hitbox') ||
+                clickedElement.classList.contains('scanner-station') ||
+                clickedElement.classList.contains('scanner-beacon') ||
+                clickedElement.hasAttribute('data-name') // Any element with targeting data
+            );
+            
+            if (isInteractiveElement) {
+                const objectId = clickedElement.getAttribute('data-object-id') || 
+                               clickedElement.getAttribute('data-name');
+                if (objectId) {
+                    const objectData = this.starChartsManager.getObjectData(objectId) || 
+                                     this.findObjectByName(objectId);
+                    if (objectData) {
+                        console.log(`🔍 Star Charts: Clicked interactive element, selecting object ${objectData.name}`);
+                        this.selectObject(objectData);
+                    }
+                }
+            } else {
+                console.log(`🔍 Star Charts: Clicked empty space, zooming out`);
+                this.zoomOut();
+            }
+        }, 50); // Match LRS delay
     }
     
     handleMouseMove(event) {
@@ -203,44 +218,282 @@ export class StarChartsUI {
         }
     }
     
+    setupPanControls() {
+        // Add pan/drag functionality for manual recentering
+        
+        // Pan state
+        this.panState = {
+            isDragging: false,
+            isTouchDragging: false,
+            lastMousePos: { x: 0, y: 0 },
+            lastTouchCenter: { x: 0, y: 0 },
+            startCenter: { x: 0, y: 0 }
+        };
+        
+        // Mouse drag events
+        this.svg.addEventListener('mousedown', (event) => {
+            // Only start drag on primary button (left click)
+            if (event.button === 0) {
+                this.startMouseDrag(event);
+            }
+        });
+        
+        document.addEventListener('mousemove', (event) => {
+            if (this.panState.isDragging) {
+                this.handleMouseDrag(event);
+            }
+        });
+        
+        document.addEventListener('mouseup', (event) => {
+            if (this.panState.isDragging) {
+                this.endMouseDrag(event);
+            }
+        });
+        
+        // Touch drag events (two-finger drag)
+        this.svg.addEventListener('touchstart', (event) => {
+            if (event.touches.length === 2) {
+                this.startTouchDrag(event);
+            }
+        });
+        
+        this.svg.addEventListener('touchmove', (event) => {
+            if (this.panState.isTouchDragging && event.touches.length === 2) {
+                this.handleTouchDrag(event);
+            }
+        });
+        
+        this.svg.addEventListener('touchend', (event) => {
+            if (this.panState.isTouchDragging) {
+                this.endTouchDrag(event);
+            }
+        });
+        
+        // Prevent default touch behaviors that might interfere
+        this.svg.addEventListener('touchstart', (event) => {
+            if (event.touches.length === 2) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+        
+        this.svg.addEventListener('touchmove', (event) => {
+            if (event.touches.length === 2) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+    }
+    
+    startMouseDrag(event) {
+        // Start mouse drag operation
+        this.panState.isDragging = true;
+        this.panState.lastMousePos = { x: event.clientX, y: event.clientY };
+        this.panState.startCenter = { ...this.currentCenter };
+        
+        // Change cursor to indicate dragging
+        this.svg.style.cursor = 'grabbing';
+        this.mapContainer.classList.add('dragging');
+        
+        // Prevent text selection during drag
+        event.preventDefault();
+        
+        console.log('🖱️ Star Charts: Started mouse drag');
+    }
+    
+    handleMouseDrag(event) {
+        // Handle mouse drag movement
+        if (!this.panState.isDragging) return;
+        
+        const deltaX = event.clientX - this.panState.lastMousePos.x;
+        const deltaY = event.clientY - this.panState.lastMousePos.y;
+        
+        // Convert screen delta to world coordinates
+        const worldDelta = this.screenDeltaToWorldDelta(deltaX, deltaY);
+        
+        // Update center (subtract because we're moving the view, not the content)
+        this.currentCenter.x -= worldDelta.x;
+        this.currentCenter.y -= worldDelta.y;
+        
+        // Update last position
+        this.panState.lastMousePos = { x: event.clientX, y: event.clientY };
+        
+        // Re-render with new center
+        this.setupCoordinateSystem();
+        
+        console.log(`🖱️ Star Charts: Dragging to center (${this.currentCenter.x.toFixed(1)}, ${this.currentCenter.y.toFixed(1)})`);
+    }
+    
+    endMouseDrag(event) {
+        // End mouse drag operation
+        this.panState.isDragging = false;
+        
+        // Restore cursor
+        this.svg.style.cursor = 'default';
+        this.mapContainer.classList.remove('dragging');
+        
+        console.log('🖱️ Star Charts: Ended mouse drag');
+    }
+    
+    startTouchDrag(event) {
+        // Start two-finger touch drag
+        if (event.touches.length !== 2) return;
+        
+        this.panState.isTouchDragging = true;
+        
+        // Calculate center point of two touches
+        const touch1 = event.touches[0];
+        const touch2 = event.touches[1];
+        const centerX = (touch1.clientX + touch2.clientX) / 2;
+        const centerY = (touch1.clientY + touch2.clientY) / 2;
+        
+        this.panState.lastTouchCenter = { x: centerX, y: centerY };
+        this.panState.startCenter = { ...this.currentCenter };
+        
+        console.log('👆 Star Charts: Started two-finger drag');
+    }
+    
+    handleTouchDrag(event) {
+        // Handle two-finger touch drag movement
+        if (!this.panState.isTouchDragging || event.touches.length !== 2) return;
+        
+        // Calculate new center point of two touches
+        const touch1 = event.touches[0];
+        const touch2 = event.touches[1];
+        const centerX = (touch1.clientX + touch2.clientX) / 2;
+        const centerY = (touch1.clientY + touch2.clientY) / 2;
+        
+        const deltaX = centerX - this.panState.lastTouchCenter.x;
+        const deltaY = centerY - this.panState.lastTouchCenter.y;
+        
+        // Convert screen delta to world coordinates
+        const worldDelta = this.screenDeltaToWorldDelta(deltaX, deltaY);
+        
+        // Update center (subtract because we're moving the view, not the content)
+        this.currentCenter.x -= worldDelta.x;
+        this.currentCenter.y -= worldDelta.y;
+        
+        // Update last position
+        this.panState.lastTouchCenter = { x: centerX, y: centerY };
+        
+        // Re-render with new center
+        this.setupCoordinateSystem();
+        
+        console.log(`👆 Star Charts: Touch dragging to center (${this.currentCenter.x.toFixed(1)}, ${this.currentCenter.y.toFixed(1)})`);
+    }
+    
+    endTouchDrag(event) {
+        // End two-finger touch drag
+        this.panState.isTouchDragging = false;
+        
+        console.log('👆 Star Charts: Ended two-finger drag');
+    }
+    
+    screenDeltaToWorldDelta(screenDeltaX, screenDeltaY) {
+        // Convert screen pixel delta to world coordinate delta
+        
+        // Get current viewBox dimensions
+        const viewBox = this.svg.getAttribute('viewBox');
+        if (!viewBox) return { x: 0, y: 0 };
+        
+        const [vbX, vbY, vbW, vbH] = viewBox.split(' ').map(Number);
+        
+        // Get SVG element dimensions
+        const svgRect = this.svg.getBoundingClientRect();
+        
+        // Calculate world units per screen pixel
+        const worldPerPixelX = vbW / svgRect.width;
+        const worldPerPixelY = vbH / svgRect.height;
+        
+        return {
+            x: screenDeltaX * worldPerPixelX,
+            y: screenDeltaY * worldPerPixelY
+        };
+    }
+    
+    screenPixelsToWorldUnits(screenPixels) {
+        // Convert screen pixels to world units (for tolerance calculations)
+        
+        // Get current viewBox dimensions
+        const viewBox = this.svg.getAttribute('viewBox');
+        if (!viewBox) return screenPixels;
+        
+        const [vbX, vbY, vbW, vbH] = viewBox.split(' ').map(Number);
+        
+        // Get SVG element dimensions
+        const svgRect = this.svg.getBoundingClientRect();
+        
+        // Calculate world units per screen pixel (use average of X and Y)
+        const worldPerPixelX = vbW / svgRect.width;
+        const worldPerPixelY = vbH / svgRect.height;
+        const worldPerPixel = (worldPerPixelX + worldPerPixelY) / 2;
+        
+        return screenPixels * worldPerPixel;
+    }
+    
     selectObject(object) {
-        // Select an object for targeting and details
+        // NEW BEHAVIOR: Always center and zoom in to object unless at max zoom (then only center)
+        
+        console.log(`🔍 Star Charts: selectObject called - objectName: ${object.name}, currentZoom: ${this.currentZoomLevel}`);
         
         this.lastClickedObject = object;
         
         // Show object details
         this.showObjectDetails(object);
         
+        // Always center on clicked object
+        const pos = this.getDisplayPosition(object);
+        this.currentCenter = { 
+            x: isNaN(pos.x) ? 0 : pos.x,
+            y: isNaN(pos.y) ? 0 : pos.y
+        };
+        
+        // Zoom in unless already at max zoom
+        if (this.currentZoomLevel < this.maxZoomLevel) {
+            this.currentZoomLevel++;
+            console.log(`🔍 Star Charts: Zoomed in to level ${this.currentZoomLevel}, centered on ${object.name} at (${this.currentCenter.x}, ${this.currentCenter.y})`);
+        } else {
+            console.log(`🔍 Star Charts: At max zoom (${this.currentZoomLevel}), only centering on ${object.name} at (${this.currentCenter.x}, ${this.currentCenter.y})`);
+        }
+        
         // Integrate with Target Computer
         if (this.starChartsManager.selectObjectById(object.id)) {
             console.log(`🎯 Star Charts: Selected ${object.name} for targeting`);
         }
         
-        // Zoom in on object if not at max zoom
-        if (this.currentZoomLevel < this.maxZoomLevel) {
-            this.currentZoomLevel = Math.min(this.maxZoomLevel, this.currentZoomLevel + 1);
-        }
-        // Always re-center on clicked object (use normalized display position)
-        const pos = this.getDisplayPosition(object);
-        this.currentCenter = { x: pos.x, y: pos.y };
         this.render();
     }
     
     zoomOut() {
-        // Zoom out one level (down to beacon ring)
-        if (this.currentZoomLevel > this.zoomLevels.beacon_ring) {
-            this.currentZoomLevel = Math.max(this.zoomLevels.beacon_ring, this.currentZoomLevel - 1);
-            // If returning to overview, center on origin
-            if (this.currentZoomLevel === this.zoomLevels.overview) {
-                this.currentCenter = { x: 0, y: 0 };
+        // NEW BEHAVIOR: Zoom out one level maintaining center on previous object or star
+        console.log(`🔍 Star Charts: Empty space clicked, zooming out from level ${this.currentZoomLevel}`);
+        
+        if (this.currentZoomLevel > 1) {
+            // Step down zoom level by 1 (3→2→1)
+            this.currentZoomLevel--;
+            
+            // Maintain center on the last clicked object, or fallback to star if no object
+            let centerObject = this.lastClickedObject;
+            if (!centerObject) {
+                centerObject = this.findCurrentSystemStar();
             }
-            this.render();
+            
+            if (centerObject) {
+                const pos = this.getDisplayPosition(centerObject);
+                this.currentCenter = { 
+                    x: isNaN(pos.x) ? 0 : pos.x,
+                    y: isNaN(pos.y) ? 0 : pos.y
+                };
+                console.log(`🔍 Star Charts: Zoomed out to level ${this.currentZoomLevel}, maintaining center on ${centerObject.name} at (${this.currentCenter.x}, ${this.currentCenter.y})`);
+            } else {
+                // Fallback to origin if no object found
+                this.currentCenter = { x: 0, y: 0 };
+                console.log(`🔍 Star Charts: Zoomed out to level ${this.currentZoomLevel}, centered at origin (no object to maintain center on)`);
+            }
         } else {
-            // Toggle between beacon ring and overview if already at min (like LRS)
-            this.currentZoomLevel = this.zoomLevels.overview;
-            this.currentCenter = { x: 0, y: 0 };
-            this.render();
+            // At minimum zoom level - don't zoom out further
+            console.log(`🔍 Star Charts: Already at minimum zoom level ${this.currentZoomLevel}, not zooming out further`);
         }
+        
+        this.render();
     }
     
     screenToWorld(screenX, screenY) {
@@ -271,10 +524,13 @@ export class StarChartsUI {
         return baseSize / this.currentZoomLevel;
     }
     
-    getObjectAtPosition(worldX, worldY, tolerance = 20) {
-        // Get object at world position
+    getObjectAtPosition(worldX, worldY, screenTolerancePixels = 12) {
+        // Get object at world position with zoom-aware tolerance
         
         const discoveredObjects = this.getDiscoveredObjectsForRender();
+        
+        // Convert screen tolerance to world coordinates based on current zoom
+        const worldTolerance = this.screenPixelsToWorldUnits(screenTolerancePixels);
         
         for (const object of discoveredObjects) {
             const pos = this.getDisplayPosition(object);
@@ -283,7 +539,7 @@ export class StarChartsUI {
             const distance = Math.sqrt(dx * dx + dy * dy);
             
             const objectRadius = this.getObjectDisplayRadius(object);
-            if (distance <= objectRadius + tolerance) {
+            if (distance <= objectRadius + worldTolerance) {
                 return object;
             }
         }
@@ -292,16 +548,14 @@ export class StarChartsUI {
     }
     
     showTooltip(screenX, screenY, object) {
-        // Show tooltip for hovered object
+        // Show tooltip for hovered object - match LRS simple text format
         
-        this.tooltip.innerHTML = `
-            <div><strong>${object.name}</strong></div>
-            <div>Type: ${object.type}</div>
-            <div>Class: ${object.class || 'Unknown'}</div>
-        `;
+        // Simple text tooltip like LRS (no HTML formatting)
+        this.tooltip.textContent = object.name;
         
-        this.tooltip.style.left = (screenX + 10) + 'px';
-        this.tooltip.style.top = (screenY - 10) + 'px';
+        // Position tooltip at cursor like LRS
+        this.tooltip.style.left = screenX + 'px';
+        this.tooltip.style.top = screenY + 'px';
         this.tooltip.style.display = 'block';
     }
     
@@ -405,12 +659,25 @@ export class StarChartsUI {
             this._isVisible = true;
             this.container.classList.add('visible');
             
-            // Reset zoom and center
-            this.currentZoomLevel = this.zoomLevels.overview;
-            // Center on sector star (match LRS initial centering)
-            const starPos = this.getSectorStarDisplayPosition();
-            this.currentCenter = starPos || { x: 0, y: 0 };
-            this.lastClickedObject = null;
+            // NEW BEHAVIOR: Open at zoom level 4 (closer in for better initial view) centered on the star
+            this.currentZoomLevel = 4;
+            
+            // Find and center on the star of the current solar system
+            const star = this.findCurrentSystemStar();
+            if (star) {
+                const starPos = this.getDisplayPosition(star);
+                this.currentCenter = { 
+                    x: isNaN(starPos.x) ? 0 : starPos.x, 
+                    y: isNaN(starPos.y) ? 0 : starPos.y 
+                };
+                this.lastClickedObject = star; // Remember star as the initially selected object
+                console.log(`🔍 Star Charts: Opening at zoom level ${this.currentZoomLevel}, centered on star ${star.name} at (${this.currentCenter.x}, ${this.currentCenter.y})`);
+            } else {
+                // Fallback if no star found
+                this.currentCenter = { x: 0, y: 0 };
+                this.lastClickedObject = null;
+                console.log(`🔍 Star Charts: Opening at zoom level ${this.currentZoomLevel}, no star found - centered at origin`);
+            }
             
             // Clear details panel
             this.detailsPanel.innerHTML = `
@@ -491,6 +758,11 @@ export class StarChartsUI {
         const sectorData = this.starChartsManager.objectDatabase?.sectors[sectorId];
         if (!sectorData) return;
 
+        // 0) Set star position at origin (0,0) - center of coordinate system
+        if (sectorData.star) {
+            this.displayModel.positions.set(sectorData.star.id, { x: 0, y: 0 });
+        }
+
         // 1) Determine planet order by starSystem.planets order (matches LRS rings)
         const lrsPlanets = (ssm && ssm.starSystem && Array.isArray(ssm.starSystem.planets))
             ? ssm.starSystem.planets
@@ -528,8 +800,20 @@ export class StarChartsUI {
             lrsPlanets.forEach((_, i) => {
                 const parentId = this.displayModel.planetOrder[i] || `planet_${i}`;
                 const parentPos = this.displayModel.positions.get(parentId) || { x: 0, y: 0 };
-                // Collect moons for this planet from DB by parent id match; fallback to keys
-                const dbMoons = (sectorData.objects || []).filter(o => o.type === 'moon' && o.orbit?.parent === parentId);
+                
+                // Find the actual planet object to get all possible IDs
+                const planetDb = (sectorData.objects || []).find(o => o.type === 'planet' && o.name === lrsPlanets[i]?.planet_name);
+                const possibleParentIds = [parentId];
+                if (planetDb && planetDb.id !== parentId) {
+                    possibleParentIds.push(planetDb.id);
+                }
+                
+                // Collect moons for this planet from DB by parent id match (check all possible IDs)
+                const dbMoons = (sectorData.objects || []).filter(o => 
+                    o.type === 'moon' && 
+                    o.orbit?.parent && 
+                    possibleParentIds.includes(o.orbit.parent)
+                );
                 if (dbMoons.length > 0) {
                     dbMoons.sort((a, b) => (a.orbit?.radius || 0) - (b.orbit?.radius || 0));
                     dbMoons.forEach((m, idx) => {
@@ -568,11 +852,17 @@ export class StarChartsUI {
         const stations = infra.stations || [];
         const beacons = infra.beacons || [];
         const AU_TO_DISPLAY = 149.6;
-        const snapToNearestRing = (radiusDisplay) => {
+        const snapToNearestRing = (radiusDisplay, isStation = false) => {
             if (this.displayModel.ringRadii.length === 0) return radiusDisplay;
-            return this.displayModel.ringRadii.reduce((best, r) => (
+            const nearestRing = this.displayModel.ringRadii.reduce((best, r) => (
                 Math.abs(r - radiusDisplay) < Math.abs(best - radiusDisplay) ? r : best
             ), this.displayModel.ringRadii[0]);
+            
+            // Add offset for stations to prevent overlap with planets
+            if (isStation) {
+                return nearestRing + 25; // Offset stations 25 units outward from planet ring
+            }
+            return nearestRing;
         };
         const placePolar = (obj) => {
             // Prefer live angle if available by matching body name to SSM
@@ -580,8 +870,9 @@ export class StarChartsUI {
             if (typeof liveAngle === 'number') {
                 // Snap to nearest ring or force beacon ring
                 const isBeacon = (obj.type === 'navigation_beacon');
+                const isStation = (obj.type === 'space_station');
                 const rDisplayGuess = Array.isArray(obj.position) && obj.position.length === 2 ? (obj.position[0] * AU_TO_DISPLAY) : 300;
-                const ring = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : snapToNearestRing(rDisplayGuess);
+                const ring = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : snapToNearestRing(rDisplayGuess, isStation);
                 const rad = liveAngle * Math.PI / 180;
                 const x = ring * Math.cos(rad);
                 const y = ring * Math.sin(rad);
@@ -598,11 +889,132 @@ export class StarChartsUI {
             const y = ring * Math.sin(angleRad);
             this.displayModel.positions.set(obj.id, { x, y });
         };
-        stations.forEach(placePolar);
-        beacons.forEach(placePolar);
-
-        // 5) Beacons ring at fixed radius (match LRS 350)
+        
+        // 5) Set beacon ring radius BEFORE positioning beacons (match LRS 350)
         this.displayModel.beaconRing = 350;
+        
+        // Position stations with collision detection
+        this.positionStationsWithCollisionDetection(stations, placePolar);
+        
+        // Position beacons (they have their own dedicated ring, so less collision risk)
+        beacons.forEach(placePolar);
+    }
+    
+    positionStationsWithCollisionDetection(stations, placePolar) {
+        // Position stations with collision detection to prevent overlaps
+        
+        const minSeparationAngle = 15; // Minimum degrees between stations on same ring
+        const positionedStations = new Map(); // ring -> array of angles
+        
+        // Sort stations by priority (prefer live angles, then by name for consistency)
+        const sortedStations = [...stations].sort((a, b) => {
+            const aHasLive = typeof this.getLiveAngleDegByName(a.name) === 'number';
+            const bHasLive = typeof this.getLiveAngleDegByName(b.name) === 'number';
+            
+            // Prioritize stations with live angles
+            if (aHasLive && !bHasLive) return -1;
+            if (!aHasLive && bHasLive) return 1;
+            
+            // Then sort by name for consistency
+            return (a.name || a.id || '').localeCompare(b.name || b.id || '');
+        });
+        
+        sortedStations.forEach(station => {
+            // Calculate preferred position
+            let preferredAngle = null;
+            let ring = null;
+            
+            // Try to get live angle first
+            const liveAngle = this.getLiveAngleDegByName(station.name);
+            if (typeof liveAngle === 'number') {
+                preferredAngle = liveAngle;
+                const AU_TO_DISPLAY = 149.6;
+                const rDisplayGuess = Array.isArray(station.position) && station.position.length === 2 ? 
+                    (station.position[0] * AU_TO_DISPLAY) : 300;
+                ring = this.snapToNearestRing(rDisplayGuess, true); // true = isStation
+            } else if (Array.isArray(station.position) && station.position.length === 2) {
+                preferredAngle = station.position[1]; // angle in degrees
+                const AU_TO_DISPLAY = 149.6;
+                ring = this.snapToNearestRing(station.position[0] * AU_TO_DISPLAY, true);
+            }
+            
+            if (preferredAngle === null || ring === null) {
+                // Fallback: use original placePolar logic
+                placePolar(station);
+                return;
+            }
+            
+            // Normalize angle to 0-360 range
+            preferredAngle = ((preferredAngle % 360) + 360) % 360;
+            
+            // Check for collisions on this ring
+            if (!positionedStations.has(ring)) {
+                positionedStations.set(ring, []);
+            }
+            
+            const existingAngles = positionedStations.get(ring);
+            let finalAngle = preferredAngle;
+            
+            // Find a collision-free angle
+            let attempts = 0;
+            const maxAttempts = 24; // 360/15 = 24 possible positions with 15° separation
+            
+            while (attempts < maxAttempts) {
+                let hasCollision = false;
+                
+                for (const existingAngle of existingAngles) {
+                    const angleDiff = Math.min(
+                        Math.abs(finalAngle - existingAngle),
+                        360 - Math.abs(finalAngle - existingAngle)
+                    );
+                    
+                    if (angleDiff < minSeparationAngle) {
+                        hasCollision = true;
+                        break;
+                    }
+                }
+                
+                if (!hasCollision) {
+                    // Found a good position
+                    break;
+                }
+                
+                // Try next position (alternate between + and - offsets)
+                attempts++;
+                const offset = Math.ceil(attempts / 2) * minSeparationAngle;
+                finalAngle = attempts % 2 === 1 ? 
+                    (preferredAngle + offset) % 360 : 
+                    ((preferredAngle - offset) + 360) % 360;
+            }
+            
+            // Record this position
+            existingAngles.push(finalAngle);
+            
+            // Set the final position
+            const angleRad = finalAngle * Math.PI / 180;
+            const x = ring * Math.cos(angleRad);
+            const y = ring * Math.sin(angleRad);
+            this.displayModel.positions.set(station.id, { x, y });
+            
+            // Log collision resolution if we had to move the station
+            if (Math.abs(finalAngle - preferredAngle) > 1) {
+                console.log(`🔧 Star Charts: Moved "${station.name}" from ${preferredAngle.toFixed(1)}° to ${finalAngle.toFixed(1)}° to avoid collision`);
+            }
+        });
+    }
+    
+    snapToNearestRing(radiusDisplay, isStation = false) {
+        // Helper method to snap to nearest ring (extracted from buildDisplayModel)
+        if (this.displayModel.ringRadii.length === 0) return radiusDisplay;
+        const nearestRing = this.displayModel.ringRadii.reduce((best, r) => (
+            Math.abs(r - radiusDisplay) < Math.abs(best - radiusDisplay) ? r : best
+        ), this.displayModel.ringRadii[0]);
+        
+        // Add offset for stations to prevent overlap with planets
+        if (isStation) {
+            return nearestRing + 25; // Offset stations 25 units outward from planet ring
+        }
+        return nearestRing;
     }
 
     // Helper: get SolarSystemManager reference
@@ -702,9 +1114,19 @@ export class StarChartsUI {
         const sectorData = this.starChartsManager.objectDatabase?.sectors[this.starChartsManager.getCurrentSector()];
         if (!sectorData || !sectorData.infrastructure) return;
         const beacons = sectorData.infrastructure.beacons || [];
-        const discoveredIds = this.starChartsManager.getDiscoveredObjects();
-        const anyDiscoveredBeacon = beacons.some(b => discoveredIds.includes(b.id));
-        if (!anyDiscoveredBeacon) return;
+        
+        // Check if any beacons should be shown (test mode shows all, normal mode shows discovered)
+        const isTestMode = this.isTestModeEnabled();
+        let anyBeaconToShow = false;
+        
+        if (isTestMode) {
+            anyBeaconToShow = beacons.length > 0;
+        } else {
+            const discoveredIds = this.starChartsManager.getDiscoveredObjects();
+            anyBeaconToShow = beacons.some(b => discoveredIds.includes(b.id));
+        }
+        
+        if (!anyBeaconToShow) return;
 
         const r = this.displayModel?.beaconRing || 350;
         const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -753,11 +1175,53 @@ export class StarChartsUI {
     }
     
     setupCoordinateSystem() {
-        // Setup SVG coordinate system based on zoom level
+        // Setup SVG coordinate system - account for map container aspect ratio
         
-        const worldSize = this.getWorldSize();
-        const viewBox = `${this.currentCenter.x - worldSize/2} ${this.currentCenter.y - worldSize/2} ${worldSize} ${worldSize}`;
+        // Ensure valid zoom level (allow zoom out to 0.4 for beacon ring view)
+        if (isNaN(this.currentZoomLevel) || this.currentZoomLevel < 0.4) {
+            this.currentZoomLevel = 1;
+        }
+
+        // Ensure valid center coordinates
+        if (!this.currentCenter || isNaN(this.currentCenter.x) || isNaN(this.currentCenter.y)) {
+            this.currentCenter = { x: 0, y: 0 };
+        }
+
+        // Get actual map container dimensions to account for layout
+        const mapRect = this.mapContainer.getBoundingClientRect();
+        const containerWidth = mapRect.width || 400; // Fallback if not available
+        const containerHeight = mapRect.height || 400;
+        
+        // Calculate aspect ratio of the actual container
+        const aspectRatio = containerWidth / containerHeight;
+        
+        // Adjust viewBox to maintain proper centering based on container aspect ratio
+        let baseViewBoxWidth = this.defaultViewBox.width / this.currentZoomLevel;
+        let baseViewBoxHeight = this.defaultViewBox.height / this.currentZoomLevel;
+        
+        // If container is wider than square, adjust viewBox width to maintain centering
+        if (aspectRatio > 1) {
+            baseViewBoxWidth = baseViewBoxHeight * aspectRatio;
+        } else if (aspectRatio < 1) {
+            baseViewBoxHeight = baseViewBoxWidth / aspectRatio;
+        }
+        
+        // Calculate viewBox position ensuring the center point
+        const viewBoxX = this.currentCenter.x - (baseViewBoxWidth / 2);
+        const viewBoxY = this.currentCenter.y - (baseViewBoxHeight / 2);
+
+        // Final validation of viewBox values
+        const safeViewBox = {
+            width: isNaN(baseViewBoxWidth) ? this.defaultViewBox.width : baseViewBoxWidth,
+            height: isNaN(baseViewBoxHeight) ? this.defaultViewBox.height : baseViewBoxHeight,
+            x: isNaN(viewBoxX) ? this.defaultViewBox.x : viewBoxX,
+            y: isNaN(viewBoxY) ? this.defaultViewBox.y : viewBoxY
+        };
+
+        const viewBox = `${safeViewBox.x} ${safeViewBox.y} ${safeViewBox.width} ${safeViewBox.height}`;
         this.svg.setAttribute('viewBox', viewBox);
+        
+        console.log(`🔍 Star Charts ViewBox: zoom=${this.currentZoomLevel}, container=${containerWidth}x${containerHeight} (ratio=${aspectRatio.toFixed(2)}), viewBox="${viewBox}", center=(${this.currentCenter.x}, ${this.currentCenter.y})`);
     }
     
     renderDiscoveredObjects() {
@@ -775,98 +1239,148 @@ export class StarChartsUI {
     }
     
     getDiscoveredObjectsForRender() {
-        // Get all discovered objects for current sector
-        
-        const discoveredIds = this.starChartsManager.getDiscoveredObjects();
-        const allObjects = [];
+        // Get all discovered objects for current sector (or all objects in test mode)
         
         // Get sector data
         const sectorData = this.starChartsManager.objectDatabase?.sectors[this.starChartsManager.getCurrentSector()];
-        if (!sectorData) return allObjects;
+        if (!sectorData) return [];
         
-        // Add discovered star
-        if (sectorData.star && discoveredIds.includes(sectorData.star.id)) {
+        // Check if test mode is enabled (show all objects)
+        const isTestMode = this.isTestModeEnabled();
+        const discoveredIds = isTestMode ? null : this.starChartsManager.getDiscoveredObjects();
+        
+        const allObjects = [];
+        
+        // Add star (always include if exists, or check discovery in normal mode)
+        if (sectorData.star && (isTestMode || discoveredIds.includes(sectorData.star.id))) {
             allObjects.push(sectorData.star);
         }
         
-        // Add discovered celestial objects
+        // Add celestial objects
         sectorData.objects.forEach(obj => {
-            if (discoveredIds.includes(obj.id)) {
+            if (isTestMode || discoveredIds.includes(obj.id)) {
                 allObjects.push(obj);
             }
         });
         
-        // Add discovered infrastructure
+        // Add infrastructure
         if (sectorData.infrastructure) {
             sectorData.infrastructure.stations?.forEach(station => {
-                if (discoveredIds.includes(station.id)) {
+                if (isTestMode || discoveredIds.includes(station.id)) {
                     // Normalize station type to match LRS icon rules
                     allObjects.push({ ...station, type: 'space_station' });
                 }
             });
             
             sectorData.infrastructure.beacons?.forEach(beacon => {
-                if (discoveredIds.includes(beacon.id)) {
+                if (isTestMode || discoveredIds.includes(beacon.id)) {
                     // Normalize beacon type to match LRS icon rules
                     allObjects.push({ ...beacon, type: 'navigation_beacon' });
                 }
             });
         }
         
+        if (isTestMode) {
+            console.log(`🧪 Star Charts TEST MODE: Showing all ${allObjects.length} objects in sector`);
+        }
+        
         return allObjects;
     }
     
-    renderOrbitLines(objects) {
-        // Render orbital paths for planets and moons
-        
-        objects.forEach(object => {
-            if (object.orbit && object.type !== 'star') {
-                this.renderOrbitLine(object);
+    isTestModeEnabled() {
+        // Check if test mode is enabled (same logic as StarChartsManager)
+        try {
+            if (typeof window !== 'undefined' && window.STAR_CHARTS_DISCOVER_ALL === true) {
+                return true;
             }
-        });
+        } catch (e) {}
+        try {
+            const flag = localStorage.getItem('star_charts_test_discover_all');
+            return String(flag).toLowerCase() === 'true' || flag === '1';
+        } catch (e) {}
+        return false;
     }
     
-    renderOrbitLine(object) {
-        // Render orbit line for an object
+    renderOrbitLines(objects) {
+        // Render orbital paths for all celestial bodies (match LRS exactly)
         
-        if (!object.orbit) return;
+        // First, render planet orbits around the star
+        const planets = objects.filter(obj => obj.type === 'planet');
+        planets.forEach(planet => {
+            this.renderPlanetOrbit(planet);
+        });
         
-        // If moon, use local offset; if planet, use normalized ring; else fallback
-        let orbitRadius = object.orbit.radius;
-        if (this.displayModel) {
-            if (object.type === 'planet') {
-                const idx = this.displayModel.planetOrder.indexOf(object.id);
-                if (idx >= 0) orbitRadius = this.displayModel.ringRadii[idx];
-            } else if (object.type === 'moon') {
-                const local = this.displayModel.moonOffsets.get(object.id);
-                if (typeof local === 'number') orbitRadius = local;
-            }
+        // Then, render moon orbits around their parent planets
+        const moons = objects.filter(obj => obj.type === 'moon');
+        moons.forEach(moon => {
+            this.renderMoonOrbit(moon, objects);
+        });
+        
+        // Render beacon ring if any beacons exist (like LRS)
+        this.renderBeaconRingIfNeeded();
+    }
+    
+    // Old renderOrbitLine method removed - replaced with specialized renderPlanetOrbit and renderMoonOrbit methods
+    
+    renderPlanetOrbit(planet) {
+        // Render planet orbit around the star (match LRS exactly)
+        
+        // Use the same orbit radius calculation as LRS: 100 + (index * 150)
+        // Find planet index from display model
+        const planetIndex = this.displayModel.planetOrder.indexOf(planet.id);
+        if (planetIndex === -1) return; // Planet not in display model
+        
+        const orbitRadius = this.displayModel.ringRadii[planetIndex];
+        if (!orbitRadius) return;
+        
+        // Create orbit circle centered on star (0,0) like LRS
+        const orbit = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        orbit.setAttribute('cx', '0');
+        orbit.setAttribute('cy', '0');
+        orbit.setAttribute('r', String(orbitRadius));
+        orbit.setAttribute('class', 'scanner-orbit'); // Use same CSS class as LRS
+        
+        this.svg.appendChild(orbit);
+    }
+    
+    renderMoonOrbit(moon, allObjects) {
+        // Render moon orbit around its parent planet (match LRS exactly)
+        
+        if (!moon.orbit || !moon.orbit.parent) return;
+        
+        // Find the parent planet
+        const parentPlanet = allObjects.find(obj => obj.id === moon.orbit.parent);
+        if (!parentPlanet) return;
+        
+        // Get parent planet position
+        const parentPos = this.getDisplayPosition(parentPlanet);
+        
+        // Calculate moon orbit radius (use display model if available, otherwise fallback)
+        let moonOrbitRadius = 30; // Default like LRS
+        if (this.displayModel.moonOffsets.has(moon.id)) {
+            moonOrbitRadius = this.displayModel.moonOffsets.get(moon.id);
+        } else if (moon.orbit.radius) {
+            // Scale the orbit radius to display coordinates
+            moonOrbitRadius = Math.max(15, moon.orbit.radius * 0.1);
         }
         
-        // Create orbit circle centered on parent (star/planet) for top-down view
-        let cx = 0;
-        let cy = 0;
-        const parentId = object.orbit.parent;
-        if (parentId && this.starChartsManager && typeof this.starChartsManager.getObjectData === 'function') {
-            const parentObj = this.starChartsManager.getObjectData(parentId);
-            if (parentObj) {
-                const parentPos = this.getDisplayPosition(parentObj);
-                cx = parentPos.x;
-                cy = parentPos.y;
-            }
-        }
-
-        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        circle.setAttribute('cx', cx);
-        circle.setAttribute('cy', cy);
-        circle.setAttribute('r', orbitRadius);
-        circle.setAttribute('fill', 'none');
-        circle.setAttribute('stroke', '#444');
-        circle.setAttribute('stroke-width', '0.5');
-        circle.setAttribute('stroke-dasharray', '2,2');
-        circle.setAttribute('opacity', '0.6');
+        // Create moon orbit circle centered on parent planet like LRS
+        const moonOrbit = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        moonOrbit.setAttribute('cx', String(parentPos.x));
+        moonOrbit.setAttribute('cy', String(parentPos.y));
+        moonOrbit.setAttribute('r', String(moonOrbitRadius));
+        moonOrbit.setAttribute('class', 'scanner-orbit'); // Use same CSS class as LRS
         
-        this.svg.appendChild(circle);
+        this.svg.appendChild(moonOrbit);
+        
+        // Add orbit highlight element for hover effects (like LRS)
+        const moonOrbitHighlight = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        moonOrbitHighlight.setAttribute('cx', String(parentPos.x));
+        moonOrbitHighlight.setAttribute('cy', String(parentPos.y));
+        moonOrbitHighlight.setAttribute('r', String(moonOrbitRadius));
+        moonOrbitHighlight.setAttribute('class', 'scanner-orbit-highlight'); // Use same CSS class as LRS
+        
+        this.svg.appendChild(moonOrbitHighlight);
     }
     
     renderObject(object) {
@@ -881,14 +1395,16 @@ export class StarChartsUI {
         // Match LRS iconography: star (circle), planet (circle), moon (small circle), station (diamond), beacon (triangle)
         let element = null;
         if (object.type === 'space_station') {
-            const size = Math.max(6, radius * 1.5);
+            const size = Math.max(4, radius * 1.2); // Reduced from 6 * 1.5 to 4 * 1.2
             const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
             rect.setAttribute('x', x - size / 2);
             rect.setAttribute('y', y - size / 2);
             rect.setAttribute('width', size);
             rect.setAttribute('height', size);
+            rect.setAttribute('data-original-width', size); // Store original size for hover effects
+            rect.setAttribute('data-original-height', size);
             rect.setAttribute('transform', `rotate(45 ${x} ${y})`);
-            rect.setAttribute('fill', '#00aaff');
+            rect.setAttribute('fill', color);
             rect.setAttribute('stroke', '#ffffff');
             rect.setAttribute('stroke-width', '1');
             element = rect;
@@ -910,23 +1426,30 @@ export class StarChartsUI {
             circle.setAttribute('cx', x);
             circle.setAttribute('cy', y);
             circle.setAttribute('r', radius);
+            circle.setAttribute('data-original-r', radius); // Store original radius for hover effects like LRS
             circle.setAttribute('fill', color);
             circle.setAttribute('stroke', this.getObjectStrokeColor(object));
             circle.setAttribute('stroke-width', '1');
             element = circle;
         }
         element.setAttribute('data-object-id', object.id);
-        // Add selection highlight
+        element.setAttribute('data-name', object.name); // For click detection compatibility
+        
+        // Add selection highlight like LRS
         if (this.lastClickedObject && this.lastClickedObject.id === object.id) {
             element.setAttribute('stroke', '#ffff00');
             element.setAttribute('stroke-width', '2');
+            if (element.style) {
+                element.style.filter = 'brightness(1.3)';
+            }
         }
+        
+        // Add hover effects like LRS
+        this.addHoverEffects(element, object);
+        
         this.svg.appendChild(element);
         
-        // Add label if zoom level is high enough
-        if (this.currentZoomLevel >= 2) {
-            this.renderObjectLabel(object, x, y, radius);
-        }
+        // Labels removed - tooltips now provide object names on hover (match LRS)
     }
     
     getObjectDisplayRadius(object) {
@@ -941,9 +1464,9 @@ export class StarChartsUI {
             case 'planet':
                 return Math.max(4, baseRadius * 3 * zoomFactor);
             case 'moon':
-                return Math.max(2, baseRadius * 2 * zoomFactor);
+                return Math.max(3, baseRadius * 3.5 * zoomFactor); // Increased from 2 * 2 to 3 * 3.5
             case 'space_station':
-                return Math.max(3, (object.size || 1) * 3 * zoomFactor);
+                return Math.max(2, (object.size || 1) * 2 * zoomFactor); // Decreased from 3 * 3 to 2 * 2
             case 'navigation_beacon':
                 return Math.max(2, 2 * zoomFactor);
             default:
@@ -952,26 +1475,79 @@ export class StarChartsUI {
     }
     
     getObjectColor(object) {
-        // Get color for object based on type
+        // Get color for object based on type and faction/diplomacy
         
+        // Check for explicit color override
         if (object.color) {
             return object.color;
         }
         
+        // Get diplomacy/faction for this object (with moon inheritance)
+        let diplomacy = (object.diplomacy || object.faction || '').toLowerCase();
+        
+        // Special handling for moons: inherit from parent planet if no own diplomacy
+        if (object.type === 'moon' && !diplomacy && object.orbit?.parent) {
+            const parentPlanet = this.findObjectById(object.orbit.parent);
+            if (parentPlanet) {
+                diplomacy = (parentPlanet.diplomacy || parentPlanet.faction || '').toLowerCase();
+            }
+        }
+        
+        // Apply faction coloring (matches LRS system)
+        if (diplomacy) {
+            switch (diplomacy) {
+                case 'enemy':
+                case 'hostile':
+                    return '#ff0000'; // Red
+                case 'friendly':
+                case 'allied':
+                    return '#00ff41'; // Green
+                case 'neutral':
+                    return '#ffff00'; // Yellow
+            }
+        }
+        
+        // Fallback to type-based coloring
         switch (object.type) {
             case 'star':
-                return '#ffff00';
+                return '#ffff00'; // Yellow (like neutral)
             case 'planet':
-                return '#00ff00';
+                return '#00ff41'; // Green (default friendly)
             case 'moon':
-                return '#888888';
+                return '#888888'; // Gray (only if no faction data)
             case 'space_station':
-                return '#00ffff';
+                return '#00ffff'; // Cyan (default station color)
             case 'navigation_beacon':
-                return '#ffff44';
+                return '#ffff44'; // Light yellow
             default:
-                return '#ffffff';
+                return '#ffffff'; // White
         }
+    }
+    
+    findObjectById(objectId) {
+        // Find an object by ID in the current sector data
+        const sectorData = this.starChartsManager.objectDatabase?.sectors[this.starChartsManager.getCurrentSector()];
+        if (!sectorData) return null;
+        
+        // Check star
+        if (sectorData.star && sectorData.star.id === objectId) {
+            return sectorData.star;
+        }
+        
+        // Check celestial objects (planets, moons, etc.)
+        const celestialObject = sectorData.objects?.find(obj => obj.id === objectId);
+        if (celestialObject) return celestialObject;
+        
+        // Check infrastructure
+        if (sectorData.infrastructure) {
+            const station = sectorData.infrastructure.stations?.find(s => s.id === objectId);
+            if (station) return station;
+            
+            const beacon = sectorData.infrastructure.beacons?.find(b => b.id === objectId);
+            if (beacon) return beacon;
+        }
+        
+        return null;
     }
     
     getObjectStrokeColor(object) {
@@ -989,20 +1565,6 @@ export class StarChartsUI {
         }
     }
     
-    renderObjectLabel(object, x, y, radius) {
-        // Render object label
-        
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('x', x);
-        text.setAttribute('y', y + radius + 8);
-        text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('fill', '#ffffff');
-        text.setAttribute('font-size', '6');
-        text.setAttribute('font-family', 'Courier New, monospace');
-        text.textContent = object.name;
-        
-        this.svg.appendChild(text);
-    }
     
     renderVirtualWaypoints() {
         // Render mission waypoints
@@ -1022,6 +1584,55 @@ export class StarChartsUI {
             <div>Sector: ${currentSector} | Discovered: ${discoveredCount} objects</div>
             <div>${zoomText} | Click objects to target | Click empty space to zoom out</div>
         `;
+    }
+    
+    // Helper methods
+    findObjectByName(name) {
+        // Find object by name in current sector data
+        const discoveredObjects = this.getDiscoveredObjectsForRender();
+        return discoveredObjects.find(obj => obj.name === name) || null;
+    }
+    
+    findCurrentSystemStar() {
+        // Find the star of the current solar system
+        const discoveredObjects = this.getDiscoveredObjectsForRender();
+        return discoveredObjects.find(obj => obj.type === 'star') || null;
+    }
+    
+    addHoverEffects(element, object) {
+        // Add LRS-style hover effects: pointer cursor + scale animation
+        const growFactor = 1.3; // Match LRS grow factor
+        const transitionDuration = 150; // Match LRS transition duration
+        
+        // Set pointer cursor for interactive elements (match LRS)
+        element.style.cursor = 'pointer';
+        
+        // Store original size for restoration - use data-original-* attributes like LRS
+        const originalR = element.getAttribute('data-original-r');
+        const originalWidth = element.getAttribute('data-original-width') || element.getAttribute('width');
+        const originalHeight = element.getAttribute('data-original-height') || element.getAttribute('height');
+        
+        element.addEventListener('mouseenter', () => {
+            if (originalR) {
+                element.style.transition = `r ${transitionDuration}ms ease-out`;
+                element.setAttribute('r', String(parseFloat(originalR) * growFactor));
+            } else if (originalWidth && originalHeight) {
+                element.style.transition = `all ${transitionDuration}ms ease-out`;
+                element.setAttribute('width', String(parseFloat(originalWidth) * growFactor));
+                element.setAttribute('height', String(parseFloat(originalHeight) * growFactor));
+            }
+        });
+        
+        element.addEventListener('mouseleave', () => {
+            if (originalR) {
+                element.style.transition = `r ${transitionDuration}ms ease-out`;
+                element.setAttribute('r', originalR);
+            } else if (originalWidth && originalHeight) {
+                element.style.transition = `all ${transitionDuration}ms ease-out`;
+                element.setAttribute('width', originalWidth);
+                element.setAttribute('height', originalHeight);
+            }
+        });
     }
     
     // Public API

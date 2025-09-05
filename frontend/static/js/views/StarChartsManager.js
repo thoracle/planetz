@@ -690,7 +690,7 @@ export class StarChartsManager {
     
     // Target Computer integration
     selectObjectById(objectId) {
-        //Select object for targeting by ID
+        // Select object for targeting by ID with LRS-style robustness
         
         // Lazy-acquire TargetComputerManager if not provided at construction
         if (!this.targetComputerManager && this.viewManager?.starfieldManager?.targetComputerManager) {
@@ -698,12 +698,32 @@ export class StarChartsManager {
         }
 
         if (this.targetComputerManager && this.targetComputerManager.setTargetById) {
+            // Get object data for robust targeting
+            const objectData = this.getObjectData(objectId);
+            if (objectData) {
+                console.log(`🎯 Star Charts: Setting robust target for ${objectData.name} (${objectId})`);
+                
+                // Try direct ID targeting first
+                const success = this.targetComputerManager.setTargetById(objectId);
+                if (success) {
+                    return true;
+                }
+                
+                // Fallback: try targeting by name
+                if (this.targetComputerManager.setTargetByName) {
+                    console.log(`🎯 Star Charts: Fallback to name-based targeting for ${objectData.name}`);
+                    return this.targetComputerManager.setTargetByName(objectData.name);
+                }
+            }
+            
+            // Last resort: try the ID directly
             return this.targetComputerManager.setTargetById(objectId);
         }
         
         console.warn('⚠️  Target Computer integration not available');
         return false;
     }
+    
     
     setVirtualTarget(waypointId) {
         //Set virtual waypoint as target
