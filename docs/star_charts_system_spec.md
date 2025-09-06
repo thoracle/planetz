@@ -50,9 +50,9 @@ graph TD
     SCM --> SCDS
     SCM --> SCFOG
 
-    SCDB --> UG: "Object IDs and Positions"
-    SCDS --> SCM: "Discovered IDs"
-    SCFOG --> SCM: "Visibility Rules"
+    SCDB --> UG
+    SCDS --> SCM
+    SCFOG --> SCM
 
     SCM --> TCM: "Object Targeting"
     SCM --> MM: "Waypoint Creation"

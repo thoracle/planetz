@@ -13,6 +13,7 @@
 
 import { LongRangeScanner } from './LongRangeScanner.js';
 import { StarChartsManager } from './StarChartsManager.js';
+import { createStarChartsTargetComputerIntegration } from './StarChartsTargetComputerIntegration.js';
 import { StarChartsUI } from './StarChartsUI.js';
 
 export class NavigationSystemManager {
@@ -99,7 +100,10 @@ export class NavigationSystemManager {
             
             // Wait for initialization
             await this.starChartsManager.initialize();
-            
+
+            // Initialize Star Charts ↔ Target Computer Integration
+            this.initializeStarChartsIntegration();
+
             // Create Star Charts UI
             this.starChartsUI = new StarChartsUI(this.viewManager, this.starChartsManager);
             
@@ -117,7 +121,22 @@ export class NavigationSystemManager {
             }
         }
     }
-    
+
+    initializeStarChartsIntegration() {
+        // Initialize Star Charts ↔ Target Computer Integration
+        try {
+            this.starChartsIntegration = createStarChartsTargetComputerIntegration(
+                this.starChartsManager,
+                this.targetComputerManager,
+                this.solarSystemManager
+            );
+
+            console.log('🔗 Star Charts ↔ Target Computer Integration initialized');
+        } catch (error) {
+            console.error('❌ Star Charts Integration initialization failed:', error);
+        }
+    }
+
     startHealthMonitoring() {
         // Start periodic health monitoring
         

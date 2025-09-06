@@ -45,18 +45,18 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `noammo` | **Status**: In Development (22 uncommitted changes) | **Last Updated**: 2025-09-03
+**Branch**: `data_refactor` | **Status**: In Development (25 uncommitted changes) | **Last Updated**: 2025-09-04
 
 **Recent Work** (Last 5 commits):
-- updated restart.md
-- star charts with broken targeting
-- Complete Star Charts System Implementation & Infrastructure Fixes
-- Fix Mermaid syntax errors in Star Charts specification
-- Fix LRS UI inconsistencies in Star Charts specification
+- Added Realistic Orbital Mechanics Toggle
+- Phase 2 Complete: Static Data Enhancement - Positioning & Infrastructure
+- Phase 1 Complete: Foundation Setup for Unified Data Architecture
+- Phase 0.5 Complete: Unified Data Architecture Compatibility Layer
+- Complete revision of unified data architecture refactor plan - fixed all compatibility issues and data structure mismatches
 
 **Codebase Stats**:
-- JavaScript Files: 141 | Python Files: 1606 | Documentation: 71 files
-- Total Lines: 231539 | Architecture: Fully modular ES6+ modules
+- JavaScript Files: 143 | Python Files: 1619 | Documentation: 88 files
+- Total Lines: 243287 | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
 ## 🏗️ Architecture Overview
@@ -95,7 +95,7 @@ open http://127.0.0.1:5001
 
 ### **Navigation & UI**
 - **R**: Subspace Radio | **N**: Communication HUD | **M**: Mission Status | **H**: Help screen
-- **L**: Long Range Scanner | **C**: Star Charts (navigation database) | **G**: Galactic Chart | **F**: Fore View | **A**: Aft View | **D**: Damage Control
+- **L**: Long Range Scanner | **G**: Galactic Chart | **F**: Fore View | **A**: Aft View | **D**: Damage Control
 - **Docking**: Automatic when approaching stations
 
 ### **Speed Controls**
@@ -291,3 +291,29 @@ unknown: '#44ffff'   // Cyan for unknown
 - **Documentation links**: Auto-discovered from `docs/` directory
 
 *This condensed restart.md focuses on essential context while linking to detailed documentation. Always run the update script before new chat sessions to ensure current status.*
+
+---
+
+### Star Charts ↔ Target Computer Integration (In Progress)
+
+**Symptoms**:
+- Only 2 navigation beacons visible on the Star Charts beacon ring; expected 8.
+- Beacon tooltip names on the chart do not always match the Target CPU target name.
+- Wireframes for targets selected via Star Charts sometimes render as the star wireframe rather than the correct shape.
+
+**Root causes**:
+- Beacons created with 3D coordinates ([x, y, z]) were positioned using polar [r, deg] logic, causing most to be placed off-canvas or overlapped; ID casing mismatches (`a0_` vs `A0_`) could filter discovered beacons.
+- Star Charts targets were metadata-only entries without attached Three.js objects; distance/wireframe selection fell back to default/star geometry.
+
+**Fixes implemented**:
+- Fixed beacon ring to a stationary radius (350) and added 3D→angle placement for beacons to ensure all 8 appear on the ring.
+- Normalized IDs in Star Charts discovery/render path; added hydration that binds Star Charts targets (esp. beacons) to live Three.js meshes by id/name.
+- TargetComputerManager now resolves missing objects during selection and as a last resort in `getTargetPosition()`; wireframe uses resolved target type over fallback info.
+- Reduced Target Computer debug spam behind `window.DEBUG_TCM`.
+
+**Remaining work**:
+- Verify all 8 beacons render at zoom levels 1–2 with correct names; ensure tooltip names are sourced from the same normalized data used for Target CPU.
+- Finalize unified wireframe shape mapping so Star Charts clicks always match TAB targeting visuals.
+
+**Impact**:
+- Improves consistency between Star Charts and Target CPU, fixes distance/wireframe for beacons, and aligns naming across systems.

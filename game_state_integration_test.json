@@ -1,0 +1,23 @@
+{
+  "universe_seed": 20299999,
+  "player_id": "integration_test",
+  "object_states": {
+    "A0_star": {
+      "discovered": true,
+      "discovery_method": "proximity",
+      "discovered_at": "2025-09-05T05:22:38.564221",
+      "last_updated": "2025-09-05T05:22:38.564223"
+    },
+    "A0_terra_prime": {
+      "test": "data",
+      "last_updated": "2025-09-05T05:22:38.564514"
+    }
+  },
+  "player_discoveries": [
+    "A0_star"
+  ],
+  "mission_states": {},
+  "temporary_effects": {},
+  "last_save_time": "2025-09-05T05:22:38.564516",
+  "version": "1.0"
+}

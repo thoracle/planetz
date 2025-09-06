@@ -138,8 +138,14 @@ export class StarChartsUI {
             }
         });
         
+        // Container click handling for debugging
+        this.container.addEventListener('click', (event) => {
+            console.log('🔥 CONTAINER CLICK DETECTED!', event.target);
+        });
+        
         // SVG click handling
         this.svg.addEventListener('click', (event) => {
+            console.log('🔥 SVG CLICK DETECTED!', event);
             this.handleMapClick(event);
         });
         
@@ -169,7 +175,12 @@ export class StarChartsUI {
         // Add small delay to prevent double-click interference (match LRS)
         setTimeout(() => {
             const clickedElement = document.elementFromPoint(event.clientX, event.clientY);
-            console.log(`🔍 Star Charts Click: element=${clickedElement.tagName}, classes=[${clickedElement.className}], zoomLevel=${this.currentZoomLevel}`);
+            console.log(`🔍 Star Charts Click: element=${clickedElement?.tagName || 'null'}, classes=[${clickedElement?.className || 'none'}], zoomLevel=${this.currentZoomLevel}`);
+            
+            if (!clickedElement) {
+                console.log(`🔍 Star Charts: No element found at click position`);
+                return;
+            }
             
             // Check if clicked element is interactive (match LRS logic)
             const isInteractiveElement = clickedElement !== this.svg && (
@@ -183,16 +194,26 @@ export class StarChartsUI {
                 clickedElement.hasAttribute('data-name') // Any element with targeting data
             );
             
+            console.log(`🔍 Star Charts: isInteractiveElement=${isInteractiveElement}`);
+            
             if (isInteractiveElement) {
                 const objectId = clickedElement.getAttribute('data-object-id') || 
                                clickedElement.getAttribute('data-name');
+                console.log(`🔍 Star Charts: Found objectId=${objectId}`);
+                
                 if (objectId) {
                     const objectData = this.starChartsManager.getObjectData(objectId) || 
                                      this.findObjectByName(objectId);
+                    console.log(`🔍 Star Charts: Found objectData:`, objectData?.name || 'null');
+                    
                     if (objectData) {
                         console.log(`🔍 Star Charts: Clicked interactive element, selecting object ${objectData.name}`);
                         this.selectObject(objectData);
+                    } else {
+                        console.log(`🔍 Star Charts: No object data found for ID: ${objectId}`);
                     }
+                } else {
+                    console.log(`🔍 Star Charts: Interactive element has no object ID`);
                 }
             } else {
                 console.log(`🔍 Star Charts: Clicked empty space, zooming out`);
@@ -455,8 +476,14 @@ export class StarChartsUI {
         }
         
         // Integrate with Target Computer
-        if (this.starChartsManager.selectObjectById(object.id)) {
-            console.log(`🎯 Star Charts: Selected ${object.name} for targeting`);
+        console.log(`🎯 Star Charts: About to call selectObjectById for ${object.name} (${object.id})`);
+        const targetingSuccess = this.starChartsManager.selectObjectById(object.id);
+        console.log(`🎯 Star Charts: selectObjectById result: ${targetingSuccess} for ${object.name}`);
+        
+        if (targetingSuccess) {
+            console.log(`🎯 Star Charts: Successfully selected ${object.name} for targeting`);
+        } else {
+            console.log(`🎯 Star Charts: Failed to select ${object.name} for targeting`);
         }
         
         this.render();
@@ -879,18 +906,35 @@ export class StarChartsUI {
                 this.displayModel.positions.set(obj.id, { x, y });
                 return;
             }
-            if (!Array.isArray(obj.position) || obj.position.length !== 2) return;
+            // Handle static/polar data
             const isBeacon = (obj.type === 'navigation_beacon');
-            const rDisplay = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : (obj.position[0] * AU_TO_DISPLAY);
-            const angleDeg = obj.position[1];
-            const ring = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : snapToNearestRing(rDisplay);
-            const angleRad = angleDeg * Math.PI / 180;
-            const x = ring * Math.cos(angleRad);
-            const y = ring * Math.sin(angleRad);
-            this.displayModel.positions.set(obj.id, { x, y });
+            if (Array.isArray(obj.position) && obj.position.length === 2) {
+                const rDisplay = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : (obj.position[0] * AU_TO_DISPLAY);
+                const angleDeg = obj.position[1];
+                const ring = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : snapToNearestRing(rDisplay);
+                const angleRad = angleDeg * Math.PI / 180;
+                const x = ring * Math.cos(angleRad);
+                const y = ring * Math.sin(angleRad);
+                this.displayModel.positions.set(obj.id, { x, y });
+                return;
+            }
+            // Fallback for infrastructure with 3D coordinates [x, y, z] (e.g., beacons JSON)
+            if (Array.isArray(obj.position) && obj.position.length === 3) {
+                const x3 = obj.position[0];
+                const z3 = obj.position[2];
+                const angleDeg = (Math.atan2(z3, x3) * 180) / Math.PI;
+                const ring = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : snapToNearestRing(300);
+                const angleRad = angleDeg * Math.PI / 180;
+                const x = ring * Math.cos(angleRad);
+                const y = ring * Math.sin(angleRad);
+                this.displayModel.positions.set(obj.id, { x, y });
+                return;
+            }
+            // If no position information, skip
+            return;
         };
         
-        // 5) Set beacon ring radius BEFORE positioning beacons (match LRS 350)
+        // 5) Set beacon ring radius BEFORE positioning beacons (stationary ring like LRS)
         this.displayModel.beaconRing = 350;
         
         // Position stations with collision detection
@@ -1248,17 +1292,24 @@ export class StarChartsUI {
         // Check if test mode is enabled (show all objects)
         const isTestMode = this.isTestModeEnabled();
         const discoveredIds = isTestMode ? null : this.starChartsManager.getDiscoveredObjects();
+        const norm = (id) => (typeof id === 'string' ? id.replace(/^a0_/i, 'A0_') : id);
+        const isDiscovered = (id) => {
+            if (isTestMode) return true;
+            if (!Array.isArray(discoveredIds)) return false;
+            const nid = norm(id);
+            return discoveredIds.some(did => norm(did) === nid);
+        };
         
         const allObjects = [];
         
         // Add star (always include if exists, or check discovery in normal mode)
-        if (sectorData.star && (isTestMode || discoveredIds.includes(sectorData.star.id))) {
+        if (sectorData.star && isDiscovered(sectorData.star.id)) {
             allObjects.push(sectorData.star);
         }
         
         // Add celestial objects
         sectorData.objects.forEach(obj => {
-            if (isTestMode || discoveredIds.includes(obj.id)) {
+            if (isDiscovered(obj.id)) {
                 allObjects.push(obj);
             }
         });
@@ -1266,14 +1317,14 @@ export class StarChartsUI {
         // Add infrastructure
         if (sectorData.infrastructure) {
             sectorData.infrastructure.stations?.forEach(station => {
-                if (isTestMode || discoveredIds.includes(station.id)) {
+                if (isDiscovered(station.id)) {
                     // Normalize station type to match LRS icon rules
                     allObjects.push({ ...station, type: 'space_station' });
                 }
             });
             
             sectorData.infrastructure.beacons?.forEach(beacon => {
-                if (isTestMode || discoveredIds.includes(beacon.id)) {
+                if (isDiscovered(beacon.id)) {
                     // Normalize beacon type to match LRS icon rules
                     allObjects.push({ ...beacon, type: 'navigation_beacon' });
                 }

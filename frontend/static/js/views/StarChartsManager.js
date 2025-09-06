@@ -25,6 +25,7 @@ export class StarChartsManager {
         // Core data structures
         this.objectDatabase = null;           // Static database from verse.py
         this.discoveredObjects = new Set();  // Set of discovered object IDs
+        this.discoveryMetadata = new Map();  // Metadata for each discovered object
         this.currentSector = 'A0';           // Current sector (Phase 0: A0 only)
         this.virtualWaypoints = new Map();   // Mission waypoints
         
@@ -68,7 +69,11 @@ export class StarChartsManager {
         // Memory management
         this.loadedSectors = new Map();
         this.maxLoadedSectors = 9; // 3x3 grid around player
-        
+
+        // Integration callbacks
+        this.discoveryCallbacks = [];
+        this.targetSelectionCallbacks = [];
+
         // Configuration
         this.config = {
             enabled: true,
@@ -545,54 +550,147 @@ export class StarChartsManager {
         //Check if object has been discovered
         return this.discoveredObjects.has(objectId);
     }
-    
-    addDiscoveredObject(objectId) {
-        //Add object to discovered list and save state
-        
-        if (!this.discoveredObjects.has(objectId)) {
+
+    getDiscoveryMetadata(objectId) {
+        //Get metadata for a discovered object
+        return this.discoveryMetadata.get(objectId) || null;
+    }
+
+    addDiscoveredObject(objectId, discoveryMethod = 'proximity', source = 'player') {
+        //Add object to discovered list with metadata and save state
+
+        const wasAlreadyDiscovered = this.discoveredObjects.has(objectId);
+
+        if (!wasAlreadyDiscovered) {
             this.discoveredObjects.add(objectId);
+
+            // Add discovery metadata
+            const discoveryData = {
+                discoveredAt: new Date().toISOString(),
+                discoveryMethod: discoveryMethod,
+                source: source,
+                sector: this.currentSector,
+                firstDiscovered: true
+            };
+
+            this.discoveryMetadata.set(objectId, discoveryData);
+
             this.saveDiscoveryState();
+            console.log(`🗺️ Discovered: ${objectId} (${discoveryMethod})`);
+
+            // Trigger discovery callbacks
+            this.triggerDiscoveryCallbacks(objectId, discoveryData);
+        } else {
+            // Update metadata for re-discovery
+            const existing = this.discoveryMetadata.get(objectId);
+            if (existing) {
+                existing.lastSeen = new Date().toISOString();
+                existing.source = source;
+            }
         }
+    }
+
+    // Integration callback methods
+    addDiscoveryCallback(callback) {
+        //Add a callback for discovery events
+        if (typeof callback === 'function') {
+            this.discoveryCallbacks.push(callback);
+        }
+    }
+
+    addTargetSelectionCallback(callback) {
+        //Add a callback for target selection events
+        if (typeof callback === 'function') {
+            this.targetSelectionCallbacks.push(callback);
+        }
+    }
+
+    triggerDiscoveryCallbacks(objectId, discoveryData) {
+        //Trigger all discovery callbacks
+        this.discoveryCallbacks.forEach(callback => {
+            try {
+                callback(objectId, discoveryData);
+            } catch (error) {
+                console.error('❌ Discovery callback error:', error);
+            }
+        });
+    }
+
+    triggerTargetSelectionCallbacks(objectId) {
+        //Trigger all target selection callbacks
+        this.targetSelectionCallbacks.forEach(callback => {
+            try {
+                callback(objectId);
+            } catch (error) {
+                console.error('❌ Target selection callback error:', error);
+            }
+        });
     }
     
     // Discovery state persistence
     async loadDiscoveryState() {
-        //Load discovery state from localStorage
-        
+        //Load discovery state from localStorage with metadata
+
         try {
             const key = `star_charts_discovery_${this.currentSector}`;
             const savedState = localStorage.getItem(key);
-            
+
             if (savedState) {
                 const state = JSON.parse(savedState);
                 this.discoveredObjects = new Set(state.discovered || []);
+
+                // Load discovery metadata
+                if (state.metadata) {
+                    this.discoveryMetadata = new Map(Object.entries(state.metadata));
+                }
+
                 console.log(`📂 Loaded discovery state: ${this.discoveredObjects.size} objects discovered`);
+                console.log(`📊 Discovery metadata: ${this.discoveryMetadata.size} entries`);
             } else {
                 // Initialize with star always discovered
-                this.discoveredObjects.add(`${this.currentSector}_star`);
-                console.log('🌟 Initialized discovery state with central star');
+                this.initializeDiscoveryState();
             }
-            
+
         } catch (error) {
             console.error('❌ Failed to load discovery state:', error);
             // Initialize with star always discovered
-            this.discoveredObjects.add(`${this.currentSector}_star`);
+            this.initializeDiscoveryState();
         }
     }
     
+    initializeDiscoveryState() {
+        //Initialize discovery state with central star
+        const starId = `${this.currentSector}_star`;
+        this.discoveredObjects.add(starId);
+
+        // Add metadata for the star
+        this.discoveryMetadata.set(starId, {
+            discoveredAt: new Date().toISOString(),
+            discoveryMethod: 'initial',
+            source: 'system',
+            sector: this.currentSector,
+            firstDiscovered: true
+        });
+
+        console.log('🌟 Initialized discovery state with central star');
+    }
+
     saveDiscoveryState() {
-        //Save discovery state to localStorage
-        
+        //Save discovery state to localStorage with metadata
+
         try {
             const key = `star_charts_discovery_${this.currentSector}`;
             const state = {
                 sector: this.currentSector,
                 discovered: Array.from(this.discoveredObjects),
-                lastUpdated: new Date().toISOString()
+                metadata: Object.fromEntries(this.discoveryMetadata),
+                lastUpdated: new Date().toISOString(),
+                version: '1.0'
             };
-            
+
             localStorage.setItem(key, JSON.stringify(state));
-            
+            console.log(`💾 Saved discovery state: ${this.discoveredObjects.size} objects`);
+
         } catch (error) {
             console.error('❌ Failed to save discovery state:', error);
         }
@@ -688,10 +786,22 @@ export class StarChartsManager {
         });
     }
     
+    /**
+     * Normalize object ID to consistent format
+     * Converts lowercase 'a0_' prefixes to uppercase 'A0_' to match database format
+     */
+    normalizeObjectId(objectId) {
+        if (!objectId) return objectId;
+        return objectId.replace(/^a0_/i, 'A0_');
+    }
+
     // Target Computer integration
     selectObjectById(objectId) {
         // Select object for targeting by ID with LRS-style robustness
-        
+
+        // Normalize object ID to match Target Computer format
+        const normalizedId = this.normalizeObjectId(objectId);
+
         // Lazy-acquire TargetComputerManager if not provided at construction
         if (!this.targetComputerManager && this.viewManager?.starfieldManager?.targetComputerManager) {
             this.targetComputerManager = this.viewManager.starfieldManager.targetComputerManager;
@@ -701,23 +811,42 @@ export class StarChartsManager {
             // Get object data for robust targeting
             const objectData = this.getObjectData(objectId);
             if (objectData) {
-                console.log(`🎯 Star Charts: Setting robust target for ${objectData.name} (${objectId})`);
-                
+                console.log(`🎯 Star Charts: Setting robust target for ${objectData.name} (${normalizedId})`);
+
+                // Ensure Target Computer is activated for manual selection
+                if (this.targetComputerManager.targetComputerEnabled === false) {
+                    console.log('🎯 Star Charts: Activating Target Computer for selection');
+                    this.targetComputerManager.targetComputerEnabled = true;
+                }
+
                 // Try direct ID targeting first
-                const success = this.targetComputerManager.setTargetById(objectId);
+                const success = this.targetComputerManager.setTargetById(normalizedId);
                 if (success) {
+                    console.log(`🎯 Star Charts: Successfully targeted ${objectData.name}`);
+                    // Trigger target selection callbacks
+                    this.triggerTargetSelectionCallbacks(normalizedId);
                     return true;
                 }
-                
+
                 // Fallback: try targeting by name
                 if (this.targetComputerManager.setTargetByName) {
                     console.log(`🎯 Star Charts: Fallback to name-based targeting for ${objectData.name}`);
-                    return this.targetComputerManager.setTargetByName(objectData.name);
+                    const nameSuccess = this.targetComputerManager.setTargetByName(objectData.name);
+                    if (nameSuccess) {
+                        console.log(`🎯 Star Charts: Successfully targeted ${objectData.name} by name`);
+                        this.triggerTargetSelectionCallbacks(normalizedId);
+                        return true;
+                    }
                 }
             }
-            
-            // Last resort: try the ID directly
-            return this.targetComputerManager.setTargetById(objectId);
+
+            // Last resort: try the normalized ID directly
+            const finalSuccess = this.targetComputerManager.setTargetById(normalizedId);
+            if (finalSuccess) {
+                console.log(`🎯 Star Charts: Successfully targeted ${normalizedId} (direct)`);
+                this.triggerTargetSelectionCallbacks(normalizedId);
+            }
+            return finalSuccess;
         }
         
         console.warn('⚠️  Target Computer integration not available');

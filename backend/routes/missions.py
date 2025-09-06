@@ -9,33 +9,48 @@ from flask import Blueprint, jsonify, request, current_app
 from typing import Dict, List, Any, Optional
 
 from backend.mission_system import MissionManager, Mission, MissionState, Objective
+from backend.mission_integration import MissionIntegration
+from backend.game_state import GameStateManager
 
 logger = logging.getLogger(__name__)
 
 # Create blueprint for mission routes
 missions_bp = Blueprint('missions', __name__)
 
-# Global mission manager instance (will be initialized in app factory)
+# Global mission system instances (will be initialized in app factory)
 mission_manager: Optional[MissionManager] = None
+game_state_manager: Optional[GameStateManager] = None
+mission_integration: Optional[MissionIntegration] = None
 
 
 def init_mission_system(app, config: Dict[str, Any] = None):
     """Initialize mission system with Flask app"""
-    global mission_manager
-    
+    global mission_manager, game_state_manager, mission_integration
+
     # Get mission configuration from app config
     mission_config = config or {
         'data_directory': app.config.get('MISSION_DATA_DIR', 'missions'),
         'expected_mission_count': app.config.get('EXPECTED_MISSION_COUNT', 25),
         'sqlite_path': app.config.get('MISSION_SQLITE_PATH', 'missions.db')
     }
-    
+
+    # Initialize mission manager
     mission_manager = MissionManager(
         data_directory=mission_config['data_directory'],
         config=mission_config
     )
-    
+
+    # Initialize game state manager
+    universe_seed = app.config.get('UNIVERSE_SEED', 20299999)
+    player_id = app.config.get('PLAYER_ID', 'default_player')
+    game_state_manager = GameStateManager(universe_seed, player_id)
+
+    # Initialize mission integration
+    mission_integration = MissionIntegration(game_state_manager, mission_manager)
+
     logger.info(f"🎯 Mission system initialized with {len(mission_manager.missions)} missions")
+    logger.info(f"📊 Game state manager initialized for player: {player_id}")
+    logger.info(f"🔗 Mission integration active")
 
 
 @missions_bp.errorhandler(404)
@@ -174,10 +189,10 @@ def get_mission_details(mission_id: str):
         return jsonify({'error': str(e)}), 500
 
 
-@missions_bp.route('/api/missions/<mission_id>/accept', methods=['POST'])
-def accept_mission(mission_id: str):
+@missions_bp.route('/api/missions/<mission_id>/accept_legacy', methods=['POST'])
+def accept_mission_legacy(mission_id: str):
     """
-    Accept a mission (change state to ACCEPTED)
+    Accept a mission (change state to ACCEPTED) - Legacy endpoint
     From spec: POST /set_mission_state/{mission_id} with new_state: 'Accepted'
     """
     if not mission_manager:
@@ -738,4 +753,233 @@ def migrate_storage():
         
     except Exception as e:
         logger.error(f"❌ Storage migration failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# Phase 4: Mission System Integration with GameStateManager
+# ==========================================================
+
+@missions_bp.route('/api/missions/discovery/update', methods=['POST'])
+def update_mission_discovery():
+    """Update mission discovery based on current game state"""
+    if not mission_integration:
+        return jsonify({'error': 'Mission integration not initialized'}), 500
+
+    try:
+        newly_discovered = mission_integration.update_mission_discovery()
+
+        return jsonify({
+            'success': True,
+            'newly_discovered': newly_discovered,
+            'total_discovered': len(mission_integration.get_discovered_missions())
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Mission discovery update failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@missions_bp.route('/api/missions/discovery/status', methods=['GET'])
+def get_mission_discovery_status():
+    """Get current mission discovery status"""
+    if not mission_integration:
+        return jsonify({'error': 'Mission integration not initialized'}), 500
+
+    try:
+        stats = mission_integration.get_mission_statistics()
+
+        return jsonify({
+            'success': True,
+            'discovered_missions': mission_integration.get_discovered_missions(),
+            'available_missions': mission_integration.get_available_missions(),
+            'active_missions': mission_integration.get_active_missions(),
+            'completed_missions': mission_integration.get_completed_missions(),
+            'statistics': stats
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Mission discovery status failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@missions_bp.route('/api/missions/<mission_id>/discover', methods=['POST'])
+def discover_mission(mission_id):
+    """Mark a mission as discovered"""
+    if not mission_integration:
+        return jsonify({'error': 'Mission integration not initialized'}), 500
+
+    try:
+        data = request.get_json() or {}
+        discovery_method = data.get('discovery_method', 'manual')
+
+        mission_integration.mark_mission_discovered(mission_id, discovery_method)
+
+        return jsonify({
+            'success': True,
+            'mission_id': mission_id,
+            'discovery_method': discovery_method
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Mission discovery failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@missions_bp.route('/api/missions/<mission_id>/make_available', methods=['POST'])
+def make_mission_available(mission_id):
+    """Make a mission available for acceptance"""
+    if not mission_integration:
+        return jsonify({'error': 'Mission integration not initialized'}), 500
+
+    try:
+        mission_integration.make_mission_available(mission_id)
+
+        return jsonify({
+            'success': True,
+            'mission_id': mission_id
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Make mission available failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@missions_bp.route('/api/missions/<mission_id>/accept', methods=['POST'])
+def accept_mission(mission_id):
+    """Accept a mission"""
+    if not mission_integration:
+        return jsonify({'error': 'Mission integration not initialized'}), 500
+
+    try:
+        success = mission_integration.accept_mission(mission_id)
+
+        if success:
+            return jsonify({
+                'success': True,
+                'mission_id': mission_id,
+                'message': 'Mission accepted successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Mission not available for acceptance'
+            }), 400
+
+    except Exception as e:
+        logger.error(f"❌ Mission acceptance failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@missions_bp.route('/api/missions/<mission_id>/complete', methods=['POST'])
+def complete_mission(mission_id):
+    """Complete a mission"""
+    if not mission_integration:
+        return jsonify({'error': 'Mission integration not initialized'}), 500
+
+    try:
+        data = request.get_json() or {}
+        success = data.get('success', True)
+
+        completion_success = mission_integration.complete_mission(mission_id, success)
+
+        if completion_success:
+            return jsonify({
+                'success': True,
+                'mission_id': mission_id,
+                'mission_success': success,
+                'message': f'Mission {"completed successfully" if success else "failed"}'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Mission could not be completed'
+            }), 400
+
+    except Exception as e:
+        logger.error(f"❌ Mission completion failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@missions_bp.route('/api/missions/state/<mission_id>', methods=['GET'])
+def get_mission_state(mission_id):
+    """Get the current state of a mission from GameStateManager"""
+    if not mission_integration:
+        return jsonify({'error': 'Mission integration not initialized'}), 500
+
+    try:
+        state = mission_integration.get_mission_state(mission_id)
+
+        if state:
+            return jsonify({
+                'success': True,
+                'mission_id': mission_id,
+                'state': state
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Mission state not found'
+            }), 404
+
+    except Exception as e:
+        logger.error(f"❌ Get mission state failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@missions_bp.route('/api/missions/state/<mission_id>', methods=['PUT'])
+def update_mission_state(mission_id):
+    """Update mission state in GameStateManager"""
+    if not mission_integration:
+        return jsonify({'error': 'Mission integration not initialized'}), 500
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No update data provided'}), 400
+
+        mission_integration.update_mission_state(mission_id, data)
+
+        return jsonify({
+            'success': True,
+            'mission_id': mission_id,
+            'updates': data
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Update mission state failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@missions_bp.route('/api/missions/templates/generate', methods=['POST'])
+def generate_mission_from_template():
+    """Generate a mission from a template with dynamic state"""
+    if not mission_integration:
+        return jsonify({'error': 'Mission integration not initialized'}), 500
+
+    try:
+        data = request.get_json()
+        if not data or 'template_id' not in data:
+            return jsonify({'error': 'Template ID required'}), 400
+
+        template_id = data['template_id']
+        context = data.get('context', {})
+
+        new_mission_id = mission_integration.generate_mission_from_template(
+            template_id, context
+        )
+
+        if new_mission_id:
+            return jsonify({
+                'success': True,
+                'mission_id': new_mission_id,
+                'template_id': template_id
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Mission generation failed'
+            }), 500
+
+    except Exception as e:
+        logger.error(f"❌ Mission generation failed: {e}")
         return jsonify({'error': str(e)}), 500

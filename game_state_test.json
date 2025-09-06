@@ -1,0 +1,19 @@
+{
+  "universe_seed": 20299999,
+  "player_id": "test",
+  "object_states": {
+    "test_object": {
+      "discovered": true,
+      "discovery_method": "proximity",
+      "discovered_at": "2025-09-05T05:21:27.785211",
+      "last_updated": "2025-09-05T05:21:27.785213"
+    }
+  },
+  "player_discoveries": [
+    "test_object"
+  ],
+  "mission_states": {},
+  "temporary_effects": {},
+  "last_save_time": "2025-09-05T05:21:27.785216",
+  "version": "1.0"
+}

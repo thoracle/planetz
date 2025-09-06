@@ -1,0 +1,69 @@
+{
+  "universe_seed": 20299999,
+  "player_id": "test_player",
+  "object_states": {
+    "A0_terra_prime": {
+      "faction": "friendly",
+      "state": "destroyed",
+      "last_updated": "2025-09-05T05:22:45.007896",
+      "discovered": true,
+      "discovery_method": "test",
+      "discovered_at": "2025-09-05T05:22:45.007393",
+      "destroyed_by": "test_cause",
+      "destroyed_at": "2025-09-05T05:22:45.007732",
+      "faction_changed_by": "test_change",
+      "faction_changed_at": "2025-09-05T05:22:45.007894"
+    },
+    "A0_star": {
+      "discovered": true,
+      "discovery_method": "test",
+      "discovered_at": "2025-09-05T05:22:45.008106",
+      "last_updated": "2025-09-05T05:22:45.008107"
+    },
+    "A0_luna": {
+      "discovered": true,
+      "discovery_method": "test",
+      "discovered_at": "2025-09-05T05:22:45.008212",
+      "last_updated": "2025-09-05T05:22:45.008213"
+    },
+    "A0_europa": {
+      "discovered": true,
+      "discovery_method": "test",
+      "discovered_at": "2025-09-05T05:22:45.008315",
+      "last_updated": "2025-09-05T05:22:45.008316"
+    }
+  },
+  "player_discoveries": [
+    "A0_terra_prime",
+    "A0_star",
+    "A0_luna",
+    "A0_europa"
+  ],
+  "mission_states": {
+    "test_mission_001": {
+      "status": "active",
+      "progress": 0.8,
+      "objectives": [
+        "objective1",
+        "objective2"
+      ],
+      "last_updated": "2025-09-05T05:22:45.008545",
+      "completed_objectives": [
+        "objective1"
+      ],
+      "discovered": true,
+      "discovery_method": "test",
+      "discovered_at": "2025-09-05T05:10:01.025169",
+      "available": true,
+      "available_at": "2025-09-05T05:10:01.025305",
+      "accepted": true,
+      "accepted_at": "2025-09-05T05:10:01.025412",
+      "completed": true,
+      "success": true,
+      "completed_at": "2025-09-05T05:10:01.025519"
+    }
+  },
+  "temporary_effects": {},
+  "last_save_time": "2025-09-05T05:22:45.008546",
+  "version": "1.0"
+}

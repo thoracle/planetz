@@ -1014,6 +1014,19 @@ export class SolarSystemManager {
 
                 this.scene.add(beacon);
 
+                // Register as first-class object in celestialBodies for unified lookups
+                try {
+                    if (!this.celestialBodies) this.celestialBodies = new Map();
+                    const normalizedId = (beaconInfo.id || '').replace(/^a0_/i, 'A0_');
+                    const nameSlug = (beaconInfo.name || '').toLowerCase().replace(/\s+/g, '_');
+                    // Multiple keys to improve retrieval paths
+                    if (normalizedId) this.celestialBodies.set(normalizedId, beacon);
+                    if (normalizedId) this.celestialBodies.set(`beacon_${normalizedId}`, beacon);
+                    if (nameSlug) this.celestialBodies.set(`beacon_${nameSlug}`, beacon);
+                } catch (e) {
+                    console.warn('⚠️ Failed to register beacon in celestialBodies:', e?.message || e);
+                }
+
                 // Add to spatial tracking for collision detection
                 if (window.spatialManager && window.spatialManagerReady) {
                     window.spatialManager.addObject(beacon, {

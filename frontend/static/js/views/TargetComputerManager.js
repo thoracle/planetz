@@ -31,7 +31,8 @@ export class TargetComputerManager {
         this.previousTarget = null;
         this.targetedObject = null;
         this.lastTargetedObjectId = null;
-        this.isFromLongRangeScanner = false; // Track if current target was selected from long-range scanner
+        this.isFromLongRangeScanner = false; // Telemetry only
+        this.isManualSelection = false; // Telemetry only
         
         // Persistent target cache for better cycling experience
         this.knownTargets = new Map(); // Cache of all known targets by name
@@ -587,10 +588,11 @@ export class TargetComputerManager {
                 // Hide the power-up animation
                 this.hidePowerUpAnimation();
                 
-                // Always select nearest target when activating (fresh start behavior)
+                // Only auto-select target if no manual selection exists
                 if (!this.preventTargetChanges) {
                     this.targetIndex = -1;
                     if (this.targetObjects.length > 0) {
+                        console.log(`🎯 Target Computer activation: Auto-selecting nearest target (no manual selection)`);
                         // Call cycleTarget directly and then sync with StarfieldManager
                         this.cycleTarget(); // Auto-select first target
                         
@@ -624,7 +626,8 @@ export class TargetComputerManager {
                         this.showNoTargetsDisplay(); // Show special "No targets in range" display
                     }
                 } else {
-                    // Just update the display with existing target
+                    // Preserve existing selection without blocking future manual cycling
+                    console.log(`🎯 Target Computer activation: Preserving existing selection - ${this.currentTarget?.name || 'unknown'}`);
                     this.updateTargetDisplay();
                 }
             }, 800); // Longer delay for power-up animation (0.8 seconds)
@@ -779,6 +782,7 @@ export class TargetComputerManager {
         this.currentTarget = null;
         this.targetIndex = -1;
         this.isFromLongRangeScanner = false; // Reset scanner flag
+        this.isManualSelection = false; // Reset manual selection flag
     }
 
     /**
@@ -880,6 +884,7 @@ export class TargetComputerManager {
                 this.stopNoTargetsMonitoring();
                 
                 // If no current target is set, automatically select the nearest one
+                // BUT: Don't override manual selections from Star Charts or other systems
                 if (!this.currentTarget) {
                     console.log(`🎯 No current target - automatically selecting nearest target`);
                     this.targetIndex = -1;
@@ -895,15 +900,13 @@ export class TargetComputerManager {
                         this.targetIndex = currentIndex;
                         this.updateTargetDisplay();
                     } else {
-                        // Current target not found in list - this can happen during list rebuilding
-                        // Don't automatically cycle if it's a scanner target, just update the display
-                        if (this.isFromLongRangeScanner) {
-                            console.log(`🎯 Scanner target ${this.currentTarget.name} not in current list - maintaining lock`);
-                            this.updateTargetDisplay();
-                        } else {
+                        // Current target not found in list - select nearest available target unless user is actively holding a manual lock
+                        if (!this.isManualSelection) {
                             console.log(`🎯 Current target not found - selecting nearest available target`);
                             this.targetIndex = -1;
                             this.cycleTarget();
+                        } else {
+                            console.log(`🎯 Manual selection preserved - not auto-cycling`);
                         }
                     }
                 }
@@ -945,6 +948,11 @@ export class TargetComputerManager {
      * Start monitoring current target range to detect when it goes out of range
      */
     startRangeMonitoring() {
+        console.log(`🎯 Range monitoring disabled - targets will only clear on solar system warp`);
+        return; // Range monitoring disabled to simplify target management
+        
+        // Original range monitoring code disabled to prevent automatic target clearing
+        /*
         if (this.isRangeMonitoringActive) {
             return; // Already monitoring
         }
@@ -984,6 +992,7 @@ export class TargetComputerManager {
                 this.handleTargetOutOfRange();
             }
         }, 3000); // Check every 3 seconds
+        */
     }
     
     /**
@@ -1026,8 +1035,13 @@ export class TargetComputerManager {
 
             // Show temporary "No targets in range" message for 1 second before auto-switching
             this.showTemporaryNoTargetsMessage(() => {
-                console.log(`🎯 Auto-selecting nearest target after delay`);
-                this.cycleTarget(); // Auto-select nearest target
+                // Only auto-select if no manual selection exists (safety check)
+                if (!this.isManualSelection && !this.isFromLongRangeScanner) {
+                    console.log(`🎯 Auto-selecting nearest target after delay (no manual selection)`);
+                    this.cycleTarget(); // Auto-select nearest target
+                } else {
+                    console.log(`🎯 Manual selection exists - not auto-cycling after delay`);
+                }
 
                 // Play audio feedback for automatic target switch
                 this.playAudio('frontend/static/audio/blurb.mp3');
@@ -1901,16 +1915,18 @@ export class TargetComputerManager {
         // Handle scanner flag management more robustly
         if (previousTarget && targetData) {
             if (previousTarget.name !== targetData.name) {
-                // Cycling to a different target - clear scanner flag
+                // Cycling to a different target - clear scanner and manual selection flags
                 this.isFromLongRangeScanner = false;
-                console.log(`🎯 Cycling to different target - clearing scanner flag`);
-            } else if (previousTarget.name === targetData.name && this.isFromLongRangeScanner) {
-                // Cycling back to the same scanner target - preserve the flag
-                console.log(`🎯 Cycling back to same scanner target - preserving scanner flag`);
+                this.isManualSelection = false;
+                console.log(`🎯 Cycling to different target - clearing scanner and manual flags`);
+            } else if (previousTarget.name === targetData.name && (this.isFromLongRangeScanner || this.isManualSelection)) {
+                // Cycling back to the same scanner/manual target - preserve the flags
+                console.log(`🎯 Cycling back to same scanner/manual target - preserving flags`);
             }
         } else {
             // Handle edge cases where previousTarget or targetData might be undefined
             this.isFromLongRangeScanner = false;
+            this.isManualSelection = false;
             console.log(`🎯 Target cycling debug - previousTarget: ${!!previousTarget}, targetData: ${!!targetData}, targetIndex: ${this.targetIndex}, targetObjects.length: ${this.targetObjects.length}`);
         }
         
@@ -2002,6 +2018,30 @@ export class TargetComputerManager {
         if (!this.currentTarget) return;
 
         try {
+            // Ensure currentTarget is hydrated with a real object/position before building geometry
+            if (!this.currentTarget.position) {
+                try {
+                    const vm = this.viewManager || window.viewManager;
+                    const ssm = this.solarSystemManager || vm?.solarSystemManager || window.solarSystemManager;
+                    const sfm = vm?.starfieldManager || window.starfieldManager;
+                    const currentData = this.targetObjects?.[this.targetIndex];
+                    const normalizedId = (currentData?.id || '').replace(/^a0_/i, 'A0_');
+                    let resolved = null;
+                    if (currentData?.type === 'navigation_beacon' && sfm?.navigationBeacons) {
+                        resolved = sfm.navigationBeacons.find(b => b?.userData?.id === normalizedId) ||
+                                   sfm.navigationBeacons.find(b => (b?.userData?.name || b?.name) === currentData.name);
+                    }
+                    if (!resolved && ssm?.celestialBodies) {
+                        resolved = ssm.celestialBodies.get(normalizedId) ||
+                                   ssm.celestialBodies.get(`beacon_${normalizedId}`) ||
+                                   ssm.celestialBodies.get(`station_${currentData?.name?.toLowerCase()?.replace(/\s+/g, '_')}`);
+                    }
+                    if (resolved) {
+                        this.currentTarget = resolved;
+                        this.targetObjects[this.targetIndex] = { ...currentData, object: resolved, position: resolved.position };
+                    }
+                } catch (_) {}
+            }
             // Normalize references
             const currentTargetData = this.getCurrentTargetData();
             const targetObject = this.currentTarget?.object || this.currentTarget;
@@ -2060,8 +2100,9 @@ export class TargetComputerManager {
             });
 
             // Build geometry per type
-            // console.log(`🌟 WIREFRAME: Creating wireframe for target. info.type="${info?.type}", info.name="${info?.name}"`);
-            if (info && (info.type?.toLowerCase() === 'star' || (this.getStarSystem() && info.name === this.getStarSystem().star_name))) {
+            const resolvedType = (currentTargetData?.type || info?.type || '').toLowerCase();
+            // console.log(`🌟 WIREFRAME: Creating wireframe for target. resolvedType="${resolvedType}", info.name="${info?.name}"`);
+            if (resolvedType === 'star') {
                 // console.log(`🌟 WIREFRAME: Creating STAR geometry for ${info.name}`);
                 const starGeometry = this.createStarGeometry(radius);
                 this.targetWireframe = new this.THREE.LineSegments(starGeometry, wireframeMaterial);
@@ -2180,7 +2221,7 @@ export class TargetComputerManager {
      * Update target display information
      */
     updateTargetDisplay() {
-        // console.log(`🎯 DEBUG: updateTargetDisplay() called - enabled: ${this.targetComputerEnabled}, currentTarget: ${this.currentTarget?.name || 'none'}`); // Reduce spam
+        // console.log(`🎯 DEBUG: updateTargetDisplay() called - enabled: ${this.targetComputerEnabled}, currentTarget: ${this.currentTarget?.name || 'none'}, targetIndex: ${this.targetIndex}`); // Reduced debug spam
         
         if (!this.targetComputerEnabled) {
             return;
@@ -2214,6 +2255,13 @@ export class TargetComputerManager {
             return;
         }
         
+        // console.log(`🎯 DEBUG: Display updating with target data:`, {
+        //     name: currentTargetData.name,
+        //     type: currentTargetData.type,
+        //     targetIndex: this.targetIndex,
+        //     currentTargetName: this.currentTarget?.name
+        // }); // Reduced debug spam
+        
         // console.log(`🎯 DEBUG: currentTargetData for ${currentTargetData.name}:`, {
         //     hasShip: !!currentTargetData.ship,
         //     shipName: currentTargetData.ship?.shipName,
@@ -2234,6 +2282,8 @@ export class TargetComputerManager {
         // Get target info for diplomacy status and actions
         let info = null;
         let isEnemyShip = false;
+        
+        if (window?.DEBUG_TCM) console.log(`🎯 DEBUG: About to get target info for currentTarget:`, this.currentTarget?.name, 'currentTargetData:', currentTargetData?.name);
         
         // First, try to get enhanced target info from the ship's TargetComputer system
         const ship = this.viewManager?.getShip();
@@ -2258,11 +2308,17 @@ export class TargetComputerManager {
         } else {
             // Final fallback: Prefer the processed target data; fall back to solar system info using the underlying object
             const targetObject = this.currentTarget?.object || this.currentTarget;
-            info = currentTargetData || this.solarSystemManager.getCelestialBodyInfo(targetObject);
+            const bodyInfo = this.solarSystemManager.getCelestialBodyInfo(targetObject) || {};
+            // Prefer Star Charts/target list data for name/type
+            const preferredName = currentTargetData?.name || bodyInfo.name;
+            const preferredType = currentTargetData?.type || bodyInfo.type;
+            info = { ...bodyInfo, name: preferredName, type: preferredType };
             // For non-ship targets, use consolidated diplomacy logic
-            const diplomacy = this.getTargetDiplomacy(info);
+            const diplomacy = this.getTargetDiplomacy(currentTargetData || bodyInfo);
             isEnemyShip = diplomacy === 'enemy';
         }
+        
+        if (window?.DEBUG_TCM) console.log(`🎯 DEBUG: Final info object:`, info);
         
         // Update HUD border color based on diplomacy using consolidated logic
         const diplomacy = this.getTargetDiplomacy(currentTargetData);
@@ -2302,8 +2358,8 @@ export class TargetComputerManager {
             
             // Only log for target dummies to debug the sub-targeting issue
             if (currentTargetData.name && currentTargetData.name.includes('Target Dummy')) {
-                console.log(`🎯 Sub-targeting check: isEnemyShip=${isEnemyShip}, currentTargetData.ship=${!!currentTargetData.ship}, isSpaceStation=${isSpaceStation}`);
-                console.log(`🎯 Sub-targeting DEBUG: currentTargetData:`, {
+                if (window?.DEBUG_TCM) console.log(`🎯 Sub-targeting check: isEnemyShip=${isEnemyShip}, currentTargetData.ship=${!!currentTargetData.ship}, isSpaceStation=${isSpaceStation}`);
+                if (window?.DEBUG_TCM) console.log(`🎯 Sub-targeting DEBUG: currentTargetData:`, {
                     isShip: currentTargetData.isShip,
                     type: currentTargetData.type,
                     ship: !!currentTargetData.ship,
@@ -2465,15 +2521,23 @@ export class TargetComputerManager {
             textColor = (isYellow || isGreen) ? 'black' : 'white';
         }
         
+        // Prefer currentTargetData for display name/type to avoid mismatches
+        const displayName = currentTargetData?.name || info?.name || 'Unknown Target';
+        let displayType = (currentTargetData?.type || info?.type || 'Unknown');
+        if (isEnemyShip && info?.shipType) {
+            displayType = info.shipType;
+        }
+        if (window?.DEBUG_TCM) console.log(`🎯 DEBUG: Setting targetInfoDisplay.innerHTML with name: "${displayName}", type: "${displayType}", distance: "${formattedDistance}"`);
         this.targetInfoDisplay.innerHTML = `
             <div style="background-color: ${backgroundColor}; color: ${textColor}; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-                <div style="font-weight: bold; font-size: 12px;">${info?.name || 'Unknown Target'}</div>
-                <div style="font-size: 10px;">${typeDisplay}</div>
+                <div style="font-weight: bold; font-size: 12px;">${displayName}</div>
+                <div style="font-size: 10px;">${displayType}</div>
                 <div style="font-size: 10px;">${formattedDistance}</div>
                 ${hullHealthSection}
             </div>
             ${subTargetHTML}
         `;
+        if (window?.DEBUG_TCM) console.log(`🎯 DEBUG: targetInfoDisplay.innerHTML set to:`, this.targetInfoDisplay.innerHTML.substring(0, 200) + '...');
 
 
         // Update status icons with diplomacy color
@@ -2508,22 +2572,42 @@ export class TargetComputerManager {
      * Get current target data
      */
     getCurrentTargetData() {
+        // console.log(`🔍 DEBUG: getCurrentTargetData() called - currentTarget: ${this.currentTarget?.name}, targetIndex: ${this.targetIndex}, targetObjects.length: ${this.targetObjects.length}`);
         if (!this.currentTarget) {
-            // console.log(`🎯 DEBUG: getCurrentTargetData() - no current target`);
+            // console.log(`🔍 DEBUG: getCurrentTargetData() - no current target, returning null`);
             return null;
         }
 
-        // First, check if the current targetIndex is valid
+        // First, check if the current targetIndex is valid and matches currentTarget
         if (this.targetIndex >= 0 && this.targetIndex < this.targetObjects.length) {
             const targetData = this.targetObjects[this.targetIndex];
+            if (window?.DEBUG_TCM) console.log(`🔍 DEBUG: Checking targetIndex ${this.targetIndex}, targetData:`, targetData?.name || 'no name');
             if (targetData) {
                 // For targets from addNonPhysicsTargets, the Three.js object is in targetData.object
                 // For other targets, the targetData might be the object itself
-                if (targetData === this.currentTarget ||
+                const matches = targetData === this.currentTarget ||
                     targetData.object === this.currentTarget ||
-                    (targetData.object && targetData.object.uuid === this.currentTarget?.uuid)) {
+                    (targetData.object && targetData.object.uuid === this.currentTarget?.uuid) ||
+                    targetData.name === this.currentTarget?.name;
+                if (window?.DEBUG_TCM) console.log(`🔍 DEBUG: Target match check - matches: ${matches}, targetData.name: ${targetData.name}, currentTarget.name: ${this.currentTarget?.name}`);
+                if (matches) {
+                    if (window?.DEBUG_TCM) console.log(`🔍 DEBUG: Found matching target, processing...`);
                     return this.processTargetData(targetData);
                 } else {
+                    if (window?.DEBUG_TCM) console.log(`🔍 DEBUG: Index mismatch detected - finding correct index...`);
+                    // Index mismatch detected - find correct index and fix it silently
+                    const correctIndex = this.targetObjects.findIndex(target => 
+                        target === this.currentTarget ||
+                        target.object === this.currentTarget ||
+                        (target.object && target.object.uuid === this.currentTarget?.uuid) ||
+                        target.name === this.currentTarget?.name
+                    );
+                    
+                    if (correctIndex !== -1) {
+                        this.targetIndex = correctIndex;
+                        return this.processTargetData(this.targetObjects[correctIndex]);
+                    }
+                    
                     console.log(`🔍 getCurrentTargetData: Index ${this.targetIndex} target mismatch - targetData: ${targetData.name}, currentTarget: ${this.currentTarget?.name}, type: ${typeof this.currentTarget}`);
                 }
             }
@@ -2548,7 +2632,9 @@ export class TargetComputerManager {
                         console.log(`🔧 Fixed target index mismatch: set to ${i} for target ${targetData.name} (${isExactMatch ? 'exact' : isObjectMatch ? 'object' : isUUIDMatch ? 'uuid' : isIdMatch ? 'ID' : 'name/type'})`);
 
                         // Process and return the target data
-                        return this.processTargetData(targetData);
+                        const processedData = this.processTargetData(targetData);
+                        if (window?.DEBUG_TCM) console.log(`🔍 DEBUG: Returning processed data for ${targetData.name}:`, processedData);
+                        return processedData;
                     }
                 }
             }
@@ -2568,7 +2654,14 @@ export class TargetComputerManager {
             return this.processTargetData(this.currentTarget);
         }
         
-        // Clear the invalid target to prevent repeated warnings (only for non-scanner targets)
+        // For manual selections (including Star Charts), try to use the current target directly
+        if (this.isManualSelection && this.currentTarget && this.currentTarget.name) {
+            console.log(`🎯 Using manual selection target data directly: ${this.currentTarget.name}`, this.currentTarget);
+            return this.processTargetData(this.currentTarget);
+        }
+        
+        // Clear the invalid target to prevent repeated warnings (only for non-scanner/non-manual targets)
+        if (window?.DEBUG_TCM) console.log(`🔍 DEBUG: getCurrentTargetData() - clearing invalid target and returning null`);
         this.clearCurrentTarget();
         return null;
     }
@@ -2634,13 +2727,30 @@ export class TargetComputerManager {
                     diplomacy: targetData.diplomacy,
                     ...targetData
                 };
+            } else if (targetData.name && targetData.name !== 'Unknown') {
+                // For targets with valid names (like from Star Charts) but no type, 
+                // use the target data directly and avoid falling back to Sol
+                console.log(`🎯 Processing target with name but no type: ${targetData.name}`);
+                return {
+                    object: this.currentTarget,
+                    name: targetData.name,
+                    type: targetData.type || 'celestial_body', // Default type for celestial objects
+                    isShip: false,
+                    distance: targetData.distance,
+                    isMoon: targetData.isMoon || false,
+                    isSpaceStation: targetData.isSpaceStation,
+                    faction: targetData.faction,
+                    diplomacy: targetData.diplomacy,
+                    ...targetData
+                };
             } else {
-                // Fallback to getCelestialBodyInfo if no proper data
+                // Fallback to getCelestialBodyInfo only if we have no useful target data
+                console.log(`🎯 Falling back to getCelestialBodyInfo for target:`, targetData);
                 const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
                 return {
                     object: this.currentTarget,
-                    name: info?.name || 'Unknown',
-                    type: info?.type || 'unknown',
+                    name: info?.name || targetData.name || 'Unknown',
+                    type: info?.type || targetData.type || 'unknown',
                     isShip: false,
                     distance: targetData.distance,
                     isMoon: targetData.isMoon || false,
@@ -2839,15 +2949,13 @@ export class TargetComputerManager {
         } else {
             // Get celestial body info - need to pass the actual Three.js object
             const targetObject = this.currentTarget?.object || this.currentTarget;
-            info = this.solarSystemManager.getCelestialBodyInfo(targetObject);
-            
-            // Fallback to target data name if celestial body info not found
-            if (!info || !info.name) {
-                targetName = currentTargetData?.name || 'Unknown Target';
-            } else {
-                targetName = info.name;
-            }
-            // console.log(`🎯 DEBUG: updateReticleTargetInfo() - Target: ${targetName}, type: ${info?.type || currentTargetData?.type || 'unknown'}`);
+            const bodyInfo = this.solarSystemManager.getCelestialBodyInfo(targetObject) || {};
+            // Prefer Star Charts/target list data for name/type to avoid mismatches
+            const preferredName = currentTargetData?.name || bodyInfo.name;
+            const preferredType = currentTargetData?.type || bodyInfo.type;
+            info = { ...bodyInfo, name: preferredName, type: preferredType };
+            targetName = preferredName || 'Unknown Target';
+            // console.log(`🎯 DEBUG: updateReticleTargetInfo() - Target: ${targetName}, type: ${preferredType || 'unknown'}`);
         }
         
         // Determine reticle color based on diplomacy using faction color rules
@@ -3468,24 +3576,123 @@ export class TargetComputerManager {
      * @param {string} objectId - The ID of the object to target
      */
     setTargetById(objectId) {
-        console.log(`🎯 Setting target by ID: ${objectId}`);
-
-        // Find the object in the current target list
-        const targetIndex = this.targetObjects.findIndex(target =>
-            target.id === objectId ||
-            target.name?.toLowerCase().replace(/\s+/g, '_') === objectId ||
-            target.object?.userData?.id === objectId
-        );
-
-        if (targetIndex !== -1) {
-            this.targetIndex = targetIndex;
-            this.currentTarget = this.targetObjects[targetIndex];
-            this.updateTargetDisplay();
-            console.log(`🎯 Target set by ID: ${objectId} at index ${targetIndex}`);
-            return true;
+        if (!objectId) {
+            console.warn('🎯 setTargetById: No object ID provided');
+            return false;
         }
 
-        console.warn(`🎯 Target not found by ID: ${objectId}`);
+        // Normalize A0_ prefix case to avoid casing mismatches
+        const normalizedId = typeof objectId === 'string' ? objectId.replace(/^a0_/i, 'A0_') : objectId;
+
+        console.log(`🎯 Setting target by ID: ${normalizedId}, targetObjects.length: ${this.targetObjects.length}`);
+
+        for (let i = 0; i < this.targetObjects.length; i++) {
+            const target = this.targetObjects[i];
+
+            const userDataId = target?.object?.userData?.id;
+            const directIdMatch = (userDataId && userDataId === normalizedId) || (target.id && target.id === normalizedId);
+
+            // Fuzzy matches are last resort only
+            const nameNormalized = target.name?.toLowerCase().replace(/\s+/g, '_');
+            const fuzzyMatch = (target.name === normalizedId) || (nameNormalized === normalizedId) || (target?.object?.name === normalizedId);
+
+            const matchesId = directIdMatch || (!directIdMatch && fuzzyMatch);
+
+            console.log(`🎯 Checking target ${i}: ${target.name} (id: ${target.id || 'n/a'}, userData.id: ${userDataId || 'n/a'}) - directMatch: ${!!directIdMatch}, fuzzyMatch: ${!!fuzzyMatch}`);
+
+            if (matchesId) {
+                this.targetIndex = i;
+                // Prefer the actual Three.js object when available for accurate info lookups
+                this.currentTarget = target.object || target;
+
+                // Mark as manual/scanner selection to prevent automatic override
+                this.isManualSelection = true;
+                this.isFromLongRangeScanner = true;
+
+                console.log(`🎯 DEBUG: setTargetById - target set:`, {
+                    name: target.name,
+                    type: target.type,
+                    isManualSelection: this.isManualSelection,
+                    targetIndex: this.targetIndex
+                });
+
+                // Force immediate HUD refresh
+                // If selected target lacks a Three.js object, attempt to resolve it now
+                if (!this.currentTarget || !this.currentTarget.position) {
+                    try {
+                        const vm = this.viewManager || window.viewManager;
+                        const ssm = this.solarSystemManager || vm?.solarSystemManager || window.solarSystemManager;
+                        const sfm = vm?.starfieldManager || window.starfieldManager;
+                        const normalizedIdForLookup = normalizedId;
+
+                        let resolved = null;
+                        if (target.type === 'navigation_beacon' && sfm?.navigationBeacons) {
+                            resolved = sfm.navigationBeacons.find(b => b?.userData?.id === normalizedIdForLookup) ||
+                                       sfm.navigationBeacons.find(b => (b?.userData?.name || b?.name) === target.name);
+                        }
+                        if (!resolved && ssm?.celestialBodies && typeof ssm.celestialBodies.get === 'function') {
+                            resolved = ssm.celestialBodies.get(normalizedIdForLookup) ||
+                                       ssm.celestialBodies.get(`beacon_${normalizedIdForLookup}`) ||
+                                       ssm.celestialBodies.get(`station_${target.name?.toLowerCase()?.replace(/\s+/g, '_')}`);
+                        }
+                        if (resolved) {
+                            this.currentTarget = resolved;
+                            // Update the target object reference in our list as well
+                            this.targetObjects[i] = { ...target, object: resolved, position: resolved.position };
+                        }
+                    } catch (e) {
+                        // non-fatal
+                    }
+                }
+
+                this.updateTargetDisplay();
+                this.updateReticleTargetInfo();
+
+                console.log(`🎯 Star Charts: Target set to ${target.name} (ID: ${normalizedId}) at index ${i}`);
+                return true;
+            }
+        }
+
+        console.warn(`🎯 Target not found by ID: ${normalizedId}`);
+        console.log(`🎯 Available targets:`, this.targetObjects.map(t => `${t.name} (${t.id || t?.object?.userData?.id || 'no-id'})`));
+        return false;
+    }
+
+    /**
+     * Set target by name (fallback for Star Charts integration)
+     * @param {string} objectName - The name of the object to target
+     */
+    setTargetByName(objectName) {
+        if (!objectName) {
+            console.warn('🎯 setTargetByName: No object name provided');
+            return false;
+        }
+
+        console.log(`🎯 Setting target by name: ${objectName}`);
+
+        // Search through current target objects by name
+        for (let i = 0; i < this.targetObjects.length; i++) {
+            const target = this.targetObjects[i];
+            
+            if (target.name === objectName) {
+                // Set target with proper synchronization
+                this.targetIndex = i;
+                this.currentTarget = target.object || target;
+                
+                // Mark as manual selection to prevent automatic override
+                this.isManualSelection = true;
+                this.isFromLongRangeScanner = true; // Also mark as scanner target for extra protection
+                
+                // Force immediate display update
+                this.updateTargetDisplay();
+                this.updateReticleTargetInfo();
+                
+                console.log(`🎯 Star Charts: Target set by name to ${target.name} at index ${i}`);
+                return true;
+            }
+        }
+
+        console.warn(`🎯 Target not found by name: ${objectName}`);
         return false;
     }
 
@@ -3807,6 +4014,7 @@ export class TargetComputerManager {
         this.currentTarget = null;
         this.targetIndex = -1;
         this.isFromLongRangeScanner = false; // Reset scanner flag
+        this.isManualSelection = false; // Reset manual selection flag
         
         if (this.targetHUD) {
             this.targetHUD.style.display = 'none';
@@ -3907,7 +4115,13 @@ export class TargetComputerManager {
             if (this.targetComputerEnabled) {
                 setTimeout(() => {
                     this.updateTargetList();
-                    this.cycleTarget(); // Auto-select nearest target
+                    // Only auto-select if no manual selection exists
+                    if (!this.isManualSelection && !this.isFromLongRangeScanner) {
+                        console.log(`🎯 Sector change: Auto-selecting nearest target (no manual selection)`);
+                        this.cycleTarget(); // Auto-select nearest target
+                    } else {
+                        console.log(`🎯 Sector change: Preserving existing manual selection`);
+                    }
                 }, 100); // Small delay to ensure new system is fully generated
             }
         }
@@ -4023,6 +4237,41 @@ export class TargetComputerManager {
             }
         }
         
+        // As a last resort, try resolving a live scene object by id/name (covers beacons/stations)
+        try {
+            const vm = this.viewManager || window.viewManager;
+            const ssm = this.solarSystemManager || vm?.solarSystemManager || window.solarSystemManager;
+            const sfm = vm?.starfieldManager || window.starfieldManager;
+
+            const id = (target.id || target?.object?.userData?.id || '').replace(/^a0_/i, 'A0_');
+            const name = target.name || target?.object?.name || target?.object?.userData?.name;
+
+            let resolved = null;
+            // Beacons first
+            if (sfm?.navigationBeacons) {
+                resolved = sfm.navigationBeacons.find(b => b?.userData?.id === id) ||
+                           sfm.navigationBeacons.find(b => (b?.userData?.name || b?.name) === name);
+            }
+            // General celestial bodies
+            if (!resolved && ssm?.celestialBodies && typeof ssm.celestialBodies.get === 'function') {
+                resolved = ssm.celestialBodies.get(id) ||
+                           ssm.celestialBodies.get(`beacon_${id}`) ||
+                           (name ? ssm.celestialBodies.get(`station_${name.toLowerCase().replace(/\s+/g, '_')}`) : null);
+            }
+            if (resolved && resolved.position && typeof resolved.position.clone === 'function') {
+                // Persist the resolution onto target/currentTarget if possible
+                if (this.currentTarget === target) {
+                    this.currentTarget = resolved;
+                }
+                // Also try to update corresponding entry in targetObjects
+                const idx = Array.isArray(this.targetObjects) ? this.targetObjects.findIndex(t => (t.id || '') === id || t.name === name) : -1;
+                if (idx >= 0) {
+                    this.targetObjects[idx] = { ...(this.targetObjects[idx] || {}), object: resolved, position: resolved.position };
+                }
+                return resolved.position;
+            }
+        } catch (_) {}
+
         // console.warn('🎯 TargetComputerManager: Could not extract position from target:', target);
         return null;
     }
@@ -4079,41 +4328,6 @@ export class TargetComputerManager {
      * These methods provide decoupled targeting for the Star Charts system
      */
 
-    /**
-     * Set target by object ID (Star Charts integration)
-     * Searches current target list by ID, name, or userData.id
-     * @param {string} objectId - The object ID to target
-     * @returns {boolean} - True if target was found and set
-     */
-    setTargetById(objectId) {
-        if (!objectId) {
-            console.warn('🎯 setTargetById: No object ID provided');
-            return false;
-        }
-
-        // Search through current target objects
-        for (let i = 0; i < this.targetObjects.length; i++) {
-            const target = this.targetObjects[i];
-            
-            // Check various ID fields
-            const matchesId = target.id === objectId ||
-                            target.name === objectId ||
-                            (target.object && target.object.userData && target.object.userData.id === objectId) ||
-                            (target.object && target.object.name === objectId);
-            
-            if (matchesId) {
-                this.targetIndex = i;
-                this.currentTarget = target;
-                this.updateTargetDisplay();
-                
-                console.log(`🎯 Star Charts: Target set to ${target.name} (ID: ${objectId})`);
-                return true;
-            }
-        }
-
-        console.warn(`🎯 Star Charts: Object not found in target list: ${objectId}`);
-        return false;
-    }
 
     /**
      * Set virtual target (Mission waypoint integration)
