@@ -252,6 +252,7 @@ unknown: '#44ffff'   // Cyan for unknown
 - **Target System Simplification**: Removed automatic target clearing, persistent targeting, fail-fast debugging
 - **Wireframe Improvements**: Navigation beacons now use octahedron geometry for better visual distinction
 - **Star Charts Integration**: Completed full integration with simplified, robust target management
+- **Wireframe Update Fix**: Fixed wireframe synchronization when selecting targets from Star Charts
 
 **Next Steps**: Content creation, advanced gameplay mechanics, multiplayer foundation.
 
@@ -283,6 +284,30 @@ unknown: '#44ffff'   // Cyan for unknown
 - `LongRangeScanner.js` - Updated with robust target selection method
 - `TargetComputerManager.js` - Existing `setTargetFromScanner()` method preserved
 - `StarfieldManager.js` - Enhanced synchronization handling
+
+### **Star Charts Wireframe Update Bug** ✅ **FIXED**
+**Issue**: When selecting targets from Star Charts, the wireframe in the Target Computer HUD would not update - it would stay showing whatever wireframe was visible when the Star Charts were opened.
+
+**Status**: ✅ **RESOLVED** - Fixed wireframe update synchronization between Star Charts and Target Computer
+
+**Root Cause**: The `setTargetById()` method (used when clicking Star Charts targets) was missing the wireframe cleanup and recreation logic that `cycleTarget()` (TAB cycling) had.
+
+**Solution**: Added proper wireframe update logic to `setTargetById()`:
+- Clear existing wireframe before creating new one
+- Call `createTargetWireframe()` to generate wireframe for new target
+- Maintain same cleanup pattern as TAB cycling
+
+**Technical Details**:
+- **File**: `frontend/static/js/views/TargetComputerManager.js`
+- **Method**: `setTargetById()` - added wireframe cleanup and recreation logic
+- **Behavior**: Now matches TAB cycling behavior for consistent wireframe updates
+- **Impact**: Star Charts selections now properly update wireframes (icosahedron for planets, star for stars, octahedron for moons/stations, etc.)
+
+**Testing**: Verified that clicking different objects in Star Charts now shows correct wireframe types:
+- Planets: Icosahedron (20-sided sphere)
+- Stars: Star (radiating points)
+- Moons: Octahedron (8-sided)
+- Stations: Torus (ring shape)
 
 ---
 

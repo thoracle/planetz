@@ -336,9 +336,6 @@ export class StarChartsTargetComputerIntegration {
     addTargetToTargetComputer(targetData) {
         if (!this.targetComputer || !targetData) return;
 
-        // Debug logging to show incoming targetData.type
-        console.log('🎯 addTargetToTargetComputer - incoming targetData:', targetData);
-        console.log('🎯 addTargetToTargetComputer - targetData.type:', targetData.type);
 
         // Normalize ID to uppercase to match Star Charts database format
         const normalizedId = targetData.id.replace(/^a0_/i, 'A0_');
@@ -361,7 +358,8 @@ export class StarChartsTargetComputerIntegration {
         const targetDataForTC = {
             id: normalizedId,
             name: targetData.name,
-            type: normalizedType,
+            type: targetData.type, // CRITICAL: Keep original type for wireframe consistency
+            normalizedType: normalizedType, // Store normalized type separately if needed
             isSpaceStation: isSpaceStation,
             discovered: true,
             fromStarCharts: true

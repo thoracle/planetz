@@ -3552,6 +3552,24 @@ export class TargetComputerManager {
                     }
                 }
 
+                // Clear existing wireframe before creating new one (same as cycleTarget does)
+                if (this.targetWireframe) {
+                    this.wireframeScene.remove(this.targetWireframe);
+                    if (this.targetWireframe.geometry) {
+                        this.targetWireframe.geometry.dispose();
+                    }
+                    if (this.targetWireframe.material) {
+                        if (Array.isArray(this.targetWireframe.material)) {
+                            this.targetWireframe.material.forEach(material => material.dispose());
+                        } else {
+                            this.targetWireframe.material.dispose();
+                        }
+                    }
+                    this.targetWireframe = null;
+                }
+
+                // Create new wireframe for the selected target
+                this.createTargetWireframe();
                 this.updateTargetDisplay();
                 this.updateReticleTargetInfo();
 
