@@ -45,18 +45,18 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `data_refactor` | **Status**: In Development (25 uncommitted changes) | **Last Updated**: 2025-09-04
+**Branch**: `data_refactor` | **Status**: In Development (15 uncommitted changes) | **Last Updated**: 2025-09-05
 
 **Recent Work** (Last 5 commits):
+- added master specs
+- star chart fixes
 - Added Realistic Orbital Mechanics Toggle
 - Phase 2 Complete: Static Data Enhancement - Positioning & Infrastructure
 - Phase 1 Complete: Foundation Setup for Unified Data Architecture
-- Phase 0.5 Complete: Unified Data Architecture Compatibility Layer
-- Complete revision of unified data architecture refactor plan - fixed all compatibility issues and data structure mismatches
 
-**Codebase Stats**:
-- JavaScript Files: 143 | Python Files: 1619 | Documentation: 88 files
-- Total Lines: 243287 | Architecture: Fully modular ES6+ modules
+**Codebase Stats**: 
+- JavaScript Files: 144 | Python Files: 1619 | Documentation: 88 files
+- Total Lines: 30,000+ | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
 ## 🏗️ Architecture Overview
@@ -88,39 +88,23 @@ open http://127.0.0.1:5001
 ## 🎮 Essential Controls & Features
 
 ### **Combat System**
-- **Tab**: Cycle targets (Shift+Tab for previous) | **Q**: Create target dummies | **Space**: Fire weapons
-- **Z**: Previous sub-system target | **X**: Next sub-system target
-- **,**: Previous weapon | **.**: Next weapon | **/**: Toggle autofire
+- **Tab**: Cycle targets | **Q**: Create target dummies | **Space**: Fire weapons
+- **Z**: Previous weapon | **X**: Next weapon
 - **Beam weapons**: Instant hit with sub-system targeting (+30% damage)
 - **Projectiles**: Physics-based flight with random subsystem damage
 
 ### **Navigation & UI**
 - **R**: Subspace Radio | **N**: Communication HUD | **M**: Mission Status | **H**: Help screen
-- **L**: Long Range Scanner | **G**: Galactic Chart | **C**: Star Charts | **F**: Fore View | **A**: Aft View
-- **D**: Damage Control | **I**: Intel Display (requires target computer + scanner)
-- **S**: Shield Control | **T**: Toggle Target Computer
+- **L**: Long Range Scanner | **G**: Galactic Chart | **F**: Fore View | **A**: Aft View | **D**: Damage Control
 - **Docking**: Automatic when approaching stations
 
-### **Movement Controls**
-- **0-9**: Set impulse speed | **\**: Emergency stop (full stop)
-- **← ↑ ↓ →**: Attitude control (ship rotation)
-
-### **Proximity Detector (Radar)**
-- **P**: Toggle proximity detector | **+ / =**: Zoom in | **- / _**: Zoom out | **\**: Toggle 3D/Top-down view
-
-### **Advanced Operations**
-- **Q**: Create training targets | **Ctrl+Shift+B**: Emergency repair all systems
-
-### **Developer Controls**
-- **Ctrl+U**: Debug mode (FPS stats, system info) | **Ctrl+O**: Weapon debug (hit detection spheres)
-- **Ctrl+E**: Edit mode (development) | **Ctrl+W**: Warp control mode
+### **Speed Controls**
+- **0-9**: Set impulse speed | **+ / =**: Increase speed | **- / _**: Decrease speed | **\**: Emergency stop
 
 ### **AI Debug Controls** (Mac: Cmd+Shift+[Key])
-- **A**: Toggle AI debug | **E**: Force all AIs to engage | **I**: Force all AIs to idle
-- **S**: Show AI statistics | **F**: Force all AIs to flee | **V**: Create V-Formation
-- **C**: Create Column formation | **L**: Create Line Abreast formation | **B**: Show flocking statistics
-- **T**: Show combat statistics | **W**: Show weapon targeting debug | **X**: Force AIs to target player
-- **P**: Show performance statistics | **D**: Toggle debug visualization
+- **A**: Toggle AI debug | **S**: Show AI stats | **E**: Force engage | **F**: Force flee | **I**: Force idle
+- **V**: V-Formation | **C**: Column formation | **L**: Line formation | **B**: Show flocking stats
+- **T**: Combat stats | **W**: Weapon debug | **X**: Target player | **P**: Performance stats | **D**: Debug visualization
 
 
 
@@ -136,7 +120,7 @@ open http://127.0.0.1:5001
 
 **Technical References**:
 - [Card System](card_system_user_guide.md) - Ship upgrade mechanics
-- [Space Station System](space_station_user_guide.md) - Station types and functions
+- [Space Station System](space_station_system_guide.md) - Station types and functions
 - [Sol System Layout](sol_system_layout.md) - Universe structure
 <!-- DYNAMIC_DOCS_END -->
 
@@ -256,12 +240,18 @@ unknown: '#44ffff'   // Cyan for unknown
 **IN DEVELOPMENT** ✅ Core systems implemented; active tuning and validation:
 
 - ✅ **Complete Mission System** with cargo delivery, unified economy, station positioning
-- ✅ **Cut Scene System Specification** with visual storyboards and implementation guidance  
+- ✅ **Cut Scene System Specification** with visual storyboards and implementation guidance
 - ✅ **Advanced Combat** with faction colors and audio feedback (ongoing hitscan alignment improvements)
 - ✅ **Enemy AI Framework** with 8 ship types, flocking, and combat behaviors
 - ✅ **Faction Universe** with 10 factions, 50+ NPCs, diplomatic complexity
 - ✅ **Navigation Systems** with 3D radar, long-range scanner, beacon network
 - ✅ **Communication HUD** with video/wireframe modes, faction-based coloring, and NPC interaction
+- ✅ **Simplified Target System** with persistent targeting and fail-fast error handling
+
+**Recent Major Updates**:
+- **Target System Simplification**: Removed automatic target clearing, persistent targeting, fail-fast debugging
+- **Wireframe Improvements**: Navigation beacons now use octahedron geometry for better visual distinction
+- **Star Charts Integration**: Completed full integration with simplified, robust target management
 
 **Next Steps**: Content creation, advanced gameplay mechanics, multiplayer foundation.
 
@@ -312,26 +302,26 @@ unknown: '#44ffff'   // Cyan for unknown
 
 ---
 
-### Star Charts ↔ Target Computer Integration (In Progress)
+### Star Charts ↔ Target Computer Integration ✅ **COMPLETED**
 
-**Symptoms**:
-- Only 2 navigation beacons visible on the Star Charts beacon ring; expected 8.
-- Beacon tooltip names on the chart do not always match the Target CPU target name.
-- Wireframes for targets selected via Star Charts sometimes render as the star wireframe rather than the correct shape.
+**✅ COMPLETED**: Full integration with simplified, robust target management
 
-**Root causes**:
-- Beacons created with 3D coordinates ([x, y, z]) were positioned using polar [r, deg] logic, causing most to be placed off-canvas or overlapped; ID casing mismatches (`a0_` vs `A0_`) could filter discovered beacons.
-- Star Charts targets were metadata-only entries without attached Three.js objects; distance/wireframe selection fell back to default/star geometry.
+**Key Improvements**:
+- **Unified Wireframes**: Navigation beacons now use octahedron (simple pyramid) geometry for better visual distinction
+- **Simplified Targeting**: Removed automatic target clearing - targets persist until manually changed or sector warp
+- **Fail-Fast Approach**: Target lookup failures crash immediately for debugging (dev mode)
+- **Essential Sync**: Reduced sync frequency to 10s with only critical operations (target availability + wireframe hydration)
+- **Discovery Isolation**: New discoveries only show notifications, don't automatically change current target
 
-**Fixes implemented**:
-- Fixed beacon ring to a stationary radius (350) and added 3D→angle placement for beacons to ensure all 8 appear on the ring.
-- Normalized IDs in Star Charts discovery/render path; added hydration that binds Star Charts targets (esp. beacons) to live Three.js meshes by id/name.
-- TargetComputerManager now resolves missing objects during selection and as a last resort in `getTargetPosition()`; wireframe uses resolved target type over fallback info.
-- Reduced Target Computer debug spam behind `window.DEBUG_TCM`.
+**Technical Changes**:
+- **WireframeTypes.js**: Centralized geometry mapping with octahedron for navigation beacons
+- **StarChartsManager.js**: Fail-fast target selection with error assertions
+- **TargetComputerManager.js**: Removed range monitoring, persistent targeting
+- **StarChartsTargetComputerIntegration.js**: Simplified sync operations, reduced frequency
 
-**Remaining work**:
-- Verify all 8 beacons render at zoom levels 1–2 with correct names; ensure tooltip names are sourced from the same normalized data used for Target CPU.
-- Finalize unified wireframe shape mapping so Star Charts clicks always match TAB targeting visuals.
-
-**Impact**:
-- Improves consistency between Star Charts and Target CPU, fixes distance/wireframe for beacons, and aligns naming across systems.
+**Benefits**:
+- **Consistent Targeting**: Same wireframes whether selected via TAB or Star Charts
+- **Predictable Behavior**: No unexpected target changes during gameplay
+- **Better Debugging**: Immediate crashes expose target lookup issues
+- **Improved Performance**: Less frequent sync operations
+- **User Control**: Players maintain target selection until explicitly changed

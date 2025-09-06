@@ -104,6 +104,9 @@ export class StarChartsManager {
             if (this.isTestDiscoverAllEnabled()) {
                 this.discoverAllInCurrentSector();
             }
+
+            // TEMPORARY FIX: Auto-discover beacons for debugging
+            this.autoDiscoverBeacons();
             
             // Initialize spatial grid
             this.initializeSpatialGrid();
@@ -170,6 +173,37 @@ export class StarChartsManager {
             console.log(`🧪 StarCharts TEST MODE: Discovered all objects in ${this.currentSector} (+${count})`);
         } catch (e) {
             console.warn('🧪 StarCharts TEST MODE failed to discover all:', e);
+        }
+    }
+
+    autoDiscoverBeacons() {
+        // TEMPORARY FIX: Auto-discover all beacons for debugging beacon display issue
+        try {
+            const sector = this.objectDatabase.sectors[this.currentSector];
+            if (!sector || !sector.infrastructure || !sector.infrastructure.beacons) return;
+
+            let count = 0;
+            sector.infrastructure.beacons.forEach(beacon => {
+                if (beacon?.id && !this.discoveredObjects.has(beacon.id)) {
+                    this.discoveredObjects.add(beacon.id);
+                    count++;
+                }
+            });
+
+            if (count > 0) {
+                this.saveDiscoveryState();
+                console.log(`🔧 TEMP FIX: Auto-discovered ${count} beacons`);
+
+                // Trigger UI refresh if Star Charts UI exists
+                if (this.viewManager?.starfieldManager?.starChartsUI) {
+                    console.log(`🔧 TEMP FIX: Triggering Star Charts UI refresh`);
+                    setTimeout(() => {
+                        this.viewManager.starfieldManager.starChartsUI.render();
+                    }, 100);
+                }
+            }
+        } catch (e) {
+            console.warn('🔧 TEMP FIX: Failed to auto-discover beacons:', e);
         }
     }
     
@@ -819,43 +853,27 @@ export class StarChartsManager {
                     this.targetComputerManager.targetComputerEnabled = true;
                 }
 
-                // Try direct ID targeting first
+                // Set target by ID - no fallbacks, crash on failure for debugging
                 const success = this.targetComputerManager.setTargetById(normalizedId);
-                if (success) {
-                    console.log(`🎯 Star Charts: Successfully targeted ${objectData.name}`);
-                    // Trigger target selection callbacks
-                    this.triggerTargetSelectionCallbacks(normalizedId);
-                    return true;
+                if (!success) {
+                    const errorMsg = `❌ CRITICAL: Failed to set target for ${objectData.name} (${normalizedId}) - target lookup failed`;
+                    console.error(errorMsg);
+                    throw new Error(errorMsg); // Crash in dev to find bugs
                 }
 
-                // Fallback: try targeting by name
-                if (this.targetComputerManager.setTargetByName) {
-                    console.log(`🎯 Star Charts: Fallback to name-based targeting for ${objectData.name}`);
-                    const nameSuccess = this.targetComputerManager.setTargetByName(objectData.name);
-                    if (nameSuccess) {
-                        console.log(`🎯 Star Charts: Successfully targeted ${objectData.name} by name`);
-                        this.triggerTargetSelectionCallbacks(normalizedId);
-                        return true;
-                    }
-                }
-            }
-
-            // Last resort: try the normalized ID directly
-            const finalSuccess = this.targetComputerManager.setTargetById(normalizedId);
-            if (finalSuccess) {
-                console.log(`🎯 Star Charts: Successfully targeted ${normalizedId} (direct)`);
+                console.log(`🎯 Star Charts: Successfully targeted ${objectData.name}`);
+                // Trigger target selection callbacks
                 this.triggerTargetSelectionCallbacks(normalizedId);
+                return true;
             }
-            return finalSuccess;
         }
         
         console.warn('⚠️  Target Computer integration not available');
         return false;
     }
-    
-    
+
     setVirtualTarget(waypointId) {
-        //Set virtual waypoint as target
+        // Set virtual waypoint as target
         
         const waypoint = this.virtualWaypoints.get(waypointId);
         if (!waypoint) {

@@ -2401,11 +2401,25 @@ export class StarfieldManager {
     cycleTarget(forward = true) {
         // Delegate to target computer manager
         this.targetComputerManager.cycleTarget(forward);
-        
+
         // Update local state to match
         this.currentTarget = this.targetComputerManager.currentTarget?.object || this.targetComputerManager.currentTarget;
         this.targetIndex = this.targetComputerManager.targetIndex;
         this.targetObjects = this.targetComputerManager.targetObjects;
+
+        // DEBUG: Log target info for wireframe debugging
+        setTimeout(() => {
+            const currentTarget = this.targetComputerManager.currentTarget;
+            console.log(`🎯 Tab Target DEBUG - Target object:`, JSON.stringify({
+                name: currentTarget?.name,
+                id: currentTarget?.id,
+                type: currentTarget?.type,
+                hasObject: !!currentTarget?.object,
+                objectType: currentTarget?.object?.type,
+                geometryType: currentTarget?.object?.geometry?.type,
+                position: currentTarget?.position
+            }, null, 2));
+        }, 100);
         
         // Update target display to reflect the new target in the UI
         if (this.targetComputerManager.updateTargetDisplay) {

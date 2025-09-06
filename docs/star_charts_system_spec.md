@@ -50,12 +50,12 @@ graph TD
     SCM --> SCDS
     SCM --> SCFOG
 
-    SCDB --> UG: "Object IDs and Positions"
+    SCDB -->|"Object IDs and Positions"| UG
     SCDS --> SCM
     SCFOG --> SCM
 
-    SCM --> TCM: "Object Targeting"
-    SCM --> MM: "Waypoint Creation"
+    SCM -->|"Object Targeting"| TCM
+    SCM -->|"Waypoint Creation"| MM
 ```
 
 ### **Data Flow Integration**
@@ -232,9 +232,9 @@ graph TB
         AS[Audio System]
     end
 
-    SM -.-> SM: "getDiscoveryRadius"
-    TC -.-> TC: "setTargetById"
-    TC -.-> TC: "setVirtualTarget"
+    SM -.->|"getDiscoveryRadius"| SM
+    TC -.->|"setTargetById"| TC
+    TC -.->|"setVirtualTarget"| TC
 
     SC --> SCUI
     SC --> SCR
@@ -709,52 +709,28 @@ data/
     ├── A0.json
     ├── A1.json
     └── ...
+```
 
 #### **Component Interaction Diagram**
 ```mermaid
 graph TD
-    subgraph "Star Charts System"
-        SCM[StarChartsManager ⭐]
-        SCUI[StarChartsUI ⭐]
-        SM[SolarSystemManager ⭐]
-        TCM[TargetComputerManager ⭐]
-    end
+    A[StarChartsManager] --> B[StarChartsUI]
+    B --> C[Target Computer]
 
-    subgraph "External Systems"
-        TC[Target Computer]
-        MS[Mission System]
-        SF[Starfield Manager]
-        NS[Notification System]
-        AS[Audio System]
-    end
+    A --> D[SolarSystemManager]
+    A --> E[Mission System]
+    A --> F[Notification System]
+    A --> G[Audio System]
 
-    subgraph "Data Layer"
-        OBJ[(Object Database)]
-        DISC[(Discovery State)]
-        WP[(Waypoints)]
-    end
+    E --> A
+    D --> H[(Object Database)]
+    D --> I[(Discovery State)]
 
-    SCM --> SCUI
-    SCUI --> TCM
-
-    SCM --> SM
-    SCM --> MS
-    SCM --> NS
-    SCM --> AS
-
-    SM -.-> SM: "getDiscoveryRadius"
-    TCM -.-> TCM: "setTargetById"
-    TCM -.-> TCM: "setVirtualTarget"
-
-    MS -.-> SCM: "waypoint creation"
-    SM -.-> OBJ: "celestial data"
-    SM -.-> DISC: "infrastructure data"
-
-    style SCM fill:#4CAF50
-    style SCUI fill:#FFC107
-    style SM fill:#4CAF50
-    style TCM fill:#4CAF50
+    style A fill:#4CAF50
+    style B fill:#FFC107
+    style D fill:#4CAF50
 ```
+
 
 ## 🚀 **Implementation Phases**
 
@@ -1007,7 +983,6 @@ def enhance_starter_system_with_infrastructure(star_system):
 
     star_system['infrastructure'] = infrastructure_data
     return star_system
-```
 
 def extract_complete_sector_data(star_system):
     """Extract all object data including infrastructure"""

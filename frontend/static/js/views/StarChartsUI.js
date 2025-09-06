@@ -686,8 +686,8 @@ export class StarChartsUI {
             this._isVisible = true;
             this.container.classList.add('visible');
             
-            // NEW BEHAVIOR: Open at zoom level 4 (closer in for better initial view) centered on the star
-            this.currentZoomLevel = 4;
+            // Open at zoom level 0.8 to ensure all beacons at radius 350 are visible
+            this.currentZoomLevel = 0.8;
             
             // Find and center on the star of the current solar system
             const star = this.findCurrentSystemStar();
@@ -941,7 +941,13 @@ export class StarChartsUI {
         this.positionStationsWithCollisionDetection(stations, placePolar);
         
         // Position beacons (they have their own dedicated ring, so less collision risk)
-        beacons.forEach(placePolar);
+        console.log(`🔧 Positioning ${beacons.length} beacons`);
+        beacons.forEach(beacon => {
+            console.log(`🔧 Positioning beacon: ${beacon.name} (${beacon.id})`);
+            placePolar(beacon);
+            const pos = this.displayModel.positions.get(beacon.id);
+            console.log(`🔧 Beacon ${beacon.name} positioned at:`, pos);
+        });
     }
     
     positionStationsWithCollisionDetection(stations, placePolar) {
@@ -1324,9 +1330,12 @@ export class StarChartsUI {
             });
             
             sectorData.infrastructure.beacons?.forEach(beacon => {
-                if (isDiscovered(beacon.id)) {
+                const discovered = isDiscovered(beacon.id);
+                console.log(`🔧 Beacon ${beacon.name} (${beacon.id}): discovered=${discovered}`);
+                if (discovered) {
                     // Normalize beacon type to match LRS icon rules
                     allObjects.push({ ...beacon, type: 'navigation_beacon' });
+                    console.log(`🔧 Added beacon ${beacon.name} to allObjects`);
                 }
             });
         }
@@ -1436,12 +1445,16 @@ export class StarChartsUI {
     
     renderObject(object) {
         // Render a single object
-        
+
         const pos = this.getDisplayPosition(object);
         const x = pos.x;
         const y = pos.y; // Use Z as Y for top-down view
         const radius = this.getObjectDisplayRadius(object);
         const color = this.getObjectColor(object);
+
+        if (object.type === 'navigation_beacon') {
+            console.log(`🎯 Rendering beacon ${object.name} at (${x}, ${y})`);
+        }
         
         // Match LRS iconography: star (circle), planet (circle), moon (small circle), station (diamond), beacon (triangle)
         let element = null;

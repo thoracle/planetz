@@ -11,6 +11,8 @@
  * 
  * Extracted from StarfieldManager to improve code organization and maintainability.
  */
+import { WIREFRAME_TYPES, getWireframeType } from '../constants/WireframeTypes.js';
+
 export class TargetComputerManager {
     constructor(scene, camera, viewManager, THREE, solarSystemManager) {
         this.scene = scene;
@@ -945,61 +947,19 @@ export class TargetComputerManager {
     }
     
     /**
-     * Start monitoring current target range to detect when it goes out of range
+     * Range monitoring disabled - targets persist until manually changed or sector warp
      */
     startRangeMonitoring() {
+        // Range monitoring disabled - targets persist until manually changed or sector warp
         console.log(`🎯 Range monitoring disabled - targets will only clear on solar system warp`);
-        return; // Range monitoring disabled to simplify target management
-        
-        // Original range monitoring code disabled to prevent automatic target clearing
-        /*
-        if (this.isRangeMonitoringActive) {
-            return; // Already monitoring
-        }
-        
-        this.isRangeMonitoringActive = true;
-        
-        // Clear any existing interval
-        if (this.rangeMonitoringInterval) {
-            clearInterval(this.rangeMonitoringInterval);
-        }
-        
-        // Check target range every 3 seconds
-        this.rangeMonitoringInterval = setInterval(() => {
-            if (!this.targetComputerEnabled || !this.currentTarget) {
-                this.stopRangeMonitoring();
-                return;
-            }
-            
-            // Get target computer range
-            const ship = this.viewManager?.getShip();
-            const targetComputer = ship?.getSystem('target_computer');
-            const maxRange = targetComputer?.range || 150;
-            
-            // Calculate distance to current target
-            const targetPos = this.getTargetPosition(this.currentTarget);
-            if (!targetPos) {
-                this.stopRangeMonitoring();
-                return;
-            }
-            
-            const distance = this.calculateDistance(this.camera.position, targetPos);
-            
-            // Check if current target is out of range
-            if (distance > maxRange) {
-                console.log(`🎯 Current target out of range (${distance.toFixed(1)}km > ${maxRange}km) - handling out of range`);
-                this.stopRangeMonitoring(); // Stop monitoring before handling to prevent loops
-                this.handleTargetOutOfRange();
-            }
-        }, 3000); // Check every 3 seconds
-        */
+        return;
     }
-    
+
     /**
-     * Stop monitoring current target range
+     * Clean up range monitoring state (no longer used)
      */
     stopRangeMonitoring() {
-        this.isRangeMonitoringActive = false;
+        // Clean up any existing interval if it exists
         if (this.rangeMonitoringInterval) {
             clearInterval(this.rangeMonitoringInterval);
             this.rangeMonitoringInterval = null;
@@ -1007,82 +967,9 @@ export class TargetComputerManager {
     }
     
     /**
-     * Handle when current target goes out of range
+     * Range monitoring disabled - targets persist until manually changed or sector warp
+     * Removed handleTargetOutOfRange method to prevent automatic target clearing
      */
-    handleTargetOutOfRange() {
-        // Protect targets selected from long-range scanner - they have extended targeting info
-        if (this.isFromLongRangeScanner) {
-            console.log(`🎯 Current target out of range but was selected from long-range scanner - maintaining target lock`);
-            return; // Don't auto-switch scanner targets
-        }
-        
-        console.log(`🎯 Current target out of range - clearing target and searching for alternatives`);
-        
-        // Store current target info for logging
-        const outOfRangeTargetName = this.currentTarget?.name || this.currentTarget?.ship?.shipName || 'Unknown';
-        
-        // Clear the current target immediately to prevent loops
-        this.currentTarget = null;
-        this.targetIndex = -1;
-        this.isFromLongRangeScanner = false;
-        
-        // Update target list to see what's currently in range
-        this.updateTargetList();
-        
-        // Check if we have any targets in range
-        if (this.targetObjects && this.targetObjects.length > 0) {
-            console.log(`🎯 Found ${this.targetObjects.length} alternative targets - will auto-select nearest after 1 second delay`);
-
-            // Show temporary "No targets in range" message for 1 second before auto-switching
-            this.showTemporaryNoTargetsMessage(() => {
-                // Only auto-select if no manual selection exists (safety check)
-                if (!this.isManualSelection && !this.isFromLongRangeScanner) {
-                    console.log(`🎯 Auto-selecting nearest target after delay (no manual selection)`);
-                    this.cycleTarget(); // Auto-select nearest target
-                } else {
-                    console.log(`🎯 Manual selection exists - not auto-cycling after delay`);
-                }
-
-                // Play audio feedback for automatic target switch
-                this.playAudio('frontend/static/audio/blurb.mp3');
-
-                // Sync with StarfieldManager
-                if (this.viewManager?.starfieldManager) {
-                    this.viewManager.starfieldManager.currentTarget = this.currentTarget?.object || this.currentTarget;
-                    this.viewManager.starfieldManager.targetIndex = this.targetIndex;
-                    this.viewManager.starfieldManager.targetObjects = this.targetObjects;
-
-                    // Update 3D outline for automatic cycle (if enabled)
-                    if (this.currentTarget && this.viewManager.starfieldManager.outlineEnabled &&
-                        !this.viewManager.starfieldManager.outlineDisabledUntilManualCycle) {
-                        this.viewManager.starfieldManager.updateTargetOutline(this.currentTarget?.object || this.currentTarget, 0);
-                    }
-                }
-            });
-        } else {
-            // No targets in range - show no targets display
-            console.log(`🎯 No alternative targets found after ${outOfRangeTargetName} went out of range - showing no targets display`);
-            this.stopRangeMonitoring();
-            
-            // Clear target on ship's TargetComputer system
-            const ship = this.viewManager?.getShip();
-            if (ship) {
-                const targetComputer = ship.getSystem('target_computer');
-                if (targetComputer) {
-                    targetComputer.setTarget(null);
-                }
-            }
-            
-            this.showNoTargetsDisplay();
-            
-            // Clear StarfieldManager state
-            if (this.viewManager?.starfieldManager) {
-                this.viewManager.starfieldManager.currentTarget = null;
-                this.viewManager.starfieldManager.targetIndex = -1;
-                this.viewManager.starfieldManager.targetObjects = [];
-            }
-        }
-    }
 
     /**
      * Show temporary "No targets in range" message for specified duration
@@ -2056,29 +1943,44 @@ export class TargetComputerManager {
             }
 
             // Determine target info (use same logic as updateTargetDisplay)
-            let info = null;
-            let wireframeColor = 0x808080; // default gray
-            let isEnemyShip = false;
+        let info = null;
+       let wireframeColor = 0x808080; // default gray
+       let isEnemyShip = false;
 
-            // First, try to get enhanced target info from the ship's TargetComputer system
-            const ship = this.viewManager?.getShip();
-            const targetComputer = ship?.getSystem('target_computer');
-            const enhancedTargetInfo = targetComputer?.getCurrentTargetInfo();
-            
-            if (enhancedTargetInfo) {
-                // Use the comprehensive target information from TargetComputer
-                info = enhancedTargetInfo;
-                isEnemyShip = enhancedTargetInfo.diplomacy === 'enemy' || enhancedTargetInfo.faction === 'enemy';
-            } else if (currentTargetData?.isShip) {
-                info = { type: 'enemy_ship' };
-                // Check if this is an enemy ship or target dummy
-                isEnemyShip = currentTargetData.ship?.diplomacy === 'enemy' ||
-                             currentTargetData.ship?.isTargetDummy ||
-                             currentTargetData.ship?.faction === 'enemy';
-                radius = Math.max(radius, 2);
-            } else {
-                info = currentTargetData || this.solarSystemManager.getCelestialBodyInfo(targetObject);
-            }
+
+       // Determine target info, prioritizing Star Charts data over spatial manager data
+       const ship = this.viewManager?.getShip();
+       const targetComputer = ship?.getSystem('target_computer');
+       const enhancedTargetInfo = targetComputer?.getCurrentTargetInfo();
+
+
+       // Start with currentTargetData from Star Charts (has correct normalized types)
+       info = currentTargetData || {};
+
+
+       if (enhancedTargetInfo) {
+           // Merge enhanced info but preserve the correct type from Star Charts
+           info = {
+               ...enhancedTargetInfo,
+               type: currentTargetData?.type || enhancedTargetInfo.type,
+               name: currentTargetData?.name || enhancedTargetInfo.name
+           };
+           isEnemyShip = enhancedTargetInfo.diplomacy === 'enemy' || enhancedTargetInfo.faction === 'enemy';
+       } else if (currentTargetData?.isShip) {
+           info = { type: 'enemy_ship' };
+           // Check if this is an enemy ship or target dummy
+           isEnemyShip = currentTargetData.ship?.diplomacy === 'enemy' ||
+                        currentTargetData.ship?.isTargetDummy ||
+                        currentTargetData.ship?.faction === 'enemy';
+           radius = Math.max(radius, 2);
+       } else if (!info.type) {
+           // Fallback to SolarSystemManager only if we don't have type info
+           const solarInfo = this.solarSystemManager?.getCelestialBodyInfo(targetObject);
+           if (solarInfo) {
+               info = { ...info, ...solarInfo };
+           }
+       }
+
 
             // Update wireframe color based on diplomacy using consolidated logic
             const diplomacy = this.getTargetDiplomacy(currentTargetData);
@@ -2099,32 +2001,37 @@ export class TargetComputerManager {
                 opacity: 0.8
             });
 
-            // Build geometry per type
-            const resolvedType = (currentTargetData?.type || info?.type || '').toLowerCase();
-            // console.log(`🌟 WIREFRAME: Creating wireframe for target. resolvedType="${resolvedType}", info.name="${info?.name}"`);
-            if (resolvedType === 'star') {
-                // console.log(`🌟 WIREFRAME: Creating STAR geometry for ${info.name}`);
+            // Use centralized wireframe type mapping - single source of truth
+            const resolvedType = (currentTargetData?.type || '').toLowerCase();
+            const wireframeConfig = this.getWireframeConfig(resolvedType);
+
+
+            if (wireframeConfig.geometry === 'star') {
                 const starGeometry = this.createStarGeometry(radius);
                 this.targetWireframe = new this.THREE.LineSegments(starGeometry, wireframeMaterial);
             } else {
                 let baseGeometry = null;
 
-                if (info?.type === 'enemy_ship' || currentTargetData?.isShip) {
-                    baseGeometry = new this.THREE.BoxGeometry(radius, radius, radius);
-                } else if (info?.type === 'station' || currentTargetData?.isSpaceStation || targetObject?.userData?.isSpaceStation) {
-                    // Distinct station silhouette: torus ring
+                // Handle special cases that need additional logic
+                if (wireframeConfig.geometry === 'box') {
+                    // Enemy ships - check both info and currentTargetData
+                    if (info?.type === 'enemy_ship' || currentTargetData?.isShip) {
+                        baseGeometry = new this.THREE.BoxGeometry(radius, radius, radius);
+                    }
+                } else if (wireframeConfig.geometry === 'torus') {
+                    // Space stations - use centralized configuration
                     const ringR = Math.max(radius * 0.8, 1.0);
                     const ringTube = Math.max(radius * 0.25, 0.3);
                     baseGeometry = new this.THREE.TorusGeometry(ringR, ringTube, 8, 16);
-                } else if (currentTargetData?.isMoon || info?.type === 'moon') {
-                    baseGeometry = new this.THREE.OctahedronGeometry(radius, 0);
-                } else if (info?.type === 'planet') {
-                    baseGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
-                } else if (targetObject?.geometry && targetObject.geometry.isBufferGeometry) {
-                    // Fall back to edges of actual target geometry to preserve uniqueness
+                } else {
+                    // Standard geometries from centralized mapping
+                    baseGeometry = this.createGeometryFromConfig(wireframeConfig.geometry, radius);
+                }
+
+                // Fallback to actual target geometry if no base geometry was created
+                if (!baseGeometry && targetObject?.geometry && targetObject.geometry.isBufferGeometry) {
                     const edgesGeometry = new this.THREE.EdgesGeometry(targetObject.geometry);
                     this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
-                    // Do not dispose edgesGeometry here; it will be disposed when clearing wireframe
                 }
 
                 if (!this.targetWireframe) {
@@ -4425,6 +4332,39 @@ export class TargetComputerManager {
      */
     isCurrentTargetVirtual() {
         return this.currentTarget && this.currentTarget.isVirtual;
+    }
+
+    /**
+     * Get wireframe configuration for an object type using centralized data
+     * @param {string} objectType - The object type to get wireframe config for
+     * @returns {Object} Wireframe configuration with geometry and description
+     */
+    getWireframeConfig(objectType) {
+        return getWireframeType(objectType);
+    }
+
+    /**
+     * Create geometry from centralized wireframe configuration
+     * @param {string} geometryType - The geometry type from WIREFRAME_TYPES
+     * @param {number} radius - The radius/size of the geometry
+     * @returns {THREE.Geometry|null} The created geometry or null if not supported
+     */
+    createGeometryFromConfig(geometryType, radius) {
+
+        switch (geometryType) {
+            case 'icosahedron':
+                return new this.THREE.IcosahedronGeometry(radius, 0);
+
+            case 'octahedron':
+                return new this.THREE.OctahedronGeometry(radius, 0);
+
+            case 'sphere':
+                return new this.THREE.SphereGeometry(radius * 0.8, 8, 6);
+
+            default:
+                console.warn('Unknown geometry type:', geometryType);
+                return null;
+        }
     }
 
     /**

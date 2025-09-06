@@ -1,3 +1,5 @@
+import { getWireframeType } from '../constants/WireframeTypes.js';
+
 /**
  * Star Charts and Target Computer Integration
  * ===========================================
@@ -21,7 +23,7 @@ export class StarChartsTargetComputerIntegration {
         // Integration state
         this.isActive = false;
         this.lastSyncTime = 0;
-        this.syncInterval = 5000; // Sync every 5 seconds (less aggressive)
+        this.syncInterval = 10000; // Sync every 10 seconds (reduced frequency)
         this.syncIntervalId = null;
         this.pauseSync = false; // Flag to pause sync during manual target selection
 
@@ -66,13 +68,13 @@ export class StarChartsTargetComputerIntegration {
     }
 
     /**
-     * Start real-time synchronization
+     * Start simplified synchronization - only essential functions
      */
     startSynchronization() {
         this.syncIntervalId = setInterval(() => {
-            this.syncTargetData();
-            this.updateEnhancedTargets();
-            this.hydrateMissingObjects();
+            this.syncTargetData(); // Ensure discovered objects are available as targets
+            this.hydrateMissingObjects(); // Attach Three.js objects for wireframes
+            // Removed updateEnhancedTargets() - metadata enhancement not critical
         }, this.syncInterval);
     }
 
@@ -334,14 +336,33 @@ export class StarChartsTargetComputerIntegration {
     addTargetToTargetComputer(targetData) {
         if (!this.targetComputer || !targetData) return;
 
+        // Debug logging to show incoming targetData.type
+        console.log('🎯 addTargetToTargetComputer - incoming targetData:', targetData);
+        console.log('🎯 addTargetToTargetComputer - targetData.type:', targetData.type);
+
         // Normalize ID to uppercase to match Star Charts database format
         const normalizedId = targetData.id.replace(/^a0_/i, 'A0_');
+
+        // Use centralized wireframe type mapping - single source of truth
+        const wireframeConfig = this.getWireframeType(targetData.type);
+        let normalizedType = targetData.type;
+        let isSpaceStation = false;
+
+
+        // Apply centralized type normalization if needed
+        if (wireframeConfig.geometry === 'torus') {
+            // Space stations need special handling for backward compatibility
+            normalizedType = 'station';
+            isSpaceStation = true;
+        }
+
 
         // Create target data object for Target Computer
         const targetDataForTC = {
             id: normalizedId,
             name: targetData.name,
-            type: targetData.type,
+            type: normalizedType,
+            isSpaceStation: isSpaceStation,
             discovered: true,
             fromStarCharts: true
         };
@@ -636,6 +657,15 @@ export class StarChartsTargetComputerIntegration {
         this.enhancedTargets.clear();
         this.discoveryCallbacks.length = 0;
         console.log('🧹 Star Charts ↔ Target Computer Integration cleaned up');
+    }
+
+    /**
+     * Get wireframe configuration for an object type using centralized data
+     * @param {string} objectType - The object type to get wireframe config for
+     * @returns {Object} Wireframe configuration with geometry and description
+     */
+    getWireframeType(objectType) {
+        return getWireframeType(objectType);
     }
 }
 

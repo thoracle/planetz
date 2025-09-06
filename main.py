@@ -14,7 +14,7 @@ try:
     from backend import create_app
     
     # Create the Flask application
-    app = create_app('production')
+    app = create_app('development')
     
     # For Bluehost, we might need to handle different configurations
     if __name__ == '__main__':

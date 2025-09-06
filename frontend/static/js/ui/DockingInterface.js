@@ -6,6 +6,7 @@ import { StationRepairInterface } from './StationRepairInterface.js';
 import CardInventoryUI from './CardInventoryUI.js';
 import { MissionBoard } from './MissionBoard.js';
 import { CommodityExchange } from './CommodityExchange.js';
+import { getWireframeType } from '../constants/WireframeTypes.js';
 
 export class DockingInterface {
     constructor(starfieldManager) {
@@ -210,21 +211,18 @@ export class DockingInterface {
             animation: station-pulse 3s ease-in-out infinite;
         `;
         
-        // Create different wireframes based on object type (matching TargetComputerManager patterns)
-        switch (objectType?.toLowerCase()) {
-            case 'station':
-                this.createTorusWireframe(wireframe);
-                break;
-            case 'planet':
-                this.createPlanetWireframe(wireframe);
-                break;
-            case 'moon':
-                this.createMoonWireframe(wireframe);
-                break;
-            default:
-                // Default to torus for unknown types
-                this.createTorusWireframe(wireframe);
-                break;
+        // Use centralized wireframe type mapping - single source of truth
+        const wireframeConfig = getWireframeType(objectType);
+
+        if (wireframeConfig.geometry === 'torus') {
+            this.createTorusWireframe(wireframe);
+        } else if (wireframeConfig.geometry === 'icosahedron') {
+            this.createPlanetWireframe(wireframe);
+        } else if (wireframeConfig.geometry === 'octahedron') {
+            this.createMoonWireframe(wireframe);
+        } else {
+            // Default to torus for unknown types
+            this.createTorusWireframe(wireframe);
         }
 
         this.stationVisualization.appendChild(wireframe);
@@ -885,27 +883,25 @@ export class DockingInterface {
             }
         }
         
-        switch (objectType?.toLowerCase()) {
-            case 'station':
-                // Torus ring for stations (same as target computer)
-                const ringR = Math.max(radius * 0.8, 1.0);
-                const ringTube = Math.max(radius * 0.25, 0.3);
-                baseGeometry = new this.THREE.TorusGeometry(ringR, ringTube, 8, 16);
-                break;
-            case 'planet':
-                // Icosahedron for planets (same as target computer)
-                baseGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
-                break;
-            case 'moon':
-                // Octahedron for moons (same as target computer)
-                baseGeometry = new this.THREE.OctahedronGeometry(radius, 0);
-                break;
-            default:
-                // Default to torus for unknown types
-                const defaultRingR = Math.max(radius * 0.8, 1.0);
-                const defaultRingTube = Math.max(radius * 0.25, 0.3);
-                baseGeometry = new this.THREE.TorusGeometry(defaultRingR, defaultRingTube, 8, 16);
-                break;
+        // Use centralized wireframe type mapping - single source of truth
+        const wireframeConfig = getWireframeType(objectType);
+
+        if (wireframeConfig.geometry === 'torus') {
+            // Torus ring for space stations
+            const ringR = Math.max(radius * 0.8, 1.0);
+            const ringTube = Math.max(radius * 0.25, 0.3);
+            baseGeometry = new this.THREE.TorusGeometry(ringR, ringTube, 8, 16);
+        } else if (wireframeConfig.geometry === 'icosahedron') {
+            // Icosahedron for planets
+            baseGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
+        } else if (wireframeConfig.geometry === 'octahedron') {
+            // Octahedron for moons
+            baseGeometry = new this.THREE.OctahedronGeometry(radius, 0);
+        } else {
+            // Default to torus for unknown types (fallback)
+            const defaultRingR = Math.max(radius * 0.8, 1.0);
+            const defaultRingTube = Math.max(radius * 0.25, 0.3);
+            baseGeometry = new this.THREE.TorusGeometry(defaultRingR, defaultRingTube, 8, 16);
         }
         
         if (baseGeometry) {
