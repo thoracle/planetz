@@ -88,21 +88,39 @@ open http://127.0.0.1:5001
 ## 🎮 Essential Controls & Features
 
 ### **Combat System**
-- **Tab**: Cycle targets | **Q**: Create target dummies | **Space**: Fire weapons
-- **Z**: Previous weapon | **X**: Next weapon
+- **Tab**: Cycle targets (Shift+Tab for previous) | **Q**: Create target dummies | **Space**: Fire weapons
+- **Z**: Previous sub-system target | **X**: Next sub-system target
+- **,**: Previous weapon | **.**: Next weapon | **/**: Toggle autofire
 - **Beam weapons**: Instant hit with sub-system targeting (+30% damage)
 - **Projectiles**: Physics-based flight with random subsystem damage
 
 ### **Navigation & UI**
 - **R**: Subspace Radio | **N**: Communication HUD | **M**: Mission Status | **H**: Help screen
-- **L**: Long Range Scanner | **G**: Galactic Chart | **F**: Fore View | **A**: Aft View | **D**: Damage Control
+- **L**: Long Range Scanner | **G**: Galactic Chart | **C**: Star Charts | **F**: Fore View | **A**: Aft View
+- **D**: Damage Control | **I**: Intel Display (requires target computer + scanner)
+- **S**: Shield Control | **T**: Toggle Target Computer
 - **Docking**: Automatic when approaching stations
 
-### **Speed Controls**
-- **0-9**: Set impulse speed | **+ / =**: Increase speed | **- / _**: Decrease speed | **\**: Emergency stop
+### **Movement Controls**
+- **0-9**: Set impulse speed | **\**: Emergency stop (full stop)
+- **← ↑ ↓ →**: Attitude control (ship rotation)
+
+### **Proximity Detector (Radar)**
+- **P**: Toggle proximity detector | **+ / =**: Zoom in | **- / _**: Zoom out | **\**: Toggle 3D/Top-down view
+
+### **Advanced Operations**
+- **Q**: Create training targets | **Ctrl+Shift+B**: Emergency repair all systems
+
+### **Developer Controls**
+- **Ctrl+U**: Debug mode (FPS stats, system info) | **Ctrl+O**: Weapon debug (hit detection spheres)
+- **Ctrl+E**: Edit mode (development) | **Ctrl+W**: Warp control mode
 
 ### **AI Debug Controls** (Mac: Cmd+Shift+[Key])
-- **A**: Toggle AI debug
+- **A**: Toggle AI debug | **E**: Force all AIs to engage | **I**: Force all AIs to idle
+- **S**: Show AI statistics | **F**: Force all AIs to flee | **V**: Create V-Formation
+- **C**: Create Column formation | **L**: Create Line Abreast formation | **B**: Show flocking statistics
+- **T**: Show combat statistics | **W**: Show weapon targeting debug | **X**: Force AIs to target player
+- **P**: Show performance statistics | **D**: Toggle debug visualization
 
 
 

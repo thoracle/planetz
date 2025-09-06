@@ -50,7 +50,7 @@ graph TD
     SCM --> SCDS
     SCM --> SCFOG
 
-    SCDB --> UG
+    SCDB --> UG: "Object IDs and Positions"
     SCDS --> SCM
     SCFOG --> SCM
 
