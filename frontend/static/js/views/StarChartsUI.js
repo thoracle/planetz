@@ -921,8 +921,14 @@ export class StarChartsUI {
             // Fallback for infrastructure with 3D coordinates [x, y, z] (e.g., beacons JSON)
             if (Array.isArray(obj.position) && obj.position.length === 3) {
                 const x3 = obj.position[0];
+                const y3 = obj.position[1]; // Use Y coordinate for beacons (they're positioned vertically)
                 const z3 = obj.position[2];
-                const angleDeg = (Math.atan2(z3, x3) * 180) / Math.PI;
+
+                // For beacons, calculate angle using y,x (not z,x) since they're arranged in a circle
+                const angleDeg = isBeacon
+                    ? (Math.atan2(y3, x3) * 180) / Math.PI
+                    : (Math.atan2(z3, x3) * 180) / Math.PI;
+
                 const ring = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : snapToNearestRing(300);
                 const angleRad = angleDeg * Math.PI / 180;
                 const x = ring * Math.cos(angleRad);
