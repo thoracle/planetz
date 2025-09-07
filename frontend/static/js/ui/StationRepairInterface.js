@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Station Repair Interface - Comprehensive repair services at stations
  * Based on docs/spaceships_spec.md and docs/tech_design.md
@@ -62,7 +64,7 @@ export class StationRepairInterface {
         // Use unified credits system
         // this.playerCredits = 5000; // Removed - using unified system
         
-        console.log('Station Repair Interface initialized');
+debug('AI', 'Station Repair Interface initialized');
     }
     
     /**
@@ -71,7 +73,7 @@ export class StationRepairInterface {
      * @param {Object} dockedLocation - Location where ship is docked
      */
     show(ship, dockedLocation) {
-        console.log('StationRepairInterface.show() called with:', { ship, dockedLocation });
+debug('AI', 'StationRepairInterface.show() called with:', { ship, dockedLocation });
         
         this.ship = ship;
         this.dockedLocation = dockedLocation;
@@ -81,18 +83,18 @@ export class StationRepairInterface {
         // Expose this instance to global window for onclick handlers
         window.stationRepairInterface = this;
         
-        console.log('Creating interface...');
+debug('UI', 'Creating interface...');
         this.createInterface();
-        console.log('Interface created, updating...');
+debug('UI', 'Interface created, updating...');
         this.updateInterface();
-        console.log('Interface updated, showing...');
+debug('UI', 'Interface updated, showing...');
         
         // Show the interface
         if (this.container) {
             this.container.style.display = 'block';
         }
         
-        console.log('Station Repair Interface shown');
+debug('AI', 'Station Repair Interface shown');
     }
     
     /**
@@ -114,7 +116,7 @@ export class StationRepairInterface {
             this.container = null;
         }
         
-        console.log('Station Repair Interface hidden');
+debug('AI', 'Station Repair Interface hidden');
     }
     
     /**
@@ -760,7 +762,7 @@ export class StationRepairInterface {
         
         // Check if hull values are actually available
         if (maxHull <= 1 || (currentHull === 0 && maxHull === 1)) {
-            console.log('No hull plating system detected - cannot repair hull');
+debug('AI', 'No hull plating system detected - cannot repair hull');
             return;
         }
         
@@ -772,7 +774,7 @@ export class StationRepairInterface {
         const hullDamage = 100 - hullPercentage;
         
         if (hullDamage <= 0) {
-            console.log('Hull is already at full integrity');
+debug('UI', 'Hull is already at full integrity');
             return;
         }
         
@@ -780,7 +782,7 @@ export class StationRepairInterface {
         const cost = emergency ? Math.floor(baseCost * this.repairPricing.baseCosts.emergency) : baseCost;
         
         if (this.playerCredits < cost) {
-            console.log('Insufficient credits for hull repair');
+debug('AI', 'Insufficient credits for hull repair');
             return;
         }
         
@@ -792,10 +794,10 @@ export class StationRepairInterface {
         
         // Show repair progress
         if (emergency) {
-            console.log(`Emergency hull repair completed instantly for ${cost.toLocaleString()} credits`);
+debug('AI', `Emergency hull repair completed instantly for ${cost.toLocaleString()} credits`);
         } else {
             const repairTime = this.calculateHullRepairTime(hullDamage);
-            console.log(`Hull repair completed in ${repairTime} seconds for ${cost.toLocaleString()} credits`);
+debug('AI', `Hull repair completed in ${repairTime} seconds for ${cost.toLocaleString()} credits`);
             this.simulateRepairProgress('Hull', repairTime);
         }
         
@@ -808,7 +810,7 @@ export class StationRepairInterface {
      */
     repairSelectedSystems(emergency = false) {
         if (this.selectedSystems.size === 0) {
-            console.log('No systems selected for repair');
+debug('AI', 'No systems selected for repair');
             return;
         }
         
@@ -816,7 +818,7 @@ export class StationRepairInterface {
         const cost = emergency ? Math.floor(baseCost * this.repairPricing.baseCosts.emergency) : baseCost;
         
         if (this.playerCredits < cost) {
-            console.log('Insufficient credits for system repairs');
+debug('AI', 'Insufficient credits for system repairs');
             return;
         }
         
@@ -835,10 +837,10 @@ export class StationRepairInterface {
         
         // Show repair progress
         if (emergency) {
-            console.log(`Emergency repair completed instantly for ${repairedSystems.length} systems: ${repairedSystems.join(', ')}`);
+debug('AI', `Emergency repair completed instantly for ${repairedSystems.length} systems: ${repairedSystems.join(', ')}`);
         } else {
             const repairTime = this.calculateTotalRepairTime();
-            console.log(`System repairs completed in ${repairTime} seconds for ${repairedSystems.length} systems: ${repairedSystems.join(', ')}`);
+debug('AI', `System repairs completed in ${repairTime} seconds for ${repairedSystems.length} systems: ${repairedSystems.join(', ')}`);
             this.simulateRepairProgress(`${repairedSystems.length} Systems`, repairTime);
         }
         
@@ -854,7 +856,7 @@ export class StationRepairInterface {
      */
     rechargeEnergy(energyAmount = null, emergency = false) {
         if (!this.ship) {
-            console.log('No ship available for energy recharge');
+debug('AI', 'No ship available for energy recharge');
             return false;
         }
         
@@ -862,7 +864,7 @@ export class StationRepairInterface {
         const maxEnergy = this.ship.maxEnergy || 0;
         
         if (maxEnergy <= 0) {
-            console.log('No energy reactor system detected');
+debug('UI', 'No energy reactor system detected');
             return false;
         }
         
@@ -871,7 +873,7 @@ export class StationRepairInterface {
         const actualRechargeAmount = energyAmount !== null ? Math.min(energyAmount, energyDeficit) : energyDeficit;
         
         if (actualRechargeAmount <= 0) {
-            console.log('Energy is already at full capacity');
+debug('UI', 'Energy is already at full capacity');
             return false;
         }
         
@@ -880,7 +882,7 @@ export class StationRepairInterface {
         const cost = emergency ? Math.floor(baseCost * this.repairPricing.baseCosts.emergency) : baseCost;
         
         if (this.playerCredits < cost) {
-            console.log('Insufficient credits for energy recharge');
+debug('UI', 'Insufficient credits for energy recharge');
             return false;
         }
         
@@ -892,17 +894,17 @@ export class StationRepairInterface {
         
         // Show recharge progress
         if (emergency) {
-            console.log(`Emergency energy recharge completed instantly: +${actualRechargeAmount.toFixed(0)} energy for ${cost.toLocaleString()} credits`);
+debug('UI', `Emergency energy recharge completed instantly: +${actualRechargeAmount.toFixed(0)} energy for ${cost.toLocaleString()} credits`);
         } else {
             const rechargeTime = this.calculateEnergyRechargeTime(actualRechargeAmount);
-            console.log(`Energy recharge completed: +${actualRechargeAmount.toFixed(0)} energy in ${rechargeTime}s for ${cost.toLocaleString()} credits`);
+debug('UI', `Energy recharge completed: +${actualRechargeAmount.toFixed(0)} energy in ${rechargeTime}s for ${cost.toLocaleString()} credits`);
             this.simulateRepairProgress(`Energy Recharge (+${actualRechargeAmount.toFixed(0)})`, rechargeTime);
         }
         
         // Update interface
         this.updateInterface();
         
-        console.log(`Ship energy recharged: ${currentEnergy.toFixed(0)} → ${this.ship.currentEnergy.toFixed(0)} / ${maxEnergy.toFixed(0)}`);
+debug('UI', `Ship energy recharged: ${currentEnergy.toFixed(0)} → ${this.ship.currentEnergy.toFixed(0)} / ${maxEnergy.toFixed(0)}`);
         return true;
     }
 
@@ -914,7 +916,7 @@ export class StationRepairInterface {
     simulateRepairProgress(repairType, duration) {
         // This would show a progress bar in a real implementation
         // For now, just log the progress
-        console.log(`${repairType} repair in progress... (${duration}s)`);
+debug('AI', `${repairType} repair in progress... (${duration}s)`);
         
         // In a real implementation, this would:
         // 1. Show a progress bar

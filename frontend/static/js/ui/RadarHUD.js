@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * RadarHUD - 3D Proximity Detector Display Component
  * 
@@ -47,7 +49,7 @@ export class RadarHUD {
         this.basicSpecLogged = false;
         
         // Only log during initialization
-        console.log('🎯 RadarHUD: Initializing 3D radar system...');
+debug('UI', 'RadarHUD: Initializing 3D radar system...');
         this.initialize();
     }
     
@@ -61,7 +63,7 @@ export class RadarHUD {
         this.setupEventListeners();
         
         // Single initialization completion log
-        console.log('🎯 RadarHUD: Initialization complete');
+debug('UI', 'RadarHUD: Initialization complete');
     }
     
     /**
@@ -121,7 +123,7 @@ export class RadarHUD {
         this.radarContainer.appendChild(displayArea);
         
         this.container.appendChild(this.radarContainer);
-        console.log('🎯 RadarHUD: Container created');
+debug('AI', 'RadarHUD: Container created');
     }
     
     /**
@@ -146,7 +148,7 @@ export class RadarHUD {
         const displayArea = this.radarContainer.querySelector('.radar-display');
         displayArea.appendChild(this.radarCanvas);
         
-        console.log('🎯 RadarHUD: Canvas created');
+debug('UI', 'RadarHUD: Canvas created');
     }
     
     /**
@@ -170,7 +172,7 @@ export class RadarHUD {
         `;
         
         this.radarContainer.appendChild(this.radarInfo);
-        console.log('🎯 RadarHUD: Info display created');
+debug('UI', 'RadarHUD: Info display created');
     }
     
     /**
@@ -187,7 +189,7 @@ export class RadarHUD {
     toggle() {
         // Check if ship has radar cards before allowing toggle
         if (!this.canUseRadar()) {
-            console.log('🎯 ProximityDetector: Cannot toggle - no proximity detector cards installed');
+debug('UI', 'ProximityDetector: Cannot toggle - no proximity detector cards installed');
             return false;
         }
         
@@ -195,7 +197,7 @@ export class RadarHUD {
         this.radarContainer.style.display = this.isVisible ? 'block' : 'none';
         
         // Log toggle events (force log for important user actions)
-        console.log(`🎯 ProximityDetector: ${this.isVisible ? 'Enabled' : 'Disabled'}`);
+debug('UI', `🎯 ProximityDetector: ${this.isVisible ? 'Enabled' : 'Disabled'}`);
         
         if (this.isVisible) {
             // Update radar specifications based on installed cards
@@ -247,7 +249,7 @@ export class RadarHUD {
             
             // Only log once when falling back to basic specs
             if (!this.basicSpecLogged) {
-                console.log('🎯 ProximityDetector: Using basic detector specifications');
+debug('UI', 'ProximityDetector: Using basic detector specifications');
                 this.basicSpecLogged = true;
             }
         }
@@ -755,6 +757,6 @@ export class RadarHUD {
         }
         
         this.trackedObjects.clear();
-        console.log('🎯 RadarHUD: Destroyed');
+debug('UI', 'RadarHUD: Destroyed');
     }
 }

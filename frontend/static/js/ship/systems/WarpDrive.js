@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * Warp Drive System - Provides faster-than-light travel capability
  * Based on docs/spaceships_spec.md and docs/tech_design.md
@@ -59,7 +61,7 @@ export default class WarpDrive extends System {
             }
         }
         
-        console.log(`Warp Drive created (Level ${level}) - Max Warp Factor: ${this.getMaxWarpFactor()}`);
+debug('UTILITY', `Warp Drive created (Level ${level}) - Max Warp Factor: ${this.getMaxWarpFactor()}`);
     }
     
     /**
@@ -298,7 +300,7 @@ export default class WarpDrive extends System {
         this.isActive = false; // Set inactive when warping ends
         this.cooldownTime = this.getEffectiveCooldownTime();
         
-        console.log(`Warp deactivated - Cooldown: ${this.cooldownTime}ms`);
+debug('UTILITY', `Warp deactivated - Cooldown: ${this.cooldownTime}ms`);
         
         // Show feedback for cooldown
         if (this.feedback) {
@@ -375,10 +377,10 @@ export default class WarpDrive extends System {
         // Update system state based on health
         this.updateSystemState();
         
-        console.log(`${this.name} took ${damage.toFixed(1)} damage. Health: ${this.healthPercentage.toFixed(2)}`);
+debug('COMBAT', `${this.name} took ${damage.toFixed(1)} damage. Health: ${this.healthPercentage.toFixed(2)}`);
         
         if (this.healthPercentage === 0) {
-            console.log(`${this.name} has been completely destroyed but can still be repaired`);
+debug('AI', `${this.name} has been completely destroyed but can still be repaired`);
         }
     }
     
@@ -404,7 +406,7 @@ export default class WarpDrive extends System {
             case SYSTEM_STATES.CRITICAL:
                 // Critical warp drive has extended cooldown and reduced max warp factor
                 if (this.isWarping) {
-                    console.log('Critical warp drive damage - reducing warp factor');
+debug('P1', 'Critical warp drive damage - reducing warp factor');
                     const maxFactor = this.getMaxWarpFactor();
                     if (this.warpFactor > maxFactor) {
                         this.warpFactor = maxFactor;
@@ -414,7 +416,7 @@ export default class WarpDrive extends System {
             case SYSTEM_STATES.DISABLED:
                 // Warp drive is completely destroyed and cannot function
                 if (this.isWarping) {
-                    console.log('Warp drive destroyed - emergency warp termination!');
+debug('UTILITY', 'Warp drive destroyed - emergency warp termination!');
                     this.isWarping = false;
                     this.isActive = false; // Set inactive on destruction
                     this.cooldownTime = 0; // No cooldown when destroyed
@@ -423,7 +425,7 @@ export default class WarpDrive extends System {
                         this.onWarpEnd();
                     }
                 }
-                console.log('Warp drive completely destroyed - requires repair before use');
+debug('AI', 'Warp drive completely destroyed - requires repair before use');
                 break;
         }
     }

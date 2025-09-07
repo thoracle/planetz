@@ -33,7 +33,7 @@ class WarpDrive {
         // Initialize feedback system
         this.feedback = new WarpFeedback();
         
-        console.log('WarpDrive initialized:', {
+        debug('NAVIGATION', 'WarpDrive initialized with', {
             maxCooldownTime: this.maxCooldownTime,
             warpSequenceTime: this.warpSequenceTime,
             timestamp: new Date().toISOString()

@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * RadarSystem - Ship radar system with card-based progression
  * 
@@ -25,7 +27,7 @@ export default class RadarSystem {
         // Radar specifications based on level
         this.updateSpecifications();
         
-        console.log(`🎯 ProximityDetector Level ${this.level} created`);
+debug('UTILITY', `🎯 ProximityDetector Level ${this.level} created`);
     }
     
     /**
@@ -42,7 +44,7 @@ export default class RadarSystem {
         this.hasThreatAssessment = specifications.hasThreatAssessment;
         this.hasFormationDetection = specifications.hasFormationDetection;
         
-        console.log(`🎯 ProximityDetector Level ${this.level} specifications updated:`, specifications);
+debug('UTILITY', `🎯 ProximityDetector Level ${this.level} specifications updated:`, specifications);
     }
     
     /**
@@ -222,9 +224,9 @@ export default class RadarSystem {
         
         if (this.currentHealth <= 0) {
             this.isOperational = false;
-            console.log(`🎯 RadarSystem damaged beyond repair`);
+debug('COMBAT', `🎯 RadarSystem damaged beyond repair`);
         } else {
-            console.log(`🎯 RadarSystem damaged: ${Math.round(this.healthPercentage * 100)}% health remaining`);
+debug('COMBAT', `🎯 RadarSystem damaged: ${Math.round(this.healthPercentage * 100)}% health remaining`);
         }
     }
     
@@ -239,7 +241,7 @@ export default class RadarSystem {
             this.isOperational = true;
         }
         
-        console.log(`🎯 RadarSystem repaired: ${Math.round(this.healthPercentage * 100)}% health`);
+debug('AI', `🎯 RadarSystem repaired: ${Math.round(this.healthPercentage * 100)}% health`);
     }
     
     /**

@@ -1,4 +1,5 @@
 import System from '../System.js';
+import { debug } from '../../debug.js';
 
 /**
  * Shield Generator System - Provides armor/defensive capability
@@ -30,7 +31,7 @@ export default class ShieldGenerator extends System {
         this.armorRating = this.armorPerLevel * this.level;
         this.energyConsumption = this.baseEnergyConsumption * this.level;
         
-        console.log(`Shield Generator Level ${this.level}: +${this.armorRating} armor, ${this.energyConsumption}/sec energy`);
+debug('COMBAT', `Shield Generator Level ${this.level}: +${this.armorRating} armor, ${this.energyConsumption}/sec energy`);
     }
     
     /**
@@ -81,7 +82,7 @@ export default class ShieldGenerator extends System {
             if (!ship.consumeEnergy(energyNeeded)) {
                 // Not enough energy - deactivate
                 this.isActive = false;
-                console.log('Shield Generator deactivated - insufficient energy');
+debug('COMBAT', 'Shield Generator deactivated - insufficient energy');
             }
         }
     }

@@ -2,6 +2,7 @@ import { getShipConfig, validateShipConfig } from './ShipConfigs.js';
 import CardSystemIntegration from './CardSystemIntegration.js';
 import { CargoHoldManager } from './systems/CargoHoldManager.js';
 import * as THREE from 'three';
+import { debug } from '../debug.js';
 
 /**
  * Ship class - data-driven spaceship implementation
@@ -76,7 +77,7 @@ export default class Ship {
             // Initialize weapons system after all systems are loaded
             await this.initializeWeaponSystem();
             
-            console.log(`Ship ${this.shipType} fully initialized with card-based systems`);
+debug('UI', `Ship ${this.shipType} fully initialized with card-based systems`);
         }).catch(error => {
             console.error('Failed to initialize card data or create systems:', error);
         });
@@ -89,7 +90,7 @@ export default class Ship {
         // Initialize auto-repair system
         this.autoRepairSystem = null; // Will be initialized after systems are loaded
         
-        console.log(`Ship created: ${shipType} (simplified energy system)`, this.shipConfig);
+debug('UTILITY', `Ship created: ${shipType} (simplified energy system)`, this.shipConfig);
     }
     
     /**
@@ -105,7 +106,7 @@ export default class Ship {
         // Initialize default systems based on ship configuration
         this.initializeDefaultSystemInstances();
         
-        console.log('Default systems initialized for', this.shipType);
+debug('UTILITY', 'Default systems initialized for', this.shipType);
     }
     
     /**
@@ -225,7 +226,7 @@ export default class Ship {
             // Radar system is card-based only, no default system
             // It will be initialized when radar cards are installed
             
-            console.log(`Initialized ${this.systems.size} default systems for ${this.shipType}`);
+debug('UTILITY', `Initialized ${this.systems.size} default systems for ${this.shipType}`);
             
             // Initialize auto-repair system after systems are loaded
             const { default: AutoRepairSystem } = await import('./AutoRepairSystem.js');
@@ -349,7 +350,7 @@ export default class Ship {
             actualDamageToHull = shieldsSystem.absorbDamage(damage);
             
             if (actualDamageToHull < damage) {
-                console.log(`Shields absorbed ${(damage - actualDamageToHull).toFixed(1)} damage`);
+debug('COMBAT', `Shields absorbed ${(damage - actualDamageToHull).toFixed(1)} damage`);
             }
         }
         
@@ -364,7 +365,7 @@ export default class Ship {
         // Recalculate stats after damage
         this.calculateTotalStats();
         
-        console.log(`Ship took ${damage} ${damageType} damage. Hull damage: ${actualDamageToHull.toFixed(1)}. Hull: ${this.currentHull}/${this.maxHull}`);
+debug('COMBAT', `Ship took ${damage} ${damageType} damage. Hull damage: ${actualDamageToHull.toFixed(1)}. Hull: ${this.currentHull}/${this.maxHull}`);
     }
     
     /**
@@ -390,9 +391,9 @@ export default class Ship {
                 const systemDamage = damage * (0.1 + Math.random() * 0.1);
                 system.takeDamage(systemDamage);
                 
-                console.log(`System damage: ${randomSystem} took ${systemDamage.toFixed(1)} damage`);
+debug('COMBAT', `System damage: ${randomSystem} took ${systemDamage.toFixed(1)} damage`);
             } else {
-                console.log(`System damage: No operational systems available for random damage`);
+debug('COMBAT', `System damage: No operational systems available for random damage`);
             }
         }
     }
@@ -415,11 +416,11 @@ export default class Ship {
         system.takeDamage(damage);
         const healthAfter = system.healthPercentage;
         
-        console.log(`Sub-target damage: ${systemName} took ${damage.toFixed(1)} ${damageType} damage`);
-        console.log(`System health: ${(healthBefore * 100).toFixed(1)}% → ${(healthAfter * 100).toFixed(1)}%`);
+debug('TARGETING', `Sub-target damage: ${systemName} took ${damage.toFixed(1)} ${damageType} damage`);
+debug('UTILITY', `System health: ${(healthBefore * 100).toFixed(1)}% → ${(healthAfter * 100).toFixed(1)}%`);
         
         if (healthAfter === 0 && healthBefore > 0) {
-            console.log(`System ${systemName} DESTROYED!`);
+debug('UTILITY', `System ${systemName} DESTROYED!`);
         }
         
         // Recalculate stats after system damage
@@ -438,7 +439,7 @@ export default class Ship {
         if (system) {
             system.repair(repairAmount);
             this.calculateTotalStats(); // Recalculate after repair
-            console.log(`Repaired ${systemName} by ${(repairAmount * 100).toFixed(1)}%`);
+debug('AI', `Repaired ${systemName} by ${(repairAmount * 100).toFixed(1)}%`);
         }
     }
     
@@ -450,13 +451,13 @@ export default class Ship {
     addSystem(systemName, system) {
         // Check if system already exists (prevent duplicates)
         if (this.systems.has(systemName)) {
-            console.warn(`System ${systemName} already exists - skipping duplicate addition`);
+            debug('P1', `System ${systemName} already exists - skipping duplicate addition`);
             return false;
         }
         
         // Check slot capacity
         if (this.usedSlots + system.slotCost > this.totalSlots) {
-            console.warn(`Cannot add ${systemName}: insufficient slots (${system.slotCost} needed, ${this.availableSlots} available)`);
+            debug('P1', `Cannot add ${systemName}: insufficient slots (${system.slotCost} needed, ${this.availableSlots} available)`);
             return false;
         }
         
@@ -492,7 +493,7 @@ export default class Ship {
             // Recalculate ship stats after removing system
             this.calculateTotalStats();
             
-            console.log(`Removed system: ${systemName} (${this.usedSlots}/${this.totalSlots} slots used)`);
+debug('UTILITY', `Removed system: ${systemName} (${this.usedSlots}/${this.totalSlots} slots used)`);
             return true;
         }
         return false;
@@ -632,7 +633,7 @@ export default class Ship {
             return;
         }
         
-        console.log('Installing starter cards for new player...');
+debug('UI', 'Installing starter cards for new player...');
         
         // Wait a bit for card system to be ready
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -657,7 +658,7 @@ export default class Ship {
                     }
                     
                     this.starterCardSlots.set(slotId, card);
-                    console.log(`Installed starter card: ${card.name} (Level ${card.level}) to slot ${slotId}`);
+debug('UI', `Installed starter card: ${card.name} (Level ${card.level}) to slot ${slotId}`);
                     
                 } catch (error) {
                     console.error(`Failed to install starter card ${cardData.cardType}:`, error);
@@ -669,7 +670,7 @@ export default class Ship {
                 await this.cardSystemIntegration.initializeCardData();
             }
             
-            console.log('Starter cards installation complete');
+debug('UI', 'Starter cards installation complete');
             
         } catch (error) {
             console.error('Failed to install starter cards:', error);
@@ -729,7 +730,7 @@ export default class Ship {
         
         // Optional logging when explicitly requested
         if (enableLogging && !result.hasCards && result.missingCards.length > 0) {
-            console.log(`🔴 CARD CHECK FAILED: ${systemName} missing [${result.missingCards.join(', ')}]`);
+debug('P1', `🔴 CARD CHECK FAILED: ${systemName} missing [${result.missingCards.join(', ')}]`);
         }
         
         return result.hasCards;
@@ -849,7 +850,7 @@ export default class Ship {
      */
     async initializeWeaponSystem() {
         try {
-            console.log('🔫 Ship: Starting weapon system initialization...');
+debug('COMBAT', '🔫 Ship: Starting weapon system initialization...');
             
             // Import WeaponSyncManager
             const { default: WeaponSyncManager } = await import('./WeaponSyncManager.js');
@@ -863,11 +864,11 @@ export default class Ship {
             // Initialize weapons using unified approach
             this.weaponSystem = await this.weaponSyncManager.initializeWeapons();
             
-            console.log('🔫 Ship: Weapon system initialized successfully using WeaponSyncManager');
+debug('COMBAT', '🔫 Ship: Weapon system initialized successfully using WeaponSyncManager');
             
             // Notify StarfieldManager that weapon system is ready
             if (this.starfieldManager && typeof this.starfieldManager.onWeaponSystemReady === 'function') {
-                console.log('🔫 Ship: Calling onWeaponSystemReady callback...');
+debug('COMBAT', '🔫 Ship: Calling onWeaponSystemReady callback...');
                 this.starfieldManager.onWeaponSystemReady();
             } else {
                 console.warn('🔫 Ship: StarfieldManager callback not available:', {
@@ -911,7 +912,7 @@ export default class Ship {
             }
         }
         
-        console.log('StarfieldManager reference set for ship and all systems');
+debug('UTILITY', 'StarfieldManager reference set for ship and all systems');
     }
 
     /**

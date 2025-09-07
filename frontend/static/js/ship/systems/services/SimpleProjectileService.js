@@ -1,3 +1,5 @@
+import { debug } from '../../../debug.js';
+
 /**
  * SimpleProjectileService - Three.js-based projectile system
  * 
@@ -41,9 +43,9 @@ export class SimpleProjectile {
         this.calculateImpactPoint(config.origin, config.direction, config.maxRange);
         
         if (DEBUG_PROJECTILES) {
-            console.log(`🚀 ${this.weaponName}: Created simple projectile`);
-            console.log(`  - Flight time: ${this.flightTime}s`);
-            console.log(`  - Target: ${this.targetPosition ? 'Found' : 'None'}`);
+debug('COMBAT', `🚀 ${this.weaponName}: Created simple projectile`);
+debug('UTILITY', `  - Flight time: ${this.flightTime}s`);
+debug('TARGETING', `  - Target: ${this.targetPosition ? 'Found' : 'None'}`);
         }
     }
     
@@ -65,7 +67,7 @@ export class SimpleProjectile {
                 this.hitResult = hitResult; // Store full hit result for damage application
                 
                 if (DEBUG_PROJECTILES) {
-                    console.log(`🎯 ${this.weaponName}: Hit detected at (${this.targetPosition.x.toFixed(1)}, ${this.targetPosition.y.toFixed(1)}, ${this.targetPosition.z.toFixed(1)})`);
+debug('TARGETING', `🎯 ${this.weaponName}: Hit detected at (${this.targetPosition.x.toFixed(1)}, ${this.targetPosition.y.toFixed(1)}, ${this.targetPosition.z.toFixed(1)})`);
                 }
             } else {
                 // No hit - projectile travels max range
@@ -73,7 +75,7 @@ export class SimpleProjectile {
                 this.hitTarget = null;
                 
                 if (DEBUG_PROJECTILES) {
-                    console.log(`🚀 ${this.weaponName}: No hit - traveling to max range`);
+debug('COMBAT', `🚀 ${this.weaponName}: No hit - traveling to max range`);
                 }
             }
         } else {
@@ -118,7 +120,7 @@ export class SimpleProjectile {
         this.scene.add(this.mesh);
         
         if (DEBUG_PROJECTILES) {
-            console.log(`✨ ${this.weaponName}: Visual mesh created and added to scene`);
+debug('COMBAT', `✨ ${this.weaponName}: Visual mesh created and added to scene`);
         }
     }
     
@@ -170,7 +172,7 @@ export class SimpleProjectile {
         this.hasImpacted = true;
         
         if (DEBUG_PROJECTILES) {
-            console.log(`💥 ${this.weaponName}: Impact at (${this.targetPosition.x.toFixed(1)}, ${this.targetPosition.y.toFixed(1)}, ${this.targetPosition.z.toFixed(1)})`);
+debug('TARGETING', `💥 ${this.weaponName}: Impact at (${this.targetPosition.x.toFixed(1)}, ${this.targetPosition.y.toFixed(1)}, ${this.targetPosition.z.toFixed(1)})`);
         }
         
         // Apply damage if we hit a target
@@ -190,7 +192,7 @@ export class SimpleProjectile {
      */
     applyDamage() {
         if (!this.hitTarget) {
-            console.log(`💥 ${this.weaponName}: No hit target to damage`);
+debug('TARGETING', `💥 ${this.weaponName}: No hit target to damage`);
             return;
         }
         
@@ -198,24 +200,24 @@ export class SimpleProjectile {
         const targetShip = this.findTargetShip();
         if (targetShip) {
             if (DEBUG_PROJECTILES) {
-                console.log(`💥 ${this.weaponName}: Applying ${this.damage} damage to ${targetShip.shipName || 'target'}`);
+debug('TARGETING', `💥 ${this.weaponName}: Applying ${this.damage} damage to ${targetShip.shipName || 'target'}`);
             }
             
             // Apply damage to target using the same method as lasers
             if (targetShip.applyDamage) {
                 // MISSILES: Apply kinetic damage to random systems (unlike lasers which do precise targeting)
                 const damageResult = targetShip.applyDamage(this.damage, 'kinetic', null); // null = random system targeting for missiles
-                console.log(`✅ ${this.weaponName}: Used applyDamage() method (${this.damage} kinetic damage to random systems)`);
+debug('COMBAT', `✅ ${this.weaponName}: Used applyDamage() method (${this.damage} kinetic damage to random systems)`);
                 
                 // Check if target was destroyed and remove it from the game
                 if (damageResult && damageResult.isDestroyed) {
-                    console.log(`💀 ${this.weaponName}: Target destroyed! Calling removeDestroyedTarget()`);
+debug('TARGETING', `💀 ${this.weaponName}: Target destroyed! Calling removeDestroyedTarget()`);
                     
                     // Play success sound for target destruction (like lasers do)
                     if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
                         const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
                         effectsManager.playSuccessSound(null, 0.8); // 80% volume for target destruction
-                        console.log(`🎉 ${this.weaponName}: Playing target destruction success sound`);
+debug('TARGETING', `🎉 ${this.weaponName}: Playing target destruction success sound`);
                     }
                     
                     // Remove destroyed target from game via StarfieldManager
@@ -227,23 +229,23 @@ export class SimpleProjectile {
                 }
             } else if (targetShip.takeDamage) {
                 targetShip.takeDamage(this.damage, this.weaponName);
-                console.log(`✅ ${this.weaponName}: Used takeDamage() method`);
+debug('COMBAT', `✅ ${this.weaponName}: Used takeDamage() method`);
             } else if (targetShip.hull) {
                 const oldHull = targetShip.hull.current;
                 targetShip.hull.current = Math.max(0, targetShip.hull.current - this.damage);
-                console.log(`✅ ${this.weaponName}: Direct hull damage: ${oldHull} -> ${targetShip.hull.current}`);
+debug('TARGETING', `✅ ${this.weaponName}: Direct hull damage: ${oldHull} -> ${targetShip.hull.current}`);
             } else {
-                console.log(`❌ ${this.weaponName}: Target has no applyDamage(), takeDamage(), or hull property`);
-                console.log(`   Target object:`, targetShip);
-                console.log(`   Available methods:`, Object.getOwnPropertyNames(targetShip));
+debug('TARGETING', `❌ ${this.weaponName}: Target has no applyDamage(), takeDamage(), or hull property`);
+debug('TARGETING', `   Target object:`, targetShip);
+debug('TARGETING', `   Available methods:`, Object.getOwnPropertyNames(targetShip));
             }
             
             // Show damage feedback
             this.showDamageEffects(targetShip);
         } else {
-            console.log(`❌ ${this.weaponName}: Could not find target ship for damage application`);
-            console.log(`   Hit result:`, this.hitResult);
-            console.log(`   Hit target metadata:`, this.hitTarget);
+debug('TARGETING', `❌ ${this.weaponName}: Could not find target ship for damage application`);
+debug('UTILITY', `   Hit result:`, this.hitResult);
+debug('TARGETING', `   Hit target metadata:`, this.hitTarget);
         }
     }
     
@@ -251,16 +253,16 @@ export class SimpleProjectile {
      * Find the actual ship object from hit metadata
      */
     findTargetShip() {
-        console.log(`🔍 ${this.weaponName}: Finding target ship...`);
+debug('TARGETING', `🔍 ${this.weaponName}: Finding target ship...`);
         
         // FIXED: Use hit result object directly instead of distance-based search
         if (this.hitResult && this.hitResult.object) {
-            console.log(`   Hit result object:`, this.hitResult.object);
-            console.log(`   Hit result object userData:`, this.hitResult.object.userData);
+debug('UTILITY', `   Hit result object:`, this.hitResult.object);
+debug('UTILITY', `   Hit result object userData:`, this.hitResult.object.userData);
             
             // Check if the hit object has ship data
             if (this.hitResult.object.userData?.ship) {
-                console.log(`   ✅ Found ship in hit object userData`);
+debug('UTILITY', `   ✅ Found ship in hit object userData`);
                 return this.hitResult.object.userData.ship;
             }
             
@@ -268,48 +270,48 @@ export class SimpleProjectile {
             let parent = this.hitResult.object.parent;
             let parentLevel = 0;
             while (parent && parentLevel < 10) { // Prevent infinite loops
-                console.log(`   Checking parent level ${parentLevel}:`, parent);
-                console.log(`   Parent userData:`, parent.userData);
+debug('UTILITY', `   Checking parent level ${parentLevel}:`, parent);
+debug('UTILITY', `   Parent userData:`, parent.userData);
                 
                 if (parent.userData?.ship) {
-                    console.log(`   ✅ Found ship in parent level ${parentLevel}`);
+debug('UTILITY', `   ✅ Found ship in parent level ${parentLevel}`);
                     return parent.userData.ship;
                 }
                 parent = parent.parent;
                 parentLevel++;
             }
         } else {
-            console.log(`   No hit result or hit result object`);
+debug('UTILITY', `   No hit result or hit result object`);
         }
         
         // FALLBACK: Try to find target ship in dummy ships using distance
-        console.log(`   Trying fallback distance-based search...`);
+debug('UTILITY', `   Trying fallback distance-based search...`);
         if (window.starfieldManager?.dummyShipMeshes) {
-            console.log(`   Found ${window.starfieldManager.dummyShipMeshes.length} dummy ship meshes`);
+debug('UTILITY', `   Found ${window.starfieldManager.dummyShipMeshes.length} dummy ship meshes`);
             
             for (let i = 0; i < window.starfieldManager.dummyShipMeshes.length; i++) {
                 const dummyMesh = window.starfieldManager.dummyShipMeshes[i];
-                console.log(`   Checking dummy mesh ${i}:`, dummyMesh);
-                console.log(`   Dummy mesh userData:`, dummyMesh.userData);
+debug('UTILITY', `   Checking dummy mesh ${i}:`, dummyMesh);
+debug('UTILITY', `   Dummy mesh userData:`, dummyMesh.userData);
                 
                 if (dummyMesh.userData?.ship) {
                     const ship = dummyMesh.userData.ship;
                     const shipPos = dummyMesh.position;
                     const distance = shipPos.distanceTo(this.targetPosition);
                     
-                    console.log(`   Distance to dummy ${i}: ${distance.toFixed(1)}m`);
+debug('UTILITY', `   Distance to dummy ${i}: ${distance.toFixed(1)}m`);
                     
                     if (distance < 50) { // Within 50m of impact point
-                        console.log(`   ✅ Found ship via distance search (${distance.toFixed(1)}m)`);
+debug('UTILITY', `   ✅ Found ship via distance search (${distance.toFixed(1)}m)`);
                         return ship;
                     }
                 }
             }
         } else {
-            console.log(`   No dummy ship meshes available`);
+debug('AI', `   No dummy ship meshes available`);
         }
         
-        console.log(`   ❌ No target ship found`);
+debug('TARGETING', `   ❌ No target ship found`);
         return null;
     }
     
@@ -347,7 +349,7 @@ export class SimpleProjectile {
                 );
             } catch (e) {
                 if (DEBUG_PROJECTILES) {
-                    console.log(`⚠️ ${this.weaponName}: Could not create explosion effect:`, e);
+debug('COMBAT', `⚠️ ${this.weaponName}: Could not create explosion effect:`, e);
                 }
             }
         }
@@ -380,7 +382,7 @@ export class SimpleProjectileManager {
         this.activeProjectiles.push(projectile);
         
         if (DEBUG_PROJECTILES) {
-            console.log(`🎯 ProjectileManager: Added ${projectile.weaponName}, ${this.activeProjectiles.length} active`);
+debug('COMBAT', `🎯 ProjectileManager: Added ${projectile.weaponName}, ${this.activeProjectiles.length} active`);
         }
     }
     
@@ -419,5 +421,5 @@ if (typeof window !== 'undefined') {
     window.simpleProjectileManager = new SimpleProjectileManager();
     window.SimpleProjectile = SimpleProjectile;
     window.SimpleProjectileManager = SimpleProjectileManager;
-    console.log('🚀 SimpleProjectileService loaded - Three.js projectile system');
+debug('UTILITY', 'SimpleProjectileService loaded - Three.js projectile system');
 }

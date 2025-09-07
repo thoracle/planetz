@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * TargetComputerManager - Handles all target computer functionality
  * 
@@ -94,7 +96,7 @@ export class TargetComputerManager {
         // Warning throttling
         this.lastTargetNotFoundWarning = 0;
         
-        console.log('🎯 TargetComputerManager initialized');
+        // console.log('🎯 TargetComputerManager initialized');
     }
 
     /**
@@ -133,7 +135,7 @@ export class TargetComputerManager {
     initialize() {
         this.createTargetComputerHUD();
         this.createTargetReticle();
-        console.log('🎯 TargetComputerManager fully initialized');
+        // console.log('🎯 TargetComputerManager fully initialized');
     }
 
     /**
@@ -594,7 +596,7 @@ export class TargetComputerManager {
                 if (!this.preventTargetChanges) {
                     this.targetIndex = -1;
                     if (this.targetObjects.length > 0) {
-                        console.log(`🎯 Target Computer activation: Auto-selecting nearest target (no manual selection)`);
+                        // console.log(`🎯 Target Computer activation: Auto-selecting nearest target (no manual selection)`);
                         // Call cycleTarget directly and then sync with StarfieldManager
                         this.cycleTarget(); // Auto-select first target
                         
@@ -624,12 +626,12 @@ export class TargetComputerManager {
                         this.updateDirectionArrow();
 
                     } else {
-                        console.log('🎯 No targets available for initial selection');
+                        // console.log('🎯 No targets available for initial selection');
                         this.showNoTargetsDisplay(); // Show special "No targets in range" display
                     }
                 } else {
                     // Preserve existing selection without blocking future manual cycling
-                    console.log(`🎯 Target Computer activation: Preserving existing selection - ${this.currentTarget?.name || 'unknown'}`);
+                    // console.log(`🎯 Target Computer activation: Preserving existing selection - ${this.currentTarget?.name || 'unknown'}`);
                     this.updateTargetDisplay();
                 }
             }, 800); // Longer delay for power-up animation (0.8 seconds)
@@ -882,13 +884,13 @@ export class TargetComputerManager {
             
             // If we found targets, automatically select the nearest one
             if (this.targetObjects && this.targetObjects.length > 0) {
-                console.log(`🎯 Targets detected while monitoring - automatically acquiring nearest target`);
+                // console.log(`🎯 Targets detected while monitoring - automatically acquiring nearest target`);
                 this.stopNoTargetsMonitoring();
                 
                 // If no current target is set, automatically select the nearest one
                 // BUT: Don't override manual selections from Star Charts or other systems
                 if (!this.currentTarget) {
-                    console.log(`🎯 No current target - automatically selecting nearest target`);
+                    // console.log(`🎯 No current target - automatically selecting nearest target`);
                     this.targetIndex = -1;
                     this.cycleTarget(); // Auto-select nearest target
                     
@@ -896,7 +898,7 @@ export class TargetComputerManager {
                     this.playAudio('frontend/static/audio/blurb.mp3');
                 } else {
                     // Update target index to match the current target (scanner or normal)
-                    console.log(`🎯 Current target exists - updating target index for ${this.currentTarget.name}`);
+                    // console.log(`🎯 Current target exists - updating target index for ${this.currentTarget.name}`);
                     const currentIndex = this.targetObjects.findIndex(target => target.name === this.currentTarget.name);
                     if (currentIndex !== -1) {
                         this.targetIndex = currentIndex;
@@ -904,11 +906,11 @@ export class TargetComputerManager {
                     } else {
                         // Current target not found in list - select nearest available target unless user is actively holding a manual lock
                         if (!this.isManualSelection) {
-                            console.log(`🎯 Current target not found - selecting nearest available target`);
+                            debug('TARGETING', 'Current target not found - selecting nearest available target');
                             this.targetIndex = -1;
                             this.cycleTarget();
                         } else {
-                            console.log(`🎯 Manual selection preserved - not auto-cycling`);
+                            // console.log(`🎯 Manual selection preserved - not auto-cycling`);
                         }
                     }
                 }
@@ -951,7 +953,7 @@ export class TargetComputerManager {
      */
     startRangeMonitoring() {
         // Range monitoring disabled - targets persist until manually changed or sector warp
-        console.log(`🎯 Range monitoring disabled - targets will only clear on solar system warp`);
+        // console.log(`🎯 Range monitoring disabled - targets will only clear on solar system warp`);
         return;
     }
 
@@ -1068,12 +1070,12 @@ export class TargetComputerManager {
         
         // If we have a scanner target and the new list is very small, enhance it with cached targets
         if (this.isFromLongRangeScanner && this.targetObjects.length <= 2) {
-            console.log(`🎯 Scanner target active with small target list (${this.targetObjects.length}) - enhancing with cached targets for better cycling`);
+            // console.log(`🎯 Scanner target active with small target list (${this.targetObjects.length}) - enhancing with cached targets for better cycling`);
             
             const enhancedTargets = this.enhanceTargetListWithCache(this.targetObjects);
             if (enhancedTargets.length > this.targetObjects.length) {
                 this.targetObjects = enhancedTargets;
-                console.log(`🎯 Enhanced target list for cycling: ${this.targetObjects.length} targets available`);
+                // console.log(`🎯 Enhanced target list for cycling: ${this.targetObjects.length} targets available`);
             }
         }
     }
@@ -1124,7 +1126,7 @@ export class TargetComputerManager {
             
             // Include if within cycling range
             if (distance <= maxCyclingRange) {
-                console.log(`🎯 Adding cached target for cycling: ${name} (${distance.toFixed(1)}km)`);
+                // console.log(`🎯 Adding cached target for cycling: ${name} (${distance.toFixed(1)}km)`);
                 enhancedTargets.push({
                     ...cachedTarget,
                     distance: distance,
@@ -1188,12 +1190,12 @@ export class TargetComputerManager {
             
             // Debug logging for beacons
             if (entity.type === 'beacon' || entity.threeObject?.userData?.isBeacon) {
-                console.log(`🔍 Processing beacon entity:`, {
-                    entityType: entity.type,
-                    name: entity.name || entity.threeObject?.userData?.name,
-                    distance: this.calculateDistance(this.camera.position, entity.threeObject.position),
-                    userData: entity.threeObject?.userData
-                });
+                // console.log(`🔍 Processing beacon entity:`, {
+                //     entityType: entity.type,
+                //     name: entity.name || entity.threeObject?.userData?.name,
+                //     distance: this.calculateDistance(this.camera.position, entity.threeObject.position),
+                //     userData: entity.threeObject?.userData
+                // });
             }
             
             // Skip docking collision boxes - they are not targetable
@@ -1229,16 +1231,16 @@ export class TargetComputerManager {
                         physicsEntity: entity
                     };
                 } else if (ship && ship.currentHull <= 0.001) {
-                    console.log(`🗑️ Physics query filtering out destroyed ship: ${ship.shipName} (Hull: ${ship.currentHull})`);
+                    debug('TARGETING', `Physics query filtering out destroyed ship: ${ship.shipName} (Hull: ${ship.currentHull})`);
                 }
             } else if (entity.type === 'star' || entity.type === 'planet' || entity.type === 'moon' || entity.type === 'station' || entity.type === 'beacon') {
                 // Handle celestial bodies and stations
                 if (entity.type === 'beacon') {
-                    console.log(`🔍 Found beacon in main conditional:`, {
-                        entityName: entity.name,
-                        entityId: entity.id,
-                        threeObjectName: entity.threeObject?.userData?.name
-                    });
+                        // console.log(`🔍 Found beacon in main conditional:`, {
+                        //     entityName: entity.name,
+                        //     entityId: entity.id,
+                        //     threeObjectName: entity.threeObject?.userData?.name
+                        // });
                 }
                 const info = entity.type === 'beacon' ? {
                     name: entity.name || entity.threeObject?.userData?.name || 'Navigation Beacon',
@@ -1270,7 +1272,7 @@ export class TargetComputerManager {
                     
                     // Check if this is a navigation beacon from userData
                     if (userData.type === 'beacon' || userData.isBeacon) {
-                        console.log(`🔍 Found beacon in unknown entities section: ${userData.name || 'Navigation Beacon'}`);
+                        // console.log(`🔍 Found beacon in unknown entities section: ${userData.name || 'Navigation Beacon'}`);
                         targetData = {
                             name: userData.name || 'Navigation Beacon',
                             type: 'beacon',
@@ -1321,7 +1323,7 @@ export class TargetComputerManager {
             // Check if scanner target is already in the list
             const scannerTargetExists = allTargets.some(target => target.name === this.currentTarget.name);
             if (!scannerTargetExists) {
-                console.log(`🎯 Preserving scanner target: ${this.currentTarget.name} (out of normal range)`);
+                // console.log(`🎯 Preserving scanner target: ${this.currentTarget.name} (out of normal range)`);
                 allTargets.push(this.currentTarget);
             }
         }
@@ -1438,10 +1440,10 @@ export class TargetComputerManager {
             // Check if scanner target is already in the list
             const scannerTargetExists = allTargets.some(target => target.name === this.currentTarget.name);
             if (!scannerTargetExists) {
-                console.log(`🎯 Preserving scanner target: ${this.currentTarget.name} (out of normal range, index: ${this.targetIndex})`);
+                // console.log(`🎯 Preserving scanner target: ${this.currentTarget.name} (out of normal range, index: ${this.targetIndex})`);
                 allTargets.push(this.currentTarget);
             } else {
-                console.log(`🎯 Scanner target ${this.currentTarget.name} already exists in updated list`);
+                // console.log(`🎯 Scanner target ${this.currentTarget.name} already exists in updated list`);
             }
         }
         
@@ -1459,7 +1461,7 @@ export class TargetComputerManager {
             const newIndex = this.targetObjects.findIndex(target => target.name === this.currentTarget.name);
             if (newIndex !== -1) {
                 this.targetIndex = newIndex;
-                console.log(`🎯 Target index updated after sort: ${this.targetIndex} for ${this.currentTarget.name}`);
+                // console.log(`🎯 Target index updated after sort: ${this.targetIndex} for ${this.currentTarget.name}`);
             } else {
                 console.warn(`🎯 Could not find current target ${this.currentTarget.name} in sorted list - clearing target`);
                 this.clearCurrentTarget();
@@ -1555,7 +1557,7 @@ export class TargetComputerManager {
                         // console.log(`🎯 addNonPhysicsTargets: Dummy ship ${targetId} out of range: ${distance.toFixed(1)}km > ${maxRange}km`);
                     }
                 } else if (ship && ship.currentHull <= 0.001) {
-                    console.log(`🗑️ Fallback method filtering out destroyed ship: ${ship.shipName} (Hull: ${ship.currentHull})`);
+                    // console.log(`🗑️ Fallback method filtering out destroyed ship: ${ship.shipName} (Hull: ${ship.currentHull})`);
                 }
             });
         }
@@ -1584,12 +1586,7 @@ export class TargetComputerManager {
                             distance: distance,
                             ...info
                         };
-                        console.log(`🔍 TargetComputerManager.addNonPhysicsTargets: Adding celestial body:`, {
-                            name: targetData.name,
-                            type: targetData.type,
-                            faction: targetData.faction,
-                            diplomacy: targetData.diplomacy
-                        });
+                        debug('TARGETING', `TargetComputerManager.addNonPhysicsTargets: Adding celestial body: ${targetData.name} (${targetData.type}, ${targetData.faction}, ${targetData.diplomacy})`);
                         allTargets.push(targetData);
                     }
                 }
@@ -1628,7 +1625,7 @@ export class TargetComputerManager {
             const targetComputer = ship?.getSystem('target_computer');
             const maxRange = targetComputer?.range || 150;
             if (targetData.outOfRange && targetData.distance <= maxRange) {
-                console.log(`🎯 Target ${targetData.name} back in range (${targetData.distance.toFixed(1)}km) - clearing outOfRange flag`);
+                debug('TARGETING', `Target ${targetData.name} back in range (${targetData.distance.toFixed(1)}km) - clearing outOfRange flag`);
                 targetData.outOfRange = false;
             }
         });
@@ -1656,7 +1653,7 @@ export class TargetComputerManager {
             const targetComputer = ship?.getSystem('target_computer');
             const maxRange = targetComputer?.range || 150;
             if (targetData.outOfRange && targetData.distance <= maxRange) {
-                console.log(`🎯 Target ${targetData.name} back in range (${targetData.distance.toFixed(1)}km) - clearing outOfRange flag`);
+                debug('TARGETING', `Target ${targetData.name} back in range (${targetData.distance.toFixed(1)}km) - clearing outOfRange flag`);
                 targetData.outOfRange = false;
             }
         });
@@ -1675,15 +1672,15 @@ export class TargetComputerManager {
             return;
         }
 
-        console.log(`🎯 Setting target from long-range scanner: ${targetData.name || 'Unknown'}`);
-        console.log(`🎯 Scanner target details:`, {
-            name: targetData.name,
-            type: targetData.type,
-            hasObject: !!targetData.object,
-            currentTargetCount: this.targetObjects.length,
-            previousTarget: this.currentTarget?.name,
-            isFromLongRangeScanner: this.isFromLongRangeScanner
-        });
+        // console.log(`🎯 Setting target from long-range scanner: ${targetData.name || 'Unknown'}`);
+        // console.log(`🎯 Scanner target details:`, {
+        //     name: targetData.name,
+        //     type: targetData.type,
+        //     hasObject: !!targetData.object,
+        //     currentTargetCount: this.targetObjects.length,
+        //     previousTarget: this.currentTarget?.name,
+        //     isFromLongRangeScanner: this.isFromLongRangeScanner
+        // });
 
         // Set the target directly without cycling through the normal target list
         this.currentTarget = targetData;
@@ -1698,7 +1695,7 @@ export class TargetComputerManager {
         
         if (targetIndex !== -1) {
             this.targetIndex = targetIndex;
-            console.log(`🎯 Scanner target index set to ${targetIndex} (existing in list)`);
+            // console.log(`🎯 Scanner target index set to ${targetIndex} (existing in list)`);
             
             // Update the existing target data with scanner data to ensure consistency
             this.targetObjects[targetIndex] = { ...this.targetObjects[targetIndex], ...targetData };
@@ -1706,16 +1703,16 @@ export class TargetComputerManager {
             // If target is not in the current list, add it and set the index
             this.targetObjects.push(targetData);
             this.targetIndex = this.targetObjects.length - 1;
-            console.log(`🎯 Scanner target added to list at index ${this.targetIndex} (newly added)`);
+            // console.log(`🎯 Scanner target added to list at index ${this.targetIndex} (newly added)`);
         }
         
         // Force direction arrow update
         this.updateDirectionArrow();
         
         // Ensure target synchronization - force update target display immediately
-        console.log(`🎯 About to call updateTargetDisplay() for scanner target: ${targetData.name}`);
+        // console.log(`🎯 About to call updateTargetDisplay() for scanner target: ${targetData.name}`);
         this.updateTargetDisplay();
-        console.log(`🎯 updateTargetDisplay() completed for scanner target`);
+        // console.log(`🎯 updateTargetDisplay() completed for scanner target`);
 
         // Additional safeguard: verify the target was set correctly
         if (this.currentTarget?.name !== targetData.name) {
@@ -1733,7 +1730,7 @@ export class TargetComputerManager {
             this.viewManager.starfieldManager.targetIndex = this.targetIndex;
         }
         
-        console.log(`🎯 Scanner target set successfully - protected from auto-switching`);
+        // console.log(`🎯 Scanner target set successfully - protected from auto-switching`);
     }
 
     /**
@@ -1758,13 +1755,13 @@ export class TargetComputerManager {
         }
 
         if (!this.targetComputerEnabled || this.targetObjects.length === 0) {
-            console.log(`🎯 Cannot cycle targets - enabled: ${this.targetComputerEnabled}, targets: ${this.targetObjects.length}`);
+            // console.log(`🎯 Cannot cycle targets - enabled: ${this.targetComputerEnabled}, targets: ${this.targetObjects.length}`);
             return;
         }
 
         // Additional debugging for target cycling issues
         if (this.preventTargetChanges) {
-            console.log(`🎯 Target cycling blocked by preventTargetChanges flag`);
+            // console.log(`🎯 Target cycling blocked by preventTargetChanges flag`);
             return;
         }
         
@@ -1805,26 +1802,27 @@ export class TargetComputerManager {
                 // Cycling to a different target - clear scanner and manual selection flags
                 this.isFromLongRangeScanner = false;
                 this.isManualSelection = false;
-                console.log(`🎯 Cycling to different target - clearing scanner and manual flags`);
+                // console.log(`🎯 Cycling to different target - clearing scanner and manual flags`);
             } else if (previousTarget.name === targetData.name && (this.isFromLongRangeScanner || this.isManualSelection)) {
                 // Cycling back to the same scanner/manual target - preserve the flags
-                console.log(`🎯 Cycling back to same scanner/manual target - preserving flags`);
+                // console.log(`🎯 Cycling back to same scanner/manual target - preserving flags`);
             }
         } else {
             // Handle edge cases where previousTarget or targetData might be undefined
             this.isFromLongRangeScanner = false;
             this.isManualSelection = false;
-            console.log(`🎯 Target cycling debug - previousTarget: ${!!previousTarget}, targetData: ${!!targetData}, targetIndex: ${this.targetIndex}, targetObjects.length: ${this.targetObjects.length}`);
+            // console.log(`🎯 Target cycling debug - previousTarget: ${!!previousTarget}, targetData: ${!!targetData}, targetIndex: ${this.targetIndex}, targetObjects.length: ${this.targetObjects.length}`);
         }
         
         // Debug target name for troubleshooting
-        if (targetData && targetData.ship && targetData.ship.shipName) {
-            console.log(`Target set: ${targetData.ship.shipName}`);
-        } else if (targetData && targetData.name) {
-            console.log(`Target set: ${targetData.name}`);
-        } else {
-            console.log(`Target set: Unknown (missing name data)`, targetData);
-        }
+        // Debug target name for troubleshooting (commented out to reduce spam)
+        // if (targetData && targetData.ship && targetData.ship.shipName) {
+        //     console.log(`Target set: ${targetData.ship.shipName}`);
+        // } else if (targetData && targetData.name) {
+        //     console.log(`Target set: ${targetData.name}`);
+        // } else {
+        //     console.log(`Target set: Unknown (missing name data)`, targetData);
+        // }
         
         // Sync with ship's TargetComputer system for sub-targeting
         const ship = this.viewManager?.getShip();
@@ -2158,7 +2156,7 @@ export class TargetComputerManager {
         const currentTargetData = this.getCurrentTargetData();
         // Debug logging for target data issues
         if (!currentTargetData) {
-            console.log(`🎯 No currentTargetData for target: ${this.currentTarget?.name || 'unknown'}, targetIndex: ${this.targetIndex}, targetObjects.length: ${this.targetObjects.length}`);
+            debug('TARGETING', `No currentTargetData for target: ${this.currentTarget?.name || 'unknown'}, targetIndex: ${this.targetIndex}, targetObjects.length: ${this.targetObjects.length}`);
             return;
         }
         
@@ -2190,7 +2188,7 @@ export class TargetComputerManager {
         let info = null;
         let isEnemyShip = false;
         
-        if (window?.DEBUG_TCM) console.log(`🎯 DEBUG: About to get target info for currentTarget:`, this.currentTarget?.name, 'currentTargetData:', currentTargetData?.name);
+if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: About to get target info for currentTarget:`, this.currentTarget?.name, 'currentTargetData:', currentTargetData?.name);
         
         // First, try to get enhanced target info from the ship's TargetComputer system
         const ship = this.viewManager?.getShip();
@@ -2225,7 +2223,7 @@ export class TargetComputerManager {
             isEnemyShip = diplomacy === 'enemy';
         }
         
-        if (window?.DEBUG_TCM) console.log(`🎯 DEBUG: Final info object:`, info);
+if (window?.DEBUG_TCM) debug('INSPECTION', `🎯 DEBUG: Final info object:`, info);
         
         // Update HUD border color based on diplomacy using consolidated logic
         const diplomacy = this.getTargetDiplomacy(currentTargetData);
@@ -2265,7 +2263,7 @@ export class TargetComputerManager {
             
             // Only log for target dummies to debug the sub-targeting issue
             if (currentTargetData.name && currentTargetData.name.includes('Target Dummy')) {
-                if (window?.DEBUG_TCM) console.log(`🎯 Sub-targeting check: isEnemyShip=${isEnemyShip}, currentTargetData.ship=${!!currentTargetData.ship}, isSpaceStation=${isSpaceStation}`);
+if (window?.DEBUG_TCM) debug('TARGETING', `🎯 Sub-targeting check: isEnemyShip=${isEnemyShip}, currentTargetData.ship=${!!currentTargetData.ship}, isSpaceStation=${isSpaceStation}`);
                 if (window?.DEBUG_TCM) console.log(`🎯 Sub-targeting DEBUG: currentTargetData:`, {
                     isShip: currentTargetData.isShip,
                     type: currentTargetData.type,
@@ -2354,7 +2352,7 @@ export class TargetComputerManager {
         
         // Clear outOfRange flag if target is back within normal range
         if (currentTargetData?.outOfRange && distance <= 150) {
-            console.log(`🎯 Target ${currentTargetData.name} back in range (${distance.toFixed(1)}km) - clearing outOfRange flag`);
+            debug('TARGETING', `Target ${currentTargetData.name} back in range (${distance.toFixed(1)}km) - clearing outOfRange flag`);
             currentTargetData.outOfRange = false;
             
             // Also clear the flag in the original target object in targetObjects array
@@ -2434,7 +2432,7 @@ export class TargetComputerManager {
         if (isEnemyShip && info?.shipType) {
             displayType = info.shipType;
         }
-        if (window?.DEBUG_TCM) console.log(`🎯 DEBUG: Setting targetInfoDisplay.innerHTML with name: "${displayName}", type: "${displayType}", distance: "${formattedDistance}"`);
+if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: Setting targetInfoDisplay.innerHTML with name: "${displayName}", type: "${displayType}", distance: "${formattedDistance}"`);
         this.targetInfoDisplay.innerHTML = `
             <div style="background-color: ${backgroundColor}; color: ${textColor}; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
                 <div style="font-weight: bold; font-size: 12px;">${displayName}</div>
@@ -2444,7 +2442,7 @@ export class TargetComputerManager {
             </div>
             ${subTargetHTML}
         `;
-        if (window?.DEBUG_TCM) console.log(`🎯 DEBUG: targetInfoDisplay.innerHTML set to:`, this.targetInfoDisplay.innerHTML.substring(0, 200) + '...');
+if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHTML set to:`, this.targetInfoDisplay.innerHTML.substring(0, 200) + '...');
 
 
         // Update status icons with diplomacy color
@@ -2488,7 +2486,7 @@ export class TargetComputerManager {
         // First, check if the current targetIndex is valid and matches currentTarget
         if (this.targetIndex >= 0 && this.targetIndex < this.targetObjects.length) {
             const targetData = this.targetObjects[this.targetIndex];
-            if (window?.DEBUG_TCM) console.log(`🔍 DEBUG: Checking targetIndex ${this.targetIndex}, targetData:`, targetData?.name || 'no name');
+if (window?.DEBUG_TCM) debug('TARGETING', `🔍 DEBUG: Checking targetIndex ${this.targetIndex}, targetData:`, targetData?.name || 'no name');
             if (targetData) {
                 // For targets from addNonPhysicsTargets, the Three.js object is in targetData.object
                 // For other targets, the targetData might be the object itself
@@ -2496,12 +2494,12 @@ export class TargetComputerManager {
                     targetData.object === this.currentTarget ||
                     (targetData.object && targetData.object.uuid === this.currentTarget?.uuid) ||
                     targetData.name === this.currentTarget?.name;
-                if (window?.DEBUG_TCM) console.log(`🔍 DEBUG: Target match check - matches: ${matches}, targetData.name: ${targetData.name}, currentTarget.name: ${this.currentTarget?.name}`);
+if (window?.DEBUG_TCM) debug('TARGETING', `🔍 DEBUG: Target match check - matches: ${matches}, targetData.name: ${targetData.name}, currentTarget.name: ${this.currentTarget?.name}`);
                 if (matches) {
-                    if (window?.DEBUG_TCM) console.log(`🔍 DEBUG: Found matching target, processing...`);
+if (window?.DEBUG_TCM) debug('TARGETING', `🔍 DEBUG: Found matching target, processing...`);
                     return this.processTargetData(targetData);
                 } else {
-                    if (window?.DEBUG_TCM) console.log(`🔍 DEBUG: Index mismatch detected - finding correct index...`);
+if (window?.DEBUG_TCM) debug('INSPECTION', `🔍 DEBUG: Index mismatch detected - finding correct index...`);
                     // Index mismatch detected - find correct index and fix it silently
                     const correctIndex = this.targetObjects.findIndex(target => 
                         target === this.currentTarget ||
@@ -2515,7 +2513,7 @@ export class TargetComputerManager {
                         return this.processTargetData(this.targetObjects[correctIndex]);
                     }
                     
-                    console.log(`🔍 getCurrentTargetData: Index ${this.targetIndex} target mismatch - targetData: ${targetData.name}, currentTarget: ${this.currentTarget?.name}, type: ${typeof this.currentTarget}`);
+debug('TARGETING', `🔍 getCurrentTargetData: Index ${this.targetIndex} target mismatch - targetData: ${targetData.name}, currentTarget: ${this.currentTarget?.name}, type: ${typeof this.currentTarget}`);
                 }
             }
         }
@@ -2536,11 +2534,11 @@ export class TargetComputerManager {
                         // Update the index to match the found target
                         this.targetIndex = i;
                         this.currentTarget = targetData.object || targetData; // Ensure we have the original object, not processed target data
-                        console.log(`🔧 Fixed target index mismatch: set to ${i} for target ${targetData.name} (${isExactMatch ? 'exact' : isObjectMatch ? 'object' : isUUIDMatch ? 'uuid' : isIdMatch ? 'ID' : 'name/type'})`);
+debug('TARGETING', `🔧 Fixed target index mismatch: set to ${i} for target ${targetData.name} (${isExactMatch ? 'exact' : isObjectMatch ? 'object' : isUUIDMatch ? 'uuid' : isIdMatch ? 'ID' : 'name/type'})`);
 
                         // Process and return the target data
                         const processedData = this.processTargetData(targetData);
-                        if (window?.DEBUG_TCM) console.log(`🔍 DEBUG: Returning processed data for ${targetData.name}:`, processedData);
+if (window?.DEBUG_TCM) debug('TARGETING', `🔍 DEBUG: Returning processed data for ${targetData.name}:`, processedData);
                         return processedData;
                     }
                 }
@@ -2551,24 +2549,24 @@ export class TargetComputerManager {
         // Don't spam the console - only log occasionally
         const now = Date.now();
         if (!this.lastTargetNotFoundWarning || (now - this.lastTargetNotFoundWarning) > 5000) { // Only warn every 5 seconds
-            console.log(`⚠️ Current target not found in target list - may have been destroyed or updated`);
+debug('TARGETING', `⚠️ Current target not found in target list - may have been destroyed or updated`);
             this.lastTargetNotFoundWarning = now;
         }
         
         // For scanner targets (including Star Charts), don't clear the target - return it directly
         if (this.isFromLongRangeScanner && this.currentTarget && this.currentTarget.name && this.currentTarget.type) {
-            console.log(`🎯 Using scanner target data directly: ${this.currentTarget.name}`);
+debug('TARGETING', `🎯 Using scanner target data directly: ${this.currentTarget.name}`);
             return this.processTargetData(this.currentTarget);
         }
         
         // For manual selections (including Star Charts), try to use the current target directly
         if (this.isManualSelection && this.currentTarget && this.currentTarget.name) {
-            console.log(`🎯 Using manual selection target data directly: ${this.currentTarget.name}`, this.currentTarget);
+debug('TARGETING', `🎯 Using manual selection target data directly: ${this.currentTarget.name}`, this.currentTarget);
             return this.processTargetData(this.currentTarget);
         }
         
         // Clear the invalid target to prevent repeated warnings (only for non-scanner/non-manual targets)
-        if (window?.DEBUG_TCM) console.log(`🔍 DEBUG: getCurrentTargetData() - clearing invalid target and returning null`);
+if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearing invalid target and returning null`);
         this.clearCurrentTarget();
         return null;
     }
@@ -2637,7 +2635,7 @@ export class TargetComputerManager {
             } else if (targetData.name && targetData.name !== 'Unknown') {
                 // For targets with valid names (like from Star Charts) but no type, 
                 // use the target data directly and avoid falling back to Sol
-                console.log(`🎯 Processing target with name but no type: ${targetData.name}`);
+debug('TARGETING', `🎯 Processing target with name but no type: ${targetData.name}`);
                 return {
                     object: this.currentTarget,
                     name: targetData.name,
@@ -2652,7 +2650,7 @@ export class TargetComputerManager {
                 };
             } else {
                 // Fallback to getCelestialBodyInfo only if we have no useful target data
-                console.log(`🎯 Falling back to getCelestialBodyInfo for target:`, targetData);
+debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targetData);
                 const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
                 return {
                     object: this.currentTarget,
@@ -2904,7 +2902,7 @@ export class TargetComputerManager {
         
         // Clear outOfRange flag if target is back within normal range
         if (targetData?.outOfRange && distance <= 150) {
-            console.log(`🎯 Target ${targetData.name} back in range (${distance.toFixed(1)}km) - clearing outOfRange flag`);
+            debug('TARGETING', `Target ${targetData.name} back in range (${distance.toFixed(1)}km) - clearing outOfRange flag`);
             targetData.outOfRange = false;
             
             // Also clear the flag in the original target object in targetObjects array
@@ -3342,7 +3340,7 @@ export class TargetComputerManager {
             return;
         }
 
-        console.log(`💥 removeDestroyedTarget called for: ${destroyedShip.shipName || 'unknown ship'}`);
+debug('TARGETING', `💥 removeDestroyedTarget called for: ${destroyedShip.shipName || 'unknown ship'}`);
 
         // Get ship systems for proper cleanup
         const ship = this.viewManager?.getShip();
@@ -3356,15 +3354,15 @@ export class TargetComputerManager {
 
         const anySystemTargeting = isCurrentTarget || isCurrentTargetData || isWeaponTarget || isTargetComputerTarget;
 
-        console.log(`🔍 Checking targeting systems for destroyed ship: ${destroyedShip.shipName}`);
-        console.log(`   • Current target: ${isCurrentTarget}`);
-        console.log(`   • Current target data: ${isCurrentTargetData}`);
-        console.log(`   • Weapon system target: ${isWeaponTarget}`);
-        console.log(`   • Target computer target: ${isTargetComputerTarget}`);
-        console.log(`   • Any system targeting: ${anySystemTargeting}`);
+debug('TARGETING', `🔍 Checking targeting systems for destroyed ship: ${destroyedShip.shipName}`);
+debug('TARGETING', `   • Current target: ${isCurrentTarget}`);
+debug('TARGETING', `   • Current target data: ${isCurrentTargetData}`);
+debug('TARGETING', `   • Weapon system target: ${isWeaponTarget}`);
+debug('TARGETING', `   • Target computer target: ${isTargetComputerTarget}`);
+debug('TARGETING', `   • Any system targeting: ${anySystemTargeting}`);
 
         if (anySystemTargeting) {
-            console.log('🗑️ Destroyed ship was targeted - performing full synchronization cleanup');
+debug('TARGETING', 'Destroyed ship was targeted - performing full synchronization cleanup');
 
             // Store the previous target index for smart target selection
             const previousTargetIndex = this.targetIndex;
@@ -3391,7 +3389,7 @@ export class TargetComputerManager {
 
             // Smart target selection after destruction
             if (this.targetObjects && this.targetObjects.length > 0) {
-                console.log(`🔄 Selecting new target from ${this.targetObjects.length} available targets`);
+debug('TARGETING', `🔄 Selecting new target from ${this.targetObjects.length} available targets`);
 
                 // Prevent outlines from appearing automatically after destruction
                 if (this.viewManager?.starfieldManager) {
@@ -3420,13 +3418,13 @@ export class TargetComputerManager {
                     this.updateTargetDisplay();
                     this.updateReticleTargetInfo();
                 } else {
-                    console.log('❌ Failed to select valid target after destruction');
+debug('P1', '❌ Failed to select valid target after destruction');
                     this.targetIndex = -1;
                 }
 
                 // console.log('🎯 Target selection complete - outline disabled until next manual cycle');
             } else {
-                console.log('📭 No targets remaining after destruction');
+debug('TARGETING', '📭 No targets remaining after destruction');
 
                 // CRITICAL: Force clear outline again when no targets remain
                 // console.log('🎯 Force-clearing outline - no targets remaining');
@@ -3438,13 +3436,13 @@ export class TargetComputerManager {
                 this.hideTargetReticle();
             }
         } else {
-            console.log('🔄 Destroyed ship was not currently targeted - performing standard list update');
+debug('TARGETING', '🔄 Destroyed ship was not currently targeted - performing standard list update');
             
             // Just update the target list without changing current target
             this.updateTargetList();
         }
 
-        console.log(`✅ removeDestroyedTarget complete for: ${destroyedShip.shipName || 'unknown ship'}`);
+debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.shipName || 'unknown ship'}`);
     }
 
     /**
@@ -3491,7 +3489,7 @@ export class TargetComputerManager {
         // Normalize A0_ prefix case to avoid casing mismatches
         const normalizedId = typeof objectId === 'string' ? objectId.replace(/^a0_/i, 'A0_') : objectId;
 
-        console.log(`🎯 Setting target by ID: ${normalizedId}, targetObjects.length: ${this.targetObjects.length}`);
+debug('TARGETING', `🎯 Setting target by ID: ${normalizedId}, targetObjects.length: ${this.targetObjects.length}`);
 
         for (let i = 0; i < this.targetObjects.length; i++) {
             const target = this.targetObjects[i];
@@ -3505,7 +3503,7 @@ export class TargetComputerManager {
 
             const matchesId = directIdMatch || (!directIdMatch && fuzzyMatch);
 
-            console.log(`🎯 Checking target ${i}: ${target.name} (id: ${target.id || 'n/a'}, userData.id: ${userDataId || 'n/a'}) - directMatch: ${!!directIdMatch}, fuzzyMatch: ${!!fuzzyMatch}`);
+debug('TARGETING', `🎯 Checking target ${i}: ${target.name} (id: ${target.id || 'n/a'}, userData.id: ${userDataId || 'n/a'}) - directMatch: ${!!directIdMatch}, fuzzyMatch: ${!!fuzzyMatch}`);
 
             if (matchesId) {
                 this.targetIndex = i;
@@ -3573,13 +3571,13 @@ export class TargetComputerManager {
                 this.updateTargetDisplay();
                 this.updateReticleTargetInfo();
 
-                console.log(`🎯 Star Charts: Target set to ${target.name} (ID: ${normalizedId}) at index ${i}`);
+debug('TARGETING', `🎯 Star Charts: Target set to ${target.name} (ID: ${normalizedId}) at index ${i}`);
                 return true;
             }
         }
 
         console.warn(`🎯 Target not found by ID: ${normalizedId}`);
-        console.log(`🎯 Available targets:`, this.targetObjects.map(t => `${t.name} (${t.id || t?.object?.userData?.id || 'no-id'})`));
+debug('TARGETING', `🎯 Available targets:`, this.targetObjects.map(t => `${t.name} (${t.id || t?.object?.userData?.id || 'no-id'})`));
         return false;
     }
 
@@ -3593,7 +3591,7 @@ export class TargetComputerManager {
             return false;
         }
 
-        console.log(`🎯 Setting target by name: ${objectName}`);
+debug('TARGETING', `🎯 Setting target by name: ${objectName}`);
 
         // Search through current target objects by name
         for (let i = 0; i < this.targetObjects.length; i++) {
@@ -3612,7 +3610,7 @@ export class TargetComputerManager {
                 this.updateTargetDisplay();
                 this.updateReticleTargetInfo();
                 
-                console.log(`🎯 Star Charts: Target set by name to ${target.name} at index ${i}`);
+debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at index ${i}`);
                 return true;
             }
         }
@@ -3626,7 +3624,7 @@ export class TargetComputerManager {
      * @param {string} waypointId - The ID of the waypoint
      */
     setVirtualTarget(waypointId) {
-        console.log(`🎯 Setting virtual target: ${waypointId}`);
+debug('TARGETING', `🎯 Setting virtual target: ${waypointId}`);
 
         // Create a virtual target object
         const virtualTarget = {
@@ -3650,7 +3648,7 @@ export class TargetComputerManager {
 
         this.currentTarget = virtualTarget;
         this.updateTargetDisplay();
-        console.log(`🎯 Virtual target set: ${waypointId}`);
+debug('TARGETING', `🎯 Virtual target set: ${waypointId}`);
         return true;
     }
 
@@ -4042,10 +4040,10 @@ export class TargetComputerManager {
                     this.updateTargetList();
                     // Only auto-select if no manual selection exists
                     if (!this.isManualSelection && !this.isFromLongRangeScanner) {
-                        console.log(`🎯 Sector change: Auto-selecting nearest target (no manual selection)`);
+debug('TARGETING', `🎯 Sector change: Auto-selecting nearest target (no manual selection)`);
                         this.cycleTarget(); // Auto-select nearest target
                     } else {
-                        console.log(`🎯 Sector change: Preserving existing manual selection`);
+debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
                     }
                 }, 100); // Small delay to ensure new system is fully generated
             }
@@ -4296,7 +4294,7 @@ export class TargetComputerManager {
         this.currentTarget = virtualTarget;
         this.updateTargetDisplay();
 
-        console.log(`🎯 Star Charts: Virtual target set to ${virtualTarget.name}`);
+debug('TARGETING', `🎯 Star Charts: Virtual target set to ${virtualTarget.name}`);
         return true;
     }
 
@@ -4329,7 +4327,7 @@ export class TargetComputerManager {
                 }
             }
 
-            console.log(`🎯 Star Charts: Removed virtual target ${waypointId}`);
+debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
             return true;
         }
 

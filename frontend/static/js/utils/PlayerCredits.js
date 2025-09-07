@@ -1,9 +1,11 @@
 /**
  * Unified Player Credits Manager
- * 
+ *
  * Centralizes all credit management across the game to ensure consistency
  * between missions, market, repair services, and ship upgrades.
  */
+
+import { debug } from '../debug.js';
 
 export class PlayerCredits {
     constructor() {
@@ -15,8 +17,8 @@ export class PlayerCredits {
         
         // Transaction history for debugging
         this.transactionHistory = [];
-        
-        console.log('💰 PlayerCredits: Initialized with', this.credits, 'credits');
+
+        debug('MONEY', 'PlayerCredits: Initialized with', this.credits, 'credits');
     }
     
     /**
@@ -37,8 +39,8 @@ export class PlayerCredits {
         
         this.logTransaction('SET', 0, this.credits, `Reset from ${oldCredits} to ${this.credits}`);
         this.updateDisplays();
-        
-        console.log(`💰 PlayerCredits: Set to ${this.credits} (was ${oldCredits})`);
+
+        debug('MONEY', `PlayerCredits: Set to ${this.credits} (was ${oldCredits})`);
     }
     
     /**
@@ -56,8 +58,8 @@ export class PlayerCredits {
         
         this.logTransaction('ADD', amount, this.credits, reason);
         this.updateDisplays();
-        
-        console.log(`💰 PlayerCredits: +${amount} credits (${reason}) - Total: ${this.credits}`);
+
+        debug('MONEY', `PlayerCredits: +${amount} credits (${reason}) - Total: ${this.credits}`);
         return true;
     }
     
@@ -72,7 +74,7 @@ export class PlayerCredits {
         if (amount <= 0) return false;
         
         if (this.credits < amount) {
-            console.warn(`💰 PlayerCredits: Insufficient funds - Need ${amount}, have ${this.credits}`);
+            debug('P1', `PlayerCredits: Insufficient funds - Need ${amount}, have ${this.credits}`);
             return false;
         }
         
@@ -81,8 +83,8 @@ export class PlayerCredits {
         
         this.logTransaction('SPEND', -amount, this.credits, reason);
         this.updateDisplays();
-        
-        console.log(`💰 PlayerCredits: -${amount} credits (${reason}) - Total: ${this.credits}`);
+
+        debug('MONEY', `PlayerCredits: -${amount} credits (${reason}) - Total: ${this.credits}`);
         return true;
     }
     
@@ -114,8 +116,8 @@ export class PlayerCredits {
         
         // Update immediately
         display.updateCallback(element, this.credits);
-        
-        console.log('💰 PlayerCredits: Registered display element');
+
+        debug('MONEY', 'PlayerCredits: Registered display element');
     }
     
     /**
@@ -143,7 +145,7 @@ export class PlayerCredits {
                     this.creditDisplays.delete(display);
                 }
             } catch (error) {
-                console.warn('💰 PlayerCredits: Error updating display:', error);
+                debug('P1', 'PlayerCredits: Error updating display:', error);
             }
         });
     }
@@ -187,7 +189,7 @@ export class PlayerCredits {
     reset() {
         this.setCredits(50000);
         this.transactionHistory = [];
-        console.log('💰 PlayerCredits: Reset to starting amount');
+        debug('MONEY', 'PlayerCredits: Reset to starting amount');
     }
     
     /**
@@ -218,7 +220,7 @@ export class PlayerCredits {
             this.credits = data.credits;
             this.transactionHistory = data.transactionHistory || [];
             this.updateDisplays();
-            console.log('💰 PlayerCredits: Loaded from save data -', this.credits, 'credits');
+            debug('MONEY', 'PlayerCredits: Loaded from save data -', this.credits, 'credits');
         }
     }
 }

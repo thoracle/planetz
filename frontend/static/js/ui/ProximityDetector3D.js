@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * ProximityDetector3D - 3D Perspective Proximity Detector Display
  * 
@@ -544,7 +546,7 @@ export class ProximityDetector3D {
             triangleSize = 0.25;
         }
         
-        console.log(`🔄 Creating player indicator with size: ${triangleSize} for ${this.viewMode} mode`);
+debug('UI', `🔄 Creating player indicator with size: ${triangleSize} for ${this.viewMode} mode`);
         
         // Create player indicator geometry based on view mode
         let playerGeometry;
@@ -612,7 +614,7 @@ export class ProximityDetector3D {
         
         // Only initialize if we don't already have accumulated rotation
         if (this.playerIndicatorAccumulatedRotation !== undefined) {
-            console.log(`🎯 Player indicator already has rotation: ${THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation).toFixed(1)}° - skipping initialization`);
+debug('UTILITY', `🎯 Player indicator already has rotation: ${THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation).toFixed(1)}° - skipping initialization`);
             return;
         }
         
@@ -645,11 +647,11 @@ export class ProximityDetector3D {
                 this.playerIndicator.quaternion.copy(yRotationQuaternion);
             }
             
-            console.log(`🎯 Player indicator initialized with rotation: ${THREE.MathUtils.radToDeg(playerRotation.y).toFixed(1)}°`);
+debug('UTILITY', `🎯 Player indicator initialized with rotation: ${THREE.MathUtils.radToDeg(playerRotation.y).toFixed(1)}°`);
         } else {
             // No rotation available, use default (pointing north)
             this.playerIndicatorAccumulatedRotation = 0;
-            console.log(`🎯 Player indicator initialized with default rotation (no ship rotation available)`);
+debug('AI', `🎯 Player indicator initialized with default rotation (no ship rotation available)`);
         }
     }
     
@@ -804,13 +806,13 @@ export class ProximityDetector3D {
             this.camera.top = viewSize;
             this.camera.bottom = -viewSize;
             this.camera.updateProjectionMatrix();
-            console.log(`📷 ORTHO CAMERA: viewSize=${viewSize}, range=${zoomLevel.range}km`);
+debug('UI', `📷 ORTHO CAMERA: viewSize=${viewSize}, range=${zoomLevel.range}km`);
         } else {
             // Update perspective camera position with new distance
             this.camera.position.set(0, this.config.cameraDistance, this.config.cameraDistance * 0.7);
             this.camera.lookAt(0, 0, 0);
             this.camera.updateProjectionMatrix();
-            console.log(`📷 CAMERA: Position Y=${this.config.cameraDistance.toFixed(2)}, Z=${(this.config.cameraDistance * 0.7).toFixed(2)}, Looking at (0,0,0)`);
+debug('UI', `📷 CAMERA: Position Y=${this.config.cameraDistance.toFixed(2)}, Z=${(this.config.cameraDistance * 0.7).toFixed(2)}, Looking at (0,0,0)`);
         }
         
         // Recreate grid with new spacing for current view mode
@@ -843,17 +845,17 @@ export class ProximityDetector3D {
         const radarSystem = ship.getSystem('radar');
         
         if (!radarSystem) {
-            console.log('🎯 ProximityDetector: No radar system found');
+debug('UI', 'ProximityDetector: No radar system found');
             return false;
         }
         
         // Check if the radar system can be activated
         if (!radarSystem.canActivate(ship)) {
-            console.log('🎯 ProximityDetector: Radar system cannot be activated:', radarSystem.isOperational() ? 'low energy' : 'damaged');
+debug('COMBAT', 'ProximityDetector: Radar system cannot be activated:', radarSystem.isOperational() ? 'low energy' : 'damaged');
             return false;
         }
         
-        console.log('🎯 ProximityDetector: Radar system available and operational');
+debug('AI', 'ProximityDetector: Radar system available and operational');
         return true;
     }
     
@@ -880,7 +882,7 @@ export class ProximityDetector3D {
             this.config.detectionRange = 10000;  // 10km basic range
             this.config.updateFrequency = 20;    // 20Hz basic update rate
             
-            console.log('🎯 ProximityDetector3D: Using basic detector specifications');
+debug('UI', 'ProximityDetector3D: Using basic detector specifications');
         }
     }
     
@@ -982,7 +984,7 @@ export class ProximityDetector3D {
      */
     debugRadarRotation() {
         if (!this.isVisible || !this.gridMesh) {
-            console.log('🧭 RADAR DEBUG: Radar not visible or grid not initialized');
+debug('INSPECTION', 'RADAR DEBUG: Radar not visible or grid not initialized');
             return;
         }
         
@@ -1003,15 +1005,15 @@ export class ProximityDetector3D {
             const expectedGridDegrees = THREE.MathUtils.radToDeg(-playerRotation.y - Math.PI / 2);
             const playerTriangleDegrees = this.playerIndicator ? THREE.MathUtils.radToDeg(this.playerIndicator.rotation.y) : 'N/A';
             
-            console.log('🧭 === RADAR ROTATION DEBUG ===');
-            console.log(`🧭 Player heading: ${playerDegrees.toFixed(1)}°`);
-            console.log(`🧭 Grid rotation: ${gridDegrees.toFixed(1)}° (expected: ${expectedGridDegrees.toFixed(1)}°)`);
-            console.log(`🔺 Player triangle: ${playerTriangleDegrees}°`);
-            console.log(`🧭 Grid tilt (X): ${THREE.MathUtils.radToDeg(this.gridMesh.rotation.x).toFixed(1)}° (should be ${this.config.gridTilt}°)`);
-            console.log(`🧭 Grid roll (Z): ${THREE.MathUtils.radToDeg(this.gridMesh.rotation.z).toFixed(1)}° (should be 0°)`);
-            console.log(`🔄 Note: Grid uses angle wrapping for smooth 360° rotation`);
+debug('INSPECTION', '=== RADAR ROTATION DEBUG ===');
+debug('UI', `🧭 Player heading: ${playerDegrees.toFixed(1)}°`);
+debug('UI', `🧭 Grid rotation: ${gridDegrees.toFixed(1)}° (expected: ${expectedGridDegrees.toFixed(1)}°)`);
+debug('UI', `🔺 Player triangle: ${playerTriangleDegrees}°`);
+debug('UI', `🧭 Grid tilt (X): ${THREE.MathUtils.radToDeg(this.gridMesh.rotation.x).toFixed(1)}° (should be ${this.config.gridTilt}°)`);
+debug('UI', `🧭 Grid roll (Z): ${THREE.MathUtils.radToDeg(this.gridMesh.rotation.z).toFixed(1)}° (should be 0°)`);
+debug('UI', `🔄 Note: Grid uses angle wrapping for smooth 360° rotation`);
         } else {
-            console.log('🧭 RADAR DEBUG: No player rotation available');
+debug('AI', 'RADAR DEBUG: No player rotation available');
         }
     }
     
@@ -1023,7 +1025,7 @@ export class ProximityDetector3D {
         
         this.viewMode = this.viewMode === '3D' ? 'topDown' : '3D';
         
-        console.log(`🔄 ProximityDetector: Switched to ${this.viewMode} view mode`);
+debug('UI', `🔄 ProximityDetector: Switched to ${this.viewMode} view mode`);
         
         // Update camera and grid for the new view mode
         this.updateViewMode();
@@ -1101,10 +1103,10 @@ export class ProximityDetector3D {
                 restoredRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
                 this.playerIndicator.quaternion.copy(restoredRotationQuaternion);
             }
-            console.log(`🔺 RESTORED: Player indicator rotation to ${(preservedAccumulatedRotation * 180 / Math.PI).toFixed(1)}°`);
+debug('UI', `🔺 RESTORED: Player indicator rotation to ${(preservedAccumulatedRotation * 180 / Math.PI).toFixed(1)}°`);
         } else {
             // No preserved rotation - initialize from current ship rotation
-            console.log(`🔺 No preserved rotation - initializing from current ship orientation`);
+debug('UTILITY', `🔺 No preserved rotation - initializing from current ship orientation`);
         }
     }
     
@@ -1119,7 +1121,7 @@ export class ProximityDetector3D {
         // Use a smaller scale factor to make objects more visible
         const viewSize = Math.min(currentZoom.range / 1000, 50); // Smaller view size, max 50 units
         
-        console.log(`🔄 Top-down camera setup: zoom range=${currentZoom.range}km, viewSize=${viewSize}`);
+debug('UI', `🔄 Top-down camera setup: zoom range=${currentZoom.range}km, viewSize=${viewSize}`);
         
         // Replace perspective camera with orthographic camera
         this.camera = new THREE.OrthographicCamera(
@@ -1133,7 +1135,7 @@ export class ProximityDetector3D {
         this.camera.lookAt(0, 0, 0);
         this.camera.updateProjectionMatrix();
         
-        console.log(`🔄 Top-down camera positioned at (0, 100, 0) with orthographic bounds: ${-viewSize} to ${viewSize}`);
+debug('UI', `🔄 Top-down camera positioned at (0, 100, 0) with orthographic bounds: ${-viewSize} to ${viewSize}`);
     }
     
     /**
@@ -1177,7 +1179,7 @@ export class ProximityDetector3D {
         const gridSpacing = viewHalfSize / 6; // More reasonable spacing for visibility
         const gridLines = Math.ceil((gridHalfSize * 2) / gridSpacing);
         
-        console.log(`🔄 Top-down grid: viewSize=${viewHalfSize}, gridSize=${gridHalfSize}, spacing=${gridSpacing}, lines=${gridLines}`);
+debug('UI', `🔄 Top-down grid: viewSize=${viewHalfSize}, gridSize=${gridHalfSize}, spacing=${gridSpacing}, lines=${gridLines}`);
         
         const gridGeometry = new THREE.BufferGeometry();
         const gridMaterial = new THREE.LineBasicMaterial({
@@ -1210,7 +1212,7 @@ export class ProximityDetector3D {
         this.gridMesh.rotation.y = 0; // No initial rotation
         this.gridMesh.rotation.z = 0; // No roll
         
-        console.log(`🔄 Top-down grid created with flat orientation`);
+debug('UI', `🔄 Top-down grid created with flat orientation`);
         
         this.scene.add(this.gridMesh);
     }
@@ -1386,11 +1388,11 @@ export class ProximityDetector3D {
                         isTargetDummy: true
                     });
                 } else {
-                    console.log(`🚫 DUMMY SHIP INVALID: Index ${index} - mesh:${!!mesh}, position:${!!mesh?.position}, userData.ship:${!!mesh?.userData?.ship}`);
+debug('UI', `🚫 DUMMY SHIP INVALID: Index ${index} - mesh:${!!mesh}, position:${!!mesh?.position}, userData.ship:${!!mesh?.userData?.ship}`);
                 }
             });
         } else {
-            console.log(`🚫 NO DUMMY SHIPS: dummyShipMeshes is ${this.starfieldManager.dummyShipMeshes}`);
+debug('UI', `🚫 NO DUMMY SHIPS: dummyShipMeshes is ${this.starfieldManager.dummyShipMeshes}`);
         }
         
         // Get real enemy ships if they exist
@@ -1487,16 +1489,16 @@ export class ProximityDetector3D {
         
         // DEBUG: Log coordinate mapping for targets near edge of detection range (24-26km)
         if (this.viewMode === 'topDown' && (obj.isTargetDummy || obj.type === 'enemy_ship') && distance >= 24 && distance <= 26) {
-            console.log(`🎯 EDGE DETECTION DEBUG for ${obj.name || obj.type}:`);
-            console.log(`  Type: ${obj.type}, isTargetDummy: ${obj.isTargetDummy}, isEnemyShip: ${obj.isEnemyShip}`);
-            console.log(`  World distance: ${distance.toFixed(1)}km`);
-            console.log(`  Player pos: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
-            console.log(`  Target pos: (${obj.mesh.position.x.toFixed(1)}, ${obj.mesh.position.y.toFixed(1)}, ${obj.mesh.position.z.toFixed(1)})`);
-            console.log(`  Relative pos: (${relativePos.x.toFixed(1)}, ${relativePos.y.toFixed(1)}, ${relativePos.z.toFixed(1)})`);
-            console.log(`  Detection range: ${(detectionRangeM/1000).toFixed(1)}km`);
-            console.log(`  Scale factor: ${worldToGridScaleFactor.toFixed(6)}`);
-            console.log(`  Grid pos: (${gridX.toFixed(3)}, ${gridZ.toFixed(3)})`);
-            console.log(`  Grid distance from center: ${Math.sqrt(gridX*gridX + gridZ*gridZ).toFixed(3)} units`);
+debug('INSPECTION', `🎯 EDGE DETECTION DEBUG for ${obj.name || obj.type}:`);
+debug('TARGETING', `  Type: ${obj.type}, isTargetDummy: ${obj.isTargetDummy}, isEnemyShip: ${obj.isEnemyShip}`);
+debug('UI', `  World distance: ${distance.toFixed(1)}km`);
+debug('UI', `  Player pos: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
+debug('TARGETING', `  Target pos: (${obj.mesh.position.x.toFixed(1)}, ${obj.mesh.position.y.toFixed(1)}, ${obj.mesh.position.z.toFixed(1)})`);
+debug('UI', `  Relative pos: (${relativePos.x.toFixed(1)}, ${relativePos.y.toFixed(1)}, ${relativePos.z.toFixed(1)})`);
+debug('UI', `  Detection range: ${(detectionRangeM/1000).toFixed(1)}km`);
+debug('UI', `  Scale factor: ${worldToGridScaleFactor.toFixed(6)}`);
+debug('UI', `  Grid pos: (${gridX.toFixed(3)}, ${gridZ.toFixed(3)})`);
+debug('UI', `  Grid distance from center: ${Math.sqrt(gridX*gridX + gridZ*gridZ).toFixed(3)} units`);
         }
         
         // Debug ALL detected objects to see what we're working with (DISABLED to reduce console spam)
@@ -1899,7 +1901,7 @@ export class ProximityDetector3D {
         }
         
         if (!playerRotation || !playerPosition) {
-            console.log('🎯 GRID ROTATION: No ship mesh or camera available for grid rotation');
+debug('AI', 'GRID ROTATION: No ship mesh or camera available for grid rotation');
             return;
         }
         
@@ -2045,7 +2047,7 @@ export class ProximityDetector3D {
                 // Debug player indicator position (heavily throttled to reduce spam)
                 this.playerPositionLogCount = (this.playerPositionLogCount || 0) + 1;
                 if (this.playerPositionLogCount % 600 === 0) { // Only log every 10 seconds
-                    console.log(`🎯 PLAYER INDICATOR: Position (${this.playerIndicator.position.x}, ${this.playerIndicator.position.y}, ${this.playerIndicator.position.z}) Visible: ${this.playerIndicator.visible}`);
+debug('UI', `🎯 PLAYER INDICATOR: Position (${this.playerIndicator.position.x}, ${this.playerIndicator.position.y}, ${this.playerIndicator.position.z}) Visible: ${this.playerIndicator.visible}`);
                 }
             } else {
                 // 3D mode: position based on grid level
@@ -2076,13 +2078,13 @@ export class ProximityDetector3D {
                     const offsetDeg = correctedRotationDeg - cameraRotationDeg;
                     const rotVel = this.starfieldManager?.rotationVelocity?.y || 0;
                     const driftDeg = THREE.MathUtils.radToDeg(accumulatedRotationDeg - cameraRotationDeg);
-                    console.log(`🎯 ROTATION SYNC DEBUG:`);
-                    console.log(`  Camera rotation: ${cameraRotationDeg.toFixed(1)}°`);
-                    console.log(`  Accumulated rotation: ${accumulatedRotationDeg.toFixed(1)}°`);
-                    console.log(`  Drift: ${driftDeg.toFixed(1)}° (accumulated - camera)`);
-                    console.log(`  Corrected rotation (blip): ${correctedRotationDeg.toFixed(1)}°`);
-                    console.log(`  Final offset: ${offsetDeg.toFixed(1)}°`);
-                    console.log(`  Rotation velocity: ${rotVel.toFixed(4)}`);
+debug('INSPECTION', `🎯 ROTATION SYNC DEBUG:`);
+debug('UI', `  Camera rotation: ${cameraRotationDeg.toFixed(1)}°`);
+debug('UI', `  Accumulated rotation: ${accumulatedRotationDeg.toFixed(1)}°`);
+debug('UI', `  Drift: ${driftDeg.toFixed(1)}° (accumulated - camera)`);
+debug('UI', `  Corrected rotation (blip): ${correctedRotationDeg.toFixed(1)}°`);
+debug('UI', `  Final offset: ${offsetDeg.toFixed(1)}°`);
+debug('UI', `  Rotation velocity: ${rotVel.toFixed(4)}`);
                     this.lastRotationDebugTime = Date.now();
                 }
                 

@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * Long Range Scanner System - Provides detailed space scanning capabilities
  * Based on docs/spaceships_spec.md and docs/tech_design.md
@@ -46,7 +48,7 @@ export default class LongRangeScannerSystem extends System {
         this.levelStats = this.initializeLevelStats();
         this.updateLevelStats();
         
-        console.log(`Long Range Scanner created (Level ${level}) - Range: ${this.getCurrentScanRange()}, Resolution: ${this.getCurrentResolution()}%`);
+debug('UTILITY', `Long Range Scanner created (Level ${level}) - Range: ${this.getCurrentScanRange()}, Resolution: ${this.getCurrentResolution()}%`);
     }
     
     /**
@@ -106,7 +108,7 @@ export default class LongRangeScannerSystem extends System {
         // Update current performance based on level and health
         this.updateCurrentStats();
         
-        console.log(`Long Range Scanner upgraded to Level ${this.level} - ${levelStats.scannerType}`);
+debug('UTILITY', `Long Range Scanner upgraded to Level ${this.level} - ${levelStats.scannerType}`);
     }
     
     /**
@@ -162,7 +164,7 @@ export default class LongRangeScannerSystem extends System {
         }
         
         if (this.isScanning) {
-            console.log('Scan already in progress');
+debug('UTILITY', 'Scan already in progress');
             return true;
         }
         
@@ -177,7 +179,7 @@ export default class LongRangeScannerSystem extends System {
         this.isActive = true; // Start consuming energy per second
         this.lastScanTime = Date.now();
         
-        console.log(`Long Range Scanner activated - Range: ${this.getCurrentScanRange().toFixed(0)}, Resolution: ${this.getCurrentResolution().toFixed(1)}%`);
+debug('UTILITY', `Long Range Scanner activated - Range: ${this.getCurrentScanRange().toFixed(0)}, Resolution: ${this.getCurrentResolution().toFixed(1)}%`);
         return true;
     }
     
@@ -187,7 +189,7 @@ export default class LongRangeScannerSystem extends System {
     stopScan() {
         this.isScanning = false;
         this.isActive = false; // Stop consuming energy per second
-        console.log('Long Range Scanner deactivated');
+debug('UTILITY', 'Long Range Scanner deactivated');
     }
     
     /**
@@ -271,12 +273,12 @@ export default class LongRangeScannerSystem extends System {
             case SYSTEM_STATES.CRITICAL:
                 // Critical scanner has fog of war and reduced range
                 this.fogOfWarEnabled = true;
-                console.log('Critical scanner damage - fog of war enabled, reduced scan clarity');
+debug('P1', 'Critical scanner damage - fog of war enabled, reduced scan clarity');
                 break;
             case SYSTEM_STATES.DISABLED:
                 // Disabled scanner cannot scan
                 this.stopScan();
-                console.log('Long Range Scanner disabled - no scanning capability!');
+debug('UTILITY', 'Long Range Scanner disabled - no scanning capability!');
                 break;
         }
         

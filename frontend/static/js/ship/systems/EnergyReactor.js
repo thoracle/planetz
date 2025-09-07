@@ -1,4 +1,5 @@
 import System from '../System.js';
+import { debug } from '../../debug.js';
 
 /**
  * Energy Reactor System - Provides energy capacity and recharge rate
@@ -31,7 +32,7 @@ export default class EnergyReactor extends System {
         this.energyCapacity = this.energyCapacityPerLevel * this.level;
         this.energyRechargeRate = this.energyRechargePerLevel * this.level;
         
-        console.log(`Energy Reactor Level ${this.level}: +${this.energyCapacity} energy, +${this.energyRechargeRate}/sec recharge`);
+debug('UTILITY', `Energy Reactor Level ${this.level}: +${this.energyCapacity} energy, +${this.energyRechargeRate}/sec recharge`);
     }
     
     /**

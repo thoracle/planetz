@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * StarChartsUI - User interface for the Star Charts discovery system
  * 
@@ -49,7 +51,7 @@ export class StarChartsUI {
         this.createInterface();
         this.setupEventListeners();
         
-        console.log('🗺️  StarChartsUI: Interface created');
+debug('UI', 'StarChartsUI: Interface created');
     }
     
     createInterface() {
@@ -138,14 +140,8 @@ export class StarChartsUI {
             }
         });
         
-        // Container click handling for debugging
-        this.container.addEventListener('click', (event) => {
-            console.log('🔥 CONTAINER CLICK DETECTED!', event.target);
-        });
-        
         // SVG click handling
         this.svg.addEventListener('click', (event) => {
-            console.log('🔥 SVG CLICK DETECTED!', event);
             this.handleMapClick(event);
         });
         
@@ -175,10 +171,10 @@ export class StarChartsUI {
         // Add small delay to prevent double-click interference (match LRS)
         setTimeout(() => {
             const clickedElement = document.elementFromPoint(event.clientX, event.clientY);
-            console.log(`🔍 Star Charts Click: element=${clickedElement?.tagName || 'null'}, classes=[${clickedElement?.className || 'none'}], zoomLevel=${this.currentZoomLevel}`);
+            // console.log(`🔍 Star Charts Click: element=${clickedElement?.tagName || 'null'}, classes=[${clickedElement?.className || 'none'}], zoomLevel=${this.currentZoomLevel}`);
             
             if (!clickedElement) {
-                console.log(`🔍 Star Charts: No element found at click position`);
+                // console.log(`🔍 Star Charts: No element found at click position`);
                 return;
             }
             
@@ -195,29 +191,29 @@ export class StarChartsUI {
                 clickedElement.hasAttribute('data-name') // Any element with targeting data
             );
             
-            console.log(`🔍 Star Charts: isInteractiveElement=${isInteractiveElement}`);
+            // console.log(`🔍 Star Charts: isInteractiveElement=${isInteractiveElement}`);
             
             if (isInteractiveElement) {
                 const objectId = clickedElement.getAttribute('data-object-id') || 
                                clickedElement.getAttribute('data-name');
-                console.log(`🔍 Star Charts: Found objectId=${objectId}`);
+                // console.log(`🔍 Star Charts: Found objectId=${objectId}`);
                 
                 if (objectId) {
                     const objectData = this.starChartsManager.getObjectData(objectId) || 
                                      this.findObjectByName(objectId);
-                    console.log(`🔍 Star Charts: Found objectData:`, objectData?.name || 'null');
+                    // console.log(`🔍 Star Charts: Found objectData:`, objectData?.name || 'null');
                     
                     if (objectData) {
-                        console.log(`🔍 Star Charts: Clicked interactive element, selecting object ${objectData.name}`);
+                        // console.log(`🔍 Star Charts: Clicked interactive element, selecting object ${objectData.name}`);
                         this.selectObject(objectData);
                     } else {
-                        console.log(`🔍 Star Charts: No object data found for ID: ${objectId}`);
+                        // console.log(`🔍 Star Charts: No object data found for ID: ${objectId}`);
                     }
                 } else {
-                    console.log(`🔍 Star Charts: Interactive element has no object ID`);
+                    // console.log(`🔍 Star Charts: Interactive element has no object ID`);
                 }
             } else {
-                console.log(`🔍 Star Charts: Clicked empty space, zooming out`);
+                // console.log(`🔍 Star Charts: Clicked empty space, zooming out`);
                 this.zoomOut();
             }
         }, 50); // Match LRS delay
@@ -318,7 +314,7 @@ export class StarChartsUI {
         // Prevent text selection during drag
         event.preventDefault();
         
-        console.log('🖱️ Star Charts: Started mouse drag');
+        // console.log('🖱️ Star Charts: Started mouse drag');
     }
     
     handleMouseDrag(event) {
@@ -341,7 +337,7 @@ export class StarChartsUI {
         // Re-render with new center
         this.setupCoordinateSystem();
         
-        console.log(`🖱️ Star Charts: Dragging to center (${this.currentCenter.x.toFixed(1)}, ${this.currentCenter.y.toFixed(1)})`);
+        // console.log(`🖱️ Star Charts: Dragging to center (${this.currentCenter.x.toFixed(1)}, ${this.currentCenter.y.toFixed(1)})`);
     }
     
     endMouseDrag(event) {
@@ -352,7 +348,7 @@ export class StarChartsUI {
         this.svg.style.cursor = 'default';
         this.mapContainer.classList.remove('dragging');
         
-        console.log('🖱️ Star Charts: Ended mouse drag');
+        // console.log('🖱️ Star Charts: Ended mouse drag');
     }
     
     startTouchDrag(event) {
@@ -370,7 +366,7 @@ export class StarChartsUI {
         this.panState.lastTouchCenter = { x: centerX, y: centerY };
         this.panState.startCenter = { ...this.currentCenter };
         
-        console.log('👆 Star Charts: Started two-finger drag');
+        // console.log('👆 Star Charts: Started two-finger drag');
     }
     
     handleTouchDrag(event) {
@@ -399,14 +395,14 @@ export class StarChartsUI {
         // Re-render with new center
         this.setupCoordinateSystem();
         
-        console.log(`👆 Star Charts: Touch dragging to center (${this.currentCenter.x.toFixed(1)}, ${this.currentCenter.y.toFixed(1)})`);
+        // console.log(`👆 Star Charts: Touch dragging to center (${this.currentCenter.x.toFixed(1)}, ${this.currentCenter.y.toFixed(1)})`);
     }
     
     endTouchDrag(event) {
         // End two-finger touch drag
         this.panState.isTouchDragging = false;
         
-        console.log('👆 Star Charts: Ended two-finger drag');
+        // console.log('👆 Star Charts: Ended two-finger drag');
     }
     
     screenDeltaToWorldDelta(screenDeltaX, screenDeltaY) {
@@ -454,7 +450,7 @@ export class StarChartsUI {
     selectObject(object) {
         // NEW BEHAVIOR: Always center and zoom in to object unless at max zoom (then only center)
         
-        console.log(`🔍 Star Charts: selectObject called - objectName: ${object.name}, currentZoom: ${this.currentZoomLevel}`);
+        // console.log(`🔍 Star Charts: selectObject called - objectName: ${object.name}, currentZoom: ${this.currentZoomLevel}`);
         
         this.lastClickedObject = object;
         
@@ -471,20 +467,20 @@ export class StarChartsUI {
         // Zoom in unless already at max zoom
         if (this.currentZoomLevel < this.maxZoomLevel) {
             this.currentZoomLevel++;
-            console.log(`🔍 Star Charts: Zoomed in to level ${this.currentZoomLevel}, centered on ${object.name} at (${this.currentCenter.x}, ${this.currentCenter.y})`);
+            // console.log(`🔍 Star Charts: Zoomed in to level ${this.currentZoomLevel}, centered on ${object.name} at (${this.currentCenter.x}, ${this.currentCenter.y})`);
         } else {
-            console.log(`🔍 Star Charts: At max zoom (${this.currentZoomLevel}), only centering on ${object.name} at (${this.currentCenter.x}, ${this.currentCenter.y})`);
+            // console.log(`🔍 Star Charts: At max zoom (${this.currentZoomLevel}), only centering on ${object.name} at (${this.currentCenter.x}, ${this.currentCenter.y})`);
         }
         
         // Integrate with Target Computer
-        console.log(`🎯 Star Charts: About to call selectObjectById for ${object.name} (${object.id})`);
+        // console.log(`🎯 Star Charts: About to call selectObjectById for ${object.name} (${object.id})`);
         const targetingSuccess = this.starChartsManager.selectObjectById(object.id);
-        console.log(`🎯 Star Charts: selectObjectById result: ${targetingSuccess} for ${object.name}`);
+        // console.log(`🎯 Star Charts: selectObjectById result: ${targetingSuccess} for ${object.name}`);
         
         if (targetingSuccess) {
-            console.log(`🎯 Star Charts: Successfully selected ${object.name} for targeting`);
+            // console.log(`🎯 Star Charts: Successfully selected ${object.name} for targeting`);
         } else {
-            console.log(`🎯 Star Charts: Failed to select ${object.name} for targeting`);
+debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
         }
         
         this.render();
@@ -492,7 +488,7 @@ export class StarChartsUI {
     
     zoomOut() {
         // NEW BEHAVIOR: Zoom out one level maintaining center on previous object or star
-        console.log(`🔍 Star Charts: Empty space clicked, zooming out from level ${this.currentZoomLevel}`);
+        // console.log(`🔍 Star Charts: Empty space clicked, zooming out from level ${this.currentZoomLevel}`);
         
         if (this.currentZoomLevel > 1) {
             // Step down zoom level by 1 (3→2→1)
@@ -510,15 +506,15 @@ export class StarChartsUI {
                     x: isNaN(pos.x) ? 0 : pos.x,
                     y: isNaN(pos.y) ? 0 : pos.y
                 };
-                console.log(`🔍 Star Charts: Zoomed out to level ${this.currentZoomLevel}, maintaining center on ${centerObject.name} at (${this.currentCenter.x}, ${this.currentCenter.y})`);
+                // console.log(`🔍 Star Charts: Zoomed out to level ${this.currentZoomLevel}, maintaining center on ${centerObject.name} at (${this.currentCenter.x}, ${this.currentCenter.y})`);
             } else {
                 // Fallback to origin if no object found
                 this.currentCenter = { x: 0, y: 0 };
-                console.log(`🔍 Star Charts: Zoomed out to level ${this.currentZoomLevel}, centered at origin (no object to maintain center on)`);
+                // console.log(`🔍 Star Charts: Zoomed out to level ${this.currentZoomLevel}, centered at origin (no object to maintain center on)`);
             }
         } else {
             // At minimum zoom level - don't zoom out further
-            console.log(`🔍 Star Charts: Already at minimum zoom level ${this.currentZoomLevel}, not zooming out further`);
+            // console.log(`🔍 Star Charts: Already at minimum zoom level ${this.currentZoomLevel}, not zooming out further`);
         }
         
         this.render();
@@ -699,12 +695,12 @@ export class StarChartsUI {
                     y: isNaN(starPos.y) ? 0 : starPos.y 
                 };
                 this.lastClickedObject = star; // Remember star as the initially selected object
-                console.log(`🔍 Star Charts: Opening at zoom level ${this.currentZoomLevel}, centered on star ${star.name} at (${this.currentCenter.x}, ${this.currentCenter.y})`);
+                // console.log(`🔍 Star Charts: Opening at zoom level ${this.currentZoomLevel}, centered on star ${star.name} at (${this.currentCenter.x}, ${this.currentCenter.y})`);
             } else {
                 // Fallback if no star found
                 this.currentCenter = { x: 0, y: 0 };
                 this.lastClickedObject = null;
-                console.log(`🔍 Star Charts: Opening at zoom level ${this.currentZoomLevel}, no star found - centered at origin`);
+                // console.log(`🔍 Star Charts: Opening at zoom level ${this.currentZoomLevel}, no star found - centered at origin`);
             }
             
             // Clear details panel
@@ -728,7 +724,7 @@ export class StarChartsUI {
             // Render the map
             this.render();
             
-            console.log('🗺️  Star Charts: Interface shown');
+debug('UI', 'Star Charts: Interface shown');
         }
     }
     
@@ -741,7 +737,7 @@ export class StarChartsUI {
             this.container.classList.remove('targeting-active');
             this.tooltip.style.display = 'none';
             
-            console.log('🗺️  Star Charts: Interface hidden');
+debug('UI', 'Star Charts: Interface hidden');
         }
     }
     
@@ -893,14 +889,14 @@ export class StarChartsUI {
             return nearestRing;
         };
         const placePolar = (obj) => {
-            console.log(`🎯 placePolar: Processing ${obj.name} (${obj.type})`);
+            // console.log(`🎯 placePolar: Processing ${obj.name} (${obj.type})`);
 
             // Prefer live angle if available by matching body name to SSM
             const liveAngle = this.getLiveAngleDegByName(obj.name);
-            console.log(`🎯 placePolar: liveAngle for ${obj.name} = ${liveAngle}`);
+            // console.log(`🎯 placePolar: liveAngle for ${obj.name} = ${liveAngle}`);
 
             if (typeof liveAngle === 'number') {
-                console.log(`✅ Using live angle ${liveAngle}° for ${obj.name}`);
+                // console.log(`✅ Using live angle ${liveAngle}° for ${obj.name}`);
                 // Snap to nearest ring or force beacon ring
                 const isBeacon = (obj.type === 'navigation_beacon');
                 const isStation = (obj.type === 'space_station');
@@ -909,11 +905,11 @@ export class StarChartsUI {
                 const rad = liveAngle * Math.PI / 180;
                 const x = ring * Math.cos(rad);
                 const y = ring * Math.sin(rad);
-                console.log(`📍 Final position for ${obj.name}: (${x.toFixed(1)}, ${y.toFixed(1)}) using ring ${ring}`);
+                // console.log(`📍 Final position for ${obj.name}: (${x.toFixed(1)}, ${y.toFixed(1)}) using ring ${ring}`);
                 this.displayModel.positions.set(obj.id, { x, y });
                 return;
             } else {
-                console.log(`❌ No live angle for ${obj.name}, falling back to static coordinates`);
+                // console.log(`❌ No live angle for ${obj.name}, falling back to static coordinates`);
             }
             // Handle static/polar data
             const isBeacon = (obj.type === 'navigation_beacon');
@@ -939,10 +935,10 @@ export class StarChartsUI {
                     : (Math.atan2(z3, x3) * 180) / Math.PI;
 
                 if (isBeacon) {
-                    console.log(`🎯 Beacon ${obj.name}: Using Y-based angle calculation`);
-                    console.log(`   Position: [${x3}, ${y3}, ${z3}]`);
-                    console.log(`   Old angle (z,x): ${(Math.atan2(z3, x3) * 180) / Math.PI}°`);
-                    console.log(`   New angle (y,x): ${angleDeg}°`);
+                    // console.log(`🎯 Beacon ${obj.name}: Using Y-based angle calculation`);
+                    // console.log(`   Position: [${x3}, ${y3}, ${z3}]`);
+                    // console.log(`   Old angle (z,x): ${(Math.atan2(z3, x3) * 180) / Math.PI}°`);
+                    // console.log(`   New angle (y,x): ${angleDeg}°`);
                 }
 
                 const ring = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : snapToNearestRing(300);
@@ -952,7 +948,7 @@ export class StarChartsUI {
                 this.displayModel.positions.set(obj.id, { x, y });
 
                 if (isBeacon) {
-                    console.log(`   Final position: (${x.toFixed(1)}, ${y.toFixed(1)})`);
+                    // console.log(`   Final position: (${x.toFixed(1)}, ${y.toFixed(1)})`);
                 }
                 return;
             }
@@ -967,15 +963,15 @@ export class StarChartsUI {
         this.positionStationsWithCollisionDetection(stations, placePolar);
         
         // Position beacons (they have their own dedicated ring, so less collision risk)
-        console.log(`🔧 Positioning ${beacons.length} beacons`);
+        // console.log(`🔧 Positioning ${beacons.length} beacons`);
         beacons.forEach(beacon => {
-            console.log(`🔧 Positioning beacon: ${beacon.name} (${beacon.id}) with position [${beacon.position}]`);
+            // console.log(`🔧 Positioning beacon: ${beacon.name} (${beacon.id}) with position [${beacon.position}]`);
             placePolar(beacon);
-            const pos = this.displayModel.positions.get(beacon.id);
-            console.log(`🔧 Beacon ${beacon.name} positioned at:`, pos);
-            if (pos) {
-                console.log(`🔧 Display model now has ${this.displayModel.positions.size} total positions`);
-            }
+            // const pos = this.displayModel.positions.get(beacon.id);
+            // console.log(`🔧 Beacon ${beacon.name} positioned at:`, pos);
+            // if (pos) {
+            //     console.log(`🔧 Display model now has ${this.displayModel.positions.size} total positions`);
+            // }
         });
     }
     
@@ -1077,7 +1073,7 @@ export class StarChartsUI {
             
             // Log collision resolution if we had to move the station
             if (Math.abs(finalAngle - preferredAngle) > 1) {
-                console.log(`🔧 Star Charts: Moved "${station.name}" from ${preferredAngle.toFixed(1)}° to ${finalAngle.toFixed(1)}° to avoid collision`);
+                // console.log(`🔧 Star Charts: Moved "${station.name}" from ${preferredAngle.toFixed(1)}° to ${finalAngle.toFixed(1)}° to avoid collision`);
             }
         });
     }
@@ -1166,23 +1162,23 @@ export class StarChartsUI {
             // For navigation beacons, use y coordinate (vertical) instead of z (depth)
             const isBeacon = name.includes('Navigation Beacon');
             const angleCoord = isBeacon ? pos.y : pos.z;
-            console.log(`📐 getLiveAngleDegByName: ${name} isBeacon=${isBeacon}, using ${isBeacon ? 'pos.y' : 'pos.z'} = ${angleCoord}`);
+            // console.log(`📐 getLiveAngleDegByName: ${name} isBeacon=${isBeacon}, using ${isBeacon ? 'pos.y' : 'pos.z'} = ${angleCoord}`);
             return (Math.atan2(angleCoord, pos.x) * 180) / Math.PI;
         }
             // Fallback for navigation beacons (exist in StarfieldManager)
         try {
             const beacons = this.viewManager?.starfieldManager?.navigationBeacons || [];
-            console.log(`🔍 getLiveAngleDegByName: Looking for "${name}" in ${beacons.length} beacons`);
+            // console.log(`🔍 getLiveAngleDegByName: Looking for "${name}" in ${beacons.length} beacons`);
             const b = beacons.find(bc => (bc.userData?.name || 'Navigation Beacon') === name);
             if (b) {
-                console.log(`✅ Found beacon "${name}" at position (${b.position.x.toFixed(1)}, ${b.position.y.toFixed(1)}, ${b.position.z.toFixed(1)})`);
-                console.log(`📐 Calculated angle: ${(Math.atan2(b.position.y, b.position.x) * 180) / Math.PI}°`);
+                // console.log(`✅ Found beacon "${name}" at position (${b.position.x.toFixed(1)}, ${b.position.y.toFixed(1)}, ${b.position.z.toFixed(1)})`);
+                // console.log(`📐 Calculated angle: ${(Math.atan2(b.position.y, b.position.x) * 180) / Math.PI}°`);
                 return (Math.atan2(b.position.y, b.position.x) * 180) / Math.PI;
             } else {
-                console.log(`❌ Beacon "${name}" not found. Available beacons:`);
-                beacons.forEach((bc, i) => {
-                    console.log(`  ${i+1}. "${bc.userData?.name || 'Navigation Beacon'}"`);
-                });
+                // console.log(`❌ Beacon "${name}" not found. Available beacons:`);
+                // beacons.forEach((bc, i) => {
+                //     console.log(`  ${i+1}. "${bc.userData?.name || 'Navigation Beacon'}"`);
+                // });
             }
         } catch (e) {
             console.error('❌ Error in beacon angle lookup:', e);
@@ -1241,11 +1237,11 @@ export class StarChartsUI {
         if (this.displayModel && this.displayModel.positions.has(object.id)) {
             const pos = this.displayModel.positions.get(object.id);
             if (object.type === 'navigation_beacon') {
-                console.log(`🎯 Beacon ${object.name}: Using display model position (${pos.x}, ${pos.y}) - found in model`);
+debug('UI', `🎯 Beacon ${object.name}: Using display model position (${pos.x}, ${pos.y}) - found in model`);
             }
             return pos;
         } else if (object.type === 'navigation_beacon') {
-            console.log(`🎯 Beacon ${object.name}: Display model position NOT found, falling back to calculation`);
+debug('UI', `🎯 Beacon ${object.name}: Display model position NOT found, falling back to calculation`);
         }
         if (Array.isArray(object.position)) {
             if (object.position.length >= 3) {
@@ -1256,7 +1252,7 @@ export class StarChartsUI {
                     : { x: object.position[0], y: object.position[2] };
 
                 if (object.type === 'navigation_beacon') {
-                    console.log(`🎯 Beacon ${object.name}: Using beacon position [${object.position[0]}, ${object.position[1]}, ${object.position[2]}] -> display (${pos.x}, ${pos.y})`);
+debug('UI', `🎯 Beacon ${object.name}: Using beacon position [${object.position[0]}, ${object.position[1]}, ${object.position[2]}] -> display (${pos.x}, ${pos.y})`);
                 }
                 return pos;
             }
@@ -1268,13 +1264,13 @@ export class StarChartsUI {
                 const r = radiusAU * AU_TO_DISPLAY;
                 const pos = { x: r * Math.cos(angleRad), y: r * Math.sin(angleRad) };
                 if (object.type === 'navigation_beacon') {
-                    console.log(`🎯 Beacon ${object.name}: Using polar position [${radiusAU}, ${angleDeg}] -> display (${pos.x}, ${pos.y})`);
+debug('UI', `🎯 Beacon ${object.name}: Using polar position [${radiusAU}, ${angleDeg}] -> display (${pos.x}, ${pos.y})`);
                 }
                 return pos;
             }
         }
         if (object.type === 'navigation_beacon') {
-            console.log(`🎯 Beacon ${object.name}: No position data found, using (0,0)`);
+debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0)`);
         }
         return { x: 0, y: 0 };
     }
@@ -1336,7 +1332,7 @@ export class StarChartsUI {
         const viewBox = `${safeViewBox.x} ${safeViewBox.y} ${safeViewBox.width} ${safeViewBox.height}`;
         this.svg.setAttribute('viewBox', viewBox);
         
-        console.log(`🔍 Star Charts ViewBox: zoom=${this.currentZoomLevel}, container=${containerWidth}x${containerHeight} (ratio=${aspectRatio.toFixed(2)}), viewBox="${viewBox}", center=(${this.currentCenter.x}, ${this.currentCenter.y})`);
+        // console.log(`🔍 Star Charts ViewBox: zoom=${this.currentZoomLevel}, container=${containerWidth}x${containerHeight} (ratio=${aspectRatio.toFixed(2)}), viewBox="${viewBox}", center=(${this.currentCenter.x}, ${this.currentCenter.y})`);
     }
     
     renderDiscoveredObjects() {
@@ -1396,18 +1392,18 @@ export class StarChartsUI {
             
             sectorData.infrastructure.beacons?.forEach(beacon => {
                 const discovered = isDiscovered(beacon.id);
-                console.log(`🔧 Beacon ${beacon.name} (${beacon.id}): discovered=${discovered}, position=(${beacon.position?.[0]}, ${beacon.position?.[1]}, ${beacon.position?.[2]})`);
+                // console.log(`🔧 Beacon ${beacon.name} (${beacon.id}): discovered=${discovered}, position=(${beacon.position?.[0]}, ${beacon.position?.[1]}, ${beacon.position?.[2]})`);
                 if (discovered) {
                     // Normalize beacon type to match LRS icon rules
                     const beaconData = { ...beacon, type: 'navigation_beacon' };
                     allObjects.push(beaconData);
-                    console.log(`🔧 Added beacon ${beacon.name} to allObjects with type=${beaconData.type}, position=(${beaconData.position?.[0]}, ${beaconData.position?.[1]}, ${beaconData.position?.[2]})`);
+                    // console.log(`🔧 Added beacon ${beacon.name} to allObjects with type=${beaconData.type}, position=(${beaconData.position?.[0]}, ${beaconData.position?.[1]}, ${beaconData.position?.[2]})`);
                 }
             });
         }
         
         if (isTestMode) {
-            console.log(`🧪 Star Charts TEST MODE: Showing all ${allObjects.length} objects in sector`);
+            // console.log(`🧪 Star Charts TEST MODE: Showing all ${allObjects.length} objects in sector`);
         }
         
         return allObjects;
@@ -1519,7 +1515,7 @@ export class StarChartsUI {
         const color = this.getObjectColor(object);
 
         if (object.type === 'navigation_beacon') {
-            console.log(`🎯 Rendering beacon ${object.name} at (${x}, ${y})`);
+            // console.log(`🎯 Rendering beacon ${object.name} at (${x}, ${y})`);
         }
 
         // Create larger invisible hit box first (rendered behind visual element)

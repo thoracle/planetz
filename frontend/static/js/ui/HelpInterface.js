@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Help Interface - Context-sensitive ship tech manual
  * Shows controls and key bindings based on equipped systems and cards
@@ -8,7 +10,7 @@ export class HelpInterface {
         this.isVisible = false;
         this.container = null;
         
-        console.log('HelpInterface initialized');
+debug('UI', 'HelpInterface initialized');
     }
 
     /**
@@ -20,7 +22,7 @@ export class HelpInterface {
         this.isVisible = true;
         this.createInterface();
         
-        console.log('Ship Tech Manual displayed');
+debug('UI', 'Ship Tech Manual displayed');
     }
 
     /**
@@ -36,7 +38,7 @@ export class HelpInterface {
             this.container = null;
         }
         
-        console.log('Ship Tech Manual closed');
+debug('UI', 'Ship Tech Manual closed');
     }
 
     /**
@@ -1043,6 +1045,6 @@ export class HelpInterface {
             delete window.helpInterface;
         }
         
-        console.log('HelpInterface disposed');
+debug('UI', 'HelpInterface disposed');
     }
 } 

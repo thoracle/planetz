@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * AIPerformanceManager.js
  * 
@@ -52,7 +54,7 @@ export class AIPerformanceManager {
         this.updateTimes = [];
         this.maxUpdateTimeHistory = 60; // Keep 60 frames of history
         
-        console.log('⚡ AIPerformanceManager initialized');
+debug('AI', '⚡ AIPerformanceManager initialized');
     }
     
     /**
@@ -374,7 +376,7 @@ export class AIPerformanceManager {
         // Reduce max AI updates per frame
         if (this.maxAIUpdatesPerFrame > 3) {
             this.maxAIUpdatesPerFrame = Math.max(3, this.maxAIUpdatesPerFrame - 1);
-            console.log(`⚡ Reduced max AI updates to ${this.maxAIUpdatesPerFrame}`);
+debug('AI', `⚡ Reduced max AI updates to ${this.maxAIUpdatesPerFrame}`);
         }
         
         // Increase LOD distances (reduce quality sooner)
@@ -398,7 +400,7 @@ export class AIPerformanceManager {
         // Increase max AI updates per frame
         if (this.maxAIUpdatesPerFrame < 12) {
             this.maxAIUpdatesPerFrame = Math.min(12, this.maxAIUpdatesPerFrame + 1);
-            console.log(`⚡ Increased max AI updates to ${this.maxAIUpdatesPerFrame}`);
+debug('AI', `⚡ Increased max AI updates to ${this.maxAIUpdatesPerFrame}`);
         }
         
         // Decrease LOD distances (improve quality range)
@@ -434,7 +436,7 @@ export class AIPerformanceManager {
      */
     setLODEnabled(enabled) {
         this.LODEnabled = enabled;
-        console.log(`⚡ LOD system ${enabled ? 'enabled' : 'disabled'}`);
+debug('UTILITY', `⚡ LOD system ${enabled ? 'enabled' : 'disabled'}`);
     }
     
     /**
@@ -454,7 +456,7 @@ export class AIPerformanceManager {
             Object.assign(this.LODUpdateIntervals, settings.updateIntervals);
         }
         
-        console.log('⚡ Performance settings updated:', settings);
+debug('PERFORMANCE', '⚡ Performance settings updated:', settings);
     }
     
     /**
@@ -463,6 +465,6 @@ export class AIPerformanceManager {
     resetStats() {
         this.performanceStats.frameOverruns = 0;
         this.updateTimes = [];
-        console.log('⚡ Performance statistics reset');
+debug('PERFORMANCE', '⚡ Performance statistics reset');
     }
 }

@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * AmbientShipManager.js
  * 
@@ -109,7 +111,7 @@ export class AmbientShipManager {
         this.lastCommunication = 0;
         this.communicationInterval = 8000;      // 8 seconds between messages
         
-        console.log('🌌 AmbientShipManager initialized');
+debug('UTILITY', '🌌 AmbientShipManager initialized');
     }
     
     /**
@@ -118,7 +120,7 @@ export class AmbientShipManager {
     initialize() {
         this.setupTradeRoutes();
         this.isInitialized = true;
-        console.log('🌌 AmbientShipManager ready - galaxy coming to life!');
+debug('UTILITY', '🌌 AmbientShipManager ready - galaxy coming to life!');
     }
     
     /**
@@ -154,7 +156,7 @@ export class AmbientShipManager {
             }
         }
         
-        console.log(`🚢 Generated ${this.tradeRoutes.length} trade routes between ${stations.length} stations`);
+debug('UTILITY', `🚢 Generated ${this.tradeRoutes.length} trade routes between ${stations.length} stations`);
     }
     
     /**
@@ -247,7 +249,7 @@ export class AmbientShipManager {
         // Create group behavior
         if (shipGroup.length > 0) {
             this.createGroupBehavior(shipGroup, behaviorType, behaviorConfig);
-            console.log(`🌌 Spawned ${shipGroup.length} ${faction} ships on ${behaviorType} mission`);
+debug('MISSIONS', `🌌 Spawned ${shipGroup.length} ${faction} ships on ${behaviorType} mission`);
         }
     }
     
@@ -529,7 +531,7 @@ export class AmbientShipManager {
         this.ambientShips.delete(shipId);
         this.activeShips.delete(shipId);
         
-        console.log(`🌌 Removed distant ambient ship: ${shipData.faction} ${shipData.ship.shipType}`);
+debug('UTILITY', `🌌 Removed distant ambient ship: ${shipData.faction} ${shipData.ship.shipType}`);
     }
     
     /**

@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * FlockingManager.js
  * 
@@ -71,7 +73,7 @@ export class FlockingManager {
             }
         });
         
-        console.log(`🐦 Created flock ${flockId} with ${ships.length} ships`);
+debug('UTILITY', `🐦 Created flock ${flockId} with ${ships.length} ships`);
         return flockId;
     }
     
@@ -155,7 +157,7 @@ export class FlockingManager {
             }
         });
         
-        console.log(`🎯 Assigned ${formationType} formation to flock ${flockId}`);
+debug('AI', `🎯 Assigned ${formationType} formation to flock ${flockId}`);
     }
     
     /**
@@ -354,7 +356,7 @@ export class FlockingManager {
             });
             
             this.flocks.delete(flockId);
-            console.log(`🗑️ Removed flock ${flockId}`);
+debug('UTILITY', `🗑️ Removed flock ${flockId}`);
         }
     }
     
@@ -377,7 +379,7 @@ export class FlockingManager {
             }
         });
         
-        console.log(`➕ Added ${ships.length} ships to flock ${flockId}`);
+debug('UTILITY', `➕ Added ${ships.length} ships to flock ${flockId}`);
     }
     
     /**
@@ -439,6 +441,6 @@ export class FlockingManager {
      */
     setDebugMode(enabled) {
         this.debugMode = enabled;
-        console.log(`🐦 Flocking debug mode: ${enabled ? 'ON' : 'OFF'}`);
+debug('AI', `🐦 Flocking debug mode: ${enabled ? 'ON' : 'OFF'}`);
     }
 }

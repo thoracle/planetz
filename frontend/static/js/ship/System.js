@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Base System class - interface for all ship systems
  * Based on docs/tech_design.md and docs/spaceships_spec.md
@@ -171,7 +173,7 @@ export default class System {
         }
         
         this.isActive = true;
-        console.log(`${this.displayName} activated`);
+debug('UI', `${this.displayName} activated`);
         return true;
     }
     
@@ -180,7 +182,7 @@ export default class System {
      */
     deactivate() {
         this.isActive = false;
-        console.log(`${this.displayName} deactivated`);
+debug('UI', `${this.displayName} deactivated`);
     }
     
     /**
@@ -196,7 +198,7 @@ export default class System {
         // Update system state based on health
         this.updateSystemState();
         
-        console.log(`${this.displayName} took ${damage.toFixed(1)} damage. Health: ${this.healthPercentage.toFixed(2)}`);
+debug('COMBAT', `${this.displayName} took ${damage.toFixed(1)} damage. Health: ${this.healthPercentage.toFixed(2)}`);
     }
     
     /**
@@ -213,7 +215,7 @@ export default class System {
         // Update system state based on new health
         this.updateSystemState();
         
-        console.log(`${this.displayName} repaired by ${(repairAmount * 100).toFixed(1)}%. Health: ${this.healthPercentage.toFixed(2)}`);
+debug('AI', `${this.displayName} repaired by ${(repairAmount * 100).toFixed(1)}%. Health: ${this.healthPercentage.toFixed(2)}`);
     }
     
     /**
@@ -245,7 +247,7 @@ export default class System {
      * @param {string} toState New state
      */
     onStateChanged(fromState, toState) {
-        console.log(`${this.displayName} state changed: ${fromState} -> ${toState}`);
+debug('UI', `${this.displayName} state changed: ${fromState} -> ${toState}`);
         
         // Show weapon HUD feedback for sub-system destruction/damage
         this.showSubSystemFeedback(fromState, toState);
@@ -291,12 +293,12 @@ export default class System {
                 }
                 
                 if (weaponHUD) {
-                    console.log(`🎯 SUB-SYSTEM FEEDBACK: Showing ${feedbackType} for ${this.displayName}`);
+debug('UI', `🎯 SUB-SYSTEM FEEDBACK: Showing ${feedbackType} for ${this.displayName}`);
                     weaponHUD.showWeaponFeedback(feedbackType, message);
                 }
             }
         } catch (error) {
-            console.log('Failed to show sub-system feedback:', error.message);
+debug('P1', 'Failed to show sub-system feedback:', error.message);
         }
     }
     
@@ -310,11 +312,11 @@ export default class System {
             case SYSTEM_STATES.CRITICAL:
                 // Systems in critical state may have chance of failure
                 if (Math.random() < 0.1) { // 10% chance of cascading failure
-                    console.log(`${this.displayName} experiencing cascading failure!`);
+debug('AI', `${this.displayName} experiencing cascading failure!`);
                 }
                 break;
             case SYSTEM_STATES.DISABLED:
-                console.log(`${this.displayName} is completely disabled!`);
+debug('UI', `${this.displayName} is completely disabled!`);
                 break;
         }
     }
@@ -337,7 +339,7 @@ export default class System {
             this.energyConsumptionRate = levelStats.energyConsumptionRate;
         }
         
-        console.log(`${this.displayName} upgraded to level ${this.level}`);
+debug('UI', `${this.displayName} upgraded to level ${this.level}`);
         return true;
     }
     
@@ -377,7 +379,7 @@ export default class System {
             if (energyPerFrame > 0) {
                 if (!ship.consumeEnergy(energyPerFrame)) {
                     // Not enough energy - deactivate system
-                    console.log(`${this.displayName} deactivated due to insufficient energy`);
+debug('UI', `${this.displayName} deactivated due to insufficient energy`);
                     this.deactivate();
                 }
             }

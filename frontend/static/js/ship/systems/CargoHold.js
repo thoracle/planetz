@@ -1,4 +1,5 @@
 import System from '../System.js';
+import { debug } from '../../debug.js';
 
 /**
  * Cargo Hold System - Provides cargo storage capacity
@@ -29,7 +30,7 @@ export default class CargoHold extends System {
         // Calculate cargo capacity based on level
         this.cargoCapacity = this.cargoCapacityPerLevel * this.level;
         
-        console.log(`Cargo Hold Level ${this.level}: +${this.cargoCapacity} cargo units`);
+debug('UTILITY', `Cargo Hold Level ${this.level}: +${this.cargoCapacity} cargo units`);
     }
     
     /**
@@ -95,7 +96,7 @@ export class ReinforcedCargoHold extends CargoHold {
         super.takeDamage(reducedDamage);
         
         if (reducedDamage > 0) {
-            console.log(`${this.name} reinforced plating absorbed ${damage - reducedDamage} damage`);
+debug('COMBAT', `${this.name} reinforced plating absorbed ${damage - reducedDamage} damage`);
         }
     }
     

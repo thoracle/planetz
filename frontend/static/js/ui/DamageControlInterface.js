@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Damage Control Interface - Ship system status and repair management
  * Based on docs/spaceships_spec.md and docs/tech_design.md
@@ -34,7 +36,7 @@ export default class DamageControlInterface {
         // Bind event handlers to maintain proper 'this' context
         this.boundKeyHandler = this.handleKeyPress.bind(this);
         
-        console.log('Damage Control Interface initialized');
+debug('COMBAT', 'Damage Control Interface initialized');
     }
     
     /**
@@ -43,7 +45,7 @@ export default class DamageControlInterface {
      */
     setShip(ship) {
         this.ship = ship;
-        console.log('Damage Control Interface connected to ship:', ship?.shipType);
+debug('COMBAT', 'Damage Control Interface connected to ship:', ship?.shipType);
     }
     
     /**
@@ -94,7 +96,7 @@ export default class DamageControlInterface {
         this.createInterface();
         this.startRefresh();
         
-        console.log('Damage Control Interface shown');
+debug('COMBAT', 'Damage Control Interface shown');
     }
     
     /**
@@ -105,7 +107,7 @@ export default class DamageControlInterface {
         this.stopRefresh();
         this.removeInterface();
         
-        console.log('Damage Control Interface hidden');
+debug('COMBAT', 'Damage Control Interface hidden');
     }
     
     /**
@@ -548,7 +550,7 @@ export default class DamageControlInterface {
         this.updateSystemDetails();
         this.updateRepairSection();
         
-        console.log('Selected system:', systemName);
+debug('UI', 'Selected system:', systemName);
     }
     
     /**
@@ -592,7 +594,7 @@ export default class DamageControlInterface {
         // Update interface
         this.updateInterface();
         
-        console.log(`Repaired ${this.selectedSystem} with ${kitType} kit`);
+debug('AI', `Repaired ${this.selectedSystem} with ${kitType} kit`);
     }
     
     /**
@@ -713,7 +715,7 @@ export default class DamageControlInterface {
             if (window.viewManager) {
                 window.viewManager.setView('GALACTIC');
             }
-            console.log('Galactic Chart activated from Damage Control');
+debug('COMBAT', 'Galactic Chart activated from Damage Control');
         } else {
             console.warn('Failed to activate Galactic Chart');
         }
@@ -751,7 +753,7 @@ export default class DamageControlInterface {
             if (window.viewManager) {
                 window.viewManager.setView('SCANNER');
             }
-            console.log('Long Range Scanner activated from Damage Control');
+debug('COMBAT', 'Long Range Scanner activated from Damage Control');
         } else {
             console.warn('Failed to start Long Range Scanner');
         }

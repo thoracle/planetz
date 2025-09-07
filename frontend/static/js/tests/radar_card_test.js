@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Proximity Detector Card Integration Test
  * 
@@ -6,7 +8,7 @@
  */
 
 function testProximityDetectorCardIntegration() {
-    console.log('🎯 Testing Proximity Detector Card Integration...');
+debug('UI', 'Testing Proximity Detector Card Integration...');
     
     // Check if StarfieldManager is available
     if (!window.starfieldManager) {
@@ -20,96 +22,96 @@ function testProximityDetectorCardIntegration() {
         return false;
     }
     
-    console.log('🚢 Testing ship proximity detector card integration...');
+debug('UI', '🚢 Testing ship proximity detector card integration...');
     
     // Test 1: Check if basic proximity detector card is in starter configuration
-    console.log('📋 Test 1: Checking starter proximity detector cards...');
+debug('UI', '📋 Test 1: Checking starter proximity detector cards...');
     if (ship.shipConfig?.starterCards) {
         const radarCards = Object.entries(ship.shipConfig.starterCards)
             .filter(([slotId, cardData]) => cardData.cardType === 'basic_radar');
         
         if (radarCards.length > 0) {
-            console.log('✅ Basic proximity detector card found in starter configuration:', radarCards);
+debug('UI', '✅ Basic proximity detector card found in starter configuration:', radarCards);
         } else {
-            console.log('❌ No proximity detector cards found in starter configuration');
+debug('UI', '❌ No proximity detector cards found in starter configuration');
         }
     }
     
     // Test 2: Check if ship has proximity detector cards installed
-    console.log('📋 Test 2: Checking installed proximity detector cards...');
+debug('UI', '📋 Test 2: Checking installed proximity detector cards...');
     const hasRadarCards = ship.hasSystemCardsSync('radar');
-    console.log(`Has proximity detector cards installed: ${hasRadarCards ? '✅ YES' : '❌ NO'}`);
+debug('UI', `Has proximity detector cards installed: ${hasRadarCards ? '✅ YES' : '❌ NO'}`);
     
     // Test 3: Check if proximity detector system exists
-    console.log('📋 Test 3: Checking proximity detector system...');
+debug('UTILITY', '📋 Test 3: Checking proximity detector system...');
     const radarSystem = ship.getSystem('radar');
     if (radarSystem) {
-        console.log('✅ Proximity Detector system found:', radarSystem.getStatus());
+debug('UTILITY', '✅ Proximity Detector system found:', radarSystem.getStatus());
     } else {
-        console.log('❌ Proximity Detector system not found');
+debug('UTILITY', '❌ Proximity Detector system not found');
     }
     
     // Test 4: Check proximity detector HUD availability
-    console.log('📋 Test 4: Checking proximity detector HUD...');
+debug('UI', '📋 Test 4: Checking proximity detector HUD...');
     const radarHUD = window.starfieldManager.radarHUD;
     if (radarHUD) {
         const canUseRadar = radarHUD.canUseRadar();
-        console.log(`Proximity Detector HUD can be used: ${canUseRadar ? '✅ YES' : '❌ NO'}`);
+debug('UI', `Proximity Detector HUD can be used: ${canUseRadar ? '✅ YES' : '❌ NO'}`);
         
         if (canUseRadar) {
-            console.log('📡 Testing proximity detector specifications update...');
+debug('UTILITY', 'Testing proximity detector specifications update...');
             radarHUD.updateRadarSpecifications();
-            console.log(`Current proximity detector range: ${(radarHUD.config.range / 1000).toFixed(0)}km`);
-            console.log(`Current update frequency: ${radarHUD.config.updateFrequency}Hz`);
+debug('UI', `Current proximity detector range: ${(radarHUD.config.range / 1000).toFixed(0)}km`);
+debug('UI', `Current update frequency: ${radarHUD.config.updateFrequency}Hz`);
         }
     } else {
-        console.log('❌ Proximity Detector HUD not found');
+debug('UI', '❌ Proximity Detector HUD not found');
     }
     
     // Test 5: Check card system integration
-    console.log('📋 Test 5: Checking card system integration...');
+debug('UI', '📋 Test 5: Checking card system integration...');
     if (ship.cardSystemIntegration) {
         const systemMapping = ship.cardSystemIntegration.createSystemCardMapping();
         if (systemMapping.radar) {
-            console.log('✅ Radar card mapping found:', systemMapping.radar);
+debug('UI', '✅ Radar card mapping found:', systemMapping.radar);
         } else {
-            console.log('❌ Radar card mapping not found');
+debug('UI', '❌ Radar card mapping not found');
         }
         
         // Test radar card types
-        console.log('📦 Available proximity detector card types:');
-        console.log('  • Basic Proximity Detector: basic_radar');
-        console.log('  • Advanced Proximity Detector: advanced_radar');
-        console.log('  • Tactical Proximity Detector: tactical_radar');
+debug('AI', '📦 Available proximity detector card types:');
+debug('UTILITY', '  • Basic Proximity Detector: basic_radar');
+debug('UTILITY', '  • Advanced Proximity Detector: advanced_radar');
+debug('UTILITY', '  • Tactical Proximity Detector: tactical_radar');
     }
     
     // Test 6: Try to toggle proximity detector
-    console.log('📋 Test 6: Testing proximity detector toggle...');
+debug('UTILITY', '📋 Test 6: Testing proximity detector toggle...');
     try {
         const toggleResult = window.starfieldManager.toggleProximityDetector();
-        console.log('🎯 Proximity Detector toggle method executed successfully');
+debug('UTILITY', 'Proximity Detector toggle method executed successfully');
     } catch (error) {
         console.error('❌ Proximity Detector toggle failed:', error);
     }
     
     // Test 7: Check key binding
-    console.log('📋 Test 7: Testing key binding...');
-    console.log('💡 Press P key to test proximity detector toggle with card validation');
-    console.log('💡 If no proximity detector cards: Should show "No Proximity Detector card installed" error');
-    console.log('💡 If proximity detector cards installed: Should toggle proximity detector display');
+debug('UTILITY', '📋 Test 7: Testing key binding...');
+debug('UI', '💡 Press P key to test proximity detector toggle with card validation');
+debug('P1', '💡 If no proximity detector cards: Should show "No Proximity Detector card installed" error');
+debug('UI', '💡 If proximity detector cards installed: Should toggle proximity detector display');
     
     // Summary
-    console.log('\n🎯 Proximity Detector Card Integration Test Summary:');
-    console.log('✅ Card types defined in NFTCard.js');
-    console.log('✅ Card system integration mapping added');
-    console.log('✅ ProximityDetector system class created');
-    console.log('✅ ProximityDetector HUD updated for card requirements');
-    console.log('✅ Starter ship configured with basic proximity detector card');
-    console.log('✅ Key binding (P) includes card validation');
+debug('UI', '\n🎯 Proximity Detector Card Integration Test Summary:');
+debug('UI', '✅ Card types defined in NFTCard.js');
+debug('UI', '✅ Card system integration mapping added');
+debug('UTILITY', '✅ ProximityDetector system class created');
+debug('UI', '✅ ProximityDetector HUD updated for card requirements');
+debug('UI', '✅ Starter ship configured with basic proximity detector card');
+debug('UI', '✅ Key binding (P) includes card validation');
     
-    console.log('\n🚀 Test completed! The proximity detector system is now card-based.');
-    console.log('🎮 Players need proximity detector cards to use the proximity detector system.');
-    console.log('📈 Proximity detector capabilities improve with higher level cards.');
+debug('UI', '\n🚀 Test completed! The proximity detector system is now card-based.');
+debug('UI', '🎮 Players need proximity detector cards to use the proximity detector system.');
+debug('UI', '📈 Proximity detector capabilities improve with higher level cards.');
     
     return true;
 }
@@ -121,13 +123,13 @@ if (typeof window !== 'undefined') {
         if (window.starfieldManager) {
             testProximityDetectorCardIntegration();
         } else {
-            console.log('⏳ Waiting for game to initialize...');
+debug('AI', '⏳ Waiting for game to initialize...');
             // Try again in a few seconds
             setTimeout(() => {
                 if (window.starfieldManager) {
                     testProximityDetectorCardIntegration();
                 } else {
-                    console.log('❌ Game not loaded after 10 seconds. Load the game first.');
+debug('UTILITY', '❌ Game not loaded after 10 seconds. Load the game first.');
                 }
             }, 5000);
         }
@@ -137,5 +139,5 @@ if (typeof window !== 'undefined') {
 // Export for manual testing
 if (typeof window !== 'undefined') {
     window.testProximityDetectorCardIntegration = testProximityDetectorCardIntegration;
-    console.log('🎯 testProximityDetectorCardIntegration() function is now available in the console');
+debug('AI', 'testProximityDetectorCardIntegration() function is now available in the console');
 }

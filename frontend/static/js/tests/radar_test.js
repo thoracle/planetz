@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Proximity Detector HUD Test Script
  * 
@@ -6,7 +8,7 @@
  */
 
 function testProximityDetector() {
-    console.log('🎯 Testing Proximity Detector HUD functionality...');
+debug('UI', 'Testing Proximity Detector HUD functionality...');
     
     // Check if StarfieldManager is available
     if (!window.starfieldManager) {
@@ -23,7 +25,7 @@ function testProximityDetector() {
     const proximityDetector = window.starfieldManager.radarHUD;
     
     // Test proximity detector toggle
-    console.log('📡 Testing proximity detector toggle...');
+debug('UTILITY', 'Testing proximity detector toggle...');
     const initialState = proximityDetector.isVisible;
     
     proximityDetector.toggle();
@@ -39,19 +41,19 @@ function testProximityDetector() {
     }
     
     // Test object tracking
-    console.log('🎯 Testing object tracking...');
+debug('UTILITY', 'Testing object tracking...');
     proximityDetector.updateTrackedObjects();
-    console.log(`📊 Tracked objects: ${proximityDetector.trackedObjects.size}`);
+debug('UTILITY', `📊 Tracked objects: ${proximityDetector.trackedObjects.size}`);
     
     // Test configuration
-    console.log('⚙️ Proximity Detector configuration:');
-    console.log(`  • Range: ${proximityDetector.config.range / 1000}km`);
-    console.log(`  • Grid size: ${proximityDetector.config.gridSize}x${proximityDetector.config.gridSize}`);
-    console.log(`  • Update frequency: ${proximityDetector.config.updateFrequency}Hz`);
-    console.log(`  • Vertical range: ${proximityDetector.config.verticalRange / 1000}km`);
+debug('UTILITY', 'Proximity Detector configuration:');
+debug('UTILITY', `  • Range: ${proximityDetector.config.range / 1000}km`);
+debug('UTILITY', `  • Grid size: ${proximityDetector.config.gridSize}x${proximityDetector.config.gridSize}`);
+debug('UTILITY', `  • Update frequency: ${proximityDetector.config.updateFrequency}Hz`);
+debug('UTILITY', `  • Vertical range: ${proximityDetector.config.verticalRange / 1000}km`);
     
     // Test faction color system
-    console.log('🎨 Testing faction colors...');
+debug('UTILITY', '🎨 Testing faction colors...');
     const testTargets = [
         { diplomacy: 'enemy', name: 'Test Enemy' },
         { diplomacy: 'friendly', name: 'Test Friendly' },
@@ -62,17 +64,17 @@ function testProximityDetector() {
     
     testTargets.forEach(target => {
         const color = proximityDetector.getFactionColorForRadar(target);
-        console.log(`  • ${target.name}: ${color}`);
+debug('TARGETING', `  • ${target.name}: ${color}`);
     });
     
     // Test key binding
-    console.log('⌨️ Testing key binding...');
-    console.log('  • Press P key to toggle proximity detector');
-    console.log('  • Proximity detector should appear in bottom center of screen');
+debug('UTILITY', 'Testing key binding...');
+debug('UTILITY', '  • Press P key to toggle proximity detector');
+debug('UTILITY', '  • Proximity detector should appear in bottom center of screen');
     
-    console.log('✅ Proximity Detector HUD test completed successfully!');
-    console.log('💡 Use "window.starfieldManager.radarHUD.toggle()" to manually toggle proximity detector');
-    console.log('💡 Use "window.starfieldManager.radarHUD.forceUpdate()" to force proximity detector update');
+debug('UI', '✅ Proximity Detector HUD test completed successfully!');
+debug('UI', '💡 Use "window.starfieldManager.radarHUD.toggle()" to manually toggle proximity detector');
+debug('UI', '💡 Use "window.starfieldManager.radarHUD.forceUpdate()" to force proximity detector update');
     
     return true;
 }
@@ -84,13 +86,13 @@ if (typeof window !== 'undefined') {
         if (window.starfieldManager) {
             testProximityDetector();
         } else {
-            console.log('⏳ Waiting for game to initialize...');
+debug('AI', '⏳ Waiting for game to initialize...');
             // Try again in a few seconds
             setTimeout(() => {
                 if (window.starfieldManager) {
                     testProximityDetector();
                 } else {
-                    console.log('❌ Game not loaded after 10 seconds. Load the game first.');
+debug('UTILITY', '❌ Game not loaded after 10 seconds. Load the game first.');
                 }
             }, 5000);
         }
@@ -100,5 +102,5 @@ if (typeof window !== 'undefined') {
 // Export for manual testing
 if (typeof window !== 'undefined') {
     window.testProximityDetector = testProximityDetector;
-    console.log('🎯 testProximityDetector() function is now available in the console');
+debug('AI', 'testProximityDetector() function is now available in the console');
 }

@@ -1,5 +1,6 @@
 import { Chunk } from './chunk.js';
 import * as THREE from 'three';
+import { debug } from './debug.js';
 
 class ChunkManager {
     constructor(planetGenerator, chunkSize) {
@@ -346,7 +347,7 @@ class ChunkManager {
 
     resetCircuitBreaker() {
         if (this.circuitBreakerTripped) {
-            console.log('Resetting circuit breaker');
+debug('UI', 'Resetting circuit breaker');
             this.circuitBreakerTripped = false;
             this.consecutiveErrors = 0;
             this.currentErrorCooldown = this.baseErrorCooldown;

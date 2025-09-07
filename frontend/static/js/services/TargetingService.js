@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * TargetingService - Unified targeting system for crosshair display and weapon firing
  * 
@@ -306,9 +308,9 @@ export class TargetingService {
         // Only log targeting failures and successes for weapon firing (not crosshair display)
         if (requestedBy !== "crosshair_display") {
             if (result.hasTarget) {
-                console.log(`🎯 TARGETING SUCCESS [${requestedBy}]: ${result.targetName} via ${result.acquisitionMethod} (${result.targetDistance.toFixed(1)}km, ${result.rangeState}) [${duration}ms]`);
+debug('TARGETING', `🎯 TARGETING SUCCESS [${requestedBy}]: ${result.targetName} via ${result.acquisitionMethod} (${result.targetDistance.toFixed(1)}km, ${result.rangeState}) [${duration}ms]`);
             } else {
-                console.log(`🎯 TARGETING FAILED [${requestedBy}]: ${result.reason} [${duration}ms]`);
+debug('P1', `🎯 TARGETING FAILED [${requestedBy}]: ${result.reason} [${duration}ms]`);
             }
         }
     }

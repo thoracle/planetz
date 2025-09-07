@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * StarfieldAudioManager - Handles all audio functionality for the starfield view
  * Extracted from StarfieldManager.js for better code organization
@@ -60,14 +62,14 @@ export class StarfieldAudioManager {
             if (this.audioListener.context.state === 'suspended') {
                 // Only show warning once per session until user interaction
                 if (!this.userHasInteracted && !this.interactionWarningShown) {
-                    console.warn('⚠️ No user interaction detected - sound may not play due to browser policy');
+                    debug('UTILITY', 'No user interaction detected - sound may not play due to browser policy');
                     this.interactionWarningShown = true;
                 }
                 
                 // Always try to resume, but don't spam console
                 this.audioListener.context.resume().then(() => {
                     if (this.userHasInteracted) {
-                        console.log('🎵 AudioContext resumed successfully');
+debug('UTILITY', '🎵 AudioContext resumed successfully');
                     }
                 }).catch(error => {
                     if (this.userHasInteracted) {
@@ -343,7 +345,7 @@ export class StarfieldAudioManager {
      * Dispose of all audio resources
      */
     dispose() {
-        console.log('🎵 Disposing StarfieldAudioManager...');
+debug('UTILITY', '🎵 Disposing StarfieldAudioManager...');
         
         // Stop and clean up audio
         if (this.engineSound) {
@@ -383,7 +385,7 @@ export class StarfieldAudioManager {
         const handleUserInteraction = () => {
             if (!this.userHasInteracted) {
                 this.userHasInteracted = true;
-                console.log('🎵 User interaction detected - audio policy satisfied');
+debug('UTILITY', '🎵 User interaction detected - audio policy satisfied');
                 
                 // Reset warning flag so future audio attempts work
                 this.interactionWarningShown = false;
@@ -391,7 +393,7 @@ export class StarfieldAudioManager {
                 // Resume AudioContext if suspended
                 if (this.audioListener?.context && this.audioListener.context.state === 'suspended') {
                     this.audioListener.context.resume().then(() => {
-                        console.log('🎵 AudioContext resumed after user interaction');
+debug('UTILITY', '🎵 AudioContext resumed after user interaction');
                     }).catch(error => {
                         console.warn('⚠️ Failed to resume AudioContext after interaction:', error);
                     });

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { debug } from '../debug.js';
 
 /**
  * ThreatAssessment - Analyzes and prioritizes threats for enemy AI
@@ -27,7 +28,7 @@ export class ThreatAssessment {
             targeting: 0.1      // Is this threat currently targeting us?
         };
         
-        console.log(`🎯 ThreatAssessment initialized for ${this.ship.shipType}`);
+debug('UTILITY', `🎯 ThreatAssessment initialized for ${this.ship.shipType}`);
     }
     
     /**
@@ -219,7 +220,7 @@ export class ThreatAssessment {
             this.primaryThreat = highestThreat;
             
             if (this.primaryThreat) {
-                console.log(`🎯 ${this.ship.shipType} primary threat: ${this.primaryThreat.ship.shipType || 'unknown'} (level: ${this.primaryThreat.threatLevel.toFixed(2)})`);
+debug('UTILITY', `🎯 ${this.ship.shipType} primary threat: ${this.primaryThreat.ship.shipType || 'unknown'} (level: ${this.primaryThreat.threatLevel.toFixed(2)})`);
             }
         }
     }

@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * CommunicationHUD - NPC Communication Interface
  * Displays animated avatar, name, and subtitle dialogue for mission and AI systems
@@ -36,14 +38,14 @@ export class CommunicationHUD {
     initialize() {
         this.createCommunicationContainer();
         this.setupEventListeners();
-        console.log('🗣️ CommunicationHUD: Initialized');
+debug('UI', 'CommunicationHUD: Initialized');
         
         // Make this instance globally accessible for console testing
         window.communicationHUD = this;
         
         // Add test method for mission communications
         this.testMissionComm = () => {
-            console.log('🧪 Testing mission communication...');
+debug('MISSIONS', 'Testing mission communication...');
             this.showMessage(
                 'Capt. Cooper',
                 'Mission objective completed. Proceed to extraction point for debrief.',
@@ -56,7 +58,7 @@ export class CommunicationHUD {
                     audioType: 'mission'
                 }
             );
-            console.log('🧪 Test message sent, dialogue text element:', this.dialogueText);
+debug('UTILITY', 'Test message sent, dialogue text element:', this.dialogueText);
         };
         
         // Add test methods for different factions
@@ -86,21 +88,21 @@ export class CommunicationHUD {
         
         // Add simple test that sets text directly
         this.testDirectText = () => {
-            console.log('🧪 Testing direct text display...');
+debug('UI', 'Testing direct text display...');
             if (!this.isVisible) {
                 this.isVisible = true;
                 this.commContainer.style.display = 'block';
             }
             this.updateSpeakerStyling('Test Speaker', 'friendly');
             this.dialogueText.textContent = 'This is a direct text test - no typewriter effect.';
-            console.log('🧪 Direct text set, element:', this.dialogueText);
-            console.log('🧪 Text content:', this.dialogueText.textContent);
-            console.log('🧪 Text area visible:', this.textArea.style.display !== 'none');
+debug('UTILITY', 'Direct text set, element:', this.dialogueText);
+debug('UTILITY', 'Text content:', this.dialogueText.textContent);
+debug('UI', 'Text area visible:', this.textArea.style.display !== 'none');
         };
         
         // Add test for delivery completion with audio
         this.testDeliveryComplete = () => {
-            console.log('🧪 Testing delivery completion with audio...');
+debug('UI', 'Testing delivery completion with audio...');
             this.showMessage(
                 'Capt. Cooper',
                 'Delivery confirmed. Medical supplies received and accounted for. Thank you for your service.',
@@ -114,15 +116,15 @@ export class CommunicationHUD {
         
         // Add test for effects toggle
         this.testEffectsToggle = () => {
-            console.log('🧪 Testing effects toggle...');
-            console.log(`Current effects state: ${this.effectsEnabled ? 'ENABLED' : 'DISABLED'}`);
+debug('UI', 'Testing effects toggle...');
+debug('UI', `Current effects state: ${this.effectsEnabled ? 'ENABLED' : 'DISABLED'}`);
             this.toggleEffects();
-            console.log(`New effects state: ${this.effectsEnabled ? 'ENABLED' : 'DISABLED'}`);
+debug('UI', `New effects state: ${this.effectsEnabled ? 'ENABLED' : 'DISABLED'}`);
         };
         
         // Add manual audio initialization for testing
         this.initAudio = () => {
-            console.log('🔊 Manually initializing all audio elements...');
+debug('UTILITY', '🔊 Manually initializing all audio elements...');
             if (this.audioElements) {
                 const initPromises = Object.entries(this.audioElements).map(([type, audio]) => {
                     // Store original volume and set to 0 for silent initialization
@@ -134,7 +136,7 @@ export class CommunicationHUD {
                         audio.currentTime = 0;
                         // Restore original volume
                         audio.volume = originalVolume;
-                        console.log(`🔊 ${type} audio initialized`);
+debug('UTILITY', `🔊 ${type} audio initialized`);
                     }).catch(e => {
                         // Restore original volume even on error
                         audio.volume = originalVolume;
@@ -144,7 +146,7 @@ export class CommunicationHUD {
                 
                 Promise.all(initPromises).then(() => {
                     this.audioInitialized = true;
-                    console.log('🔊 All audio contexts initialized successfully');
+debug('UTILITY', '🔊 All audio contexts initialized successfully');
                 });
             }
         };
@@ -185,7 +187,7 @@ export class CommunicationHUD {
         this.createContentArea();
         
         this.container.appendChild(this.commContainer);
-        console.log('🗣️ CommunicationHUD: Container created');
+debug('AI', 'CommunicationHUD: Container created');
     }
     
     /**
@@ -529,7 +531,7 @@ export class CommunicationHUD {
             // Add to container but keep hidden
             this.avatarArea.appendChild(audio);
             
-            console.log(`🔊 CommunicationHUD: Created audio element for ${src}`);
+debug('UI', `🔊 CommunicationHUD: Created audio element for ${src}`);
             return audio;
         } catch (error) {
             console.error(`🔊 CommunicationHUD: Failed to create audio element for ${src}:`, error);
@@ -563,7 +565,7 @@ export class CommunicationHUD {
                 
                 Promise.all(initPromises).then(() => {
                     this.audioInitialized = true;
-                    console.log('🔊 CommunicationHUD: All audio contexts initialized');
+debug('UI', '🔊 CommunicationHUD: All audio contexts initialized');
                 });
                 
                 // Remove event listeners after initialization
@@ -581,9 +583,9 @@ export class CommunicationHUD {
      * Play audio based on communication type
      */
     playAudioForType(audioType) {
-        console.log(`🔊 CommunicationHUD: playAudioForType called with "${audioType}"`);
-        console.log(`🔊 CommunicationHUD: audioElements available:`, Object.keys(this.audioElements || {}));
-        console.log(`🔊 CommunicationHUD: audioInitialized:`, this.audioInitialized);
+debug('UI', `🔊 CommunicationHUD: playAudioForType called with "${audioType}"`);
+debug('AI', `🔊 CommunicationHUD: audioElements available:`, Object.keys(this.audioElements || {}));
+debug('UI', `🔊 CommunicationHUD: audioInitialized:`, this.audioInitialized);
         
         if (!this.audioElements || !this.audioElements[audioType]) {
             console.warn(`🔊 CommunicationHUD: Audio element for type "${audioType}" not available`);
@@ -597,19 +599,19 @@ export class CommunicationHUD {
         }
         
         // Always attempt to play - browser will handle autoplay restrictions
-        console.log(`🔊 CommunicationHUD: Attempting to play ${audioType} audio element:`, audio);
+debug('UI', `🔊 CommunicationHUD: Attempting to play ${audioType} audio element:`, audio);
         audio.currentTime = 0; // Reset to start
         audio.play().then(() => {
-            console.log(`🔊 CommunicationHUD: Playing ${audioType} audio`);
+debug('UI', `🔊 CommunicationHUD: Playing ${audioType} audio`);
             // Mark as initialized if it wasn't already (successful play means user has interacted)
             if (!this.audioInitialized) {
                 this.audioInitialized = true;
-                console.log(`🔊 CommunicationHUD: Audio marked as initialized after successful play`);
+debug('UI', `🔊 CommunicationHUD: Audio marked as initialized after successful play`);
             }
         }).catch(e => {
             console.warn(`🔊 CommunicationHUD: ${audioType} audio play failed:`, e);
             if (!this.audioInitialized) {
-                console.log(`🔊 CommunicationHUD: Setting up audio initialization for future user interaction`);
+debug('UI', `🔊 CommunicationHUD: Setting up audio initialization for future user interaction`);
                 this.initializeAudioOnInteraction();
             }
         });
@@ -619,7 +621,7 @@ export class CommunicationHUD {
      * Play delivery completion audio with proper error handling (backward compatibility)
      */
     playDeliveryAudio() {
-        console.log('🔊 CommunicationHUD: playDeliveryAudio called');
+debug('UI', '🔊 CommunicationHUD: playDeliveryAudio called');
         this.playAudioForType('delivery');
     }
     
@@ -694,7 +696,7 @@ export class CommunicationHUD {
      */
     setupEventListeners() {
         // Future event listeners for mission system integration
-        console.log('🗣️ CommunicationHUD: Event listeners ready');
+debug('UI', 'CommunicationHUD: Event listeners ready');
     }
     
     /**
@@ -852,11 +854,11 @@ export class CommunicationHUD {
         if (this.effectsEnabled) {
             // Enable enhanced effects
             this.enableEnhancedEffects();
-            console.log('🗣️ CommunicationHUD: Enhanced effects ENABLED (video tint + scan lines)');
+debug('UI', 'CommunicationHUD: Enhanced effects ENABLED (video tint + scan lines)');
         } else {
             // Disable enhanced effects - show raw video
             this.disableEnhancedEffects();
-            console.log('🗣️ CommunicationHUD: Enhanced effects DISABLED (raw video, no scan lines)');
+debug('UI', 'CommunicationHUD: Enhanced effects DISABLED (raw video, no scan lines)');
         }
         
         this.playCommandSound();
@@ -909,7 +911,7 @@ export class CommunicationHUD {
         this.isVisible = !this.isVisible;
         this.commContainer.style.display = this.isVisible ? 'block' : 'none';
         
-        console.log(`🗣️ CommunicationHUD: ${this.isVisible ? 'Enabled' : 'Disabled'}`);
+debug('UI', `🗣️ CommunicationHUD: ${this.isVisible ? 'Enabled' : 'Disabled'}`);
         
         // Play command sound for toggle
         this.playCommandSound();
@@ -945,7 +947,7 @@ export class CommunicationHUD {
      * Start test sequence with animation and dialogue
      */
     startTestSequence() {
-        console.log('🗣️ CommunicationHUD: Starting test sequence');
+debug('UI', 'CommunicationHUD: Starting test sequence');
         
         // Set test NPC info with faction styling
         this.updateSpeakerStyling('ADMIRAL CHEN', 'friendly');
@@ -1109,7 +1111,7 @@ export class CommunicationHUD {
             // Show without auto-running the test sequence
             this.isVisible = true;
             this.commContainer.style.display = 'block';
-            console.log('🗣️ CommunicationHUD: Enabled');
+debug('UI', 'CommunicationHUD: Enabled');
             this.playCommandSound();
         }
         
@@ -1202,13 +1204,13 @@ export class CommunicationHUD {
         if (audioManager && typeof audioManager.playSound === 'function') {
             // Only play if user has interacted (to prevent startup audio)
             if (audioManager.userHasInteracted) {
-                console.log('🗣️ CommunicationHUD: Playing comm sound (user has interacted)');
+debug('UI', 'CommunicationHUD: Playing comm sound (user has interacted)');
                 audioManager.playSound('blurb', 0.6); // Use blurb sound at 60% volume
             } else {
-                console.log('🗣️ CommunicationHUD: Skipping comm sound (no user interaction yet)');
+debug('UI', 'CommunicationHUD: Skipping comm sound (no user interaction yet)');
             }
         } else {
-            console.log('🗣️ CommunicationHUD: Audio manager not available');
+debug('AI', 'CommunicationHUD: Audio manager not available');
         }
     }
 
@@ -1220,10 +1222,10 @@ export class CommunicationHUD {
         if (audioManager && typeof audioManager.playSound === 'function') {
             // Only play if user has interacted (to prevent startup audio)
             if (audioManager.userHasInteracted) {
-                console.log('🗣️ CommunicationHUD: Playing command sound (user has interacted)');
+debug('UI', 'CommunicationHUD: Playing command sound (user has interacted)');
                 audioManager.playSound('command', 0.5);
             } else {
-                console.log('🗣️ CommunicationHUD: Skipping command sound (no user interaction yet)');
+debug('UI', 'CommunicationHUD: Skipping command sound (no user interaction yet)');
             }
         }
     }

@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * Star Charts System - Provides advanced navigation and discovery tracking
  * Based on docs/star_charts_system_spec.md
@@ -41,14 +43,14 @@ export default class StarChartsSystem extends System {
         this.levelStats = this.initializeLevelStats();
         
         // Debug logging to understand the NaN issue
-        console.log(`🗺️ DEBUG: StarCharts level=${this.level}`);
-        console.log(`🗺️ DEBUG: baseDiscoveryRange=${this.baseDiscoveryRange}`);
-        console.log(`🗺️ DEBUG: baseAccuracy=${this.baseAccuracy}`);
-        console.log(`🗺️ DEBUG: levelStats=`, this.levelStats);
-        console.log(`🗺️ DEBUG: levelStats[${this.level}]=`, this.levelStats[this.level]);
+debug('INSPECTION', `🗺️ DEBUG: StarCharts level=${this.level}`);
+debug('INSPECTION', `🗺️ DEBUG: baseDiscoveryRange=${this.baseDiscoveryRange}`);
+debug('INSPECTION', `🗺️ DEBUG: baseAccuracy=${this.baseAccuracy}`);
+debug('INSPECTION', `🗺️ DEBUG: levelStats=`, this.levelStats);
+debug('INSPECTION', `🗺️ DEBUG: levelStats[${this.level}]=`, this.levelStats[this.level]);
         
         // Log after everything is properly initialized
-        console.log(`Star Charts System created (Level ${this.level}) - Discovery Range: ${this.getCurrentDiscoveryRange()}km, Accuracy: ${this.getCurrentAccuracy()}%`);
+debug('UTILITY', `Star Charts System created (Level ${this.level}) - Discovery Range: ${this.getCurrentDiscoveryRange()}km, Accuracy: ${this.getCurrentAccuracy()}%`);
     }
 
     initializeLevelStats() {
@@ -121,12 +123,12 @@ export default class StarChartsSystem extends System {
         const cooldownPassed = (now - this.lastActivationTime) >= this.activationCooldown;
         
         if (!canActivateBase) {
-            console.log('🗺️ Star Charts: Cannot activate - system not operational');
+debug('UTILITY', 'Star Charts: Cannot activate - system not operational');
             return false;
         }
         
         if (!cooldownPassed) {
-            console.log('🗺️ Star Charts: Cannot activate - cooldown active');
+debug('UTILITY', 'Star Charts: Cannot activate - cooldown active');
             return false;
         }
         
@@ -145,11 +147,11 @@ export default class StarChartsSystem extends System {
             const ship = this.getShip();
             if (ship && ship.hasSystemCards && typeof ship.hasSystemCards === 'function') {
                 hasStarChartsCards = ship.hasSystemCards('star_charts');
-                console.log(`🗺️ StarCharts: Card check result:`, hasStarChartsCards);
+debug('UI', `🗺️ StarCharts: Card check result:`, hasStarChartsCards);
             } else {
                 if (ship && ship.hasSystemCardsSync && typeof ship.hasSystemCardsSync === 'function') {
                     hasStarChartsCards = ship.hasSystemCardsSync('star_charts');
-                    console.log(`🗺️ StarCharts: Card check (sync) result:`, hasStarChartsCards);
+debug('UI', `🗺️ StarCharts: Card check (sync) result:`, hasStarChartsCards);
                 }
             }
         } catch (error) {
@@ -165,7 +167,7 @@ export default class StarChartsSystem extends System {
         this.isActive = true;
         this.lastActivationTime = Date.now();
         
-        console.log(`🗺️ Star Charts activated - Discovery Range: ${this.getCurrentDiscoveryRange()}km, Accuracy: ${this.getCurrentAccuracy()}%`);
+debug('UTILITY', `🗺️ Star Charts activated - Discovery Range: ${this.getCurrentDiscoveryRange()}km, Accuracy: ${this.getCurrentAccuracy()}%`);
         return true;
     }
 
@@ -173,7 +175,7 @@ export default class StarChartsSystem extends System {
     deactivate() {
         this.isChartsActive = false;
         this.isActive = false;
-        console.log('🗺️ Star Charts deactivated');
+debug('UTILITY', 'Star Charts deactivated');
     }
 
     // Get system status for UI display

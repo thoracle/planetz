@@ -1,3 +1,5 @@
+import { debug } from './debug.js';
+
 /**
  * SpatialManager - Simple Three.js-based spatial tracking system
  * Replaces Ammo.js physics world for object tracking and spatial queries
@@ -16,7 +18,7 @@ export class SpatialManager {
         this.maxUpdatesPerFrame = 50;
         this.lastUpdateTime = 0;
         
-        console.log('🌌 SpatialManager initialized - Three.js spatial tracking');
+debug('UTILITY', '🌌 SpatialManager initialized - Three.js spatial tracking');
     }
 
     /**
@@ -264,7 +266,7 @@ export class SpatialManager {
         this.objectsByType.clear();
         this.boundingBoxes.clear();
         this.boundingSpheres.clear();
-        console.log('🌌 SpatialManager cleared');
+debug('UTILITY', '🌌 SpatialManager cleared');
     }
 }
 

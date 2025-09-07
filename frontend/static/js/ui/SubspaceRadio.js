@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * SubspaceRadio - Ticker tape style notification system
  * Displays scrolling messages across the bottom of the screen
@@ -105,7 +107,7 @@ export default class SubspaceRadio {
         this.createUI();
         this.bindEvents();
         
-        console.log('SubspaceRadio initialized');
+debug('UTILITY', 'SubspaceRadio initialized');
     }
     
     setStarfieldManager(manager) {
@@ -188,7 +190,7 @@ export default class SubspaceRadio {
         if (!subspaceRadio) {
             console.warn('No subspace radio system found on ship');
             // Add HUD error message for missing system
-            console.log('🔍 SubspaceRadio toggle: starfieldManager available?', !!this.starfieldManager);
+debug('AI', 'SubspaceRadio toggle: starfieldManager available?', !!this.starfieldManager);
             if (this.starfieldManager && this.starfieldManager.showHUDError) {
                 this.starfieldManager.showHUDError(
                     'SUBSPACE RADIO UNAVAILABLE',
@@ -278,7 +280,7 @@ export default class SubspaceRadio {
         // Start message cycling
         this.startMessageCycle();
         
-        console.log('Subspace Radio activated');
+debug('UI', 'Subspace Radio activated');
     }
     
     hide() {
@@ -289,7 +291,7 @@ export default class SubspaceRadio {
         // Stop message cycling
         this.stopMessageCycle();
         
-        console.log('Subspace Radio deactivated');
+debug('UI', 'Subspace Radio deactivated');
     }
     
     startMessageCycle() {
@@ -725,7 +727,7 @@ export default class SubspaceRadio {
             this.container.parentNode.removeChild(this.container);
         }
         
-        console.log('SubspaceRadio disposed');
+debug('UI', 'SubspaceRadio disposed');
     }
     
     /**

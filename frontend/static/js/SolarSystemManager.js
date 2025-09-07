@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import PlanetGenerator from './planetGenerator.js';
 import { Atmosphere } from './Atmosphere.js';
 import { Cloud } from './Cloud.js';
+import { debug } from './debug.js';
 
 /**
  * SolarSystemManager - Manages celestial body creation and physics
@@ -113,29 +114,29 @@ export class SolarSystemManager {
     }
 
     async generateStarSystem(sector) {
-        console.log('Starting star system generation for sector:', sector);
+debug('UTILITY', 'Starting star system generation for sector:', sector);
         
         // Update current sector immediately
         this.currentSector = sector;
-        console.log('Updated current sector to:', sector);
+debug('UTILITY', 'Updated current sector to:', sector);
         
         try {
             // Clear existing system first
-            console.log('Clearing existing system');
+debug('UTILITY', 'Clearing existing system');
             this.clearSystem();
             
             // First try to get the system from universe data
             if (this.universe) {
                 const systemData = this.universe.find(system => system.sector === sector);
                 if (systemData) {
-                    console.log('Found system in universe data:', {
+                    debug('STAR_CHARTS', 'Found system in universe data:', {
                         starName: systemData.star_name,
                         starType: systemData.star_type,
                         planetCount: systemData.planets?.length
                     });
                     this.starSystem = systemData;
                 } else {
-                    console.warn('System not found in universe data, falling back to API');
+                    debug('STAR_CHARTS', 'System not found in universe data, falling back to API');
                     // Fall back to API if not found in universe
                     const response = await fetch(`/api/generate_star_system?seed=${sector}`);
                     if (!response.ok) {
@@ -153,7 +154,7 @@ export class SolarSystemManager {
                 this.starSystem = await response.json();
             }
             
-            console.log('Star system data:', {
+            debug('STAR_CHARTS', 'Star system data:', {
                 starName: this.starSystem?.star_name,
                 starType: this.starSystem?.star_type,
                 starSize: this.starSystem?.star_size,
@@ -161,7 +162,7 @@ export class SolarSystemManager {
             });
             
             // Generate new system
-            console.log('Generating new system for sector:', sector);
+debug('UTILITY', 'Generating new system for sector:', sector);
             const success = await this.createStarSystem();
             
             if (!success) {
@@ -169,7 +170,7 @@ export class SolarSystemManager {
                 return false;
             }
             
-            console.log('Successfully generated new star system for sector:', sector);
+debug('UTILITY', 'Successfully generated new star system for sector:', sector);
             // Notify listeners that the star system is ready
             try {
                 const evt = new CustomEvent('starSystemReady', { detail: { sector, starName: this.starSystem?.star_name } });
@@ -185,13 +186,13 @@ export class SolarSystemManager {
     }
 
     async createStarSystem() {
-        console.log('=== Starting Star System Creation ===');
+debug('UTILITY', '=== Starting Star System Creation ===');
         if (!this.starSystem) {
             console.error('No star system data available for creation');
             throw new Error('No star system data available');
         }
 
-        console.log('Star system data:', {
+        debug('STAR_CHARTS', 'Star system data:', {
             name: this.starSystem.star_name,
             type: this.starSystem.star_type,
             size: this.starSystem.star_size,
@@ -200,20 +201,20 @@ export class SolarSystemManager {
         
         // Store the star system data before clearing
         const starSystemData = this.starSystem;
-        console.log('Stored star system data for restoration');
+debug('UTILITY', 'Stored star system data for restoration');
         
         // Clear existing meshes and collections
-        console.log('Clearing existing system...');
+debug('UTILITY', 'Clearing existing system...');
         this.clearSystem();
         
         // Restore the star system data
         this.starSystem = starSystemData;
-        console.log('Restored star system data');
+debug('UTILITY', 'Restored star system data');
 
         try {
             // Create star
             const starSize = this.starSystem.star_size || 5;
-            console.log('Creating star:', {
+            debug('STAR_CHARTS', 'Creating star:', {
                 size: starSize,
                 type: this.starSystem.star_type,
                 name: this.starSystem.star_name
@@ -230,7 +231,7 @@ export class SolarSystemManager {
             const star = new THREE.Mesh(starGeometry, starMaterial);
             this.scene.add(star);
             this.celestialBodies.set('star', star);
-            console.log('Star created and added to scene');
+debug('UTILITY', 'Star created and added to scene');
 
                     // Set name directly on star object for target computer
         star.name = this.starSystem.star_name || 'Unknown Star';
@@ -260,7 +261,7 @@ export class SolarSystemManager {
                     health: 50000 // Stars are essentially indestructible
                 });
                 
-                console.log(`🌟 Star added to spatial tracking: ${this.starSystem.star_name}, radius=${collisionRadius}m`);
+debug('UTILITY', `🌟 Star added to spatial tracking: ${this.starSystem.star_name}, radius=${collisionRadius}m`);
             } else {
                 console.warn('⚠️ SpatialManager not ready - skipping spatial tracking for star');
             }
@@ -269,18 +270,18 @@ export class SolarSystemManager {
             const starLight = new THREE.PointLight(starColor, 2, 1000);
             starLight.position.copy(star.position);
             this.scene.add(starLight);
-            console.log('Star light added');
+debug('UTILITY', 'Star light added');
 
             // Add ambient light for base illumination
             const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
             this.scene.add(ambientLight);
-            console.log('Ambient light added');
+debug('UTILITY', 'Ambient light added');
 
             // Add hemisphere light to simulate scattered light
             const hemisphereLight = new THREE.HemisphereLight(starColor, 0x404040, 0.8);
             hemisphereLight.position.copy(star.position);
             this.scene.add(hemisphereLight);
-            console.log('Hemisphere light added');
+debug('UTILITY', 'Hemisphere light added');
 
             // Create planets
             if (!this.starSystem.planets || !Array.isArray(this.starSystem.planets)) {
@@ -288,7 +289,7 @@ export class SolarSystemManager {
                 return true; // Still return true as we created the star
             }
 
-            console.log('Starting planet creation:', {
+            debug('STAR_CHARTS', 'Starting planet creation:', {
                 totalPlanets: this.starSystem.planets.length,
                 maxPlanets: Math.min(10, this.starSystem.planets.length)
             });
@@ -301,7 +302,7 @@ export class SolarSystemManager {
                     console.warn(`Invalid planet data at index ${i}`);
                     continue;
                 }
-                console.log(`Creating planet ${i}:`, {
+                debug('STAR_CHARTS', `Creating planet ${i}:`, {
                     name: planetData.planet_name,
                     type: planetData.planet_type,
                     size: planetData.planet_size,
@@ -310,7 +311,7 @@ export class SolarSystemManager {
                 await this.createPlanet(planetData, i, maxPlanets);
             }
             
-            console.log('Planet creation completed:', {
+            debug('STAR_CHARTS', 'Planet creation completed:', {
                 totalBodies: this.celestialBodies.size,
                 planetCount: Array.from(this.celestialBodies.keys()).filter(k => k.startsWith('planet_')).length,
                 moonCount: Array.from(this.celestialBodies.keys()).filter(k => k.startsWith('moon_')).length
@@ -318,12 +319,12 @@ export class SolarSystemManager {
             
             // Add Sol-specific infrastructure if this is the Sol system
             if (this.currentSector === 'A0' || this.starSystem?.star_name?.toLowerCase() === 'sol') {
-                console.log('🌟 Creating Sol System infrastructure...');
+debug('UTILITY', '🌟 Creating Sol System infrastructure...');
                 await this.createSolSystemInfrastructure();
-                console.log('🌟 Sol System infrastructure complete');
+debug('UTILITY', '🌟 Sol System infrastructure complete');
             }
             
-            console.log('=== Star System Creation Complete ===');
+debug('UTILITY', '=== Star System Creation Complete ===');
             return true; // Return true on successful completion
         } catch (error) {
             console.error('=== Star System Creation Failed ===');
@@ -423,9 +424,9 @@ export class SolarSystemManager {
                     technology: planetData.technology
                 });
                 
-                console.log(`🌍 Planet collision: Visual=${planetSize}m, Physics=${collisionRadius}m (realistic=${useRealistic})`);
+debug('PHYSICS', `🌍 Planet collision: Visual=${planetSize}m, Physics=${collisionRadius}m (realistic=${useRealistic})`);
                 
-                console.log(`🪐 Planet added to spatial tracking: ${planetData.planet_name || index}, radius=${collisionRadius}m`);
+debug('UTILITY', `🪐 Planet added to spatial tracking: ${planetData.planet_name || index}, radius=${collisionRadius}m`);
             } else {
                 console.warn('⚠️ SpatialManager not ready - skipping spatial tracking for planets');
             }
@@ -540,7 +541,7 @@ export class SolarSystemManager {
                     technology: moonData.technology
                 });
                 
-                console.log(`🌙 Moon added to spatial tracking: ${moonData.moon_name || `${planetIndex}_${moonIndex}`}, radius=${collisionRadius}m`);
+debug('UTILITY', `🌙 Moon added to spatial tracking: ${moonData.moon_name || `${planetIndex}_${moonIndex}`}, radius=${collisionRadius}m`);
             } else {
                 console.warn('⚠️ SpatialManager not ready - skipping spatial tracking for moons');
             }
@@ -574,7 +575,7 @@ export class SolarSystemManager {
     }
 
     clearSystem() {
-        console.log('Clearing star system');
+debug('UTILITY', 'Clearing star system');
         
         // Remove all celestial bodies from the scene
         for (const [id, body] of this.celestialBodies) {
@@ -585,7 +586,7 @@ export class SolarSystemManager {
                 // Remove from spatial tracking if it exists
                 if (window.spatialManager) {
                     window.spatialManager.removeObject(body);
-                    console.log(`🧹 Object removed from spatial tracking: ${id}`);
+debug('UTILITY', `🧹 Object removed from spatial tracking: ${id}`);
                 }
                 
                 // Dispose of geometry
@@ -629,7 +630,7 @@ export class SolarSystemManager {
             window.gc();
         }
         
-        console.log('Star system cleared and memory cleaned up');
+debug('PERFORMANCE', 'Star system cleared and memory cleaned up');
     }
 
     getStarColor(starType) {
@@ -899,7 +900,7 @@ export class SolarSystemManager {
      * Based on docs/sol_system_layout.md
      */
     async createSolSystemInfrastructure() {
-        console.log('🛰️ Creating Sol System space stations and infrastructure...');
+debug('UTILITY', 'Creating Sol System space stations and infrastructure...');
 
         try {
             // Load infrastructure data from JSON file
@@ -909,7 +910,7 @@ export class SolarSystemManager {
             }
             const infrastructureData = await response.json();
             const solStations = infrastructureData.stations;
-            console.log(`📋 Loaded ${solStations.length} stations from JSON data`);
+debug('UTILITY', `📋 Loaded ${solStations.length} stations from JSON data`);
 
             // Create space station objects
             for (const stationData of solStations) {
@@ -918,14 +919,14 @@ export class SolarSystemManager {
                     if (station) {
                         this.scene.add(station);
                         this.celestialBodies.set(`station_${stationData.name.toLowerCase().replace(/\s+/g, '_')}`, station);
-                        console.log(`✅ Created station: ${stationData.name} (${stationData.faction})`);
+debug('UTILITY', `✅ Created station: ${stationData.name} (${stationData.faction})`);
                     }
                 } catch (error) {
                     console.error(`❌ Failed to create station ${stationData.name}:`, error);
                 }
             }
 
-            console.log(`🛰️ Created ${solStations.length} space stations in Sol system`);
+debug('UTILITY', `🛰️ Created ${solStations.length} space stations in Sol system`);
         } catch (error) {
             console.error('❌ Failed to load Sol system infrastructure:', error);
         }
@@ -956,7 +957,7 @@ export class SolarSystemManager {
             }
             const infrastructureData = await response.json();
             const beaconData = infrastructureData.beacons;
-            console.log(`📋 Loaded ${beaconData.length} beacons from JSON data`);
+debug('UTILITY', `📋 Loaded ${beaconData.length} beacons from JSON data`);
 
             const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
             if (!THREE) return;
@@ -998,7 +999,7 @@ export class SolarSystemManager {
                 const angle = Math.atan2(position[2], position[0]);
                 beacon.rotation.y = angle;
 
-                console.log(`📡 Beacon ${i + 1} created at position (${position[0].toFixed(1)}, ${position[1].toFixed(1)}, ${position[2].toFixed(1)})`);
+debug('UTILITY', `📡 Beacon ${i + 1} created at position (${position[0].toFixed(1)}, ${position[1].toFixed(1)}, ${position[2].toFixed(1)})`);
 
                 // Set name directly on beacon object for target computer
                 beacon.name = beaconInfo.name;
@@ -1046,7 +1047,7 @@ export class SolarSystemManager {
                         window.collisionManager.addObjectToLayer(beacon, 'stations');
                     }
 
-                    console.log(`📡 Navigation beacon ${beaconInfo.name} added to spatial tracking`);
+debug('NAVIGATION', `📡 Navigation beacon ${beaconInfo.name} added to spatial tracking`);
                 }
 
                 // Track in StarfieldManager so we can clean up on destroy
@@ -1055,7 +1056,7 @@ export class SolarSystemManager {
                 }
             }
 
-            console.log(`📡 Created ${beaconData.length} Navigation Beacons from JSON data`);
+debug('NAVIGATION', `📡 Created ${beaconData.length} Navigation Beacons from JSON data`);
         } catch (error) {
             console.error('❌ Failed to create navigation beacons from JSON:', error);
         }
@@ -1074,13 +1075,13 @@ export class SolarSystemManager {
 
                 if (targetComputer && targetComputer.range) {
                     // Use the equipped target CPU's range
-                    console.log(`🎯 Using equipped target CPU range: ${targetComputer.range}km for discovery radius`);
+debug('TARGETING', `🎯 Using equipped target CPU range: ${targetComputer.range}km for discovery radius`);
                     return targetComputer.range;
                 }
             }
 
             // Fallback to level 1 target CPU range if no target CPU equipped
-            console.log(`🎯 No target CPU equipped, using level 1 range: 50km for discovery radius`);
+debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for discovery radius`);
             return 50; // Level 1 target CPU range
         } catch (error) {
             console.warn('⚠️ Failed to get target CPU range, using default 50km:', error);
@@ -1293,7 +1294,7 @@ export class SolarSystemManager {
             // Store reference for cleanup
             station.userData.dockingCollisionBox = dockingBox;
             
-            console.log(`🚀 Created docking collision zone for ${stationData.name} (${dockingBoxSize.toFixed(1)}m range)`);
+debug('UTILITY', `🚀 Created docking collision zone for ${stationData.name} (${dockingBoxSize.toFixed(1)}m range)`);
         } catch (error) {
             console.error(`❌ Failed to create docking zone for ${stationData.name}:`, error);
         }

@@ -17,6 +17,7 @@ import { CrosshairTargeting } from '../utils/CrosshairTargeting.js';
 import { targetingService } from '../services/TargetingService.js';
 import { getActiveCamera } from '../ship/systems/services/AimResolver.js';
 import { getStarterCardsArray } from '../ship/ShipConfigs.js';
+import { debug } from '../debug.js';
 
 export const VIEW_TYPES = {
     FORE: 'fore',
@@ -98,7 +99,7 @@ export class ViewManager {
         // Bind keyboard events
         this.bindKeyEvents();
         
-        console.log('ViewManager initialized with Ship:', this.ship.getStatus());
+debug('UTILITY', 'ViewManager initialized with Ship:', this.ship.getStatus());
     }
 
     setStarfieldManager(manager) {
@@ -111,7 +112,7 @@ export class ViewManager {
         
         // Initialize ship systems when StarfieldManager is available - but only once
         if (manager && typeof manager.initializeShipSystems === 'function' && !this.shipSystemsInitialized) {
-            console.log('🔗 ViewManager: StarfieldManager set - initializing ship systems');
+debug('UTILITY', 'ViewManager: StarfieldManager set - initializing ship systems');
             this.initializeShipSystems();
             this.shipSystemsInitialized = true;
         }
@@ -123,7 +124,7 @@ export class ViewManager {
     // Add method to set SolarSystemManager
     setSolarSystemManager(manager) {
         this.solarSystemManager = manager;
-        console.log('SolarSystemManager set in ViewManager');
+debug('UTILITY', 'SolarSystemManager set in ViewManager');
         
         // Initialize NavigationSystemManager if both managers are available
         this.initializeNavigationSystemIfReady();
@@ -132,7 +133,7 @@ export class ViewManager {
     initializeNavigationSystemIfReady() {
         // Initialize NavigationSystemManager once both managers are available
         if (this.starfieldManager && this.solarSystemManager && !this.navigationSystemManager) {
-            console.log('🧭 ViewManager: Initializing NavigationSystemManager with all dependencies');
+debug('NAVIGATION', 'ViewManager: Initializing NavigationSystemManager with all dependencies');
             
             this.navigationSystemManager = new NavigationSystemManager(
                 this,
@@ -148,7 +149,7 @@ export class ViewManager {
             // Expose globally for testing
             window.navigationSystemManager = this.navigationSystemManager;
             
-            console.log('✅ NavigationSystemManager initialized and exposed globally');
+debug('NAVIGATION', '✅ NavigationSystemManager initialized and exposed globally');
         }
     }
 
@@ -321,7 +322,7 @@ export class ViewManager {
                 const chartSystem = this.ship.systems.get('galactic_chart');
                 
                 if (isGalacticChartVisible) {
-                    console.log('Restoring previous view');
+debug('UTILITY', 'Restoring previous view');
                     // Deactivate chart system when hiding
                     if (chartSystem) {
                         chartSystem.deactivateChart();
@@ -332,7 +333,7 @@ export class ViewManager {
                     if (!chartSystem) {
                         console.warn('No Galactic Chart system found on ship');
                         // Show HUD error message instead of just console warning
-                        console.log('🔍 ViewManager G key: starfieldManager available?', !!this.starfieldManager);
+debug('AI', 'ViewManager G key: starfieldManager available?', !!this.starfieldManager);
                         if (this.starfieldManager && this.starfieldManager.showHUDError) {
                             this.starfieldManager.showHUDError(
                                 'GALACTIC CHART UNAVAILABLE',
@@ -367,17 +368,17 @@ export class ViewManager {
                     try {
                         if (this.ship.hasSystemCards && typeof this.ship.hasSystemCards === 'function') {
                             hasChartCards = this.ship.hasSystemCards('galactic_chart');
-                            console.log(`🗺️ ViewManager G key: Card check result:`, hasChartCards);
+debug('UI', `🗺️ ViewManager G key: Card check result:`, hasChartCards);
                         } else {
                             hasChartCards = true; // Fallback for ships without card system
-                            console.log(`🗺️ ViewManager G key: No card system - allowing access`);
+debug('UI', `🗺️ ViewManager G key: No card system - allowing access`);
                         }
                     } catch (error) {
                         console.warn('Chart card check failed:', error);
                         hasChartCards = false;
                     }
                     
-                    console.log(`🗺️ ViewManager G key: Final hasChartCards result:`, hasChartCards);
+debug('UI', `🗺️ ViewManager G key: Final hasChartCards result:`, hasChartCards);
                     
                     if (!hasChartCards) {
                         console.warn('Cannot use Galactic Chart: No chart cards installed');
@@ -404,22 +405,22 @@ export class ViewManager {
                     if (chartSystem.canActivate(this.ship)) {
                         chartFullyActivated = chartSystem.activateChart(this.ship);
                         if (chartFullyActivated) {
-                            console.log('Galactic Chart fully activated with scanning capabilities');
+debug('UTILITY', 'Galactic Chart fully activated with scanning capabilities');
                         }
                     } else {
-                        console.log('Galactic Chart opened in navigation-only mode (scanning on cooldown or insufficient energy)');
+debug('NAVIGATION', 'Galactic Chart opened in navigation-only mode (scanning on cooldown or insufficient energy)');
                     }
                     
                     // If scanner is visible, hide it first and deactivate the system
                     if (isLongRangeScannerVisible) {
-                        console.log('Hiding scanner before showing galactic chart');
+debug('UTILITY', 'Hiding scanner before showing galactic chart');
                         const scannerSystem = this.ship.systems.get('long_range_scanner');
                         if (scannerSystem) {
                             scannerSystem.stopScan();
                         }
                         this.navigationSystemManager?.hideNavigationInterface();
                     }
-                    console.log('Setting view to GALACTIC');
+debug('UTILITY', 'Setting view to GALACTIC');
                     this.setView(VIEW_TYPES.GALACTIC);
                 }
             } else if (key === 'l') {
@@ -435,7 +436,7 @@ export class ViewManager {
                 const scannerSystem = this.ship.systems.get('long_range_scanner');
                 
                 if (this.navigationSystemManager?.longRangeScanner && this.navigationSystemManager.longRangeScanner.isVisible()) {
-                    console.log('Hiding Long Range Scanner');
+debug('UTILITY', 'Hiding Long Range Scanner');
                     // Stop scanning when hiding scanner
                     if (scannerSystem) {
                         scannerSystem.stopScan();
@@ -495,7 +496,7 @@ export class ViewManager {
                     
                     // Hide other navigation interfaces
                     if (isGalacticChartVisible) {
-                        console.log('Hiding galactic chart before showing scanner');
+debug('UTILITY', 'Hiding galactic chart before showing scanner');
                         const chartSystem = this.ship.systems.get('galactic_chart');
                         if (chartSystem) {
                             chartSystem.deactivateChart();
@@ -508,7 +509,7 @@ export class ViewManager {
                         this.navigationSystemManager.starChartsUI.hide();
                     }
                     
-                    console.log('Showing Long Range Scanner');
+debug('UTILITY', 'Showing Long Range Scanner');
                     this.navigationSystemManager?.longRangeScanner.show();
                 }
             } else if (key === 'c') {
@@ -521,7 +522,7 @@ export class ViewManager {
                 event.stopPropagation();
                 
                 if (this.navigationSystemManager?.starChartsUI && this.navigationSystemManager.starChartsUI.isVisible()) {
-                    console.log('Hiding Star Charts');
+debug('UTILITY', 'Hiding Star Charts');
                     this.navigationSystemManager.starChartsUI.hide();
                 } else {
                     // Check if Star Charts system is available
@@ -544,12 +545,12 @@ export class ViewManager {
                     try {
                         if (this.ship.hasSystemCards && typeof this.ship.hasSystemCards === 'function') {
                             hasStarChartsCards = this.ship.hasSystemCards('star_charts');
-                            console.log(`🗺️ ViewManager C key: Star Charts card check result:`, hasStarChartsCards);
+debug('UI', `🗺️ ViewManager C key: Star Charts card check result:`, hasStarChartsCards);
                         } else {
                             // Fallback for synchronous check
                             if (this.ship.hasSystemCardsSync && typeof this.ship.hasSystemCardsSync === 'function') {
                                 hasStarChartsCards = this.ship.hasSystemCardsSync('star_charts');
-                                console.log(`🗺️ ViewManager C key: Star Charts card check (sync) result:`, hasStarChartsCards);
+debug('UI', `🗺️ ViewManager C key: Star Charts card check (sync) result:`, hasStarChartsCards);
                             }
                         }
                     } catch (error) {
@@ -577,7 +578,7 @@ export class ViewManager {
                     
                     // Hide other navigation interfaces
                     if (isGalacticChartVisible) {
-                        console.log('Hiding galactic chart before showing Star Charts');
+debug('UTILITY', 'Hiding galactic chart before showing Star Charts');
                         const chartSystem = this.ship.systems.get('galactic_chart');
                         if (chartSystem) {
                             chartSystem.deactivateChart();
@@ -594,7 +595,7 @@ export class ViewManager {
                         this.navigationSystemManager.longRangeScanner.hide();
                     }
                     
-                    console.log('Showing Star Charts');
+debug('UTILITY', 'Showing Star Charts');
                     this.navigationSystemManager?.starChartsUI.show();
                 }
             } else if (key === 's' && !isDocked) {
@@ -605,7 +606,7 @@ export class ViewManager {
                 event.stopPropagation();
                 
                 // Let StarfieldManager handle shield toggles
-                console.log('Shield key pressed - handled by StarfieldManager');
+debug('COMBAT', 'Shield key pressed - handled by StarfieldManager');
                 
                 /* DISABLED - avoid double shield toggle
                 // Get shields system from ship
@@ -617,17 +618,17 @@ export class ViewManager {
                     }
                     
                     const newState = shieldsSystem.toggleShields();
-                    console.log(`Shields ${newState ? 'UP' : 'DOWN'} - Energy consumption: ${shieldsSystem.getEnergyConsumptionRate().toFixed(2)}/sec`);
+debug('COMBAT', `Shields ${newState ? 'UP' : 'DOWN'} - Energy consumption: ${shieldsSystem.getEnergyConsumptionRate().toFixed(2)}/sec`);
                     
                     // Show shield status in console for feedback
                     const status = shieldsSystem.getStatus();
-                    console.log(`Shield strength: ${status.currentShieldStrength.toFixed(2)}/${status.maxShieldStrength.toFixed(2)} - Damage absorption: ${(status.damageAbsorption * 100).toFixed(1)}%`);
+debug('COMBAT', `Shield strength: ${status.currentShieldStrength.toFixed(2)}/${status.maxShieldStrength.toFixed(2)} - Damage absorption: ${(status.damageAbsorption * 100).toFixed(1)}%`);
                 } else {
                     // Play fail sound if shields don't exist
                     if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
                         this.starfieldManager.playCommandFailedSound();
                     }
-                    console.log('No shields system found on ship - install shield cards');
+debug('COMBAT', 'No shields system found on ship - install shield cards');
                 }
                 */
             } else if (key === ' ' && !isDocked) {
@@ -643,7 +644,7 @@ export class ViewManager {
                 event.stopPropagation();
                 
                 // Let StarfieldManager handle damage control interface
-                console.log('Damage control key pressed - handled by StarfieldManager');
+debug('COMBAT', 'Damage control key pressed - handled by StarfieldManager');
             } else if (!isDocked && key === 'f' && (this.currentView === VIEW_TYPES.AFT || isGalacticChartVisible || isLongRangeScannerVisible)) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -657,7 +658,7 @@ export class ViewManager {
     }
 
     setView(viewType) {
-        console.log('setView called:', {
+        debug('UTILITY', 'setView called:', {
             viewType,
             currentView: this.currentView,
             isGalacticVisible: this.galacticChart.isVisible(),
@@ -745,7 +746,7 @@ export class ViewManager {
         
         // Don't store previous view if we're already in that view
         if (this.currentView === viewType) {
-            console.log('Already in requested view, returning');
+debug('UTILITY', 'Already in requested view, returning');
             return;
         }
         
@@ -807,7 +808,7 @@ export class ViewManager {
         
         // Update the current view BEFORE notifying StarfieldManager
         this.currentView = viewType;
-        console.log('Updated current view to:', this.currentView);
+debug('UTILITY', 'Updated current view to:', this.currentView);
         
         // Notify StarfieldManager of view change
         if (this.starfieldManager) {
@@ -878,7 +879,7 @@ export class ViewManager {
         
         // Don't restore if we're not in galactic or scanner view
         if (this.currentView !== VIEW_TYPES.GALACTIC && this.currentView !== VIEW_TYPES.SCANNER) {
-            console.log('Not in galactic or scanner view, returning');
+debug('UTILITY', 'Not in galactic or scanner view, returning');
             return;
         }
         
@@ -899,7 +900,7 @@ export class ViewManager {
         
         // If docked, restore to previous view or force FORE
         if (this.starfieldManager?.isDocked) {
-            console.log('Ship is docked, restoring to previous view or FORE');
+debug('UTILITY', 'Ship is docked, restoring to previous view or FORE');
             const validView = (this.previousView === VIEW_TYPES.FORE || this.previousView === VIEW_TYPES.AFT) ? 
                 this.previousView : VIEW_TYPES.FORE;
                 
@@ -927,7 +928,7 @@ export class ViewManager {
             ? this.lastNonModalView 
             : (this.previousView || VIEW_TYPES.FORE);
             
-        console.log('Restoring to view:', viewToRestore);
+debug('UTILITY', 'Restoring to view:', viewToRestore);
         
         // Restore the camera state
         this.camera.position.copy(this.savedCameraState.position);
@@ -947,7 +948,7 @@ export class ViewManager {
         
         // Update the current view and notify StarfieldManager
         this.currentView = viewToRestore;
-        console.log('Updated current view to:', this.currentView);
+debug('UTILITY', 'Updated current view to:', this.currentView);
         
         if (this.starfieldManager) {
             // Convert view type to uppercase before passing to starfieldManager
@@ -964,7 +965,7 @@ export class ViewManager {
     updateShipEnergy(amount) {
         const oldEnergy = this.ship.currentEnergy;
         this.ship.currentEnergy = Math.max(0, this.ship.currentEnergy + amount);
-        console.log(`Ship energy updated: ${oldEnergy.toFixed(2)} -> ${this.ship.currentEnergy.toFixed(2)} (change: ${amount.toFixed(2)})`);
+debug('UTILITY', `Ship energy updated: ${oldEnergy.toFixed(2)} -> ${this.ship.currentEnergy.toFixed(2)} (change: ${amount.toFixed(2)})`);
         return this.ship.currentEnergy;
     }
 
@@ -1038,7 +1039,7 @@ export class ViewManager {
      * to ensure consistent initialization across all code paths
      */
     initializeShipSystems() {
-        console.log('🚀 ViewManager: Initializing ship systems using unified approach');
+debug('UTILITY', 'ViewManager: Initializing ship systems using unified approach');
         
         // Ship class handles basic system setup in its constructor
         // But we need to initialize proper game systems for launch
@@ -1048,10 +1049,10 @@ export class ViewManager {
             this.starfieldManager.initializeShipSystems().catch(error => {
                 console.error('Failed to initialize ship systems via StarfieldManager:', error);
             });
-            console.log('✅ ViewManager: Ship systems initialized via StarfieldManager');
+debug('UTILITY', '✅ ViewManager: Ship systems initialized via StarfieldManager');
         } else {
             // Fallback for cases where StarfieldManager isn't available yet
-            console.log('⚠️ ViewManager: StarfieldManager not available yet - ship systems will be initialized when StarfieldManager is set');
+debug('AI', 'ViewManager: StarfieldManager not available yet - ship systems will be initialized when StarfieldManager is set');
         }
     }
     
@@ -1083,7 +1084,7 @@ export class ViewManager {
                 system.takeDamage(system.maxHealth * damageAmount);
                 const afterHealth = system.healthPercentage;
                 
-                console.log(`Applied ${(damageAmount * 100).toFixed(1)}% damage to ${systemName}: ${(beforeHealth * 100).toFixed(1)}% → ${(afterHealth * 100).toFixed(1)}%`);
+debug('COMBAT', `Applied ${(damageAmount * 100).toFixed(1)}% damage to ${systemName}: ${(beforeHealth * 100).toFixed(1)}% → ${(afterHealth * 100).toFixed(1)}%`);
                 
                 // Add to damage control log if available (old interface disabled)
                 // if (this.damageControl) {
@@ -1094,7 +1095,7 @@ export class ViewManager {
             }
         }
         
-        console.log('Test damage applied. Press D to open Damage Control Interface.');
+debug('COMBAT', 'Test damage applied. Press D to open Damage Control Interface.');
         return selectedSystems;
     }
     
@@ -1638,7 +1639,7 @@ export class ViewManager {
      * @param {string} shipType - The new ship type to switch to
      */
     async switchShip(shipType) {
-        console.log(`🔄 ViewManager: Switching ship from ${this.ship.shipType} to ${shipType}`);
+debug('UTILITY', `🔄 ViewManager: Switching ship from ${this.ship.shipType} to ${shipType}`);
         
         // Store current energy level to preserve it during switch
         const currentEnergyPercent = this.ship.currentEnergy / Math.max(this.ship.maxEnergy, 1);
@@ -1660,7 +1661,7 @@ export class ViewManager {
             
             if (playerData) {
                 const savedConfig = playerData.getShipConfiguration(shipType);
-                console.log(`📦 Loading saved configuration for ${shipType}:`, savedConfig.size, 'cards');
+debug('UI', `📦 Loading saved configuration for ${shipType}:`, savedConfig.size, 'cards');
                 
                 // Load the configuration into the ship's CardSystemIntegration
                 if (this.ship.cardSystemIntegration && savedConfig.size > 0) {
@@ -1673,7 +1674,7 @@ export class ViewManager {
                                 cardType: cardData.cardType,
                                 level: cardData.level || 1
                             });
-                            console.log(`🃏 Loaded card: ${cardData.cardType} (Lv.${cardData.level || 1}) in slot ${slotId}`);
+debug('UI', `🃏 Loaded card: ${cardData.cardType} (Lv.${cardData.level || 1}) in slot ${slotId}`);
                         }
                     });
                     
@@ -1683,13 +1684,13 @@ export class ViewManager {
                     // Re-initialize cargo holds from updated cards
                     if (this.ship.cargoHoldManager) {
                         this.ship.cargoHoldManager.initializeFromCards();
-                        console.log('🚛 Cargo holds initialized from saved configuration');
+debug('UTILITY', '🚛 Cargo holds initialized from saved configuration');
                     }
                     
-                    console.log('✅ Card systems initialized from saved configuration');
+debug('UI', '✅ Card systems initialized from saved configuration');
                     
                 } else {
-                    console.log(`⚠️ No saved configuration found for ${shipType}, installing basic starter cards`);
+debug('UI', `⚠️ No saved configuration found for ${shipType}, installing basic starter cards`);
                     
                     // CRITICAL: Install basic starter cards when no saved config exists
                     // This ensures every ship has essential systems like impulse_engines
@@ -1704,7 +1705,7 @@ export class ViewManager {
                                 cardType: cardType,
                                 level: level
                             });
-                            console.log(`🃏 Installed starter card: ${cardType} (Lv.${level}) in slot ${slotId}`);
+debug('UI', `🃏 Installed starter card: ${cardType} (Lv.${level}) in slot ${slotId}`);
                         });
                         
                         // Initialize systems from starter cards
@@ -1713,17 +1714,17 @@ export class ViewManager {
                         // Re-initialize cargo holds from starter cards
                         if (this.ship.cargoHoldManager) {
                             this.ship.cargoHoldManager.initializeFromCards();
-                            console.log('🚛 Cargo holds initialized from starter cards');
+debug('UI', '🚛 Cargo holds initialized from starter cards');
                         }
                         
-                        console.log('✅ Starter card systems initialized');
+debug('UI', '✅ Starter card systems initialized');
                     }
                 }
                 
                 // Verify impulse engines are loaded
                 const impulseEngines = this.ship.getSystem('impulse_engines');
                 if (impulseEngines) {
-                    console.log('✅ Impulse engines loaded successfully:', impulseEngines.isOperational());
+debug('UTILITY', '✅ Impulse engines loaded successfully:', impulseEngines.isOperational());
                 } else {
                     console.error('❌ Impulse engines still not found after configuration loading');
                 }
@@ -1757,16 +1758,16 @@ export class ViewManager {
             this.initializeShipSystems();
             this.shipSystemsInitialized = true;
         } else {
-            console.log('🔗 ViewManager: Ship systems already initialized, skipping duplicate initialization');
+debug('UTILITY', 'ViewManager: Ship systems already initialized, skipping duplicate initialization');
             
             // Still trigger StarfieldManager ship system refresh for new ship
             if (this.starfieldManager && typeof this.starfieldManager.initializeShipSystems === 'function') {
-                console.log('🔄 ViewManager: Refreshing StarfieldManager systems for new ship');
+debug('UTILITY', '🔄 ViewManager: Refreshing StarfieldManager systems for new ship');
                 this.starfieldManager.initializeShipSystems();
             }
         }
         
-        console.log(`✅ ViewManager: Ship switched to ${shipType}`, this.ship.getStatus());
+debug('UTILITY', `✅ ViewManager: Ship switched to ${shipType}`, this.ship.getStatus());
     }
 }
 

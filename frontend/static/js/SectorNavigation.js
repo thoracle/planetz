@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import WarpFeedback from './WarpFeedback.js';
+import { debug } from './debug.js';
 
 class SectorNavigation {
     constructor(scene, camera, warpDrive) {
@@ -148,11 +149,11 @@ class SectorNavigation {
             return false;
         }
 
-        console.log('Energy check passed, proceeding with navigation');
+debug('NAVIGATION', 'Energy check passed, proceeding with navigation');
 
         // Clear target computer and old system after energy check but before warp
         if (this.viewManager.starfieldManager) {
-            console.log('Clearing target computer');
+debug('TARGETING', 'Clearing target computer');
             this.viewManager.starfieldManager.clearTargetComputer();
         }
         
@@ -182,7 +183,7 @@ class SectorNavigation {
         
         // Activate warp drive
         if (!this.warpDrive.activate()) {
-            console.log('Failed to activate warp drive');
+debug('P1', 'Failed to activate warp drive');
             this.isNavigating = false;
             return false;
         }
@@ -192,7 +193,7 @@ class SectorNavigation {
             this.viewManager.starfieldManager.setView('FORE');
         }
 
-        console.log('Warp drive activated, starting navigation');
+debug('NAVIGATION', 'Warp drive activated, starting navigation');
         // Show initial progress
         this.feedback.showAll();
         this.feedback.updateProgress(0, 'Warp Navigation');
@@ -279,7 +280,7 @@ class SectorNavigation {
         this.feedback.hideAll();
         
         // Deactivate warp drive
-        console.log('Deactivating warp drive');
+debug('UTILITY', 'Deactivating warp drive');
         this.warpDrive.deactivate();
         
         // Only set isNavigating to false after warp drive is deactivated

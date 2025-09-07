@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * PhysicsDockingManager - Physics-based collision docking system
  * Replaces distance-based docking with proper collision detection
@@ -33,7 +35,7 @@ export class PhysicsDockingManager {
         // Monitoring
         this.dockingZoneCheckInterval = null;
         
-        console.log('🚀 PhysicsDockingManager initialized');
+debug('PHYSICS', 'PhysicsDockingManager initialized');
         this.setupCollisionCallbacks();
     }
 
@@ -49,7 +51,7 @@ export class PhysicsDockingManager {
 
         // Start monitoring for docking zone collisions manually
         this.startDockingZoneMonitoring();
-        console.log('🚀 Docking zone monitoring started');
+debug('UTILITY', 'Docking zone monitoring started');
     }
 
     /**
@@ -119,7 +121,7 @@ export class PhysicsDockingManager {
      * Handle entering a docking zone
      */
     onEnterDockingZone(dockingZone) {
-        console.log(`🚀 Entered docking zone for ${dockingZone.object.userData.name}`);
+debug('UTILITY', `🚀 Entered docking zone for ${dockingZone.object.userData.name}`);
         
         // Show docking prompt if conditions are met
         this.checkAutoDocking(dockingZone);
@@ -159,7 +161,7 @@ export class PhysicsDockingManager {
         // Check velocity - must be slow enough to dock
         const currentSpeed = this.starfieldManager.currentSpeed || 0;
         if (currentSpeed > 1) { // Max docking speed
-            console.log('🚀 Too fast to dock - reduce speed');
+debug('UTILITY', 'Too fast to dock - reduce speed');
             return;
         }
 
@@ -203,7 +205,7 @@ export class PhysicsDockingManager {
      * Prompt player for docking
      */
     promptDocking(stationData) {
-        console.log(`🚀 Entered docking zone for ${stationData.name} - press DOCK to dock`);
+debug('UTILITY', `🚀 Entered docking zone for ${stationData.name} - press DOCK to dock`);
         
         // Show docking UI if available with enriched info
         if (this.starfieldManager.dockingModal) {
@@ -226,19 +228,19 @@ export class PhysicsDockingManager {
         // Check if we're in cooldown
         if (this.dockingCooldown) {
             const timeLeft = this.dockingCooldownTime - (Date.now() - this.lastLaunchTime);
-            console.log(`🚀 Docking on cooldown for ${Math.ceil(timeLeft / 1000)} more seconds`);
+debug('UTILITY', `🚀 Docking on cooldown for ${Math.ceil(timeLeft / 1000)} more seconds`);
             return false;
         }
 
         // Check if already docked
         if (this.isDocked) {
-            console.log('🚀 Already docked');
+debug('UTILITY', 'Already docked');
             return false;
         }
 
         // Check if we're in a docking zone
         if (!this.inDockingZone || !this.currentDockingZone) {
-            console.log('🚀 Not in a docking zone - move closer to the station');
+debug('UTILITY', 'Not in a docking zone - move closer to the station');
             return false;
         }
 
@@ -247,7 +249,7 @@ export class PhysicsDockingManager {
         const zonePosition = this.currentDockingZone.object.position;
         
         if (!targetPosition || !zonePosition) {
-            console.log('🚀 Invalid target or zone position data');
+debug('TARGETING', 'Invalid target or zone position data');
             return false;
         }
         
@@ -261,10 +263,10 @@ export class PhysicsDockingManager {
             );
             
         if (positionDistance > 0.1) { // 0.1km tolerance
-            console.log('🚀 Target position mismatch with current docking zone');
-            console.log('  Target position:', targetPosition);
-            console.log('  Zone position:', zonePosition);
-            console.log('  Distance:', positionDistance);
+debug('TARGETING', 'Target position mismatch with current docking zone');
+debug('TARGETING', '  Target position:', targetPosition);
+debug('UTILITY', '  Zone position:', zonePosition);
+debug('UTILITY', '  Distance:', positionDistance);
             return false;
         }
 
@@ -278,7 +280,7 @@ export class PhysicsDockingManager {
         // Check speed
         const currentSpeed = this.starfieldManager.currentSpeed || 0;
         if (currentSpeed > 1) {
-            console.log('🚀 Too fast to dock - reduce speed to under 1 km/s');
+debug('UTILITY', 'Too fast to dock - reduce speed to under 1 km/s');
             return false;
         }
 
@@ -289,9 +291,9 @@ export class PhysicsDockingManager {
         // Immediately cut speed and stop engine noise when docking starts
         if (this.starfieldManager.audioManager && this.starfieldManager.audioManager.getEngineState() === 'running') {
             this.starfieldManager.playEngineShutdown();
-            console.log('🔇 Physics docking: Engine shutdown called');
+debug('PHYSICS', '🔇 Physics docking: Engine shutdown called');
         } else {
-            console.log('🔇 Physics docking engine state check:', this.starfieldManager.audioManager ? this.starfieldManager.audioManager.getEngineState() : 'no audioManager');
+debug('PHYSICS', '🔇 Physics docking engine state check:', this.starfieldManager.audioManager ? this.starfieldManager.audioManager.getEngineState() : 'no audioManager');
         }
         this.starfieldManager.targetSpeed = 0;
         this.starfieldManager.currentSpeed = 0;
@@ -319,7 +321,7 @@ export class PhysicsDockingManager {
             if (dockingSuccess) {
                 this.isDocked = true;
                 this.lastDockingTime = Date.now();
-                console.log(`🚀 Successfully docked with ${stationData.name}`);
+debug('UTILITY', `🚀 Successfully docked with ${stationData.name}`);
                 
                 // Check for cargo deliveries upon successful docking
                 if (target && target.userData && target.userData.name) {
@@ -347,7 +349,7 @@ export class PhysicsDockingManager {
      */
     async initiateLaunch() {
         if (!this.isDocked || !this.currentDockingTarget) {
-            console.log('🚀 Not currently docked');
+debug('UTILITY', 'Not currently docked');
             return false;
         }
 
@@ -396,7 +398,7 @@ export class PhysicsDockingManager {
                 this.starfieldManager.launch();
             }
 
-            console.log('🚀 Launch successful - positioned safely away from station');
+debug('UTILITY', 'Launch successful - positioned safely away from station');
             return true;
 
         } catch (error) {
@@ -469,10 +471,10 @@ export class PhysicsDockingManager {
         // Clear cooldown after timeout
         setTimeout(() => {
             this.dockingCooldown = false;
-            console.log('🚀 Docking cooldown ended');
+debug('UTILITY', 'Docking cooldown ended');
         }, this.dockingCooldownTime);
 
-        console.log(`🚀 Docking cooldown started for ${this.dockingCooldownTime / 1000} seconds`);
+debug('UTILITY', `🚀 Docking cooldown started for ${this.dockingCooldownTime / 1000} seconds`);
     }
 
     /**
@@ -499,7 +501,7 @@ export class PhysicsDockingManager {
     onLeaveDockingZone() {
         this.inDockingZone = false;
         this.currentDockingZone = null;
-        console.log('🚀 Left docking zone');
+debug('UTILITY', 'Left docking zone');
     }
 
     /**
@@ -516,6 +518,6 @@ export class PhysicsDockingManager {
         this.inDockingZone = false;
         this.currentDockingZone = null;
         
-        console.log('🚀 PhysicsDockingManager disposed');
+debug('PHYSICS', 'PhysicsDockingManager disposed');
     }
 }

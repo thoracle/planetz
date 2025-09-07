@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * CardRewardAnimator - Clash Royale style card reveal animation system
  * Creates dramatic one-at-a-time card reveals with loot crate presentation
@@ -59,7 +61,7 @@ export class CardRewardAnimator {
     
     initialize() {
         this.setupStyles();
-        console.log('🎴 CardRewardAnimator: Initialized');
+debug('UI', '🎴 CardRewardAnimator: Initialized');
         
         // Make globally accessible for testing
         window.cardRewardAnimator = this;
@@ -132,7 +134,7 @@ export class CardRewardAnimator {
         this.currentCardIndex = 0;
         this.isAnimating = true;
         
-        console.log(`🎴 CardRewardAnimator: Starting animation for ${cards.length} cards`);
+debug('UI', `🎴 CardRewardAnimator: Starting animation for ${cards.length} cards`);
         
         try {
             // Create fullscreen overlay
@@ -199,14 +201,14 @@ export class CardRewardAnimator {
         this.overlay.appendChild(titleText);
         
         document.body.appendChild(this.overlay);
-        console.log('🎴 CardRewardAnimator: Overlay created');
+debug('UI', '🎴 CardRewardAnimator: Overlay created');
     }
     
     /**
      * Reveal single card with full Clash Royale style animation
      */
     async revealSingleCard(cardData, index) {
-        console.log(`🎴 Revealing card ${index + 1}: ${cardData.name} (${cardData.rarity})`);
+debug('UI', `🎴 Revealing card ${index + 1}: ${cardData.name} (${cardData.rarity})`);
         
         // Create card container
         const cardContainer = document.createElement('div');
@@ -623,7 +625,7 @@ export class CardRewardAnimator {
         this.overlay = null;
         this.currentPrompt = null;
         this.cardQueue = [];
-        console.log('🎴 CardRewardAnimator: Cleaned up');
+debug('UI', '🎴 CardRewardAnimator: Cleaned up');
     }
     
     /**
@@ -642,7 +644,7 @@ export class CardRewardAnimator {
         if (audioManager && typeof audioManager.playSound === 'function') {
             audioManager.playSound(soundName, volume);
         } else {
-            console.log(`🎴 CardRewardAnimator: Would play sound: ${soundName}`);
+debug('UI', `🎴 CardRewardAnimator: Would play sound: ${soundName}`);
         }
     }
     

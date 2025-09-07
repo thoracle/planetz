@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * Subspace Radio System - Provides galactic communication and news feeds
  * Based on docs/spaceships_spec.md and docs/tech_design.md
@@ -37,7 +39,7 @@ export default class SubspaceRadioSystem extends System {
         // Override default active state - radio is only active when listening
         this.isActive = false;
         
-        console.log(`Subspace Radio System created (Level ${this.level}) - Signal Range: ${this.getCurrentSignalRange()}%, Signal Strength: ${this.getCurrentSignalStrength()}%`);
+debug('UTILITY', `Subspace Radio System created (Level ${this.level}) - Signal Range: ${this.getCurrentSignalRange()}%, Signal Strength: ${this.getCurrentSignalStrength()}%`);
     }
 
     initializeLevelStats() {
@@ -60,7 +62,7 @@ export default class SubspaceRadioSystem extends System {
             };
         }
 
-        console.log(`Subspace Radio upgraded to Level ${this.level} - Enhanced Communication Array`);
+debug('UTILITY', `Subspace Radio upgraded to Level ${this.level} - Enhanced Communication Array`);
         return levelStats;
     }
 
@@ -151,7 +153,7 @@ export default class SubspaceRadioSystem extends System {
         this.isRadioActive = true;
         this.lastActivationTime = Date.now();
         
-        console.log(`Subspace Radio activated - Energy consumption: ${this.getEnergyConsumptionRate()}/sec`);
+debug('UTILITY', `Subspace Radio activated - Energy consumption: ${this.getEnergyConsumptionRate()}/sec`);
         return true;
     }
 
@@ -159,7 +161,7 @@ export default class SubspaceRadioSystem extends System {
     deactivateRadio() {
         this.isActive = false;
         this.isRadioActive = false;
-        console.log('Subspace Radio deactivated');
+debug('UTILITY', 'Subspace Radio deactivated');
     }
 
     // Get current signal range affected by damage

@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Auto-Repair System - Simplified damage control without repair kits
  * Provides emergency triage repairs in space using priority queues
@@ -35,7 +37,7 @@ export default class AutoRepairSystem {
         
         this.priorities = { ...this.defaultPriorities };
         
-        console.log('Auto-Repair System initialized with emergency triage protocols');
+debug('AI', 'Auto-Repair System initialized with emergency triage protocols');
     }
     
     /**
@@ -45,7 +47,7 @@ export default class AutoRepairSystem {
     setRepairPriorities(priorities) {
         this.priorities = { ...priorities };
         this.updateRepairQueue();
-        console.log('Repair priorities updated:', this.priorities);
+debug('AI', 'Repair priorities updated:', this.priorities);
     }
     
     /**
@@ -84,7 +86,7 @@ export default class AutoRepairSystem {
     start() {
         this.isActive = true;
         this.updateRepairQueue();
-        console.log('Auto-repair system ACTIVATED - Emergency triage protocols engaged');
+debug('AI', 'Auto-repair system ACTIVATED - Emergency triage protocols engaged');
     }
     
     /**
@@ -93,7 +95,7 @@ export default class AutoRepairSystem {
     stop() {
         this.isActive = false;
         this.currentTarget = null;
-        console.log('Auto-repair system DEACTIVATED');
+debug('AI', 'Auto-repair system DEACTIVATED');
     }
     
     /**
@@ -139,12 +141,12 @@ export default class AutoRepairSystem {
         const afterPercent = Math.floor(afterHealth * 100);
         
         if (beforePercent !== afterPercent && afterPercent % 10 === 0) {
-            console.log(`Auto-repair: ${this.currentTarget} reached ${afterPercent}% health`);
+debug('TARGETING', `Auto-repair: ${this.currentTarget} reached ${afterPercent}% health`);
         }
         
         // Check if system is now functional (above 0% health)
         if (beforeHealth === 0 && afterHealth > 0) {
-            console.log(`Auto-repair: ${this.currentTarget} restored to minimal functionality`);
+debug('TARGETING', `Auto-repair: ${this.currentTarget} restored to minimal functionality`);
         }
     }
     
@@ -188,7 +190,7 @@ export default class AutoRepairSystem {
     resetPriorities() {
         this.priorities = { ...this.defaultPriorities };
         this.updateRepairQueue();
-        console.log('Repair priorities reset to defaults');
+debug('AI', 'Repair priorities reset to defaults');
     }
     
     /**
@@ -262,7 +264,7 @@ export default class AutoRepairSystem {
         const finalTotal = this.getTotalPriority();
         const remainingPoints = 10 - finalTotal;
         
-        console.log(`Priority system: ${systemName} set to ${newPriority}, total: ${finalTotal}/10, ${remainingPoints} points remaining`);
+debug('AI', `Priority system: ${systemName} set to ${newPriority}, total: ${finalTotal}/10, ${remainingPoints} points remaining`);
         
         this.updateRepairQueue();
     }
@@ -299,7 +301,7 @@ export default class AutoRepairSystem {
         const remaining = this.getRemainingPriority();
         if (remaining > 0) {
             this.priorities[systemName] = (this.priorities[systemName] || 0) + remaining;
-            console.log(`Allocated ${remaining} remaining points to ${systemName}`);
+debug('AI', `Allocated ${remaining} remaining points to ${systemName}`);
             this.updateRepairQueue();
         }
     }

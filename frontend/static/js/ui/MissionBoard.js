@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Mission Board UI Component
  * Displays available missions and handles mission acceptance
@@ -446,13 +448,13 @@ export class MissionBoard {
             
             this.availableMissions = missions || [];
             
-            console.log(`🎯 Loaded ${this.availableMissions.length} available missions`);
+debug('AI', `🎯 Loaded ${this.availableMissions.length} available missions`);
             this.updateMissionList();
             this.updateMissionCount();
             
             // If no missions available, try to generate some
             if (this.availableMissions.length === 0) {
-                console.log('🎯 No missions available, attempting to generate some...');
+debug('AI', 'No missions available, attempting to generate some...');
                 await this.generateStationMissions();
             }
             
@@ -563,7 +565,7 @@ export class MissionBoard {
         // Enable accept button
         this.acceptButton.disabled = false;
         
-        console.log(`🎯 Selected mission: ${mission.title}`);
+debug('MISSIONS', `🎯 Selected mission: ${mission.title}`);
     }
     
     displayMissionDetails(mission) {
@@ -653,7 +655,7 @@ export class MissionBoard {
             const result = await this.missionAPI.acceptMission(this.selectedMission.id);
             
             if (result.success) {
-                console.log(`✅ Mission accepted: ${this.selectedMission.title}`);
+debug('MISSIONS', `✅ Mission accepted: ${this.selectedMission.title}`);
                 
                 // Update UI
                 this.acceptedMissions.push(result.mission);
@@ -706,7 +708,7 @@ export class MissionBoard {
             };
             
             // Debug log to help identify any remaining issues
-            console.log('🎲 Generating mission with clean player data:', cleanPlayerData);
+debug('MISSIONS', '🎲 Generating mission with clean player data:', cleanPlayerData);
 
             // Create a clean copy of location data to avoid circular references
             const cleanLocation = this.currentLocation ? {
@@ -741,7 +743,7 @@ export class MissionBoard {
             const result = await this.missionAPI.generateMission(randomTemplate, this.currentLocationKey);
             
             if (result.success) {
-                console.log(`🎲 Generated mission: ${result.mission.title}`);
+debug('MISSIONS', `🎲 Generated mission: ${result.mission.title}`);
                 this.showSuccess(`Generated new mission: ${result.mission.title}`);
                 this.loadAvailableMissions();
                 this.loadActiveMissions(); // Reload active missions
@@ -762,12 +764,12 @@ export class MissionBoard {
         hooks.forEach(hook => {
             switch (hook.type) {
                 case 'spawn_enemies':
-                    console.log('🚀 Spawning enemies for mission:', hook.data);
+debug('MISSIONS', 'Spawning enemies for mission:', hook.data);
                     this.starfieldManager?.spawnMissionEnemies?.(hook.data);
                     break;
                     
                 case 'play_audio':
-                    console.log('🔊 Playing audio:', hook.data.sound);
+debug('UI', '🔊 Playing audio:', hook.data.sound);
                     this.starfieldManager?.playAudio?.(hook.data.sound, hook.data.volume);
                     break;
                     
@@ -776,7 +778,7 @@ export class MissionBoard {
                     break;
                     
                 default:
-                    console.log('🔗 Unhandled hook type:', hook.type, hook.data);
+debug('UI', 'Unhandled hook type:', hook.type, hook.data);
             }
         });
     }
@@ -897,7 +899,7 @@ export class MissionBoard {
         if (typeof this.loadActiveMissions === 'function') {
             this.loadActiveMissions();
         }
-        console.log('🎯 Mission Board opened');
+debug('MISSIONS', 'Mission Board opened');
     }
     
     hide() {
@@ -908,11 +910,11 @@ export class MissionBoard {
         
         // Return to station menu if available
         if (this.dockingInterface) {
-            console.log('🎯 Returning to station menu...');
+debug('UI', 'Returning to station menu...');
             this.dockingInterface.returnToStationMenu();
         }
         
-        console.log('🎯 Mission Board closed');
+debug('MISSIONS', 'Mission Board closed');
     }
     
     addStyles() {
@@ -1019,7 +1021,7 @@ export class MissionBoard {
      */
     async generateStationMissions() {
         try {
-            console.log(`🎯 Generating missions for station: ${this.currentLocationKey}`);
+debug('MISSIONS', `🎯 Generating missions for station: ${this.currentLocationKey}`);
             
             const templates = this.getStationTemplates(this.currentLocationKey);
             const numMissions = Math.min(3, templates.length); // Generate 1-3 missions

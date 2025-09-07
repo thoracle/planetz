@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * SimpleProjectileWeapon - Simplified projectile-based weapons using Three.js
  * 
@@ -89,7 +91,7 @@ export class SimpleProjectileWeapon extends WeaponCard {
         // Show muzzle flash / launch effects
         this.triggerLaunchEffects(origin);
         
-        console.log(`🚀 ${this.name}: Fired projectile with ${flightTime}s flight time`);
+debug('COMBAT', `🚀 ${this.name}: Fired projectile with ${flightTime}s flight time`);
         
         return {
             success: true,
@@ -160,7 +162,7 @@ export class SimpleProjectileWeapon extends WeaponCard {
                     window.starfieldManager.weaponEffectsManager.playWeaponSound(this.name, 'fire');
                 }
             } catch (e) {
-                console.log(`⚠️ ${this.name}: Could not create launch effects:`, e);
+debug('UTILITY', `⚠️ ${this.name}: Could not create launch effects:`, e);
             }
         }
     }

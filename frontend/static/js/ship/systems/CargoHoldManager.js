@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * CargoHoldManager - Manages ship cargo holds and commodity storage
  * Phase 1 Implementation: Basic cargo operations
@@ -13,17 +15,17 @@ export class CargoHoldManager {
         this.totalCapacity = 0;
         this.usedCapacity = 0;
         
-        console.log('🚛 CargoHoldManager: Initialized');
+debug('UTILITY', '🚛 CargoHoldManager: Initialized');
     }
     
     /**
      * Initialize cargo holds from installed cards
      */
     initializeFromCards() {
-        console.log('🚛 CargoHoldManager: initializeFromCards() called');
+debug('UI', '🚛 CargoHoldManager: initializeFromCards() called');
         
         if (!this.ship.cardSystemIntegration) {
-            console.log('🚛 No cardSystemIntegration available on ship');
+debug('AI', '🚛 No cardSystemIntegration available on ship');
             return;
         }
         
@@ -32,7 +34,7 @@ export class CargoHoldManager {
         for (const [holdSlot, hold] of this.cargoHolds) {
             if (hold.cargo && hold.cargo.size > 0) {
                 existingCargo.set(hold.slotId, new Map(hold.cargo));
-                console.log(`🚛 PRESERVING: Saved ${hold.cargo.size} cargo types from hold slot ${hold.slotId}`);
+debug('UTILITY', `🚛 PRESERVING: Saved ${hold.cargo.size} cargo types from hold slot ${hold.slotId}`);
             }
         }
         
@@ -42,18 +44,18 @@ export class CargoHoldManager {
         
         // Find all cargo hold cards installed on ship
         const installedCards = this.ship.cardSystemIntegration.installedCards;
-        console.log(`🚛 Checking ${installedCards.size} installed cards for cargo holds`);
+debug('UI', `🚛 Checking ${installedCards.size} installed cards for cargo holds`);
         let holdSlot = 0;
         
         for (const [slotId, card] of installedCards) {
-            console.log(`🚛 Found card: ${card.cardType} (Lv.${card.level}) in slot ${slotId}`);
+debug('UI', `🚛 Found card: ${card.cardType} (Lv.${card.level}) in slot ${slotId}`);
             if (this.isCargoHoldCard(card.cardType)) {
-                console.log(`🚛 ✅ Identified as cargo hold card: ${card.cardType}`);
+debug('UI', `🚛 ✅ Identified as cargo hold card: ${card.cardType}`);
                 const cargoHold = this.createCargoHold(card, slotId); // Pass the actual slot ID, not holdSlot counter
                 this.cargoHolds.set(holdSlot, cargoHold);
                 this.totalCapacity += cargoHold.capacity;
                 
-                console.log(`🚛 Cargo Hold ${holdSlot}: ${cargoHold.name} (Level ${cargoHold.level}) in slot ${slotId} (${cargoHold.capacity} units)`);
+debug('UTILITY', `🚛 Cargo Hold ${holdSlot}: ${cargoHold.name} (Level ${cargoHold.level}) in slot ${slotId} (${cargoHold.capacity} units)`);
                 holdSlot++;
             } else {
                 // console.log(`🚛 ❌ Not a cargo hold card: ${card.cardType}`); // Reduce spam
@@ -66,13 +68,13 @@ export class CargoHoldManager {
             for (const [holdSlot, hold] of this.cargoHolds) {
                 if (hold.slotId === slotId) {
                     hold.cargo = savedCargo;
-                    console.log(`🚛 RESTORED: ${savedCargo.size} cargo types to hold slot ${slotId}`);
+debug('UTILITY', `🚛 RESTORED: ${savedCargo.size} cargo types to hold slot ${slotId}`);
                     break;
                 }
             }
         }
         
-        console.log(`🚛 Total cargo capacity: ${this.totalCapacity} units`);
+debug('UTILITY', `🚛 Total cargo capacity: ${this.totalCapacity} units`);
         this.updateUsedCapacity();
     }
     
@@ -171,14 +173,14 @@ export class CargoHoldManager {
         
         // Check if we have enough capacity
         if (totalVolume > this.getAvailableCapacity()) {
-            console.log(`🚛 ❌ PURCHASE FAILED: Insufficient capacity`);
-            console.log(`🚛    - Commodity: ${commodityId}`);
-            console.log(`🚛    - Quantity: ${quantity} units`);
-            console.log(`🚛    - Volume per unit: ${commodityData.volume}`);
-            console.log(`🚛    - Total volume needed: ${totalVolume} space`);
-            console.log(`🚛    - Available capacity: ${this.getAvailableCapacity()} space`);
-            console.log(`🚛    - Total capacity: ${this.totalCapacity} space`);
-            console.log(`🚛    - Used capacity: ${this.usedCapacity} space`);
+debug('P1', `🚛 ❌ PURCHASE FAILED: Insufficient capacity`);
+debug('UTILITY', `🚛    - Commodity: ${commodityId}`);
+debug('UTILITY', `🚛    - Quantity: ${quantity} units`);
+debug('UTILITY', `🚛    - Volume per unit: ${commodityData.volume}`);
+debug('UTILITY', `🚛    - Total volume needed: ${totalVolume} space`);
+debug('AI', `🚛    - Available capacity: ${this.getAvailableCapacity()} space`);
+debug('UTILITY', `🚛    - Total capacity: ${this.totalCapacity} space`);
+debug('UTILITY', `🚛    - Used capacity: ${this.usedCapacity} space`);
             return {
                 success: false,
                 error: 'Insufficient cargo capacity',
@@ -238,7 +240,7 @@ export class CargoHoldManager {
                 quantity: unitsToLoad
             });
             
-            console.log(`🚛 Loaded ${unitsToLoad} units of ${commodityId} into hold ${targetHold.slotId}`);
+debug('TARGETING', `🚛 Loaded ${unitsToLoad} units of ${commodityId} into hold ${targetHold.slotId}`);
             
             remainingQuantity -= unitsToLoad;
         }
@@ -289,7 +291,7 @@ export class CargoHoldManager {
             if (newQuantity <= 0) {
                 // Remove entry entirely when quantity reaches 0
                 hold.cargo.delete(cargoItem.commodityId);
-                console.log(`🚛 CLEANUP: Removed ${cargoItem.commodityId} from hold slot ${cargoItem.holdSlot} (quantity reached 0)`);
+debug('UTILITY', `🚛 CLEANUP: Removed ${cargoItem.commodityId} from hold slot ${cargoItem.holdSlot} (quantity reached 0)`);
             } else {
                 // Update quantity if still has remaining cargo
                 hold.cargo.set(cargoItem.commodityId, newQuantity);
@@ -303,7 +305,7 @@ export class CargoHoldManager {
         
         this.updateUsedCapacity();
         
-        console.log(`🚛 Unloaded ${unloadQuantity} units of ${cargoItem.commodityId}`);
+debug('UTILITY', `🚛 Unloaded ${unloadQuantity} units of ${cargoItem.commodityId}`);
         
         return {
             success: true,
@@ -318,8 +320,8 @@ export class CargoHoldManager {
      * Select optimal cargo hold for commodity
      */
     selectOptimalHold(commodityData) {
-        console.log(`🚛 SELECTING HOLD: Looking for optimal hold for ${commodityData.name || 'unknown commodity'}`);
-        console.log(`🚛 SELECTING HOLD: Available holds: ${this.cargoHolds.size}`);
+debug('UTILITY', `🚛 SELECTING HOLD: Looking for optimal hold for ${commodityData.name || 'unknown commodity'}`);
+debug('AI', `🚛 SELECTING HOLD: Available holds: ${this.cargoHolds.size}`);
         
         // Priority 1: Special requirements
         for (const requirement of commodityData.special_requirements || []) {
@@ -327,7 +329,7 @@ export class CargoHoldManager {
                 if (hold.features.includes(requirement)) {
                     const usedSpace = this.getHoldUsedCapacity(hold);
                     if (usedSpace < hold.capacity) {
-                        console.log(`🚛 SELECTING HOLD: Found special requirement hold: slot ${hold.slotId} (${usedSpace}/${hold.capacity} used)`);
+debug('UI', `🚛 SELECTING HOLD: Found special requirement hold: slot ${hold.slotId} (${usedSpace}/${hold.capacity} used)`);
                         return hold;
                     }
                 }
@@ -338,20 +340,20 @@ export class CargoHoldManager {
         let bestHold = null;
         let mostSpace = 0;
         
-        console.log(`🚛 SELECTING HOLD: Checking available space in each hold:`);
+debug('AI', `🚛 SELECTING HOLD: Checking available space in each hold:`);
         for (const [slotId, hold] of this.cargoHolds) {
             const usedSpace = this.getHoldUsedCapacity(hold);
             const availableSpace = hold.capacity - usedSpace;
-            console.log(`🚛 SELECTING HOLD: Hold slot ${hold.slotId}: ${usedSpace}/${hold.capacity} used, ${availableSpace} available`);
+debug('AI', `🚛 SELECTING HOLD: Hold slot ${hold.slotId}: ${usedSpace}/${hold.capacity} used, ${availableSpace} available`);
             
             if (availableSpace > mostSpace) {
                 mostSpace = availableSpace;
                 bestHold = hold;
-                console.log(`🚛 SELECTING HOLD: New best hold: slot ${hold.slotId} with ${availableSpace} available space`);
+debug('AI', `🚛 SELECTING HOLD: New best hold: slot ${hold.slotId} with ${availableSpace} available space`);
             }
         }
         
-        console.log(`🚛 SELECTING HOLD: Selected hold: slot ${bestHold?.slotId || 'none'} with ${mostSpace} available space`);
+debug('AI', `🚛 SELECTING HOLD: Selected hold: slot ${bestHold?.slotId || 'none'} with ${mostSpace} available space`);
         return bestHold;
     }
     
@@ -360,14 +362,14 @@ export class CargoHoldManager {
      */
     getHoldUsedCapacity(hold) {
         let used = 0;
-        console.log(`🚛 CAPACITY CHECK: Hold slot ${hold.slotId} cargo:`, Array.from(hold.cargo.entries()));
+debug('UTILITY', `🚛 CAPACITY CHECK: Hold slot ${hold.slotId} cargo:`, Array.from(hold.cargo.entries()));
         for (const [commodityId, quantity] of hold.cargo) {
             const commodityData = this.getCommodityData(commodityId);
             const volume = quantity * commodityData.volume;
-            console.log(`🚛 CAPACITY CHECK: ${commodityId}: ${quantity} units × ${commodityData.volume} = ${volume} space`);
+debug('UTILITY', `🚛 CAPACITY CHECK: ${commodityId}: ${quantity} units × ${commodityData.volume} = ${volume} space`);
             used += volume;
         }
-        console.log(`🚛 CAPACITY CHECK: Hold slot ${hold.slotId} total used: ${used}/${hold.capacity}`);
+debug('UTILITY', `🚛 CAPACITY CHECK: Hold slot ${hold.slotId} total used: ${used}/${hold.capacity}`);
         return used;
     }
     
@@ -485,24 +487,24 @@ export class CargoHoldManager {
      * @returns {boolean} True if cargo is present
      */
     hasCargoInHold(holdSlot = null) {
-        console.log(`🛡️ CARGO CHECK: hasCargoInHold(${holdSlot}) called`);
-        console.log(`🛡️ CARGO CHECK: loadedCargo has ${this.loadedCargo.size} items`);
+debug('UTILITY', `🛡️ CARGO CHECK: hasCargoInHold(${holdSlot}) called`);
+debug('UTILITY', `🛡️ CARGO CHECK: loadedCargo has ${this.loadedCargo.size} items`);
         
         if (holdSlot !== null) {
             // Check specific hold
-            console.log(`🛡️ CARGO CHECK: Looking for cargo with holdSlot === ${holdSlot}`);
+debug('UTILITY', `🛡️ CARGO CHECK: Looking for cargo with holdSlot === ${holdSlot}`);
             for (const [cargoId, cargoItem] of this.loadedCargo) {
-                console.log(`🛡️ CARGO CHECK: Cargo item ${cargoId}: holdSlot=${cargoItem.holdSlot}, quantity=${cargoItem.quantity}`);
+debug('UTILITY', `🛡️ CARGO CHECK: Cargo item ${cargoId}: holdSlot=${cargoItem.holdSlot}, quantity=${cargoItem.quantity}`);
                 if (cargoItem.holdSlot === holdSlot && cargoItem.quantity > 0) {
-                    console.log(`🛡️ CARGO CHECK: Found matching cargo! Returning true`);
+debug('UTILITY', `🛡️ CARGO CHECK: Found matching cargo! Returning true`);
                     return true;
                 }
             }
-            console.log(`🛡️ CARGO CHECK: No matching cargo found, returning false`);
+debug('UTILITY', `🛡️ CARGO CHECK: No matching cargo found, returning false`);
             return false;
         } else {
             // Check all holds
-            console.log(`🛡️ CARGO CHECK: Checking all holds, usedCapacity=${this.usedCapacity}`);
+debug('UTILITY', `🛡️ CARGO CHECK: Checking all holds, usedCapacity=${this.usedCapacity}`);
             return this.usedCapacity > 0;
         }
     }
@@ -542,15 +544,15 @@ export class CargoHoldManager {
      * @returns {Object} Result with success status and dumped cargo list
      */
         dumpCargoInHold(holdSlot) {
-        console.log(`🗑️ DUMP: Attempting to dump cargo from hold slot ${holdSlot}`);
-        console.log(`🗑️ DUMP: Current loadedCargo has ${this.loadedCargo.size} items`);
+debug('UTILITY', `🗑️ DUMP: Attempting to dump cargo from hold slot ${holdSlot}`);
+debug('UTILITY', `🗑️ DUMP: Current loadedCargo has ${this.loadedCargo.size} items`);
         
         const cargoToDump = this.getCargoInHold(holdSlot);
         const dumpedCargo = [];
 
         // Remove all cargo items from this hold
         for (const [cargoId, cargoItem] of this.loadedCargo) {
-            console.log(`🗑️ DUMP: Checking cargo ${cargoId}: holdSlot=${cargoItem.holdSlot}, looking for ${holdSlot}`);
+debug('UTILITY', `🗑️ DUMP: Checking cargo ${cargoId}: holdSlot=${cargoItem.holdSlot}, looking for ${holdSlot}`);
             if (cargoItem.holdSlot === holdSlot) {
                 dumpedCargo.push({
                     commodityId: cargoItem.commodityId,
@@ -558,14 +560,14 @@ export class CargoHoldManager {
                     quantity: cargoItem.quantity
                 });
                 this.loadedCargo.delete(cargoId);
-                console.log(`🗑️ DUMP: Removed cargo ${cargoId}`);
+debug('UTILITY', `🗑️ DUMP: Removed cargo ${cargoId}`);
             }
         }
         
         // Recalculate used capacity
         this.recalculateUsedCapacity();
         
-        console.log(`🗑️ Dumped ${dumpedCargo.length} cargo types from hold ${holdSlot}`);
+debug('UTILITY', `🗑️ Dumped ${dumpedCargo.length} cargo types from hold ${holdSlot}`);
         
         return {
             success: true,
@@ -603,37 +605,37 @@ export class CargoHoldManager {
      * Debug cargo hold status
      */
     debugCargoStatus() {
-        console.log('🚛 === CARGO HOLD DEBUG ===');
-        console.log('🚛 Ship reference:', this.ship ? 'Available' : 'Missing');
-        console.log('🚛 CardSystemIntegration reference:', this.ship?.cardSystemIntegration ? 'Available' : 'Missing');
+debug('INSPECTION', '🚛 === CARGO HOLD DEBUG ===');
+debug('AI', '🚛 Ship reference:', this.ship ? 'Available' : 'Missing');
+debug('AI', '🚛 CardSystemIntegration reference:', this.ship?.cardSystemIntegration ? 'Available' : 'Missing');
         
         if (this.ship?.cardSystemIntegration) {
             const installedCards = this.ship.cardSystemIntegration.installedCards;
-            console.log('🚛 Installed cards:', installedCards.size);
+debug('UI', '🚛 Installed cards:', installedCards.size);
             
             let cargoCardCount = 0;
             for (const [slotId, card] of installedCards) {
                 if (this.isCargoHoldCard(card.cardType)) {
                     cargoCardCount++;
-                    console.log(`🚛 Found cargo card: ${card.cardType} (Lv.${card.level}) in slot ${slotId}`);
+debug('UI', `🚛 Found cargo card: ${card.cardType} (Lv.${card.level}) in slot ${slotId}`);
                 }
             }
-            console.log(`🚛 Total cargo hold cards: ${cargoCardCount}`);
+debug('UI', `🚛 Total cargo hold cards: ${cargoCardCount}`);
         }
         
-        console.log(`🚛 Initialized cargo holds: ${this.cargoHolds.size}`);
-        console.log(`🚛 Total capacity: ${this.totalCapacity} units`);
-        console.log(`🚛 Used capacity: ${this.usedCapacity} units`);
-        console.log(`🚛 Available capacity: ${this.getAvailableCapacity()} units`);
+debug('UTILITY', `🚛 Initialized cargo holds: ${this.cargoHolds.size}`);
+debug('UTILITY', `🚛 Total capacity: ${this.totalCapacity} units`);
+debug('UTILITY', `🚛 Used capacity: ${this.usedCapacity} units`);
+debug('AI', `🚛 Available capacity: ${this.getAvailableCapacity()} units`);
         
         // Show hold details
         for (const [slotId, hold] of this.cargoHolds) {
-            console.log(`🚛 Hold ${slotId}: ${hold.name} - ${this.getHoldUsedCapacity(hold)}/${hold.capacity} units`);
+debug('UTILITY', `🚛 Hold ${slotId}: ${hold.name} - ${this.getHoldUsedCapacity(hold)}/${hold.capacity} units`);
         }
         
         const manifest = this.getCargoManifest();
-        console.log('🚛 Cargo manifest:', manifest);
-        console.log('🚛 === END DEBUG ===');
+debug('UTILITY', '🚛 Cargo manifest:', manifest);
+debug('INSPECTION', '🚛 === END DEBUG ===');
         
         return manifest;
     }
@@ -642,25 +644,25 @@ export class CargoHoldManager {
      * Test cargo operations (for debugging)
      */
     testCargoOperations() {
-        console.log('🚛 Testing cargo operations...');
+debug('UTILITY', '🚛 Testing cargo operations...');
         
         // First debug status
         this.debugCargoStatus();
         
         // Test loading
         const loadResult = this.loadCargo('medical_supplies', 50);
-        console.log('🚛 Load test:', loadResult);
+debug('UTILITY', '🚛 Load test:', loadResult);
         
         const loadResult2 = this.loadCargo('food_rations', 30);
-        console.log('🚛 Load test 2:', loadResult2);
+debug('UTILITY', '🚛 Load test 2:', loadResult2);
         
         // Test manifest
         const manifest = this.getCargoManifest();
-        console.log('🚛 Cargo manifest:', manifest);
+debug('UTILITY', '🚛 Cargo manifest:', manifest);
         
         // Test commodity check
-        console.log('🚛 Has medical supplies:', this.hasCommodity('medical_supplies', 40));
-        console.log('🚛 Medical supplies quantity:', this.getCommodityQuantity('medical_supplies'));
+debug('UTILITY', '🚛 Has medical supplies:', this.hasCommodity('medical_supplies', 40));
+debug('UTILITY', '🚛 Medical supplies quantity:', this.getCommodityQuantity('medical_supplies'));
         
         return manifest;
     }

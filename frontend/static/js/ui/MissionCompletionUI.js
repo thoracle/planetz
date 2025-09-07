@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * MissionCompletionUI - Mission completion screen with rewards display
  * Handles mission completion celebration, rewards, and progression
@@ -27,7 +29,7 @@ export class MissionCompletionUI {
     
     initialize() {
         this.setupStyles();
-        console.log('🎉 MissionCompletionUI: Initialized');
+debug('UI', '🎉 MissionCompletionUI: Initialized');
         
         // Make globally accessible for testing
         window.missionCompletionUI = this;
@@ -101,7 +103,7 @@ export class MissionCompletionUI {
         }
         
         this.isShowing = true;
-        console.log(`🎉 MissionCompletionUI: Showing completion for mission ${missionId}`);
+debug('UI', `🎉 MissionCompletionUI: Showing completion for mission ${missionId}`);
         
         try {
             // Get mission data

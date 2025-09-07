@@ -1,43 +1,45 @@
+import { debug } from '../debug.js';
+
 /**
  * WarpDrive Integration Test
  * Tests the new WarpDrive system integration with Ship architecture
  */
 
 export function testWarpDriveIntegration() {
-    console.log('=== Testing WarpDrive System Integration ===');
+debug('UTILITY', '=== Testing WarpDrive System Integration ===');
     
     return new Promise(async (resolve) => {
         try {
             // Test 1: Import Ship and WarpDrive
-            console.log('\nTest 1: Importing Ship and WarpDrive classes');
+debug('UTILITY', '\nTest 1: Importing Ship and WarpDrive classes');
             const { default: Ship } = await import('./Ship.js');
             const { default: WarpDrive } = await import('./systems/WarpDrive.js');
             
-            console.log('✓ Ship and WarpDrive classes imported successfully');
+debug('UTILITY', '✓ Ship and WarpDrive classes imported successfully');
             
             // Test 2: Create Ship instance (should auto-initialize systems)
-            console.log('\nTest 2: Creating Ship with auto-initialized systems');
+debug('UTILITY', '\nTest 2: Creating Ship with auto-initialized systems');
             const ship = new Ship('heavy_fighter');
             
             // Wait a moment for async system initialization
             setTimeout(() => {
-                console.log('Ship systems count:', ship.systems.size);
-                console.log('Available systems:', Array.from(ship.systems.keys()));
+debug('UTILITY', 'Ship systems count:', ship.systems.size);
+debug('AI', 'Available systems:', Array.from(ship.systems.keys()));
                 
                 // Test 3: Check if WarpDrive system was created
-                console.log('\nTest 3: Checking WarpDrive system initialization');
+debug('UTILITY', '\nTest 3: Checking WarpDrive system initialization');
                 const warpDrive = ship.getWarpDrive();
-                console.log('WarpDrive system exists:', !!warpDrive);
+debug('UTILITY', 'WarpDrive system exists:', !!warpDrive);
                 
                 if (warpDrive) {
-                    console.log('WarpDrive level:', warpDrive.level);
-                    console.log('WarpDrive max warp factor:', warpDrive.getMaxWarpFactor());
-                    console.log('WarpDrive is operational:', warpDrive.isOperational());
-                    console.log('WarpDrive health:', `${(warpDrive.healthPercentage * 100).toFixed(1)}%`);
+debug('UTILITY', 'WarpDrive level:', warpDrive.level);
+debug('UTILITY', 'WarpDrive max warp factor:', warpDrive.getMaxWarpFactor());
+debug('UTILITY', 'WarpDrive is operational:', warpDrive.isOperational());
+debug('UTILITY', 'WarpDrive health:', `${(warpDrive.healthPercentage * 100).toFixed(1)}%`);
                 }
                 
                 // Test 4: Test WarpDrive level-specific capabilities
-                console.log('\nTest 4: Testing WarpDrive level capabilities');
+debug('UTILITY', '\nTest 4: Testing WarpDrive level capabilities');
                 if (warpDrive) {
                     const levels = [1, 2, 3, 4, 5];
                     console.table(
@@ -60,7 +62,7 @@ export function testWarpDriveIntegration() {
                 }
                 
                 // Test 5: Test damage effects
-                console.log('\nTest 5: Testing WarpDrive damage effects');
+debug('COMBAT', '\nTest 5: Testing WarpDrive damage effects');
                 if (warpDrive) {
                     const originalMaxWarp = warpDrive.getMaxWarpFactor();
                     const originalCooldown = warpDrive.getEffectiveCooldownTime();
@@ -68,39 +70,39 @@ export function testWarpDriveIntegration() {
                     // Apply 75% damage (critical state)
                     warpDrive.takeDamage(warpDrive.maxHealth * 0.75);
                     
-                    console.log('After 75% damage:');
-                    console.log('  System state:', warpDrive.state);
-                    console.log('  Max warp factor:', warpDrive.getMaxWarpFactor(), '(was', originalMaxWarp + ')');
-                    console.log('  Cooldown time:', `${warpDrive.getEffectiveCooldownTime() / 1000}s`, `(was ${originalCooldown / 1000}s)`);
-                    console.log('  Effectiveness:', `${(warpDrive.getEffectiveness() * 100).toFixed(1)}%`);
+debug('COMBAT', 'After 75% damage:');
+debug('UTILITY', '  System state:', warpDrive.state);
+debug('UTILITY', '  Max warp factor:', warpDrive.getMaxWarpFactor(), '(was', originalMaxWarp + ')');
+debug('UTILITY', '  Cooldown time:', `${warpDrive.getEffectiveCooldownTime() / 1000}s`, `(was ${originalCooldown / 1000}s)`);
+debug('UTILITY', '  Effectiveness:', `${(warpDrive.getEffectiveness() * 100).toFixed(1)}%`);
                     
                     // Test energy cost calculation with damage
                     const baseCost = 1000;
                     const damagedCost = warpDrive.calculateWarpEnergyCost(baseCost);
-                    console.log('  Energy cost multiplier:', `${(damagedCost / baseCost).toFixed(2)}x`);
+debug('COMBAT', '  Energy cost multiplier:', `${(damagedCost / baseCost).toFixed(2)}x`);
                     
                     // Repair the system
                     warpDrive.repair(1.0); // Full repair
-                    console.log('After full repair:');
-                    console.log('  System state:', warpDrive.state);
-                    console.log('  Max warp factor:', warpDrive.getMaxWarpFactor());
-                    console.log('  Effectiveness:', `${(warpDrive.getEffectiveness() * 100).toFixed(1)}%`);
+debug('AI', 'After full repair:');
+debug('UTILITY', '  System state:', warpDrive.state);
+debug('UTILITY', '  Max warp factor:', warpDrive.getMaxWarpFactor());
+debug('UTILITY', '  Effectiveness:', `${(warpDrive.getEffectiveness() * 100).toFixed(1)}%`);
                 }
                 
                 // Test 6: Test Ship energy integration
-                console.log('\nTest 6: Testing Ship energy integration');
-                console.log('Ship energy:', ship.currentEnergy, '/', ship.maxEnergy);
-                console.log('Energy consumption rate:', ship.getEnergyConsumptionRate(), '/sec');
+debug('UTILITY', '\nTest 6: Testing Ship energy integration');
+debug('UTILITY', 'Ship energy:', ship.currentEnergy, '/', ship.maxEnergy);
+debug('UTILITY', 'Energy consumption rate:', ship.getEnergyConsumptionRate(), '/sec');
                 
                 // Test energy consumption
                 const consumed = ship.consumeEnergy(500);
-                console.log('Consumed 500 energy:', consumed);
-                console.log('Ship energy after consumption:', ship.currentEnergy);
+debug('UTILITY', 'Consumed 500 energy:', consumed);
+debug('UTILITY', 'Ship energy after consumption:', ship.currentEnergy);
                 
                 // Test 7: Test system status in Ship
-                console.log('\nTest 7: Testing system status in Ship');
+debug('UTILITY', '\nTest 7: Testing system status in Ship');
                 const shipStatus = ship.getStatus();
-                console.log('Ship status includes warp drive:', 'warp_drive' in shipStatus.systems);
+debug('UTILITY', 'Ship status includes warp drive:', 'warp_drive' in shipStatus.systems);
                 
                 if ('warp_drive' in shipStatus.systems) {
                     const warpStatus = shipStatus.systems.warp_drive;
@@ -113,7 +115,7 @@ export function testWarpDriveIntegration() {
                 }
                 
                 // Test 8: Test WarpDrive system-specific status
-                console.log('\nTest 8: Testing WarpDrive system-specific status');
+debug('UTILITY', '\nTest 8: Testing WarpDrive system-specific status');
                 if (warpDrive) {
                     const warpDriveStatus = warpDrive.getStatus();
                     console.log('WarpDrive detailed status:', {
@@ -125,8 +127,8 @@ export function testWarpDriveIntegration() {
                     });
                 }
                 
-                console.log('\n=== WarpDrive Integration Test Complete ===');
-                console.log('✓ All tests passed - WarpDrive system successfully integrated with Ship architecture');
+debug('UTILITY', '\n=== WarpDrive Integration Test Complete ===');
+debug('UTILITY', '✓ All tests passed - WarpDrive system successfully integrated with Ship architecture');
                 
                 resolve(true);
             }, 100); // Small delay for async initialization
@@ -140,7 +142,7 @@ export function testWarpDriveIntegration() {
 
 // Add a helper function to demonstrate WarpDrive adapter usage
 export async function testWarpDriveAdapter() {
-    console.log('\n=== Testing WarpDriveAdapter Compatibility ===');
+debug('UTILITY', '\n=== Testing WarpDriveAdapter Compatibility ===');
     
     try {
         const { default: Ship } = await import('./Ship.js');
@@ -161,18 +163,18 @@ export async function testWarpDriveAdapter() {
             // Connect adapter to ship
             adapter.connectToShip(ship);
             
-            console.log('Adapter connected:', adapter.isConnected());
-            console.log('Adapter status:', adapter.getStatus());
+debug('UTILITY', 'Adapter connected:', adapter.isConnected());
+debug('UTILITY', 'Adapter status:', adapter.getStatus());
             
             // Test compatibility methods
-            console.log('Can set warp factor 5.0:', adapter.setWarpFactor(5.0));
-            console.log('Current speed:', adapter.getCurrentSpeed());
+debug('UTILITY', 'Can set warp factor 5.0:', adapter.setWarpFactor(5.0));
+debug('UTILITY', 'Current speed:', adapter.getCurrentSpeed());
             
             const warpSystem = adapter.getWarpDriveSystem();
-            console.log('Underlying system accessible:', !!warpSystem);
-            console.log('System max warp factor:', warpSystem?.getMaxWarpFactor());
+debug('UTILITY', 'Underlying system accessible:', !!warpSystem);
+debug('UTILITY', 'System max warp factor:', warpSystem?.getMaxWarpFactor());
             
-            console.log('✓ WarpDriveAdapter compatibility test passed');
+debug('UTILITY', '✓ WarpDriveAdapter compatibility test passed');
         }, 100);
         
     } catch (error) {

@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * Galactic Chart System - Provides galactic navigation and universe mapping
  * Based on docs/spaceships_spec.md and docs/tech_design.md
@@ -38,7 +40,7 @@ export default class GalacticChartSystem extends System {
         this.isActive = false;
         
         // Now levelStats should be properly initialized, so this should work
-        console.log(`Galactic Chart System created (Level ${this.level}) - Data Range: ${this.getCurrentDataRange()}%, Accuracy: ${this.getCurrentAccuracy()}%`);
+debug('UTILITY', `Galactic Chart System created (Level ${this.level}) - Data Range: ${this.getCurrentDataRange()}%, Accuracy: ${this.getCurrentAccuracy()}%`);
     }
 
     initializeLevelStats() {
@@ -61,7 +63,7 @@ export default class GalacticChartSystem extends System {
             };
         }
 
-        console.log(`Galactic Chart upgraded to Level ${this.level} - Enhanced Navigation System`);
+debug('NAVIGATION', `Galactic Chart upgraded to Level ${this.level} - Enhanced Navigation System`);
         return levelStats;
     }
 
@@ -111,14 +113,14 @@ export default class GalacticChartSystem extends System {
         });
         
         if (!super.isOperational()) {
-            console.log(`🗺️ GalacticChart: Cannot activate - system not operational`);
+debug('UTILITY', `🗺️ GalacticChart: Cannot activate - system not operational`);
             return false;
         }
         
         // Check cooldown FIRST before card checking to avoid confusing error messages
         const currentTime = Date.now();
         if (currentTime - this.lastActivationTime < this.activationCooldown) {
-            console.log(`🗺️ GalacticChart: Cannot activate - cooldown remaining: ${this.activationCooldown - (currentTime - this.lastActivationTime)}ms`);
+debug('AI', `🗺️ GalacticChart: Cannot activate - cooldown remaining: ${this.activationCooldown - (currentTime - this.lastActivationTime)}ms`);
             return false;
         }
         
@@ -128,16 +130,16 @@ export default class GalacticChartSystem extends System {
                 // Use the simple boolean method for card checking
                 if (ship.hasSystemCards && typeof ship.hasSystemCards === 'function') {
                     const hasCards = ship.hasSystemCards('galactic_chart');
-                    console.log(`🗺️ GalacticChart: Card check result:`, hasCards);
+debug('UI', `🗺️ GalacticChart: Card check result:`, hasCards);
                     
                     if (!hasCards) {
                         console.warn('🗺️ GalacticChart: Cannot activate - No galactic chart card installed');
                         return false;
                     }
-                    console.log(`🗺️ GalacticChart: Card check PASSED`);
+debug('UI', `🗺️ GalacticChart: Card check PASSED`);
                 } else {
                     // If the method doesn't exist, assume all systems are available (fallback for older ships)
-                    console.log(`🗺️ GalacticChart: No card system integration - assuming system available`);
+debug('AI', `🗺️ GalacticChart: No card system integration - assuming system available`);
                 }
             } catch (error) {
                 console.warn('🗺️ GalacticChart: Card check error:', error.message || error);
@@ -154,11 +156,11 @@ export default class GalacticChartSystem extends System {
         const requiredEnergy = 20;
         const currentEnergy = ship?.currentEnergy || 0;
         if (!ship || currentEnergy < requiredEnergy) {
-            console.log(`🗺️ GalacticChart: Cannot activate - insufficient energy: ${currentEnergy}/${requiredEnergy}`);
+debug('UI', `🗺️ GalacticChart: Cannot activate - insufficient energy: ${currentEnergy}/${requiredEnergy}`);
             return false;
         }
         
-        console.log(`🗺️ GalacticChart: Can activate - all checks passed`);
+debug('UTILITY', `🗺️ GalacticChart: Can activate - all checks passed`);
         return true;
     }
 
@@ -174,7 +176,7 @@ export default class GalacticChartSystem extends System {
         this.isChartActive = true;
         this.lastActivationTime = Date.now();
         
-        console.log(`Galactic Chart activated - Energy consumption: ${this.getEnergyConsumptionRate()}/sec`);
+debug('UTILITY', `Galactic Chart activated - Energy consumption: ${this.getEnergyConsumptionRate()}/sec`);
         return true;
     }
 
@@ -182,7 +184,7 @@ export default class GalacticChartSystem extends System {
     deactivateChart() {
         this.isActive = false;
         this.isChartActive = false;
-        console.log('Galactic Chart deactivated');
+debug('UTILITY', 'Galactic Chart deactivated');
     }
 
     // Get current data range affected by damage

@@ -1,8 +1,10 @@
+import { debug } from '../debug.js';
+
 // Test script for proximity detector fixes
-console.log('🔧 PROXIMITY DETECTOR FIXES TEST');
+debug('UTILITY', 'PROXIMITY DETECTOR FIXES TEST');
 
 function testProximityDetectorFixes() {
-    console.log('=== TESTING PROXIMITY DETECTOR IMPROVEMENTS ===');
+debug('UTILITY', '=== TESTING PROXIMITY DETECTOR IMPROVEMENTS ===');
     
     const starfield = window.starfieldManager;
     if (!starfield) {
@@ -17,13 +19,13 @@ function testProximityDetectorFixes() {
     }
     
     // Test 1: Configuration updates
-    console.log('📋 Testing configuration updates:');
-    console.log(`  Grid size: ${detector.config.gridSize}x${detector.config.gridSize} (should be 12x12)`);
-    console.log(`  Grid spacing: ${detector.config.gridSpacing}m (should be 1000m)`);
-    console.log(`  Screen size: ${detector.config.screenWidth * 100}% x ${detector.config.screenHeight * 100}% (should be 35% x 35%)`);
-    console.log(`  Position: ${detector.config.position} (should be bottom-left)`);
-    console.log(`  Camera distance: ${detector.config.cameraDistance} (should be 6)`);
-    console.log(`  FOV: ${detector.config.fov}° (should be 60°)`);
+debug('UTILITY', '📋 Testing configuration updates:');
+debug('UTILITY', `  Grid size: ${detector.config.gridSize}x${detector.config.gridSize} (should be 12x12)`);
+debug('UTILITY', `  Grid spacing: ${detector.config.gridSpacing}m (should be 1000m)`);
+debug('UTILITY', `  Screen size: ${detector.config.screenWidth * 100}% x ${detector.config.screenHeight * 100}% (should be 35% x 35%)`);
+debug('UTILITY', `  Position: ${detector.config.position} (should be bottom-left)`);
+debug('UTILITY', `  Camera distance: ${detector.config.cameraDistance} (should be 6)`);
+debug('UTILITY', `  FOV: ${detector.config.fov}° (should be 60°)`);
     
     // Test 2: Check if detector is available
     const ship = starfield.viewManager?.getShip();
@@ -33,7 +35,7 @@ function testProximityDetectorFixes() {
     }
     
     const hasCards = ship.hasSystemCardsSync?.('radar');
-    console.log(`📇 Has radar cards: ${hasCards ? '✅' : '❌'}`);
+debug('UI', `📇 Has radar cards: ${hasCards ? '✅' : '❌'}`);
     
     if (!hasCards) {
         console.error('❌ No radar cards - cannot test detector');
@@ -41,10 +43,10 @@ function testProximityDetectorFixes() {
     }
     
     // Test 3: Toggle detector and check positioning
-    console.log('🔄 Testing detector toggle and positioning...');
+debug('UTILITY', '🔄 Testing detector toggle and positioning...');
     
     if (!detector.isVisible) {
-        console.log('📡 Turning ON proximity detector...');
+debug('UTILITY', 'Turning ON proximity detector...');
         starfield.toggleProximityDetector();
     }
     
@@ -53,42 +55,42 @@ function testProximityDetectorFixes() {
         const container = detector.detectorContainer;
         if (container) {
             const style = window.getComputedStyle(container);
-            console.log('📦 Container positioning:');
-            console.log(`  Display: ${style.display} (should be block)`);
-            console.log(`  Position: ${style.position} (should be fixed)`);
-            console.log(`  Bottom: ${style.bottom} (should be 20px)`);
-            console.log(`  Left: ${style.left} (should be 20px)`);
-            console.log(`  Transform: ${style.transform} (should be none)`);
-            console.log(`  Width: ${style.width}`);
-            console.log(`  Height: ${style.height}`);
+debug('AI', '📦 Container positioning:');
+debug('UI', `  Display: ${style.display} (should be block)`);
+debug('UTILITY', `  Position: ${style.position} (should be fixed)`);
+debug('UTILITY', `  Bottom: ${style.bottom} (should be 20px)`);
+debug('UTILITY', `  Left: ${style.left} (should be 20px)`);
+debug('UTILITY', `  Transform: ${style.transform} (should be none)`);
+debug('UTILITY', `  Width: ${style.width}`);
+debug('UTILITY', `  Height: ${style.height}`);
             
             // Check if title is removed
             const title = container.querySelector('.proximity-detector-title');
-            console.log(`📄 Title removed: ${!title ? '✅' : '❌'}`);
+debug('UTILITY', `📄 Title removed: ${!title ? '✅' : '❌'}`);
         }
         
         // Test 4: Force update and check object detection
-        console.log('🎯 Testing object detection with new scaling...');
+debug('UTILITY', 'Testing object detection with new scaling...');
         detector.forceUpdate?.();
         
         setTimeout(() => {
-            console.log(`📊 Scene objects: ${detector.scene?.children?.length || 0}`);
-            console.log(`🎯 Tracked objects: ${detector.trackedObjects?.size || 0}`);
-            console.log(`📍 Object blips: ${detector.objectBlips?.size || 0}`);
-            console.log(`📏 Altitude lines: ${detector.altitudeLines?.size || 0}`);
+debug('UTILITY', `📊 Scene objects: ${detector.scene?.children?.length || 0}`);
+debug('UTILITY', `🎯 Tracked objects: ${detector.trackedObjects?.size || 0}`);
+debug('UTILITY', `📍 Object blips: ${detector.objectBlips?.size || 0}`);
+debug('UTILITY', `📏 Altitude lines: ${detector.altitudeLines?.size || 0}`);
             
             // List scene objects to see if blips are properly positioned
             if (detector.scene) {
-                console.log('📋 Scene objects (should include blips within view):');
+debug('UTILITY', '📋 Scene objects (should include blips within view):');
                 detector.scene.children.forEach((child, index) => {
                     const pos = child.position;
                     const inView = Math.abs(pos.x) <= 1 && Math.abs(pos.z) <= 1;
-                    console.log(`  ${index}: ${child.type} at (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)}) ${inView ? '✅ IN VIEW' : '❌ OUT OF VIEW'}`);
+debug('UTILITY', `  ${index}: ${child.type} at (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)}) ${inView ? '✅ IN VIEW' : '❌ OUT OF VIEW'}`);
                 });
             }
             
-            console.log('✅ Proximity detector fixes test completed!');
-            console.log('💡 Check bottom-left corner of screen for larger 3D proximity detector');
+debug('UTILITY', '✅ Proximity detector fixes test completed!');
+debug('UTILITY', '💡 Check bottom-left corner of screen for larger 3D proximity detector');
             
         }, 500);
         
@@ -100,4 +102,4 @@ function testProximityDetectorFixes() {
 // Make globally available
 window.testProximityDetectorFixes = testProximityDetectorFixes;
 
-console.log('💡 Use testProximityDetectorFixes() to verify all improvements');
+debug('UTILITY', '💡 Use testProximityDetectorFixes() to verify all improvements');

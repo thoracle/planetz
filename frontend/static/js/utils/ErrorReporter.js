@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * ErrorReporter - Captures and reports JavaScript errors for debugging
  */
@@ -88,13 +90,13 @@ export class ErrorReporter {
             if (event.ctrlKey && event.shiftKey && event.key === 'E') {
                 event.preventDefault();
                 this.downloadErrorReport();
-                console.log('📥 Error report downloaded');
+debug('P1', '📥 Error report downloaded');
             }
             // Ctrl+Shift+C to clear errors
             if (event.ctrlKey && event.shiftKey && event.key === 'C') {
                 event.preventDefault();
                 this.clearErrors();
-                console.log('🧹 Error report cleared');
+debug('P1', '🧹 Error report cleared');
             }
         });
     }
@@ -109,4 +111,4 @@ window.getErrorReport = () => window.errorReporter.getErrorReport();
 window.downloadErrorReport = () => window.errorReporter.downloadErrorReport();
 window.clearErrors = () => window.errorReporter.clearErrors();
 
-console.log('🐛 ErrorReporter initialized. Use Ctrl+Shift+E to download error report, Ctrl+Shift+C to clear.');
+        debug('P1', 'ErrorReporter initialized. Use Ctrl+Shift+E to download error report, Ctrl+Shift+C to clear.');

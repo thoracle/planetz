@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * CommodityExchange - UI for buying and selling commodities at stations
  * Phase 1 Implementation: Basic buy/sell interface
@@ -14,7 +16,7 @@ export class CommodityExchange {
         this.container = null;
         this.dockingInterface = null; // Reference to return to docking
         
-        console.log('🏪 CommodityExchange: Initialized');
+debug('UTILITY', '🏪 CommodityExchange: Initialized');
     }
     
     /**
@@ -34,7 +36,7 @@ export class CommodityExchange {
         this.refreshMarketDisplay();
         this.refreshCargoDisplay();
         
-        console.log(`🏪 CommodityExchange: Opened at ${stationKey}`);
+debug('UI', `🏪 CommodityExchange: Opened at ${stationKey}`);
     }
     
     /**
@@ -46,7 +48,7 @@ export class CommodityExchange {
         }
         this.isVisible = false;
         
-        console.log('🏪 CommodityExchange: Closed');
+debug('UI', '🏪 CommodityExchange: Closed');
     }
     
     /**
@@ -317,7 +319,7 @@ export class CommodityExchange {
         ship.cargoHoldManager.initializeFromCards();
         
         const manifest = ship.cargoHoldManager.getCargoManifest();
-        console.log('🚛 CommodityExchange: Cargo manifest:', manifest);
+debug('UI', '🚛 CommodityExchange: Cargo manifest:', manifest);
         
         // Update capacity display with red highlighting for zero capacity
         const capacityEl = this.container.querySelector('#cargo-capacity');
@@ -441,7 +443,7 @@ export class CommodityExchange {
         progressFill.style.background = background;
         progressFill.style.boxShadow = boxShadow;
         
-        console.log(`🚛 Updated cargo progress bar: ${manifest.usedCapacity}/${manifest.totalCapacity} (${percentage}%)`);
+debug('UTILITY', `🚛 Updated cargo progress bar: ${manifest.usedCapacity}/${manifest.totalCapacity} (${percentage}%)`);
     }
     
     /**
@@ -581,7 +583,7 @@ export class CommodityExchange {
         if (!ship.cargoHoldManager) return;
         
         const totalCost = quantity * unitPrice;
-        console.log(`🏪 Buying ${quantity} units of ${commodityId} for ${totalCost} CR`);
+debug('UI', `🏪 Buying ${quantity} units of ${commodityId} for ${totalCost} CR`);
         
         // Check if player has enough credits
         if (!playerCredits.canAfford(totalCost)) {
@@ -597,7 +599,7 @@ export class CommodityExchange {
             const creditDeducted = playerCredits.spendCredits(totalCost, `Purchase ${quantity} ${commodityId}`);
             
             if (creditDeducted) {
-                console.log(`✅ Purchase successful: ${quantity} units loaded`);
+debug('UTILITY', `✅ Purchase successful: ${quantity} units loaded`);
                 
                 // Show success notification
                 const commodityData = this.getCommodityData(commodityId);
@@ -627,7 +629,7 @@ export class CommodityExchange {
                 });
             }
         } else {
-            console.log(`🏪 Purchase failed: ${result.error}`);
+debug('P1', `🏪 Purchase failed: ${result.error}`);
             this.showTradeNotification(`Purchase failed: ${result.error}`, 'error');
         }
     }
@@ -640,7 +642,7 @@ export class CommodityExchange {
         if (!ship.cargoHoldManager) return;
         
         const totalValue = quantity * unitPrice;
-        console.log(`🏪 Selling ${quantity} units of ${cargoItem.commodityId} for ${totalValue} CR`);
+debug('UI', `🏪 Selling ${quantity} units of ${cargoItem.commodityId} for ${totalValue} CR`);
         
         // Unload cargo from ship
         const result = ship.cargoHoldManager.unloadCargo(cargoItem.id, quantity);
@@ -650,7 +652,7 @@ export class CommodityExchange {
             const creditsAdded = playerCredits.addCredits(totalValue, `Sale ${quantity} ${cargoItem.commodityId}`);
             
             if (creditsAdded) {
-                console.log(`✅ Sale successful: ${quantity} units sold for ${totalValue} CR`);
+debug('UI', `✅ Sale successful: ${quantity} units sold for ${totalValue} CR`);
                 
                 // Show success notification
                 this.showTradeNotification(`✅ Sold ${quantity} units of ${cargoItem.name} for ${totalValue.toLocaleString()} CR`, 'success');
@@ -680,7 +682,7 @@ export class CommodityExchange {
                 );
             }
         } else {
-            console.log(`🏪 Sale failed: ${result.error}`);
+debug('P1', `🏪 Sale failed: ${result.error}`);
             this.showTradeNotification(`Sale failed: ${result.error}`, 'error');
         }
     }
@@ -709,7 +711,7 @@ export class CommodityExchange {
      * Test commodity exchange (for debugging)
      */
     testExchange() {
-        console.log('🏪 Testing commodity exchange...');
+debug('UI', '🏪 Testing commodity exchange...');
         
         this.show('terra_prime');
         

@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * StarfieldRenderer - Handles all starfield creation and management
  * 
@@ -17,7 +19,7 @@ export class StarfieldRenderer {
         this.starCount = starCount;
         this.starfield = null;
         
-        console.log('🌟 StarfieldRenderer initialized with', starCount, 'stars');
+debug('RENDER', '🌟 StarfieldRenderer initialized with', starCount, 'stars');
     }
 
     /**
@@ -321,7 +323,7 @@ export class StarfieldRenderer {
             this.starfield = this.createStarfield();
             if (this.starfield) {
                 this.scene.add(this.starfield);
-                console.log('🌟 Starfield recreated with', this.starCount, 'stars');
+debug('UTILITY', '🌟 Starfield recreated with', this.starCount, 'stars');
             }
         } catch (error) {
             console.error('Error recreating starfield:', error);
@@ -340,7 +342,7 @@ export class StarfieldRenderer {
         this.starfield = this.createStarfield();
         if (this.starfield) {
             this.scene.add(this.starfield);
-            console.log('🌟 Starfield initialized and added to scene');
+debug('UTILITY', '🌟 Starfield initialized and added to scene');
         }
         return this.starfield;
     }
@@ -386,6 +388,6 @@ export class StarfieldRenderer {
             }
             this.starfield = null;
         }
-        console.log('🌟 StarfieldRenderer disposed');
+debug('RENDER', '🌟 StarfieldRenderer disposed');
     }
 } 

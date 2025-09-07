@@ -1,57 +1,59 @@
+import { debug } from '../debug.js';
+
 /**
  * Ship Integration Test
  * Tests the integration between Ship class and ViewManager
  */
 
 export function testShipIntegration(viewManager) {
-    console.log('=== Testing Ship Integration ===');
+debug('UTILITY', '=== Testing Ship Integration ===');
     
     // Test 1: ViewManager has Ship instance
-    console.log('Test 1: ViewManager Ship Instance');
+debug('UTILITY', 'Test 1: ViewManager Ship Instance');
     const ship = viewManager.getShip();
-    console.log('Ship exists:', !!ship);
-    console.log('Ship type:', ship?.shipType);
-    console.log('Ship status:', ship?.getStatus());
+debug('UTILITY', 'Ship exists:', !!ship);
+debug('UTILITY', 'Ship type:', ship?.shipType);
+debug('UTILITY', 'Ship status:', ship?.getStatus());
     
     // Test 2: Energy system compatibility
-    console.log('\nTest 2: Energy System Compatibility');
+debug('UTILITY', '\nTest 2: Energy System Compatibility');
     const initialEnergy = viewManager.getShipEnergy();
-    console.log('Initial energy via ViewManager:', initialEnergy);
-    console.log('Initial energy via Ship:', ship?.currentEnergy);
-    console.log('Energy values match:', initialEnergy === ship?.currentEnergy);
+debug('UTILITY', 'Initial energy via ViewManager:', initialEnergy);
+debug('UTILITY', 'Initial energy via Ship:', ship?.currentEnergy);
+debug('UTILITY', 'Energy values match:', initialEnergy === ship?.currentEnergy);
     
     // Test 3: Energy consumption
-    console.log('\nTest 3: Energy Consumption');
+debug('UTILITY', '\nTest 3: Energy Consumption');
     const consumed = ship?.consumeEnergy(100);
-    console.log('Energy consumption successful:', consumed);
-    console.log('Energy after consumption:', viewManager.getShipEnergy());
+debug('UTILITY', 'Energy consumption successful:', consumed);
+debug('UTILITY', 'Energy after consumption:', viewManager.getShipEnergy());
     
     // Test 4: Energy update via ViewManager
-    console.log('\nTest 4: Energy Update via ViewManager');
+debug('UTILITY', '\nTest 4: Energy Update via ViewManager');
     const oldEnergy = viewManager.getShipEnergy();
     viewManager.updateShipEnergy(50);
     const newEnergy = viewManager.getShipEnergy();
-    console.log('Energy updated:', oldEnergy, '->', newEnergy);
+debug('UTILITY', 'Energy updated:', oldEnergy, '->', newEnergy);
     
     // Test 5: Ship systems
-    console.log('\nTest 5: Ship Systems');
-    console.log('System count:', ship?.systems.size);
-    console.log('Available power:', ship?.availablePower);
-    console.log('Available slots:', ship?.availableSlots);
+debug('UTILITY', '\nTest 5: Ship Systems');
+debug('UTILITY', 'System count:', ship?.systems.size);
+debug('AI', 'Available power:', ship?.availablePower);
+debug('AI', 'Available slots:', ship?.availableSlots);
     
     // Test 6: Ship configuration
-    console.log('\nTest 6: Ship Configuration');
-    console.log('Max energy:', ship?.maxEnergy);
-    console.log('Energy recharge rate:', ship?.energyRechargeRate);
-    console.log('Power grid:', ship?.totalPower);
+debug('UTILITY', '\nTest 6: Ship Configuration');
+debug('UTILITY', 'Max energy:', ship?.maxEnergy);
+debug('UTILITY', 'Energy recharge rate:', ship?.energyRechargeRate);
+debug('UTILITY', 'Power grid:', ship?.totalPower);
     
-    console.log('=== Ship Integration Test Complete ===');
+debug('UTILITY', '=== Ship Integration Test Complete ===');
     return true;
 }
 
 // Add a debug function to test ship systems
 export function debugShipSystems(viewManager) {
-    console.log('=== Ship Systems Debug ===');
+debug('INSPECTION', '=== Ship Systems Debug ===');
     const ship = viewManager.getShip();
     const status = ship.getStatus();
     
@@ -64,7 +66,7 @@ export function debugShipSystems(viewManager) {
         'Systems': status.systemCount
     });
     
-    console.log('Stats:', status.stats);
+debug('UTILITY', 'Stats:', status.stats);
 }
 
 // Auto-run basic test if this file is loaded directly

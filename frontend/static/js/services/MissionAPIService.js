@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * MissionAPIService - Frontend interface to backend mission system
  * Handles all mission-related API calls and data management
@@ -20,7 +22,7 @@ export class MissionAPIService {
             missionUpdated: []
         };
         
-        console.log('🎯 MissionAPIService: Initialized');
+debug('MISSIONS', 'MissionAPIService: Initialized');
     }
     
     /**
@@ -28,7 +30,7 @@ export class MissionAPIService {
      */
     setPlayerLocation(location) {
         this.playerLocation = location;
-        console.log(`🎯 MissionAPIService: Player location set to ${location}`);
+debug('MISSIONS', `🎯 MissionAPIService: Player location set to ${location}`);
     }
     
     /**
@@ -36,7 +38,7 @@ export class MissionAPIService {
      */
     updatePlayerData(playerData) {
         this.playerData = { ...playerData };
-        console.log('🎯 MissionAPIService: Player data updated', this.playerData);
+debug('MISSIONS', 'MissionAPIService: Player data updated', this.playerData);
     }
     
     /**
@@ -65,7 +67,7 @@ export class MissionAPIService {
                 this.availableMissions.set(mission.id, mission);
             });
             
-            console.log(`🎯 MissionAPIService: Loaded ${data.missions.length} available missions`);
+debug('AI', `🎯 MissionAPIService: Loaded ${data.missions.length} available missions`);
             return data.missions;
             
         } catch (error) {
@@ -92,7 +94,7 @@ export class MissionAPIService {
                 this.activeMissions.set(mission.id, mission);
             });
             
-            console.log(`🎯 MissionAPIService: Loaded ${data.missions.length} active missions`);
+debug('MISSIONS', `🎯 MissionAPIService: Loaded ${data.missions.length} active missions`);
             return data.missions;
             
         } catch (error) {
@@ -122,7 +124,7 @@ export class MissionAPIService {
             if (result.success) {
                 // Clear local cache
                 this.activeMissions.clear();
-                console.log(`🎯 MissionAPIService: Cleared ${result.cleared_count} active missions`);
+debug('MISSIONS', `🎯 MissionAPIService: Cleared ${result.cleared_count} active missions`);
                 
                 // Trigger event
                 this.triggerEvent('activeMissionsCleared', { 
@@ -150,7 +152,7 @@ export class MissionAPIService {
             }
             
             const mission = await response.json();
-            console.log(`🎯 MissionAPIService: Loaded mission details for ${missionId}`);
+debug('AI', `🎯 MissionAPIService: Loaded mission details for ${missionId}`);
             return mission;
             
         } catch (error) {
@@ -190,7 +192,7 @@ export class MissionAPIService {
                 
                 // Trigger event
                 this.triggerEvent('missionAccepted', { mission: result.mission });
-                console.log(`🎯 MissionAPIService: Mission ${missionId} accepted`);
+debug('MISSIONS', `🎯 MissionAPIService: Mission ${missionId} accepted`);
             }
             
             return result;
@@ -241,7 +243,7 @@ export class MissionAPIService {
                     this.triggerEvent('missionCompleted', { mission: result.mission });
                 }
                 
-                console.log(`🎯 MissionAPIService: Objective ${objectiveId} completed for mission ${missionId}`);
+debug('MISSIONS', `🎯 MissionAPIService: Objective ${objectiveId} completed for mission ${missionId}`);
             }
             
             return result;
@@ -274,7 +276,7 @@ export class MissionAPIService {
                 // Remove from active missions
                 this.activeMissions.delete(missionId);
                 
-                console.log(`🎯 MissionAPIService: Mission ${missionId} abandoned`);
+debug('MISSIONS', `🎯 MissionAPIService: Mission ${missionId} abandoned`);
             }
             
             return result;
@@ -311,7 +313,7 @@ export class MissionAPIService {
             if (result.success && result.mission) {
                 // Add to available missions
                 this.availableMissions.set(result.mission.id, result.mission);
-                console.log(`🎯 MissionAPIService: Generated mission ${result.mission.id} from template ${templateId}`);
+debug('MISSIONS', `🎯 MissionAPIService: Generated mission ${result.mission.id} from template ${templateId}`);
             }
             
             return result;
@@ -333,7 +335,7 @@ export class MissionAPIService {
             }
             
             const data = await response.json();
-            console.log(`🎯 MissionAPIService: Loaded ${data.templates.length} mission templates`);
+debug('MISSIONS', `🎯 MissionAPIService: Loaded ${data.templates.length} mission templates`);
             return data.templates;
             
         } catch (error) {
@@ -396,7 +398,7 @@ export class MissionAPIService {
      * Force refresh all mission data
      */
     async refreshAllMissions() {
-        console.log('🎯 MissionAPIService: Refreshing all mission data...');
+debug('MISSIONS', 'MissionAPIService: Refreshing all mission data...');
         
         try {
             await Promise.all([
@@ -404,7 +406,7 @@ export class MissionAPIService {
                 this.getAvailableMissions()
             ]);
             
-            console.log('🎯 MissionAPIService: All mission data refreshed');
+debug('MISSIONS', 'MissionAPIService: All mission data refreshed');
             return true;
         } catch (error) {
             console.error('🎯 MissionAPIService: Failed to refresh mission data:', error);
@@ -420,7 +422,7 @@ export class MissionAPIService {
             const response = await fetch(`${this.baseURL}/templates`);
             const isConnected = response.ok;
             
-            console.log(`🎯 MissionAPIService: Connection test ${isConnected ? 'PASSED' : 'FAILED'}`);
+debug('P1', `🎯 MissionAPIService: Connection test ${isConnected ? 'PASSED' : 'FAILED'}`);
             return isConnected;
             
         } catch (error) {

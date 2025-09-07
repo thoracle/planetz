@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * AIGameIntegration.js
  * 
@@ -33,7 +35,7 @@ export class AIGameIntegration {
         this.physicsEnabled = false;
         this.physicsWorld = null;
         
-        console.log('🔗 AIGameIntegration initialized');
+debug('AI', 'AIGameIntegration initialized');
     }
     
     /**
@@ -42,7 +44,7 @@ export class AIGameIntegration {
     initializePhysics(physicsWorld) {
         this.physicsWorld = physicsWorld;
         this.physicsEnabled = true;
-        console.log('🔗 Physics integration enabled');
+debug('PHYSICS', 'Physics integration enabled');
     }
     
     /**
@@ -95,7 +97,7 @@ export class AIGameIntegration {
         ship.currentHull = Math.max(0, ship.currentHull - damage);
         
         // Log damage for debugging
-        console.log(`💥 ${attacker?.shipType || 'Unknown'} dealt ${damage.toFixed(1)} damage to ${ship.shipType || 'target'} (${ship.currentHull.toFixed(1)}/${ship.maxHull} hull)`);
+debug('TARGETING', `💥 ${attacker?.shipType || 'Unknown'} dealt ${damage.toFixed(1)} damage to ${ship.shipType || 'target'} (${ship.currentHull.toFixed(1)}/${ship.maxHull} hull)`);
         
         // Check for ship destruction
         if (ship.currentHull <= 0 && oldHull > 0) {
@@ -127,7 +129,7 @@ export class AIGameIntegration {
      * Handle ship destruction
      */
     handleShipDestruction(ship, attacker) {
-        console.log(`💀 ${ship.shipType || 'Ship'} destroyed by ${attacker?.shipType || 'unknown'}`);
+debug('UTILITY', `💀 ${ship.shipType || 'Ship'} destroyed by ${attacker?.shipType || 'unknown'}`);
         
         // Create destruction effect
         this.createDestructionEffect(ship);
@@ -148,7 +150,7 @@ export class AIGameIntegration {
      * Handle critical damage state
      */
     handleCriticalDamage(ship) {
-        console.log(`⚠️ ${ship.shipType || 'Ship'} critically damaged`);
+debug('P1', `⚠️ ${ship.shipType || 'Ship'} critically damaged`);
         
         // Create critical damage effects
         this.createCriticalDamageEffect(ship);
@@ -474,7 +476,7 @@ export class AIGameIntegration {
      */
     awardCombatRewards(player, destroyedShip) {
         // This would integrate with the game's progression system
-        console.log(`🎖️ Player destroyed ${destroyedShip.shipType}, awarding rewards`);
+debug('UTILITY', `🎖️ Player destroyed ${destroyedShip.shipType}, awarding rewards`);
         
         // Award experience points
         const xpReward = this.calculateXPReward(destroyedShip);
@@ -482,7 +484,7 @@ export class AIGameIntegration {
         // Award credits
         const creditReward = this.calculateCreditReward(destroyedShip);
         
-        console.log(`  XP: +${xpReward}, Credits: +${creditReward}`);
+debug('UTILITY', `  XP: +${xpReward}, Credits: +${creditReward}`);
     }
     
     /**
@@ -545,7 +547,7 @@ export class AIGameIntegration {
             this.enableVisualEffects = settings.enableVisualEffects;
         }
         
-        console.log('🔗 AI Game Integration configured:', settings);
+debug('AI', 'AI Game Integration configured:', settings);
     }
     
     /**

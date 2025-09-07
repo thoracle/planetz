@@ -1,4 +1,5 @@
 import { getWireframeType } from '../constants/WireframeTypes.js';
+import { debug } from '../debug.js';
 
 /**
  * Star Charts and Target Computer Integration
@@ -34,7 +35,7 @@ export class StarChartsTargetComputerIntegration {
         this.discoveryCallbacks = [];
         this.targetSelectionCallbacks = [];
 
-        console.log('🔗 Star Charts ↔ Target Computer Integration initialized');
+debug('TARGETING', 'Star Charts ↔ Target Computer Integration initialized');
     }
 
     /**
@@ -52,7 +53,7 @@ export class StarChartsTargetComputerIntegration {
         // Initial sync - force sync all discovered objects
         this.forceSync();
 
-        console.log('✅ Star Charts ↔ Target Computer Integration activated');
+debug('TARGETING', '✅ Star Charts ↔ Target Computer Integration activated');
     }
 
     /**
@@ -64,7 +65,7 @@ export class StarChartsTargetComputerIntegration {
         this.isActive = false;
         this.stopSynchronization();
 
-        console.log('⏸️  Star Charts ↔ Target Computer Integration deactivated');
+debug('TARGETING', '⏸️  Star Charts ↔ Target Computer Integration deactivated');
     }
 
     /**
@@ -111,7 +112,7 @@ export class StarChartsTargetComputerIntegration {
      * Handle discovery events from Star Charts
      */
     handleDiscoveryEvent(objectId, discoveryData) {
-        console.log(`🗺️  Discovery event: ${objectId}`, discoveryData);
+debug('UTILITY', `🗺️  Discovery event: ${objectId}`, discoveryData);
 
         // Update enhanced target data
         this.updateEnhancedTargetData(objectId, discoveryData);
@@ -133,7 +134,7 @@ export class StarChartsTargetComputerIntegration {
      * Handle target selection from Star Charts
      */
     handleTargetSelection(objectId) {
-        console.log(`🎯 Target selection from Star Charts: ${objectId}`);
+debug('TARGETING', `🎯 Target selection from Star Charts: ${objectId}`);
 
         // Temporarily pause synchronization to prevent interference
         this.pauseSync = true;
@@ -169,7 +170,7 @@ export class StarChartsTargetComputerIntegration {
 
         // Skip sync if paused (during manual target selection)
         if (this.pauseSync) {
-            console.log('🔄 Sync paused for manual target selection');
+debug('TARGETING', '🔄 Sync paused for manual target selection');
             return;
         }
 
@@ -180,7 +181,7 @@ export class StarChartsTargetComputerIntegration {
             // Get discovered objects from Star Charts
             const discoveredObjects = this.getDiscoveredObjectsFromStarCharts();
 
-            console.log(`🔄 Syncing targets: ${discoveredObjects.length} discovered, ${currentTargets.length} in Target Computer`);
+debug('TARGETING', `🔄 Syncing targets: ${discoveredObjects.length} discovered, ${currentTargets.length} in Target Computer`);
 
             // Sync target availability
             this.syncTargetAvailability(currentTargets, discoveredObjects);
@@ -321,11 +322,11 @@ export class StarChartsTargetComputerIntegration {
         });
 
         if (addedCount > 0) {
-            console.log(`🎯 Added ${addedCount} new targets to Target Computer`);
+debug('TARGETING', `🎯 Added ${addedCount} new targets to Target Computer`);
             // Only refresh display if no current target is set (avoid interrupting manual selection)
             if (this.targetComputer && this.targetComputer.updateTargetDisplay && !this.targetComputer.currentTarget) {
                 this.targetComputer.updateTargetDisplay();
-                console.log(`🎯 Refreshed Target Computer display`);
+debug('TARGETING', `🎯 Refreshed Target Computer display`);
             }
         }
     }
@@ -422,15 +423,15 @@ export class StarChartsTargetComputerIntegration {
             if (existingIndex === -1) {
                 // Add new target to the array
                 this.targetComputer.targetObjects.push(targetDataForTC);
-                console.log(`🎯 Added target to Target Computer targetObjects: ${targetData.name} (${normalizedId})`);
+debug('TARGETING', `🎯 Added target to Target Computer targetObjects: ${targetData.name} (${normalizedId})`);
             } else {
                 // Update existing target
                 this.targetComputer.targetObjects[existingIndex] = { ...this.targetComputer.targetObjects[existingIndex], ...targetDataForTC };
-                console.log(`🎯 Updated existing target in Target Computer: ${targetData.name} (${normalizedId})`);
+debug('TARGETING', `🎯 Updated existing target in Target Computer: ${targetData.name} (${normalizedId})`);
             }
         }
 
-        console.log(`🎯 Added target to Target Computer: ${targetData.name} (${normalizedId})`);
+debug('TARGETING', `🎯 Added target to Target Computer: ${targetData.name} (${normalizedId})`);
 
         // Refresh the target display to show the new target
         if (this.targetComputer && this.targetComputer.updateTargetDisplay) {
@@ -534,7 +535,7 @@ export class StarChartsTargetComputerIntegration {
             }
         }
 
-        console.log(`✨ Applied enhanced data to target: ${targetId}`);
+debug('TARGETING', `✨ Applied enhanced data to target: ${targetId}`);
     }
 
     /**
@@ -545,7 +546,7 @@ export class StarChartsTargetComputerIntegration {
 
         // Ensure Target Computer is activated
         if (this.targetComputer.targetComputerEnabled === false) {
-            console.log('🎯 Activating Target Computer for manual selection');
+debug('TARGETING', 'Activating Target Computer for manual selection');
             this.targetComputer.targetComputerEnabled = true;
         }
 
@@ -553,7 +554,7 @@ export class StarChartsTargetComputerIntegration {
         const success = this.targetComputer.setTargetById(objectId);
 
         if (success) {
-            console.log(`🎯 Successfully set target: ${objectId}`);
+debug('TARGETING', `🎯 Successfully set target: ${objectId}`);
             
             // Force a display update to ensure HUD reflects the change
             if (this.targetComputer.updateTargetDisplay) {
@@ -591,7 +592,7 @@ export class StarChartsTargetComputerIntegration {
             discovered: true
         });
 
-        console.log(`📡 Notified Target Computer of discovery: ${objectData.name}`);
+debug('TARGETING', `📡 Notified Target Computer of discovery: ${objectData.name}`);
     }
 
     /**
@@ -643,7 +644,7 @@ export class StarChartsTargetComputerIntegration {
     forceSync() {
         if (this.isActive) {
             this.syncTargetData();
-            console.log('🔄 Forced synchronization completed');
+debug('UTILITY', '🔄 Forced synchronization completed');
         }
     }
 
@@ -654,7 +655,7 @@ export class StarChartsTargetComputerIntegration {
         this.deactivate();
         this.enhancedTargets.clear();
         this.discoveryCallbacks.length = 0;
-        console.log('🧹 Star Charts ↔ Target Computer Integration cleaned up');
+debug('TARGETING', '🧹 Star Charts ↔ Target Computer Integration cleaned up');
     }
 
     /**
@@ -680,7 +681,7 @@ export function createStarChartsTargetComputerIntegration(starChartsManager, tar
     // Auto-activate if all components are available
     if (starChartsManager && targetComputerManager && solarSystemManager) {
         integration.activate();
-        console.log('✅ Star Charts ↔ Target Computer Integration auto-activated');
+debug('TARGETING', '✅ Star Charts ↔ Target Computer Integration auto-activated');
     } else {
         console.warn('⚠️ Star Charts Integration: Missing components - not activated');
         console.warn('   Star Charts:', !!starChartsManager);

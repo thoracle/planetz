@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Console Commands for Proximity Detector Testing
  * 
@@ -10,7 +12,7 @@
 /*
 // Load and run proximity detector tests
 (async function() {
-    console.log('🧪 Loading proximity detector tests...');
+debug('UTILITY', 'Loading proximity detector tests...');
     
     // Load basic test
     const basicTest = new Promise((resolve) => {
@@ -33,12 +35,12 @@
     // Wait for both tests to load
     await Promise.all([basicTest, cardTest]);
     
-    console.log('✅ Tests loaded! Available functions:');
-    console.log('  • testProximityDetector()');
-    console.log('  • testProximityDetectorCardIntegration()');
+debug('AI', '✅ Tests loaded! Available functions:');
+debug('UTILITY', '  • testProximityDetector()');
+debug('UI', '  • testProximityDetectorCardIntegration()');
     
     // Run basic test
-    console.log('🎯 Running basic proximity detector test...');
+debug('UTILITY', 'Running basic proximity detector test...');
     testProximityDetector();
 })();
 */
@@ -66,5 +68,5 @@
 // const radarSystem = ship?.getSystem('radar');
 // console.log('Proximity detector system:', radarSystem?.getStatus());
 
-console.log('📋 Proximity Detector Console Commands loaded');
-console.log('💡 See console_commands.js for copy-paste test commands');
+debug('UTILITY', '📋 Proximity Detector Console Commands loaded');
+debug('UTILITY', '💡 See console_commands.js for copy-paste test commands');

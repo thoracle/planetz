@@ -4,6 +4,7 @@ import { getAIConfig, applyDifficultyModifiers, applyFactionModifiers } from './
 import { FlockingManager } from './FlockingManager.js';
 import { AIPerformanceManager } from './AIPerformanceManager.js';
 import { AIDebugVisualizer } from './AIDebugVisualizer.js';
+import { debug } from '../debug.js';
 
 /**
  * EnemyAIManager - Central coordinator for all enemy AI systems
@@ -53,7 +54,7 @@ export class EnemyAIManager {
         // Integration state
         this.isInitialized = false;
         
-        console.log('🤖 EnemyAIManager initialized');
+debug('AI', 'EnemyAIManager initialized');
     }
     
     /**
@@ -68,7 +69,7 @@ export class EnemyAIManager {
             this.enableAIForExistingShips();
             
             this.isInitialized = true;
-            console.log('✅ EnemyAIManager fully initialized');
+debug('AI', '✅ EnemyAIManager fully initialized');
             
         } catch (error) {
             console.error('❌ Failed to initialize EnemyAIManager:', error);
@@ -88,7 +89,7 @@ export class EnemyAIManager {
         // Collect all ships from various sources
         this.updateGameWorldShips();
         
-        console.log(`🌍 Game world initialized with ${this.gameWorld.ships.length} ships`);
+debug('UTILITY', `🌍 Game world initialized with ${this.gameWorld.ships.length} ships`);
     }
     
     /**
@@ -129,7 +130,7 @@ export class EnemyAIManager {
             }
         }
         
-        console.log(`🤖 Enabled AI for ${aiCount} existing ships`);
+debug('AI', `🤖 Enabled AI for ${aiCount} existing ships`);
     }
     
     /**
@@ -179,7 +180,7 @@ export class EnemyAIManager {
                 ai.enableDebug();
             }
             
-            console.log(`🤖 AI added to ${ship.shipType} (difficulty: ${options.difficulty || this.globalDifficulty})`);
+debug('AI', `🤖 AI added to ${ship.shipType} (difficulty: ${options.difficulty || this.globalDifficulty})`);
             return ai;
             
         } catch (error) {
@@ -212,7 +213,7 @@ export class EnemyAIManager {
         // Clear ship reference
         ship.ai = null;
         
-        console.log(`🤖 AI removed from ${ship.shipType}`);
+debug('AI', `🤖 AI removed from ${ship.shipType}`);
     }
     
     /**
@@ -382,7 +383,7 @@ export class EnemyAIManager {
      */
     setGlobalDifficulty(difficulty) {
         this.globalDifficulty = Math.max(1, Math.min(100, difficulty));
-        console.log(`🤖 Global AI difficulty set to ${this.globalDifficulty}`);
+debug('AI', `🤖 Global AI difficulty set to ${this.globalDifficulty}`);
         
         // Apply to existing AIs
         for (const [ship, ai] of this.aiShips) {
@@ -397,7 +398,7 @@ export class EnemyAIManager {
      */
     setAIEnabled(enabled) {
         this.aiEnabled = enabled;
-        console.log(`🤖 AI system ${enabled ? 'enabled' : 'disabled'}`);
+debug('AI', `🤖 AI system ${enabled ? 'enabled' : 'disabled'}`);
     }
     
     /**
@@ -421,7 +422,7 @@ export class EnemyAIManager {
         // Set debug visualization
         this.debugVisualizer.setEnabled(debug);
         
-        console.log(`🤖 AI debug mode ${debug ? 'enabled' : 'disabled'}`);
+debug('AI', `🤖 AI debug mode ${debug ? 'enabled' : 'disabled'}`);
     }
     
     /**
@@ -493,7 +494,7 @@ export class EnemyAIManager {
         for (const ai of this.activeAIs) {
             ai.setState(state);
         }
-        console.log(`🤖 Forced all AIs to state: ${state}`);
+debug('AI', `🤖 Forced all AIs to state: ${state}`);
     }
     
     /**
@@ -522,7 +523,7 @@ export class EnemyAIManager {
         const flockId = this.createFlockFromShips(ships, config);
         if (flockId) {
             this.flockingManager.assignFormation(flockId, formationType, config);
-            console.log(`🎯 Created ${formationType} formation with ${ships.length} ships`);
+debug('AI', `🎯 Created ${formationType} formation with ${ships.length} ships`);
         }
     }
     
@@ -549,7 +550,7 @@ export class EnemyAIManager {
         this.gameWorld.ships = [];
         
         this.isInitialized = false;
-        console.log('🤖 EnemyAIManager destroyed');
+debug('AI', 'EnemyAIManager destroyed');
     }
 }
 

@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Test Loader for Proximity Detector
  * 
@@ -13,7 +15,7 @@
  * testProximityDetectorCardIntegration();
  */
 
-console.log('🧪 Loading Proximity Detector test functions...');
+debug('UTILITY', 'Loading Proximity Detector test functions...');
 
 // Load basic proximity detector test
 function loadProximityDetectorTest() {
@@ -22,7 +24,7 @@ function loadProximityDetectorTest() {
         script.src = 'static/js/tests/radar_test.js';
         script.type = 'text/javascript'; // Ensure it's loaded as regular JavaScript
         script.onload = () => {
-            console.log('✅ Basic proximity detector test loaded');
+debug('UTILITY', '✅ Basic proximity detector test loaded');
             resolve();
         };
         script.onerror = reject;
@@ -37,7 +39,7 @@ function loadProximityDetectorCardTest() {
         script.src = 'static/js/tests/radar_card_test.js';
         script.type = 'text/javascript'; // Ensure it's loaded as regular JavaScript
         script.onload = () => {
-            console.log('✅ Proximity detector card integration test loaded');
+debug('UI', '✅ Proximity detector card integration test loaded');
             resolve();
         };
         script.onerror = reject;
@@ -53,13 +55,13 @@ async function loadAllProximityDetectorTests() {
             loadProximityDetectorCardTest()
         ]);
         
-        console.log('🎯 All proximity detector tests loaded successfully!');
-        console.log('💡 Available test functions:');
-        console.log('  • testProximityDetector()');
-        console.log('  • testProximityDetectorCardIntegration()');
+debug('UTILITY', 'All proximity detector tests loaded successfully!');
+debug('AI', '💡 Available test functions:');
+debug('UTILITY', '  • testProximityDetector()');
+debug('UI', '  • testProximityDetectorCardIntegration()');
         console.log('');
-        console.log('🎮 Example usage:');
-        console.log('  testProximityDetector();');
+debug('UTILITY', '🎮 Example usage:');
+debug('UTILITY', '  testProximityDetector();');
         
         return true;
     } catch (error) {

@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * WeaponHUD - Heads-up display for weapons system
  * Based on docs/weapons_system_spec.md and docs/system_architecture.md
@@ -17,7 +19,7 @@ export class WeaponHUD {
         
         this.createHUDElements();
         
-        console.log('WeaponHUD initialized');
+debug('COMBAT', 'WeaponHUD initialized');
     }
     
     /**
@@ -466,7 +468,7 @@ export class WeaponHUD {
 
         // Check if current message has higher priority
         if (this.currentMessagePriority > priority) {
-            console.log(`🎯 MESSAGE PRIORITY: Skipping lower priority message (${priority} vs ${this.currentMessagePriority})`);
+debug('UI', `🎯 MESSAGE PRIORITY: Skipping lower priority message (${priority} vs ${this.currentMessagePriority})`);
             return;
         }
 
@@ -487,7 +489,7 @@ export class WeaponHUD {
         this.unifiedDisplay.style.display = 'block';
         this.unifiedDisplay.style.opacity = '1';
 
-        console.log(`🎯 UNIFIED DISPLAY: "${text}" (priority: ${priority}, duration: ${duration}ms)`);
+debug('UI', `🎯 UNIFIED DISPLAY: "${text}" (priority: ${priority}, duration: ${duration}ms)`);
 
         // Hide after duration and reset priority
         this.displayTimeout = setTimeout(() => {
@@ -664,7 +666,7 @@ export class WeaponHUD {
             const activeWeapon = weaponSystem.getActiveWeapon();
             if (activeWeapon?.equippedWeapon && activeWeapon.equippedWeapon.name === weaponName) {
                 isSplashWeapon = activeWeapon.equippedWeapon.blastRadius > 0;
-                console.log(`🎯 FEEDBACK: ${weaponName} blastRadius: ${activeWeapon.equippedWeapon.blastRadius}, isSplash: ${isSplashWeapon}`);
+debug('COMBAT', `🎯 FEEDBACK: ${weaponName} blastRadius: ${activeWeapon.equippedWeapon.blastRadius}, isSplash: ${isSplashWeapon}`);
             }
         }
         
@@ -705,6 +707,6 @@ export class WeaponHUD {
         
         this.cooldownBars = [];
         
-        console.log('WeaponHUD disposed');
+debug('COMBAT', 'WeaponHUD disposed');
     }
 } 

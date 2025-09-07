@@ -1,3 +1,5 @@
+import { debug } from './debug.js';
+
 /**
  * SimpleCollisionManager - Three.js-based collision detection system
  * Replaces Ammo.js collision detection with simple, performant Three.js Raycaster
@@ -33,7 +35,7 @@ export class SimpleCollisionManager {
         // Layer-based object tracking
         this.layeredObjects = new Map(); // layer -> Set<object>
         
-        console.log('💥 SimpleCollisionManager initialized - Three.js collision detection');
+debug('UTILITY', '💥 SimpleCollisionManager initialized - Three.js collision detection');
     }
 
     /**
@@ -77,9 +79,9 @@ export class SimpleCollisionManager {
         if (intersects.length > 0) {
             const firstHit = intersects[0];
             const hitDistanceInMeters = firstHit.distance * 1000;
-            console.log(`🎯 COLLISION: Hit at ${firstHit.distance.toFixed(1)} units (${hitDistanceInMeters.toFixed(1)}m), maxRange: ${maxDistance.toFixed(1)}m`);
-            console.log(`🎯 COLLISION: Hit distance in km: ${firstHit.distance.toFixed(1)}km`);
-            console.log(`🎯 COLLISION: Valid hits after filtering: ${validHits.length}/${intersects.length}`);
+debug('UTILITY', `🎯 COLLISION: Hit at ${firstHit.distance.toFixed(1)} units (${hitDistanceInMeters.toFixed(1)}m), maxRange: ${maxDistance.toFixed(1)}m`);
+debug('UTILITY', `🎯 COLLISION: Hit distance in km: ${firstHit.distance.toFixed(1)}km`);
+debug('UTILITY', `🎯 COLLISION: Valid hits after filtering: ${validHits.length}/${intersects.length}`);
         }
         
         if (validHits.length === 0) {
@@ -199,7 +201,7 @@ export class SimpleCollisionManager {
      */
     weaponRaycast(origin, direction, maxRangeKm, firingShip = null) {
         const maxRangeM = maxRangeKm * 1000; // Convert to meters
-        console.log(`🎯 COLLISION DEBUG: maxRangeKm=${maxRangeKm}, maxRangeM=${maxRangeM}`);
+debug('INSPECTION', `🎯 COLLISION DEBUG: maxRangeKm=${maxRangeKm}, maxRangeM=${maxRangeM}`);
         const excludeObjects = firingShip ? [firingShip] : [];
         
         // Only hit ships, stations, and other targetable objects
@@ -318,7 +320,7 @@ export class SimpleCollisionManager {
      */
     clear() {
         this.spatialManager.clear();
-        console.log('💥 SimpleCollisionManager cleared');
+debug('UTILITY', '💥 SimpleCollisionManager cleared');
     }
 }
 

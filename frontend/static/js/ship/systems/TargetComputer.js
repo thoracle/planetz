@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * Target Computer System - Provides targeting and tracking capabilities
  * Based on docs/spaceships_spec.md and docs/tech_design.md
@@ -50,7 +52,7 @@ export default class TargetComputer extends System {
         // Initialize level-specific values
         this.updateLevelStats();
         
-        console.log(`Target Computer created (Level ${level}) - Range: ${this.getCurrentTargetingRange()}km, Max Targets: ${this.getMaxTargets()}`);
+debug('TARGETING', `Target Computer created (Level ${level}) - Range: ${this.getCurrentTargetingRange()}km, Max Targets: ${this.getMaxTargets()}`);
     }
     
     /**
@@ -116,7 +118,7 @@ export default class TargetComputer extends System {
         // Update current performance based on level and health
         this.updateCurrentStats();
         
-        console.log(`Target Computer upgraded to Level ${this.level} - ${levelStats.computerType}`);
+debug('TARGETING', `Target Computer upgraded to Level ${this.level} - ${levelStats.computerType}`);
     }
     
     /**
@@ -222,7 +224,7 @@ export default class TargetComputer extends System {
         const currentEnergy = Math.round(ship.currentEnergy);
         const energyReactor = ship.getSystem('energy_reactor');
         
-        console.log(`Target Computer activated - Range: ${this.getCurrentTargetingRange().toFixed(0)}km, Accuracy: ${(this.getCurrentTargetingAccuracy() * 100).toFixed(1)}%`);
+debug('TARGETING', `Target Computer activated - Range: ${this.getCurrentTargetingRange().toFixed(0)}km, Accuracy: ${(this.getCurrentTargetingAccuracy() * 100).toFixed(1)}%`);
         
         // Provide feedback about energy consumption and warnings
         if (currentEnergy < energyConsumption * 10) {
@@ -252,7 +254,7 @@ export default class TargetComputer extends System {
         this.currentTarget = null;
         this.targetLock = false;
         this.trackedTargets.clear();
-        console.log('Target Computer deactivated');
+debug('TARGETING', 'Target Computer deactivated');
     }
     
     /**
@@ -311,7 +313,7 @@ export default class TargetComputer extends System {
             // Set diplomacy same as faction if not explicitly set
             diplomacy = target.diplomacy || target.ship?.diplomacy || faction;
             
-            console.log(`Target set: ${name} (${faction})`);
+debug('TARGETING', `Target set: ${name} (${faction})`);
             
             // Determine proper object type
             let objectType = 'Unknown';
@@ -336,12 +338,12 @@ export default class TargetComputer extends System {
                 type: objectType
             };
         } else {
-            console.log(`Target set: None`);
+debug('TARGETING', `Target set: None`);
             this.currentTargetInfo = null;
         }
         
         if (this.hasSubTargeting() && this.availableSubTargets.length > 0) {
-            console.log(`Sub-targeting available: ${this.availableSubTargets.length} systems detected`);
+debug('TARGETING', `Sub-targeting available: ${this.availableSubTargets.length} systems detected`);
         }
         return true;
     }
@@ -368,10 +370,10 @@ export default class TargetComputer extends System {
         
         if (Math.random() < lockChance) {
             this.targetLock = true;
-            console.log('Target lock acquired');
+debug('TARGETING', 'Target lock acquired');
             return true;
         } else {
-            console.log('Target lock failed - insufficient accuracy');
+debug('P1', 'Target lock failed - insufficient accuracy');
             return false;
         }
     }
@@ -624,7 +626,7 @@ export default class TargetComputer extends System {
         this.subTargetIndex = (this.subTargetIndex + 1) % this.availableSubTargets.length;
         this.currentSubTarget = this.availableSubTargets[this.subTargetIndex];
         
-        console.log(`Sub-target: ${this.currentSubTarget.displayName} (${(this.currentSubTarget.health * 100).toFixed(1)}% health)`);
+debug('TARGETING', `Sub-target: ${this.currentSubTarget.displayName} (${(this.currentSubTarget.health * 100).toFixed(1)}% health)`);
         return true;
     }
     
@@ -640,7 +642,7 @@ export default class TargetComputer extends System {
         this.subTargetIndex = (this.subTargetIndex - 1 + this.availableSubTargets.length) % this.availableSubTargets.length;
         this.currentSubTarget = this.availableSubTargets[this.subTargetIndex];
         
-        console.log(`Sub-target: ${this.currentSubTarget.displayName} (${(this.currentSubTarget.health * 100).toFixed(1)}% health)`);
+debug('TARGETING', `Sub-target: ${this.currentSubTarget.displayName} (${(this.currentSubTarget.health * 100).toFixed(1)}% health)`);
         return true;
     }
     
@@ -665,7 +667,7 @@ export default class TargetComputer extends System {
         this.subTargetIndex = Math.floor(Math.random() * this.availableSubTargets.length);
         this.currentSubTarget = this.availableSubTargets[this.subTargetIndex];
         
-        console.log(`Random sub-target selected: ${this.currentSubTarget.displayName} (${(this.currentSubTarget.health * 100).toFixed(1)}% health)`);
+debug('TARGETING', `Random sub-target selected: ${this.currentSubTarget.displayName} (${(this.currentSubTarget.health * 100).toFixed(1)}% health)`);
         return true;
     }
     
@@ -773,17 +775,17 @@ export default class TargetComputer extends System {
         switch (newState) {
             case SYSTEM_STATES.CRITICAL:
                 // Critical targeting computer has reduced accuracy and range
-                console.log('Critical targeting computer damage - reduced accuracy and range');
+debug('P1', 'Critical targeting computer damage - reduced accuracy and range');
                 // Clear target lock if accuracy drops too low
                 if (this.getCurrentTargetingAccuracy() < 0.3) {
                     this.targetLock = false;
-                    console.log('Target lock lost due to critical damage');
+debug('P1', 'Target lock lost due to critical damage');
                 }
                 break;
             case SYSTEM_STATES.DISABLED:
                 // Disabled targeting computer cannot function
                 this.deactivate();
-                console.log('Target Computer disabled - no targeting capability!');
+debug('TARGETING', 'Target Computer disabled - no targeting capability!');
                 break;
         }
         

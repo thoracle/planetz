@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * Shields System - Provides defensive protection for the ship
  * Based on docs/spaceships_spec.md and docs/tech_design.md
@@ -42,7 +44,7 @@ export default class Shields extends System {
         // Initialize level-specific values
         this.updateLevelStats();
         
-        console.log(`Shields created (Level ${level}) - Max Strength: ${this.maxShieldStrength}`);
+debug('COMBAT', `Shields created (Level ${level}) - Max Strength: ${this.maxShieldStrength}`);
     }
     
     /**
@@ -145,7 +147,7 @@ export default class Shields extends System {
         this.isShieldsUp = true;
         this.isActive = true; // Start consuming energy
         this.applyScreenTint();
-        console.log('Shields up - defensive screens activated');
+debug('COMBAT', 'Shields up - defensive screens activated');
         
         // Show HUD message for shield activation using the same system as other major ship systems
         this.showHUDError(
@@ -163,7 +165,7 @@ export default class Shields extends System {
         this.isShieldsUp = false;
         this.isActive = false; // Stop consuming energy
         this.removeScreenTint();
-        console.log('Shields down - defensive screens deactivated');
+debug('COMBAT', 'Shields down - defensive screens deactivated');
         
         // Show HUD message for shield deactivation using the same system as other major ship systems
         this.showHUDError(
@@ -185,14 +187,14 @@ export default class Shields extends System {
         });
         
         if (!this.isOperational()) {
-            console.log(`🛡️ Shields: Cannot activate - system not operational`);
+debug('COMBAT', `🛡️ Shields: Cannot activate - system not operational`);
             return false;
         }
         
         // Check if ship has required cards
         if (ship && ship.hasSystemCardsSync) {
             const cardCheck = ship.hasSystemCardsSync('shields');
-            console.log(`🛡️ Shields: Card check result:`, cardCheck, typeof cardCheck);
+debug('COMBAT', `🛡️ Shields: Card check result:`, cardCheck, typeof cardCheck);
             
             // Handle both boolean and object returns
             let cardCheckPassed = false;
@@ -206,20 +208,20 @@ export default class Shields extends System {
             
             if (!cardCheckPassed) {
                 const missingCards = (cardCheck && cardCheck.missingCards) ? cardCheck.missingCards : ['shields'];
-                console.log(`🛡️ Shields: Cannot activate - missing cards:`, missingCards);
+debug('COMBAT', `🛡️ Shields: Cannot activate - missing cards:`, missingCards);
                 return false;
             }
-            console.log(`🛡️ Shields: Card check PASSED`);
+debug('COMBAT', `🛡️ Shields: Card check PASSED`);
         }
         
         // Check energy requirements
         const energyRequired = this.getEnergyConsumptionRate();
         if (ship && ship.currentEnergy < energyRequired) {
-            console.log(`🛡️ Shields: Cannot activate - insufficient energy: ${ship.currentEnergy}/${energyRequired}`);
+debug('COMBAT', `🛡️ Shields: Cannot activate - insufficient energy: ${ship.currentEnergy}/${energyRequired}`);
             return false;
         }
         
-        console.log(`🛡️ Shields: Can activate - all checks passed`);
+debug('COMBAT', `🛡️ Shields: Can activate - all checks passed`);
         return true;
     }
     
@@ -227,9 +229,9 @@ export default class Shields extends System {
      * Apply blue screen tint when shields are active
      */
     applyScreenTint() {
-        console.log('🛡️ Applying shield screen tint...');
+debug('COMBAT', 'Applying shield screen tint...');
         if (this.isScreenTinted) {
-            console.log('🛡️ Screen already tinted, skipping');
+debug('UTILITY', 'Screen already tinted, skipping');
             return;
         }
         
@@ -237,7 +239,7 @@ export default class Shields extends System {
         let shieldOverlay = document.getElementById('shield-overlay');
         
         if (!shieldOverlay) {
-            console.log('🛡️ Creating new shield overlay element');
+debug('COMBAT', 'Creating new shield overlay element');
             shieldOverlay = document.createElement('div');
             shieldOverlay.id = 'shield-overlay';
             shieldOverlay.style.cssText = `
@@ -257,48 +259,48 @@ export default class Shields extends System {
                 transition: opacity 0.3s ease-in-out;
             `;
             document.body.appendChild(shieldOverlay);
-            console.log('🛡️ Shield overlay created and added to DOM');
+debug('COMBAT', 'Shield overlay created and added to DOM');
         } else {
-            console.log('🛡️ Using existing shield overlay element');
+debug('COMBAT', 'Using existing shield overlay element');
         }
         
         // Fade in the overlay
         setTimeout(() => {
-            console.log('🛡️ Fading in shield overlay to opacity 1');
+debug('COMBAT', 'Fading in shield overlay to opacity 1');
             shieldOverlay.style.opacity = '1';
         }, 10);
         
         this.isScreenTinted = true;
-        console.log('🛡️ Shield screen tint applied successfully');
+debug('COMBAT', 'Shield screen tint applied successfully');
     }
     
     /**
      * Remove blue screen tint when shields are deactivated
      */
     removeScreenTint() {
-        console.log('🛡️ Removing shield screen tint...');
+debug('COMBAT', 'Removing shield screen tint...');
         if (!this.isScreenTinted) {
-            console.log('🛡️ Screen not tinted, skipping');
+debug('UTILITY', 'Screen not tinted, skipping');
             return;
         }
         
         const shieldOverlay = document.getElementById('shield-overlay');
         if (shieldOverlay) {
-            console.log('🛡️ Fading out shield overlay');
+debug('COMBAT', 'Fading out shield overlay');
             shieldOverlay.style.opacity = '0';
             // Remove element after transition
             setTimeout(() => {
                 if (shieldOverlay.parentNode) {
-                    console.log('🛡️ Removing shield overlay from DOM');
+debug('COMBAT', 'Removing shield overlay from DOM');
                     shieldOverlay.parentNode.removeChild(shieldOverlay);
                 }
             }, 300);
         } else {
-            console.log('🛡️ Shield overlay element not found');
+debug('COMBAT', 'Shield overlay element not found');
         }
         
         this.isScreenTinted = false;
-        console.log('🛡️ Shield screen tint removed successfully');
+debug('COMBAT', 'Shield screen tint removed successfully');
     }
     
     /**
@@ -345,7 +347,7 @@ export default class Shields extends System {
         this.lastDamageTime = Date.now();
         this.isRecharging = false;
         
-        console.log(`Shields absorbed ${damageToShields.toFixed(1)} damage. Shield strength: ${this.currentShieldStrength.toFixed(1)}/${this.maxShieldStrength}`);
+debug('COMBAT', `Shields absorbed ${damageToShields.toFixed(1)} damage. Shield strength: ${this.currentShieldStrength.toFixed(1)}/${this.maxShieldStrength}`);
         
         // Visual feedback for shield hit
         this.flashShieldHit();
@@ -405,14 +407,14 @@ export default class Shields extends System {
                 // Critical shields can't maintain full power
                 if (this.currentShieldStrength > this.maxShieldStrength * 0.3) {
                     this.currentShieldStrength = this.maxShieldStrength * 0.3;
-                    console.log('Critical shield damage - maximum shield strength reduced');
+debug('P1', 'Critical shield damage - maximum shield strength reduced');
                 }
                 break;
             case SYSTEM_STATES.DISABLED:
                 // Disabled shields drop immediately
                 this.currentShieldStrength = 0;
                 this.deactivateShields();
-                console.log('Shield generators disabled - shields down!');
+debug('COMBAT', 'Shield generators disabled - shields down!');
                 break;
         }
     }
@@ -434,7 +436,7 @@ export default class Shields extends System {
             if (timeSinceDamage >= this.shieldRechargeDelay) {
                 if (!this.isRecharging) {
                     this.isRecharging = true;
-                    console.log('Shield recharge initiated');
+debug('COMBAT', 'Shield recharge initiated');
                 }
                 
                 // Recharge shields

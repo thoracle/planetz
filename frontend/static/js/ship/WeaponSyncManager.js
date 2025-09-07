@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * WeaponSyncManager - Unified weapon system initialization and synchronization
  * 
@@ -24,7 +26,7 @@ export default class WeaponSyncManager {
      * @returns {Promise} Promise that resolves when weapons are initialized
      */
     async initializeWeapons() {
-        console.log('🔫 WeaponSyncManager: Starting unified weapon initialization...');
+debug('COMBAT', '🔫 WeaponSyncManager: Starting unified weapon initialization...');
         
         try {
             // Step 1: Gather all weapons from all sources
@@ -43,7 +45,7 @@ export default class WeaponSyncManager {
             // Step 5: Store reference for the ship
             this.ship.weaponSystem = this.weaponSystem;
             
-            console.log(`🔫 WeaponSyncManager: Initialized ${unifiedWeapons.length} weapons in ${slotCount} slots`);
+debug('COMBAT', `🔫 WeaponSyncManager: Initialized ${unifiedWeapons.length} weapons in ${slotCount} slots`);
             return this.weaponSystem;
             
         } catch (error) {
@@ -71,7 +73,7 @@ export default class WeaponSyncManager {
                     let weaponType = systemName;
                     if (systemName === 'weapons') {
                         weaponType = 'laser_cannon'; // Default mapping for legacy weapons system
-                        console.log(`🔫 Found legacy weapons system, mapping to laser_cannon`);
+debug('COMBAT', `🔫 Found legacy weapons system, mapping to laser_cannon`);
                     }
                     
                     sources.shipSystems.push({
@@ -79,7 +81,7 @@ export default class WeaponSyncManager {
                         level: system.level || 1,
                         source: 'ship_system'
                     });
-                    console.log(`🔫 Found ship system weapon: ${systemName} -> ${weaponType} (Level ${system.level || 1})`);
+debug('COMBAT', `🔫 Found ship system weapon: ${systemName} -> ${weaponType} (Level ${system.level || 1})`);
                 }
             }
         }
@@ -87,7 +89,7 @@ export default class WeaponSyncManager {
         // PRIORITY FIX: Use current installed cards from cardSystemIntegration instead of static starterCards
         // Source 2: Current installed cards (highest priority for station-modified configurations)
         if (this.ship.cardSystemIntegration && this.ship.cardSystemIntegration.installedCards) {
-            console.log(`🔫 Using current installed cards (post-station configuration)`);
+debug('UI', `🔫 Using current installed cards (post-station configuration)`);
             for (const [slotId, cardData] of this.ship.cardSystemIntegration.installedCards.entries()) {
                 if (this.isWeaponCard(cardData.cardType)) {
                     sources.inventory.push({
@@ -96,12 +98,12 @@ export default class WeaponSyncManager {
                         slotId: slotId,
                         source: 'current_config'
                     });
-                    console.log(`🔫 Found current weapon: ${cardData.cardType} (Level ${cardData.level || 1})`);
+debug('COMBAT', `🔫 Found current weapon: ${cardData.cardType} (Level ${cardData.level || 1})`);
                 }
             }
         } else {
             // Fallback: Use starter cards only if no current configuration exists
-            console.log(`🔫 Using fallback starter cards (initial configuration)`);
+debug('UI', `🔫 Using fallback starter cards (initial configuration)`);
             if (this.ship.shipConfig?.starterCards) {
                 for (const [slotId, cardData] of Object.entries(this.ship.shipConfig.starterCards)) {
                     if (this.isWeaponCard(cardData.cardType)) {
@@ -111,7 +113,7 @@ export default class WeaponSyncManager {
                             slotId: slotId,
                             source: 'starter_card'
                         });
-                        console.log(`🔫 Found starter card weapon: ${cardData.cardType} (Level ${cardData.level || 1})`);
+debug('COMBAT', `🔫 Found starter card weapon: ${cardData.cardType} (Level ${cardData.level || 1})`);
                     }
                 }
             }
@@ -142,7 +144,7 @@ export default class WeaponSyncManager {
         
         // Only use fallback sources if no current configuration exists
         if (currentConfigWeapons.length === 0) {
-            console.log(`🔫 No current config found, using fallback sources`);
+debug('UTILITY', `🔫 No current config found, using fallback sources`);
             
             // Priority 2: Starter cards (for initial game setup)
             for (const weapon of sources.starterCards) {
@@ -172,10 +174,10 @@ export default class WeaponSyncManager {
                 }
             }
         } else {
-            console.log(`🔫 Using current configuration with ${currentConfigWeapons.length} weapons`);
+debug('COMBAT', `🔫 Using current configuration with ${currentConfigWeapons.length} weapons`);
         }
         
-        console.log(`🔫 Reconciled ${unifiedWeapons.length} unique weapons:`, 
+        debug('COMBAT', `Reconciled ${unifiedWeapons.length} unique weapons:`,
             unifiedWeapons.map(w => `${w.type} (${w.source})`));
         
         return unifiedWeapons;
@@ -196,7 +198,7 @@ export default class WeaponSyncManager {
                 this.weaponSystem.setLockedTarget(targetComputer.currentTarget);
             }
             
-            console.log(`🔫 Created WeaponSystemCore with ${slotCount} slots`);
+debug('COMBAT', `🔫 Created WeaponSystemCore with ${slotCount} slots`);
         } catch (error) {
             console.error('🔫 Failed to create weapon system:', error);
             throw error;
@@ -225,7 +227,7 @@ export default class WeaponSyncManager {
                     
                     if (this.weaponSystem.equipWeapon(slotIndex, weaponCard)) {
                         this.weapons.set(slotIndex, weaponCard);
-                        console.log(`🔫 Equipped ${weaponCard.name} (Level ${weaponCard.level}) to slot ${slotIndex}`);
+debug('COMBAT', `🔫 Equipped ${weaponCard.name} (Level ${weaponCard.level}) to slot ${slotIndex}`);
                         
                         // REMOVED: No longer create individual weapon systems to avoid slot conflicts
                         // The WeaponSystemCore handles all weapon functionality internally
@@ -239,7 +241,7 @@ export default class WeaponSyncManager {
                 }
             }
             
-            console.log(`🔫 Equipped ${slotIndex}/${this.weaponSystem.maxWeaponSlots} weapons successfully`);
+debug('COMBAT', `🔫 Equipped ${slotIndex}/${this.weaponSystem.maxWeaponSlots} weapons successfully`);
         } catch (error) {
             console.error('🔫 Failed to equip weapons:', error);
             throw error;
@@ -299,7 +301,7 @@ export default class WeaponSyncManager {
         }
         
         // TODO: Implement synchronization logic when CardInventoryUI is updated
-        console.log('🔫 Weapon system and card inventory are synchronized');
+debug('COMBAT', '🔫 Weapon system and card inventory are synchronized');
     }
     
     /**
@@ -327,8 +329,8 @@ export default class WeaponSyncManager {
     setDebugMode(enabled) {
         this.debugMode = enabled;
         if (enabled) {
-            console.log('🔫 WeaponSyncManager debug mode enabled');
-            console.log('🔫 Current configuration:', this.getWeaponConfiguration());
+debug('COMBAT', '🔫 WeaponSyncManager debug mode enabled');
+debug('COMBAT', '🔫 Current configuration:', this.getWeaponConfiguration());
         }
     }
 } 

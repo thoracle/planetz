@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * WeaponCard - Base class for weapon cards and specific weapon implementations
  * Based on docs/weapons_system_spec.md and docs/system_architecture.md
@@ -30,7 +32,7 @@ export class WeaponCard {
         // Homing capability for missiles
         this.homingCapability = weaponData.homingCapability || false;
         
-        console.log(`WeaponCard created: ${this.name} (${this.weaponType})`);
+debug('COMBAT', `WeaponCard created: ${this.name} (${this.weaponType})`);
     }
     
     /**
@@ -45,11 +47,11 @@ export class WeaponCard {
         // Check cooldown
         const currentTime = Date.now();
         if (currentTime < this.nextFireTime) {
-            console.log(`⏰ ${this.name} on cooldown for ${((this.nextFireTime - currentTime) / 1000).toFixed(1)}s`);
+debug('COMBAT', `⏰ ${this.name} on cooldown for ${((this.nextFireTime - currentTime) / 1000).toFixed(1)}s`);
         }
         
         // Base implementation - should be overridden by specific weapon types
-        console.log(`Base WeaponCard.fire() called for ${this.name} - should be overridden`);
+debug('COMBAT', `Base WeaponCard.fire() called for ${this.name} - should be overridden`);
         
         return {
             success: false,
@@ -94,7 +96,7 @@ export class WeaponCard {
      */
     createProjectile(origin, target) {
         const projectileType = this.blastRadius > 0 ? 'splash-damage' : 'direct-hit';
-        console.log(`🚀 PROJECTILE: Creating ${projectileType} projectile for ${this.name} - TIMESTAMP: ${Date.now()}`);
+debug('UTILITY', `🚀 PROJECTILE: Creating ${projectileType} projectile for ${this.name} - TIMESTAMP: ${Date.now()}`);
         
         // FIXED: Use target-based aiming for physics projectiles, camera direction as fallback
         let direction = { x: 0, y: 0, z: 1 }; // Default forward
@@ -151,21 +153,21 @@ export class WeaponCard {
                 direction.z /= dirLength;
             }
             
-            console.log(`🎯 ${this.name}: Enhanced aiming with velocity compensation: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
-            console.log(`🎯 ${this.name}: Ship velocity: x=${shipVelocity.x.toFixed(2)}, y=${shipVelocity.y.toFixed(2)}, z=${shipVelocity.z.toFixed(2)}`);
+debug('AI', `🎯 ${this.name}: Enhanced aiming with velocity compensation: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
+debug('UTILITY', `🎯 ${this.name}: Ship velocity: x=${shipVelocity.x.toFixed(2)}, y=${shipVelocity.y.toFixed(2)}, z=${shipVelocity.z.toFixed(2)}`);
         } else {
             // No camera available - use default forward direction
     
         }
 
         // NEW: Try simplified Three.js projectile system first
-        console.log(`🔍 PROJECTILE DEBUG: Checking SimpleProjectile availability for ${this.name}`);
-        console.log(`   - window.simpleProjectileManager: ${!!window.simpleProjectileManager}`);
-        console.log(`   - window.SimpleProjectile: ${!!window.SimpleProjectile}`);
+debug('AI', `🔍 PROJECTILE DEBUG: Checking SimpleProjectile availability for ${this.name}`);
+debug('UTILITY', `   - window.simpleProjectileManager: ${!!window.simpleProjectileManager}`);
+debug('UTILITY', `   - window.SimpleProjectile: ${!!window.SimpleProjectile}`);
         
         if (window.simpleProjectileManager && window.SimpleProjectile) {
             try {
-                console.log(`🚀 Using simplified Three.js projectile for ${this.name}`);
+debug('UTILITY', `🚀 Using simplified Three.js projectile for ${this.name}`);
                 
                 const simpleProjectile = new window.SimpleProjectile({
                     origin: origin,
@@ -183,7 +185,7 @@ export class WeaponCard {
                 return simpleProjectile;
                 
             } catch (error) {
-                console.log('Failed to create simple projectile, falling back to physics projectile:', error);
+debug('P1', 'Failed to create simple projectile, falling back to physics projectile:', error);
             }
         }
         
@@ -208,14 +210,14 @@ export class WeaponCard {
                 return physicsProjectile;
                 
             } catch (error) {
-                console.log('Failed to create physics projectile, falling back to simple projectile:', error);
+debug('P1', 'Failed to create physics projectile, falling back to simple projectile:', error);
             }
         } else {
-            console.log('⚠️ PhysicsManager not available, using simple projectile system');
+debug('AI', 'PhysicsManager not available, using simple projectile system');
         }
         
         // Fallback to simple projectile if physics not available
-        console.log(`⚠️ Using fallback projectile for ${this.name}`);
+debug('UTILITY', `⚠️ Using fallback projectile for ${this.name}`);
         return new Projectile({
             origin: origin,
             target: target,
@@ -273,7 +275,7 @@ export class ScanHitWeapon extends WeaponCard {
      * @returns {Object} Fire result
      */
     fire(origin, target = null) {
-        console.log(`${this.name} firing (scan-hit)`);
+debug('UTILITY', `${this.name} firing (scan-hit)`);
         
         // For scan-hit weapons, we always return hit: true because they use
         // visual hit detection in the WeaponSlot.triggerWeaponEffects method
@@ -311,7 +313,7 @@ export class ScanHitWeapon extends WeaponCard {
      * @param {number} damage Damage amount
      */
     applyInstantDamage(target, damage) {
-        console.log(`${this.name} deals ${damage} damage to target`);
+debug('TARGETING', `${this.name} deals ${damage} damage to target`);
         
         // This would integrate with the combat/damage system
         if (target.takeDamage) {
@@ -346,7 +348,7 @@ export class ScanHitWeapon extends WeaponCard {
                 weaponHUD.showDamageFeedback(this.name, damage, targetName);
             }
         } catch (error) {
-            console.log('Failed to show damage feedback:', error.message);
+debug('P1', 'Failed to show damage feedback:', error.message);
         }
     }
     
@@ -376,7 +378,7 @@ export class ScanHitWeapon extends WeaponCard {
      */
     showMissFeedback() {
         try {
-            console.log(`🎯 MISS FEEDBACK: ${this.name} showing miss notification`);
+debug('UTILITY', `🎯 MISS FEEDBACK: ${this.name} showing miss notification`);
             
             // Try to get weapon HUD reference through various paths
             let weaponHUD = null;
@@ -384,21 +386,21 @@ export class ScanHitWeapon extends WeaponCard {
             // Path 1: Through ship's weapon system
             if (window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.starfieldManager.viewManager.ship.weaponSystem.weaponHUD;
-                console.log(`🎯 MISS FEEDBACK: Found weaponHUD via ship.weaponSystem`);
+debug('COMBAT', `🎯 MISS FEEDBACK: Found weaponHUD via ship.weaponSystem`);
             }
             // Path 2: Through global ship reference
             else if (window.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.ship.weaponSystem.weaponHUD;
-                console.log(`🎯 MISS FEEDBACK: Found weaponHUD via global ship`);
+debug('COMBAT', `🎯 MISS FEEDBACK: Found weaponHUD via global ship`);
             }
             // Path 3: Through StarfieldManager directly
             else if (window.starfieldManager?.weaponHUD) {
                 weaponHUD = window.starfieldManager.weaponHUD;
-                console.log(`🎯 MISS FEEDBACK: Found weaponHUD via StarfieldManager`);
+debug('COMBAT', `🎯 MISS FEEDBACK: Found weaponHUD via StarfieldManager`);
             }
             
             if (weaponHUD) {
-                console.log(`🎯 MISS FEEDBACK: Calling showWeaponFeedback('miss') on weaponHUD`);
+debug('COMBAT', `🎯 MISS FEEDBACK: Calling showWeaponFeedback('miss') on weaponHUD`);
                 weaponHUD.showWeaponFeedback('miss', this.name);
                 
                 // Also show unified miss feedback
@@ -412,7 +414,7 @@ export class ScanHitWeapon extends WeaponCard {
                   starfieldManager.weaponHUD: ${!!window.starfieldManager?.weaponHUD}`);
             }
         } catch (error) {
-            console.log('Failed to show miss feedback:', error.message);
+debug('P1', 'Failed to show miss feedback:', error.message);
         }
     }
     
@@ -425,7 +427,7 @@ export class ScanHitWeapon extends WeaponCard {
             const targetName = targetShip.shipName || 'ENEMY SHIP';
             const message = `${targetName.toUpperCase()} DESTROYED`;
             
-            console.log(`🎯 TARGET DESTRUCTION FEEDBACK: ${this.name} destroyed ${targetName}`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION FEEDBACK: ${this.name} destroyed ${targetName}`);
             
             // Try to get weapon HUD reference through various paths
             let weaponHUD = null;
@@ -433,27 +435,27 @@ export class ScanHitWeapon extends WeaponCard {
             // Path 1: Through ship's weapon system
             if (window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.starfieldManager.viewManager.ship.weaponSystem.weaponHUD;
-                console.log(`🎯 TARGET DESTRUCTION: Found weaponHUD via ship.weaponSystem`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: Found weaponHUD via ship.weaponSystem`);
             }
             // Path 2: Through global ship reference
             else if (window.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.ship.weaponSystem.weaponHUD;
-                console.log(`🎯 TARGET DESTRUCTION: Found weaponHUD via global ship`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: Found weaponHUD via global ship`);
             }
             // Path 3: Through StarfieldManager directly
             else if (window.starfieldManager?.weaponHUD) {
                 weaponHUD = window.starfieldManager.weaponHUD;
-                console.log(`🎯 TARGET DESTRUCTION: Found weaponHUD via StarfieldManager`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: Found weaponHUD via StarfieldManager`);
             }
             
             if (weaponHUD) {
-                console.log(`🎯 TARGET DESTRUCTION: Calling showWeaponFeedback('target-destroyed') on weaponHUD`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: Calling showWeaponFeedback('target-destroyed') on weaponHUD`);
                 weaponHUD.showWeaponFeedback('target-destroyed', message);
             } else {
-                console.log(`🎯 TARGET DESTRUCTION: No weaponHUD found for target destruction feedback`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: No weaponHUD found for target destruction feedback`);
             }
         } catch (error) {
-            console.log('Failed to show target destruction feedback:', error.message);
+debug('P1', 'Failed to show target destruction feedback:', error.message);
         }
     }
 }
@@ -483,7 +485,7 @@ export class SplashDamageWeapon extends WeaponCard {
      */
     fire(origin, target = null, ship = null) {
         const weaponTypeDisplay = this.blastRadius > 0 ? 'splash-damage' : 'direct-hit';
-        console.log(`${this.name} firing (${weaponTypeDisplay})`);
+debug('COMBAT', `${this.name} firing (${weaponTypeDisplay})`);
         
         // SIMPLIFIED: Remove range enforcement to match laser weapon behavior
         // Our SimpleProjectile system uses HitScanService for instant hit detection,
@@ -496,7 +498,7 @@ export class SplashDamageWeapon extends WeaponCard {
                 const energyNeeded = this.energyCost;
                 const energyShortfall = energyNeeded - currentEnergy;
                 
-                console.log(`🔋 ${this.name}: Insufficient energy (need ${energyNeeded}, have ${currentEnergy}, short ${energyShortfall})`);
+debug('UTILITY', `🔋 ${this.name}: Insufficient energy (need ${energyNeeded}, have ${currentEnergy}, short ${energyShortfall})`);
                 
                 // Send HUD message for insufficient energy
                 if (window.starfieldManager?.weaponHUD) {
@@ -517,7 +519,7 @@ export class SplashDamageWeapon extends WeaponCard {
             
             // Consume energy
             ship.consumeEnergy(this.energyCost);
-            console.log(`🔋 ${this.name}: Consumed ${this.energyCost} energy (${Math.round(ship.currentEnergy)} remaining)`);
+debug('AI', `🔋 ${this.name}: Consumed ${this.energyCost} energy (${Math.round(ship.currentEnergy)} remaining)`);
         }
         
         // CORRECTED: Only homing weapons require target lock, non-homing projectiles can free-aim
@@ -591,7 +593,7 @@ export class SplashDamageWeapon extends WeaponCard {
      */
     createProjectile(origin, target) {
         const projectileType = this.blastRadius > 0 ? 'splash-damage' : 'direct-hit';
-        console.log(`🚀 PROJECTILE: Creating ${projectileType} projectile for ${this.name} - TIMESTAMP: ${Date.now()}`);
+debug('UTILITY', `🚀 PROJECTILE: Creating ${projectileType} projectile for ${this.name} - TIMESTAMP: ${Date.now()}`);
         
         // FIXED: Use target-based aiming for physics projectiles, camera direction as fallback
         let direction = { x: 0, y: 0, z: 1 }; // Default forward
@@ -648,9 +650,9 @@ export class SplashDamageWeapon extends WeaponCard {
                 direction.z /= dirLength;
             }
             
-            console.log(`🎯 ${this.name}: Enhanced aiming with velocity compensation: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
+debug('AI', `🎯 ${this.name}: Enhanced aiming with velocity compensation: x=${direction.x.toFixed(4)}, y=${direction.y.toFixed(4)}, z=${direction.z.toFixed(4)}`);
             const speedInfo = window.starfieldManager ? `current=${window.starfieldManager.currentSpeed}, target=${window.starfieldManager.targetSpeed}, effective=${Math.max(window.starfieldManager.currentSpeed || 0, window.starfieldManager.targetSpeed || 0)}` : 'unknown';
-            console.log(`🎯 ${this.name}: Ship velocity: x=${shipVelocity.x.toFixed(2)}, y=${shipVelocity.y.toFixed(2)}, z=${shipVelocity.z.toFixed(2)} (speeds: ${speedInfo})`);
+debug('UTILITY', `🎯 ${this.name}: Ship velocity: x=${shipVelocity.x.toFixed(2)}, y=${shipVelocity.y.toFixed(2)}, z=${shipVelocity.z.toFixed(2)} (speeds: ${speedInfo})`);
             
             // No automatic target tracking - missiles are dumb-fire projectiles with velocity compensation
             // FIXED: Don't nullify target - we need it for precise collision radius calculation
@@ -660,13 +662,13 @@ export class SplashDamageWeapon extends WeaponCard {
         }
 
         // NEW: Try simplified Three.js projectile system first
-        console.log(`🔍 SPLASH PROJECTILE DEBUG: Checking SimpleProjectile availability for ${this.name}`);
-        console.log(`   - window.simpleProjectileManager: ${!!window.simpleProjectileManager}`);
-        console.log(`   - window.SimpleProjectile: ${!!window.SimpleProjectile}`);
+debug('AI', `🔍 SPLASH PROJECTILE DEBUG: Checking SimpleProjectile availability for ${this.name}`);
+debug('UTILITY', `   - window.simpleProjectileManager: ${!!window.simpleProjectileManager}`);
+debug('UTILITY', `   - window.SimpleProjectile: ${!!window.SimpleProjectile}`);
         
         if (window.simpleProjectileManager && window.SimpleProjectile) {
             try {
-                console.log(`🚀 Using simplified Three.js projectile for ${this.name}`);
+debug('UTILITY', `🚀 Using simplified Three.js projectile for ${this.name}`);
                 
                 const simpleProjectile = new window.SimpleProjectile({
                     origin: origin,
@@ -684,14 +686,14 @@ export class SplashDamageWeapon extends WeaponCard {
                 return simpleProjectile;
                 
             } catch (error) {
-                console.log('Failed to create simple projectile in SplashDamageWeapon, falling back to physics projectile:', error);
+debug('P1', 'Failed to create simple projectile in SplashDamageWeapon, falling back to physics projectile:', error);
             }
         }
         
         // ENHANCED: Try to create physics-based projectile with comprehensive error handling
         if (window.physicsManager) {
             if (!window.physicsManager.isReady()) {
-                console.log(`🔧 ${this.name}: PhysicsManager not ready, initializing...`);
+debug('PHYSICS', `🔧 ${this.name}: PhysicsManager not ready, initializing...`);
                 
                 // Send HUD message about physics initialization
                 if (window.starfieldManager?.weaponHUD) {
@@ -714,7 +716,7 @@ export class SplashDamageWeapon extends WeaponCard {
             
             if (window.physicsManager.isReady()) {
                 try {
-                    console.log(`✅ ${this.name}: Creating physics-based projectile`);
+debug('PHYSICS', `✅ ${this.name}: Creating physics-based projectile`);
             
                     
                     const physicsProjectile = new PhysicsProjectile({
@@ -733,7 +735,7 @@ export class SplashDamageWeapon extends WeaponCard {
                     });
                     
                     if (physicsProjectile && physicsProjectile.rigidBody) {
-                        console.log(`✅ ${this.name}: Physics projectile created successfully`);
+debug('PHYSICS', `✅ ${this.name}: Physics projectile created successfully`);
                         return physicsProjectile;
                     } else {
                         throw new Error('PhysicsProjectile created but missing rigid body');
@@ -753,11 +755,11 @@ export class SplashDamageWeapon extends WeaponCard {
                 }
             }
         } else {
-                            console.log(`${this.name}: PhysicsManager not available`);
+debug('AI', `${this.name}: PhysicsManager not available`);
         }
         
         // ENHANCED: Fallback to simple projectile with user notification
-        console.log(`${this.name}: Using fallback projectile system (reduced accuracy)`);
+debug('UTILITY', `${this.name}: Using fallback projectile system (reduced accuracy)`);
         
         // Send HUD message about fallback mode
         if (window.starfieldManager?.weaponHUD) {
@@ -909,7 +911,7 @@ export class SplashDamageWeapon extends WeaponCard {
      */
     showMissFeedback() {
         try {
-            console.log(`🎯 MISS FEEDBACK: ${this.name} showing miss notification`);
+debug('UTILITY', `🎯 MISS FEEDBACK: ${this.name} showing miss notification`);
             
             // Try to get weapon HUD reference through various paths
             let weaponHUD = null;
@@ -917,21 +919,21 @@ export class SplashDamageWeapon extends WeaponCard {
             // Path 1: Through ship's weapon system
             if (window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.starfieldManager.viewManager.ship.weaponSystem.weaponHUD;
-                console.log(`🎯 MISS FEEDBACK: Found weaponHUD via ship.weaponSystem`);
+debug('COMBAT', `🎯 MISS FEEDBACK: Found weaponHUD via ship.weaponSystem`);
             }
             // Path 2: Through global ship reference
             else if (window.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.ship.weaponSystem.weaponHUD;
-                console.log(`🎯 MISS FEEDBACK: Found weaponHUD via global ship`);
+debug('COMBAT', `🎯 MISS FEEDBACK: Found weaponHUD via global ship`);
             }
             // Path 3: Through StarfieldManager directly
             else if (window.starfieldManager?.weaponHUD) {
                 weaponHUD = window.starfieldManager.weaponHUD;
-                console.log(`🎯 MISS FEEDBACK: Found weaponHUD via StarfieldManager`);
+debug('COMBAT', `🎯 MISS FEEDBACK: Found weaponHUD via StarfieldManager`);
             }
             
             if (weaponHUD) {
-                console.log(`🎯 MISS FEEDBACK: Calling showWeaponFeedback('miss') on weaponHUD`);
+debug('COMBAT', `🎯 MISS FEEDBACK: Calling showWeaponFeedback('miss') on weaponHUD`);
                 weaponHUD.showWeaponFeedback('miss', this.name);
                 
                 // Also show unified miss feedback
@@ -945,7 +947,7 @@ export class SplashDamageWeapon extends WeaponCard {
                   starfieldManager.weaponHUD: ${!!window.starfieldManager?.weaponHUD}`);
             }
         } catch (error) {
-            console.log('Failed to show miss feedback:', error.message);
+debug('P1', 'Failed to show miss feedback:', error.message);
         }
     }
     
@@ -958,7 +960,7 @@ export class SplashDamageWeapon extends WeaponCard {
             const targetName = targetShip.shipName || 'ENEMY SHIP';
             const message = `${targetName.toUpperCase()} DESTROYED`;
             
-            console.log(`🎯 TARGET DESTRUCTION FEEDBACK: ${this.name} destroyed ${targetName}`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION FEEDBACK: ${this.name} destroyed ${targetName}`);
             
             // Try to get weapon HUD reference through various paths
             let weaponHUD = null;
@@ -966,27 +968,27 @@ export class SplashDamageWeapon extends WeaponCard {
             // Path 1: Through ship's weapon system
             if (window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.starfieldManager.viewManager.ship.weaponSystem.weaponHUD;
-                console.log(`🎯 TARGET DESTRUCTION: Found weaponHUD via ship.weaponSystem`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: Found weaponHUD via ship.weaponSystem`);
             }
             // Path 2: Through global ship reference
             else if (window.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.ship.weaponSystem.weaponHUD;
-                console.log(`🎯 TARGET DESTRUCTION: Found weaponHUD via global ship`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: Found weaponHUD via global ship`);
             }
             // Path 3: Through StarfieldManager directly
             else if (window.starfieldManager?.weaponHUD) {
                 weaponHUD = window.starfieldManager.weaponHUD;
-                console.log(`🎯 TARGET DESTRUCTION: Found weaponHUD via StarfieldManager`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: Found weaponHUD via StarfieldManager`);
             }
             
             if (weaponHUD) {
-                console.log(`🎯 TARGET DESTRUCTION: Calling showWeaponFeedback('target-destroyed') on weaponHUD`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: Calling showWeaponFeedback('target-destroyed') on weaponHUD`);
                 weaponHUD.showWeaponFeedback('target-destroyed', message);
             } else {
-                console.log(`🎯 TARGET DESTRUCTION: No weaponHUD found for target destruction feedback`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: No weaponHUD found for target destruction feedback`);
             }
         } catch (error) {
-            console.log('Failed to show target destruction feedback:', error.message);
+debug('P1', 'Failed to show target destruction feedback:', error.message);
         }
     }
     
@@ -1179,7 +1181,7 @@ export class Projectile {
      */
     createExplosionEffect() {
         // This would integrate with the visual effects system
-        console.log(`Creating explosion effect at`, this.position);
+debug('UTILITY', `Creating explosion effect at`, this.position);
     }
     
     /**
@@ -1303,7 +1305,7 @@ export class PhysicsProjectile {
             // Time-based cleanup (backup mechanism)
             const flightTimeMs = Date.now() - this.launchTimeMs;
             if (flightTimeMs > maxFlightTimeMs) {
-                console.log(`⏰ ${this.weaponName}: Expired after ${(flightTimeMs/1000).toFixed(1)}s flight time (max: ${maxFlightTimeMs/1000}s)`);
+debug('COMBAT', `⏰ ${this.weaponName}: Expired after ${(flightTimeMs/1000).toFixed(1)}s flight time (max: ${maxFlightTimeMs/1000}s)`);
                 this.expireOutOfRange();
                 clearInterval(this.rangeCheckInterval);
                 this.rangeCheckInterval = null;
@@ -1321,7 +1323,7 @@ export class PhysicsProjectile {
             // Check if projectile has exceeded weapon range (with small buffer for precision)
             const flightRangeMeters = this.flightRange * 1000; // Convert km to meters
             if (distanceTraveled > flightRangeMeters - 50) { // Stop 50m before max range to prevent overshoot
-                console.log(`⏰ ${this.weaponName}: Max range reached (${distanceTraveled.toFixed(1)}m / ${flightRangeMeters.toFixed(0)}m) after ${(flightTimeMs/1000).toFixed(1)}s`);
+debug('COMBAT', `⏰ ${this.weaponName}: Max range reached (${distanceTraveled.toFixed(1)}m / ${flightRangeMeters.toFixed(0)}m) after ${(flightTimeMs/1000).toFixed(1)}s`);
                 this.expireOutOfRange();
                 clearInterval(this.rangeCheckInterval);
                 this.rangeCheckInterval = null;
@@ -1337,7 +1339,7 @@ export class PhysicsProjectile {
      */
     initializePhysicsBody(origin, direction = {x: 0, y: 0, z: 1}, target = null) {
         if (!this.physicsManager || !this.physicsManager.isReady()) {
-            console.log('PhysicsManager not ready - falling back to simple projectile');
+debug('PHYSICS', 'PhysicsManager not ready - falling back to simple projectile');
             return;
         }
         
@@ -1376,14 +1378,14 @@ export class PhysicsProjectile {
             // Add to scene
             if (this.scene) {
                 this.scene.add(this.threeObject);
-                console.log(`🎯 ${this.weaponName}: Visual missile mesh created and added to scene (radius: 5.0m, glowing)`);
+debug('COMBAT', `🎯 ${this.weaponName}: Visual missile mesh created and added to scene (radius: 5.0m, glowing)`);
             } else {
                 // Try alternative scene sources
                 const fallbackScene = window.starfieldManager?.scene || window.scene;
                 if (fallbackScene) {
                     fallbackScene.add(this.threeObject);
                     this.scene = fallbackScene; // Store for cleanup
-                    console.log(`🎯 ${this.weaponName}: Visual missile mesh added using fallback scene reference`);
+debug('COMBAT', `🎯 ${this.weaponName}: Visual missile mesh added using fallback scene reference`);
                 } else {
                     console.warn(`⚠️ ${this.weaponName}: No scene available for visual mesh - starfieldManager: ${!!window.starfieldManager}, window.scene: ${!!window.scene}`);
                 }
@@ -1401,9 +1403,9 @@ export class PhysicsProjectile {
             const physicsStepDistance = (projectileSpeed / 240); // Distance per physics step (240 FPS)
             const minRadiusForTunneling = Math.max(1.0, physicsStepDistance * 0.5); // Minimal tunneling prevention
             
-            console.log(`🔍 COLLISION DEBUG: ${this.weaponName} target parameter:`, target);
-            console.log(`🔍 COLLISION DEBUG: target has distance property: ${target && target.distance !== undefined}`);
-            console.log(`🔍 COLLISION DEBUG: target.distance value: ${target ? target.distance : 'N/A'}`);
+debug('TARGETING', `🔍 COLLISION DEBUG: ${this.weaponName} target parameter:`, target);
+debug('P1', `🔍 COLLISION DEBUG: target has distance property: ${target && target.distance !== undefined}`);
+debug('TARGETING', `🔍 COLLISION DEBUG: target.distance value: ${target ? target.distance : 'N/A'}`);
             
             if (target && target.distance) {
                 const targetDistance = target.distance;
@@ -1435,7 +1437,7 @@ export class PhysicsProjectile {
                 const aimToleranceKm = 0.002; // 2m = very tight for free-aim
                 const baseRadius = aimToleranceKm * 1000; // Convert km to meters
                 collisionRadius = Math.max(baseRadius, minRadiusForTunneling);
-                console.log(`🎯 ${this.weaponName}: STRICT FALLBACK collision radius: tolerance=${aimToleranceKm}km, base=${baseRadius}m, final=${collisionRadius}m (no precise target)`);
+debug('TARGETING', `🎯 ${this.weaponName}: STRICT FALLBACK collision radius: tolerance=${aimToleranceKm}km, base=${baseRadius}m, final=${collisionRadius}m (no precise target)`);
             }
             
             // Create physics rigid body with distance-appropriate collision radius
@@ -1451,16 +1453,16 @@ export class PhysicsProjectile {
                 projectileSpeed: projectileSpeed // SPEED DATA: For enhanced CCD configuration
             };
             
-            console.log(`🔍 PHYSICS SETUP: ${this.weaponName} - collision radius: ${collisionRadius}m, speed: ${projectileSpeed}m/s, delay: ${this.collisionDelayMs}ms`);
+debug('COMBAT', `🔍 PHYSICS SETUP: ${this.weaponName} - collision radius: ${collisionRadius}m, speed: ${projectileSpeed}m/s, delay: ${this.collisionDelayMs}ms`);
             
             this.rigidBody = this.physicsManager.createRigidBody(this.threeObject, bodyConfig);
             
             if (this.rigidBody) {
-                console.log(`✅ PHYSICS BODY CREATED: ${this.weaponName} rigid body created successfully`);
+debug('COMBAT', `✅ PHYSICS BODY CREATED: ${this.weaponName} rigid body created successfully`);
                 // Silent rigid body creation
                 
                 // Calculate velocity based on direction and weapon-specific speed
-                console.log(`🚀 ${this.weaponName}: Using weapon-specific speed: ${projectileSpeed} m/s`);
+debug('COMBAT', `🚀 ${this.weaponName}: Using weapon-specific speed: ${projectileSpeed} m/s`);
                 this.velocity = {
                     x: direction.x * projectileSpeed,
                     y: direction.y * projectileSpeed,
@@ -1487,10 +1489,10 @@ export class PhysicsProjectile {
                     y: (origin.y + direction.y * 1000).toFixed(1),
                     z: (origin.z + direction.z * 1000).toFixed(1)
                 };
-                console.log(`🎯 ${this.weaponName}: Will fly toward position:`, projectedEndPos);
+debug('COMBAT', `🎯 ${this.weaponName}: Will fly toward position:`, projectedEndPos);
                 
                 // DEBUG: Track projectile for collision detection
-                console.log(`🔍 COLLISION TRACKING: ${this.weaponName} will accept collisions after ${this.collisionDelayMs}ms delay`);
+debug('COMBAT', `🔍 COLLISION TRACKING: ${this.weaponName} will accept collisions after ${this.collisionDelayMs}ms delay`);
                 
                 // DEBUG: Direction is now properly calculated to aim at validated targets
                 if (this.target && this.target.position) {
@@ -1566,17 +1568,17 @@ export class PhysicsProjectile {
      * @param {Object} otherObject The object we collided with
      */
     onCollision(contactPoint, otherObject) {
-        console.log(`🚀 COLLISION EVENT: ${this.weaponName} collision detected!`);
+debug('COMBAT', `🚀 COLLISION EVENT: ${this.weaponName} collision detected!`);
         
         // COLLISION DELAY: Prevent instant collision on launch
         const currentTime = Date.now();
         const flightTime = currentTime - this.launchTime;
         if (currentTime < this.allowCollisionAfter) {
-            console.log(`⏰ COLLISION DELAY: ${this.weaponName} collision blocked (${flightTime}ms flight, need ${this.collisionDelayMs}ms)`);
+debug('COMBAT', `⏰ COLLISION DELAY: ${this.weaponName} collision blocked (${flightTime}ms flight, need ${this.collisionDelayMs}ms)`);
             return; // Ignore collision during delay period
         }
         
-        console.log(`🎯 COLLISION ACCEPTED: ${this.weaponName} after ${flightTime}ms flight time`);
+debug('COMBAT', `🎯 COLLISION ACCEPTED: ${this.weaponName} after ${flightTime}ms flight time`);
         
         // Store collision target for direct hit weapons (otherObject is threeObject)
         // Need to find the entity metadata from the threeObject
@@ -1588,7 +1590,7 @@ export class PhysicsProjectile {
                 // SIMPLE RULE: Missiles ignore collisions with other projectiles entirely
                 if (this.collisionTarget && 
                     this.collisionTarget.type === 'projectile') {
-                    console.log(`🚫 PROJECTILE PASS-THROUGH: ${this.weaponName} ignoring collision with projectile ${this.collisionTarget.id} (type: ${this.collisionTarget.type})`);
+debug('TARGETING', `🚫 PROJECTILE PASS-THROUGH: ${this.weaponName} ignoring collision with projectile ${this.collisionTarget.id} (type: ${this.collisionTarget.type})`);
                     return; // Missiles pass through other missiles
                 }
                 
@@ -1599,14 +1601,14 @@ export class PhysicsProjectile {
                     
                     // Only skip very large celestial bodies when clearly aiming at ships
                     if (intendedTargetType === 'enemy_ship' && hitEntityType === 'star') {
-                        console.log(`🚫 TARGET VALIDATION: Skipping ${hitEntityType} collision - intended target was ${intendedTargetType}`);
+debug('TARGETING', `🚫 TARGET VALIDATION: Skipping ${hitEntityType} collision - intended target was ${intendedTargetType}`);
                         return; // Only block star collisions, allow planets/moons
                     }
                 }
                 
-                console.log(`🎯 COLLISION: Stored collision target:`, this.collisionTarget?.id || 'Unknown', `(type: ${this.collisionTarget?.type || 'unknown'})`);
+debug('TARGETING', `🎯 COLLISION: Stored collision target:`, this.collisionTarget?.id || 'Unknown', `(type: ${this.collisionTarget?.type || 'unknown'})`);
             } else {
-                console.log(`⚠️ COLLISION: Could not find rigid body for collision target`);
+debug('TARGETING', `⚠️ COLLISION: Could not find rigid body for collision target`);
                 this.collisionTarget = otherObject; // Fallback to threeObject
             }
         } else {
@@ -1621,13 +1623,13 @@ export class PhysicsProjectile {
         
         // Native collision detection - process collision immediately
         
-        console.log(`🛑 COLLISION: ${this.weaponName} hit target - starting cleanup and damage application`);
+debug('TARGETING', `🛑 COLLISION: ${this.weaponName} hit target - starting cleanup and damage application`);
         
         // CRITICAL: Immediately remove from physics world to prevent further collisions
         if (this.rigidBody && this.physicsManager) {
             try {
                 this.physicsManager.removeRigidBody(this.threeObject);
-                console.log(`🧹 REMOVED: ${this.weaponName} from physics world`);
+debug('COMBAT', `🧹 REMOVED: ${this.weaponName} from physics world`);
             } catch (error) {
                 console.error('Error removing projectile from physics:', error);
             }
@@ -1636,13 +1638,13 @@ export class PhysicsProjectile {
         // IMPROVED: Immediately stop trail updates to prevent bouncing
         if (this.trailData && this.trailData.projectileObject) {
             this.trailData.projectileObject = null;
-            console.log(`🛑 TRAIL: ${this.weaponName} trail stopped`);
+debug('COMBAT', `🛑 TRAIL: ${this.weaponName} trail stopped`);
             
             // CRITICAL: Immediately call removeProjectileTrail to start fade-out
             if (this.trailId && window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
                 const effectsManager = window.starfieldManager.viewManager.getShip().weaponEffectsManager;
                 effectsManager.removeProjectileTrail(this.trailId);
-                console.log(`🧹 TRAIL: Started fade-out for ${this.weaponName} trail`);
+debug('COMBAT', `🧹 TRAIL: Started fade-out for ${this.weaponName} trail`);
             }
         }
         
@@ -1655,9 +1657,9 @@ export class PhysicsProjectile {
                 y: collisionPos.y(), 
                 z: collisionPos.z()
             };
-            console.log(`🎯 COLLISION: ${this.weaponName} collision position:`, position);
+debug('COMBAT', `🎯 COLLISION: ${this.weaponName} collision position:`, position);
         } catch (error) {
-            console.log('Using fallback position for collision');
+debug('UTILITY', 'Using fallback position for collision');
             // Clone position to avoid corruption when object is removed
             const clonedPos = this.threeObject.position.clone();
             position = {
@@ -1665,11 +1667,11 @@ export class PhysicsProjectile {
                 y: clonedPos.y,
                 z: clonedPos.z
             };
-            console.log(`🎯 COLLISION: ${this.weaponName} fallback position:`, position);
+debug('COMBAT', `🎯 COLLISION: ${this.weaponName} fallback position:`, position);
         }
         
         // Detonate at collision point
-        console.log(`💥 COLLISION: ${this.weaponName} calling detonate() with position:`, position);
+debug('COMBAT', `💥 COLLISION: ${this.weaponName} calling detonate() with position:`, position);
         this.detonate(position);
     }
     
@@ -1713,24 +1715,24 @@ export class PhysicsProjectile {
      * @param {Object} position Optional detonation position
      */
     detonate(position = null) {
-        console.log(`DETONATE METHOD CALLED FOR ${this.weaponName}`);
-        console.log(`hasDetonated: ${this.hasDetonated}`);
+debug('COMBAT', `DETONATE METHOD CALLED FOR ${this.weaponName}`);
+debug('UTILITY', `hasDetonated: ${this.hasDetonated}`);
         
         if (this.hasDetonated) {
-            console.log(`DETONATE: ${this.weaponName} already detonated, skipping`);
+debug('COMBAT', `DETONATE: ${this.weaponName} already detonated, skipping`);
             return;
         }
         
-        console.log(`💥 DETONATE: ${this.weaponName} starting detonation sequence`);
-        console.log(`💥 Position:`, position);
+debug('COMBAT', `💥 DETONATE: ${this.weaponName} starting detonation sequence`);
+debug('UTILITY', `💥 Position:`, position);
         
         // Get detonation position with validation and debugging
         let detonationPos = position;
         if (!detonationPos && this.threeObject && this.threeObject.position) {
             // Clone position to avoid corruption when object is removed
             const clonedPos = this.threeObject.position.clone();
-            console.log(`🎯 ${this.weaponName}: Using threeObject position for detonation:`, clonedPos);
-            console.log(`🎯 ${this.weaponName}: Start position was:`, this.startPosition);
+debug('COMBAT', `🎯 ${this.weaponName}: Using threeObject position for detonation:`, clonedPos);
+debug('COMBAT', `🎯 ${this.weaponName}: Start position was:`, this.startPosition);
             
             // Calculate distance traveled for debugging
             const distanceTraveled = Math.sqrt(
@@ -1738,7 +1740,7 @@ export class PhysicsProjectile {
                 Math.pow(clonedPos.y - this.startPosition.y, 2) +
                 Math.pow(clonedPos.z - this.startPosition.z, 2)
             );
-            console.log(`🎯 ${this.weaponName}: Distance traveled: ${distanceTraveled.toFixed(1)}m (max: ${(this.flightRange * 1000).toFixed(0)}m)`);
+debug('COMBAT', `🎯 ${this.weaponName}: Distance traveled: ${distanceTraveled.toFixed(1)}m (max: ${(this.flightRange * 1000).toFixed(0)}m)`);
             
             // Validate position is not at origin (indicates corruption)
             if (clonedPos.x !== 0 || clonedPos.y !== 0 || clonedPos.z !== 0) {
@@ -1763,14 +1765,14 @@ export class PhysicsProjectile {
         // Silent detonation
         
         // NOTE: Explosion sound is played by createExplosionEffect() -> createExplosion() for consistent positioning
-        console.log(`💥 ${this.weaponName}: Starting damage application at position:`, detonationPos);
+debug('COMBAT', `💥 ${this.weaponName}: Starting damage application at position:`, detonationPos);
         
         // Check if this is a direct-hit weapon (zero blast radius)
         if (this.blastRadius === 0) {
-            console.log(`🎯 ${this.weaponName}: Direct hit weapon - applying damage to collision target only`);
+debug('TARGETING', `🎯 ${this.weaponName}: Direct hit weapon - applying damage to collision target only`);
             this.applyDirectHitDamage(detonationPos);
         } else {
-            console.log(`💥 ${this.weaponName}: Splash damage weapon - applying area effect`);
+debug('COMBAT', `💥 ${this.weaponName}: Splash damage weapon - applying area effect`);
             this.applyPhysicsSplashDamage(detonationPos);
         }
         
@@ -1778,7 +1780,7 @@ export class PhysicsProjectile {
         if (this.physicsManager && detonationPos && this.blastRadius > 0) {
             this.physicsManager.createCollisionVisualization(detonationPos, detonationPos, this.blastRadius);
         } else if (this.blastRadius === 0) {
-            console.log(`🎯 ${this.weaponName}: Direct hit weapon - no blast visualization needed`);
+debug('COMBAT', `🎯 ${this.weaponName}: Direct hit weapon - no blast visualization needed`);
         }
         
         this.createExplosionEffect(detonationPos);
@@ -1795,11 +1797,11 @@ export class PhysicsProjectile {
      */
     applyDirectHitDamage(position) {
         if (!this.collisionTarget || !position) {
-            console.log(`⚠️ ${this.weaponName}: No collision target for direct hit damage`);
+debug('TARGETING', `⚠️ ${this.weaponName}: No collision target for direct hit damage`);
             return;
         }
         
-        console.log(`🎯 ${this.weaponName}: Applying direct hit damage to collision target`);
+debug('TARGETING', `🎯 ${this.weaponName}: Applying direct hit damage to collision target`);
         
         // Find the ship object from the collision target
         let targetShip = null;
@@ -1807,17 +1809,17 @@ export class PhysicsProjectile {
         // Check if collision target has ship reference
         if (this.collisionTarget.ship && typeof this.collisionTarget.ship.applyDamage === 'function') {
             targetShip = this.collisionTarget.ship;
-            console.log(`🎯 ${this.weaponName}: Found target ship via collision target:`, targetShip.shipName || 'Unknown');
+debug('TARGETING', `🎯 ${this.weaponName}: Found target ship via collision target:`, targetShip.shipName || 'Unknown');
         } else if (this.collisionTarget.threeObject?.userData?.ship && typeof this.collisionTarget.threeObject.userData.ship.applyDamage === 'function') {
             targetShip = this.collisionTarget.threeObject.userData.ship;
-            console.log(`🎯 ${this.weaponName}: Found target ship via threeObject:`, targetShip.shipName || 'Unknown');
+debug('TARGETING', `🎯 ${this.weaponName}: Found target ship via threeObject:`, targetShip.shipName || 'Unknown');
         } else if (typeof this.collisionTarget.applyDamage === 'function') {
             targetShip = this.collisionTarget;
-            console.log(`🎯 ${this.weaponName}: Collision target is ship object:`, targetShip.shipName || 'Unknown');
+debug('TARGETING', `🎯 ${this.weaponName}: Collision target is ship object:`, targetShip.shipName || 'Unknown');
         }
         
         if (!targetShip) {
-            console.log(`⚠️ ${this.weaponName}: Could not find ship object for collision target`);
+debug('TARGETING', `⚠️ ${this.weaponName}: Could not find ship object for collision target`);
             console.log(`🔍 Collision target structure:`, {
                 hasShip: !!this.collisionTarget.ship,
                 hasApplyDamage: typeof this.collisionTarget.applyDamage === 'function',
@@ -1832,10 +1834,10 @@ export class PhysicsProjectile {
         
         // Apply full damage (no distance falloff for direct hits)
         const damage = this.damage;
-        console.log(`💥 ${this.weaponName}: Applying ${damage} direct hit damage to ${targetShip.shipName || 'enemy ship'}`);
+debug('TARGETING', `💥 ${this.weaponName}: Applying ${damage} direct hit damage to ${targetShip.shipName || 'enemy ship'}`);
         
         const damageResult = targetShip.applyDamage(damage, 'kinetic', null);
-        console.log(`💥 ${this.weaponName}: After damage - hull: ${targetShip.currentHull}/${targetShip.maxHull}, destroyed: ${damageResult?.isDestroyed || false}`);
+debug('TARGETING', `💥 ${this.weaponName}: After damage - hull: ${targetShip.currentHull}/${targetShip.maxHull}, destroyed: ${damageResult?.isDestroyed || false}`);
         
         // Show damage feedback on HUD using unified display
         this.showDamageFeedback(targetShip, damage);
@@ -1856,7 +1858,7 @@ export class PhysicsProjectile {
         // Check for destruction - either freshly destroyed this hit OR already at 0 hull
         const isDestroyed = (damageResult && damageResult.isDestroyed) || (targetShip.currentHull <= 0.001);
         if (isDestroyed) {
-            console.log(`🔥 ${this.weaponName}: ${targetShip.shipName || 'Enemy ship'} DESTROYED by direct hit!`);
+debug('TARGETING', `🔥 ${this.weaponName}: ${targetShip.shipName || 'Enemy ship'} DESTROYED by direct hit!`);
             
             // Show target destruction feedback on weapon HUD
             this.showTargetDestructionFeedback(targetShip);
@@ -1873,7 +1875,7 @@ export class PhysicsProjectile {
                     try {
                         window.starfieldManager.removeDestroyedTarget(targetShip);
                     } catch (error) {
-                        console.log('Error during target removal:', error.message);
+debug('P1', 'Error during target removal:', error.message);
                     }
                 }, 0);
             }
@@ -1895,7 +1897,7 @@ export class PhysicsProjectile {
             affectedEntities.forEach(entity => {
                 // Skip projectiles (including the torpedo itself) - they shouldn't take splash damage
                 if (entity.type === 'projectile') {
-                    console.log(`🚫 ${this.weaponName}: Skipping projectile entity: ${entity.id} (projectiles don't take splash damage)`);
+debug('COMBAT', `🚫 ${this.weaponName}: Skipping projectile entity: ${entity.id} (projectiles don't take splash damage)`);
                     return;
                 }
                 
@@ -1906,7 +1908,7 @@ export class PhysicsProjectile {
                 } else if (entity.position) {
                     entityPosition = entity.position;
                 } else {
-                    console.log('Entity has no position, skipping damage application');
+debug('COMBAT', 'Entity has no position, skipping damage application');
                     return;
                 }
                 
@@ -1929,7 +1931,7 @@ export class PhysicsProjectile {
                 let damage = Math.round(maxDamage * (radiusSquared / distanceSquared));
                 damage = Math.min(damage, maxDamage); // Cap at maximum damage
                 
-                console.log(`🎯 ${this.weaponName}: Entity at ${distance.toFixed(1)}m distance, calculated ${damage} damage (max: ${maxDamage}) [inverse-square law]`);
+debug('COMBAT', `🎯 ${this.weaponName}: Entity at ${distance.toFixed(1)}m distance, calculated ${damage} damage (max: ${maxDamage}) [inverse-square law]`);
                 
                 if (damage > 0) {
                     // FIXED: Use the entity found by spatial query (the actual target in blast radius)
@@ -1939,7 +1941,7 @@ export class PhysicsProjectile {
                     if (entity.ship && typeof entity.ship.applyDamage === 'function') {
                         targetShip = entity.ship;
                         const shipName = entity.ship.shipName || entity.id || 'Unknown';
-                        console.log(`💥 ${this.weaponName}: Found target ship via entity.ship: ${shipName} (distance: ${distance.toFixed(1)}m)`);
+debug('TARGETING', `💥 ${this.weaponName}: Found target ship via entity.ship: ${shipName} (distance: ${distance.toFixed(1)}m)`);
                     }
                     
                     // Priority 2: Try alternative paths to find ship reference from entity
@@ -1947,18 +1949,18 @@ export class PhysicsProjectile {
                         if (entity.threeObject?.userData?.ship && typeof entity.threeObject.userData.ship.applyDamage === 'function') {
                             targetShip = entity.threeObject.userData.ship;
                             const shipName = entity.threeObject.userData.ship.shipName || entity.id || 'Unknown';
-                            console.log(`💥 ${this.weaponName}: Found ship via threeObject.userData.ship: ${shipName}`);
+debug('COMBAT', `💥 ${this.weaponName}: Found ship via threeObject.userData.ship: ${shipName}`);
                         } else if (typeof entity.applyDamage === 'function') {
                             // Entity itself is the ship object
                             targetShip = entity;
                             const shipName = entity.shipName || entity.id || 'Unknown';
-                            console.log(`💥 ${this.weaponName}: Entity is direct ship object: ${shipName}`);
+debug('COMBAT', `💥 ${this.weaponName}: Entity is direct ship object: ${shipName}`);
                         }
                     }
                     
                     // Final fallback: If spatial query entity doesn't have ship reference, log for debugging
                     if (!targetShip) {
-                        console.log(`${this.weaponName}: Spatial query found entity at ${distance.toFixed(1)}m but no ship reference found. Entity type: ${entity.type}, ID: ${entity.id}`);
+debug('COMBAT', `${this.weaponName}: Spatial query found entity at ${distance.toFixed(1)}m but no ship reference found. Entity type: ${entity.type}, ID: ${entity.id}`);
                         console.log(`🔍 Entity structure:`, {
                             hasShip: !!entity.ship,
                             hasApplyDamage: typeof entity.applyDamage === 'function',
@@ -1975,11 +1977,11 @@ export class PhysicsProjectile {
                     // Apply damage if we found a valid target ship (PROJECTILE WEAPONS - NO SUB-TARGETING)
                     if (targetShip) {
                         const wasAlreadyDestroyed = targetShip.currentHull <= 0.001;
-                        console.log(`💥 ${this.weaponName}: Applying ${damage} explosive damage to ${targetShip.shipName || 'enemy ship'} (hull: ${targetShip.currentHull}/${targetShip.maxHull})`);
+debug('TARGETING', `💥 ${this.weaponName}: Applying ${damage} explosive damage to ${targetShip.shipName || 'enemy ship'} (hull: ${targetShip.currentHull}/${targetShip.maxHull})`);
                         
                         // PROJECTILE WEAPONS: Apply damage without sub-targeting (3rd parameter = null)
                         const damageResult = targetShip.applyDamage(damage, 'explosive', null);
-                        console.log(`💥 ${this.weaponName}: After damage - hull: ${targetShip.currentHull}/${targetShip.maxHull}, destroyed: ${damageResult?.isDestroyed || false}`);
+debug('TARGETING', `💥 ${this.weaponName}: After damage - hull: ${targetShip.currentHull}/${targetShip.maxHull}, destroyed: ${damageResult?.isDestroyed || false}`);
                         
                         // Show damage feedback on HUD
                         this.showDamageFeedback(targetShip, damage);
@@ -1993,19 +1995,19 @@ export class PhysicsProjectile {
                         
                         // Log shield/hull breakdown for projectile weapons
                         if (damageResult.shieldDamage > 0) {
-                            console.log(`🛡️ ${this.weaponName}: Shields absorbed ${damageResult.shieldDamage} damage`);
+debug('COMBAT', `🛡️ ${this.weaponName}: Shields absorbed ${damageResult.shieldDamage} damage`);
                         }
                         if (damageResult.hullDamage > 0) {
-                            console.log(`💥 ${this.weaponName}: Hull took ${damageResult.hullDamage} damage`);
+debug('COMBAT', `💥 ${this.weaponName}: Hull took ${damageResult.hullDamage} damage`);
                         }
                         if (damageResult.systemsDamaged.length > 0) {
-                            console.log(`🎯 ${this.weaponName}: Random subsystem hits: ${damageResult.systemsDamaged.join(', ')}`);
+debug('COMBAT', `🎯 ${this.weaponName}: Random subsystem hits: ${damageResult.systemsDamaged.join(', ')}`);
                         }
                         
                         // Check for destruction - either freshly destroyed this hit OR newly at 0 hull
                         const isNowDestroyed = (damageResult && damageResult.isDestroyed) || (targetShip.currentHull <= 0.001);
                         if (isNowDestroyed && !wasAlreadyDestroyed) {
-                            console.log(`🔥 ${this.weaponName}: ${targetShip.shipName || 'Enemy ship'} DESTROYED by torpedo blast!`);
+debug('TARGETING', `🔥 ${this.weaponName}: ${targetShip.shipName || 'Enemy ship'} DESTROYED by torpedo blast!`);
                             targetShip.currentHull = 0;
                             
                             if (window.starfieldManager?.viewManager?.getShip()?.weaponEffectsManager) {
@@ -2019,7 +2021,7 @@ export class PhysicsProjectile {
                                     try {
                                         window.starfieldManager.removeDestroyedTarget(targetShip);
                                     } catch (error) {
-                                        console.log('Error during splash damage target removal:', error.message);
+debug('P1', 'Error during splash damage target removal:', error.message);
                                     }
                                 }, 0);
                             }
@@ -2104,7 +2106,7 @@ export class PhysicsProjectile {
                 weaponHUD.showDamageFeedback(this.weaponName, damage, targetName);
             }
         } catch (error) {
-            console.log('Failed to show damage feedback:', error.message);
+debug('P1', 'Failed to show damage feedback:', error.message);
         }
     }
 
@@ -2124,17 +2126,17 @@ export class PhysicsProjectile {
                 if (this.collisionTarget) {
                     // Use 'torpedo' explosion type for torpedo-specific explosion sound (explosion-01.mp3)
                     effectsManager.createExplosion(explosionPos, this.blastRadius, 'torpedo', explosionPos);
-                    console.log(`✨ Created explosion effect with sound at:`, position, `with radius ${this.blastRadius}m`);
+debug('UTILITY', `✨ Created explosion effect with sound at:`, position, `with radius ${this.blastRadius}m`);
                 } else {
                     // Create visual explosion only (no sound) for misses
                     effectsManager.createExplosion(explosionPos, this.blastRadius, 'silent', explosionPos);
-                    console.log(`✨ Created silent explosion effect at:`, position, `with radius ${this.blastRadius}m (miss - no sound)`);
+debug('UTILITY', `✨ Created silent explosion effect at:`, position, `with radius ${this.blastRadius}m (miss - no sound)`);
                 }
             } catch (error) {
-                console.log('Failed to create explosion effect:', error);
+debug('P1', 'Failed to create explosion effect:', error);
             }
         } else {
-            console.log('No weapon effects manager available for explosion effect');
+debug('COMBAT', 'No weapon effects manager available for explosion effect');
         }
     }
     
@@ -2143,13 +2145,13 @@ export class PhysicsProjectile {
      */
     cleanup() {
         try {
-            console.log(`🧹 CLEANUP: Starting cleanup for ${this.weaponName}`);
+debug('COMBAT', `🧹 CLEANUP: Starting cleanup for ${this.weaponName}`);
             
             // Clear range checking interval to prevent memory leaks
             if (this.rangeCheckInterval) {
                 clearInterval(this.rangeCheckInterval);
                 this.rangeCheckInterval = null;
-                console.log(`🧹 CLEANUP: Cleared range check interval for ${this.weaponName}`);
+debug('COMBAT', `🧹 CLEANUP: Cleared range check interval for ${this.weaponName}`);
             }
             
             // CRITICAL: Remove from global projectile tracking array to prevent memory leaks
@@ -2157,7 +2159,7 @@ export class PhysicsProjectile {
                 const index = window.activeProjectiles.indexOf(this);
                 if (index > -1) {
                     window.activeProjectiles.splice(index, 1);
-                    console.log(`🧹 CLEANUP: Removed ${this.weaponName} from global tracking (${window.activeProjectiles.length} remaining)`);
+debug('COMBAT', `🧹 CLEANUP: Removed ${this.weaponName} from global tracking (${window.activeProjectiles.length} remaining)`);
                 }
             }
             
@@ -2172,14 +2174,14 @@ export class PhysicsProjectile {
                 
                 // Remove the trail after a short delay to let it fade
                 effectsManager.removeProjectileTrail(this.trailId);
-                console.log(`🧹 CLEANUP: Removed trail for ${this.weaponName}`);
+debug('COMBAT', `🧹 CLEANUP: Removed trail for ${this.weaponName}`);
             }
             
             // Remove from physics world
             if (this.rigidBody && this.physicsManager && this.threeObject) {
                 this.physicsManager.removeRigidBody(this.threeObject);
                 this.rigidBody = null;
-                console.log(`🧹 CLEANUP: Removed rigid body for ${this.weaponName}`);
+debug('COMBAT', `🧹 CLEANUP: Removed rigid body for ${this.weaponName}`);
             }
             
             // Remove from visual scene
@@ -2188,10 +2190,10 @@ export class PhysicsProjectile {
                 this.threeObject.geometry?.dispose();
                 this.threeObject.material?.dispose();
                 this.threeObject = null;
-                console.log(`🧹 CLEANUP: Removed visual mesh for ${this.weaponName}`);
+debug('COMBAT', `🧹 CLEANUP: Removed visual mesh for ${this.weaponName}`);
             }
             
-            console.log(`✅ CLEANUP: Completed cleanup for ${this.weaponName}`);
+debug('COMBAT', `✅ CLEANUP: Completed cleanup for ${this.weaponName}`);
             
         } catch (error) {
             console.error(`❌ CLEANUP ERROR: Failed to clean up ${this.weaponName}:`, error);
@@ -2204,11 +2206,11 @@ export class PhysicsProjectile {
      */
     expireOutOfRange() {
         if (this.hasDetonated) {
-            console.log(`⚠️ ${this.weaponName}: Already detonated, skipping expireOutOfRange`);
+debug('COMBAT', `⚠️ ${this.weaponName}: Already detonated, skipping expireOutOfRange`);
             return;
         }
         
-        console.log(`💨 ${this.weaponName}: Expiring after reaching maximum range or flight time`);
+debug('COMBAT', `💨 ${this.weaponName}: Expiring after reaching maximum range or flight time`);
         
         // CRITICAL: Set detonated flag FIRST to prevent double cleanup
         this.hasDetonated = true;
@@ -2217,7 +2219,7 @@ export class PhysicsProjectile {
         if (this.rangeCheckInterval) {
             clearInterval(this.rangeCheckInterval);
             this.rangeCheckInterval = null;
-            console.log(`🧹 EXPIRE: Cleared range check interval for ${this.weaponName}`);
+debug('COMBAT', `🧹 EXPIRE: Cleared range check interval for ${this.weaponName}`);
         }
         
         // Stop trail updates immediately
@@ -2236,7 +2238,7 @@ export class PhysicsProjectile {
         if (this.rigidBody && this.physicsManager) {
             try {
                 this.physicsManager.removeRigidBody(this.threeObject);
-                console.log(`🧹 REMOVED: ${this.weaponName} from physics world (expired)`);
+debug('COMBAT', `🧹 REMOVED: ${this.weaponName} from physics world (expired)`);
             } catch (error) {
                 console.error('Error removing expired projectile from physics:', error);
             }
@@ -2251,12 +2253,12 @@ export class PhysicsProjectile {
                 if (activeWeapon?.equippedWeapon && activeWeapon.equippedWeapon.name === this.weaponName) {
                     if (typeof activeWeapon.equippedWeapon.showMissFeedback === 'function') {
                         activeWeapon.equippedWeapon.showMissFeedback();
-                        console.log(`🎯 PROJECTILE MISS: Called showMissFeedback on ${this.weaponName}`);
+debug('COMBAT', `🎯 PROJECTILE MISS: Called showMissFeedback on ${this.weaponName}`);
                     }
                 }
             }
         } catch (error) {
-            console.log('Failed to show projectile miss feedback:', error.message);
+debug('P1', 'Failed to show projectile miss feedback:', error.message);
         }
         
         // Clean up immediately without explosion effects
@@ -2272,7 +2274,7 @@ export class PhysicsProjectile {
             const targetName = targetShip.shipName || 'ENEMY SHIP';
             const message = `${targetName.toUpperCase()} DESTROYED`;
             
-            console.log(`🎯 TARGET DESTRUCTION FEEDBACK: ${this.weaponName} destroyed ${targetName}`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION FEEDBACK: ${this.weaponName} destroyed ${targetName}`);
             
             // Try to get weapon HUD reference through various paths
             let weaponHUD = null;
@@ -2280,27 +2282,27 @@ export class PhysicsProjectile {
             // Path 1: Through ship's weapon system
             if (window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.starfieldManager.viewManager.ship.weaponSystem.weaponHUD;
-                console.log(`🎯 TARGET DESTRUCTION: Found weaponHUD via ship.weaponSystem`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: Found weaponHUD via ship.weaponSystem`);
             }
             // Path 2: Through global ship reference
             else if (window.ship?.weaponSystem?.weaponHUD) {
                 weaponHUD = window.ship.weaponSystem.weaponHUD;
-                console.log(`🎯 TARGET DESTRUCTION: Found weaponHUD via global ship`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: Found weaponHUD via global ship`);
             }
             // Path 3: Through StarfieldManager directly
             else if (window.starfieldManager?.weaponHUD) {
                 weaponHUD = window.starfieldManager.weaponHUD;
-                console.log(`🎯 TARGET DESTRUCTION: Found weaponHUD via StarfieldManager`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: Found weaponHUD via StarfieldManager`);
             }
             
             if (weaponHUD) {
-                console.log(`🎯 TARGET DESTRUCTION: Calling showWeaponFeedback('target-destroyed') on weaponHUD`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: Calling showWeaponFeedback('target-destroyed') on weaponHUD`);
                 weaponHUD.showWeaponFeedback('target-destroyed', message);
             } else {
-                console.log(`🎯 TARGET DESTRUCTION: No weaponHUD found for target destruction feedback`);
+debug('TARGETING', `🎯 TARGET DESTRUCTION: No weaponHUD found for target destruction feedback`);
             }
         } catch (error) {
-            console.log('Failed to show target destruction feedback:', error.message);
+debug('P1', 'Failed to show target destruction feedback:', error.message);
         }
     }
 } 

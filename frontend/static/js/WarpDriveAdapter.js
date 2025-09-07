@@ -1,3 +1,5 @@
+import { debug } from './debug.js';
+
 /**
  * WarpDriveAdapter - Maintains compatibility with existing WarpDriveManager
  * while using the new Ship's WarpDrive system internally
@@ -19,7 +21,7 @@ export default class WarpDriveAdapter {
         // External dependencies
         this.sectorNavigation = null;
         
-        console.log('WarpDriveAdapter initialized - will connect to Ship\'s WarpDrive system');
+debug('UTILITY', 'WarpDriveAdapter initialized - will connect to Ship\'s WarpDrive system');
     }
     
     /**
@@ -39,7 +41,7 @@ export default class WarpDriveAdapter {
                 this.onEnergyUpdate?.bind(this)
             );
             
-            console.log('WarpDriveAdapter connected to Ship\'s WarpDrive system');
+debug('UTILITY', 'WarpDriveAdapter connected to Ship\'s WarpDrive system');
         } else {
             console.warn('Ship does not have a warp drive system installed');
         }

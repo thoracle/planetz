@@ -1,10 +1,11 @@
 import System, { SYSTEM_STATES, DAMAGE_THRESHOLDS } from './System.js';
+import { debug } from '../debug.js';
 
 /**
  * Simple test for the System interface
  */
 export function testSystemInterface() {
-    console.log('=== Testing System Interface ===');
+debug('UI', '=== Testing System Interface ===');
     
     // Create a test system
     const testSystem = new System('Test Engine', 1, {
@@ -14,35 +15,35 @@ export function testSystemInterface() {
         systemType: 'engine'
     });
     
-    console.log('Initial system status:', testSystem.getStatus());
+debug('UTILITY', 'Initial system status:', testSystem.getStatus());
     
     // Test damage application
-    console.log('\n--- Testing Damage ---');
+debug('COMBAT', '\n--- Testing Damage ---');
     testSystem.takeDamage(30); // Should move to damaged state
-    console.log('After 30 damage:', testSystem.getStatus());
+debug('COMBAT', 'After 30 damage:', testSystem.getStatus());
     
     testSystem.takeDamage(30); // Should move to critical state
-    console.log('After 60 total damage:', testSystem.getStatus());
+debug('COMBAT', 'After 60 total damage:', testSystem.getStatus());
     
     testSystem.takeDamage(30); // Should move to disabled state
-    console.log('After 90 total damage:', testSystem.getStatus());
+debug('COMBAT', 'After 90 total damage:', testSystem.getStatus());
     
     // Test repair
-    console.log('\n--- Testing Repair ---');
+debug('AI', '\n--- Testing Repair ---');
     testSystem.repair(0.5); // Repair 50% of max health
-    console.log('After 50% repair:', testSystem.getStatus());
+debug('AI', 'After 50% repair:', testSystem.getStatus());
     
     // Test upgrade
-    console.log('\n--- Testing Upgrade ---');
+debug('UTILITY', '\n--- Testing Upgrade ---');
     testSystem.upgrade();
-    console.log('After upgrade to level 2:', testSystem.getStatus());
+debug('UTILITY', 'After upgrade to level 2:', testSystem.getStatus());
     
     // Test level requirements
-    console.log('\n--- Testing Level Requirements ---');
+debug('UI', '\n--- Testing Level Requirements ---');
     const requirements = testSystem.getLevelRequirements(3);
-    console.log('Requirements for level 3:', requirements);
+debug('UI', 'Requirements for level 3:', requirements);
     
-    console.log('=== System Interface Test Complete ===');
+debug('UI', '=== System Interface Test Complete ===');
 }
 
 // Auto-run test if this file is loaded directly

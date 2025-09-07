@@ -1,3 +1,5 @@
+import { debug } from '../../../debug.js';
+
 /**
  * THREE.JS HitScanService - Simple Three.js Raycaster-based weapon hit detection
  * 
@@ -34,20 +36,20 @@ function performHitScan(origin, dir, maxRangeKm, ship) {
 	
 	if (!collisionManager || !THREE) {
 		if (DEBUG_LOG_HITSCAN) {
-			console.log('❌ HITSCAN: CollisionManager not available');
-			console.log(`  - window.collisionManager: ${!!window.collisionManager}`);
-			console.log(`  - window.starfieldManager: ${!!window.starfieldManager}`);
-			console.log(`  - collisionManager found: ${!!collisionManager}`);
-			console.log(`  - THREE: ${!!THREE}`);
+debug('AI', '❌ HITSCAN: CollisionManager not available');
+debug('UTILITY', `  - window.collisionManager: ${!!window.collisionManager}`);
+debug('UTILITY', `  - window.starfieldManager: ${!!window.starfieldManager}`);
+debug('UTILITY', `  - collisionManager found: ${!!collisionManager}`);
+debug('UTILITY', `  - THREE: ${!!THREE}`);
 		}
 		return null;
 	}
 
 	if (DEBUG_LOG_HITSCAN) {
-		console.log('🎯 HITSCAN: Performing Three.js raycast');
-		console.log(`  - Origin: (${origin.x.toFixed(2)}, ${origin.y.toFixed(2)}, ${origin.z.toFixed(2)})`);
-		console.log(`  - Direction: (${dir.x.toFixed(3)}, ${dir.y.toFixed(3)}, ${dir.z.toFixed(3)})`);
-		console.log(`  - Range: ${maxRangeKm}km`);
+debug('UTILITY', 'HITSCAN: Performing Three.js raycast');
+debug('UTILITY', `  - Origin: (${origin.x.toFixed(2)}, ${origin.y.toFixed(2)}, ${origin.z.toFixed(2)})`);
+debug('UTILITY', `  - Direction: (${dir.x.toFixed(3)}, ${dir.y.toFixed(3)}, ${dir.z.toFixed(3)})`);
+debug('UTILITY', `  - Range: ${maxRangeKm}km`);
 	}
 	
 	// Use collision manager's weapon raycast method
@@ -55,10 +57,10 @@ function performHitScan(origin, dir, maxRangeKm, ship) {
 	
 	if (result && result.hit) {
 		if (DEBUG_LOG_HITSCAN) {
-			console.log('✅ HITSCAN: Hit detected');
-			console.log(`  - Target: ${result.metadata?.type || 'unknown'}`);
-			console.log(`  - Distance: ${result.distanceKm.toFixed(2)}km`);
-			console.log(`  - Hit Point: (${result.point.x.toFixed(2)}, ${result.point.y.toFixed(2)}, ${result.point.z.toFixed(2)})`);
+debug('UTILITY', '✅ HITSCAN: Hit detected');
+debug('TARGETING', `  - Target: ${result.metadata?.type || 'unknown'}`);
+debug('UTILITY', `  - Distance: ${result.distanceKm.toFixed(2)}km`);
+debug('UTILITY', `  - Hit Point: (${result.point.x.toFixed(2)}, ${result.point.y.toFixed(2)}, ${result.point.z.toFixed(2)})`);
 		}
 		
 		return {
@@ -74,7 +76,7 @@ function performHitScan(origin, dir, maxRangeKm, ship) {
 		};
 	} else {
 		if (DEBUG_LOG_HITSCAN) {
-			console.log('❌ HITSCAN: No hit detected');
+debug('UTILITY', '❌ HITSCAN: No hit detected');
 		}
 		return null;
 	}
@@ -92,4 +94,4 @@ window.performHitScan = performHitScan;
 // Also make it available as a module export
 export { performHitScan, HitScanService };
 
-console.log('🎯 HitScanService loaded - Three.js Raycaster implementation');
+debug('UTILITY', 'HitScanService loaded - Three.js Raycaster implementation');

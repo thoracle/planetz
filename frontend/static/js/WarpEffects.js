@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { debug } from './debug.js';
 
 class WarpEffects {
     constructor(scene) {
@@ -40,7 +41,7 @@ class WarpEffects {
     ensureAudioContextRunning() {
         if (this.listener && this.listener.context) {
             if (this.listener.context.state === 'suspended') {
-                console.log('Resuming suspended AudioContext');
+debug('UTILITY', 'Resuming suspended AudioContext');
                 this.listener.context.resume().catch(error => {
                     console.error('Failed to resume AudioContext:', error);
                 });
@@ -56,7 +57,7 @@ class WarpEffects {
         
         // Add audio listener to camera
         if (this.camera) {
-            console.log('Adding audio listener to camera');
+debug('UTILITY', 'Adding audio listener to camera');
             this.camera.add(this.listener);
         } else {
             console.warn('No camera available for audio listener');
@@ -99,7 +100,7 @@ class WarpEffects {
         this.container.visible = false;
         
         this.initialized = true;
-        console.log('WarpEffects initialized with scene and camera');
+debug('UTILITY', 'WarpEffects initialized with scene and camera');
     }
 
     createStreak() {
@@ -179,11 +180,11 @@ class WarpEffects {
         
         // Stop sounds if playing
         if (this.warpSound.isPlaying) {
-            console.log('Stopping warp sound');
+debug('UTILITY', 'Stopping warp sound');
             this.warpSound.stop();
         }
         if (this.warpRedAlertSound.isPlaying) {
-            console.log('Stopping red alert warp sound');
+debug('UTILITY', 'Stopping red alert warp sound');
             this.warpRedAlertSound.stop();
         }
     }

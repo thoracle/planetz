@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * DockingSystemManager - Comprehensive docking system management
  * Handles all docking-related validation, requirements, and integration with ship systems
@@ -21,7 +23,7 @@ export default class DockingSystemManager {
             systemFailures: ['impulse_engines']
         };
         
-        console.log('DockingSystemManager initialized');
+debug('UTILITY', 'DockingSystemManager initialized');
     }
     
     /**
@@ -307,6 +309,6 @@ export default class DockingSystemManager {
      */
     updateDockingRequirements(newRequirements) {
         this.dockingRequirements = { ...this.dockingRequirements, ...newRequirements };
-        console.log('Docking requirements updated:', this.dockingRequirements);
+debug('UI', 'Docking requirements updated:', this.dockingRequirements);
     }
 } 

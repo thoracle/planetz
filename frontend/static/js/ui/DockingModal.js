@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * DockingModal - Modal interface for docking operations
  * Shows when docking conditions are met and ship is at correct speed
@@ -224,18 +226,18 @@ export default class DockingModal {
     bindEvents() {
         // Dock button click
         this.dockButton.addEventListener('click', () => {
-            console.log('🖱️ DOCK BUTTON CLICKED');
-            console.log('🖱️ Event listener this.currentTarget:', this.currentTarget);
-            console.log('🖱️ Event listener starfieldManager.currentTarget:', this.starfieldManager.currentTarget);
-            console.log('🖱️ Modal isVisible:', this.isVisible);
+debug('UI', '🖱️ DOCK BUTTON CLICKED');
+debug('TARGETING', '🖱️ Event listener this.currentTarget:', this.currentTarget);
+debug('TARGETING', '🖱️ Event listener starfieldManager.currentTarget:', this.starfieldManager.currentTarget);
+debug('UI', '🖱️ Modal isVisible:', this.isVisible);
             this.handleDock();
         });
         
         // Cancel button click
         this.cancelButton.addEventListener('click', () => {
-            console.log('🖱️ CANCEL BUTTON CLICKED');
-            console.log('🖱️ Cancel - this.currentTarget:', this.currentTarget);
-            console.log('🖱️ Cancel - starfieldManager.currentTarget:', this.starfieldManager.currentTarget);
+debug('UI', '🖱️ CANCEL BUTTON CLICKED');
+debug('TARGETING', '🖱️ Cancel - this.currentTarget:', this.currentTarget);
+debug('TARGETING', '🖱️ Cancel - starfieldManager.currentTarget:', this.starfieldManager.currentTarget);
             
             // NEW: Record this target as cancelled to prevent immediate re-triggering
             const targetToRecord = this.currentTarget || this.starfieldManager.currentTarget;
@@ -248,11 +250,11 @@ export default class DockingModal {
                 
                 const now = Date.now();
                 this.cancelledTargets.set(targetName, now);
-                console.log(`⏰ Added cooldown for target "${targetName}" - will not show modal again for ${this.cooldownDuration/1000} seconds`);
+debug('TARGETING', `⏰ Added cooldown for target "${targetName}" - will not show modal again for ${this.cooldownDuration/1000} seconds`);
                 
                 // Also log for debugging - what kind of target object we have
-                console.log('🔍 Target object keys:', Object.keys(targetToRecord));
-                console.log('🔍 Target object:', targetToRecord);
+debug('TARGETING', 'Target object keys:', Object.keys(targetToRecord));
+debug('TARGETING', 'Target object:', targetToRecord);
             } else {
                 console.warn('⚠️ No target to record for cooldown');
             }
@@ -263,7 +265,7 @@ export default class DockingModal {
         // Close on backdrop click
         this.modal.addEventListener('click', (e) => {
             if (e.target === this.modal) {
-                console.log('🖱️ BACKDROP CLICKED');
+debug('UI', '🖱️ BACKDROP CLICKED');
                 
                 // Add cooldown for backdrop click cancellation
                 const targetToRecord = this.currentTarget || this.starfieldManager.currentTarget;
@@ -275,7 +277,7 @@ export default class DockingModal {
                     
                     const now = Date.now();
                     this.cancelledTargets.set(targetName, now);
-                    console.log(`⏰ Added cooldown for target "${targetName}" (backdrop click) - will not show modal again for ${this.cooldownDuration/1000} seconds`);
+debug('TARGETING', `⏰ Added cooldown for target "${targetName}" (backdrop click) - will not show modal again for ${this.cooldownDuration/1000} seconds`);
                 }
                 
                 this.hide();
@@ -285,7 +287,7 @@ export default class DockingModal {
         // Close on Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isVisible) {
-                console.log('⌨️ ESCAPE KEY PRESSED');
+debug('UI', 'ESCAPE KEY PRESSED');
                 
                 // Add cooldown for escape key cancellation
                 const targetToRecord = this.currentTarget || this.starfieldManager.currentTarget;
@@ -297,7 +299,7 @@ export default class DockingModal {
                     
                     const now = Date.now();
                     this.cancelledTargets.set(targetName, now);
-                    console.log(`⏰ Added cooldown for target "${targetName}" (escape key) - will not show modal again for ${this.cooldownDuration/1000} seconds`);
+debug('TARGETING', `⏰ Added cooldown for target "${targetName}" (escape key) - will not show modal again for ${this.cooldownDuration/1000} seconds`);
                 }
                 
                 this.hide();
@@ -324,7 +326,7 @@ export default class DockingModal {
         if (this.dockingInitiated || this.starfieldManager.simpleDockingManager?.dockingInProgress) {
             // Only log occasionally to avoid spam
             if (!this.lastDockingInProgressLog || (Date.now() - this.lastDockingInProgressLog) > 5000) {
-                console.log('🚀 Docking in progress - modal suppressed');
+debug('UI', 'Docking in progress - modal suppressed');
                 this.lastDockingInProgressLog = Date.now();
             }
             return;
@@ -335,7 +337,7 @@ export default class DockingModal {
             // Only log occasionally to avoid spam
             if (!this.lastUndockCooldownLog || (Date.now() - this.lastUndockCooldownLog) > 5000) {
                 const remaining = Math.ceil((this.starfieldManager.undockCooldown - Date.now()) / 1000);
-                console.log(`🚀 Undock cooldown active - modal suppressed (${remaining}s remaining)`);
+debug('AI', `🚀 Undock cooldown active - modal suppressed (${remaining}s remaining)`);
                 this.lastUndockCooldownLog = Date.now();
             }
             return;
@@ -430,7 +432,7 @@ export default class DockingModal {
                 // Cooldown expired, remove it from the map
                 this.cancelledTargets.delete(targetName);
                 // Keep this important state change log
-                console.log(`✅ Cooldown expired for target "${targetName}" - modal can appear again`);
+debug('TARGETING', `✅ Cooldown expired for target "${targetName}" - modal can appear again`);
             }
         }
         
@@ -582,15 +584,15 @@ export default class DockingModal {
     }
     
     show(target, targetInfo, distance, currentSpeed) {
-        console.log('🎬 DockingModal.show() called with:', {target, targetInfo, distance});
-        console.log('🎬 Current docking states:');
-        console.log(`🎬   StarfieldManager.isDocked: ${this.starfieldManager.isDocked}`);
-        console.log(`🎬   StarfieldManager.dockedTo: ${this.starfieldManager.dockedTo?.name}`);
-        console.log(`🎬   SimpleDockingManager.isDocked: ${this.starfieldManager.simpleDockingManager?.isDocked}`);
-        console.log(`🎬   SimpleDockingManager.currentDockingTarget: ${this.starfieldManager.simpleDockingManager?.currentDockingTarget?.name}`);
+debug('TARGETING', '🎬 DockingModal.show() called with:', {target, targetInfo, distance});
+debug('UI', '🎬 Current docking states:');
+debug('UI', `🎬   StarfieldManager.isDocked: ${this.starfieldManager.isDocked}`);
+debug('UI', `🎬   StarfieldManager.dockedTo: ${this.starfieldManager.dockedTo?.name}`);
+debug('UI', `🎬   SimpleDockingManager.isDocked: ${this.starfieldManager.simpleDockingManager?.isDocked}`);
+debug('TARGETING', `🎬   SimpleDockingManager.currentDockingTarget: ${this.starfieldManager.simpleDockingManager?.currentDockingTarget?.name}`);
         
         if (this.isVisible) {
-            console.log('⚠️ Modal already visible, skipping show()');
+debug('UI', 'Modal already visible, skipping show()');
             return;
         }
         
@@ -605,14 +607,14 @@ export default class DockingModal {
         // Tag the target with our verification ID
         if (target) {
             target._dockingModalId = this.targetVerificationId;
-            console.log('🔒 Target tagged with verification ID:', this.targetVerificationId);
+debug('TARGETING', '🔒 Target tagged with verification ID:', this.targetVerificationId);
         }
         
-        console.log('🎯 Target references preserved:');
-        console.log('  - currentTarget:', this.currentTarget?.name);
-        console.log('  - backupTarget:', this.backupTarget?.name);
-        console.log('  - originalStarfieldTarget:', this.originalStarfieldTarget?.name);
-        console.log('  - verification ID:', this.targetVerificationId);
+debug('TARGETING', 'Target references preserved:');
+debug('TARGETING', '  - currentTarget:', this.currentTarget?.name);
+debug('TARGETING', '  - backupTarget:', this.backupTarget?.name);
+debug('TARGETING', '  - originalStarfieldTarget:', this.originalStarfieldTarget?.name);
+debug('TARGETING', '  - verification ID:', this.targetVerificationId);
         
         this.isVisible = true;
         
@@ -633,7 +635,7 @@ export default class DockingModal {
         const failedTs = this.failureCooldowns.get(name);
         if ((cancelledTs && nowTs - cancelledTs < this.cooldownDuration) ||
             (failedTs && nowTs - failedTs < this.failureCooldownMs)) {
-            console.log(`⏳ Skipping modal due to cooldown for target "${name}"`);
+debug('TARGETING', `⏳ Skipping modal due to cooldown for target "${name}"`);
             return;
         }
         
@@ -670,7 +672,7 @@ export default class DockingModal {
         // Start target monitoring to detect any loss
         this.startTargetMonitoring();
         
-        console.log('✅ Modal displayed successfully');
+debug('UI', '✅ Modal displayed successfully');
     }
     
     startTargetMonitoring() {
@@ -712,7 +714,7 @@ export default class DockingModal {
                     
                     // Try to restore target before giving up
                     if (this.restoreTargetReference()) {
-                        console.log('✅ Target restored from backup');
+debug('TARGETING', '✅ Target restored from backup');
                         consecutiveNullChecks = 0; // Reset counter after successful restore
                     } else {
                         // If we can't restore after max attempts, show error and close modal
@@ -747,7 +749,7 @@ export default class DockingModal {
             this.targetMonitorInterval = null;
         }
         
-        console.log('🚫 Modal hidden, all target references cleared');
+debug('TARGETING', '🚫 Modal hidden, all target references cleared');
     }
     
     updateStatusWithError(errorMessage) {
@@ -892,20 +894,20 @@ export default class DockingModal {
     }
     
     async handleDock() {
-        console.log('🚀 DOCK button pressed - starting docking process');
+debug('UI', 'DOCK button pressed - starting docking process');
         
         let targetToUse = null;
         
         // First, try to use the modal's preserved target
         if (this.currentTarget && this.currentTarget._dockingModalId === this.targetVerificationId) {
-            console.log('✅ Using verified modal target:', this.currentTarget.name);
+debug('TARGETING', '✅ Using verified modal target:', this.currentTarget.name);
             targetToUse = this.currentTarget;
         } else if (this.currentTarget) {
-            console.log('⚠️ Modal target verification failed, trying backup restoration');
+debug('P1', 'Modal target verification failed, trying backup restoration');
             
             // Try to restore from backup
             if (this.restoreTargetReference()) {
-                console.log('✅ Target restored from backup');
+debug('TARGETING', '✅ Target restored from backup');
                 targetToUse = this.currentTarget;
             } else {
                 console.warn('❌ Failed to restore target from backup');
@@ -915,10 +917,10 @@ export default class DockingModal {
             
             // Try to restore from backup first
             if (this.restoreTargetReference()) {
-                console.log('✅ Target restored from backup methods');
+debug('TARGETING', '✅ Target restored from backup methods');
                 targetToUse = this.currentTarget;
             } else if (this.starfieldManager.currentTarget) {
-                console.log('✅ Using StarfieldManager current target');
+debug('TARGETING', '✅ Using StarfieldManager current target');
                 targetToUse = this.starfieldManager.currentTarget;
                 this.currentTarget = targetToUse; // Store it in modal
             }
@@ -949,7 +951,7 @@ export default class DockingModal {
         });
         
         // UNIFIED: Use single docking path for all object types (planets, moons, stations)
-        console.log('🚀 DockingModal: Using unified docking system for all targets');
+debug('TARGETING', 'DockingModal: Using unified docking system for all targets');
 
         // Use the unified docking system from SimpleDockingManager
         if (this.starfieldManager.simpleDockingManager) {
@@ -964,11 +966,11 @@ export default class DockingModal {
 
         // Fallback: direct StarfieldManager docking (legacy path)
         if (this.starfieldManager.canDockWithLogging(targetToUse)) {
-            console.log('✅ Docking validation passed - proceeding with dock');
+debug('UI', '✅ Docking validation passed - proceeding with dock');
             
             // Set a temporary flag to prevent modal reappearing during docking initiation
             this.dockingInitiated = true;
-            console.log('🚀 Set dockingInitiated=true to prevent modal reappearing');
+debug('UTILITY', 'Set dockingInitiated=true to prevent modal reappearing');
             
             this.hide();
             

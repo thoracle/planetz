@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { VIEW_TYPES } from './ViewManager.js';
+import { debug } from '../debug.js';
 
 export class GalacticChart {
     constructor(viewManager) {
@@ -126,7 +127,7 @@ export class GalacticChart {
         
         // Only show and fetch data if not already visible
         if (!this._isVisible) {
-            console.log('Showing galactic chart and fetching data');
+debug('UTILITY', 'Showing galactic chart and fetching data');
             this._isVisible = true;
             this.container.classList.add('visible');
             this.detailsPanel.style.display = 'none';  // Ensure details panel is hidden initially
@@ -140,12 +141,12 @@ export class GalacticChart {
                 return;
             }
         } else {
-            console.log('Galactic chart already visible, skipping show');
+debug('UTILITY', 'Galactic chart already visible, skipping show');
         }
     }
 
     hide(shouldRestoreView = false) {
-        console.log('GalacticChart.hide called:', {
+        debug('UTILITY', 'GalacticChart.hide called:', {
             isVisible: this._isVisible,
             hasVisibleClass: this.container.classList.contains('visible'),
             shouldRestoreView
@@ -156,7 +157,7 @@ export class GalacticChart {
             this.container.classList.remove('visible');
             this.detailsPanel.style.display = 'none';
             if (shouldRestoreView && this.viewManager) {
-                console.log('Restoring previous view from hide');
+debug('UTILITY', 'Restoring previous view from hide');
                 this.viewManager.restorePreviousView();
             }
         }
@@ -187,7 +188,7 @@ export class GalacticChart {
                 this.universe = chartSystem.processUniverseData(rawData);
                 
                 const systemStatus = chartSystem.getStatus();
-                console.log(`Galactic Chart data processed - Range: ${systemStatus.dataRange}%, Accuracy: ${systemStatus.accuracy}%`);
+debug('UTILITY', `Galactic Chart data processed - Range: ${systemStatus.dataRange}%, Accuracy: ${systemStatus.accuracy}%`);
                 
                 // Show warning if data is limited due to damage
                 if (systemStatus.dataRange < 100 || systemStatus.accuracy < 100) {
@@ -195,7 +196,7 @@ export class GalacticChart {
                 }
             } else {
                 // Fallback to raw data if no chart system (shouldn't happen)
-                console.log('🗺️ No Galactic Chart system installed - using basic navigation data');
+debug('NAVIGATION', 'No Galactic Chart system installed - using basic navigation data');
                 this.universe = rawData;
             }
             
@@ -210,7 +211,7 @@ export class GalacticChart {
             const solarSystemManager = this.viewManager.getSolarSystemManager();
             
             // No longer share universe data - we use API for system generation
-            console.log('Universe data loaded:', {
+            debug('STAR_CHARTS', 'Universe data loaded:', {
                 universeSize: this.universe.length,
                 processedBySystems: !!chartSystem,
                 firstSystem: this.universe[0]?.star_name
@@ -466,18 +467,18 @@ export class GalacticChart {
 
         if (probeButton && !isCurrentSector) {
             probeButton.addEventListener('click', () => {
-                console.log('Probe initiated for system:', system.star_name);
+debug('UTILITY', 'Probe initiated for system:', system.star_name);
                 // TODO: Implement probe functionality
             });
         }
 
         if (warpButton && !isCurrentSector) {
             warpButton.addEventListener('click', () => {
-                console.log(`🚀 WARP BUTTON CLICKED: Starting warp validation...`);
+debug('UTILITY', `🚀 WARP BUTTON CLICKED: Starting warp validation...`);
                 
                 // Check if ship is docked
                 if (this.viewManager.starfieldManager.isDocked) {
-                    console.log(`🚀 WARP BLOCKED: Ship is docked`);
+debug('UTILITY', `🚀 WARP BLOCKED: Ship is docked`);
                     this.viewManager.warpFeedback.showWarning(
                         'Cannot Warp While Docked',
                         'You must launch from the planet or moon before engaging warp drive.',
@@ -493,10 +494,10 @@ export class GalacticChart {
                 const ship = this.viewManager.getShip();
                 const warpDriveSystem = ship ? ship.systems.get('warp_drive') : null;
                 
-                console.log(`🚀 WARP DEBUG: Ship exists: ${!!ship}, WarpDrive system exists: ${!!warpDriveSystem}`);
+debug('INSPECTION', `🚀 WARP DEBUG: Ship exists: ${!!ship}, WarpDrive system exists: ${!!warpDriveSystem}`);
                 
                 if (!warpDriveSystem) {
-                    console.log(`🚀 WARP BLOCKED: No warp drive system found`);
+debug('UTILITY', `🚀 WARP BLOCKED: No warp drive system found`);
                     this.viewManager.warpFeedback.showWarning(
                         'Warp Drive Not Installed',
                         'This ship requires a warp drive system to travel between star systems. Install a warp drive card to enable interstellar travel.',
@@ -509,7 +510,7 @@ export class GalacticChart {
                 }
                 
                 if (!warpDriveSystem.isOperational()) {
-                    console.log(`🚀 WARP BLOCKED: Warp drive system not operational`);
+debug('UTILITY', `🚀 WARP BLOCKED: Warp drive system not operational`);
                     this.viewManager.warpFeedback.showWarning(
                         'Warp Drive Damaged',
                         'The warp drive system is damaged and requires repair before interstellar travel is possible.',
@@ -526,16 +527,16 @@ export class GalacticChart {
                     let hasWarpCards = false;
                     try {
                         // Add debug logging for warp drive validation
-                        console.log(`🚀 WARP DEBUG: Checking warp drive cards for system...`);
+debug('UI', `🚀 WARP DEBUG: Checking warp drive cards for system...`);
                         
                         // Check what cards are actually installed
                         if (ship.cardSystemIntegration && ship.cardSystemIntegration.installedCards) {
                             const installedCards = Array.from(ship.cardSystemIntegration.installedCards.values());
-                            console.log(`🚀 WARP DEBUG: Installed cards:`, installedCards.map(card => `${card.cardType} (L${card.level})`));
+debug('UI', `🚀 WARP DEBUG: Installed cards:`, installedCards.map(card => `${card.cardType} (L${card.level})`));
                             
                             // Check specifically for warp drive cards
                             const warpCards = installedCards.filter(card => card.cardType === 'warp_drive');
-                            console.log(`🚀 WARP DEBUG: Warp drive cards found:`, warpCards.length, warpCards);
+debug('UI', `🚀 WARP DEBUG: Warp drive cards found:`, warpCards.length, warpCards);
                         }
                         
                         if (ship.debugSystemCards) {
@@ -549,14 +550,14 @@ export class GalacticChart {
                             hasWarpCards = cardCheck.hasCards;
                         }
                         
-                        console.log(`🚀 WARP DEBUG: Card check result: hasWarpCards=${hasWarpCards}, cardCheck=`, cardCheck);
+debug('UI', `🚀 WARP DEBUG: Card check result: hasWarpCards=${hasWarpCards}, cardCheck=`, cardCheck);
                     } catch (error) {
                         console.warn('Warp drive card check failed:', error);
                         hasWarpCards = false;
                     }
                     
                     if (!hasWarpCards) {
-                        console.log(`🚀 WARP BLOCKED: No warp drive cards found`);
+debug('UI', `🚀 WARP BLOCKED: No warp drive cards found`);
                         this.viewManager.warpFeedback.showWarning(
                             'Warp Drive Cards Missing',
                             'Warp drive cards are required for interstellar travel. Install warp drive cards in your ship to enable this functionality.',
@@ -572,10 +573,10 @@ export class GalacticChart {
                 const currentEnergy = this.viewManager.getShipEnergy();
                 const requiredEnergy = warpEnergy;
                 
-                console.log(`🚀 WARP DEBUG: Energy check - Required: ${requiredEnergy}, Available: ${currentEnergy}`);
+debug('AI', `🚀 WARP DEBUG: Energy check - Required: ${requiredEnergy}, Available: ${currentEnergy}`);
                 
                 if (requiredEnergy > currentEnergy) {
-                    console.log(`🚀 WARP BLOCKED: Insufficient energy`);
+debug('UTILITY', `🚀 WARP BLOCKED: Insufficient energy`);
                     this.viewManager.warpFeedback.showWarning(
                         'Insufficient Energy',
                         `Required: ${requiredEnergy.toFixed(2)} energy units\n\nAvailable: ${currentEnergy.toFixed(2)} energy units`,
@@ -585,8 +586,8 @@ export class GalacticChart {
                         }
                     );
                 } else {
-                    console.log(`🚀 WARP SUCCESS: All validations passed, initiating warp to:`, coordinates);
-                    console.log('Warp initiated to system:', coordinates);
+debug('UTILITY', `🚀 WARP SUCCESS: All validations passed, initiating warp to:`, coordinates);
+debug('UTILITY', 'Warp initiated to system:', coordinates);
                     // Hide the galactic chart
                     this.hide();
                     // Initiate the warp process
@@ -603,12 +604,12 @@ export class GalacticChart {
             const row = systemIndex.charCodeAt(0) - 65; // Convert A->0, B->1, etc.
             const col = parseInt(systemIndex.slice(1));
             systemIndex = row * 9 + col;
-            console.log('Converted sector', systemIndex, 'to index:', systemIndex);
+debug('UTILITY', 'Converted sector', systemIndex, 'to index:', systemIndex);
         }
 
         // Ensure grid is initialized
         if (!this.gridContainer.children.length) {
-            console.log('Grid not initialized, initializing now');
+debug('UTILITY', 'Grid not initialized, initializing now');
             this.initializeGrid();
         }
 
@@ -627,7 +628,7 @@ export class GalacticChart {
             const cells = this.gridContainer.querySelectorAll('.grid-cell');
             if (cells[systemIndex]) {
                 cells[systemIndex].classList.add('ship-location');
-                console.log('Updated ship location to index:', systemIndex);
+debug('UTILITY', 'Updated ship location to index:', systemIndex);
             } else {
                 console.warn('Grid cell not found for index:', systemIndex);
             }

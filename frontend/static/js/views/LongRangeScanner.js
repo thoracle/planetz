@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { VIEW_TYPES } from './ViewManager.js';
+import { debug } from '../debug.js';
 
 export class LongRangeScanner {
     constructor(viewManager) {
@@ -244,7 +245,7 @@ export class LongRangeScanner {
             // Add small delay to prevent double-click interference
             setTimeout(() => {
                 const clickedElement = document.elementFromPoint(e.clientX, e.clientY);
-                console.log(`🔍 LRS Click: element=${clickedElement.tagName}, classes=[${clickedElement.className}], zoomLevel=${this.currentZoomLevel}`);
+debug('UTILITY', `🔍 LRS Click: element=${clickedElement.tagName}, classes=[${clickedElement.className}], zoomLevel=${this.currentZoomLevel}`);
                 
                 // If clicked element is the SVG itself or a non-interactive element, zoom out
                 const isInteractiveElement = clickedElement !== svg && (
@@ -258,7 +259,7 @@ export class LongRangeScanner {
                 );
                 
                 if (!isInteractiveElement) {
-                console.log(`🔍 LRS: Empty space clicked, zooming out from level ${this.currentZoomLevel}`);
+debug('UTILITY', `🔍 LRS: Empty space clicked, zooming out from level ${this.currentZoomLevel}`);
                 
                 // More aggressive approach: If we get two clicks at non-super-zoom levels, force super zoom
                 if (!this.lastZoomClickTime) this.lastZoomClickTime = 0;
@@ -270,13 +271,13 @@ export class LongRangeScanner {
                     this.currentZoomLevel = 0.4;
                     this.currentCenter = { x: 0, y: 0 };
                     this.lastClickedBody = null;
-                    console.log(`🔍 LRS: FORCE SUPER ZOOM (double click) to level ${this.currentZoomLevel} to show beacon ring`);
-                    console.log(`🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
+debug('UTILITY', `🔍 LRS: FORCE SUPER ZOOM (double click) to level ${this.currentZoomLevel} to show beacon ring`);
+debug('UTILITY', `🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
                     this.updateScannerMap();
                 } else if (this.currentZoomLevel > 1) {
                     // Step down zoom level by 1
                     this.currentZoomLevel--;
-                    console.log(`🔍 LRS: Zoomed to level ${this.currentZoomLevel}`);
+debug('UTILITY', `🔍 LRS: Zoomed to level ${this.currentZoomLevel}`);
                     
                     // If we're zooming back to overview, reset center
                     if (this.currentZoomLevel === 1) {
@@ -290,19 +291,19 @@ export class LongRangeScanner {
                     this.currentZoomLevel = 0.4; // Zoom out to 40% to show beacons at radius 350 (viewBox becomes 2500x2500)
                     this.currentCenter = { x: 0, y: 0 };
                     this.lastClickedBody = null;
-                    console.log(`🔍 LRS: Super zoomed out to level ${this.currentZoomLevel} to show beacon ring`);
-                    console.log(`🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
+debug('UTILITY', `🔍 LRS: Super zoomed out to level ${this.currentZoomLevel} to show beacon ring`);
+debug('UTILITY', `🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
                     this.updateScannerMap();
                 } else if (this.currentZoomLevel < 1) {
                     // Already at super zoom level, reset back to normal
                     this.currentZoomLevel = 1;
                     this.currentCenter = { x: 0, y: 0 };
                     this.lastClickedBody = null;
-                    console.log(`🔍 LRS: Reset zoom back to level ${this.currentZoomLevel}`);
+debug('UTILITY', `🔍 LRS: Reset zoom back to level ${this.currentZoomLevel}`);
                     this.updateScannerMap();
                 } else {
                     // Fallback case
-                    console.log(`🔍 LRS: Fallback - forcing super zoom from level ${this.currentZoomLevel}`);
+debug('UTILITY', `🔍 LRS: Fallback - forcing super zoom from level ${this.currentZoomLevel}`);
                     this.currentZoomLevel = 0.4;
                     this.currentCenter = { x: 0, y: 0 };
                     this.lastClickedBody = null;
@@ -311,7 +312,7 @@ export class LongRangeScanner {
                 
                 this.lastZoomClickTime = now;
             } else {
-                console.log(`🔍 LRS: Clicked interactive element, not zooming`);
+debug('UTILITY', `🔍 LRS: Clicked interactive element, not zooming`);
             }
             }, 50); // Small delay to let other events settle
         });
@@ -324,8 +325,8 @@ export class LongRangeScanner {
             this.currentZoomLevel = 0.4;
             this.currentCenter = { x: 0, y: 0 };
             this.lastClickedBody = null;
-            console.log(`🔍 LRS: DOUBLE-CLICK SUPER ZOOM to level ${this.currentZoomLevel} to show beacon ring`);
-            console.log(`🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
+debug('UTILITY', `🔍 LRS: DOUBLE-CLICK SUPER ZOOM to level ${this.currentZoomLevel} to show beacon ring`);
+debug('UTILITY', `🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
             this.updateScannerMap();
         });
         
@@ -336,8 +337,8 @@ export class LongRangeScanner {
                 this.currentZoomLevel = 0.4;
                 this.currentCenter = { x: 0, y: 0 };
                 this.lastClickedBody = null;
-                console.log(`🔍 LRS: KEYBOARD SUPER ZOOM (B key) to level ${this.currentZoomLevel} to show beacon ring`);
-                console.log(`🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
+debug('UTILITY', `🔍 LRS: KEYBOARD SUPER ZOOM (B key) to level ${this.currentZoomLevel} to show beacon ring`);
+debug('UTILITY', `🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
                 this.updateScannerMap();
             }
         });
@@ -596,7 +597,7 @@ export class LongRangeScanner {
             // console.log(`🔍 Long Range Scanner: Found ${beacons.length} navigation beacons`);
             // console.log(`🔍 Long Range Scanner: Current viewBox - width: ${this.defaultViewBox.width}, height: ${this.defaultViewBox.height}, x: ${this.defaultViewBox.x}, y: ${this.defaultViewBox.y}`);
             if (!beacons || beacons.length === 0) {
-                console.log(`🔍 Long Range Scanner: No beacons to display - starfieldManager=${!!starfieldManager}, navigationBeacons=${!!starfieldManager?.navigationBeacons}`);
+debug('NAVIGATION', `🔍 Long Range Scanner: No beacons to display - starfieldManager=${!!starfieldManager}, navigationBeacons=${!!starfieldManager?.navigationBeacons}`);
                 return;
             }
             
@@ -622,7 +623,7 @@ export class LongRangeScanner {
 
             beacons.forEach((beacon, idx) => {
                 if (!beacon || !beacon.position) {
-                    console.log(`🔍 Beacon ${idx + 1}: Invalid beacon or position`);
+debug('UTILITY', `🔍 Beacon ${idx + 1}: Invalid beacon or position`);
                     return;
                 }
                 const pos = beacon.position;
@@ -758,7 +759,7 @@ export class LongRangeScanner {
     }
 
     showCelestialBodyDetails(bodyName, setAsTarget = true) {
-        console.log(`🔍 LRS: showCelestialBodyDetails called - bodyName: ${bodyName}, setAsTarget: ${setAsTarget}`);
+debug('TARGETING', `🔍 LRS: showCelestialBodyDetails called - bodyName: ${bodyName}, setAsTarget: ${setAsTarget}`);
         
         const solarSystemManager = this.viewManager.getSolarSystemManager();
         if (!solarSystemManager) return;
@@ -831,7 +832,7 @@ export class LongRangeScanner {
 
         // If targeting computer is enabled and this is a user click, set this body as the target robustly
         const starfieldManager = this.viewManager.starfieldManager;
-        console.log(`🔍 LRS: Target setting check - setAsTarget: ${setAsTarget}, starfieldManager: ${!!starfieldManager}, targetComputerEnabled: ${starfieldManager?.targetComputerEnabled}`);
+debug('TARGETING', `🔍 LRS: Target setting check - setAsTarget: ${setAsTarget}, starfieldManager: ${!!starfieldManager}, targetComputerEnabled: ${starfieldManager?.targetComputerEnabled}`);
 
         if (setAsTarget && starfieldManager && starfieldManager.targetComputerEnabled) {
             this.setScannerTargetRobustly(bodyName, bodyInfo, targetBody);
@@ -998,11 +999,11 @@ export class LongRangeScanner {
             isFromScanner: tcm.isFromLongRangeScanner
         };
 
-        console.log(`🔍 LRS: Robust target setting for ${bodyName} - previous state:`, previousTargetState);
+debug('TARGETING', `🔍 LRS: Robust target setting for ${bodyName} - previous state:`, previousTargetState);
 
         // Step 2: Force a fresh target list update to ensure accuracy
         // This is safer than trying to preserve stale indices
-        console.log(`🔍 LRS: Forcing fresh target list update for robust synchronization`);
+debug('TARGETING', `🔍 LRS: Forcing fresh target list update for robust synchronization`);
         tcm.updateTargetList();
 
         // Step 3: Find the target in the updated list
@@ -1014,7 +1015,7 @@ export class LongRangeScanner {
 
         // Step 4: If not found, create an out-of-range target
         if (targetIndex === -1) {
-            console.log(`🔍 LRS: Target ${bodyName} not in range - creating out-of-range entry`);
+debug('TARGETING', `🔍 LRS: Target ${bodyName} not in range - creating out-of-range entry`);
             const distance = starfieldManager.camera.position.distanceTo(targetBody.position);
             const outOfRangeTarget = {
                 name: bodyName,
@@ -1041,7 +1042,7 @@ export class LongRangeScanner {
 
         // Step 6: Set the target using the robust scanner method
         const targetData = tcm.targetObjects[targetIndex];
-        console.log(`🔍 LRS: Setting scanner target: ${targetData.name} at index ${targetIndex}`);
+debug('TARGETING', `🔍 LRS: Setting scanner target: ${targetData.name} at index ${targetIndex}`);
 
         try {
             // Use the TargetComputerManager's setTargetFromScanner method
@@ -1057,7 +1058,7 @@ export class LongRangeScanner {
                 // Use a more reliable timing approach
                 const updateUI = () => {
                     tcm.updateTargetDisplay();
-                    console.log(`🔍 LRS: UI update completed for ${targetData.name}`);
+debug('TARGETING', `🔍 LRS: UI update completed for ${targetData.name}`);
                 };
 
                 // Try immediate update first
@@ -1072,14 +1073,14 @@ export class LongRangeScanner {
                 starfieldManager.updateTargetOutline(targetData.object, 0);
             }
 
-            console.log(`🔍 LRS: Robust target setting completed successfully for ${bodyName}`);
+debug('TARGETING', `🔍 LRS: Robust target setting completed successfully for ${bodyName}`);
 
         } catch (error) {
             console.error(`🔍 LRS: Error during robust target setting:`, error);
 
             // Attempt recovery by restoring previous state if possible
             if (previousTargetState.name) {
-                console.log(`🔍 LRS: Attempting to restore previous target state`);
+debug('TARGETING', `🔍 LRS: Attempting to restore previous target state`);
                 const restoreIndex = tcm.targetObjects.findIndex(t => t.name === previousTargetState.name);
                 if (restoreIndex !== -1) {
                     tcm.targetIndex = restoreIndex;

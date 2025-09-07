@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * 3D Proximity Detector Test
  * 
@@ -6,7 +8,7 @@
  */
 
 function test3DProximityDetector() {
-    console.log('🎯 Testing 3D Perspective Proximity Detector...');
+debug('UTILITY', 'Testing 3D Perspective Proximity Detector...');
     
     // Check if game is loaded
     if (!window.starfieldManager) {
@@ -23,80 +25,80 @@ function test3DProximityDetector() {
     const detector = window.starfieldManager.proximityDetector3D;
     const ship = window.starfieldManager.viewManager?.getShip();
     
-    console.log('📋 3D Proximity Detector Test Results:');
-    console.log(`  ✓ Game loaded: ${window.starfieldManager ? 'YES' : 'NO'}`);
-    console.log(`  ✓ 3D Proximity Detector: ${detector ? 'YES' : 'NO'}`);
-    console.log(`  ✓ Ship available: ${ship ? 'YES' : 'NO'}`);
+debug('UTILITY', '📋 3D Proximity Detector Test Results:');
+debug('UTILITY', `  ✓ Game loaded: ${window.starfieldManager ? 'YES' : 'NO'}`);
+debug('UTILITY', `  ✓ 3D Proximity Detector: ${detector ? 'YES' : 'NO'}`);
+debug('AI', `  ✓ Ship available: ${ship ? 'YES' : 'NO'}`);
     
     if (ship) {
         const hasRadarCards = ship.hasSystemCardsSync && ship.hasSystemCardsSync('radar');
-        console.log(`  ✓ Has proximity detector cards: ${hasRadarCards ? 'YES' : 'NO'}`);
+debug('UI', `  ✓ Has proximity detector cards: ${hasRadarCards ? 'YES' : 'NO'}`);
         
         const radarSystem = ship.getSystem && ship.getSystem('radar');
-        console.log(`  ✓ Proximity detector system: ${radarSystem ? 'YES' : 'NO'}`);
+debug('UTILITY', `  ✓ Proximity detector system: ${radarSystem ? 'YES' : 'NO'}`);
         
         if (radarSystem) {
-            console.log(`  ✓ System level: ${radarSystem.level}`);
-            console.log(`  ✓ System range: ${(radarSystem.getRange() / 1000).toFixed(0)}km`);
+debug('UTILITY', `  ✓ System level: ${radarSystem.level}`);
+debug('UTILITY', `  ✓ System range: ${(radarSystem.getRange() / 1000).toFixed(0)}km`);
         }
     }
     
     // Test 3D configuration
     if (detector) {
-        console.log('🎮 3D Configuration:');
-        console.log(`  • Grid size: ${detector.config.gridSize}x${detector.config.gridSize}`);
-        console.log(`  • Grid tilt: ${detector.config.gridTilt}°`);
-        console.log(`  • Detection range: ${(detector.config.detectionRange / 1000).toFixed(0)}km`);
-        console.log(`  • Altitude range: ±${(detector.config.altitudeRange / 1000).toFixed(0)}km`);
-        console.log(`  • Update frequency: ${detector.config.updateFrequency}Hz`);
-        console.log(`  • Screen size: ${(detector.config.screenWidth * 100).toFixed(0)}% x ${(detector.config.screenHeight * 100).toFixed(0)}%`);
+debug('UTILITY', '🎮 3D Configuration:');
+debug('UTILITY', `  • Grid size: ${detector.config.gridSize}x${detector.config.gridSize}`);
+debug('UTILITY', `  • Grid tilt: ${detector.config.gridTilt}°`);
+debug('UTILITY', `  • Detection range: ${(detector.config.detectionRange / 1000).toFixed(0)}km`);
+debug('UTILITY', `  • Altitude range: ±${(detector.config.altitudeRange / 1000).toFixed(0)}km`);
+debug('UTILITY', `  • Update frequency: ${detector.config.updateFrequency}Hz`);
+debug('UTILITY', `  • Screen size: ${(detector.config.screenWidth * 100).toFixed(0)}% x ${(detector.config.screenHeight * 100).toFixed(0)}%`);
         
         // Test 3D scene components
-        console.log('🎯 3D Scene Components:');
-        console.log(`  • Scene: ${detector.scene ? 'YES' : 'NO'}`);
-        console.log(`  • Camera: ${detector.camera ? 'YES' : 'NO'}`);
-        console.log(`  • Renderer: ${detector.renderer ? 'YES' : 'NO'}`);
-        console.log(`  • Grid mesh: ${detector.gridMesh ? 'YES' : 'NO'}`);
-        console.log(`  • Player indicator: ${detector.playerIndicator ? 'YES' : 'NO'}`);
+debug('UTILITY', '3D Scene Components:');
+debug('UTILITY', `  • Scene: ${detector.scene ? 'YES' : 'NO'}`);
+debug('UTILITY', `  • Camera: ${detector.camera ? 'YES' : 'NO'}`);
+debug('RENDER', `  • Renderer: ${detector.renderer ? 'YES' : 'NO'}`);
+debug('UTILITY', `  • Grid mesh: ${detector.gridMesh ? 'YES' : 'NO'}`);
+debug('UTILITY', `  • Player indicator: ${detector.playerIndicator ? 'YES' : 'NO'}`);
         
         if (detector.camera) {
-            console.log(`  • Camera FOV: ${detector.camera.fov}°`);
-            console.log(`  • Camera position: (${detector.camera.position.x.toFixed(1)}, ${detector.camera.position.y.toFixed(1)}, ${detector.camera.position.z.toFixed(1)})`);
+debug('UTILITY', `  • Camera FOV: ${detector.camera.fov}°`);
+debug('UTILITY', `  • Camera position: (${detector.camera.position.x.toFixed(1)}, ${detector.camera.position.y.toFixed(1)}, ${detector.camera.position.z.toFixed(1)})`);
         }
         
         // Test visibility toggle
-        console.log('🔄 Testing visibility toggle...');
+debug('UTILITY', '🔄 Testing visibility toggle...');
         const wasVisible = detector.isVisible;
         const toggleResult = detector.toggle();
         
         if (toggleResult) {
-            console.log(`  ✓ Toggle successful: ${wasVisible ? 'Hidden' : 'Shown'}`);
+debug('UTILITY', `  ✓ Toggle successful: ${wasVisible ? 'Hidden' : 'Shown'}`);
             
             // Toggle back if we changed it
             if (detector.isVisible !== wasVisible) {
                 setTimeout(() => {
                     detector.toggle();
-                    console.log(`  ✓ Restored original state: ${wasVisible ? 'Shown' : 'Hidden'}`);
+debug('UTILITY', `  ✓ Restored original state: ${wasVisible ? 'Shown' : 'Hidden'}`);
                 }, 1000);
             }
         } else {
-            console.log(`  ❌ Toggle failed - likely no proximity detector cards installed`);
+debug('P1', `  ❌ Toggle failed - likely no proximity detector cards installed`);
         }
     }
     
-    console.log('🎮 Manual test commands:');
-    console.log('  • Press P key to toggle 3D proximity detector');
-    console.log('  • Or run: window.starfieldManager.toggleProximityDetector()');
-    console.log('  • Test with objects: Fly near planets/stations to see blips');
+debug('UTILITY', '🎮 Manual test commands:');
+debug('UTILITY', '  • Press P key to toggle 3D proximity detector');
+debug('UTILITY', '  • Or run: window.starfieldManager.toggleProximityDetector()');
+debug('UTILITY', '  • Test with objects: Fly near planets/stations to see blips');
     
-    console.log('✅ 3D Proximity Detector test completed!');
-    console.log('🎯 Features to verify:');
-    console.log('  • Tilted 3D perspective grid (35° angle)');
-    console.log('  • Grid rotates with ship orientation');
-    console.log('  • Vertical altitude lines for objects');
-    console.log('  • Color-coded blips (Red=Enemy, Green=Friendly, Yellow=Neutral)');
-    console.log('  • Elite (1984) retro holographic aesthetic');
-    console.log('  • Lower center screen position');
+debug('UTILITY', '✅ 3D Proximity Detector test completed!');
+debug('UTILITY', 'Features to verify:');
+debug('UTILITY', '  • Tilted 3D perspective grid (35° angle)');
+debug('UTILITY', '  • Grid rotates with ship orientation');
+debug('UTILITY', '  • Vertical altitude lines for objects');
+debug('UTILITY', '  • Color-coded blips (Red=Enemy, Green=Friendly, Yellow=Neutral)');
+debug('UTILITY', '  • Elite (1984) retro holographic aesthetic');
+debug('UTILITY', '  • Lower center screen position');
     
     return true;
 }
@@ -104,7 +106,7 @@ function test3DProximityDetector() {
 // Export for manual testing
 if (typeof window !== 'undefined') {
     window.test3DProximityDetector = test3DProximityDetector;
-    console.log('🎯 test3DProximityDetector() function is now available in the console');
+debug('AI', 'test3DProximityDetector() function is now available in the console');
 }
 
 // Auto-run test if called directly
@@ -114,13 +116,13 @@ if (typeof window !== 'undefined') {
         if (window.starfieldManager) {
             test3DProximityDetector();
         } else {
-            console.log('⏳ Waiting for game to initialize...');
+debug('AI', '⏳ Waiting for game to initialize...');
             // Try again in a few seconds
             setTimeout(() => {
                 if (window.starfieldManager) {
                     test3DProximityDetector();
                 } else {
-                    console.log('❌ Game not loaded after 10 seconds. Load the game first.');
+debug('UTILITY', '❌ Game not loaded after 10 seconds. Load the game first.');
                 }
             }, 5000);
         }

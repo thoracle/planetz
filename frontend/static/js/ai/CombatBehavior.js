@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * CombatBehavior.js
  * 
@@ -69,7 +71,7 @@ export class CombatBehavior {
             averageEngagementTime: 0
         };
         
-        console.log(`⚔️ CombatBehavior initialized for ${this.ship.shipType} with profile: ${this.combatProfile.name}`);
+debug('COMBAT', `⚔️ CombatBehavior initialized for ${this.ship.shipType} with profile: ${this.combatProfile.name}`);
     }
     
     /**
@@ -279,7 +281,7 @@ export class CombatBehavior {
         // Reset maneuvers on state change
         this.maneuverState = 'none';
         
-        console.log(`⚔️ ${this.ship.shipType} combat state: ${oldState} → ${newState}`);
+debug('COMBAT', `⚔️ ${this.ship.shipType} combat state: ${oldState} → ${newState}`);
     }
     
     /**
@@ -623,7 +625,7 @@ export class CombatBehavior {
      */
     fireWeapon(weapon) {
         // This would integrate with the game's weapon effects system
-        console.log(`💥 ${this.ship.shipType} firing ${weapon.type} at ${this.currentTarget.shipType || 'target'}`);
+debug('TARGETING', `💥 ${this.ship.shipType} firing ${weapon.type} at ${this.currentTarget.shipType || 'target'}`);
         
         // Consume energy
         this.ship.currentEnergy -= weapon.energyCost;

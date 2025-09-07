@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * CardInventoryUI class - Drag-and-drop interface for card inventory management
  * 
@@ -157,7 +159,7 @@ export default class CardInventoryUI {
      * Initialize audio components for upgrade sounds
      */
     initializeAudio() {
-        console.log('🔊 Initializing upgrade audio...');
+debug('UTILITY', '🔊 Initializing upgrade audio...');
         
         try {
             // Initialize THREE.js audio context if not already available
@@ -212,7 +214,7 @@ export default class CardInventoryUI {
      * Initialize fallback HTML5 audio
      */
     initializeFallbackAudio() {
-        console.log('🔄 Initializing fallback HTML5 audio with path detection...');
+debug('NAVIGATION', '🔄 Initializing fallback HTML5 audio with path detection...');
         try {
             // Use static audio directory path
             this.fallbackAudio = new Audio('static/audio/blurb.mp3');
@@ -232,7 +234,7 @@ export default class CardInventoryUI {
         this.setupUserInteractionTracking();
             
             this.fallbackAudio.addEventListener('canplaythrough', () => {
-                console.log('✅ Fallback audio loaded successfully');
+debug('UTILITY', '✅ Fallback audio loaded successfully');
                 this.fallbackAudioLoaded = true;
                 
                 // Pre-create audio pool for better rapid playback
@@ -254,14 +256,14 @@ export default class CardInventoryUI {
      * Create or recreate the audio pool
      */
     createAudioPool() {
-        console.log('🔧 Creating audio pool...');
+debug('UI', 'Creating audio pool...');
         this.audioPool = [];
         this.audioElementUseCount = [];
         
         for (let i = 0; i < this.audioPoolSize; i++) {
             this.createAudioElement(i);
         }
-        console.log(`✅ Audio pool created with ${this.audioPool.length} elements`);
+debug('UI', `✅ Audio pool created with ${this.audioPool.length} elements`);
     }
 
     /**
@@ -277,11 +279,11 @@ export default class CardInventoryUI {
         
         // Add event listeners for debugging and health monitoring
         audioClone.addEventListener('play', () => {
-            console.log(`🎵 Audio ${index} started playing (use #${this.audioElementUseCount[index] + 1})`);
+debug('UI', `🎵 Audio ${index} started playing (use #${this.audioElementUseCount[index] + 1})`);
         });
         
         audioClone.addEventListener('ended', () => {
-            console.log(`🎵 Audio ${index} finished playing`);
+debug('UI', `🎵 Audio ${index} finished playing`);
         });
         
         audioClone.addEventListener('error', (e) => {
@@ -300,14 +302,14 @@ export default class CardInventoryUI {
         });
         
         this.audioPool[index] = audioClone;
-        console.log(`🔧 Created audio element ${index} (dev path)`);
+debug('NAVIGATION', `🔧 Created audio element ${index} (dev path)`);
     }
 
     /**
      * Recreate a specific audio element that may be corrupted
      */
     recreateAudioElement(index) {
-        console.log(`🔄 Recreating potentially corrupted audio element ${index}`);
+debug('UI', `🔄 Recreating potentially corrupted audio element ${index}`);
         
         // Clean up old element
         if (this.audioPool[index]) {
@@ -329,7 +331,7 @@ export default class CardInventoryUI {
         // More aggressive corruption detection - recreate after fewer uses
         const maxUsesThreshold = Math.max(2, this.maxUsesPerElement / 2); // Use half the max, minimum 2
         if (useCount >= maxUsesThreshold) {
-            console.log(`🔄 Audio element ${index} reached threshold (${useCount}/${maxUsesThreshold}), recreating...`);
+debug('UI', `🔄 Audio element ${index} reached threshold (${useCount}/${maxUsesThreshold}), recreating...`);
             this.recreateAudioElement(index);
             return false; // Don't use this element this time
         }
@@ -391,18 +393,18 @@ export default class CardInventoryUI {
         const starfieldAudioManager = window.starfieldAudioManager;
         if (starfieldAudioManager) {
             // Use the global user interaction detection
-            console.log('🔗 Using global StarfieldAudioManager for user interaction detection');
+debug('UI', 'Using global StarfieldAudioManager for user interaction detection');
             
             // Set up a periodic check to sync with the global state
             const checkInteractionState = () => {
                 if (!this.userHasInteracted && starfieldAudioManager.hasUserInteracted()) {
                     this.userHasInteracted = true;
-                    console.log('👆 User interaction detected via StarfieldAudioManager');
+debug('UI', 'User interaction detected via StarfieldAudioManager');
                     
                     // Resume AudioContext if suspended
                     if (this.audioListener && this.audioListener.context && this.audioListener.context.state === 'suspended') {
                         this.audioListener.context.resume().then(() => {
-                            console.log('🔊 AudioContext resumed after user interaction');
+debug('UI', '🔊 AudioContext resumed after user interaction');
                         });
                     }
                 }
@@ -413,17 +415,17 @@ export default class CardInventoryUI {
             this.interactionCheckInterval = setInterval(checkInteractionState, 100);
         } else {
             // Fallback to local user interaction detection if StarfieldAudioManager not available
-            console.log('⚠️ StarfieldAudioManager not available, using local user interaction detection');
+debug('AI', 'StarfieldAudioManager not available, using local user interaction detection');
             
             const trackInteraction = () => {
                 if (!this.userHasInteracted) {
                     this.userHasInteracted = true;
-                    console.log('👆 User interaction detected - audio should work now');
+debug('UI', 'User interaction detected - audio should work now');
                     
                     // Resume AudioContext if suspended
                     if (this.audioListener && this.audioListener.context && this.audioListener.context.state === 'suspended') {
                         this.audioListener.context.resume().then(() => {
-                            console.log('🔊 AudioContext resumed after user interaction');
+debug('UI', '🔊 AudioContext resumed after user interaction');
                         });
                     }
                 }
@@ -450,17 +452,17 @@ export default class CardInventoryUI {
      * Play upgrade success sound with improved reliability
      */
     playUpgradeSound() {
-        console.log('🎵 Attempting to play upgrade sound...');
+debug('UI', '🎵 Attempting to play upgrade sound...');
         
         // Check user interaction for browser policies - only show warning once per session
         if (!this.userHasInteracted) {
             // Check if StarfieldAudioManager has already shown the warning
             const starfieldAudioManager = window.starfieldAudioManager;
             if (starfieldAudioManager && !starfieldAudioManager.hasWarningBeenShown()) {
-                console.warn('⚠️ No user interaction detected - sound may not play due to browser policy');
+                debug('UTILITY', 'No user interaction detected - sound may not play due to browser policy');
                 starfieldAudioManager.markWarningShown();
             } else if (!starfieldAudioManager && !this.audioWarningShown) {
-                console.warn('⚠️ No user interaction detected - sound may not play due to browser policy');
+                debug('UTILITY', 'No user interaction detected - sound may not play due to browser policy');
                 this.audioWarningShown = true;
             }
         }
@@ -468,24 +470,24 @@ export default class CardInventoryUI {
         try {
             // Try THREE.js audio first
             if (this.upgradeSoundLoaded && this.upgradeSound && !this.upgradeSound.isPlaying) {
-                console.log('🎵 Playing THREE.js upgrade sound');
+debug('UI', '🎵 Playing THREE.js upgrade sound');
                 
                 // Ensure AudioContext is running before playing sounds
                 if (this.audioListener.context.state === 'suspended') {
                     this.audioListener.context.resume().then(() => {
                         this.upgradeSound.play();
-                        console.log('✅ Playing upgrade success sound (blurb.mp3) via THREE.js');
+debug('UI', '✅ Playing upgrade success sound (blurb.mp3) via THREE.js');
                     });
                 } else {
                     this.upgradeSound.play();
-                    console.log('✅ Playing upgrade success sound (blurb.mp3) via THREE.js');
+debug('UI', '✅ Playing upgrade success sound (blurb.mp3) via THREE.js');
                 }
                 return;
             }
             
             // Try fallback HTML5 audio with improved pooling and health checking
             if (this.fallbackAudioLoaded && this.audioPool && this.audioPool.length > 0) {
-                console.log('🎵 Playing fallback HTML5 upgrade sound');
+debug('UI', '🎵 Playing fallback HTML5 upgrade sound');
                 
                 // Get current pool index BEFORE incrementing
                 const originalPoolIndex = this.audioPoolIndex;
@@ -509,7 +511,7 @@ export default class CardInventoryUI {
                     // Update pool index for next use
                     this.audioPoolIndex = (currentPoolIndex + 1) % this.audioPool.length;
                     
-                    console.log(`🎵 Using audio pool slot ${currentPoolIndex} (next will be ${this.audioPoolIndex}) [use #${this.audioElementUseCount[currentPoolIndex]}]`);
+debug('UI', `🎵 Using audio pool slot ${currentPoolIndex} (next will be ${this.audioPoolIndex}) [use #${this.audioElementUseCount[currentPoolIndex]}]`);
                     
                     // Ensure audio exists and is ready
                     if (!audioToPlay) {
@@ -538,7 +540,7 @@ export default class CardInventoryUI {
                         
                         // Double-check volume before playing
                         if (audioToPlay.volume !== 0.7) {
-                            console.log(`🔧 Resetting audio ${currentPoolIndex} volume from ${audioToPlay.volume} to 0.7`);
+debug('UI', `🔧 Resetting audio ${currentPoolIndex} volume from ${audioToPlay.volume} to 0.7`);
                             audioToPlay.volume = 0.7;
                         }
                         
@@ -574,7 +576,7 @@ export default class CardInventoryUI {
                                 // Mark this element for recreation and try next
                                 this.recreateAudioElement(currentPoolIndex);
                                 if (attemptsRemaining > 1) {
-                                    console.log(`🔄 Trying next audio element...`);
+debug('UI', `🔄 Trying next audio element...`);
                                     currentPoolIndex = (currentPoolIndex + 1) % this.audioPool.length;
                                     attemptsRemaining--;
                                     // Recursive call to try next element
@@ -592,7 +594,7 @@ export default class CardInventoryUI {
                         audioToPlay.addEventListener('canplaythrough', () => {
                             audioToPlay.currentTime = 0;
                             audioToPlay.play().then(() => {
-                                console.log(`✅ Audio pool ${currentPoolIndex} played after loading`);
+debug('UTILITY', `✅ Audio pool ${currentPoolIndex} played after loading`);
                             }).catch(err => {
                                 console.error(`❌ Audio pool ${currentPoolIndex} play failed after loading:`, err);
                                 this.recreateAudioElement(currentPoolIndex);
@@ -611,7 +613,7 @@ export default class CardInventoryUI {
             
             // Fallback to original method if pool isn't available yet
             if (this.fallbackAudioLoaded && this.fallbackAudio) {
-                console.log('🎵 Playing fallback HTML5 upgrade sound (original method)');
+debug('UI', '🎵 Playing fallback HTML5 upgrade sound (original method)');
                 this.playOriginalFallbackAudio();
                 return;
             }
@@ -635,7 +637,7 @@ export default class CardInventoryUI {
             const playPromise = this.fallbackAudio.play();
             if (playPromise !== undefined) {
                 playPromise.then(() => {
-                    console.log('✅ Playing upgrade success sound (blurb.mp3) via HTML5 audio (original)');
+debug('UI', '✅ Playing upgrade success sound (blurb.mp3) via HTML5 audio (original)');
                 }).catch((error) => {
                     console.error('❌ Original HTML5 audio play failed:', error);
                     this.tryAlternativeAudioPlayback();
@@ -651,7 +653,7 @@ export default class CardInventoryUI {
      * Try alternative audio playback methods
      */
     tryAlternativeAudioPlayback() {
-        console.log('🔄 Trying alternative audio playback with path fallback...');
+debug('NAVIGATION', '🔄 Trying alternative audio playback with path fallback...');
         
         try {
             // Method 1: Create fresh Audio instance
@@ -663,7 +665,7 @@ export default class CardInventoryUI {
                 const playPromise = immediateAudio.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
-                        console.log('✅ Emergency audio playback successful');
+debug('UI', '✅ Emergency audio playback successful');
                     }).catch(err => {
                         console.error('❌ Emergency audio playback failed:', err);
                         // Method 2: Try Web Audio API if available
@@ -683,7 +685,7 @@ export default class CardInventoryUI {
      */
     tryWebAudioPlayback() {
         if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
-            console.log('🔊 Trying Web Audio API with path fallback...');
+debug('NAVIGATION', '🔊 Trying Web Audio API with path fallback...');
             
             try {
                 const AudioCtx = AudioContext || webkitAudioContext;
@@ -704,7 +706,7 @@ export default class CardInventoryUI {
                         gainNode.connect(audioContext.destination);
                         
                         source.start();
-                        console.log('✅ Web Audio API playback successful');
+debug('UI', '✅ Web Audio API playback successful');
                     })
                     .catch(error => {
                         console.error('❌ Web Audio API failed:', error);
@@ -833,8 +835,8 @@ export default class CardInventoryUI {
         // Show the shop
         this.shopContainer.style.display = 'block';
         
-        console.log('Card shop opened at:', dockedLocation);
-        console.log('Docking interface reference stored:', !!this.dockingInterface);
+debug('UI', 'Card shop opened at:', dockedLocation);
+debug('UI', 'Docking interface reference stored:', !!this.dockingInterface);
     }
 
     /**
@@ -861,10 +863,10 @@ export default class CardInventoryUI {
      * Hide the shop and return to station menu
      */
     hideShop() {
-        console.log('Hiding shop...');
-        console.log('Shop container exists:', !!this.shopContainer);
-        console.log('Docking interface exists:', !!this.dockingInterface);
-        console.log('Docked location exists:', !!this.dockedLocation);
+debug('UI', 'Hiding shop...');
+debug('AI', 'Shop container exists:', !!this.shopContainer);
+debug('UI', 'Docking interface exists:', !!this.dockingInterface);
+debug('UI', 'Docked location exists:', !!this.dockedLocation);
         
         if (this.shopContainer && this.shopContainer.parentNode) {
             this.shopContainer.parentNode.removeChild(this.shopContainer);
@@ -881,10 +883,10 @@ export default class CardInventoryUI {
         
         // Return to station menu
         if (this.dockingInterface) {
-            console.log('Attempting to show station menu...');
+debug('UI', 'Attempting to show station menu...');
             try {
                 this.dockingInterface.returnToStationMenu();
-                console.log('Successfully returned to station menu');
+debug('UI', 'Successfully returned to station menu');
             } catch (error) {
                 console.error('Error showing station menu:', error);
             }
@@ -892,7 +894,7 @@ export default class CardInventoryUI {
             console.error('Cannot return to station menu - missing docking interface reference');
         }
         
-        console.log('Card shop closed');
+debug('UI', 'Card shop closed');
     }
 
     /**
@@ -934,7 +936,7 @@ export default class CardInventoryUI {
      * Load test data for demonstration
      */
     loadTestData() {
-        console.log('Loading test data for card inventory...');
+debug('UI', 'Loading test data for card inventory...');
         
         // Generate some random cards for testing
         for (let i = 0; i < 15; i++) {
@@ -992,7 +994,7 @@ export default class CardInventoryUI {
         // Add MANY more impulse engines to allow upgrading to higher levels
         // Level 5 engine (max impulse 9) needs 20 cards total
         // So we'll add 25 cards to allow for some experimentation
-        console.log('Adding 25 impulse engine cards for high-level upgrades...');
+debug('UI', 'Adding 25 impulse engine cards for high-level upgrades...');
         for (let i = 0; i < 25; i++) {
             const impulseEngine = this.inventory.generateSpecificCard('impulse_engines', 'common');
             this.inventory.addCard(impulseEngine);
@@ -1016,20 +1018,20 @@ export default class CardInventoryUI {
         // Add multiple target computer cards for upgrading to Level 3+ for sub-targeting
         // Level 1→2 needs 3 cards, Level 2→3 needs 6 cards = 9 total for Level 3
         // Add 12 cards to allow for experimentation and future upgrades
-        console.log('Adding 12 target computer cards for sub-targeting upgrades...');
+debug('TARGETING', 'Adding 12 target computer cards for sub-targeting upgrades...');
         for (let i = 0; i < 12; i++) {
             const targetComputer = this.inventory.generateSpecificCard('target_computer', 'common');
             this.inventory.addCard(targetComputer);
         }
         
         // Add multiple radar cards for upgrading proximity detector system
-        console.log('Adding 10 radar cards for proximity detector upgrades...');
+debug('UI', 'Adding 10 radar cards for proximity detector upgrades...');
         for (let i = 0; i < 10; i++) {
             const basicRadar = this.inventory.generateSpecificCard('basic_radar', 'common');
             this.inventory.addCard(basicRadar);
         }
         
-        console.log('Test data loaded with high-level upgrade capabilities');
+debug('UTILITY', 'Test data loaded with high-level upgrade capabilities');
     }
 
     /**
@@ -1231,7 +1233,7 @@ export default class CardInventoryUI {
         
         slotsGrid.innerHTML = slots.join('');
         
-        console.log(`🔧 Rendered ${config.systemSlots} ship slots for ${config.name}`);
+debug('RENDER', `🔧 Rendered ${config.systemSlots} ship slots for ${config.name}`);
     }
     
     /**
@@ -1298,7 +1300,7 @@ export default class CardInventoryUI {
             }
         });
         
-        console.log('Drag and drop event listeners set up');
+debug('UI', 'Drag and drop event listeners set up');
     }
 
     /**
@@ -1327,7 +1329,7 @@ export default class CardInventoryUI {
         // Add visual feedback
         cardElement.classList.add('dragging');
         
-        console.log(`🚀 Started dragging ${cardType} (Lv.${dragData.level})`);
+debug('UI', `🚀 Started dragging ${cardType} (Lv.${dragData.level})`);
     }
 
     /**
@@ -1419,7 +1421,7 @@ export default class CardInventoryUI {
         // Check if slot is occupied
         const isEmpty = slot.querySelector('.empty-slot') !== null;
         if (!isEmpty) {
-            console.log(`❌ Cannot drop card - slot ${slotId} is already occupied`);
+debug('UI', `❌ Cannot drop card - slot ${slotId} is already occupied`);
             return false;
         }
         
@@ -1429,7 +1431,7 @@ export default class CardInventoryUI {
             
             // Validate card type compatibility with slot type
             if (!this.isCardCompatibleWithSlot(dragData.cardType, slotType)) {
-                console.log(`❌ Cannot drop ${dragData.cardType} card in ${slotType} slot - incompatible types`);
+debug('UI', `❌ Cannot drop ${dragData.cardType} card in ${slotType} slot - incompatible types`);
                 return false;
             }
             
@@ -1440,7 +1442,7 @@ export default class CardInventoryUI {
             // Install card in slot
             this.shipSlots.set(slotId, card);
             
-            console.log(`✅ Installed ${card.cardType} in ${slotType} slot ${slotId}`);
+debug('UI', `✅ Installed ${card.cardType} in ${slotType} slot ${slotId}`);
             
             // CRITICAL FIX: Sync with ship's CardSystemIntegration.installedCards Map
             // This prevents the orphaned systems cleanup from removing essential systems
@@ -1449,7 +1451,7 @@ export default class CardInventoryUI {
                     cardType: card.cardType,
                     level: card.level
                 });
-                console.log(`🔗 Synced card with ship's CardSystemIntegration: ${card.cardType} (Lv.${card.level})`);
+debug('UI', `🔗 Synced card with ship's CardSystemIntegration: ${card.cardType} (Lv.${card.level})`);
                 
                 // Refresh ship systems from the updated card configuration
                 try {
@@ -1458,10 +1460,10 @@ export default class CardInventoryUI {
                     // Re-initialize cargo holds from updated cards
                     if (window.viewManager.ship.cargoHoldManager) {
                         window.viewManager.ship.cargoHoldManager.initializeFromCards();
-                        console.log('🚛 Cargo holds refreshed after card installation');
+debug('UI', '🚛 Cargo holds refreshed after card installation');
                     }
                     
-                    console.log('🔄 Ship systems refreshed after card installation');
+debug('UI', '🔄 Ship systems refreshed after card installation');
                 } catch (error) {
                     console.error('⚠️ Failed to refresh ship systems:', error);
                 }
@@ -1475,7 +1477,7 @@ export default class CardInventoryUI {
             // Update the slot display
             this.renderShipSlots();
             
-            console.log(`Configuration saved with ${this.shipSlots.size} total cards`);
+debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
             
         } catch (error) {
             console.error('❌ Failed to drop card:', error);
@@ -1574,59 +1576,59 @@ export default class CardInventoryUI {
      * @returns {boolean} True if removal should be cancelled
      */
     async checkCargoHoldRemoval(card, slotId) {
-        console.log(`🛡️ CARGO CHECK: Checking ${card.cardType} in slot ${slotId}`);
+debug('UI', `🛡️ CARGO CHECK: Checking ${card.cardType} in slot ${slotId}`);
         
         // Check if this is a cargo hold card
         const cargoHoldTypes = ['cargo_hold', 'reinforced_cargo_hold', 'shielded_cargo_hold'];
         if (!cargoHoldTypes.includes(card.cardType)) {
-            console.log(`🛡️ CARGO CHECK: ${card.cardType} is not a cargo hold card`);
+debug('UI', `🛡️ CARGO CHECK: ${card.cardType} is not a cargo hold card`);
             return false; // Not a cargo hold, proceed with normal removal
         }
         
-        console.log(`🛡️ CARGO CHECK: ${card.cardType} is a cargo hold card, checking for cargo...`);
+debug('UI', `🛡️ CARGO CHECK: ${card.cardType} is a cargo hold card, checking for cargo...`);
         
         // Check if ship has cargo manager and if hold contains cargo
         if (!window.viewManager || !window.viewManager.ship || !window.viewManager.ship.cargoHoldManager) {
-            console.log(`🛡️ CARGO CHECK: No cargo manager available`);
+debug('AI', `🛡️ CARGO CHECK: No cargo manager available`);
             return false; // No cargo manager, proceed with removal
         }
         
         const cargoManager = window.viewManager.ship.cargoHoldManager;
-        console.log(`🛡️ CARGO CHECK: Found cargo manager with ${cargoManager.cargoHolds.size} holds`);
+debug('UI', `🛡️ CARGO CHECK: Found cargo manager with ${cargoManager.cargoHolds.size} holds`);
         
         // Find which cargo hold slot this card corresponds to
         let holdSlot = null;
-        console.log(`🛡️ CARGO CHECK: Looking for card slot ${slotId} in cargo holds`);
+debug('UI', `🛡️ CARGO CHECK: Looking for card slot ${slotId} in cargo holds`);
         for (const [holdSlotId, hold] of cargoManager.cargoHolds) {
-            console.log(`🛡️ CARGO CHECK: Checking hold ${holdSlotId} with slotId ${hold.slotId}`);
+debug('UI', `🛡️ CARGO CHECK: Checking hold ${holdSlotId} with slotId ${hold.slotId}`);
             if (hold.slotId === slotId) {
                 holdSlot = holdSlotId;
-                console.log(`🛡️ CARGO CHECK: Found matching hold slot ${holdSlot}`);
+debug('UI', `🛡️ CARGO CHECK: Found matching hold slot ${holdSlot}`);
                 break;
             }
         }
         
         if (holdSlot === null) {
-            console.log(`🛡️ CARGO CHECK: No matching hold found for slot ${slotId}`);
+debug('UI', `🛡️ CARGO CHECK: No matching hold found for slot ${slotId}`);
             return false; // Hold not found, proceed with removal
         }
         
         // Check if hold contains cargo (use the actual card slot ID, not the hold map key)
         const hasCargo = cargoManager.hasCargoInHold(slotId);
-        console.log(`🛡️ CARGO CHECK: Hold ${holdSlot} (card slot ${slotId}) has cargo: ${hasCargo}`);
+debug('UI', `🛡️ CARGO CHECK: Hold ${holdSlot} (card slot ${slotId}) has cargo: ${hasCargo}`);
         if (!hasCargo) {
-            console.log(`🛡️ CARGO CHECK: Hold ${holdSlot} (card slot ${slotId}) is empty, proceeding with removal`);
+debug('UI', `🛡️ CARGO CHECK: Hold ${holdSlot} (card slot ${slotId}) is empty, proceeding with removal`);
             return false; // No cargo in hold, proceed with removal
         }
         
         // Get cargo contents for display (use the actual card slot ID)
         const cargoContents = cargoManager.getCargoInHold(slotId);
-        console.log(`🛡️ CARGO CHECK: Hold ${holdSlot} (card slot ${slotId}) contains ${cargoContents.length} cargo types`);
+debug('AI', `🛡️ CARGO CHECK: Hold ${holdSlot} (card slot ${slotId}) contains ${cargoContents.length} cargo types`);
         
-        console.log(`🛡️ CARGO CHECK: Showing removal confirmation modal...`);
+debug('UI', `🛡️ CARGO CHECK: Showing removal confirmation modal...`);
         // Show confirmation modal
         const result = await this.showCargoRemovalConfirmation(card, slotId, holdSlot, cargoContents, cargoManager);
-        console.log(`🛡️ CARGO CHECK: Modal returned ${result} (true = cancel removal, false = proceed)`);
+debug('UI', `🛡️ CARGO CHECK: Modal returned ${result} (true = cancel removal, false = proceed)`);
         return result;
     }
     
@@ -1841,7 +1843,7 @@ export default class CardInventoryUI {
             dumpButton.addEventListener('click', () => {
                 // Dump cargo and proceed with removal
                 const dumpResult = cargoManager.dumpCargoInHold(slotId); // Use actual slot ID, not hold map key
-                console.log(`🗑️ Dumped cargo from hold ${holdSlot} (slot ${slotId}):`, dumpResult);
+debug('UI', `🗑️ Dumped cargo from hold ${holdSlot} (slot ${slotId}):`, dumpResult);
                 
                 document.body.removeChild(modal);
                 document.head.removeChild(style);
@@ -1991,15 +1993,15 @@ export default class CardInventoryUI {
     async removeCard(slotId) {
         const card = this.shipSlots.get(slotId);
         if (card) {
-            console.log(`🛡️ CARGO PROTECTION: Checking removal of ${card.cardType} from slot ${slotId}`);
+debug('UI', `🛡️ CARGO PROTECTION: Checking removal of ${card.cardType} from slot ${slotId}`);
             
             // Check if this is a cargo hold card with cargo
             if (await this.checkCargoHoldRemoval(card, slotId)) {
-                console.log(`🛡️ CARGO PROTECTION: Removal cancelled for ${card.cardType}`);
+debug('UI', `🛡️ CARGO PROTECTION: Removal cancelled for ${card.cardType}`);
                 return; // Removal cancelled or handled by cargo dump process
             }
             
-            console.log(`🛡️ CARGO PROTECTION: Proceeding with removal of ${card.cardType}`);
+debug('UI', `🛡️ CARGO PROTECTION: Proceeding with removal of ${card.cardType}`);
             // Remove from ship slots
             this.shipSlots.delete(slotId);
             
@@ -2007,7 +2009,7 @@ export default class CardInventoryUI {
             // This ensures the ship's card tracking stays synchronized
             if (window.viewManager && window.viewManager.ship && window.viewManager.ship.cardSystemIntegration) {
                 window.viewManager.ship.cardSystemIntegration.installedCards.delete(slotId);
-                console.log(`🔗 Removed card from ship's CardSystemIntegration: ${card.cardType}`);
+debug('UI', `🔗 Removed card from ship's CardSystemIntegration: ${card.cardType}`);
                 
                 // Refresh ship systems from the updated card configuration
                 try {
@@ -2016,10 +2018,10 @@ export default class CardInventoryUI {
                     // Re-initialize cargo holds from updated cards
                     if (window.viewManager.ship.cargoHoldManager) {
                         window.viewManager.ship.cargoHoldManager.initializeFromCards();
-                        console.log('🚛 Cargo holds refreshed after card removal');
+debug('UI', '🚛 Cargo holds refreshed after card removal');
                     }
                     
-                    console.log('🔄 Ship systems refreshed after card removal');
+debug('UI', '🔄 Ship systems refreshed after card removal');
                 } catch (error) {
                     console.error('⚠️ Failed to refresh ship systems:', error);
                 }
@@ -2036,8 +2038,8 @@ export default class CardInventoryUI {
             // Update the slot display
             this.renderShipSlots();
             
-            console.log(`🗑️ Removed ${card.cardType} from slot ${slotId}`);
-            console.log(`Configuration saved with ${this.shipSlots.size} total cards`);
+debug('UI', `🗑️ Removed ${card.cardType} from slot ${slotId}`);
+debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
         }
     }
 
@@ -2199,7 +2201,7 @@ export default class CardInventoryUI {
             });
         }
         
-        console.log(`💰 Credits: ${playerCredits.getFormattedCredits()}`);
+debug('UI', `💰 Credits: ${playerCredits.getFormattedCredits()}`);
     }
 
     /**
@@ -2226,7 +2228,7 @@ export default class CardInventoryUI {
      * @param {string} shipType - Ship type to switch to
      */
     async switchShip(shipType) {
-        console.log(`Switching ship type from ${this.currentShipType} to ${shipType}`);
+debug('UI', `Switching ship type from ${this.currentShipType} to ${shipType}`);
         
         // Save current configuration before switching
         this.saveCurrentShipConfiguration();
@@ -2239,7 +2241,7 @@ export default class CardInventoryUI {
         // This prevents the "Player doesn't own X, falling back to starter_ship" issue
         if (!playerData.ownsShip(shipType)) {
             playerData.addShip(shipType);
-            console.log(`🛡️ Added ${shipType} to player's owned ships`);
+debug('UI', `🛡️ Added ${shipType} to player's owned ships`);
         }
         
         // Clear current ship slots
@@ -2254,13 +2256,13 @@ export default class CardInventoryUI {
         // **CRITICAL FIX**: Update the actual ship instance in ViewManager
         // This ensures the ship type persists when launching and docking
         if (this.dockingInterface?.starfieldManager?.viewManager) {
-            console.log('🔄 CardInventoryUI: Updating ViewManager ship instance to', shipType);
+debug('UI', '🔄 CardInventoryUI: Updating ViewManager ship instance to', shipType);
             await this.dockingInterface.starfieldManager.viewManager.switchShip(shipType);
         } else {
             console.warn('⚠️ CardInventoryUI: ViewManager not available - ship instance not updated');
         }
         
-        console.log(`Ship switched to ${shipType}`);
+debug('UI', `Ship switched to ${shipType}`);
     }
 
     /**
@@ -2278,7 +2280,7 @@ export default class CardInventoryUI {
         });
         
         playerData.saveShipConfiguration(this.currentShipType, config);
-        console.log(`Saved configuration for ${this.currentShipType}`);
+debug('UI', `Saved configuration for ${this.currentShipType}`);
     }
 
     /**
@@ -2286,14 +2288,14 @@ export default class CardInventoryUI {
      * @param {string} shipType - Ship type to load configuration for
      */
     loadShipConfiguration(shipType) {
-        console.log(`Loading stored configuration for ${shipType}`);
+debug('UTILITY', `Loading stored configuration for ${shipType}`);
         
         const config = playerData.getShipConfiguration(shipType);
         this.shipSlots.clear();
         
         // If no stored configuration exists and this is a starter ship, load default starter cards
         if (config.size === 0 && shipType === 'starter_ship') {
-            console.log(`No stored configuration found for ${shipType}, loading default starter cards`);
+debug('UI', `No stored configuration found for ${shipType}, loading default starter cards`);
             
             const shipConfig = SHIP_CONFIGS[shipType];
             if (shipConfig && shipConfig.starterCards) {
@@ -2372,7 +2374,7 @@ export default class CardInventoryUI {
                         const card = this.inventory.generateSpecificCard(cardType, 'common');
                         card.level = level;
                         this.shipSlots.set(targetSlotIndex.toString(), card);
-                        console.log(`Loaded default starter card ${cardType} (Lv.${level}) into slot ${targetSlotIndex} (${slotTypeMapping[targetSlotIndex]})`);
+debug('TARGETING', `Loaded default starter card ${cardType} (Lv.${level}) into slot ${targetSlotIndex} (${slotTypeMapping[targetSlotIndex]})`);
                     } else {
                         console.error(`❌ FAILED: No available slot found for starter card ${cardType} - ship only has ${shipConfig.systemSlots} slots, ${this.shipSlots.size} already used`);
                     }
@@ -2426,7 +2428,7 @@ export default class CardInventoryUI {
                         const card = this.inventory.generateSpecificCard(cardType, 'common');
                         card.level = level;
                         this.shipSlots.set(slotId, card);
-                        console.log(`Loaded ${cardType} (Lv.${level}) from numeric slot ${slotId}`);
+debug('UI', `Loaded ${cardType} (Lv.${level}) from numeric slot ${slotId}`);
                         return;
                     }
                     
@@ -2483,7 +2485,7 @@ export default class CardInventoryUI {
                         const card = this.inventory.generateSpecificCard(cardType, 'common');
                         card.level = level;
                         this.shipSlots.set(targetSlotIndex.toString(), card);
-                        console.log(`Loaded ${cardType} (Lv.${level}) from named slot ${slotId} to slot ${targetSlotIndex} (${slotTypeMapping[targetSlotIndex]})`);
+debug('TARGETING', `Loaded ${cardType} (Lv.${level}) from named slot ${slotId} to slot ${targetSlotIndex} (${slotTypeMapping[targetSlotIndex]})`);
                     } else {
                         console.error(`❌ FAILED: No available slot found for card ${cardType} from named slot ${slotId} - ship only has ${shipConfig.systemSlots} slots, ${this.shipSlots.size} already used`);
                     }
@@ -2494,12 +2496,12 @@ export default class CardInventoryUI {
                     const card = this.inventory.generateSpecificCard(cardData.cardType, 'common');
                     card.level = cardData.level || 1;
                     this.shipSlots.set(slotId, card);
-                    console.log(`Loaded ${cardData.cardType} (Lv.${card.level}) from stored slot ${slotId}`);
+debug('UI', `Loaded ${cardData.cardType} (Lv.${card.level}) from stored slot ${slotId}`);
                 });
             }
         }
         
-        console.log(`Loaded ${this.shipSlots.size} cards for ${shipType}`);
+debug('UI', `Loaded ${this.shipSlots.size} cards for ${shipType}`);
         
         // CRITICAL FIX: Sync loaded cards with ship's CardSystemIntegration.installedCards Map
         // This ensures the ship's card tracking is synchronized with the UI after loading
@@ -2513,7 +2515,7 @@ export default class CardInventoryUI {
                 });
             });
             
-            console.log(`🔗 Synced ${this.shipSlots.size} cards with ship's CardSystemIntegration`);
+debug('UI', `🔗 Synced ${this.shipSlots.size} cards with ship's CardSystemIntegration`);
         } else {
             console.warn('⚠️ Could not sync with ship CardSystemIntegration during load - ship may not be available');
         }
@@ -2575,7 +2577,7 @@ export default class CardInventoryUI {
         // Show the inventory
         this.inventoryContainer.style.display = 'block';
         
-        console.log('Ship inventory opened at:', dockedLocation);
+debug('UI', 'Ship inventory opened at:', dockedLocation);
     }
 
     /**
@@ -2629,7 +2631,7 @@ export default class CardInventoryUI {
             this.dockingInterface.returnToStationMenu();
         }
         
-        console.log('Ship inventory closed');
+debug('UI', 'Ship inventory closed');
     }
 
     /**
@@ -2642,7 +2644,7 @@ export default class CardInventoryUI {
             return;
         }
         
-        console.log(`Loading current ship configuration from actual ship: ${ship.shipType}`);
+debug('UTILITY', `Loading current ship configuration from actual ship: ${ship.shipType}`);
         
         // Clear existing ship slots
         this.shipSlots.clear();
@@ -2650,7 +2652,7 @@ export default class CardInventoryUI {
         // Check if this is a starter ship and use starterCards configuration
         const shipConfig = SHIP_CONFIGS[ship.shipType];
         if (shipConfig && shipConfig.starterCards) {
-            console.log(`Loading starter cards for ${ship.shipType}`);
+debug('UI', `Loading starter cards for ${ship.shipType}`);
             
             // Map starter card slots to proper slot indices based on slotConfig
             const slotTypeMapping = this.generateSlotTypeMapping(shipConfig);
@@ -2724,14 +2726,14 @@ export default class CardInventoryUI {
                     const card = this.inventory.generateSpecificCard(cardType, 'common');
                     card.level = level;
                     this.shipSlots.set(targetSlotIndex.toString(), card);
-                    console.log(`Loaded default starter card ${cardType} (Lv.${level}) into slot ${targetSlotIndex} (${slotTypeMapping[targetSlotIndex]})`);
+debug('TARGETING', `Loaded default starter card ${cardType} (Lv.${level}) into slot ${targetSlotIndex} (${slotTypeMapping[targetSlotIndex]})`);
                 } else {
                     console.error(`❌ FAILED: No available slot found for starter card ${cardType} - ship only has ${shipConfig.systemSlots} slots, ${this.shipSlots.size} already used`);
                 }
             });
         } else {
             // Fallback to legacy system loading for non-starter ships
-            console.log(`Loading systems for non-starter ship: ${ship.shipType}`);
+debug('UTILITY', `Loading systems for non-starter ship: ${ship.shipType}`);
             
             // Mapping from system names to card types
             const systemToCardMapping = {
@@ -2767,18 +2769,18 @@ export default class CardInventoryUI {
                         const card = this.inventory.generateSpecificCard(cardType, 'common');
                         card.level = system.level;
                         this.shipSlots.set(slotIndex.toString(), card);
-                        console.log(`Loaded ${cardType} (Lv.${card.level}) from system ${systemName} in slot ${slotIndex}`);
+debug('UI', `Loaded ${cardType} (Lv.${card.level}) from system ${systemName} in slot ${slotIndex}`);
                         slotIndex++;
                     } else if (!cardType) {
-                        console.log(`No card mapping found for system: ${systemName}`);
+debug('UI', `No card mapping found for system: ${systemName}`);
                     } else if (!system.level) {
-                        console.log(`System ${systemName} has no level property`);
+debug('UI', `System ${systemName} has no level property`);
                     }
                 });
             }
         }
         
-        console.log(`Loaded ${this.shipSlots.size} cards from current ship`);
+debug('UI', `Loaded ${this.shipSlots.size} cards from current ship`);
     }
 
     /**
@@ -2802,8 +2804,8 @@ export default class CardInventoryUI {
      * @param {string} cardType - Type of card to upgrade
      */
     async upgradeCard(cardType) {
-        console.log(`🔧 UPGRADE CLICKED: Attempting to upgrade ${cardType}`);
-        console.log(`💰 Current credits: ${this.credits}`);
+debug('UI', `🔧 UPGRADE CLICKED: Attempting to upgrade ${cardType}`);
+debug('UI', `💰 Current credits: ${this.credits}`);
         
         // Get the card stack directly from inventory to ensure we're modifying the source data
         const cardStack = this.inventory.cardStacks.get(cardType);
@@ -2822,7 +2824,7 @@ export default class CardInventoryUI {
         const nextLevel = currentLevel + 1;
         const maxLevel = 5;
         
-        console.log(`📊 Card ${cardType} - Current Level: ${currentLevel}, Next Level: ${nextLevel}, Count: ${cardStack.count}`);
+debug('UI', `📊 Card ${cardType} - Current Level: ${currentLevel}, Next Level: ${nextLevel}, Count: ${cardStack.count}`);
         
         // Check if upgrade is possible
         if (nextLevel > maxLevel) {
@@ -2839,7 +2841,7 @@ export default class CardInventoryUI {
         };
         
         const upgradeCost = upgradeCosts[nextLevel];
-        console.log(`💎 Upgrade to level ${nextLevel} requires: ${upgradeCost.cards} cards + ${upgradeCost.credits} credits`);
+debug('UI', `💎 Upgrade to level ${nextLevel} requires: ${upgradeCost.cards} cards + ${upgradeCost.credits} credits`);
         
         // Validate requirements
         if (cardStack.count < upgradeCost.cards) {
@@ -2852,13 +2854,13 @@ export default class CardInventoryUI {
             return;
         }
         
-        console.log(`✅ Requirements met! Proceeding with upgrade...`);
+debug('UI', `✅ Requirements met! Proceeding with upgrade...`);
         
         // Perform the upgrade directly on the cardStack source data
         try {
             // Consume cards from the source card stack
             cardStack.count -= upgradeCost.cards;
-            console.log(`📦 Cards consumed: ${upgradeCost.cards}, remaining: ${cardStack.count}`);
+debug('AI', `📦 Cards consumed: ${upgradeCost.cards}, remaining: ${cardStack.count}`);
             
             // Consume credits
             const creditsSpent = playerCredits.spendCredits(upgradeCost.credits, `Upgrade ${cardType} to level ${nextLevel}`);
@@ -2866,7 +2868,7 @@ export default class CardInventoryUI {
                 console.error('❌ Failed to spend credits for upgrade');
                 return;
             }
-            console.log(`💰 Credits consumed: ${upgradeCost.credits}, remaining: ${playerCredits.getCredits()}`);
+debug('AI', `💰 Credits consumed: ${upgradeCost.credits}, remaining: ${playerCredits.getCredits()}`);
             
             // Increase level in the source card stack
             cardStack.level = nextLevel;
@@ -2877,23 +2879,23 @@ export default class CardInventoryUI {
                 if (slottedCard.cardType === cardType) {
                     slottedCard.level = nextLevel;
                     updatedSlotCount++;
-                    console.log(`🔧 Updated slotted ${cardType} in slot ${slotId} to level ${nextLevel}`);
+debug('UI', `🔧 Updated slotted ${cardType} in slot ${slotId} to level ${nextLevel}`);
                 }
             });
             
             if (updatedSlotCount > 0) {
-                console.log(`🔧 Updated ${updatedSlotCount} slotted card(s) of type ${cardType} to level ${nextLevel}`);
+debug('UI', `🔧 Updated ${updatedSlotCount} slotted card(s) of type ${cardType} to level ${nextLevel}`);
                 // Save the configuration to persist the level changes
                 this.saveCurrentShipConfiguration();
             }
             
-            console.log(`✅ Successfully upgraded ${cardType} to level ${nextLevel}`);
-            console.log(`💳 Consumed ${upgradeCost.cards} cards and ${upgradeCost.credits} credits`);
-            console.log(`📦 Remaining cards: ${cardStack.count}, Credits: ${this.credits}`);
+debug('UI', `✅ Successfully upgraded ${cardType} to level ${nextLevel}`);
+debug('UI', `💳 Consumed ${upgradeCost.cards} cards and ${upgradeCost.credits} credits`);
+debug('AI', `📦 Remaining cards: ${cardStack.count}, Credits: ${this.credits}`);
             
             // If we consumed all cards in the stack, mark as undiscovered but keep the level progress
             if (cardStack.count <= 0) {
-                console.log(`📦 Card stack ${cardType} depleted (Level ${cardStack.level} progress retained)`);
+debug('AI', `📦 Card stack ${cardType} depleted (Level ${cardStack.level} progress retained)`);
                 // Don't remove from inventory, just set count to 0 - level progress is preserved
             }
             
@@ -2905,12 +2907,12 @@ export default class CardInventoryUI {
                     // Refresh ship systems from updated card configuration
                     if (ship.cardSystemIntegration) {
                         await ship.cardSystemIntegration.createSystemsFromCards();
-                        console.log('🔄 Ship systems refreshed after card upgrade');
+debug('UI', '🔄 Ship systems refreshed after card upgrade');
                         
                         // Re-initialize cargo holds from updated cards
                         if (ship.cargoHoldManager) {
                             ship.cargoHoldManager.initializeFromCards();
-                            console.log('🚛 Cargo holds refreshed after card upgrade');
+debug('UI', '🚛 Cargo holds refreshed after card upgrade');
                         }
                     }
                 }
@@ -2919,11 +2921,11 @@ export default class CardInventoryUI {
             }
             
             // Re-render the inventory to reflect changes
-            console.log(`🔄 Re-rendering inventory...`);
+debug('UI', `🔄 Re-rendering inventory...`);
             this.render();
             
             // Play upgrade success sound
-            console.log(`🎵 Playing upgrade sound...`);
+debug('UI', `🎵 Playing upgrade sound...`);
             this.playUpgradeSound();
             
         } catch (error) {

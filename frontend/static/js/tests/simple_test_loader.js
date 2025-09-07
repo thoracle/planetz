@@ -1,6 +1,8 @@
+import { debug } from '../debug.js';
+
 // Simple Test Loader - Copy-paste this into browser console
 
-console.log('🧪 Loading Proximity Detector tests...');
+debug('UTILITY', 'Loading Proximity Detector tests...');
 
 // Load and run proximity detector tests
 (async function() {
@@ -28,12 +30,12 @@ console.log('🧪 Loading Proximity Detector tests...');
         // Wait for both tests to load
         await Promise.all([basicTest, cardTest]);
         
-        console.log('✅ Tests loaded successfully!');
-        console.log('📋 Available functions:');
-        console.log('  • testProximityDetector()');
-        console.log('  • testProximityDetectorCardIntegration()');
+debug('UTILITY', '✅ Tests loaded successfully!');
+debug('AI', '📋 Available functions:');
+debug('UTILITY', '  • testProximityDetector()');
+debug('UI', '  • testProximityDetectorCardIntegration()');
         console.log('');
-        console.log('🎯 Running basic proximity detector test...');
+debug('UTILITY', 'Running basic proximity detector test...');
         
         // Run basic test automatically
         setTimeout(() => {
@@ -46,9 +48,9 @@ console.log('🧪 Loading Proximity Detector tests...');
         
     } catch (error) {
         console.error('❌ Failed to load tests:', error);
-        console.log('💡 You can still test manually with:');
-        console.log('  window.starfieldManager.toggleProximityDetector();');
+debug('UTILITY', '💡 You can still test manually with:');
+debug('UTILITY', '  window.starfieldManager.toggleProximityDetector();');
     }
 })();
 
-console.log('✅ Simple test loader script completed');
+debug('UTILITY', '✅ Simple test loader script completed');

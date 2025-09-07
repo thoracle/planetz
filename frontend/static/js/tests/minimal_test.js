@@ -1,10 +1,12 @@
+import { debug } from '../debug.js';
+
 // Minimal Proximity Detector Test - Copy this entire block into console
 
-console.log('🎯 Starting minimal proximity detector test...');
+debug('UTILITY', 'Starting minimal proximity detector test...');
 
 // Quick proximity detector test without loading external files
 function quickProximityDetectorTest() {
-    console.log('🧪 Testing proximity detector...');
+debug('UTILITY', 'Testing proximity detector...');
     
     // Check if game is loaded
     if (!window.starfieldManager) {
@@ -21,27 +23,27 @@ function quickProximityDetectorTest() {
     const proximityDetector = window.starfieldManager.radarHUD;
     const ship = window.starfieldManager.viewManager?.getShip();
     
-    console.log('📋 Test Results:');
-    console.log(`  ✓ Game loaded: ${window.starfieldManager ? 'YES' : 'NO'}`);
-    console.log(`  ✓ Proximity Detector HUD: ${proximityDetector ? 'YES' : 'NO'}`);
-    console.log(`  ✓ Ship available: ${ship ? 'YES' : 'NO'}`);
+debug('UTILITY', '📋 Test Results:');
+debug('UTILITY', `  ✓ Game loaded: ${window.starfieldManager ? 'YES' : 'NO'}`);
+debug('UI', `  ✓ Proximity Detector HUD: ${proximityDetector ? 'YES' : 'NO'}`);
+debug('AI', `  ✓ Ship available: ${ship ? 'YES' : 'NO'}`);
     
     if (ship) {
         const hasRadarCards = ship.hasSystemCardsSync && ship.hasSystemCardsSync('radar');
-        console.log(`  ✓ Has proximity detector cards: ${hasRadarCards ? 'YES' : 'NO'}`);
+debug('UI', `  ✓ Has proximity detector cards: ${hasRadarCards ? 'YES' : 'NO'}`);
         
         const radarSystem = ship.getSystem && ship.getSystem('radar');
-        console.log(`  ✓ Proximity detector system: ${radarSystem ? 'YES' : 'NO'}`);
+debug('UTILITY', `  ✓ Proximity detector system: ${radarSystem ? 'YES' : 'NO'}`);
         
         if (radarSystem) {
-            console.log(`  ✓ System level: ${radarSystem.level}`);
-            console.log(`  ✓ System range: ${(radarSystem.getRange() / 1000).toFixed(0)}km`);
+debug('UTILITY', `  ✓ System level: ${radarSystem.level}`);
+debug('UTILITY', `  ✓ System range: ${(radarSystem.getRange() / 1000).toFixed(0)}km`);
         }
     }
     
-    console.log('🎮 Manual test commands:');
-    console.log('  • Press P key to toggle proximity detector');
-    console.log('  • Or run: window.starfieldManager.toggleProximityDetector()');
+debug('UTILITY', '🎮 Manual test commands:');
+debug('UTILITY', '  • Press P key to toggle proximity detector');
+debug('UTILITY', '  • Or run: window.starfieldManager.toggleProximityDetector()');
     
     return true;
 }

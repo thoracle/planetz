@@ -1,4 +1,5 @@
 import System from '../System.js';
+import { debug } from '../../debug.js';
 
 /**
  * Hull Plating System - Provides hull hit points
@@ -29,7 +30,7 @@ export default class HullPlating extends System {
         // Calculate hull capacity based on level
         this.hullCapacity = this.hullCapacityPerLevel * this.level;
         
-        console.log(`Hull Plating Level ${this.level}: +${this.hullCapacity} hull`);
+debug('UTILITY', `Hull Plating Level ${this.level}: +${this.hullCapacity} hull`);
     }
     
     /**

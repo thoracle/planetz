@@ -4,6 +4,7 @@ import { ThreatAssessment } from './ThreatAssessment.js';
 import { FlockingBehavior } from './FlockingBehavior.js';
 import { CombatBehavior } from './CombatBehavior.js';
 import { WeaponTargeting } from './WeaponTargeting.js';
+import { debug } from '../debug.js';
 
 /**
  * EnemyAI - Base AI class for all enemy ships
@@ -79,7 +80,7 @@ export class EnemyAI {
         // Debug state
         this.debugMode = false;
         
-        console.log(`🤖 EnemyAI initialized for ${ship.shipType} with config:`, aiConfig);
+debug('AI', `🤖 EnemyAI initialized for ${ship.shipType} with config:`, aiConfig);
     }
     
     /**
@@ -194,7 +195,7 @@ export class EnemyAI {
     createWeaponEffect(firingSolution) {
         // This would integrate with the game's weapon effects system
         // For now, just log the firing event
-        console.log(`💥 ${this.ship.shipType} fired at ${firingSolution.target.shipType || 'target'} (${(firingSolution.hitProbability * 100).toFixed(1)}% hit chance)`);
+debug('TARGETING', `💥 ${this.ship.shipType} fired at ${firingSolution.target.shipType || 'target'} (${(firingSolution.hitProbability * 100).toFixed(1)}% hit chance)`);
         
         // TODO: Create visual/audio effects
         // TODO: Apply damage to target if hit
@@ -299,7 +300,7 @@ export class EnemyAI {
             }
         }
         
-        console.log(`📡 ${this.ship.shipType} sent distress call (threat level: ${distressMessage.threatLevel})`);
+debug('UTILITY', `📡 ${this.ship.shipType} sent distress call (threat level: ${distressMessage.threatLevel})`);
     }
     
     /**
@@ -323,7 +324,7 @@ export class EnemyAI {
      * @param {Object} message - Distress call message
      */
     respondToDistressCall(message) {
-        console.log(`📡 ${this.ship.shipType} responding to distress call from ${message.sender.shipType}`);
+debug('UTILITY', `📡 ${this.ship.shipType} responding to distress call from ${message.sender.shipType}`);
         
         // Set emergency target
         if (message.threat) {
@@ -427,7 +428,7 @@ export class EnemyAI {
      */
     enableDebug() {
         this.debugMode = true;
-        console.log(`🐛 Debug mode enabled for ${this.ship.shipType}`);
+debug('INSPECTION', `🐛 Debug mode enabled for ${this.ship.shipType}`);
     }
     
     /**
@@ -497,7 +498,7 @@ export class EnemyAI {
             this.stateMachine.transitions[this.stateMachine.currentState][state]) {
             this.stateMachine.currentState = state;
             this.stateMachine.stateStartTime = Date.now();
-            console.log(`🤖 ${this.ship.shipType} forced to state: ${state}`);
+debug('UTILITY', `🤖 ${this.ship.shipType} forced to state: ${state}`);
         } else {
             console.warn(`⚠️ Invalid state transition: ${this.stateMachine.currentState} → ${state}`);
         }
@@ -579,7 +580,7 @@ export class EnemyAI {
         this.detectedThreats = [];
         this.detectedTargets = [];
         
-        console.log(`🤖 EnemyAI destroyed for ${this.ship.shipType}`);
+debug('AI', `🤖 EnemyAI destroyed for ${this.ship.shipType}`);
     }
 }
 

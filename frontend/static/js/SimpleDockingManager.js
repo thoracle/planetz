@@ -1,3 +1,5 @@
+import { debug } from './debug.js';
+
 /**
  * SimpleDockingManager - Distance and angle-based docking system
  * Replaces physics-based collision docking with simple, reliable distance + approach checks
@@ -36,7 +38,7 @@ export class SimpleDockingManager {
         this.dockingCheckInterval = null;
         this.checkIntervalMs = 100; // Check every 100ms
         
-        console.log('🚀 SimpleDockingManager initialized - Distance + angle based docking');
+debug('UTILITY', 'SimpleDockingManager initialized - Distance + angle based docking');
     }
 
     /**
@@ -51,7 +53,7 @@ export class SimpleDockingManager {
             this.checkDockingOpportunities();
         }, this.checkIntervalMs);
         
-        console.log('🚀 Docking monitoring started');
+debug('UTILITY', 'Docking monitoring started');
     }
 
     /**
@@ -63,7 +65,7 @@ export class SimpleDockingManager {
             this.dockingCheckInterval = null;
         }
         
-        console.log('🚀 Docking monitoring stopped');
+debug('UTILITY', 'Docking monitoring stopped');
     }
 
     /**
@@ -270,7 +272,7 @@ export class SimpleDockingManager {
         // Store approach position and rotation for simple launch
         this.approachPosition = this.starfieldManager.camera.position.clone();
         this.approachRotation = this.starfieldManager.camera.quaternion.clone();
-        console.log(`🚀 Stored approach position: (${this.approachPosition.x.toFixed(2)}, ${this.approachPosition.y.toFixed(2)}, ${this.approachPosition.z.toFixed(2)})`);
+debug('UTILITY', `🚀 Stored approach position: (${this.approachPosition.x.toFixed(2)}, ${this.approachPosition.y.toFixed(2)}, ${this.approachPosition.z.toFixed(2)})`);
 
         const dockingResult = this.checkDockingEligibility(ship, target);
         if (!dockingResult.canDock) {
@@ -279,7 +281,7 @@ export class SimpleDockingManager {
             return false;
         }
 
-        console.log('🚀 Initiating docking sequence with', dockingResult.targetName);
+debug('TARGETING', 'Initiating docking sequence with', dockingResult.targetName);
         
         this.dockingInProgress = true;
         this.currentDockingTarget = target;
@@ -369,7 +371,7 @@ export class SimpleDockingManager {
         
         const stationName = stationMetadata?.name || station.name || 'Unknown Station';
         
-        console.log('🚀 Docking completed with', stationName);
+debug('UTILITY', 'Docking completed with', stationName);
         
         // Update starfield manager state
         if (this.starfieldManager) {
@@ -395,14 +397,14 @@ export class SimpleDockingManager {
      * This is the missing piece that was causing engines to keep running
      */
     shutdownAllShipSystems() {
-        console.log('🛑 SimpleDockingManager: Shutting down all ship systems for docking');
+debug('UTILITY', '🛑 SimpleDockingManager: Shutting down all ship systems for docking');
         
         // CRITICAL: Stop engine audio immediately (was missing!)
         if (this.starfieldManager.audioManager && this.starfieldManager.audioManager.getEngineState() === 'running') {
             this.starfieldManager.playEngineShutdown();
-            console.log('🔇 Engine shutdown called during docking');
+debug('UTILITY', '🔇 Engine shutdown called during docking');
         } else {
-            console.log('🔇 Engine state check:', this.starfieldManager.audioManager ? this.starfieldManager.audioManager.getEngineState() : 'no audioManager');
+debug('UTILITY', '🔇 Engine state check:', this.starfieldManager.audioManager ? this.starfieldManager.audioManager.getEngineState() : 'no audioManager');
         }
         
         // Call StarfieldManager's comprehensive system shutdown
@@ -427,7 +429,7 @@ export class SimpleDockingManager {
             this.starfieldManager.targetComputerManager.hideTargetReticle();
             this.starfieldManager.targetComputerManager.clearTargetWireframe();
             this.starfieldManager.targetComputerManager.hideAllDirectionArrows();
-            console.log('🎯 Target computer UI shut down (including direction arrows)');
+debug('TARGETING', 'Target computer UI shut down (including direction arrows)');
         }
         
         // CRITICAL: Hide weapon HUD when docking (was missing!)
@@ -436,18 +438,18 @@ export class SimpleDockingManager {
             this.starfieldManager.weaponHUD.autofireIndicator.style.display = 'none';
             this.starfieldManager.weaponHUD.targetLockIndicator.style.display = 'none';
             this.starfieldManager.weaponHUD.unifiedDisplay.style.display = 'none';
-            console.log('🚪 Weapon HUD hidden during docking');
+debug('COMBAT', '🚪 Weapon HUD hidden during docking');
         }
         
         // Close any open UI panels
         if (this.starfieldManager.viewManager) {
             if (this.starfieldManager.viewManager.galacticChart && this.starfieldManager.viewManager.galacticChart.isVisible()) {
                 this.starfieldManager.viewManager.galacticChart.hide(false);
-                console.log('🚪 Galactic Chart dismissed during docking');
+debug('UTILITY', '🚪 Galactic Chart dismissed during docking');
             }
             if (this.starfieldManager.viewManager.longRangeScanner && this.starfieldManager.viewManager.longRangeScanner.isVisible()) {
                 this.starfieldManager.viewManager.longRangeScanner.hide(false);
-                console.log('🚪 Long Range Scanner dismissed during docking');
+debug('UTILITY', '🚪 Long Range Scanner dismissed during docking');
             }
         }
         
@@ -455,36 +457,36 @@ export class SimpleDockingManager {
         if (this.starfieldManager.proximityDetector3D && this.starfieldManager.proximityDetector3D.isVisible) {
             this.starfieldManager.proximityDetector3D.isVisible = false;
             this.starfieldManager.proximityDetector3D.detectorContainer.style.display = 'none';
-            console.log('🚪 Proximity Detector dismissed during docking');
+debug('UTILITY', '🚪 Proximity Detector dismissed during docking');
         }
         
         // Hide other HUD elements that should be off during docking
         if (this.starfieldManager.communicationHUD && this.starfieldManager.communicationHUD.visible) {
             this.starfieldManager.communicationHUD.hide();
-            console.log('🚪 Communication HUD dismissed during docking');
+debug('UI', '🚪 Communication HUD dismissed during docking');
         }
         
         if (this.starfieldManager.missionStatusHUD && this.starfieldManager.missionStatusHUD.visible) {
             this.starfieldManager.missionStatusHUD.hide();
-            console.log('🚪 Mission Status HUD dismissed during docking');
+debug('UI', '🚪 Mission Status HUD dismissed during docking');
         }
         
-        console.log('🛑 SimpleDockingManager: All ship systems shutdown complete');
+debug('UTILITY', '🛑 SimpleDockingManager: All ship systems shutdown complete');
     }
 
     /**
      * Launch from current station - Simple approach: restore approach position and back out
      */
     async launchFromStation() {
-        console.log('🚀 launchFromStation() called - Simple launch approach');
-        console.log(`🚀 isDocked: ${this.isDocked}, launchInProgress: ${this.launchInProgress}`);
+debug('UTILITY', 'launchFromStation() called - Simple launch approach');
+debug('UTILITY', `🚀 isDocked: ${this.isDocked}, launchInProgress: ${this.launchInProgress}`);
         
         if (!this.isDocked || this.launchInProgress) {
             console.warn('🚀 Not docked or launch already in progress');
             return false;
         }
 
-        console.log('🚀 Launching from station - validation passed');
+debug('UTILITY', 'Launching from station - validation passed');
         
         this.launchInProgress = true;
         
@@ -492,7 +494,7 @@ export class SimpleDockingManager {
             const station = this.currentDockingTarget;
             
             if (this.approachPosition && this.approachRotation && station) {
-                console.log(`🚀 Restoring approach position: (${this.approachPosition.x.toFixed(2)}, ${this.approachPosition.y.toFixed(2)}, ${this.approachPosition.z.toFixed(2)})`);
+debug('UTILITY', `🚀 Restoring approach position: (${this.approachPosition.x.toFixed(2)}, ${this.approachPosition.y.toFixed(2)}, ${this.approachPosition.z.toFixed(2)})`);
                 
                 // Restore the approach position and rotation
                 this.starfieldManager.camera.position.copy(this.approachPosition);
@@ -500,7 +502,7 @@ export class SimpleDockingManager {
                 
                 // Set AFT view (facing away from station)
                 this.starfieldManager.setView('AFT');
-                console.log('🚀 Set to AFT view for launch');
+debug('UTILITY', 'Set to AFT view for launch');
                 
                 // Calculate direction away from station
                 const awayFromStation = this.starfieldManager.camera.position.clone().sub(station.position).normalize();
@@ -514,7 +516,7 @@ export class SimpleDockingManager {
                 
                 // Verify the distance after positioning
                 const actualDistance = this.starfieldManager.camera.position.distanceTo(station.position);
-                console.log(`🚀 Backed out to ${actualDistance.toFixed(3)}km from ${station.name || 'station'}`);
+debug('UTILITY', `🚀 Backed out to ${actualDistance.toFixed(3)}km from ${station.name || 'station'}`);
                 
                 // Set initial launch speed (gentle departure)
                 this.starfieldManager.targetSpeed = 1; // Impulse 1
@@ -563,7 +565,7 @@ export class SimpleDockingManager {
         if (awayFromStation.length() < 0.1) {
             // Use a default direction (positive X axis)
             awayFromStation.set(1, 0, 0);
-            console.log('🚀 Using default launch direction (too close to station)');
+debug('UTILITY', 'Using default launch direction (too close to station)');
         } else {
             awayFromStation.normalize();
         }
@@ -574,7 +576,7 @@ export class SimpleDockingManager {
         
         // Verify the distance is correct
         const actualDistance = launchPosition.distanceTo(station.position);
-        console.log(`🚀 Launch position calculated: ${safeDistance.toFixed(1)}km away from ${station.name || 'station'} (actual: ${actualDistance.toFixed(1)}km)`);
+debug('UTILITY', `🚀 Launch position calculated: ${safeDistance.toFixed(1)}km away from ${station.name || 'station'} (actual: ${actualDistance.toFixed(1)}km)`);
         
         return launchPosition;
     }
@@ -608,7 +610,7 @@ export class SimpleDockingManager {
         const launchRotation = new window.THREE.Quaternion();
         launchRotation.setFromRotationMatrix(lookAtMatrix);
         
-        console.log(`🚀 Launch rotation calculated: facing away from ${station.name || 'station'}`);
+debug('UTILITY', `🚀 Launch rotation calculated: facing away from ${station.name || 'station'}`);
         return launchRotation;
     }
 
@@ -631,19 +633,19 @@ export class SimpleDockingManager {
      * @returns {Promise<boolean>} Success status
      */
     async initiateUnifiedDocking(target) {
-        console.log('🚀 UNIFIED: Initiating docking sequence with', target.name || 'unnamed target');
+debug('TARGETING', 'UNIFIED: Initiating docking sequence with', target.name || 'unnamed target');
         
         // Check if already docked to THIS target
         if (this.isDocked && this.currentDockingTarget === target) {
             console.warn('🚀 Already docked to this target, cannot dock again');
-            console.log('🚀 State check: isDocked=true, currentTarget=', this.currentDockingTarget?.name || 'null');
+debug('P1', 'State check: isDocked=true, currentTarget=', this.currentDockingTarget?.name || 'null');
             return false;
         }
         
         // Check if already docked to DIFFERENT target
         if (this.isDocked && this.currentDockingTarget !== target) {
             console.warn('🚀 Already docked to different target, must undock first');
-            console.log('🚀 Current target:', this.currentDockingTarget?.name || 'null', 'New target:', target?.name || 'null');
+debug('P1', 'Current target:', this.currentDockingTarget?.name || 'null', 'New target:', target?.name || 'null');
             return false;
         }
         
@@ -695,19 +697,19 @@ export class SimpleDockingManager {
                 this.starfieldManager.isDocked = true;
                 this.starfieldManager.dockedTo = target;
                 
-                console.log(`🚀 Successfully docked with ${target.name || 'target'}`);
+debug('TARGETING', `🚀 Successfully docked with ${target.name || 'target'}`);
                 
                 // Show docking interface (station menu)
-                console.log(`🚀 Showing docking interface for ${target.name || 'target'}`);
+debug('TARGETING', `🚀 Showing docking interface for ${target.name || 'target'}`);
                 this.starfieldManager.showDockingInterface(target);
                 
                 // Check for cargo deliveries upon successful docking (stations only)
                 const targetMetadata = this.spatialManager.getMetadata(target);
-                console.log(`🚛 DEBUG: Checking cargo delivery conditions:`);
-                console.log(`🚛 DEBUG: - targetMetadata:`, targetMetadata);
-                console.log(`🚛 DEBUG: - targetMetadata?.type:`, targetMetadata?.type);
-                console.log(`🚛 DEBUG: - target?.userData?.name:`, target?.userData?.name);
-                console.log(`🚛 DEBUG: - target.name:`, target.name);
+debug('INSPECTION', `🚛 DEBUG: Checking cargo delivery conditions:`);
+debug('TARGETING', `🚛 DEBUG: - targetMetadata:`, targetMetadata);
+debug('TARGETING', `🚛 DEBUG: - targetMetadata?.type:`, targetMetadata?.type);
+debug('TARGETING', `🚛 DEBUG: - target?.userData?.name:`, target?.userData?.name);
+debug('TARGETING', `🚛 DEBUG: - target.name:`, target.name);
                 
                 // Check if this is a station by name pattern or metadata
                 const isStation = (targetMetadata?.type === 'station') || 
@@ -720,16 +722,16 @@ export class SimpleDockingManager {
                                 target.name.includes('Trading') || target.name.includes('Post')));
                 
                 const stationName = target?.userData?.name || target.name;
-                console.log(`🚛 DEBUG: - isStation:`, isStation);
-                console.log(`🚛 DEBUG: - stationName:`, stationName);
+debug('INSPECTION', `🚛 DEBUG: - isStation:`, isStation);
+debug('INSPECTION', `🚛 DEBUG: - stationName:`, stationName);
                 
                 if (isStation && stationName) {
                     const originalName = stationName;
                     const stationKey = String(originalName).toLowerCase().replace(/\s+/g, '_');
-                    console.log(`🚛 DEBUG: Station name conversion: "${originalName}" → "${stationKey}"`);
+debug('INSPECTION', `🚛 DEBUG: Station name conversion: "${originalName}" → "${stationKey}"`);
                     await this.starfieldManager.checkCargoDeliveries(stationKey);
                 } else {
-                    console.log(`🚛 DEBUG: Cargo delivery check skipped - not a station or no name`);
+debug('INSPECTION', `🚛 DEBUG: Cargo delivery check skipped - not a station or no name`);
                 }
                 
                 // KEEP currentDockingTarget until launch - don't set to null
@@ -788,7 +790,7 @@ export class SimpleDockingManager {
         const launchPosition = this.starfieldManager.camera.position.clone();
         const launchRotation = this.starfieldManager.camera.quaternion.clone();
         
-        console.log(`🚀 Launch completed - storing position: (${launchPosition.x.toFixed(2)}, ${launchPosition.y.toFixed(2)}, ${launchPosition.z.toFixed(2)})`);
+debug('UTILITY', `🚀 Launch completed - storing position: (${launchPosition.x.toFixed(2)}, ${launchPosition.y.toFixed(2)}, ${launchPosition.z.toFixed(2)})`);
         
         this.isDocked = false;
         this.launchInProgress = false;
@@ -813,35 +815,35 @@ export class SimpleDockingManager {
             
             // Set undock cooldown to prevent immediate re-docking
             this.starfieldManager.undockCooldown = Date.now() + 10000; // 10 second cooldown
-            console.log(`🚀 Undock cooldown set: 10 seconds (until ${new Date(this.starfieldManager.undockCooldown).toLocaleTimeString()})`);
+debug('UTILITY', `🚀 Undock cooldown set: 10 seconds (until ${new Date(this.starfieldManager.undockCooldown).toLocaleTimeString()})`);
             
             // Check camera position before system initialization
             const positionBeforeInit = this.starfieldManager.camera.position.clone();
-            console.log(`🚀 Camera position BEFORE system init: (${positionBeforeInit.x.toFixed(2)}, ${positionBeforeInit.y.toFixed(2)}, ${positionBeforeInit.z.toFixed(2)})`);
+debug('UTILITY', `🚀 Camera position BEFORE system init: (${positionBeforeInit.x.toFixed(2)}, ${positionBeforeInit.y.toFixed(2)}, ${positionBeforeInit.z.toFixed(2)})`);
             
             // Reinitialize ship systems for space flight
             if (typeof this.starfieldManager.initializeShipSystems === 'function') {
                 this.starfieldManager.initializeShipSystems();
-                console.log('🚀 Ship systems reinitialized for space flight');
+debug('UTILITY', 'Ship systems reinitialized for space flight');
             }
             
             // Check camera position after system initialization
             const positionAfterInit = this.starfieldManager.camera.position.clone();
-            console.log(`🚀 Camera position AFTER system init: (${positionAfterInit.x.toFixed(2)}, ${positionAfterInit.y.toFixed(2)}, ${positionAfterInit.z.toFixed(2)})`);
+debug('UTILITY', `🚀 Camera position AFTER system init: (${positionAfterInit.x.toFixed(2)}, ${positionAfterInit.y.toFixed(2)}, ${positionAfterInit.z.toFixed(2)})`);
             
             // CRITICAL: Restore the launch position after system initialization
             // This prevents the old undock method from overriding our safe launch positioning
             this.starfieldManager.camera.position.copy(launchPosition);
             this.starfieldManager.camera.quaternion.copy(launchRotation);
-            console.log(`🚀 Launch position RESTORED: (${launchPosition.x.toFixed(2)}, ${launchPosition.y.toFixed(2)}, ${launchPosition.z.toFixed(2)})`);
+debug('UTILITY', `🚀 Launch position RESTORED: (${launchPosition.x.toFixed(2)}, ${launchPosition.y.toFixed(2)}, ${launchPosition.z.toFixed(2)})`);
             
             // Set AFT view AFTER system initialization to prevent override
             this.starfieldManager.setView('AFT');
-            console.log('🚀 AFT view set AFTER system initialization');
+debug('UTILITY', 'AFT view set AFTER system initialization');
             
             // Verify final position
             const finalPosition = this.starfieldManager.camera.position.clone();
-            console.log(`🚀 Final camera position: (${finalPosition.x.toFixed(2)}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(2)})`);
+debug('UTILITY', `🚀 Final camera position: (${finalPosition.x.toFixed(2)}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(2)})`);
         }
         
         // Resume docking monitoring
@@ -850,23 +852,23 @@ export class SimpleDockingManager {
         // Set AFT view as the very final step after all initialization is complete
         setTimeout(() => {
             this.starfieldManager.setView('AFT');
-            console.log('🚀 Final AFT view set after launch completion');
+debug('UTILITY', 'Final AFT view set after launch completion');
             
             // Force AFT view again after a longer delay to override any system that might switch it back
             setTimeout(() => {
                 this.starfieldManager.setView('AFT');
-                console.log('🚀 FINAL FINAL AFT view set - overriding any system switches');
+debug('UTILITY', 'FINAL FINAL AFT view set - overriding any system switches');
                 
                 // Set impulse 1 to start moving away from the station
                 this.starfieldManager.setImpulseSpeed(1);
-                console.log('🚀 Impulse 1 set - beginning departure from station');
+debug('UTILITY', 'Impulse 1 set - beginning departure from station');
             }, 500); // Longer delay to ensure target computer doesn't override
         }, 100); // Small delay to ensure all systems are initialized
         
         // Set cooldown timer
         setTimeout(() => {
             this.dockingCooldown = false;
-            console.log('🚀 Docking systems ready');
+debug('UTILITY', 'Docking systems ready');
         }, this.dockingCooldownTime);
     }
 
@@ -922,7 +924,7 @@ export class SimpleDockingManager {
      */
     destroy() {
         this.stopDockingMonitoring();
-        console.log('🚀 SimpleDockingManager destroyed');
+debug('UTILITY', 'SimpleDockingManager destroyed');
     }
 }
 

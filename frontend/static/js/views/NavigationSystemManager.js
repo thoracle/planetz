@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * NavigationSystemManager - Dual system architecture with fallback
  * 
@@ -61,13 +63,13 @@ export class NavigationSystemManager {
     async initializeSystems() {
         // Initialize both navigation systems
         
-        console.log('🧭 NavigationSystemManager: Initializing dual system architecture...');
+debug('NAVIGATION', 'NavigationSystemManager: Initializing dual system architecture...');
         
         try {
             // Initialize Long Range Scanner (always available)
             this.longRangeScanner = new LongRangeScanner(this.viewManager);
             this.systemHealth.longRangeScanner = 'healthy';
-            console.log('✅ Long Range Scanner: Initialized successfully');
+debug('UTILITY', '✅ Long Range Scanner: Initialized successfully');
             
             // Initialize Star Charts system
             if (this.config.starCharts.enabled) {
@@ -77,7 +79,7 @@ export class NavigationSystemManager {
             // Set up health monitoring
             this.startHealthMonitoring();
             
-            console.log(`🧭 NavigationSystemManager: Active system is ${this.activeSystem}`);
+debug('NAVIGATION', `🧭 NavigationSystemManager: Active system is ${this.activeSystem}`);
             
         } catch (error) {
             console.error('❌ NavigationSystemManager: Initialization failed:', error);
@@ -108,7 +110,7 @@ export class NavigationSystemManager {
             this.starChartsUI = new StarChartsUI(this.viewManager, this.starChartsManager);
             
             this.systemHealth.starCharts = 'healthy';
-            console.log('✅ Star Charts: Initialized successfully');
+debug('UTILITY', '✅ Star Charts: Initialized successfully');
             
         } catch (error) {
             console.error('❌ Star Charts: Initialization failed:', error);
@@ -131,7 +133,7 @@ export class NavigationSystemManager {
                 this.solarSystemManager
             );
 
-            console.log('🔗 Star Charts ↔ Target Computer Integration initialized');
+debug('TARGETING', 'Star Charts ↔ Target Computer Integration initialized');
         } catch (error) {
             console.error('❌ Star Charts Integration initialization failed:', error);
         }
@@ -180,7 +182,7 @@ export class NavigationSystemManager {
         
         // Log health status
         if (this.config.starCharts.performanceMonitoring) {
-            console.log(`🏥 System Health: Star Charts: ${this.systemHealth.starCharts}, LRS: ${this.systemHealth.longRangeScanner}`);
+debug('UTILITY', `🏥 System Health: Star Charts: ${this.systemHealth.starCharts}, LRS: ${this.systemHealth.longRangeScanner}`);
         }
     }
     
@@ -198,7 +200,7 @@ export class NavigationSystemManager {
     activateFallback(error) {
         // Activate fallback to Long Range Scanner
         
-        console.log('🔄 Activating fallback to Long Range Scanner');
+debug('UTILITY', '🔄 Activating fallback to Long Range Scanner');
         
         this.activeSystem = this.fallbackSystem;
         this.performanceMetrics.fallbackActivations++;
@@ -254,10 +256,10 @@ export class NavigationSystemManager {
         try {
             if (this.activeSystem === 'star_charts' && this.starChartsUI && this.systemHealth.starCharts === 'healthy') {
                 this.starChartsUI.show();
-                console.log('🗺️  Showing Star Charts interface');
+debug('UI', 'Showing Star Charts interface');
             } else {
                 this.longRangeScanner.show();
-                console.log('📡 Showing Long Range Scanner interface');
+debug('UI', 'Showing Long Range Scanner interface');
             }
         } catch (error) {
             console.error('❌ Failed to show navigation interface:', error);
@@ -265,7 +267,7 @@ export class NavigationSystemManager {
             // Emergency fallback
             if (this.longRangeScanner) {
                 this.longRangeScanner.show();
-                console.log('🚨 Emergency fallback to Long Range Scanner');
+debug('UTILITY', '🚨 Emergency fallback to Long Range Scanner');
             }
         }
     }
@@ -308,7 +310,7 @@ export class NavigationSystemManager {
                 this.switchToSystem('star_charts');
             }
         } else {
-            console.log('🔄 Star Charts not available, using Long Range Scanner');
+debug('AI', '🔄 Star Charts not available, using Long Range Scanner');
         }
     }
     
@@ -319,7 +321,7 @@ export class NavigationSystemManager {
             return; // Already active
         }
         
-        console.log(`🔄 Switching navigation system: ${this.activeSystem} → ${systemName}`);
+debug('NAVIGATION', `🔄 Switching navigation system: ${this.activeSystem} → ${systemName}`);
         
         // Hide current interface
         this.hideNavigationInterface();
@@ -373,17 +375,17 @@ export class NavigationSystemManager {
         
         const report = this.getPerformanceReport();
         
-        console.log('📊 Navigation System Performance Report:');
-        console.log(`   - Active System: ${report.navigationSystem.activeSystem}`);
-        console.log(`   - System Switches: ${report.navigationSystem.performanceMetrics.systemSwitches}`);
-        console.log(`   - Fallback Activations: ${report.navigationSystem.performanceMetrics.fallbackActivations}`);
-        console.log(`   - Error Count: ${report.navigationSystem.performanceMetrics.errorCount}`);
+debug('NAVIGATION', '📊 Navigation System Performance Report:');
+debug('NAVIGATION', `   - Active System: ${report.navigationSystem.activeSystem}`);
+debug('NAVIGATION', `   - System Switches: ${report.navigationSystem.performanceMetrics.systemSwitches}`);
+debug('NAVIGATION', `   - Fallback Activations: ${report.navigationSystem.performanceMetrics.fallbackActivations}`);
+debug('P1', `   - Error Count: ${report.navigationSystem.performanceMetrics.errorCount}`);
         
         if (report.starCharts) {
-            console.log('   - Star Charts:');
-            console.log(`     • Average discovery check: ${report.starCharts.averageDiscoveryCheckTime.toFixed(2)}ms`);
-            console.log(`     • Total discoveries: ${report.starCharts.totalDiscoveries}`);
-            console.log(`     • Discovered objects: ${report.starCharts.discoveredObjectsCount}`);
+debug('UTILITY', '   - Star Charts:');
+debug('UTILITY', `     • Average discovery check: ${report.starCharts.averageDiscoveryCheckTime.toFixed(2)}ms`);
+debug('UTILITY', `     • Total discoveries: ${report.starCharts.totalDiscoveries}`);
+debug('UTILITY', `     • Discovered objects: ${report.starCharts.discoveredObjectsCount}`);
         }
         
         if (this.starChartsManager) {
@@ -397,7 +399,7 @@ export class NavigationSystemManager {
         // Update system configuration
         
         this.config = { ...this.config, ...newConfig };
-        console.log('⚙️  Navigation system configuration updated:', this.config);
+debug('NAVIGATION', 'Navigation system configuration updated:', this.config);
         
         // Apply configuration changes
         if (this.starChartsManager) {
@@ -410,7 +412,7 @@ export class NavigationSystemManager {
     emergencyReset() {
         // Emergency reset to Long Range Scanner
         
-        console.log('🚨 Emergency navigation system reset');
+debug('NAVIGATION', '🚨 Emergency navigation system reset');
         
         this.activeSystem = 'long_range_scanner';
         this.systemHealth.starCharts = 'disabled';
@@ -433,7 +435,7 @@ export class NavigationSystemManager {
     destroy() {
         // Clean up navigation systems
         
-        console.log('🧭 NavigationSystemManager: Cleaning up...');
+debug('NAVIGATION', 'NavigationSystemManager: Cleaning up...');
         
         if (this.starChartsUI) {
             this.starChartsUI.hide();

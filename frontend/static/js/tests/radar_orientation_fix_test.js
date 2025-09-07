@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Radar Orientation Fix Test
  * 
@@ -30,20 +32,20 @@ export class RadarOrientationTest {
      * Test the radar orientation at different headings
      */
     async testRadarOrientation() {
-        console.log('🧪 RADAR ORIENTATION TEST: Starting...');
+debug('UTILITY', 'RADAR ORIENTATION TEST: Starting...');
         
         if (!this.radar || !this.radar.isVisible) {
-            console.log('❌ RADAR TEST: Proximity detector not visible. Press P to enable it first.');
+debug('UTILITY', '❌ RADAR TEST: Proximity detector not visible. Press P to enable it first.');
             return false;
         }
 
-        console.log('✅ RADAR TEST: Proximity detector is active');
-        console.log('📍 RADAR TEST: To verify the fix:');
-        console.log('   1. Use mouse to turn your ship left/right');
-        console.log('   2. Observe that the radar grid rotates with your heading');
-        console.log('   3. Objects ahead of you should appear at the "top" of the radar');
-        console.log('   4. Objects to your right should appear at the "right" of the radar');
-        console.log('   5. The grid should no longer be 90° offset from your heading');
+debug('UTILITY', '✅ RADAR TEST: Proximity detector is active');
+debug('UTILITY', '📍 RADAR TEST: To verify the fix:');
+debug('UTILITY', '   1. Use mouse to turn your ship left/right');
+debug('UTILITY', '   2. Observe that the radar grid rotates with your heading');
+debug('UTILITY', '   3. Objects ahead of you should appear at the "top" of the radar');
+debug('UTILITY', '   4. Objects to your right should appear at the "right" of the radar');
+debug('UTILITY', '   5. The grid should no longer be 90° offset from your heading');
         
         return true;
     }
@@ -69,4 +71,4 @@ export class RadarOrientationTest {
 // Export for global access
 window.RadarOrientationTest = RadarOrientationTest;
 
-console.log('🧪 Radar Orientation Test loaded. Use: new RadarOrientationTest(proximityDetector3D).testRadarOrientation()');
+debug('UTILITY', 'Radar Orientation Test loaded. Use: new RadarOrientationTest(proximityDetector3D).testRadarOrientation()');

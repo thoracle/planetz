@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * MissionNotificationHandler - Integration with Communication HUD for mission updates
  * Handles mission-related notifications and communication events
@@ -46,7 +48,7 @@ export class MissionNotificationHandler {
     
     initialize() {
         this.setupEventListeners();
-        console.log('📢 MissionNotificationHandler: Initialized');
+debug('MISSIONS', '📢 MissionNotificationHandler: Initialized');
         
         // Make globally accessible for testing
         window.missionNotificationHandler = this;
@@ -58,7 +60,7 @@ export class MissionNotificationHandler {
     setMissionManager(missionManager) {
         this.missionManager = missionManager;
         this.attachMissionManagerEvents();
-        console.log('📢 MissionNotificationHandler: Mission manager attached');
+debug('MISSIONS', '📢 MissionNotificationHandler: Mission manager attached');
     }
     
     /**
@@ -82,7 +84,7 @@ export class MissionNotificationHandler {
             this.onObjectiveComplete(data.objective, data.mission);
         });
         
-        console.log('📢 MissionNotificationHandler: Event listeners ready and connected to mission API');
+debug('MISSIONS', '📢 MissionNotificationHandler: Event listeners ready and connected to mission API');
     }
     
     /**
@@ -127,7 +129,7 @@ export class MissionNotificationHandler {
         
         // If this is a delivery objective completion on a delivery mission, trigger delivery audio
         if (isDeliveryObjective && isDeliveryMission) {
-            console.log(`📢 Delivery objective completed - triggering delivery audio`);
+debug('UI', `📢 Delivery objective completed - triggering delivery audio`);
             showMessageOptions.isDeliveryComplete = true;
         }
         
@@ -137,7 +139,7 @@ export class MissionNotificationHandler {
             showMessageOptions
         );
         
-        console.log(`📢 Objective completed: ${objective.description}`);
+debug('UI', `📢 Objective completed: ${objective.description}`);
     }
     
     /**
@@ -169,7 +171,7 @@ export class MissionNotificationHandler {
             }
         );
         
-        console.log(`📢 Mission completed: ${mission.title}${isDeliveryMission ? ' (Delivery mission - playing audio)' : ''}`);
+debug('MISSIONS', `📢 Mission completed: ${mission.title}${isDeliveryMission ? ' (Delivery mission - playing audio)' : ''}`);
     }
     
     /**
@@ -189,7 +191,7 @@ export class MissionNotificationHandler {
             }
         );
         
-        console.log(`📢 Mission failed: ${mission.title}`);
+debug('P1', `📢 Mission failed: ${mission.title}`);
     }
     
     /**
@@ -209,7 +211,7 @@ export class MissionNotificationHandler {
             }
         );
         
-        console.log(`📢 Mission accepted: ${mission.title}`);
+debug('MISSIONS', `📢 Mission accepted: ${mission.title}`);
     }
     
     /**
@@ -229,7 +231,7 @@ export class MissionNotificationHandler {
             }
         );
         
-        console.log(`📢 Objective failed: ${objective.description}`);
+debug('P1', `📢 Objective failed: ${objective.description}`);
     }
     
     /**
@@ -246,7 +248,7 @@ export class MissionNotificationHandler {
         const finalOptions = { ...defaultOptions, ...options };
         
         this.commHUD.showMessage(npcName, message, finalOptions);
-        console.log(`📢 Custom notification: ${message}`);
+debug('UI', `📢 Custom notification: ${message}`);
     }
     
     /**
@@ -266,7 +268,7 @@ export class MissionNotificationHandler {
             }
         );
         
-        console.log(`📢 Mission briefing sent: ${mission.title}`);
+debug('MISSIONS', `📢 Mission briefing sent: ${mission.title}`);
     }
     
     /**
@@ -286,7 +288,7 @@ export class MissionNotificationHandler {
             }
         );
         
-        console.log(`📢 Mission update: ${updateText}`);
+debug('MISSIONS', `📢 Mission update: ${updateText}`);
     }
     
     /**
@@ -306,7 +308,7 @@ export class MissionNotificationHandler {
             }
         );
         
-        console.log(`📢 Progress notification: ${progressText}`);
+debug('UI', `📢 Progress notification: ${progressText}`);
     }
     
     /**
@@ -326,7 +328,7 @@ export class MissionNotificationHandler {
             }
         );
         
-        console.log(`📢 Urgent alert: ${alertText}`);
+debug('UI', `📢 Urgent alert: ${alertText}`);
     }
     
     /**
@@ -532,7 +534,7 @@ export class MissionNotificationHandler {
      * Test notification system with mock data
      */
     testNotifications() {
-        console.log('📢 Testing mission notifications...');
+debug('MISSIONS', '📢 Testing mission notifications...');
         
         const mockMission = {
             id: 'test_mission',
@@ -571,14 +573,14 @@ export class MissionNotificationHandler {
             this.onMissionComplete(mockMission);
         }, 15000);
         
-        console.log('📢 Test notifications scheduled');
+debug('UI', '📢 Test notifications scheduled');
     }
     
     /**
      * Test failure notifications
      */
     testFailureNotifications() {
-        console.log('📢 Testing failure notifications...');
+debug('AI', '📢 Testing failure notifications...');
         
         const mockMission = {
             id: 'test_mission_fail',
@@ -603,7 +605,7 @@ export class MissionNotificationHandler {
             this.onMissionFailed(mockMission, 'Time limit exceeded');
         }, 7000);
         
-        console.log('📢 Failure test notifications scheduled');
+debug('AI', '📢 Failure test notifications scheduled');
     }
     
     /**
@@ -618,6 +620,6 @@ export class MissionNotificationHandler {
      */
     updateNotificationSettings(settings) {
         this.notificationSettings = { ...this.notificationSettings, ...settings };
-        console.log('📢 Notification settings updated');
+debug('UTILITY', '📢 Notification settings updated');
     }
 }

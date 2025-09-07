@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Clean Damage Control HUD Implementation
  * No legacy conflicts, simple event handling, clean architecture
@@ -147,7 +149,7 @@ export default class DamageControlHUD {
             if (event.target.matches('.damage-control-repair-btn')) {
                 const systemName = event.target.dataset.systemName;
                 if (systemName && !event.target.disabled) {
-                    console.log(`🔧 Repair button clicked for: ${systemName}`);
+debug('AI', `🔧 Repair button clicked for: ${systemName}`);
                     this.startRepair(systemName);
                 }
             }
@@ -181,22 +183,22 @@ export default class DamageControlHUD {
     refresh() {
         if (!this.isVisible) return;
         
-        console.log('🔧 Refreshing damage control display');
+debug('COMBAT', 'Refreshing damage control display');
         
         // Get ship status with and without filtering for comparison
         const unfilteredStatus = this.ship.getStatus(false);
         const shipStatus = this.ship.getStatus(true); // getCardFilteredStatus()
         
-        console.log('🔧 ALL ship systems (unfiltered):', Object.keys(unfilteredStatus.systems));
-        console.log('🔧 FILTERED ship systems:', Object.keys(shipStatus.systems));
+debug('UI', 'ALL ship systems (unfiltered):', Object.keys(unfilteredStatus.systems));
+debug('UI', 'FILTERED ship systems:', Object.keys(shipStatus.systems));
         console.log('🔧 Systems filtered OUT:', Object.keys(unfilteredStatus.systems).filter(
             name => !Object.keys(shipStatus.systems).includes(name)
         ));
         
         // Debug: Show raw ship systems Map
-        console.log('🔧 Ship.systems Map entries:');
+debug('UI', 'Ship.systems Map entries:');
         for (const [systemName, system] of this.ship.systems) {
-            console.log(`  - ${systemName}: ${system.constructor.name} (Level ${system.level}, Health: ${Math.round(system.healthPercentage * 100)}%)`);
+debug('UI', `  - ${systemName}: ${system.constructor.name} (Level ${system.level}, Health: ${Math.round(system.healthPercentage * 100)}%)`);
         }
         
         if (!unfilteredStatus || !unfilteredStatus.systems) {
@@ -205,7 +207,7 @@ export default class DamageControlHUD {
         }
         
         // Debug: Log what systems we're getting
-        console.log('🔧 Using unfiltered ship status systems:', Object.keys(unfilteredStatus.systems));
+debug('UI', 'Using unfiltered ship status systems:', Object.keys(unfilteredStatus.systems));
         
         // Clear systems list
         this.elements.systemsList.innerHTML = '';
@@ -217,7 +219,7 @@ export default class DamageControlHUD {
         // Check for radar cards and add virtual radar system if needed
         const hasRadarCards = this.ship && this.ship.hasSystemCardsSync && this.ship.hasSystemCardsSync('radar');
         if (hasRadarCards && !systemsToShow.radar) {
-            console.log('🔧 Adding virtual radar system (cards detected but no system object)');
+debug('UI', 'Adding virtual radar system (cards detected but no system object)');
             systemsToShow.radar = {
                 name: 'Proximity Detector',
                 level: 1,
@@ -235,7 +237,7 @@ export default class DamageControlHUD {
         // Add each system
         let systemsShown = 0;
         for (const [systemName, systemData] of Object.entries(systemsToShow)) {
-            console.log(`🔧 Processing system: ${systemName}`, systemData);
+debug('UI', `🔧 Processing system: ${systemName}`, systemData);
             this.createSystemCard(systemName, systemData);
             systemsShown++;
         }
@@ -252,7 +254,7 @@ export default class DamageControlHUD {
             this.elements.systemsList.appendChild(noSystemsDiv);
         }
         
-        console.log(`🔧 Displayed ${systemsShown} systems`);
+debug('UI', `🔧 Displayed ${systemsShown} systems`);
     }
     
     /**
@@ -273,7 +275,7 @@ export default class DamageControlHUD {
                 isRepairable: hasValidCard && systemData.health < 1.0
             };
             
-            console.log(`🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, repairable: ${validatedSystems[systemName].isRepairable}`);
+debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, repairable: ${validatedSystems[systemName].isRepairable}`);
         }
         
         return validatedSystems;
@@ -494,7 +496,7 @@ export default class DamageControlHUD {
             }
         } catch (error) {
             // If we can't get the system level, just use the base name
-            console.debug(`Could not get level for system ${systemName}:`, error);
+            debug('UTILITY', `Could not get level for system ${systemName}: ${error.message}`);
         }
         
         return baseName;
@@ -557,7 +559,7 @@ export default class DamageControlHUD {
     
     startRepair(systemName) {
         if (this.manualRepairSystem.isRepairing) {
-            console.log(`🔧 Repair already in progress: ${this.manualRepairSystem.repairTarget}`);
+debug('TARGETING', `🔧 Repair already in progress: ${this.manualRepairSystem.repairTarget}`);
             return;
         }
         
@@ -568,11 +570,11 @@ export default class DamageControlHUD {
         }
         
         if (system.healthPercentage >= 1.0) {
-            console.log(`🔧 System ${systemName} is already fully repaired`);
+debug('AI', `🔧 System ${systemName} is already fully repaired`);
             return;
         }
         
-        console.log(`🔧 Starting repair for ${systemName} (${Math.round(system.healthPercentage * 100)}% health)`);
+debug('AI', `🔧 Starting repair for ${systemName} (${Math.round(system.healthPercentage * 100)}% health)`);
         
         // Start repair
         this.manualRepairSystem.isRepairing = true;
@@ -615,7 +617,7 @@ export default class DamageControlHUD {
             // CRITICAL: Update system state so it becomes operational again
             system.updateSystemState();
             
-            console.log(`🔧 Repair completed for ${systemName}`);
+debug('AI', `🔧 Repair completed for ${systemName}`);
         }
         
         // Reset repair system
@@ -669,7 +671,7 @@ export default class DamageControlHUD {
      * Force refresh the damage control display (reload systems and update UI)
      */
     async forceRefresh() {
-        console.log('🔧 Force refreshing damage control systems...');
+debug('COMBAT', 'Force refreshing damage control systems...');
         
         // Force reload cards from the ship
         if (this.ship && this.ship.cardSystemIntegration) {

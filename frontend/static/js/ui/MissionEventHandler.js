@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Mission Event Handler
  * Integrates mission system with game events
@@ -13,7 +15,7 @@ export class MissionEventHandler {
         // Initialize event listeners
         this.bindGameEvents();
         
-        console.log('🎯 Mission Event Handler initialized');
+debug('MISSIONS', 'Mission Event Handler initialized');
     }
     
     bindGameEvents() {
@@ -48,7 +50,7 @@ export class MissionEventHandler {
                 faction: enemy.faction || 'hostile'
             };
             
-            console.log('💥 Enemy destroyed, checking missions:', enemyData);
+debug('MISSIONS', '💥 Enemy destroyed, checking missions:', enemyData);
             
             // Send to mission API
             const response = await fetch('/api/missions/events/enemy_destroyed', {
@@ -65,7 +67,7 @@ export class MissionEventHandler {
             if (response.ok) {
                 const data = await response.json();
                 if (data.updated_missions && data.updated_missions.length > 0) {
-                    console.log(`🎯 Updated ${data.updated_missions.length} missions from enemy destruction`);
+debug('MISSIONS', `🎯 Updated ${data.updated_missions.length} missions from enemy destruction`);
                     
                     // Process mission updates
                     for (const mission of data.updated_missions) {
@@ -87,7 +89,7 @@ export class MissionEventHandler {
                 timestamp: new Date().toISOString()
             };
             
-            console.log('📍 Location reached, checking missions:', locationData);
+debug('MISSIONS', '📍 Location reached, checking missions:', locationData);
             
             // Send to mission API
             const response = await fetch('/api/missions/events/location_reached', {
@@ -104,7 +106,7 @@ export class MissionEventHandler {
             if (response.ok) {
                 const data = await response.json();
                 if (data.updated_missions && data.updated_missions.length > 0) {
-                    console.log(`🎯 Updated ${data.updated_missions.length} missions from location reached`);
+debug('MISSIONS', `🎯 Updated ${data.updated_missions.length} missions from location reached`);
                     
                     // Process mission updates
                     for (const mission of data.updated_missions) {
@@ -127,7 +129,7 @@ export class MissionEventHandler {
                 timestamp: new Date().toISOString()
             };
             
-            console.log('📦 Cargo delivered, checking missions:', cargoData);
+debug('MISSIONS', '📦 Cargo delivered, checking missions:', cargoData);
             
             // Send to mission API
             const response = await fetch('/api/missions/events/cargo_delivered', {
@@ -144,7 +146,7 @@ export class MissionEventHandler {
             if (response.ok) {
                 const data = await response.json();
                 if (data.updated_missions && data.updated_missions.length > 0) {
-                    console.log(`🎯 Updated ${data.updated_missions.length} missions from cargo delivery`);
+debug('MISSIONS', `🎯 Updated ${data.updated_missions.length} missions from cargo delivery`);
                     
                     // Process mission updates
                     for (const mission of data.updated_missions) {
@@ -277,12 +279,12 @@ export class MissionEventHandler {
         hooks.forEach(hook => {
             switch (hook.type) {
                 case 'spawn_enemies':
-                    console.log('🚀 Mission: Spawning enemies', hook.data);
+debug('MISSIONS', 'Mission: Spawning enemies', hook.data);
                     this.spawnMissionEnemies(hook.data);
                     break;
                     
                 case 'play_audio':
-                    console.log('🔊 Mission: Playing audio', hook.data.sound);
+debug('MISSIONS', '🔊 Mission: Playing audio', hook.data.sound);
                     this.playAudio(hook.data.sound, hook.data.volume);
                     break;
                     
@@ -291,12 +293,12 @@ export class MissionEventHandler {
                     break;
                     
                 case 'award_rewards':
-                    console.log('💰 Mission: Awarding rewards', hook.data);
+                    debug('MISSIONS', 'Mission: Awarding rewards', hook.data);
                     this.awardRewards(hook.data);
                     break;
                     
                 default:
-                    console.log('🔗 Unhandled mission hook:', hook.type, hook.data);
+                    debug('MISSIONS', 'Unhandled mission hook:', hook.type, hook.data);
             }
         });
     }
@@ -304,7 +306,7 @@ export class MissionEventHandler {
     spawnMissionEnemies(data) {
         // Integrate with existing enemy spawning if available
         if (this.starfieldManager?.createTargetDummyShips) {
-            console.log('🚀 Spawning mission enemies using target dummy system');
+debug('TARGETING', 'Spawning mission enemies using target dummy system');
             
             // Use existing Q-key dummy spawning as a base
             // This would need to be enhanced to spawn specific enemy types
@@ -336,7 +338,7 @@ export class MissionEventHandler {
     awardRewards(rewardData) {
         // Process reward package
         if (rewardData.reward_package_id) {
-            console.log(`💰 Processing reward package ${rewardData.reward_package_id}`);
+debug('UI', `💰 Processing reward package ${rewardData.reward_package_id}`);
             
             // This would integrate with the game's reward system
             // For now, just show notification
@@ -422,7 +424,7 @@ export class MissionEventHandler {
                     this.activeMissions.set(mission.id, mission);
                 });
                 
-                console.log(`🎯 Loaded ${acceptedMissions.length} active missions`);
+debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                 return acceptedMissions;
             }
             

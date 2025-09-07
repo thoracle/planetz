@@ -12,6 +12,7 @@ import { MissionNotificationHandler } from '../ui/MissionNotificationHandler.js'
 import { MissionAPIService } from '../services/MissionAPIService.js';
 import { MissionEventService } from '../services/MissionEventService.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
+import { debug } from '../debug.js';
 
 // TESTING CONFIGURATION
 const TESTING_CONFIG = {
@@ -143,7 +144,7 @@ export class StarfieldManager {
         
         // Create radar HUD
         this.proximityDetector3D = new ProximityDetector3D(this, document.body);
-        console.log('🎯 StarfieldManager: 3D Proximity Detector initialized');
+        debug('UTILITY', 'StarfieldManager: 3D Proximity Detector initialized');
         
         // Initialize simple docking system (moved to app.js after spatial systems are ready)
         // if (!this._dockingInitTried) {
@@ -335,7 +336,7 @@ export class StarfieldManager {
         try {
             if (this.enemyAIManager) {
                 await this.enemyAIManager.initialize();
-                console.log('🤖 Enemy AI system ready');
+                debug('UTILITY', 'Enemy AI system ready');
             }
         } catch (error) {
             console.error('❌ Failed to initialize AI manager:', error);
@@ -394,14 +395,14 @@ export class StarfieldManager {
                     this.ship.position = new this.THREE.Vector3(0, 0, 0);
                 }
                 
-                console.log('WeaponEffectsManager connected to ship');
+                debug('UTILITY', 'WeaponEffectsManager connected to ship');
             } else {
                 console.warn('Ship not available, WeaponEffectsManager connection deferred');
             }
             
             this.weaponEffectsInitialized = true;
             this.weaponEffectsRetryCount = 0; // Reset retry count on success
-            console.log('WeaponEffectsManager initialized successfully');
+            debug('UTILITY', 'WeaponEffectsManager initialized successfully');
             return true;
             
         } catch (error) {
@@ -638,10 +639,10 @@ export class StarfieldManager {
      * @param {string} systemName - Name of the system to repair
      */
     startManualRepair(systemName) {
-        console.log(`🔧 startManualRepair called for: ${systemName}`);
+        debug('UTILITY', `startManualRepair called for: ${systemName}`);
         
         if (this.manualRepairSystem.isRepairing) {
-            console.log(`🔧 Manual repair system already repairing: ${this.manualRepairSystem.repairTarget}`);
+            debug('UTILITY', `Manual repair system already repairing: ${this.manualRepairSystem.repairTarget}`);
             return;
         }
 
@@ -652,14 +653,14 @@ export class StarfieldManager {
             return;
         }
 
-        console.log(`🔧 System found: ${systemName}, health: ${system.currentHealth}/${system.maxHealth}, healthPercentage: ${system.healthPercentage}`);
+        debug('UTILITY', `System found: ${systemName}, health: ${system.currentHealth}/${system.maxHealth}, healthPercentage: ${system.healthPercentage}`);
 
         if (system.healthPercentage >= 100) {
-            console.log(`🔧 System ${systemName} is already fully repaired (${system.healthPercentage}%)`);
+            debug('UTILITY', `System ${systemName} is already fully repaired (${system.healthPercentage}%)`);
             return;
         }
 
-        console.log(`🔧 Starting repair for ${systemName} (${system.healthPercentage}% health)`);
+        debug('UTILITY', `Starting repair for ${systemName} (${system.healthPercentage}% health)`);
         
         this.manualRepairSystem.isRepairing = true;
         this.manualRepairSystem.repairTarget = systemName;
@@ -1108,14 +1109,14 @@ export class StarfieldManager {
 
     createWeaponHUD() {
         // Import and initialize WeaponHUD
-        console.log('🔫 StarfieldManager: Starting WeaponHUD creation...');
+        debug('UTILITY', 'StarfieldManager: Starting WeaponHUD creation...');
         import('../ui/WeaponHUD.js').then(({ WeaponHUD }) => {
-            console.log('🔫 StarfieldManager: WeaponHUD module loaded, creating instance...');
+            debug('UTILITY', 'StarfieldManager: WeaponHUD module loaded, creating instance...');
             this.weaponHUD = new WeaponHUD(document.body);
             
             // Initialize weapon slots display
             this.weaponHUD.initializeWeaponSlots(4);
-            console.log('🔫 StarfieldManager: WeaponHUD created and initialized');
+            debug('UTILITY', 'StarfieldManager: WeaponHUD created and initialized');
             
             // Connect to weapon system if available
             this.connectWeaponHUDToSystem();
@@ -1148,9 +1149,9 @@ export class StarfieldManager {
                 this.weaponHUDRetryInterval = null;
                 
                 if (this.weaponHUDConnected) {
-                    console.log(`✅ WeaponHUD connected after ${this.weaponHUDRetryCount} attempts`);
+                    debug('UTILITY', `WeaponHUD connected after ${this.weaponHUDRetryCount} attempts`);
                 } else {
-                    console.log(`🔍 WeaponHUD connection will retry later (${this.maxWeaponHUDRetries} attempts completed)`);
+                    debug('UTILITY', `WeaponHUD connection will retry later (${this.maxWeaponHUDRetries} attempts completed)`);
                 }
             }
         }, 500);
@@ -1162,10 +1163,10 @@ export class StarfieldManager {
     connectWeaponHUDToSystem() {
         const ship = this.viewManager?.getShip();
         
-        console.log('🔗 Attempting to connect WeaponHUD to WeaponSystemCore...');
-        console.log('  - Ship available:', !!ship);
-        console.log('  - Ship weaponSystem available:', !!(ship?.weaponSystem));
-        console.log('  - WeaponHUD available:', !!this.weaponHUD);
+        debug('INSPECTION', 'Attempting to connect WeaponHUD to WeaponSystemCore...');
+        debug('INSPECTION', `Ship available: ${!!ship}`);
+        debug('INSPECTION', `Ship weaponSystem available: ${!!(ship?.weaponSystem)}`);
+        debug('INSPECTION', `WeaponHUD available: ${!!this.weaponHUD}`);
         
         if (ship && ship.weaponSystem && this.weaponHUD) {
             // Set HUD reference in weapon system
@@ -1175,14 +1176,14 @@ export class StarfieldManager {
             this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
             
             this.weaponHUDConnected = true;
-            console.log('✅ WeaponHUD successfully connected to WeaponSystemCore');
+            debug('UTILITY', 'WeaponHUD successfully connected to WeaponSystemCore');
         } else {
             this.weaponHUDConnected = false;
             // Use debug logging instead of warnings during startup
-            console.log('🔍 WeaponHUD connection pending:');
-            if (!ship) console.log('  - Ship initializing...');
-            if (!ship?.weaponSystem) console.log('  - WeaponSystem initializing...');
-            if (!this.weaponHUD) console.log('  - WeaponHUD initializing...');
+            debug('INSPECTION', 'WeaponHUD connection pending:');
+            if (!ship) debug('INSPECTION', 'Ship initializing...');
+            if (!ship?.weaponSystem) debug('INSPECTION', 'WeaponSystem initializing...');
+            if (!this.weaponHUD) debug('INSPECTION', 'WeaponHUD initializing...');
         }
     }
     bindKeyEvents() {
@@ -1228,38 +1229,38 @@ export class StarfieldManager {
         if (event.ctrlKey && event.key.toLowerCase() === 'o') {
                 event.preventDefault();
                 
-                console.log(`🎮 CTRL+O PRESSED: Toggling debug mode...`);
+                debug('UTILITY', 'CTRL+O PRESSED: Toggling debug mode...');
                 
                 // Toggle weapon debug mode
                 this.toggleDebugMode();
                 
                 // Toggle spatial debug visualization (placeholder for future implementation)
                 if (window.spatialManager) {
-                    console.log(`🔧 SpatialManager Status: Initialized and ready`);
+                    debug('UTILITY', 'SpatialManager Status: Initialized and ready');
                     const stats = window.spatialManager.getStats();
-                    console.log(`   • Tracked objects: ${stats.totalObjects}`);
-                    console.log(`   • Object types: ${Object.keys(stats.typeBreakdown).join(', ')}`);
-                    
+                    debug('INSPECTION', `Tracked objects: ${stats.totalObjects}`);
+                    debug('INSPECTION', `Object types: ${Object.keys(stats.typeBreakdown).join(', ')}`);
+
                     // Future: Add debug visualization for spatial bounding volumes
-                    console.log(`🔍 Spatial debug info displayed in console`);
+                    debug('INSPECTION', 'Spatial debug info displayed in console');
                 } else {
-                    console.warn(`⚠️ SpatialManager not available for debug visualization`);
+                    debug('P1', 'SpatialManager not available for debug visualization');
                 }
-                
-                console.log(`✅ CTRL+O DEBUG TOGGLE COMPLETE`);
+
+                debug('UTILITY', 'CTRL+O DEBUG TOGGLE COMPLETE');
             }
             
             // Enhanced wireframe visibility toggle (Ctrl-Shift-P) for debugging wireframe issues
             if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'p') {
                 event.preventDefault();
                 
-                console.log(`🎮 CTRL+SHIFT+P PRESSED: Enhancing wireframe visibility...`);
+                debug('UTILITY', 'CTRL+SHIFT+P PRESSED: Enhancing wireframe visibility...');
                 
                 if (window.physicsManager && window.physicsManager.initialized && window.physicsManager.debugMode) {
                     window.physicsManager.enhanceWireframeVisibility();
                 } else {
-                    console.log(`❌ Cannot enhance wireframes - debug mode not active or physics manager not available`);
-                    console.log(`💡 Press Ctrl+P first to enable debug mode`);
+                    debug('P1', 'Cannot enhance wireframes - debug mode not active or physics manager not available');
+                    debug('UTILITY', 'Press Ctrl+P first to enable debug mode');
                 }
             }
             
@@ -1326,7 +1327,7 @@ export class StarfieldManager {
                         event.preventDefault();
                         if (this.enemyAIManager) {
                             this.enemyAIManager.setDebugMode(!this.enemyAIManager.debugMode);
-                            console.log(`🤖 AI Debug Mode: ${this.enemyAIManager.debugMode ? 'ON' : 'OFF'}`);
+                            debug('AI', `AI Debug Mode: ${this.enemyAIManager.debugMode ? 'ON' : 'OFF'}`);
                         }
                         return;
                     case 'e':
@@ -1334,7 +1335,7 @@ export class StarfieldManager {
                         event.preventDefault();
                         if (this.enemyAIManager) {
                             this.enemyAIManager.forceAllAIState('engage');
-                            console.log('🤖 All AIs forced to ENGAGE state');
+                            debug('AI', 'All AIs forced to ENGAGE state');
                         }
                         return;
                     case 'i':
@@ -1342,7 +1343,7 @@ export class StarfieldManager {
                         event.preventDefault();
                         if (this.enemyAIManager) {
                             this.enemyAIManager.forceAllAIState('idle');
-                            console.log('🤖 All AIs forced to IDLE state');
+                            debug('AI', 'All AIs forced to IDLE state');
                         }
                         return;
                     case 's':
@@ -1350,7 +1351,7 @@ export class StarfieldManager {
                         event.preventDefault();
                         if (this.enemyAIManager) {
                             const stats = this.enemyAIManager.getAIStats();
-                            console.log('🤖 AI Statistics:', stats);
+                            debug('AI', `AI Statistics: ${JSON.stringify(stats)}`);
                         }
                         return;
                     case 'f':
@@ -1358,7 +1359,7 @@ export class StarfieldManager {
                         event.preventDefault();
                         if (this.enemyAIManager) {
                             this.enemyAIManager.forceAllAIState('flee');
-                            console.log('🤖 All AIs forced to FLEE state');
+                            debug('AI', 'All AIs forced to FLEE state');
                         }
                         return;
                     case 'v':
@@ -1366,7 +1367,7 @@ export class StarfieldManager {
                         event.preventDefault();
                         if (this.enemyAIManager && this.targetDummyShips) {
                             this.enemyAIManager.createFormation(this.targetDummyShips, 'v_formation');
-                            console.log('🎯 Created V-Formation with all AI ships');
+                            debug('AI', 'Created V-Formation with all AI ships');
                         }
                         return;
                     case 'c':
@@ -1374,7 +1375,7 @@ export class StarfieldManager {
                         event.preventDefault();
                         if (this.enemyAIManager && this.targetDummyShips) {
                             this.enemyAIManager.createFormation(this.targetDummyShips, 'column');
-                            console.log('🎯 Created Column formation with all AI ships');
+                            debug('AI', 'Created Column formation with all AI ships');
                         }
                         return;
                     case 'l':
@@ -1382,7 +1383,7 @@ export class StarfieldManager {
                         event.preventDefault();
                         if (this.enemyAIManager && this.targetDummyShips) {
                             this.enemyAIManager.createFormation(this.targetDummyShips, 'line_abreast');
-                            console.log('🎯 Created Line Abreast formation with all AI ships');
+                            debug('AI', 'Created Line Abreast formation with all AI ships');
                         }
                         return;
                     case 'b':
@@ -1390,7 +1391,7 @@ export class StarfieldManager {
                         event.preventDefault();
                         if (this.enemyAIManager) {
                             const stats = this.enemyAIManager.getFlockingStats();
-                            console.log('🐦 Flocking Statistics:', stats);
+                            debug('AI', `Flocking Statistics: ${JSON.stringify(stats)}`);
                         }
                         return;
                     case 't':
@@ -1398,11 +1399,11 @@ export class StarfieldManager {
                         event.preventDefault();
                         if (this.enemyAIManager) {
                             const aiShips = Array.from(this.enemyAIManager.activeAIs);
-                            console.log('⚔️ Combat Statistics:');
+                            debug('COMBAT', `Combat Statistics for ${aiShips.length} ships:`);
                             aiShips.forEach((ai, index) => {
                                 const combatState = ai.getCombatState();
                                 const debugInfo = ai.getDebugInfo();
-                                console.log(`  Ship ${index + 1} (${combatState.state}):`, debugInfo);
+                                debug('COMBAT', `Ship ${index + 1} (${combatState.state}): ${JSON.stringify(debugInfo)}`);
                             });
                         }
                         return;
@@ -1411,10 +1412,10 @@ export class StarfieldManager {
                         event.preventDefault();
                         if (this.enemyAIManager) {
                             const aiShips = Array.from(this.enemyAIManager.activeAIs);
-                            console.log('🎯 Weapon Targeting Debug:');
+                            debug('COMBAT', `Weapon Targeting Debug for ${aiShips.length} ships:`);
                             aiShips.forEach((ai, index) => {
                                 const targetingInfo = ai.weaponTargeting?.getDebugInfo() || {};
-                                console.log(`  Ship ${index + 1}:`, targetingInfo);
+                                debug('COMBAT', `Ship ${index + 1}: ${JSON.stringify(targetingInfo)}`);
                             });
                         }
                         return;
@@ -1427,7 +1428,7 @@ export class StarfieldManager {
                                 ai.setTarget(this.shipMesh);
                                 ai.setState('engage');
                             });
-                            console.log(`⚔️ All AIs now targeting player ship`);
+                            debug('COMBAT', 'All AIs now targeting player ship');
                         }
                         return;
                     case 'p':
@@ -1435,7 +1436,7 @@ export class StarfieldManager {
                         event.preventDefault();
                         if (this.enemyAIManager) {
                             const perfStats = this.enemyAIManager.performanceManager.getPerformanceStats();
-                            console.log('⚡ AI Performance Statistics:', perfStats);
+                            debug('AI', `AI Performance Statistics: ${JSON.stringify(perfStats)}`);
                         }
                         return;
                     case 'd':
@@ -1455,7 +1456,7 @@ export class StarfieldManager {
                                 showThreatLevels: currentSettings.showThreatLevels
                             };
                             visualizer.configure(newSettings);
-                            console.log('🎨 Debug visualization settings updated');
+                            debug('INSPECTION', 'Debug visualization settings updated');
                         }
                         return;
                 }
@@ -1988,14 +1989,14 @@ export class StarfieldManager {
                         // If HUD is hidden, show it first
                         if (this.communicationHUD.toggle()) {
                             this.playCommandSound();
-                            console.log('🗣️ Communication HUD toggled: ON');
+debug('UI', 'Communication HUD toggled: ON');
                         } else {
                             this.playCommandFailedSound();
                         }
                     } else {
                         // If HUD is visible, toggle enhanced effects (video tint + scan lines)
                         if (this.communicationHUD.toggleEffects()) {
-                            console.log('🗣️ Communication HUD effects:', this.communicationHUD.effectsEnabled ? 'ENHANCED (video tint + scan lines)' : 'MINIMAL (raw video, no scan lines)');
+debug('UI', 'Communication HUD effects:', this.communicationHUD.effectsEnabled ? 'ENHANCED (video tint + scan lines)' : 'MINIMAL (raw video, no scan lines)');
                         } else {
                             this.playCommandFailedSound();
                         }
@@ -2017,24 +2018,24 @@ export class StarfieldManager {
                         // CRITICAL: Dismiss conflicting HUDs to prevent overlap
                         if (this.damageControlHUD && this.damageControlHUD.isVisible) {
                             this.damageControlHUD.hide();
-                            console.log('🔧 Damage Control HUD dismissed for Mission Status');
+debug('COMBAT', 'Damage Control HUD dismissed for Mission Status');
                         }
                         
                         // Also dismiss Galactic Chart and Long Range Scanner if open
                         if (this.viewManager) {
                             if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
                                 this.viewManager.galacticChart.hide();
-                                console.log('🗺️ Galactic Chart dismissed for Mission Status');
+debug('MISSIONS', 'Galactic Chart dismissed for Mission Status');
                             }
                             if (this.viewManager.longRangeScanner && this.viewManager.longRangeScanner.isVisible()) {
                                 this.viewManager.longRangeScanner.hide();
-                                console.log('🔭 Long Range Scanner dismissed for Mission Status');
+debug('MISSIONS', '🔭 Long Range Scanner dismissed for Mission Status');
                             }
                         }
                         
                         if (this.missionStatusHUD.toggle()) {
                             this.playCommandSound();
-                            console.log('🎯 Mission Status HUD toggled:', this.missionStatusHUD.visible ? 'ON' : 'OFF');
+debug('UI', 'Mission Status HUD toggled:', this.missionStatusHUD.visible ? 'ON' : 'OFF');
                         } else {
                             this.playCommandFailedSound();
                         }
@@ -2064,23 +2065,23 @@ export class StarfieldManager {
                         const shields = ship.getSystem('shields');
                         
                         // DEBUG: Add comprehensive shield debugging
-                        console.log('🛡️ SHIELD DEBUG - Analyzing shield system state:');
-                        console.log('  • Shields system object:', shields);
-                        console.log('  • Ship has cardSystemIntegration:', !!ship.cardSystemIntegration);
+debug('COMBAT', 'SHIELD DEBUG - Analyzing shield system state:');
+debug('COMBAT', '  • Shields system object:', shields);
+debug('UI', '  • Ship has cardSystemIntegration:', !!ship.cardSystemIntegration);
                         
                         if (ship.cardSystemIntegration) {
                             const installedCards = Array.from(ship.cardSystemIntegration.installedCards.values());
-                            console.log('  • Total installed cards:', installedCards.length);
-                            console.log('  • Installed card types:', installedCards.map(card => `${card.cardType} (L${card.level})`));
+debug('UI', '  • Total installed cards:', installedCards.length);
+debug('UI', '  • Installed card types:', installedCards.map(card => `${card.cardType} (L${card.level})`));
                             
                             const shieldCards = installedCards.filter(card => card.cardType === 'shields');
-                            console.log('  • Shield cards found:', shieldCards.length, shieldCards);
+debug('COMBAT', '  • Shield cards found:', shieldCards.length, shieldCards);
                             
                             const hasSystemCardsResult = ship.cardSystemIntegration.hasSystemCardsSync('shields');
-                            console.log('  • hasSystemCardsSync result:', hasSystemCardsResult);
+debug('UI', '  • hasSystemCardsSync result:', hasSystemCardsResult);
                             
                             const shipHasSystemCards = ship.hasSystemCardsSync('shields', true);
-                            console.log('  • ship.hasSystemCardsSync result:', shipHasSystemCards);
+debug('UI', '  • ship.hasSystemCardsSync result:', shipHasSystemCards);
                         }
                         
                         if (shields && shields.canActivate(ship)) {
@@ -2089,25 +2090,25 @@ export class StarfieldManager {
                         } else {
                             // System can't be activated - provide specific error message
                             if (!shields) {
-                                console.log('🛡️ SHIELD DEBUG: No shields system found');
+debug('COMBAT', 'SHIELD DEBUG: No shields system found');
                                 this.showHUDError(
                                     'SHIELDS UNAVAILABLE',
                                     'System not installed on this ship'
                                 );
                             } else if (!shields.isOperational()) {
-                                console.log('🛡️ SHIELD DEBUG: Shields system not operational');
+debug('COMBAT', 'SHIELD DEBUG: Shields system not operational');
                                 this.showHUDError(
                                     'SHIELDS DAMAGED',
                                     'Repair system to enable shield protection'
                                 );
                             } else if (!ship.hasSystemCardsSync('shields', true)) {
-                                console.log('🛡️ SHIELD DEBUG: Missing shield cards - this is the problem!');
+debug('COMBAT', 'SHIELD DEBUG: Missing shield cards - this is the problem!');
                                 this.showHUDError(
                                     'SHIELDS MISSING',
                                     'Install shield card to enable protection'
                                 );
                             } else if (!ship.hasEnergy(25)) {
-                                console.log('🛡️ SHIELD DEBUG: Insufficient energy');
+debug('COMBAT', 'SHIELD DEBUG: Insufficient energy');
                                 this.showHUDError(
                                     'INSUFFICIENT ENERGY',
                                     'Need 25 energy units to activate shields'
@@ -2239,7 +2240,7 @@ export class StarfieldManager {
                 // CRITICAL: Dismiss Mission Status HUD if open to prevent overlap
                 if (this.missionStatusHUD && this.missionStatusHUD.visible) {
                     this.missionStatusHUD.hide();
-                    console.log('🎯 Mission Status HUD dismissed for Damage Control');
+debug('COMBAT', 'Mission Status HUD dismissed for Damage Control');
                 }
                 
                 this.playCommandSound();
@@ -2256,7 +2257,7 @@ export class StarfieldManager {
             if (commandKey === 'q') {
                 if (!this.isDocked) {
                     this.playCommandSound();
-                    console.log('🎯 Spawning target dummy ships: 1 at 60km, 2 within 25km...');
+debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                     this.createTargetDummyShips(3);
                     
                     // Clear targeting cache to prevent stale crosshair results after spawning targets
@@ -2326,19 +2327,19 @@ export class StarfieldManager {
             // CRITICAL: Force refresh ship systems before showing damage control
             const ship = this.viewManager?.getShip();
             if (ship && ship.cardSystemIntegration) {
-                console.log('🔧 Refreshing ship systems before showing damage control...');
+debug('COMBAT', 'Refreshing ship systems before showing damage control...');
                 // Force reload cards and refresh systems
                 ship.cardSystemIntegration.loadCards().then(() => {
                     ship.cardSystemIntegration.createSystemsFromCards().then(() => {
                         // Re-initialize cargo holds from updated cards
                         if (ship.cargoHoldManager) {
                             ship.cargoHoldManager.initializeFromCards();
-                            console.log('🚛 Cargo holds refreshed from updated cards');
+debug('UI', '🚛 Cargo holds refreshed from updated cards');
                         }
                         
                         // Show the damage control HUD after systems are refreshed
                         this.damageControlHUD.show();
-                        console.log('🔧 Damage control HUD shown with refreshed systems');
+debug('COMBAT', 'Damage control HUD shown with refreshed systems');
                     });
                 });
             } else {
@@ -2382,9 +2383,9 @@ export class StarfieldManager {
         const indexAfterUpdate = this.targetComputerManager.targetIndex;
         
         if (targetBeforeUpdate !== targetAfterUpdate || indexBeforeUpdate !== indexAfterUpdate) {
-            console.log(`🎯 WARNING: Target changed during updateTargetList!`);
-            console.log(`🎯   Before: target=${targetBeforeUpdate?.userData?.ship?.shipName || 'unknown'}, index=${indexBeforeUpdate}`);
-            console.log(`🎯   After: target=${targetAfterUpdate?.userData?.ship?.shipName || 'unknown'}, index=${indexAfterUpdate}`);
+debug('TARGETING', `🎯 WARNING: Target changed during updateTargetList!`);
+debug('TARGETING', `🎯   Before: target=${targetBeforeUpdate?.userData?.ship?.shipName || 'unknown'}, index=${indexBeforeUpdate}`);
+debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.shipName || 'unknown'}, index=${indexAfterUpdate}`);
         }
         
         // Update local state to match
@@ -2782,7 +2783,7 @@ export class StarfieldManager {
                 // Throttle connection attempts to reduce console spam
                 const now = Date.now();
                 if (!this.lastWeaponHUDConnectionAttempt || (now - this.lastWeaponHUDConnectionAttempt) > 5000) {
-                    console.log('🔗 Attempting WeaponHUD connection during game loop...');
+debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
                     this.connectWeaponHUDToSystem();
                     this.lastWeaponHUDConnectionAttempt = now;
                 }
@@ -3002,7 +3003,7 @@ export class StarfieldManager {
     }
 
     dispose() {
-        console.log('⚡ StarfieldManager disposal started...');
+debug('UTILITY', '⚡ StarfieldManager disposal started...');
         
         // Clean up docking modal
         if (this.dockingModal) {
@@ -3111,7 +3112,7 @@ export class StarfieldManager {
 
     // Update the setView method to handle view changes
     setView(viewType) {
-        console.log(`🎯 StarfieldManager.setView('${viewType}') called`);
+debug('UTILITY', `🎯 StarfieldManager.setView('${viewType}') called`);
         console.trace('🎯 setView call stack');
         
         // Hide damage control UI when switching to any other view
@@ -3234,7 +3235,7 @@ export class StarfieldManager {
         // Disable target computer
         this.targetComputerEnabled = false;
         
-        console.log('🎯 Target computer completely cleared - all state reset');
+debug('TARGETING', 'Target computer completely cleared - all state reset');
     }
 
     playEngineStartup(targetVolume) {
@@ -3368,7 +3369,7 @@ export class StarfieldManager {
         if (this.proximityDetector3D) {
             // The proximity detector will handle its own validation
             const success = this.proximityDetector3D.toggle();
-            console.log('🎯 StarfieldManager: 3D Proximity Detector toggle result:', success);
+debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', success);
             return success;
         }
         return false;
@@ -3697,7 +3698,7 @@ export class StarfieldManager {
                 window.spatialManager, 
                 window.collisionManager
             );
-            console.log('🚀 Simple docking system initialized');
+debug('UTILITY', 'Simple docking system initialized');
             
             // Start monitoring for docking opportunities
             this.simpleDockingManager.startDockingMonitoring();
@@ -3717,7 +3718,7 @@ export class StarfieldManager {
      */
     showDockingInterface(target) {
         if (this.dockingInterface) {
-            console.log('🚀 Showing docking interface for', target.name);
+debug('TARGETING', 'Showing docking interface for', target.name);
             this.dockingInterface.show(target);
         } else {
             console.warn('🚀 DockingInterface not available');
@@ -3780,7 +3781,7 @@ export class StarfieldManager {
         if (ship) {
             // Docking should not cost energy - docks are for refueling!
             // Energy cost removed to allow docking when low on power
-            console.log('🚀 Docking procedures initiated - no energy cost');
+debug('UTILITY', 'Docking procedures initiated - no energy cost');
         }
 
         // Store the current view before docking
@@ -3789,9 +3790,9 @@ export class StarfieldManager {
         // Stop engine sounds and reduce speed immediately when docking starts
         if (this.audioManager && this.audioManager.getEngineState() === 'running') {
             this.playEngineShutdown();
-            console.log('🔇 Engine shutdown called during docking');
+debug('UTILITY', '🔇 Engine shutdown called during docking');
         } else {
-            console.log('🔇 Engine state check:', this.audioManager ? this.audioManager.getEngineState() : 'no audioManager');
+debug('UTILITY', '🔇 Engine state check:', this.audioManager ? this.audioManager.getEngineState() : 'no audioManager');
         }
         
         // Immediately cut speed to 0 when docking initiates
@@ -3871,20 +3872,20 @@ export class StarfieldManager {
             // Close galactic chart if open - navigation systems powered down when docked
             if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
                 this.viewManager.galacticChart.hide(false);
-                console.log('🚪 Galactic Chart dismissed during docking - navigation systems powered down');
+debug('NAVIGATION', '🚪 Galactic Chart dismissed during docking - navigation systems powered down');
             }
             
             // Close long range scanner if open - scanner systems powered down when docked
             if (this.viewManager.longRangeScanner && this.viewManager.longRangeScanner.isVisible()) {
                 this.viewManager.longRangeScanner.hide(false);
-                console.log('🚪 Long Range Scanner dismissed during docking - scanner systems powered down');
+debug('UTILITY', '🚪 Long Range Scanner dismissed during docking - scanner systems powered down');
             }
             
             // Hide proximity detector if open - radar systems powered down when docked
             if (this.proximityDetector3D && this.proximityDetector3D.isVisible) {
                 this.proximityDetector3D.isVisible = false;
                 this.proximityDetector3D.detectorContainer.style.display = 'none';
-                console.log('🚪 Proximity Detector dismissed during docking - radar systems powered down');
+debug('UTILITY', '🚪 Proximity Detector dismissed during docking - radar systems powered down');
             }
             
             // Hide subspace radio UI during docking
@@ -3895,7 +3896,7 @@ export class StarfieldManager {
             // Hide communication HUD during docking - stations have their own communication systems
             if (this.communicationHUD && this.communicationHUD.visible) {
                 this.communicationHUD.hide();
-                console.log('🚪 Communication HUD dismissed during docking - station communications available');
+debug('AI', '🚪 Communication HUD dismissed during docking - station communications available');
             }
             
             // Hide damage control HUD when docking since systems are powered down
@@ -3904,13 +3905,13 @@ export class StarfieldManager {
                 this.damageControlHUD.hide();
                 // Restore the previous view
                 this.view = this.previousView || 'FORE';
-                console.log('🚪 Damage Control HUD dismissed during docking');
+debug('COMBAT', '🚪 Damage Control HUD dismissed during docking');
             }
             
             // Hide mission status HUD when docking - use station mission board instead
             if (this.missionStatusHUD && this.missionStatusHUD.visible) {
                 this.missionStatusHUD.hide();
-                console.log('🚪 Mission Status HUD dismissed during docking - use station Mission Board');
+debug('UI', '🚪 Mission Status HUD dismissed during docking - use station Mission Board');
             }
             
             // Hide weapon HUD when docking since weapon systems are powered down
@@ -3919,7 +3920,7 @@ export class StarfieldManager {
                 this.weaponHUD.autofireIndicator.style.display = 'none';
                 this.weaponHUD.targetLockIndicator.style.display = 'none';
                 this.weaponHUD.unifiedDisplay.style.display = 'none';
-                console.log('🚪 Weapon HUD hidden during docking');
+debug('COMBAT', '🚪 Weapon HUD hidden during docking');
             }
             
             // Restore view to FORE if in modal view
@@ -3957,26 +3958,26 @@ export class StarfieldManager {
         try {
             const ship = this.viewManager?.getShip();
             if (!ship || !ship.cargoHoldManager) {
-                console.log('🚛 No ship or cargo hold manager available for delivery check');
+debug('AI', '🚛 No ship or cargo hold manager available for delivery check');
                 return;
             }
             
             // Get all loaded cargo
             const loadedCargo = ship.cargoHoldManager.getLoadedCargo();
             if (!loadedCargo || loadedCargo.size === 0) {
-                console.log('🚛 No cargo loaded - skipping delivery check');
+debug('UTILITY', '🚛 No cargo loaded - skipping delivery check');
                 return;
             }
             
-            console.log(`🚛 Checking for cargo deliveries at ${stationKey} with ${loadedCargo.size} cargo items`);
+debug('UTILITY', `🚛 Checking for cargo deliveries at ${stationKey} with ${loadedCargo.size} cargo items`);
             
             // Check each cargo item for delivery opportunities
             const cargoToRemove = [];
             
             for (const [cargoId, cargoItem] of loadedCargo.entries()) {
                 if (cargoItem && cargoItem.commodityId) {
-                    console.log(`🚛 Attempting delivery of ${cargoItem.quantity} units of ${cargoItem.commodityId} to ${stationKey}`);
-                    console.log(`🚛 DEBUG: Original station name: "${stationKey}" (converted from docking target)`);
+debug('UTILITY', `🚛 Attempting delivery of ${cargoItem.quantity} units of ${cargoItem.commodityId} to ${stationKey}`);
+debug('TARGETING', `🚛 DEBUG: Original station name: "${stationKey}" (converted from docking target)`);
                     
                     // Trigger cargo delivery event
                     if (this.missionEventService) {
@@ -3993,7 +3994,7 @@ export class StarfieldManager {
                         
                         // If any missions were updated (cargo was delivered), calculate required quantity to remove
                         if (result && result.success && result.updated_missions.length > 0) {
-                            console.log(`🚛 Auto-delivery successful for ${cargoItem.commodityId}, calculating quantity to remove`);
+debug('UTILITY', `🚛 Auto-delivery successful for ${cargoItem.commodityId}, calculating quantity to remove`);
                             
                             // Find the mission that was updated for this cargo type
                             let quantityToRemove = 0;
@@ -4008,7 +4009,7 @@ export class StarfieldManager {
                                     // Calculate how much we need to remove (up to what we have in cargo)
                                     quantityToRemove = Math.min(requiredQuantity, cargoItem.quantity);
                                     
-                                    console.log(`🚛 Mission ${mission.id} requires ${requiredQuantity} units, delivered so far: ${alreadyDelivered}, removing: ${quantityToRemove} from available ${cargoItem.quantity}`);
+debug('AI', `🚛 Mission ${mission.id} requires ${requiredQuantity} units, delivered so far: ${alreadyDelivered}, removing: ${quantityToRemove} from available ${cargoItem.quantity}`);
                                     break;
                                 }
                             }
@@ -4030,7 +4031,7 @@ export class StarfieldManager {
             for (const cargo of cargoToRemove) {
                 const removeResult = ship.cargoHoldManager.unloadCargo(cargo.cargoId, cargo.quantity);
                 if (removeResult.success) {
-                    console.log(`🚛 Removed ${cargo.quantity} units of ${cargo.commodityId} from cargo hold (auto-delivery)`);
+debug('UTILITY', `🚛 Removed ${cargo.quantity} units of ${cargo.commodityId} from cargo hold (auto-delivery)`);
                 } else {
                     console.error(`🚛 Failed to remove cargo ${cargo.commodityId}: ${removeResult.error}`);
                 }
@@ -4070,23 +4071,23 @@ export class StarfieldManager {
             }
             if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
                 this.viewManager.galacticChart.hide(false);
-                console.log('🚪 Galactic Chart dismissed during docking completion');
+debug('UTILITY', '🚪 Galactic Chart dismissed during docking completion');
             }
             if (this.viewManager.longRangeScanner && this.viewManager.longRangeScanner.isVisible()) {
                 this.viewManager.longRangeScanner.hide(false);
-                console.log('🚪 Long Range Scanner dismissed during docking completion');
+debug('UTILITY', '🚪 Long Range Scanner dismissed during docking completion');
             }
             if (this.proximityDetector3D && this.proximityDetector3D.isVisible) {
                 this.proximityDetector3D.isVisible = false;
                 this.proximityDetector3D.detectorContainer.style.display = 'none';
-                console.log('🚪 Proximity Detector dismissed during docking completion');
+debug('UTILITY', '🚪 Proximity Detector dismissed during docking completion');
             }
             if (this.viewManager.subspaceRadio && this.viewManager.subspaceRadio.isVisible) {
                 this.viewManager.subspaceRadio.hide();
             }
             if (this.communicationHUD && this.communicationHUD.visible) {
                 this.communicationHUD.hide();
-                console.log('🚪 Communication HUD dismissed during docking completion');
+debug('UI', '🚪 Communication HUD dismissed during docking completion');
             }
             if (this.damageControlVisible && this.damageControlHUD) {
                 this.damageControlVisible = false;
@@ -4106,27 +4107,27 @@ export class StarfieldManager {
         return true;
     }
     undock() {
-        console.log('🚀 StarfieldManager.undock() called');
-        console.log(`🚀 this.isDocked: ${this.isDocked}`);
-        console.log(`🚀 this.simpleDockingManager exists: ${!!this.simpleDockingManager}`);
-        console.log(`🚀 this.simpleDockingManager.isDocked: ${this.simpleDockingManager?.isDocked}`);
+debug('UTILITY', 'StarfieldManager.undock() called');
+debug('UTILITY', `🚀 this.isDocked: ${this.isDocked}`);
+debug('UTILITY', `🚀 this.simpleDockingManager exists: ${!!this.simpleDockingManager}`);
+debug('UTILITY', `🚀 this.simpleDockingManager.isDocked: ${this.simpleDockingManager?.isDocked}`);
         
         if (!this.isDocked) {
-            console.log('🚀 Not docked - returning early');
+debug('UTILITY', 'Not docked - returning early');
             return;
         }
 
         // Use simple docking system launch if available
         if (this.simpleDockingManager && this.simpleDockingManager.isDocked) {
-            console.log('🚀 Using SimpleDockingManager for launch - skipping old undock logic');
+debug('UTILITY', 'Using SimpleDockingManager for launch - skipping old undock logic');
             const result = this.simpleDockingManager.launchFromStation();
-            console.log('🚀 SimpleDockingManager.launchFromStation() returned:', result);
+debug('UTILITY', 'SimpleDockingManager.launchFromStation() returned:', result);
             return result;
         }
         
-        console.log('🚀 SimpleDockingManager not available or not docked - using old undock logic');
-        console.log(`🚀 simpleDockingManager exists: ${!!this.simpleDockingManager}`);
-        console.log(`🚀 simpleDockingManager.isDocked: ${this.simpleDockingManager?.isDocked}`);
+debug('AI', 'SimpleDockingManager not available or not docked - using old undock logic');
+debug('UTILITY', `🚀 simpleDockingManager exists: ${!!this.simpleDockingManager}`);
+debug('UTILITY', `🚀 simpleDockingManager.isDocked: ${this.simpleDockingManager?.isDocked}`);
 
         // Get ship instance for launch procedures
         const ship = this.viewManager?.getShip();
@@ -4141,11 +4142,11 @@ export class StarfieldManager {
             }
             
             if (launchValidation.warnings.length > 0) {
-                console.log('Launch warnings:', launchValidation.warnings.join(', '));
+debug('UTILITY', 'Launch warnings:', launchValidation.warnings.join(', '));
             }
             
             // Launch should not cost energy - players should be able to leave even when low on power
-            console.log('🚀 Launch procedures initiated - no energy cost');
+debug('UTILITY', 'Launch procedures initiated - no energy cost');
         }
 
         // Store the target we're launching from before clearing it
@@ -4238,7 +4239,7 @@ export class StarfieldManager {
                 this.weaponHUD.autofireIndicator.style.display = 'none'; // Will be shown if autofire is on
                 this.weaponHUD.targetLockIndicator.style.display = 'none'; // Will be shown if locked
                 this.weaponHUD.unifiedDisplay.style.display = 'none'; // Will be shown when needed
-                console.log('🚀 Weapon HUD restored after launch');
+debug('COMBAT', 'Weapon HUD restored after launch');
                 
                 // Update weapon HUD with current weapon system state
                 const ship = this.viewManager?.getShip();
@@ -4253,10 +4254,10 @@ export class StarfieldManager {
                 this.missionStatusHUD.refreshMissions().then(() => {
                     if (this.missionStatusHUD.activeMissions && this.missionStatusHUD.activeMissions.length > 0) {
                         this.missionStatusHUD.show();
-                        console.log('🚀 Mission Status HUD restored after launch');
+debug('UI', 'Mission Status HUD restored after launch');
                     }
                 }).catch(error => {
-                    console.log('🚀 Mission Status HUD: No active missions to display after launch');
+debug('UI', 'Mission Status HUD: No active missions to display after launch');
                 });
             }
             
@@ -4315,8 +4316,8 @@ export class StarfieldManager {
         
         // Debug: Log when orbit update is moving the camera
         if (Date.now() % 5000 < 100) { // Log every 5 seconds
-            console.log(`🔄 updateOrbit() moving camera - isDocked: ${this.isDocked}, dockedTo: ${this.dockedTo?.name}`);
-            console.log(`🔄 Camera position being set to orbit around: (${this.dockedTo.position.x.toFixed(2)}, ${this.dockedTo.position.y.toFixed(2)}, ${this.dockedTo.position.z.toFixed(2)})`);
+debug('UTILITY', `🔄 updateOrbit() moving camera - isDocked: ${this.isDocked}, dockedTo: ${this.dockedTo?.name}`);
+debug('UTILITY', `🔄 Camera position being set to orbit around: (${this.dockedTo.position.x.toFixed(2)}, ${this.dockedTo.position.y.toFixed(2)}, ${this.dockedTo.position.z.toFixed(2)})`);
         }
 
         // Handle docking transition
@@ -4363,13 +4364,13 @@ export class StarfieldManager {
     async dockWithDebug(target) {
         // Ensure SimpleDockingManager is initialized
         if (!this.simpleDockingManager) {
-            console.log('🚀 Initializing SimpleDockingManager for docking');
+debug('UTILITY', 'Initializing SimpleDockingManager for docking');
             this.initializeSimpleDocking();
         }
         
         // Use the new SimpleDockingManager for docking
         if (this.simpleDockingManager) {
-            console.log('🚀 Using SimpleDockingManager for docking');
+debug('UTILITY', 'Using SimpleDockingManager for docking');
             const result = await this.simpleDockingManager.initiateUnifiedDocking(target);
             return result;
         } else {
@@ -4442,7 +4443,7 @@ export class StarfieldManager {
      * Power down all ship systems when docking to conserve energy
      */
     shutdownAllSystems() {
-        console.log('🛑 Shutting down all ship systems for docking');
+debug('UTILITY', '🛑 Shutting down all ship systems for docking');
         
         const ship = this.viewManager?.getShip();
         if (!ship) {
@@ -4455,13 +4456,13 @@ export class StarfieldManager {
             try {
                 if (systemName === 'shields' && system.isShieldsUp) {
                     system.deactivateShields();
-                    console.log(`  🛡️ Shields deactivated`);
+debug('COMBAT', `  🛡️ Shields deactivated`);
                 } else if (systemName === 'long_range_scanner' && system.isScanning) {
                     system.stopScan();
-                    console.log(`  📡 Scanner stopped`);
+debug('UTILITY', `  📡 Scanner stopped`);
                 } else if (systemName === 'target_computer' && system.isTargeting) {
                     system.deactivate();
-                    console.log(`  🎯 Targeting computer deactivated`);
+debug('TARGETING', `  🎯 Targeting computer deactivated`);
                 } else if (systemName === 'subspace_radio') {
                     if (system.isRadioActive) {
                         system.deactivateRadio();
@@ -4469,28 +4470,28 @@ export class StarfieldManager {
                     if (system.isChartActive) {
                         system.deactivateChart();
                     }
-                    console.log(`  📻 Subspace radio deactivated`);
+debug('UTILITY', `  📻 Subspace radio deactivated`);
                 } else if (systemName === 'impulse_engines') {
                     system.setImpulseSpeed(0);
                     system.setMovingForward(false);
-                    console.log(`  🚀 Impulse engines stopped`);
+debug('UTILITY', `  🚀 Impulse engines stopped`);
                 } else if (system.isActive) {
                     system.deactivate();
-                    console.log(`  ⚡ ${systemName} deactivated`);
+debug('UTILITY', `  ⚡ ${systemName} deactivated`);
                 }
             } catch (error) {
                 console.warn(`Failed to shutdown system ${systemName}:`, error);
             }
         }
         
-        console.log('🛑 All ship systems shutdown complete');
+debug('UTILITY', '🛑 All ship systems shutdown complete');
     }
     
     /**
      * Restore all ship systems to their pre-docking state when undocking
      */
     async restoreAllSystems() {
-        console.log('🔧 Restoring all ship systems after undocking');
+debug('UTILITY', 'Restoring all ship systems after undocking');
         
         // Use this.ship instead of getting from viewManager since it's already set in constructor
         if (!this.ship) {
@@ -4507,32 +4508,32 @@ export class StarfieldManager {
         // Restore power management
         if (this.ship.equipment.powerManagement) {
             this.powerManagementEnabled = true;
-            console.log('⚡ Power management restored and enabled');
+debug('UTILITY', '⚡ Power management restored and enabled');
         }
         
         // Restore navigation computer
         if (this.ship.equipment.navigationComputer) {
             this.navigationComputerEnabled = true;
-            console.log('🧭 Navigation computer restored and enabled');
+debug('NAVIGATION', 'Navigation computer restored and enabled');
         }
         
         // Target computer should remain INACTIVE after launch - user must manually enable it
         if (this.ship.equipment.targetComputer) {
             this.targetComputerEnabled = false;  // Start inactive
-            console.log('🎯 Target computer available but inactive - manual activation required');
+debug('TARGETING', 'Target computer available but inactive - manual activation required');
             this.updateTargetDisplay();
         }
         
         // Restore defensive systems
         if (this.ship.equipment.defensiveSystems) {
             this.defensiveSystemsEnabled = true;
-            console.log('🛡️ Defensive systems restored and enabled');
+debug('UTILITY', 'Defensive systems restored and enabled');
         }
         
         // Restore ship status display
         if (this.ship.equipment.shipStatusDisplay) {
             this.shipStatusDisplayEnabled = true;
-            console.log('📊 Ship status display restored and enabled');
+debug('UI', '📊 Ship status display restored and enabled');
         }
     }
 
@@ -4541,7 +4542,7 @@ export class StarfieldManager {
      * @param {number} count - Number of dummy ships to create
      */
     async createTargetDummyShips(count = 3) {
-        console.log(`🎯 Creating ${count} target dummy ships...`);
+debug('TARGETING', `🎯 Creating ${count} target dummy ships...`);
         
         // Store current target information for restoration BEFORE any changes
         const previousTarget = this.targetComputerManager.currentTarget;
@@ -4711,8 +4712,8 @@ export class StarfieldManager {
                         window.collisionManager.addObjectToLayer(shipMesh, 'ships');
                     }
                     
-                    console.log(`🎯 Target dummy added to spatial tracking: Visual=${actualMeshSize}m, Collision=${collisionSize}m (realistic=${useRealistic})`);
-                    console.log(`🚀 Spatial tracking created for Target Dummy ${i + 1}`);
+debug('TARGETING', `🎯 Target dummy added to spatial tracking: Visual=${actualMeshSize}m, Collision=${collisionSize}m (realistic=${useRealistic})`);
+debug('TARGETING', `🚀 Spatial tracking created for Target Dummy ${i + 1}`);
                 } else {
                     console.warn('⚠️ SpatialManager not ready - skipping spatial tracking for ships');
                 }
@@ -4798,7 +4799,7 @@ export class StarfieldManager {
         // Clear the flag to allow normal target changes again
         this.targetComputerManager.preventTargetChanges = false;
         
-        console.log(`✅ Target dummy ships created successfully - target preserved`);
+debug('TARGETING', `✅ Target dummy ships created successfully - target preserved`);
     }
 
     /**
@@ -4894,7 +4895,7 @@ export class StarfieldManager {
             // Remove physics body if it exists
             if (mesh.userData?.physicsBody && window.physicsManager) {
                 window.physicsManager.removeRigidBody(mesh);
-                console.log('🧹 Physics body removed for target dummy ship');
+debug('TARGETING', '🧹 Physics body removed for target dummy ship');
             }
             
             // Dispose of geometries and materials
@@ -5316,7 +5317,7 @@ export class StarfieldManager {
             targetName = info.name || 'Enemy Ship';
             
             // Debug log for reticle color issue
-            console.log(`🎯 RETICLE DEBUG: Enemy ship detected - diplomacy: ${info.diplomacy}, faction: ${info.faction}, isEnemyShip: ${isEnemyShip}`);
+debug('INSPECTION', `🎯 RETICLE DEBUG: Enemy ship detected - diplomacy: ${info.diplomacy}, faction: ${info.faction}, isEnemyShip: ${isEnemyShip}`);
             console.log(`🎯 RETICLE DEBUG: currentTargetData:`, {
                 diplomacy: currentTargetData.diplomacy,
                 faction: currentTargetData.faction,
@@ -5469,7 +5470,7 @@ export class StarfieldManager {
                     this.ship.position = new this.THREE.Vector3(0, 0, 0);
                 }
                 
-                console.log('🎆 WeaponEffectsManager connected to ship');
+debug('COMBAT', '🎆 WeaponEffectsManager connected to ship');
                 return true;
             }
         }
@@ -5481,14 +5482,14 @@ export class StarfieldManager {
         
         if (this.debugMode) {
             this.playCommandSound();
-            console.log('🐛 DEBUG MODE ENABLED - Weapon hit detection spheres will be shown');
+debug('COMBAT', '🐛 DEBUG MODE ENABLED - Weapon hit detection spheres will be shown');
             this.showHUDError(
                 'DEBUG MODE ENABLED',
                 'Weapon hit detection spheres will be visible'
             );
         } else {
             this.playCommandSound();
-            console.log('🐛 DEBUG MODE DISABLED - Cleaning up debug spheres');
+debug('INSPECTION', '🐛 DEBUG MODE DISABLED - Cleaning up debug spheres');
             this.showHUDError(
                 'DEBUG MODE DISABLED',
                 'Debug spheres cleared'
@@ -5541,7 +5542,7 @@ export class StarfieldManager {
             // Store reference to the object being outlined
             this.targetOutlineObject = targetObject;
             
-            console.log(`🎯 Creating 3D outline for target: ${currentTargetData.name}`);
+debug('TARGETING', `🎯 Creating 3D outline for target: ${currentTargetData.name}`);
             
             // Create outline material with slightly larger scale
             const outlineMaterial = new this.THREE.MeshBasicMaterial({
@@ -5586,7 +5587,7 @@ export class StarfieldManager {
                 // Add to scene
                 this.scene.add(this.targetOutline);
                 
-                console.log(`🎯 Created 3D outline for target: ${currentTargetData.name}`);
+debug('TARGETING', `🎯 Created 3D outline for target: ${currentTargetData.name}`);
             }
             
         } catch (error) {
@@ -5604,7 +5605,7 @@ export class StarfieldManager {
         if (!this.targetObjects || this.targetObjects.length === 0) {
             // Only log this message once per state change to avoid spam
             if (!this._noTargetsWarningLogged) {
-                console.log('🚫 updateTargetOutline: No targets available - clearing outline');
+debug('TARGETING', '🚫 updateTargetOutline: No targets available - clearing outline');
                 this._noTargetsWarningLogged = true;
             }
             if (this.targetOutline) {
@@ -5626,7 +5627,7 @@ export class StarfieldManager {
         
         // CRITICAL: Check if we have a valid current target
         if (!this.currentTarget) {
-            console.log('🚫 updateTargetOutline: No current target - clearing outline');
+debug('TARGETING', '🚫 updateTargetOutline: No current target - clearing outline');
             if (this.targetOutline) {
                 this.clearTargetOutline();
             }
@@ -5636,7 +5637,7 @@ export class StarfieldManager {
         // Validate target data before proceeding
         const targetData = this.getCurrentTargetData();
         if (!targetData || !targetData.name || targetData.name === 'unknown') {
-            console.log('🚫 updateTargetOutline: Invalid target data - clearing outline');
+debug('TARGETING', '🚫 updateTargetOutline: Invalid target data - clearing outline');
             // Clear outline for invalid targets
             if (this.targetOutline) {
                 this.clearTargetOutline();
@@ -5646,7 +5647,7 @@ export class StarfieldManager {
         
         // Additional check: Ensure targetObject is valid and exists in scene
         if (!targetObject || !targetObject.position) {
-            console.log('🚫 updateTargetOutline: Invalid target object - clearing outline');
+debug('TARGETING', '🚫 updateTargetOutline: Invalid target object - clearing outline');
             if (this.targetOutline) {
                 this.clearTargetOutline();
             }
@@ -5679,29 +5680,29 @@ export class StarfieldManager {
      */
     clearTargetOutline() {
         // More thorough clearing with detailed logging
-        console.log('🎯 clearTargetOutline called');
-        console.log(`   • targetOutline exists: ${!!this.targetOutline}`);
-        console.log(`   • targetOutlineObject exists: ${!!this.targetOutlineObject}`);
+debug('TARGETING', 'clearTargetOutline called');
+debug('TARGETING', `   • targetOutline exists: ${!!this.targetOutline}`);
+debug('TARGETING', `   • targetOutlineObject exists: ${!!this.targetOutlineObject}`);
         
         if (!this.targetOutline && !this.targetOutlineObject) {
-            console.log('🎯 No outline objects to clear');
+debug('UTILITY', 'No outline objects to clear');
             return;
         }
         
         try {
             // Clear the 3D outline from scene
             if (this.targetOutline) {
-                console.log('🗑️ Removing targetOutline from scene');
+debug('TARGETING', 'Removing targetOutline from scene');
                 this.scene.remove(this.targetOutline);
                 
                 // Dispose of geometry and material to free memory
                 if (this.targetOutline.geometry) {
                     this.targetOutline.geometry.dispose();
-                    console.log('🗑️ Disposed targetOutline geometry');
+debug('TARGETING', 'Disposed targetOutline geometry');
                 }
                 if (this.targetOutline.material) {
                     this.targetOutline.material.dispose();
-                    console.log('🗑️ Disposed targetOutline material');
+debug('TARGETING', 'Disposed targetOutline material');
                 }
             }
             
@@ -5709,21 +5710,21 @@ export class StarfieldManager {
             this.targetOutline = null;
             this.targetOutlineObject = null;
             
-            console.log('✅ Target outline completely cleared');
+debug('TARGETING', '✅ Target outline completely cleared');
             
         } catch (error) {
             console.warn('❌ Error clearing target outline:', error);
             // Force clear even if there was an error
             this.targetOutline = null;
             this.targetOutlineObject = null;
-            console.log('🔧 Force-cleared outline properties after error');
+debug('P1', 'Force-cleared outline properties after error');
         }
         
         // Double-check that they're actually cleared
         if (this.targetOutline || this.targetOutlineObject) {
             console.error('⚠️ WARNING: Outline properties still exist after clearing!');
-            console.log(`   • targetOutline: ${this.targetOutline}`);
-            console.log(`   • targetOutlineObject: ${this.targetOutlineObject}`);
+debug('TARGETING', `   • targetOutline: ${this.targetOutline}`);
+debug('TARGETING', `   • targetOutlineObject: ${this.targetOutlineObject}`);
         }
     }
     /**
@@ -5745,7 +5746,7 @@ export class StarfieldManager {
             }
         }
         
-        console.log(`🎯 Target outline ${this.outlineEnabled ? 'enabled' : 'disabled'}`);
+debug('TARGETING', `🎯 Target outline ${this.outlineEnabled ? 'enabled' : 'disabled'}`);
     }
     
     /**
@@ -5774,7 +5775,7 @@ export class StarfieldManager {
     removeDestroyedTarget(destroyedShip) {
         if (!destroyedShip) return;
         
-        console.log(`💥 removeDestroyedTarget called for: ${destroyedShip.shipName || 'unknown ship'}`);
+debug('TARGETING', `💥 removeDestroyedTarget called for: ${destroyedShip.shipName || 'unknown ship'}`);
         
         // Send mission event for enemy destruction
         this.sendEnemyDestroyedEvent(destroyedShip);
@@ -5789,12 +5790,12 @@ export class StarfieldManager {
                 shipMesh = mesh;
                 
                 // Remove from the scene
-                console.log(`🗑️ Removing ${destroyedShip.shipName} mesh from scene`);
+debug('UTILITY', `🗑️ Removing ${destroyedShip.shipName} mesh from scene`);
                 this.scene.remove(mesh);
                 
                 // CRITICAL: Remove physics rigid body for destroyed ship
                 if (window.physicsManager && typeof window.physicsManager.removeRigidBody === 'function') {
-                    console.log(`🗑️ Removing ${destroyedShip.shipName} rigid body from physics world`);
+debug('PHYSICS', `🗑️ Removing ${destroyedShip.shipName} rigid body from physics world`);
                     window.physicsManager.removeRigidBody(mesh);
                 } else {
                     console.warn(`⚠️ Physics manager not available - rigid body for ${destroyedShip.shipName} not removed`);
@@ -5814,7 +5815,7 @@ export class StarfieldManager {
                 
                 // Remove from dummyShipMeshes array
                 this.dummyShipMeshes.splice(i, 1);
-                console.log(`🗑️ Removed ${destroyedShip.shipName} from dummyShipMeshes array`);
+debug('UTILITY', `🗑️ Removed ${destroyedShip.shipName} from dummyShipMeshes array`);
                 break;
             }
         }
@@ -5824,7 +5825,7 @@ export class StarfieldManager {
             for (let i = this.navigationBeacons.length - 1; i >= 0; i--) {
                 const mesh = this.navigationBeacons[i];
                 if (mesh === destroyedShip || mesh.userData === destroyedShip || mesh.userData?.isBeacon === true && mesh === destroyedShip) {
-                    console.log(`🗑️ Removing Navigation Beacon from scene`);
+debug('NAVIGATION', `🗑️ Removing Navigation Beacon from scene`);
                     this.scene.remove(mesh);
                     if (window.physicsManager && typeof window.physicsManager.removeRigidBody === 'function') {
                         window.physicsManager.removeRigidBody(mesh);
@@ -5859,15 +5860,15 @@ export class StarfieldManager {
         
         const anySystemTargeting = hudTargetsDestroyed || weaponTargetsDestroyed || tcTargetsDestroyed || outlineTargetsDestroyed;
         
-        console.log(`🔍 Targeting analysis:`);
-        console.log(`   • HUD targets destroyed ship: ${hudTargetsDestroyed}`);
-        console.log(`   • Weapon targets destroyed ship: ${weaponTargetsDestroyed}`);
-        console.log(`   • Target computer targets destroyed ship: ${tcTargetsDestroyed}`);
-        console.log(`   • Outline targets destroyed ship: ${outlineTargetsDestroyed}`);
-        console.log(`   • Any system targeting: ${anySystemTargeting}`);
+debug('TARGETING', `🔍 Targeting analysis:`);
+debug('TARGETING', `   • HUD targets destroyed ship: ${hudTargetsDestroyed}`);
+debug('TARGETING', `   • Weapon targets destroyed ship: ${weaponTargetsDestroyed}`);
+debug('TARGETING', `   • Target computer targets destroyed ship: ${tcTargetsDestroyed}`);
+debug('TARGETING', `   • Outline targets destroyed ship: ${outlineTargetsDestroyed}`);
+debug('TARGETING', `   • Any system targeting: ${anySystemTargeting}`);
         
         if (anySystemTargeting) {
-            console.log('🗑️ Destroyed ship was targeted - performing full synchronization cleanup');
+debug('TARGETING', 'Destroyed ship was targeted - performing full synchronization cleanup');
             
             // Clear ALL targeting system references
             this.currentTarget = null;
@@ -5880,7 +5881,7 @@ export class StarfieldManager {
                 // This doesn't apply to sub-targets, only when the entire ship is destroyed
                 if (ship.weaponSystem.isAutofireOn) {
                     ship.weaponSystem.isAutofireOn = false;
-                    console.log('🎯 Autofire turned OFF - main target destroyed');
+debug('TARGETING', 'Autofire turned OFF - main target destroyed');
                     
                     // Update UI to reflect autofire is now off
                     if (ship.weaponSystem.weaponHUD) {
@@ -5898,7 +5899,7 @@ export class StarfieldManager {
             }
             
             // ALWAYS clear 3D outline when a targeted ship is destroyed
-            console.log('🎯 Clearing 3D outline for destroyed target');
+debug('TARGETING', 'Clearing 3D outline for destroyed target');
             this.clearTargetOutline();
             
             // Update target list to remove destroyed ship
@@ -5906,7 +5907,7 @@ export class StarfieldManager {
             
             // Select new target using proper cycling logic
             if (this.targetObjects && this.targetObjects.length > 0) {
-                console.log(`🔄 Cycling to new target from ${this.targetObjects.length} available targets`);
+debug('TARGETING', `🔄 Cycling to new target from ${this.targetObjects.length} available targets`);
                 
                 // Prevent outlines from appearing automatically after destruction
                 this.outlineDisabledUntilManualCycle = true;
@@ -5914,12 +5915,12 @@ export class StarfieldManager {
                 // Cycle to next target without creating outline (automatic cycle)
                 this.cycleTarget(false);
                 
-                console.log('🎯 Target cycled after destruction - outline disabled until next manual cycle');
+debug('TARGETING', 'Target cycled after destruction - outline disabled until next manual cycle');
             } else {
-                console.log('📭 No targets remaining after destruction');
+debug('TARGETING', '📭 No targets remaining after destruction');
                 
                 // CRITICAL: Force clear outline again when no targets remain
-                console.log('🎯 Force-clearing outline - no targets remaining');
+debug('TARGETING', 'Force-clearing outline - no targets remaining');
                 this.clearTargetOutline();
                 
                 // Clear wireframe and hide UI
@@ -5937,7 +5938,7 @@ export class StarfieldManager {
             }
             
         } else {
-            console.log('🎯 Destroyed ship was not targeted by any system - minimal cleanup');
+debug('TARGETING', 'Destroyed ship was not targeted by any system - minimal cleanup');
             
             // Check if autofire was targeting this ship even if not officially "targeted"
             if (ship?.weaponSystem?.isAutofireOn && ship.weaponSystem.lockedTarget) {
@@ -5946,7 +5947,7 @@ export class StarfieldManager {
                 if (autofireTargetShip === destroyedShip) {
                     ship.weaponSystem.isAutofireOn = false;
                     ship.weaponSystem.setLockedTarget(null);
-                    console.log('🎯 Autofire turned OFF - autofire target destroyed');
+debug('TARGETING', 'Autofire turned OFF - autofire target destroyed');
                     
                     // Update UI to reflect autofire is now off
                     if (ship.weaponSystem.weaponHUD) {
@@ -5960,7 +5961,7 @@ export class StarfieldManager {
             
             // ALWAYS clear 3D outline when any ship is destroyed
             // Even if not "targeted", the outline might still be showing it
-            console.log('🎯 Force-clearing 3D outline for safety');
+debug('UTILITY', 'Force-clearing 3D outline for safety');
             this.clearTargetOutline();
             
             // Still refresh the target list to keep everything in sync
@@ -5990,7 +5991,7 @@ export class StarfieldManager {
             }
         }
         
-        console.log(`✅ removeDestroyedTarget complete for: ${destroyedShip.shipName || 'unknown ship'}`);
+debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.shipName || 'unknown ship'}`);
     }
 
     adjustColorBrightness(color, factor) {
@@ -6100,7 +6101,7 @@ export class StarfieldManager {
         // This ensures we're 2x docking range away from the surface, not the center
         const launchDistance = objectRadius + (dockingRange * 2.0);
         
-        console.log(`🚀 Launch distance calculated: ${launchDistance.toFixed(1)}km (${objectRadius.toFixed(1)}km radius + 2x ${dockingRange.toFixed(1)}km docking range)`);
+debug('UTILITY', `🚀 Launch distance calculated: ${launchDistance.toFixed(1)}km (${objectRadius.toFixed(1)}km radius + 2x ${dockingRange.toFixed(1)}km docking range)`);
         return launchDistance;
     }
 
@@ -6108,7 +6109,7 @@ export class StarfieldManager {
      * Shutdown all ship systems when docking - properly power down without trying to save state
      */
     shutdownAllSystems() {
-        console.log('🛑 Shutting down all ship systems for docking');
+debug('UTILITY', '🛑 Shutting down all ship systems for docking');
         
         const ship = this.viewManager?.getShip();
         if (!ship) {
@@ -6121,13 +6122,13 @@ export class StarfieldManager {
             try {
                 if (systemName === 'shields' && system.isShieldsUp) {
                     system.deactivateShields();
-                    console.log(`  🛡️ Shields deactivated`);
+debug('COMBAT', `  🛡️ Shields deactivated`);
                 } else if (systemName === 'long_range_scanner' && system.isScanning) {
                     system.stopScan();
-                    console.log(`  📡 Scanner stopped`);
+debug('UTILITY', `  📡 Scanner stopped`);
                 } else if (systemName === 'target_computer' && system.isTargeting) {
                     system.deactivate();
-                    console.log(`  🎯 Targeting computer deactivated`);
+debug('TARGETING', `  🎯 Targeting computer deactivated`);
                 } else if (systemName === 'subspace_radio') {
                     if (system.isRadioActive) {
                         system.deactivateRadio();
@@ -6135,21 +6136,21 @@ export class StarfieldManager {
                     if (system.isChartActive) {
                         system.deactivateChart();
                     }
-                    console.log(`  📻 Subspace radio deactivated`);
+debug('UTILITY', `  📻 Subspace radio deactivated`);
                 } else if (systemName === 'impulse_engines') {
                     system.setImpulseSpeed(0);
                     system.setMovingForward(false);
-                    console.log(`  🚀 Impulse engines stopped`);
+debug('UTILITY', `  🚀 Impulse engines stopped`);
                 } else if (system.isActive) {
                     system.deactivate();
-                    console.log(`  ⚡ ${systemName} deactivated`);
+debug('UTILITY', `  ⚡ ${systemName} deactivated`);
                 }
             } catch (error) {
                 console.warn(`Failed to shutdown system ${systemName}:`, error);
             }
         }
         
-        console.log('🛑 All ship systems shutdown complete');
+debug('UTILITY', '🛑 All ship systems shutdown complete');
     }
     
     /**
@@ -6157,7 +6158,7 @@ export class StarfieldManager {
      * This is the unified method that should be used for ALL ship initialization scenarios
      */
     async initializeShipSystems() {
-        console.log('🚀 Initializing ship systems for launch');
+debug('UTILITY', 'Initializing ship systems for launch');
         
         const ship = this.viewManager?.getShip();
         if (!ship) {
@@ -6168,7 +6169,7 @@ export class StarfieldManager {
         // CRITICAL: Force refresh ship systems from current card configuration
         // This ensures that any equipment changes made while docked are properly applied
         if (ship.cardSystemIntegration) {
-            console.log('🔄 Refreshing ship systems from current card configuration...');
+debug('UI', '🔄 Refreshing ship systems from current card configuration...');
             try {
                 // Force reload cards from the current ship configuration
                 await ship.cardSystemIntegration.loadCards();
@@ -6179,10 +6180,10 @@ export class StarfieldManager {
                 // Re-initialize cargo holds from updated cards
                 if (ship.cargoHoldManager) {
                     ship.cargoHoldManager.initializeFromCards();
-                    console.log('🚛 Cargo holds refreshed from updated cards');
+debug('UI', '🚛 Cargo holds refreshed from updated cards');
                 }
                 
-                console.log('✅ Ship systems refreshed from cards - equipment changes applied');
+debug('UI', '✅ Ship systems refreshed from cards - equipment changes applied');
             } catch (error) {
                 console.error('❌ Failed to refresh ship systems from cards:', error);
             }
@@ -6191,13 +6192,13 @@ export class StarfieldManager {
         // Initialize power management
         if (ship.equipment?.powerManagement) {
             this.powerManagementEnabled = true;
-            console.log('  ⚡ Power management initialized and enabled');
+debug('UTILITY', '  ⚡ Power management initialized and enabled');
         }
         
         // Initialize navigation computer
         if (ship.equipment?.navigationComputer) {
             this.navigationComputerEnabled = true;
-            console.log('  🧭 Navigation computer initialized and enabled');
+debug('NAVIGATION', '  🧭 Navigation computer initialized and enabled');
         }
         
         // CRITICAL: Properly initialize targeting computer with complete state reset
@@ -6231,33 +6232,33 @@ export class StarfieldManager {
                 if (targetComputerSystem.refreshTargeting) {
                     targetComputerSystem.refreshTargeting();
                 }
-                console.log('  🎯 Targeting computer initialized (ACTIVE) - state synchronized, targets cleared');
+debug('TARGETING', '  🎯 Targeting computer initialized (ACTIVE) - state synchronized, targets cleared');
             } else {
-                console.log('  🎯 Targeting computer initialized (INACTIVE) - ready for activation');
+debug('TARGETING', '  🎯 Targeting computer initialized (INACTIVE) - ready for activation');
             }
             
-            console.log(`  🎯 Target state cleared: currentTarget=${this.currentTarget}, targetIndex=${this.targetIndex}`);
+debug('TARGETING', `  🎯 Target state cleared: currentTarget=${this.currentTarget}, targetIndex=${this.targetIndex}`);
         } else {
             this.targetComputerEnabled = false;
             // Still clear target state even without targeting computer
             this.currentTarget = null;
             this.targetedObject = null;
             this.clearTargetOutline();
-            console.log('  🎯 No targeting computer available - target state cleared');
+debug('TARGETING', '  🎯 No targeting computer available - target state cleared');
         }
         
         // Initialize shields
         const shieldSystem = ship.getSystem('shields');
         if (shieldSystem) {
             this.shieldsEnabled = shieldSystem.isActive;
-            console.log(`  🛡️ Shields initialized: ${this.shieldsEnabled ? 'enabled' : 'disabled'}`);
+debug('COMBAT', `  🛡️ Shields initialized: ${this.shieldsEnabled ? 'enabled' : 'disabled'}`);
         }
         
         // Initialize scanning systems
         const scannerSystem = ship.getSystem('scanners');
         if (scannerSystem) {
             this.scannersEnabled = scannerSystem.isActive;
-            console.log(`  📡 Scanners initialized: ${this.scannersEnabled ? 'enabled' : 'disabled'}`);
+debug('UTILITY', `  📡 Scanners initialized: ${this.scannersEnabled ? 'enabled' : 'disabled'}`);
         }
         
         // Initialize weapon systems using the unified approach
@@ -6267,17 +6268,17 @@ export class StarfieldManager {
         const engineSystem = ship.getSystem('impulse_engines');
         if (engineSystem) {
             this.enginesEnabled = engineSystem.isActive;
-            console.log(`  🚀 Engines initialized: ${this.enginesEnabled ? 'enabled' : 'disabled'}`);
+debug('UTILITY', `  🚀 Engines initialized: ${this.enginesEnabled ? 'enabled' : 'disabled'}`);
         }
         
         // Initialize communication systems
         const radioSystem = ship.getSystem('subspace_radio');
         if (radioSystem) {
             this.radioEnabled = radioSystem.isActive;
-            console.log(`  📻 Radio initialized: ${this.radioEnabled ? 'enabled' : 'disabled'}`);
+debug('UTILITY', `  📻 Radio initialized: ${this.radioEnabled ? 'enabled' : 'disabled'}`);
         }
         
-        console.log('✅ Ship systems initialization complete - all states synchronized');
+debug('UTILITY', '✅ Ship systems initialization complete - all states synchronized');
     }
     
     /**
@@ -6285,28 +6286,28 @@ export class StarfieldManager {
      * Critical for ensuring weapons are properly registered with the HUD
      */
     async initializeWeaponSystems() {
-        console.log('  🔫 Initializing weapon systems and HUD integration...');
+debug('COMBAT', '  🔫 Initializing weapon systems and HUD integration...');
         
         try {
             const ship = this.viewManager?.getShip();
             if (!ship) {
-                console.log('    🔍 Ship initializing - weapon system setup deferred');
+debug('COMBAT', '    🔍 Ship initializing - weapon system setup deferred');
                 return;
             }
 
             // CRITICAL: Reinitialize the weapon system using WeaponSyncManager
             // This ensures weapons are properly loaded from the current card configuration
             if (ship.weaponSyncManager) {
-                console.log('    🔄 Reinitializing weapon system from current card configuration...');
+debug('COMBAT', '    🔄 Reinitializing weapon system from current card configuration...');
                 
                 // Force a complete weapon system refresh
                 ship.weaponSystem = await ship.weaponSyncManager.initializeWeapons();
                 
-                console.log('    ✅ Weapon system reinitialized with current equipment');
+debug('COMBAT', '    ✅ Weapon system reinitialized with current equipment');
             } else if (ship.initializeWeaponSystem) {
                 // Fallback: use ship's built-in weapon system initialization
                 await ship.initializeWeaponSystem();
-                console.log('    ✅ Weapon system initialized using fallback method');
+debug('COMBAT', '    ✅ Weapon system initialized using fallback method');
             }
             
             // Ensure weapon effects manager is initialized
@@ -6318,7 +6319,7 @@ export class StarfieldManager {
             // Update weapon selection UI to reflect current ship loadout
             await this.updateWeaponSelectionUI();
             
-            console.log('  🔫 Weapon systems initialization complete');
+debug('COMBAT', '  🔫 Weapon systems initialization complete');
         } catch (error) {
             console.error('  ❌ Failed to initialize weapon systems:', error);
         }
@@ -6329,17 +6330,17 @@ export class StarfieldManager {
      * Ensures weapon HUD shows correct weapon counts and types
      */
     async updateWeaponSelectionUI() {
-        console.log('    🎯 Updating weapon selection UI...');
+debug('COMBAT', '    🎯 Updating weapon selection UI...');
         
         const ship = this.viewManager?.getShip();
         if (!ship) {
-            console.log('    🔍 Ship initializing - weapon UI updates deferred');
+debug('COMBAT', '    🔍 Ship initializing - weapon UI updates deferred');
             return;
         }
         
         const weaponsSystem = ship.getSystem('weapons');
         if (!weaponsSystem) {
-            console.log('    🔍 No weapons system installed - weapon UI updates skipped');
+debug('COMBAT', '    🔍 No weapons system installed - weapon UI updates skipped');
             return;
         }
         
@@ -6357,7 +6358,7 @@ export class StarfieldManager {
             this.weaponHUD.updateActiveWeaponHighlight(ship.weaponSystem.activeSlotIndex);
         }
         
-        console.log('    🎯 Weapon selection UI updated');
+debug('COMBAT', '    🎯 Weapon selection UI updated');
     }
 
     /**
@@ -6376,18 +6377,18 @@ export class StarfieldManager {
      * Callback when weapon system is ready (called by Ship)
      */
     onWeaponSystemReady() {
-        console.log('🔫 StarfieldManager: Weapon system ready notification received');
+debug('COMBAT', '🔫 StarfieldManager: Weapon system ready notification received');
         
         // Try to connect WeaponHUD immediately
         if (this.weaponHUD && !this.weaponHUDConnected) {
-            console.log('🔗 Attempting immediate WeaponHUD connection...');
+debug('COMBAT', 'Attempting immediate WeaponHUD connection...');
             this.connectWeaponHUDToSystem();
             
             // If connection successful, clear the retry interval
             if (this.weaponHUDConnected && this.weaponHUDRetryInterval) {
                 clearInterval(this.weaponHUDRetryInterval);
                 this.weaponHUDRetryInterval = null;
-                console.log('✅ WeaponHUD connected immediately, retry interval cleared');
+debug('COMBAT', '✅ WeaponHUD connected immediately, retry interval cleared');
             }
         }
     }
@@ -6678,9 +6679,9 @@ export class StarfieldManager {
         const weaponName = weaponCard?.name || 'Current Weapon';
 
         // Debug weapon information
-        console.log(`🎯 Sub-targeting check for: ${weaponName}`);
-        console.log(`🎯 Weapon type: ${weaponType}`);
-        console.log(`🎯 Weapon card:`, weaponCard);
+debug('TARGETING', `🎯 Sub-targeting check for: ${weaponName}`);
+debug('COMBAT', `🎯 Weapon type: ${weaponType}`);
+debug('COMBAT', `🎯 Weapon card:`, weaponCard);
 
         // Check if current weapon supports sub-targeting (scan-hit weapons only)
         const canActuallyTarget = (weaponType === 'scan-hit');
@@ -6784,7 +6785,7 @@ export class StarfieldManager {
      */
     pauseForMissionComplete() {
         // Optional: pause game systems during mission completion
-        console.log('🎯 Game paused for mission completion');
+debug('MISSIONS', 'Game paused for mission completion');
     }
 
     /**
@@ -6792,7 +6793,7 @@ export class StarfieldManager {
      */
     resumeFromMissionComplete() {
         // Resume game systems after mission completion
-        console.log('🎯 Game resumed from mission completion');
+debug('MISSIONS', 'Game resumed from mission completion');
     }
 
     /**
@@ -6874,7 +6875,7 @@ export class StarfieldManager {
             this.missionStatusHUD.updatePlayerData(playerData);
         }
         
-        console.log('🎯 StarfieldManager: Updated mission system with player data', playerData);
+debug('MISSIONS', 'StarfieldManager: Updated mission system with player data', playerData);
     }
     
     /**
@@ -6889,7 +6890,7 @@ export class StarfieldManager {
             this.missionStatusHUD.setPlayerLocation(location);
         }
         
-        console.log(`🎯 StarfieldManager: Updated mission system location to ${location}`);
+debug('MISSIONS', `🎯 StarfieldManager: Updated mission system location to ${location}`);
     }
     
     /**
@@ -6900,7 +6901,7 @@ export class StarfieldManager {
      * fresh sessions without any carry-over between game restarts.
      */
     async initializeMissionSystem() {
-        console.log('🎯 Initializing mission system...');
+debug('MISSIONS', 'Initializing mission system...');
         
         try {
             // Update player data first
@@ -6910,19 +6911,19 @@ export class StarfieldManager {
             const isConnected = await this.missionAPI.testConnection();
             
             if (isConnected) {
-                console.log('🎯 Mission API connected, pre-populating stations...');
+debug('MISSIONS', 'Mission API connected, pre-populating stations...');
                 
                 // TESTING PHASE: Clear old data for fresh start (no persistence between sessions)
                 if (TESTING_CONFIG.NO_PERSISTENCE) {
-                    console.log('🧪 TESTING MODE ACTIVE: Clearing all persistent data for fresh start...');
+debug('UTILITY', 'TESTING MODE ACTIVE: Clearing all persistent data for fresh start...');
                     
                     const activeCount = await this.missionAPI.getActiveMissions();
                     if (activeCount.length > 0) {
-                        console.log(`🧪 TESTING MODE: Found ${activeCount.length} old active missions, clearing...`);
+debug('MISSIONS', `🧪 TESTING MODE: Found ${activeCount.length} old active missions, clearing...`);
                         await this.missionAPI.clearActiveMissions();
-                        console.log('🧪 TESTING MODE: All old missions cleared');
+debug('MISSIONS', 'TESTING MODE: All old missions cleared');
                     } else {
-                        console.log('🧪 TESTING MODE: No old missions found - clean start');
+debug('MISSIONS', 'TESTING MODE: No old missions found - clean start');
                     }
                     
                     // Clear other persistent data for fresh testing session
@@ -6934,15 +6935,15 @@ export class StarfieldManager {
                     // Reset credits to starting amount
                     const { playerCredits } = await import('../utils/PlayerCredits.js');
                     playerCredits.reset();
-                    console.log('🧪 TESTING MODE: Credits reset to starting amount');
+debug('UTILITY', 'TESTING MODE: Credits reset to starting amount');
                     
-                    console.log('🧪 TESTING MODE: Fresh session initialized - NO mission pre-population');
+debug('MISSIONS', 'TESTING MODE: Fresh session initialized - NO mission pre-population');
                 } else {
                     // Only pre-populate missions when NOT in testing mode
                     await this.prePopulateStationMissions();
                 }
             } else {
-                console.log('🎯 Mission API not available, missions will use fallback data');
+debug('AI', 'Mission API not available, missions will use fallback data');
             }
             
         } catch (error) {
@@ -6956,7 +6957,7 @@ export class StarfieldManager {
     async prePopulateStationMissions() {
         const stations = this.getGameStations();
         
-        console.log(`🎯 Pre-populating ${stations.length} stations with missions...`);
+debug('MISSIONS', `🎯 Pre-populating ${stations.length} stations with missions...`);
         
         for (const station of stations) {
             try {
@@ -6968,7 +6969,7 @@ export class StarfieldManager {
             }
         }
         
-        console.log('🎯 Station mission pre-population complete');
+debug('MISSIONS', 'Station mission pre-population complete');
     }
     
     /**
@@ -7043,12 +7044,12 @@ export class StarfieldManager {
             const currentMissions = await this.missionAPI.getAvailableMissions(station.key);
             const currentCount = currentMissions.length;
             
-            console.log(`🎯 ${station.name}: ${currentCount} existing missions`);
+debug('MISSIONS', `🎯 ${station.name}: ${currentCount} existing missions`);
             
             // Generate missions if below minimum
             if (currentCount < station.minMissions) {
                 const missionsToGenerate = station.minMissions - currentCount;
-                console.log(`🎯 Generating ${missionsToGenerate} missions for ${station.name}`);
+debug('MISSIONS', `🎯 Generating ${missionsToGenerate} missions for ${station.name}`);
                 
                 for (let i = 0; i < missionsToGenerate; i++) {
                     // Select template based on station type
@@ -7058,7 +7059,7 @@ export class StarfieldManager {
                         const result = await this.missionAPI.generateMission(template, station.key);
                         
                         if (result.success) {
-                            console.log(`🎯 Generated ${template} mission for ${station.name}: ${result.mission.title}`);
+debug('MISSIONS', `🎯 Generated ${template} mission for ${station.name}: ${result.mission.title}`);
                         } else {
                             console.warn(`🎯 Failed to generate ${template} for ${station.name}: ${result.error}`);
                         }
@@ -7071,7 +7072,7 @@ export class StarfieldManager {
                     }
                 }
             } else {
-                console.log(`🎯 ${station.name} has sufficient missions (${currentCount}/${station.minMissions})`);
+debug('MISSIONS', `🎯 ${station.name} has sufficient missions (${currentCount}/${station.minMissions})`);
             }
             
         } catch (error) {
@@ -7149,7 +7150,7 @@ export class StarfieldManager {
     async refreshStationMissions(stationKey) {
         const station = this.getGameStations().find(s => s.key === stationKey);
         if (station) {
-            console.log(`🎯 Refreshing missions for ${station.name}...`);
+debug('MISSIONS', `🎯 Refreshing missions for ${station.name}...`);
             await this.ensureStationHasMissions(station);
         }
     }
@@ -7164,7 +7165,7 @@ export class StarfieldManager {
      * Test mission UI systems
      */
     testMissionUI() {
-        console.log('🎯 Testing mission UI systems...');
+debug('UI', 'Testing mission UI systems...');
         
         // Update player data first
         this.updateMissionSystemPlayerData();
@@ -7173,18 +7174,18 @@ export class StarfieldManager {
         if (this.missionAPI) {
             this.missionAPI.testConnection().then(connected => {
                 if (connected) {
-                    console.log('🎯 Mission API connection successful');
+debug('MISSIONS', 'Mission API connection successful');
                     // Test with real data
                     this.missionAPI.refreshAllMissions();
                 } else {
-                    console.log('🎯 Mission API not available, using mock data');
+debug('AI', 'Mission API not available, using mock data');
                 }
             });
         }
         
         // Test mission status HUD
         if (this.missionStatusHUD) {
-            console.log('🎯 Mission Status HUD available - press M to test');
+debug('AI', 'Mission Status HUD available - press M to test');
         }
         
         // Test notifications
@@ -7195,12 +7196,12 @@ export class StarfieldManager {
         // Test mission completion after 20 seconds
         setTimeout(() => {
             if (this.missionCompletionUI) {
-                console.log('🎯 Testing mission completion UI...');
+debug('UI', 'Testing mission completion UI...');
                 this.missionCompletionUI.testCompletion();
             }
         }, 20000);
         
-        console.log('🎯 Mission UI test sequence started');
+debug('UI', 'Mission UI test sequence started');
     }
     
     /**
@@ -7218,7 +7219,7 @@ export class StarfieldManager {
             const result = await this.missionEventService.enemyDestroyed(destroyedShip, playerContext);
             
             if (result && result.success && result.updated_missions && result.updated_missions.length > 0) {
-                console.log(`🎯 Enemy destruction updated ${result.updated_missions.length} missions`);
+debug('MISSIONS', `🎯 Enemy destruction updated ${result.updated_missions.length} missions`);
                 
                 // Refresh Mission Status HUD if visible
                 if (this.missionStatusHUD && this.missionStatusHUD.visible) {
@@ -7252,7 +7253,7 @@ export class StarfieldManager {
             const result = await this.missionEventService.locationReached(location, playerContext);
             
             if (result && result.success && result.updated_missions && result.updated_missions.length > 0) {
-                console.log(`🎯 Location reached updated ${result.updated_missions.length} missions`);
+debug('MISSIONS', `🎯 Location reached updated ${result.updated_missions.length} missions`);
                 
                 // Refresh Mission Status HUD if visible
                 if (this.missionStatusHUD && this.missionStatusHUD.visible) {
@@ -7348,7 +7349,7 @@ export class StarfieldManager {
      * Manual mission population for testing (console command)
      */
     async populateAllStations() {
-        console.log('🎯 Manual station population requested...');
+debug('UTILITY', 'Manual station population requested...');
         await this.prePopulateStationMissions();
     }
     
@@ -7356,7 +7357,7 @@ export class StarfieldManager {
      * Get mission summary for all stations (console command)
      */
     async getMissionSummary() {
-        console.log('🎯 Getting mission summary for all stations...');
+debug('MISSIONS', 'Getting mission summary for all stations...');
         
         const stations = this.getGameStations();
         const summary = {};
@@ -7381,7 +7382,7 @@ export class StarfieldManager {
      * Test mission event system (console command)
      */
     async testMissionEvents() {
-        console.log('🎯 Testing mission event system...');
+debug('MISSIONS', 'Testing mission event system...');
         
         if (!this.missionEventService) {
             console.error('❌ MissionEventService not available');
@@ -7389,16 +7390,16 @@ export class StarfieldManager {
         }
         
         // Test enemy destroyed event
-        console.log('🎯 Testing enemy destroyed event...');
+debug('UTILITY', 'Testing enemy destroyed event...');
         const result = await this.missionEventService.testEnemyDestroyed();
-        console.log('🎯 Enemy destroyed test result:', result);
+debug('UTILITY', 'Enemy destroyed test result:', result);
         
         // Test location reached event
-        console.log('🎯 Testing location reached event...');
+debug('UTILITY', 'Testing location reached event...');
         const locationResult = await this.missionEventService.locationReached('terra_prime', {
             playerShip: 'starter_ship'
         });
-        console.log('🎯 Location reached test result:', locationResult);
+debug('UTILITY', 'Location reached test result:', locationResult);
         
         return { enemyDestroyed: result, locationReached: locationResult };
     }
@@ -7407,18 +7408,18 @@ export class StarfieldManager {
      * Clear all active missions (console command)
      */
     async clearActiveMissions() {
-        console.log('🎯 Clearing all active missions...');
+debug('MISSIONS', 'Clearing all active missions...');
         
         try {
             const result = await this.missionAPI.clearActiveMissions();
             
             if (result.success) {
-                console.log(`✅ Successfully cleared ${result.cleared_count} active missions`);
+debug('MISSIONS', `✅ Successfully cleared ${result.cleared_count} active missions`);
                 
                 // Refresh Mission Status HUD if it's visible
                 if (this.missionStatusHUD && this.missionStatusHUD.visible) {
                     this.missionStatusHUD.refreshMissions();
-                    console.log('🎯 Mission Status HUD refreshed after clearing');
+debug('UI', 'Mission Status HUD refreshed after clearing');
                 }
                 
                 // Show notification

@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * CardSystemIntegration - Bridges card-based ship configuration with ship systems
  * Allows ship systems to check if required cards are installed and functional
@@ -100,12 +102,12 @@ export default class CardSystemIntegration {
         // Remove excessive debug logging - only log if there are actual issues
         
         if (!this.cardInventoryUI) {
-            console.warn('CardSystemIntegration: No card inventory UI available');
+            debug('UTILITY', 'CardSystemIntegration: No card inventory UI available');
             return;
         }
 
         if (!this.cardInventoryUI.shipSlots) {
-            console.warn('CardSystemIntegration: No ship slots available in card inventory');
+            debug('UTILITY', 'CardSystemIntegration: No ship slots available in card inventory');
             return;
         }
 
@@ -125,7 +127,7 @@ export default class CardSystemIntegration {
 
         // Only log summary if cards were loaded
         if (loadedCount > 0) {
-            console.log(`Loaded ${loadedCount} cards for ${this.ship.shipName}`);
+debug('UI', `Loaded ${loadedCount} cards for ${this.ship.shipName}`);
         }
         
         // Load from PlayerData as fallback
@@ -154,13 +156,13 @@ export default class CardSystemIntegration {
         // Log final result for debugging
         if (this.installedCards.size > 0) {
             const installedCardTypes = Array.from(this.installedCards.values()).map(card => card.cardType);
-            console.log(`🎯 CARDS LOADED: [${installedCardTypes.join(', ')}] (${this.installedCards.size} total)`);
+debug('UI', `🎯 CARDS LOADED: [${installedCardTypes.join(', ')}] (${this.installedCards.size} total)`);
             
             // DEBUG: Check specifically for shield cards
             const shieldCards = Array.from(this.installedCards.values()).filter(card => card.cardType === 'shields');
-            console.log(`🛡️ SHIELD CARDS LOADED: ${shieldCards.length} shield cards found:`, shieldCards);
+debug('COMBAT', `🛡️ SHIELD CARDS LOADED: ${shieldCards.length} shield cards found:`, shieldCards);
         } else {
-            console.log(`❌ NO CARDS LOADED for ${this.ship.shipType}`);
+debug('UI', `❌ NO CARDS LOADED for ${this.ship.shipType}`);
         }
     }
 
@@ -555,7 +557,7 @@ export default class CardSystemIntegration {
             
             // Skip weapon cards - they're handled by WeaponSyncManager
             if (this.isWeaponCard(cardType)) {
-                console.log(`🔫 SKIPPING weapon card ${cardType} - handled by WeaponSyncManager`);
+debug('COMBAT', `🔫 SKIPPING weapon card ${cardType} - handled by WeaponSyncManager`);
                 continue;
             }
             
@@ -568,7 +570,7 @@ export default class CardSystemIntegration {
                 cardType === 'probability_drive' || 
                 cardType === 'chaos_field_gen' || 
                 cardType === 'reality_anchor') {
-                console.log(`🔧 UTILITY CARD: ${cardType} - provides passive benefits (no system created)`);
+debug('UI', `🔧 UTILITY CARD: ${cardType} - provides passive benefits (no system created)`);
                 continue;
             }
             
@@ -576,11 +578,11 @@ export default class CardSystemIntegration {
             if (this.ship.systems.has(systemName)) {
                 const existingSystem = this.ship.systems.get(systemName);
                 if (existingSystem.level === cardData.level) {
-                    console.log(`✅ EXISTING: ${systemName} (Level ${cardData.level}) - no change needed`);
+debug('UI', `✅ EXISTING: ${systemName} (Level ${cardData.level}) - no change needed`);
                     continue;
                 } else {
                     // Update existing system level instead of removing and recreating
-                    console.log(`🔄 UPDATING: ${systemName} Level ${existingSystem.level} → Level ${cardData.level}`);
+debug('UI', `🔄 UPDATING: ${systemName} Level ${existingSystem.level} → Level ${cardData.level}`);
                     existingSystem.level = cardData.level;
                     systemsUpdated++;
                     
@@ -589,14 +591,14 @@ export default class CardSystemIntegration {
                         existingSystem.calculateStats();
                     }
                     
-                    console.log(`✅ UPDATED: ${systemName} to Level ${cardData.level}`);
+debug('UI', `✅ UPDATED: ${systemName} to Level ${cardData.level}`);
                     continue;
                 }
             }
             
             // Skip if we don't know how to create this system
             if (!cardToSystemMap[cardType] || !systemPathMap[cardToSystemMap[cardType]]) {
-                console.log(`❌ SYSTEM CREATION FAILED: ${cardType} → Unknown system type`);
+debug('P1', `❌ SYSTEM CREATION FAILED: ${cardType} → Unknown system type`);
                 continue;
             }
             
@@ -631,7 +633,7 @@ export default class CardSystemIntegration {
                     systemsCreated++;
                     // System created from card (reduced logging for cleaner console)
                 } else {
-                    console.log(`❌ FAILED TO ADD: ${systemName} - insufficient slots or other error`);
+debug('P1', `❌ FAILED TO ADD: ${systemName} - insufficient slots or other error`);
                 }
                 
             } catch (error) {
@@ -640,7 +642,7 @@ export default class CardSystemIntegration {
         }
         
         if (systemsCreated > 0 || systemsUpdated > 0) {
-            console.log(`✅ Created ${systemsCreated} systems, updated ${systemsUpdated} systems from cards`);
+debug('UI', `✅ Created ${systemsCreated} systems, updated ${systemsUpdated} systems from cards`);
             // Recalculate ship stats after adding/updating systems
             this.ship.calculateTotalStats();
             
@@ -661,7 +663,7 @@ export default class CardSystemIntegration {
                 }
             }
         } else {
-            console.log(`✅ No system changes needed - all systems are current`);
+debug('UTILITY', `✅ No system changes needed - all systems are current`);
         }
     }
     
@@ -669,11 +671,11 @@ export default class CardSystemIntegration {
      * Clean up systems that no longer have corresponding cards installed
      */
     async cleanupOrphanedSystems() {
-        console.log('🧹 Cleaning up orphaned systems...');
+debug('UTILITY', '🧹 Cleaning up orphaned systems...');
         
         // Get list of installed card types
         const installedCardTypes = Array.from(this.installedCards.values()).map(card => card.cardType);
-        console.log('🧹 Installed card types:', installedCardTypes);
+debug('UI', '🧹 Installed card types:', installedCardTypes);
         
         // List of systems that should be removed if their cards are not installed
         const systemsToCheck = [
@@ -694,14 +696,14 @@ export default class CardSystemIntegration {
                 const hasCard = this.hasCardForSystem(systemName, installedCardTypes);
                 
                 if (!hasCard) {
-                    console.log(`🗑️ Removing orphaned system: ${systemName} (no corresponding card)`);
+debug('UI', `🗑️ Removing orphaned system: ${systemName} (no corresponding card)`);
                     this.ship.removeSystem(systemName);
                     removedCount++;
                 }
             }
         }
         
-        console.log(`🧹 Cleanup complete: removed ${removedCount} orphaned systems`);
+debug('UTILITY', `🧹 Cleanup complete: removed ${removedCount} orphaned systems`);
     }
     
     /**
@@ -814,12 +816,12 @@ export default class CardSystemIntegration {
      */
     async refreshWeaponSystems() {
         try {
-            console.log('🔧 Refreshing weapon systems to prevent duplicates...');
+debug('COMBAT', 'Refreshing weapon systems to prevent duplicates...');
             
             // Step 1: Remove consolidated "weapons" system to prevent duplicates with individual weapons
             if (this.ship.systems.has('weapons')) {
                 this.ship.removeSystem('weapons');
-                console.log('🗑️ Removed consolidated "weapons" system to prevent duplicates');
+debug('COMBAT', '🗑️ Removed consolidated "weapons" system to prevent duplicates');
             }
             
             // Step 2: Remove all individual weapon systems to prevent duplicates
@@ -832,7 +834,7 @@ export default class CardSystemIntegration {
                 if (this.ship.systems.has(weaponName)) {
                     this.ship.removeSystem(weaponName);
                     removedCount++;
-                    console.log(`🗑️ Removed old individual weapon system: ${weaponName}`);
+debug('COMBAT', `🗑️ Removed old individual weapon system: ${weaponName}`);
                 }
             }
             
@@ -841,13 +843,13 @@ export default class CardSystemIntegration {
             const hasWeaponCards = weaponSystemNames.some(weaponType => installedCardTypes.includes(weaponType));
             
             if (hasWeaponCards && this.ship.initializeWeaponSystem) {
-                console.log('🔫 Re-initializing weapon system after card changes...');
+debug('COMBAT', '🔫 Re-initializing weapon system after card changes...');
                 await this.ship.initializeWeaponSystem();
             } else {
-                console.log('🔫 No weapon cards installed - skipping weapon system initialization');
+debug('COMBAT', '🔫 No weapon cards installed - skipping weapon system initialization');
             }
             
-            console.log(`🔧 Weapon systems refresh complete: removed ${removedCount + (removedCount > 0 ? 1 : 0)} old systems`);
+debug('COMBAT', `🔧 Weapon systems refresh complete: removed ${removedCount + (removedCount > 0 ? 1 : 0)} old systems`);
             
         } catch (error) {
             console.error('🔧 Failed to refresh weapon systems:', error);

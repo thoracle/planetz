@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * MissionStatusHUD - In-game mission tracking interface
  * Positioned in upper-right corner, toggled with M key
@@ -31,7 +33,7 @@ export class MissionStatusHUD {
     initialize() {
         this.createHUDContainer();
         this.setupEventListeners();
-        console.log('🎯 MissionStatusHUD: Initialized');
+debug('UI', 'MissionStatusHUD: Initialized');
         
         // Make globally accessible for testing
         window.missionStatusHUD = this;
@@ -69,7 +71,7 @@ export class MissionStatusHUD {
         this.createContent();
         
         document.body.appendChild(this.hudContainer);
-        console.log('🎯 MissionStatusHUD: Container created');
+debug('AI', 'MissionStatusHUD: Container created');
     }
     
     /**
@@ -169,7 +171,7 @@ export class MissionStatusHUD {
         if (!this.isVisible) {
             this.isVisible = true;
             this.hudContainer.style.display = 'block';
-            console.log('🎯 MissionStatusHUD: Shown');
+debug('UI', 'MissionStatusHUD: Shown');
             
             // Start periodic updates
             this.startUpdates();
@@ -186,7 +188,7 @@ export class MissionStatusHUD {
         if (this.isVisible) {
             this.isVisible = false;
             this.hudContainer.style.display = 'none';
-            console.log('🎯 MissionStatusHUD: Hidden');
+debug('UI', 'MissionStatusHUD: Hidden');
             
             // Stop updates
             this.stopUpdates();
@@ -201,7 +203,7 @@ export class MissionStatusHUD {
         this.isVisible = !this.isVisible;
         this.hudContainer.style.display = this.isVisible ? 'block' : 'none';
         
-        console.log(`🎯 MissionStatusHUD: ${this.isVisible ? 'Enabled' : 'Disabled'}`);
+debug('UI', `🎯 MissionStatusHUD: ${this.isVisible ? 'Enabled' : 'Disabled'}`);
         
         if (this.isVisible) {
             // Start periodic updates
@@ -228,7 +230,7 @@ export class MissionStatusHUD {
             this.updateMissionStatus();
         }, this.updateFrequency);
         
-        console.log('🎯 MissionStatusHUD: Started periodic updates');
+debug('UI', 'MissionStatusHUD: Started periodic updates');
     }
     
     /**
@@ -240,7 +242,7 @@ export class MissionStatusHUD {
             this.updateInterval = null;
         }
         
-        console.log('🎯 MissionStatusHUD: Stopped periodic updates');
+debug('UI', 'MissionStatusHUD: Stopped periodic updates');
     }
     
     /**
@@ -255,13 +257,13 @@ export class MissionStatusHUD {
             this.activeMissions = this.activeMissions.map(mission => this.processMissionForUI(mission));
             
             this.renderMissions();
-            console.log(`🎯 MissionStatusHUD: Refreshed ${this.activeMissions.length} active missions`);
+debug('UI', `🎯 MissionStatusHUD: Refreshed ${this.activeMissions.length} active missions`);
         } catch (error) {
             console.error('🎯 MissionStatusHUD: Error refreshing missions:', error);
             this.showErrorMessage('Failed to load missions');
             
             // Fallback to mock data for testing
-            console.log('🎯 MissionStatusHUD: Using mock data as fallback');
+debug('UI', 'MissionStatusHUD: Using mock data as fallback');
             this.activeMissions = this.getMockMissions();
             this.renderMissions();
         }
@@ -279,7 +281,7 @@ export class MissionStatusHUD {
             this.activeMissions = updatedMissions.map(mission => this.processMissionForUI(mission));
             
             this.renderMissions();
-            console.log(`🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} missions directly`);
+debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} missions directly`);
         } catch (error) {
             console.error('🎯 MissionStatusHUD: Error updating missions data:', error);
             // Fallback to refresh if direct update fails
@@ -794,12 +796,12 @@ export class MissionStatusHUD {
     setupEventListeners() {
         // Listen to mission API events
         this.missionAPI.addEventListener('missionAccepted', (data) => {
-            console.log('🎯 MissionStatusHUD: Mission accepted', data.mission);
+debug('UI', 'MissionStatusHUD: Mission accepted', data.mission);
             this.refreshMissions();
         });
         
         this.missionAPI.addEventListener('missionCompleted', (data) => {
-            console.log('🎯 MissionStatusHUD: Mission completed', data.mission);
+debug('UI', 'MissionStatusHUD: Mission completed', data.mission);
             this.refreshMissions();
             
             // Show mission completion UI
@@ -809,7 +811,7 @@ export class MissionStatusHUD {
         });
         
         this.missionAPI.addEventListener('objectiveCompleted', (data) => {
-            console.log('🎯 MissionStatusHUD: Objective completed', data);
+debug('UI', 'MissionStatusHUD: Objective completed', data);
             // Use direct update if we have mission data, otherwise refresh from API
             if (data.mission && Array.isArray([data.mission])) {
                 this.updateMissionsData([data.mission]);
@@ -818,7 +820,7 @@ export class MissionStatusHUD {
             }
         });
         
-        console.log('🎯 MissionStatusHUD: Event listeners ready');
+debug('UI', 'MissionStatusHUD: Event listeners ready');
     }
     
     /**

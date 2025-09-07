@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * DockingInterface - UI for services available while docked at planets/moons
  */
@@ -37,7 +39,7 @@ export class DockingInterface {
             // Load the ship configuration into CardInventoryUI.shipSlots for CardSystemIntegration
             this.cardInventoryUI.loadShipConfiguration(starfieldManager.ship.shipType);
             
-            console.log(`🔧 DockingInterface: Loaded ${this.cardInventoryUI.shipSlots.size} cards for ship integration`);
+debug('UI', `🔧 DockingInterface: Loaded ${this.cardInventoryUI.shipSlots.size} cards for ship integration`);
         }
         
         // Set card inventory UI reference on the ship for system integration
@@ -192,11 +194,11 @@ export class DockingInterface {
         });
         
         this.launchButton.addEventListener('click', () => { 
-            console.log('🚀🚀🚀 LAUNCH BUTTON CLICKED - Event listener fired 🚀🚀🚀');
-            console.log('🚀 About to call this.handleLaunch()');
+debug('COMBAT', '🚀🚀🚀 LAUNCH BUTTON CLICKED - Event listener fired 🚀🚀🚀');
+debug('UI', 'About to call this.handleLaunch()');
             this.playCommandSound(); 
             this.handleLaunch(); 
-            console.log('🚀 this.handleLaunch() completed');
+debug('UI', 'this.handleLaunch() completed');
         });
         this.header.appendChild(this.launchButton);
     }
@@ -526,7 +528,7 @@ export class DockingInterface {
         // This ensures the correct ship type is displayed after ship switching
         const currentShip = this.starfieldManager.ship;
         if (currentShip && currentShip.shipType) {
-            console.log(`🔄 DockingInterface: Refreshing ship type to ${currentShip.shipType}`);
+debug('UI', `🔄 DockingInterface: Refreshing ship type to ${currentShip.shipType}`);
             
             // Update CardInventoryUI ship references
             this.cardInventoryUI.currentShipType = currentShip.shipType;
@@ -535,7 +537,7 @@ export class DockingInterface {
             // Reload ship configuration to match current ship
             this.cardInventoryUI.loadShipConfiguration(currentShip.shipType);
             
-            console.log(`✅ DockingInterface: Ship type updated to ${currentShip.shipType}`);
+debug('UI', `✅ DockingInterface: Ship type updated to ${currentShip.shipType}`);
         }
         
         // Update header with location info
@@ -547,14 +549,14 @@ export class DockingInterface {
         // Show the interface
         this.container.style.display = 'flex';
         
-        console.log('Station menu shown for:', dockedLocation);
+debug('UI', 'Station menu shown for:', dockedLocation);
     }
 
     hide() {
         this.isVisible = false;
         this.dockedLocation = null;
         this.container.style.display = 'none';
-        console.log('Station menu hidden');
+debug('UI', 'Station menu hidden');
     }
     
     /**
@@ -589,8 +591,8 @@ export class DockingInterface {
     }
 
     handleLaunch() {
-        console.log('Launch button clicked from station menu');
-        console.log(`🚀 DockingInterface calling starfieldManager.undock()`);
+debug('UI', 'Launch button clicked from station menu');
+debug('UI', `🚀 DockingInterface calling starfieldManager.undock()`);
         
         // Play command sound
         if (this.starfieldManager.playCommandSound) {
@@ -602,18 +604,18 @@ export class DockingInterface {
         
         // Trigger undocking
         this.starfieldManager.undock();
-        console.log('🚀 DockingInterface.handleLaunch() completed');
+debug('UI', 'DockingInterface.handleLaunch() completed');
     }
 
     handleRepair() {
-        console.log('Repair service requested');
-        console.log('StarfieldManager:', this.starfieldManager);
+debug('AI', 'Repair service requested');
+debug('UI', 'StarfieldManager:', this.starfieldManager);
         
         // Get ship from ViewManager
         const ship = this.starfieldManager.viewManager?.getShip();
-        console.log('Ship:', ship);
-        console.log('Docked location:', this.dockedLocation);
-        console.log('Station repair interface:', this.stationRepairInterface);
+debug('UI', 'Ship:', ship);
+debug('UI', 'Docked location:', this.dockedLocation);
+debug('AI', 'Station repair interface:', this.stationRepairInterface);
         
         // Play command sound
         if (this.starfieldManager.playCommandSound) {
@@ -628,9 +630,9 @@ export class DockingInterface {
         
         // Show repair interface with stored location
         if (ship && dockedLocation) {
-            console.log('Attempting to show repair interface...');
+debug('AI', 'Attempting to show repair interface...');
             this.stationRepairInterface.show(ship, dockedLocation);
-            console.log('Repair interface show() called');
+debug('AI', 'Repair interface show() called');
         } else {
             console.error('Cannot access repair services: ship or location data unavailable');
             console.error('Ship exists:', !!ship);
@@ -639,7 +641,7 @@ export class DockingInterface {
     }
 
     handleShop() {
-        console.log('Card shop requested');
+debug('UI', 'Card shop requested');
         
         // Play command sound
         if (this.starfieldManager.playCommandSound) {
@@ -654,7 +656,7 @@ export class DockingInterface {
         
         // Show card inventory shop
         if (dockedLocation) {
-            console.log('Opening card shop...');
+debug('UI', 'Opening card shop...');
             this.cardInventoryUI.showAsShop(dockedLocation, this);
         } else {
             console.error('Cannot access card shop: location data unavailable');
@@ -662,7 +664,7 @@ export class DockingInterface {
     }
 
     handleMissionBoard() {
-        console.log('🎯 Mission Board requested');
+debug('MISSIONS', 'Mission Board requested');
         
         // Play command sound
         if (this.starfieldManager.playCommandSound) {
@@ -708,7 +710,7 @@ export class DockingInterface {
     }
 
     handleCommodityExchange() {
-        console.log('🏪 Commodity Exchange requested');
+debug('UI', '🏪 Commodity Exchange requested');
         
         // Play command sound
         if (this.starfieldManager.playCommandSound) {

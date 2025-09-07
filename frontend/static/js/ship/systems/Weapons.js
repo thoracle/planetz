@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * Weapons System - Provides ship combat capabilities with laser weapons
  * Based on docs/spaceships_spec.md and docs/tech_design.md
@@ -56,7 +58,7 @@ export default class Weapons extends System {
         this.levelStats = this.initializeLevelStats();
         this.updateLevelStats();
         
-        console.log(`Weapons created (Level ${level}) - Damage: ${this.getCurrentDamage()}, Fire Rate: ${this.getCurrentFireRate()}/sec`);
+debug('COMBAT', `Weapons created (Level ${level}) - Damage: ${this.getCurrentDamage()}, Fire Rate: ${this.getCurrentFireRate()}/sec`);
     }
     
     /**
@@ -194,7 +196,7 @@ export default class Weapons extends System {
         
         this.maxBurstShots = levelStats.maxBurstShots;
         
-        console.log(`Weapons upgraded to Level ${this.level} - ${levelStats.weaponType}`);
+debug('COMBAT', `Weapons upgraded to Level ${this.level} - ${levelStats.weaponType}`);
     }
     
     /**
@@ -422,11 +424,11 @@ export default class Weapons extends System {
         switch (newState) {
             case SYSTEM_STATES.CRITICAL:
                 // Critical weapons have reduced fire rate and damage
-                console.log('Critical weapon damage - reduced combat effectiveness');
+debug('P1', 'Critical weapon damage - reduced combat effectiveness');
                 break;
             case SYSTEM_STATES.DISABLED:
                 // Disabled weapons cannot fire
-                console.log('Weapon systems disabled - no firing capability!');
+debug('COMBAT', 'Weapon systems disabled - no firing capability!');
                 break;
         }
     }
@@ -477,7 +479,7 @@ export default class Weapons extends System {
         
         // Weapons don't have an "active" state in the power consumption sense
         // They're always ready to fire when operational
-        console.log(`${this.name} ready to fire`);
+debug('COMBAT', `${this.name} ready to fire`);
         return true;
     }
     
@@ -488,7 +490,7 @@ export default class Weapons extends System {
     deactivate() {
         // Weapons don't have an "active" state in the power consumption sense
         // This method exists for interface compatibility but doesn't change state
-        console.log(`${this.name} deactivation requested (weapons don't consume continuous power)`);
+debug('COMBAT', `${this.name} deactivation requested (weapons don't consume continuous power)`);
     }
     
     /**

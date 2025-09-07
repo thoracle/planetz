@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { debug } from '../debug.js';
 
 /**
  * AIStateMachine - Finite state machine for enemy AI behavior
@@ -51,7 +52,7 @@ export class AIStateMachine {
             buzz: this.buzzBehavior.bind(this)
         };
         
-        console.log(`🎯 AIStateMachine initialized for ${this.ship.shipType}`);
+debug('AI', `🎯 AIStateMachine initialized for ${this.ship.shipType}`);
     }
     
     /**
@@ -101,7 +102,7 @@ export class AIStateMachine {
         this.onStateExit(oldState);
         this.onStateEnter(newState);
         
-        console.log(`🎯 ${this.ship.shipType} state: ${oldState} → ${newState}`);
+debug('UTILITY', `🎯 ${this.ship.shipType} state: ${oldState} → ${newState}`);
     }
     
     /**

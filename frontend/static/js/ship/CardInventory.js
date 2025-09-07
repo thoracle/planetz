@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * CardInventory class - Manages card collection and stacking mechanics
  * Based on docs/tech_design.md and docs/system_architecture.md
@@ -48,9 +50,9 @@ export default class CardInventory {
      */
     initializeCardStacks() {
         // Check if hull_plating is in CARD_TYPES
-        console.log('🔍 CARD_TYPES.HULL_PLATING:', CARD_TYPES.HULL_PLATING);
-        console.log('🔍 hull_plating in Object.values(CARD_TYPES):', Object.values(CARD_TYPES).includes('hull_plating'));
-        console.log('🔍 All CARD_TYPES values:', Object.values(CARD_TYPES));
+debug('UI', 'CARD_TYPES.HULL_PLATING:', CARD_TYPES.HULL_PLATING);
+debug('UI', 'hull_plating in Object.values(CARD_TYPES):', Object.values(CARD_TYPES).includes('hull_plating'));
+debug('UI', 'All CARD_TYPES values:', Object.values(CARD_TYPES));
         
         Object.values(CARD_TYPES).forEach((cardType, index) => {
             this.cardStacks.set(cardType, {
@@ -61,15 +63,15 @@ export default class CardInventory {
                 rarity: null // Will be set when first card is added
             });
             if (cardType === 'hull_plating') {
-                console.log('✅ Found and initialized hull_plating at index:', index);
+debug('UTILITY', '✅ Found and initialized hull_plating at index:', index);
             }
         });
         
-        console.log('🗂️ Total card stacks initialized:', this.cardStacks.size);
-        console.log('🔍 Has hull_plating after init:', this.cardStacks.has('hull_plating'));
+debug('UI', 'Total card stacks initialized:', this.cardStacks.size);
+debug('UI', 'Has hull_plating after init:', this.cardStacks.has('hull_plating'));
         
         // Additional debugging - list all initialized card types
-        console.log('🗂️ All initialized card types:', Array.from(this.cardStacks.keys()));
+debug('UI', 'All initialized card types:', Array.from(this.cardStacks.keys()));
     }
 
     /**
@@ -308,12 +310,12 @@ export default class CardInventory {
         };
         
         // Debug logging
-        console.log('🔍 getCollectionStats() called:');
-        console.log('  - CARD_TYPES length:', totalCardTypes);
-        console.log('  - discoveredCards.size:', discoveredCount);
-        console.log('  - currentTotalCards:', currentTotalCards);
-        console.log('  - cardStacks.size:', this.cardStacks.size);
-        console.log('  - returning stats:', stats);
+debug('UTILITY', 'getCollectionStats() called:');
+debug('UI', '  - CARD_TYPES length:', totalCardTypes);
+debug('UI', '  - discoveredCards.size:', discoveredCount);
+debug('UI', '  - currentTotalCards:', currentTotalCards);
+debug('UI', '  - cardStacks.size:', this.cardStacks.size);
+debug('UTILITY', '  - returning stats:', stats);
         
         return stats;
     }

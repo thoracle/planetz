@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * WeaponSystem Core - Manages weapon slots, selection, autofire, and card integration
  * Based on docs/weapons_system_spec.md and docs/system_architecture.md
@@ -175,10 +177,10 @@ export class WeaponSystemCore {
                     reason = `${weapon.name} autofire unavailable`;
                 }
                 
-                console.log(`🎯 Autofire unavailable: ${reason}`);
+debug('COMBAT', `🎯 Autofire unavailable: ${reason}`);
                 this.showMessage(`Autofire unavailable: ${reason}`, 4000);
             } else {
-                console.log('🎯 Autofire unavailable: No weapon equipped');
+debug('COMBAT', 'Autofire unavailable: No weapon equipped');
                 this.showMessage('Autofire unavailable: No weapon equipped', 3000);
             }
             return false; // Command failed
@@ -195,7 +197,7 @@ export class WeaponSystemCore {
         const status = this.isAutofireOn ? 'ON' : 'OFF';
         const weaponType = weapon?.homingCapability ? 'homing' : (weapon?.targetLockRequired ? 'guided' : 'direct-fire');
         
-        console.log(`🎯 Autofire ${status} for ${weaponName} (Level ${weaponLevel}, ${weaponType})`);
+debug('COMBAT', `🎯 Autofire ${status} for ${weaponName} (Level ${weaponLevel}, ${weaponType})`);
         
         // Show user-friendly message
         if (this.isAutofireOn) {
@@ -261,7 +263,7 @@ export class WeaponSystemCore {
                 // Target has been destroyed, turn off autofire
                 this.isAutofireOn = false;
                 this.setLockedTarget(null);
-                console.log('🎯 Autofire turned OFF - target no longer exists');
+debug('TARGETING', 'Autofire turned OFF - target no longer exists');
                 
                 // Update UI to reflect autofire is now off
                 if (this.weaponHUD) {
@@ -279,7 +281,7 @@ export class WeaponSystemCore {
             const closestTarget = this.findClosestTarget();
             if (closestTarget) {
                 this.setLockedTarget(closestTarget);
-                console.log(`🎯 Auto-selected target: ${closestTarget.name || 'Unknown'} at ${this.calculateDistanceToTarget(closestTarget).toFixed(0)}m`);
+debug('TARGETING', `🎯 Auto-selected target: ${closestTarget.name || 'Unknown'} at ${this.calculateDistanceToTarget(closestTarget).toFixed(0)}m`);
             }
         }
         
@@ -299,7 +301,7 @@ export class WeaponSystemCore {
                 }
                 
                 const reason = !this.lockedTarget ? 'no target lock' : 'target lost';
-                console.log(`🎯 Autofire disabled for ${weapon.name}: ${reason}`);
+debug('COMBAT', `🎯 Autofire disabled for ${weapon.name}: ${reason}`);
                 this.showMessage(`Autofire disabled: ${weapon.name} ${reason}`, 3000);
             }
         } else if (this.lockedTarget) {
@@ -324,7 +326,7 @@ export class WeaponSystemCore {
      */
     validateHomingMissileTarget(weapon) {
         if (!this.lockedTarget) {
-            console.log(`🎯 Homing missile validation failed: No target locked`);
+debug('P1', `🎯 Homing missile validation failed: No target locked`);
             return false;
         }
         
@@ -335,7 +337,7 @@ export class WeaponSystemCore {
             );
             
             if (!targetStillExists) {
-                console.log(`🎯 Homing missile validation failed: Target no longer exists`);
+debug('P1', `🎯 Homing missile validation failed: Target no longer exists`);
                 return false;
             }
         }
@@ -343,20 +345,20 @@ export class WeaponSystemCore {
         // Check if target is within range
         const distanceToTarget = this.calculateDistanceToTarget(this.lockedTarget);
         if (distanceToTarget > weapon.range) {
-            console.log(`🎯 Homing missile validation failed: Target out of range (${(distanceToTarget/1000).toFixed(1)}km > ${(weapon.range/1000).toFixed(1)}km)`);
+debug('P1', `🎯 Homing missile validation failed: Target out of range (${(distanceToTarget/1000).toFixed(1)}km > ${(weapon.range/1000).toFixed(1)}km)`);
             return false;
         }
         
         // Check if target is alive (has hull > 0)
         if (this.lockedTarget.ship && this.lockedTarget.ship.currentHull <= 0) {
-            console.log(`🎯 Homing missile validation failed: Target destroyed (hull: ${this.lockedTarget.ship.currentHull})`);
+debug('P1', `🎯 Homing missile validation failed: Target destroyed (hull: ${this.lockedTarget.ship.currentHull})`);
             return false;
         }
         
         // Additional homing-specific checks can be added here
         // e.g., line of sight, jamming resistance, etc.
         
-        console.log(`✅ Homing missile target validation passed: ${this.lockedTarget.name || 'target'} at ${(distanceToTarget/1000).toFixed(1)}km`);
+debug('TARGETING', `✅ Homing missile target validation passed: ${this.lockedTarget.name || 'target'} at ${(distanceToTarget/1000).toFixed(1)}km`);
         return true;
     }
     
@@ -450,7 +452,7 @@ export class WeaponSystemCore {
             }
             
             this.updateWeaponDisplay();
-            console.log(`Equipped ${weaponCard.name} to weapon slot ${slotIndex}`);
+debug('COMBAT', `Equipped ${weaponCard.name} to weapon slot ${slotIndex}`);
             return true;
         }
         
@@ -478,7 +480,7 @@ export class WeaponSystemCore {
             }
             
             this.updateWeaponDisplay();
-            console.log(`Unequipped ${weaponName} from weapon slot ${slotIndex}`);
+debug('COMBAT', `Unequipped ${weaponName} from weapon slot ${slotIndex}`);
             return true;
         }
         
@@ -570,7 +572,7 @@ export class WeaponSystemCore {
                 viewManager.updateCrosshairDisplay();
             }
         } catch (error) {
-            console.log('Failed to update crosshair for active weapon:', error.message);
+debug('P1', 'Failed to update crosshair for active weapon:', error.message);
         }
     }
     
@@ -584,7 +586,7 @@ export class WeaponSystemCore {
         
         // Console log for debugging (no duplicate message)
         const status = this.isAutofireOn ? "ON" : "OFF";
-        console.log(`Weapon System: Autofire ${status}`);
+debug('COMBAT', `Weapon System: Autofire ${status}`);
     }
     
     /**
@@ -614,12 +616,12 @@ export class WeaponSystemCore {
      * @param {number} duration Duration in milliseconds
      */
     showMessage(message, duration = 3000) {
-        console.log(`🎯 ${message}`);
+debug('UTILITY', `🎯 ${message}`);
         
         if (this.weaponHUD) {
             // Use connected WeaponHUD - use unified message display
             this.weaponHUD.showUnifiedMessage(message, duration, 2); // Priority 2 for weapon messages
-            console.log(`🎯 Message sent to connected WeaponHUD unified display`);
+debug('COMBAT', `🎯 Message sent to connected WeaponHUD unified display`);
         } else {
             // Fallback: try to find WeaponHUD directly in DOM or via StarfieldManager
             console.warn(`🎯 WeaponHUD not connected, trying alternative paths`);
@@ -628,7 +630,7 @@ export class WeaponSystemCore {
             const starfieldWeaponHUD = window.starfieldManager?.weaponHUD;
             if (starfieldWeaponHUD && starfieldWeaponHUD.showUnifiedMessage) {
                 starfieldWeaponHUD.showUnifiedMessage(message, duration, 2);
-                console.log(`🎯 Message sent via StarfieldManager WeaponHUD`);
+debug('COMBAT', `🎯 Message sent via StarfieldManager WeaponHUD`);
             } else {
                 // Last resort fallback
                 this.showFallbackHUDMessage(message, duration);
@@ -651,7 +653,7 @@ export class WeaponSystemCore {
             messageDisplay.style.display = 'block';
             messageDisplay.style.opacity = '1';
             
-            console.log(`🎯 Fallback: Message displayed via DOM - "${message}"`);
+debug('UI', `🎯 Fallback: Message displayed via DOM - "${message}"`);
             
             // Hide after duration
             setTimeout(() => {
@@ -690,7 +692,7 @@ export class WeaponSystemCore {
         overlay.textContent = message;
         
         document.body.appendChild(overlay);
-        console.log(`🎯 Temporary overlay created: "${message}"`);
+debug('UTILITY', `🎯 Temporary overlay created: "${message}"`);
         
         // Remove after duration
         setTimeout(() => {

@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * StarChartsManager - Advanced discovery-based navigation system
  * 
@@ -88,7 +90,7 @@ export class StarChartsManager {
     }
     
     async initialize() {
-        console.log('🚀 StarChartsManager: Initializing...');
+debug('UTILITY', 'StarChartsManager: Initializing...');
         
         try {
             // Load static database
@@ -114,15 +116,15 @@ export class StarChartsManager {
             // Start discovery checking
             this.startDiscoveryLoop();
             
-            console.log('✅ StarChartsManager: Initialization complete');
-            console.log(`   - Database load time: ${loadTime.toFixed(2)}ms`);
-            console.log(`   - Current sector: ${this.currentSector}`);
-            console.log(`   - Discovered objects: ${this.discoveredObjects.size}`);
+debug('UTILITY', '✅ StarChartsManager: Initialization complete');
+debug('UTILITY', `   - Database load time: ${loadTime.toFixed(2)}ms`);
+debug('UTILITY', `   - Current sector: ${this.currentSector}`);
+debug('UTILITY', `   - Discovered objects: ${this.discoveredObjects.size}`);
             
         } catch (error) {
             console.error('❌ StarChartsManager: Initialization failed:', error);
             if (this.config.fallbackToLRS) {
-                console.log('🔄 Falling back to Long Range Scanner');
+debug('UTILITY', '🔄 Falling back to Long Range Scanner');
                 this.config.enabled = false;
             }
         }
@@ -170,7 +172,7 @@ export class StarChartsManager {
                 }
             });
             this.saveDiscoveryState();
-            console.log(`🧪 StarCharts TEST MODE: Discovered all objects in ${this.currentSector} (+${count})`);
+debug('UTILITY', `🧪 StarCharts TEST MODE: Discovered all objects in ${this.currentSector} (+${count})`);
         } catch (e) {
             console.warn('🧪 StarCharts TEST MODE failed to discover all:', e);
         }
@@ -192,11 +194,11 @@ export class StarChartsManager {
 
             if (count > 0) {
                 this.saveDiscoveryState();
-                console.log(`🔧 TEMP FIX: Auto-discovered ${count} beacons`);
+debug('UTILITY', `🔧 TEMP FIX: Auto-discovered ${count} beacons`);
 
                 // Trigger UI refresh if Star Charts UI exists
                 if (this.viewManager?.starfieldManager?.starChartsUI) {
-                    console.log(`🔧 TEMP FIX: Triggering Star Charts UI refresh`);
+debug('UI', `🔧 TEMP FIX: Triggering Star Charts UI refresh`);
                     setTimeout(() => {
                         this.viewManager.starfieldManager.starChartsUI.render();
                     }, 100);
@@ -217,9 +219,9 @@ export class StarChartsManager {
             }
             
             this.objectDatabase = await response.json();
-            console.log(`📊 Loaded database: ${this.objectDatabase.metadata.total_sectors} sectors`);
-            console.log(`   - Universe seed: ${this.objectDatabase.metadata.universe_seed}`);
-            console.log(`   - Generated: ${this.objectDatabase.metadata.generation_timestamp}`);
+debug('UTILITY', `📊 Loaded database: ${this.objectDatabase.metadata.total_sectors} sectors`);
+debug('UTILITY', `   - Universe seed: ${this.objectDatabase.metadata.universe_seed}`);
+debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_timestamp}`);
             
             return true;
             
@@ -257,7 +259,7 @@ export class StarChartsManager {
             }
         });
         
-        console.log(`🗺️  Spatial grid initialized: ${this.spatialGrid.size} cells, ${allObjects.length} objects`);
+debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} cells, ${allObjects.length} objects`);
     }
     
     getGridKey(position) {
@@ -393,7 +395,7 @@ export class StarChartsManager {
         // Update performance metrics
         this.performanceMetrics.discoveryCount++;
         
-        console.log(`🔍 Discovered: ${object.name} (${object.type})`);
+debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     }
     
     getDiscoveryCategory(objectType) {
@@ -453,7 +455,7 @@ export class StarChartsManager {
         } else if (config.notification === 'subtle') {
             this.showSubtleNotification(message);
         } else {
-            console.log(`📝 ${message}`);
+debug('UTILITY', `📝 ${message}`);
         }
     }
     
@@ -610,7 +612,7 @@ export class StarChartsManager {
             this.discoveryMetadata.set(objectId, discoveryData);
 
             this.saveDiscoveryState();
-            console.log(`🗺️ Discovered: ${objectId} (${discoveryMethod})`);
+debug('UTILITY', `🗺️ Discovered: ${objectId} (${discoveryMethod})`);
 
             // Trigger discovery callbacks
             this.triggerDiscoveryCallbacks(objectId, discoveryData);
@@ -678,8 +680,8 @@ export class StarChartsManager {
                     this.discoveryMetadata = new Map(Object.entries(state.metadata));
                 }
 
-                console.log(`📂 Loaded discovery state: ${this.discoveredObjects.size} objects discovered`);
-                console.log(`📊 Discovery metadata: ${this.discoveryMetadata.size} entries`);
+debug('UTILITY', `📂 Loaded discovery state: ${this.discoveredObjects.size} objects discovered`);
+debug('UTILITY', `📊 Discovery metadata: ${this.discoveryMetadata.size} entries`);
             } else {
                 // Initialize with star always discovered
                 this.initializeDiscoveryState();
@@ -706,7 +708,7 @@ export class StarChartsManager {
             firstDiscovered: true
         });
 
-        console.log('🌟 Initialized discovery state with central star');
+debug('UTILITY', '🌟 Initialized discovery state with central star');
     }
 
     saveDiscoveryState() {
@@ -723,7 +725,7 @@ export class StarChartsManager {
             };
 
             localStorage.setItem(key, JSON.stringify(state));
-            console.log(`💾 Saved discovery state: ${this.discoveredObjects.size} objects`);
+debug('UTILITY', `💾 Saved discovery state: ${this.discoveredObjects.size} objects`);
 
         } catch (error) {
             console.error('❌ Failed to save discovery state:', error);
@@ -748,7 +750,7 @@ export class StarChartsManager {
         
         this.virtualWaypoints.set(waypointId, waypoint);
         
-        console.log(`🎯 Created waypoint: ${waypoint.name} at [${waypoint.position.join(', ')}]`);
+debug('UTILITY', `🎯 Created waypoint: ${waypoint.name} at [${waypoint.position.join(', ')}]`);
         
         return waypointId;
     }
@@ -759,7 +761,7 @@ export class StarChartsManager {
         if (this.virtualWaypoints.has(waypointId)) {
             const waypoint = this.virtualWaypoints.get(waypointId);
             this.virtualWaypoints.delete(waypointId);
-            console.log(`🗑️  Removed waypoint: ${waypoint.name}`);
+debug('UTILITY', `🗑️  Removed waypoint: ${waypoint.name}`);
             return true;
         }
         
@@ -789,13 +791,13 @@ export class StarChartsManager {
     executeWaypointActions(waypoint) {
         //Execute waypoint actions when triggered
         
-        console.log(`🎯 Waypoint triggered: ${waypoint.name}`);
+debug('UTILITY', `🎯 Waypoint triggered: ${waypoint.name}`);
         
         waypoint.actions.forEach(action => {
             switch (action.type) {
                 case 'spawn_ships':
                     // TODO: Integrate with ship spawning system
-                    console.log(`🚀 Spawn ships: ${action.params}`);
+debug('UTILITY', `🚀 Spawn ships: ${action.params}`);
                     break;
                     
                 case 'play_comm':
@@ -806,16 +808,16 @@ export class StarChartsManager {
                     
                 case 'next_waypoint':
                     // TODO: Integrate with mission system
-                    console.log('➡️  Advance to next waypoint');
+debug('UTILITY', '➡️  Advance to next waypoint');
                     break;
                     
                 case 'mission_update':
                     // TODO: Integrate with mission system
-                    console.log(`📋 Mission update: ${action.params}`);
+debug('MISSIONS', `📋 Mission update: ${action.params}`);
                     break;
                     
                 default:
-                    console.log(`❓ Unknown waypoint action: ${action.type}`);
+debug('UTILITY', `❓ Unknown waypoint action: ${action.type}`);
             }
         });
     }
@@ -845,12 +847,12 @@ export class StarChartsManager {
             // Get object data for robust targeting
             const objectData = this.getObjectData(objectId);
             if (objectData) {
-                console.log(`🎯 Star Charts: Setting robust target for ${objectData.name} (${normalizedId})`);
+debug('TARGETING', `🎯 Star Charts: Setting robust target for ${objectData.name} (${normalizedId})`);
             }
 
             // Ensure Target Computer is activated for manual selection
             if (this.targetComputerManager.targetComputerEnabled === false) {
-                console.log('🎯 Star Charts: Activating Target Computer for selection');
+debug('TARGETING', 'Star Charts: Activating Target Computer for selection');
                 this.targetComputerManager.targetComputerEnabled = true;
             }
 
@@ -862,7 +864,7 @@ export class StarChartsManager {
                 throw new Error(errorMsg); // Crash in dev to find bugs
             }
 
-            console.log(`🎯 Star Charts: Successfully targeted ${objectData.name}`);
+debug('TARGETING', `🎯 Star Charts: Successfully targeted ${objectData.name}`);
             // Trigger target selection callbacks
             this.triggerTargetSelectionCallbacks(normalizedId);
             return true;
@@ -917,12 +919,12 @@ export class StarChartsManager {
         
         const metrics = this.getPerformanceMetrics();
         
-        console.log('📊 Star Charts Performance Report:');
-        console.log(`   - Average discovery check: ${metrics.averageDiscoveryCheckTime.toFixed(2)}ms`);
-        console.log(`   - Max discovery check: ${metrics.maxDiscoveryCheckTime.toFixed(2)}ms`);
-        console.log(`   - Total discoveries: ${metrics.totalDiscoveries}`);
-        console.log(`   - Discovered objects: ${metrics.discoveredObjectsCount}`);
-        console.log(`   - Spatial grid cells: ${metrics.spatialGridCells}`);
+debug('PERFORMANCE', '📊 Star Charts Performance Report:');
+debug('UTILITY', `   - Average discovery check: ${metrics.averageDiscoveryCheckTime.toFixed(2)}ms`);
+debug('UTILITY', `   - Max discovery check: ${metrics.maxDiscoveryCheckTime.toFixed(2)}ms`);
+debug('UTILITY', `   - Total discoveries: ${metrics.totalDiscoveries}`);
+debug('UTILITY', `   - Discovered objects: ${metrics.discoveredObjectsCount}`);
+debug('UTILITY', `   - Spatial grid cells: ${metrics.spatialGridCells}`);
     }
     
     // Public API

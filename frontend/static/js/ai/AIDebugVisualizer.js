@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * AIDebugVisualizer.js
  * 
@@ -36,7 +38,7 @@ export class AIDebugVisualizer {
         this.debugObjectCount = 0;
         this.maxDebugObjects = 200; // Limit for performance
         
-        console.log('🎨 AIDebugVisualizer initialized');
+debug('AI', '🎨 AIDebugVisualizer initialized');
     }
     
     /**
@@ -87,7 +89,7 @@ export class AIDebugVisualizer {
             this.clearAllDebugObjects();
         }
         
-        console.log(`🎨 AI Debug Visualization ${enabled ? 'enabled' : 'disabled'}`);
+debug('AI', `🎨 AI Debug Visualization ${enabled ? 'enabled' : 'disabled'}`);
     }
     
     /**
@@ -472,7 +474,7 @@ export class AIDebugVisualizer {
         this.weaponRanges.clear();
         
         this.debugObjectCount = 0;
-        console.log('🎨 All debug objects cleared');
+debug('INSPECTION', '🎨 All debug objects cleared');
     }
     
     /**
@@ -487,7 +489,7 @@ export class AIDebugVisualizer {
         if (options.showFlockingForces !== undefined) this.showFlockingForces = options.showFlockingForces;
         if (options.showThreatLevels !== undefined) this.showThreatLevels = options.showThreatLevels;
         
-        console.log('🎨 Debug visualization configured:', options);
+debug('INSPECTION', '🎨 Debug visualization configured:', options);
     }
     
     /**
@@ -527,6 +529,6 @@ export class AIDebugVisualizer {
         
         this.scene = null;
         this.camera = null;
-        console.log('🎨 AIDebugVisualizer destroyed');
+debug('AI', '🎨 AIDebugVisualizer destroyed');
     }
 }

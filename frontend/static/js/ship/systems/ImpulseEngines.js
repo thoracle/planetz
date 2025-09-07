@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * Impulse Engines System - Provides ship movement and maneuverability
  * Based on docs/spaceships_spec.md and docs/tech_design.md
@@ -44,7 +46,7 @@ export default class ImpulseEngines extends System {
             9: 15.0  // Impulse 9 - 1400% more energy (emergency speed)
         };
         
-        console.log(`Impulse Engines created (Level ${level}) - Max Speed: Impulse ${this.maxImpulseSpeed}`);
+debug('UTILITY', `Impulse Engines created (Level ${level}) - Max Speed: Impulse ${this.maxImpulseSpeed}`);
     }
     
     /**
@@ -137,7 +139,7 @@ export default class ImpulseEngines extends System {
         // Update active state based on impulse speed
         this.isActive = clampedSpeed > 0;
         
-        console.log(`Impulse speed set to ${clampedSpeed}`);
+debug('UTILITY', `Impulse speed set to ${clampedSpeed}`);
         return true;
     }
     
@@ -238,10 +240,10 @@ export default class ImpulseEngines extends System {
         // Update system state based on health
         this.updateSystemState();
         
-        console.log(`${this.name} took ${damage.toFixed(1)} damage. Health: ${this.healthPercentage.toFixed(2)}`);
+debug('COMBAT', `${this.name} took ${damage.toFixed(1)} damage. Health: ${this.healthPercentage.toFixed(2)}`);
         
         if (this.healthPercentage === 0) {
-            console.log(`${this.name} has been completely destroyed but can still be repaired`);
+debug('AI', `${this.name} has been completely destroyed but can still be repaired`);
         }
     }
 
@@ -265,14 +267,14 @@ export default class ImpulseEngines extends System {
             case SYSTEM_STATES.CRITICAL:
                 // Critical engines can't go above impulse 2 (emergency speed only)
                 if (this.currentImpulseSpeed > 2) {
-                    console.log('Critical engine damage - impulse speed reduced to emergency speed (2)');
+debug('P1', 'Critical engine damage - impulse speed reduced to emergency speed (2)');
                     this.setImpulseSpeed(2);
                 }
                 break;
             case SYSTEM_STATES.DISABLED:
                 // Impulse engines are completely destroyed and cannot function
                 if (this.currentImpulseSpeed > 0) {
-                    console.log('Impulse engines destroyed - all stop!');
+debug('UTILITY', 'Impulse engines destroyed - all stop!');
                     this.emergencyStop();
                 }
                 break;
@@ -362,7 +364,7 @@ export default class ImpulseEngines extends System {
     emergencyStop() {
         this.currentImpulseSpeed = 0;
         this.isMovingForward = false;
-        console.log('Emergency stop engaged - all stop!');
+debug('UTILITY', 'Emergency stop engaged - all stop!');
     }
     
     /**

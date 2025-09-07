@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * Base Weapon System - Provides weapon functionality for ships
  * Based on docs/spaceships_spec.md and docs/tech_design.md
@@ -40,7 +42,7 @@ export class WeaponSystem extends System {
         // Update level-specific values
         this.updateWeaponStats();
         
-        console.log(`${this.displayName} created (Level ${level}) - Damage: ${this.getCurrentDamage()}, Range: ${this.getCurrentRange()}km`);
+debug('COMBAT', `${this.displayName} created (Level ${level}) - Damage: ${this.getCurrentDamage()}, Range: ${this.getCurrentRange()}km`);
     }
     
     /**

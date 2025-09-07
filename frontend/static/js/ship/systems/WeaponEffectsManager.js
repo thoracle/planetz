@@ -1,3 +1,5 @@
+import { debug } from '../../debug.js';
+
 /**
  * WeaponEffectsManager - Core system for managing all weapon visual and audio effects
  * Provides arcade-style retro effects matching the Elite vector aesthetic
@@ -28,14 +30,14 @@ export class WeaponEffectsManager {
             if (!this.THREE) {
                 // Instead of throwing, create a fallback mode
                 this.fallbackMode = true;
-                console.log('🎆 WeaponEffectsManager: Fallback mode active');
+debug('COMBAT', '🎆 WeaponEffectsManager: Fallback mode active');
                 this.initializeFallbackMode();
                 return;
             }
         }
         
         this.fallbackMode = false;
-        console.log('🎆 WeaponEffectsManager: Initialized successfully');
+debug('COMBAT', '🎆 WeaponEffectsManager: Initialized successfully');
         this.initializeFullMode();
     }
     
@@ -61,7 +63,7 @@ export class WeaponEffectsManager {
      * Initialize in full mode when THREE.js is available
      */
     initializeFullMode() {
-        console.log('🎆 WeaponEffectsManager: Initializing full mode...');
+debug('COMBAT', '🎆 WeaponEffectsManager: Initializing full mode...');
         
         // Effect collections
         this.muzzleFlashes = [];
@@ -118,10 +120,10 @@ export class WeaponEffectsManager {
         };
         
         // Initialize audio system
-        console.log('🎆 WeaponEffectsManager: Starting audio initialization...');
+debug('COMBAT', '🎆 WeaponEffectsManager: Starting audio initialization...');
         this.initializeAudio();
         
-        console.log('WeaponEffectsManager initialized in full mode');
+debug('COMBAT', 'WeaponEffectsManager initialized in full mode');
     }
     
     /**
@@ -132,13 +134,13 @@ export class WeaponEffectsManager {
         const starfieldAudioManager = window.starfieldAudioManager;
         if (starfieldAudioManager) {
             // Use the global user interaction detection
-            console.log('🔗 WeaponEffectsManager: Using global StarfieldAudioManager for user interaction detection');
+debug('COMBAT', 'WeaponEffectsManager: Using global StarfieldAudioManager for user interaction detection');
             
             // Set up a periodic check to sync with the global state
             const checkInteractionState = () => {
                 if (!this.userHasInteracted && starfieldAudioManager.hasUserInteracted()) {
                     this.userHasInteracted = true;
-                    console.log('👆 WeaponEffectsManager: User interaction detected via StarfieldAudioManager');
+debug('COMBAT', 'WeaponEffectsManager: User interaction detected via StarfieldAudioManager');
                     
                     // Resume AudioContext if suspended
                     this.ensureAudioContextResumed();
@@ -150,12 +152,12 @@ export class WeaponEffectsManager {
             this.interactionCheckInterval = setInterval(checkInteractionState, 100);
         } else {
             // Fallback to local user interaction detection if StarfieldAudioManager not available
-            console.log('⚠️ WeaponEffectsManager: StarfieldAudioManager not available, using local user interaction detection');
+debug('COMBAT', 'WeaponEffectsManager: StarfieldAudioManager not available, using local user interaction detection');
             
             const trackInteraction = () => {
                 if (!this.userHasInteracted) {
                     this.userHasInteracted = true;
-                    console.log('👆 WeaponEffectsManager: User interaction detected - weapon audio should work now');
+debug('COMBAT', 'WeaponEffectsManager: User interaction detected - weapon audio should work now');
                     
                     // Resume AudioContext if suspended
                     this.ensureAudioContextResumed();
@@ -173,7 +175,7 @@ export class WeaponEffectsManager {
      * Initialize audio system
      */
     async initializeAudio() {
-        console.log('🎵 WeaponEffectsManager: Starting audio initialization...');
+debug('COMBAT', '🎵 WeaponEffectsManager: Starting audio initialization...');
         
         try {
             if (!this.audioContext) {
@@ -204,14 +206,14 @@ export class WeaponEffectsManager {
             
             // Only log summary
             if (this.audioBuffers.size > 0) {
-                console.log(`Weapon audio ready (${this.audioBuffers.size} effects)`);
+debug('COMBAT', `Weapon audio ready (${this.audioBuffers.size} effects)`);
             }
             
             this.audioInitialized = true;
             
         } catch (error) {
             console.error('WeaponEffectsManager: Failed to initialize audio:', error);
-            console.log('🎵 Falling back to HTML5 audio due to initialization failure...');
+debug('AI', '🎵 Falling back to HTML5 audio due to initialization failure...');
             this.useFallbackAudio = true;
             this.audioInitialized = true; // Mark as initialized to allow HTML5 fallback
         }
@@ -224,7 +226,7 @@ export class WeaponEffectsManager {
         if (this.audioContext && this.audioContext.state === 'suspended') {
             try {
                 await this.audioContext.resume();
-                console.log('WeaponEffectsManager: Audio context resumed');
+debug('COMBAT', 'WeaponEffectsManager: Audio context resumed');
             } catch (error) {
                 console.warn('WeaponEffectsManager: Failed to resume audio context:', error);
             }
@@ -270,7 +272,7 @@ export class WeaponEffectsManager {
         
         // Check user interaction for browser audio policies
         if (!this.userHasInteracted) {
-            console.warn('⚠️ WeaponEffectsManager: No user interaction detected - sound may not play due to browser policy');
+            debug('UTILITY', 'WeaponEffectsManager: No user interaction detected - sound may not play due to browser policy');
         }
         
         // Use HTML5 audio fallback if Web Audio API isn't available or failed
@@ -489,7 +491,7 @@ export class WeaponEffectsManager {
         
         this.activeEffects.add(beam);
         
-        console.log(`Created laser beam for ${weaponType}, distance: ${distance.toFixed(1)}`);
+debug('COMBAT', `Created laser beam for ${weaponType}, distance: ${distance.toFixed(1)}`);
     }
     
     /**
@@ -513,7 +515,7 @@ export class WeaponEffectsManager {
             const proximityThresholdKm = 2.5; // Fixed large threshold for hit detection compatibility
             
             if (distanceFromCenter > proximityThresholdKm) {
-                console.log(`💥 Explosion suppressed: Hit too far from center (${distanceFromCenter.toFixed(1)}km > ${proximityThresholdKm.toFixed(1)}km)`);
+debug('UTILITY', `💥 Explosion suppressed: Hit too far from center (${distanceFromCenter.toFixed(1)}km > ${proximityThresholdKm.toFixed(1)}km)`);
                 return; // Skip explosion if hit is too far from target center
             }
         }
@@ -556,7 +558,7 @@ export class WeaponEffectsManager {
             this.playSound(soundType, position);
         }
         
-        console.log(`Created ${explosionType} explosion at`, position, `radius: ${(radius * 0.00625).toFixed(3)} (25% larger)`);
+debug('UTILITY', `Created ${explosionType} explosion at`, position, `radius: ${(radius * 0.00625).toFixed(3)} (25% larger)`);
     }
     
     /**
@@ -737,7 +739,7 @@ export class WeaponEffectsManager {
             
             // Optional: Log every 30 updates to reduce spam
             if (trail.particleHistory.length % 30 === 0) {
-                console.log(`🔍 MESH TRAIL: Updated ${sphereCount} spheres for ${trail.id}`);
+debug('AI', `🔍 MESH TRAIL: Updated ${sphereCount} spheres for ${trail.id}`);
             }
         }
     }
@@ -807,9 +809,9 @@ export class WeaponEffectsManager {
         this.playSound('success', position, volume, null, durationPercentage);
         
         if (durationPercentage !== null) {
-            console.log(`🎉 Playing ${(durationPercentage * 100).toFixed(0)}% of success sound for system destruction`);
+debug('UTILITY', `🎉 Playing ${(durationPercentage * 100).toFixed(0)}% of success sound for system destruction`);
         } else {
-            console.log('🎉 Playing full success sound for enemy destruction');
+debug('UTILITY', '🎉 Playing full success sound for enemy destruction');
         }
     }
     
@@ -1094,7 +1096,7 @@ export class WeaponEffectsManager {
     updateEffectConfig(effectType, config) {
         if (this.effectConfig[effectType]) {
             Object.assign(this.effectConfig[effectType], config);
-            console.log(`Updated ${effectType} configuration:`, config);
+debug('UTILITY', `Updated ${effectType} configuration:`, config);
         }
     }
     
@@ -1139,7 +1141,7 @@ export class WeaponEffectsManager {
         this.explosions = [];
         this.activeEffects.clear();
         
-        console.log('WeaponEffectsManager cleaned up');
+debug('COMBAT', 'WeaponEffectsManager cleaned up');
     }
     
     /**

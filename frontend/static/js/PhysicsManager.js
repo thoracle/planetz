@@ -1,3 +1,5 @@
+import { debug } from './debug.js';
+
 /**
  * PhysicsManager - Handles Ammo.js physics integration for Planetz
  * 
@@ -51,7 +53,7 @@ export class PhysicsManager {
      */
     async initialize() {
         try {
-            console.log('Initializing Ammo.js physics engine...');
+            debug('UTILITY', 'Initializing Ammo.js physics engine...');
             
             // Initialize Ammo.js - handle both async and sync loading
             if (typeof Ammo === 'function') {
@@ -67,7 +69,7 @@ export class PhysicsManager {
             } else if (typeof Ammo === 'object' && Ammo !== null) {
                 // Ammo is already loaded as an object (script tag loading)
                 this.Ammo = Ammo;
-                console.log('🔍 Using Ammo.js as pre-loaded object');
+                debug('INSPECTION', 'Using Ammo.js as pre-loaded object');
             } else {
                 throw new Error('Ammo.js is not available');
             }
@@ -76,49 +78,49 @@ export class PhysicsManager {
                 throw new Error('Failed to initialize Ammo.js module');
             }
             
-            console.log('🔍 Ammo.js available, checking components...');
-            console.log('- btDefaultCollisionConfiguration:', typeof this.Ammo.btDefaultCollisionConfiguration);
-            console.log('- btCollisionDispatcher:', typeof this.Ammo.btCollisionDispatcher);
-            console.log('- btDbvtBroadphase:', typeof this.Ammo.btDbvtBroadphase);
-            console.log('- btSequentialImpulseConstraintSolver:', typeof this.Ammo.btSequentialImpulseConstraintSolver);
-            console.log('- btDiscreteDynamicsWorld:', typeof this.Ammo.btDiscreteDynamicsWorld);
-            console.log('- btVector3:', typeof this.Ammo.btVector3);
+            debug('INSPECTION', 'Ammo.js available, checking components...');
+            debug('INSPECTION', `- btDefaultCollisionConfiguration: ${typeof this.Ammo.btDefaultCollisionConfiguration}`);
+            debug('INSPECTION', `- btCollisionDispatcher: ${typeof this.Ammo.btCollisionDispatcher}`);
+            debug('INSPECTION', `- btDbvtBroadphase: ${typeof this.Ammo.btDbvtBroadphase}`);
+            debug('INSPECTION', `- btSequentialImpulseConstraintSolver: ${typeof this.Ammo.btSequentialImpulseConstraintSolver}`);
+            debug('INSPECTION', `- btDiscreteDynamicsWorld: ${typeof this.Ammo.btDiscreteDynamicsWorld}`);
+            debug('INSPECTION', `- btVector3: ${typeof this.Ammo.btVector3}`);
             
             // Set up collision configuration
-            console.log('🔧 Creating collision configuration...');
+            debug('UTILITY', 'Creating collision configuration...');
             const collisionConfig = new this.Ammo.btDefaultCollisionConfiguration();
-            console.log('✅ Collision config created');
-            
-            console.log('🔧 Creating dispatcher...');
+            debug('UTILITY', 'Collision config created');
+
+            debug('UTILITY', 'Creating dispatcher...');
             const dispatcher = new this.Ammo.btCollisionDispatcher(collisionConfig);
             this.dispatcher = dispatcher; // Store dispatcher for collision detection
-            console.log('✅ Dispatcher created');
-            
-            console.log('🔧 Creating broadphase...');
+            debug('UTILITY', 'Dispatcher created');
+
+            debug('UTILITY', 'Creating broadphase...');
             const broadphase = new this.Ammo.btDbvtBroadphase();
-            console.log('✅ Broadphase created');
+            debug('UTILITY', 'Broadphase created');
             
-            console.log('🔧 Creating solver...');
+            debug('UTILITY', 'Creating solver...');
             const solver = new this.Ammo.btSequentialImpulseConstraintSolver();
-            console.log('✅ Solver created');
-            
+            debug('UTILITY', 'Solver created');
+
             // Create physics world with zero gravity (space environment)
-            console.log('🔧 Creating physics world...');
+            debug('UTILITY', 'Creating physics world...');
             this.physicsWorld = new this.Ammo.btDiscreteDynamicsWorld(
                 dispatcher, 
                 broadphase, 
                 solver, 
                 collisionConfig
             );
-            console.log('✅ Physics world created');
-            
+            debug('UTILITY', 'Physics world created');
+
             // Set zero gravity for space simulation
-            console.log('🔧 Setting gravity...');
+            debug('UTILITY', 'Setting gravity...');
             this.physicsWorld.setGravity(new this.Ammo.btVector3(0, 0, 0));
-            console.log('✅ Gravity set to zero');
-            
+            debug('UTILITY', 'Gravity set to zero');
+
             // Enable collision detection
-            console.log('🔧 Configuring native collision detection...');
+            debug('UTILITY', 'Configuring native collision detection...');
             try {
                 // Configure native collision detection with complete build
                 const dispatchInfo = this.physicsWorld.getDispatchInfo();
@@ -130,23 +132,23 @@ export class PhysicsManager {
                 // Set CCD penetration threshold  
                 if (typeof dispatchInfo.set_m_allowedCcdPenetration === 'function') {
                     dispatchInfo.set_m_allowedCcdPenetration(0.0001);
-                    console.log('✅ CCD penetration configured via set_m_allowedCcdPenetration');
+                    debug('UTILITY', 'CCD penetration configured via set_m_allowedCcdPenetration');
                 } else if (typeof dispatchInfo.m_allowedCcdPenetration !== 'undefined') {
                     dispatchInfo.m_allowedCcdPenetration = 0.0001;
-                    console.log('✅ Used direct property assignment');
+                    debug('UTILITY', 'Used direct property assignment');
                 } else {
-                    console.log('⚠️ CCD penetration setting not available, continuing without it');
+                    debug('P1', 'CCD penetration setting not available, continuing without it');
                 }
             } catch (error) {
-                console.log('⚠️ Collision detection config failed, continuing without CCD:', error.message);
+                debug('P1', `Collision detection config failed, continuing without CCD: ${error.message}`);
             }
-            console.log('✅ Collision detection configured');
+            debug('UTILITY', 'Collision detection configured');
             
             // Set up collision detection
             this.setupCollisionDetection();
             
             this.initialized = true;
-            console.log('🚀 PhysicsManager initialized successfully with local Ammo.js');
+            debug('UTILITY', 'PhysicsManager initialized successfully with local Ammo.js');
             
             return true;
         } catch (error) {
@@ -163,7 +165,7 @@ export class PhysicsManager {
      */
     createShipRigidBody(threeObject, options = {}) {
         if (!this.initialized) {
-            console.log('PhysicsManager not initialized');
+            debug('P1', 'PhysicsManager not initialized');
             return null;
         }
 
@@ -253,12 +255,12 @@ export class PhysicsManager {
             // Add ship reference if it exists in userData
             if (threeObject.userData && threeObject.userData.ship) {
                 entityData.ship = threeObject.userData.ship;
-                console.log(`🔗 Physics entity includes ship reference for ${entityId}`);
+debug('PHYSICS', `🔗 Physics entity includes ship reference for ${entityId}`);
             }
             
             this.entityMetadata.set(rigidBody, entityData);
 
-            console.log(`Created ship rigid body for ${entityType} ${entityId}`);
+debug('UTILITY', `Created ship rigid body for ${entityType} ${entityId}`);
             
             // Create debug wireframe if debug mode is active
             this.onRigidBodyCreated(rigidBody, threeObject);
@@ -279,7 +281,7 @@ export class PhysicsManager {
      */
     createStationRigidBody(threeObject, options = {}) {
         if (!this.initialized) {
-            console.log('PhysicsManager not initialized');
+            debug('P1', 'PhysicsManager not initialized');
             return null;
         }
 
@@ -337,7 +339,7 @@ export class PhysicsManager {
                 threeObject: threeObject
             });
 
-            console.log(`Created station rigid body for ${entityType} ${entityId}`);
+debug('UTILITY', `Created station rigid body for ${entityType} ${entityId}`);
             return rigidBody;
 
         } catch (error) {
@@ -354,7 +356,7 @@ export class PhysicsManager {
      */
     createPlanetRigidBody(threeObject, options = {}) {
         if (!this.initialized) {
-            console.log('PhysicsManager not initialized');
+            debug('P1', 'PhysicsManager not initialized');
             return null;
         }
 
@@ -410,7 +412,7 @@ export class PhysicsManager {
                 shapeRadius: radius  // Store radius for wireframe sizing
             });
 
-            console.log(`Created planet rigid body for ${entityType} ${entityId || 'unnamed'}`);
+debug('UTILITY', `Created planet rigid body for ${entityType} ${entityId || 'unnamed'}`);
             
             // Create debug wireframe if debug mode is active
             this.onRigidBodyCreated(rigidBody, threeObject);
@@ -429,7 +431,7 @@ export class PhysicsManager {
     disableCollisionDebug() {
         this._silentMode = true;
         this._debugLoggingEnabled = false;
-        console.log('🔇 Collision debugging disabled - console spam reduced');
+debug('INSPECTION', '🔇 Collision debugging disabled - console spam reduced');
     }
 
     /**
@@ -438,7 +440,7 @@ export class PhysicsManager {
     enableCollisionDebug() {
         this._silentMode = false;
         this._debugLoggingEnabled = true;
-        console.log('🔊 Collision debugging enabled');
+debug('INSPECTION', '🔊 Collision debugging enabled');
     }
 
     /**
@@ -447,7 +449,7 @@ export class PhysicsManager {
     setSilentMode() {
         this._silentMode = true;
         this._debugLoggingEnabled = false;
-        console.log('🔇 Physics debugging completely disabled - console will be clean');
+debug('PHYSICS', '🔇 Physics debugging completely disabled - console will be clean');
     }
 
     /**
@@ -473,7 +475,7 @@ export class PhysicsManager {
             originalLog.apply(console, args);
         };
         
-        console.log('🤐 ULTRA SILENT MODE: All physics debug output completely suppressed');
+debug('PHYSICS', '🤐 ULTRA SILENT MODE: All physics debug output completely suppressed');
     }
 
     /**
@@ -484,7 +486,7 @@ export class PhysicsManager {
      */
     createRigidBody(threeObject, config = {}) {
         if (!this.initialized) {
-            console.log('PhysicsManager not initialized');
+            debug('P1', 'PhysicsManager not initialized');
             return null;
         }
 
@@ -524,7 +526,7 @@ export class PhysicsManager {
                     );
                     break;
                 default:
-                    console.log(`Unknown shape type: ${shape}, defaulting to box`);
+debug('UTILITY', `Unknown shape type: ${shape}, defaulting to box`);
                     ammoShape = new this.Ammo.btBoxShape(
                         new this.Ammo.btVector3(width / 2, height / 2, depth / 2)
                     );
@@ -565,7 +567,7 @@ export class PhysicsManager {
 
             // Debug: Check if rigid body was created successfully
             if (!rigidBody) {
-                console.log(`PHYSICS: Failed to create rigid body for ${entityType} ${entityId}`);
+                debug('P1', `PHYSICS: Failed to create rigid body for ${entityType} ${entityId}`);
                 return null;
             }
 
@@ -682,14 +684,14 @@ export class PhysicsManager {
      */
     createVector3(x, y, z) {
         if (!this.initialized) {
-            console.log('PhysicsManager not initialized');
+            debug('P1', 'PhysicsManager not initialized');
             return null;
         }
 
         try {
             return new this.Ammo.btVector3(x, y, z);
         } catch (error) {
-            console.log('Error creating btVector3:', error);
+            debug('P1', `Error creating btVector3: ${error.message}`);
             return null;
         }
     }
@@ -729,7 +731,7 @@ export class PhysicsManager {
             threeObject.updateMatrixWorld();
             
         } catch (error) {
-            console.log('Error syncing Three.js object with physics body:', error);
+            debug('P1', `Error syncing Three.js object with physics body: ${error.message}`);
         }
     }
 
@@ -764,7 +766,7 @@ export class PhysicsManager {
             rigidBody.setWorldTransform(transform);
             
         } catch (error) {
-            console.log('Error syncing physics body with Three.js object:', error);
+            debug('P1', `Error syncing physics body with Three.js object: ${error.message}`);
         }
     }
 
@@ -776,15 +778,15 @@ export class PhysicsManager {
      */
     spatialQuery(position, radius = 1000) {
         if (!this.initialized) {
-            console.log('PhysicsManager not initialized');
+            debug('P1', 'PhysicsManager not initialized');
             return [];
         }
 
-        console.log(`🔍 SPATIAL QUERY: Called with position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}), radius: ${radius}m`);
+debug('UTILITY', `🔍 SPATIAL QUERY: Called with position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}), radius: ${radius}m`);
 
         try {
             // Always use fallback for now since btGhostObject spatial queries seem unreliable
-            console.log('🔍 Using fallback spatial query for reliable detection');
+debug('UTILITY', 'Using fallback spatial query for reliable detection');
             return this.spatialQueryFallback(position, radius);
 
             // Create ghost object for spatial query (convert radius from meters to km)
@@ -822,7 +824,7 @@ export class PhysicsManager {
             return overlaps;
 
         } catch (error) {
-            console.log('⚠️ Spatial query failed, using fallback:', error.message);
+            debug('P1', `Spatial query failed, using fallback: ${error.message}`);
             return this.spatialQueryFallback(position, radius);
         }
     }
@@ -870,17 +872,17 @@ export class PhysicsManager {
                     withinRangeCount++;
                     const metadata = this.entityMetadata.get(rigidBody);
                     if (metadata) {
-                        console.log(`✅ SPATIAL QUERY: Found entity '${metadata.id}' (${metadata.type}) at ${distance.toFixed(3)}km (${(distance * 1000).toFixed(1)}m)`);
+debug('UTILITY', `✅ SPATIAL QUERY: Found entity '${metadata.id}' (${metadata.type}) at ${distance.toFixed(3)}km (${(distance * 1000).toFixed(1)}m)`);
                         overlaps.push(metadata);
                     } else {
-                        console.log(`⚠️ SPATIAL QUERY: RigidBody at ${distance.toFixed(3)}km (${(distance * 1000).toFixed(1)}m) has no metadata`);
+debug('UTILITY', `⚠️ SPATIAL QUERY: RigidBody at ${distance.toFixed(3)}km (${(distance * 1000).toFixed(1)}m) has no metadata`);
                     }
                 }
             }
         }
         // console.log(`🔍 SPATIAL QUERY: Checked ${checkedCount} entities, ${withinRangeCount} within range`);
         
-        console.log(`🔍 SPATIAL QUERY: Found ${overlaps.length} entities within ${radius}m radius`);
+debug('UTILITY', `🔍 SPATIAL QUERY: Found ${overlaps.length} entities within ${radius}m radius`);
         
         return overlaps;
     }
@@ -894,7 +896,7 @@ export class PhysicsManager {
      */
     raycast(origin, direction, maxDistance = 1000) {
         if (!this.initialized) {
-            console.log('PhysicsManager not initialized');
+            debug('P1', 'PhysicsManager not initialized');
             return null;
         }
 
@@ -902,7 +904,7 @@ export class PhysicsManager {
             // Check if raycast methods are available
             if (!this.Ammo.ClosestRayResultCallback || !this.physicsWorld.rayTest) {
                 // Use fallback raycast method
-                console.log('🔄 Using Three.js raycast (physics methods not available)');
+debug('AI', '🔄 Using Three.js raycast (physics methods not available)');
                 return this.raycastFallback(origin, direction, maxDistance);
             }
 
@@ -954,7 +956,7 @@ export class PhysicsManager {
                 if (!hitBody || !hitPoint || !hitNormal) {
                     // Missing essential hit data - no hit detected
                     if (!this._silentMode && this._debugLoggingEnabled) {
-                    console.log(`🔍 RAYCAST MISS: Missing essential hit data (body=${!!hitBody}, point=${!!hitPoint}, normal=${!!hitNormal})`);
+debug('UTILITY', `🔍 RAYCAST MISS: Missing essential hit data (body=${!!hitBody}, point=${!!hitPoint}, normal=${!!hitNormal})`);
                 }
                     
                     // Clean up Ammo.js objects
@@ -1005,7 +1007,7 @@ export class PhysicsManager {
                                         
                                         const storedMetadata = this.entityMetadata.get(storedRigidBody);
                                         if (storedMetadata) {
-                                            console.log(`✅ FALLBACK SUCCESS: Found matching body ${storedMetadata.type} ${storedMetadata.id}`);
+debug('UTILITY', `✅ FALLBACK SUCCESS: Found matching body ${storedMetadata.type} ${storedMetadata.id}`);
                                             entityInfo = storedMetadata;
                                             break;
                                         }
@@ -1016,7 +1018,7 @@ export class PhysicsManager {
                             // Method 3: Position-based matching (last resort)
                             if (!entityInfo && hitPoint) {
                                 if (!this._silentMode && this._debugLoggingEnabled) {
-                                    console.log(`🔍 Trying position-based entity identification...`);
+debug('UTILITY', `🔍 Trying position-based entity identification...`);
                                 }
                                 const hitPos = new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z());
                                 
@@ -1025,18 +1027,18 @@ export class PhysicsManager {
                                     const distance = hitPos.distanceTo(objectPos);
                                     
                                     if (!this._silentMode && this._debugLoggingEnabled) {
-                                        console.log(`🔍 Checking object at (${objectPos.x.toFixed(2)}, ${objectPos.y.toFixed(2)}, ${objectPos.z.toFixed(2)}) - distance ${distance.toFixed(2)}`);
+debug('UTILITY', `🔍 Checking object at (${objectPos.x.toFixed(2)}, ${objectPos.y.toFixed(2)}, ${objectPos.z.toFixed(2)}) - distance ${distance.toFixed(2)}`);
                                     }
                                     
                                     if (distance < 10.0) { // Increased threshold to 10 units
                                         const storedMetadata = this.entityMetadata.get(storedRigidBody);
                                         if (storedMetadata) {
-                                            console.log(`✅ POSITION MATCH: ${storedMetadata.type} ${storedMetadata.id} at distance ${distance.toFixed(2)}`);
-                                            console.log(`🔍 Full metadata:`, storedMetadata);
+debug('UTILITY', `✅ POSITION MATCH: ${storedMetadata.type} ${storedMetadata.id} at distance ${distance.toFixed(2)}`);
+debug('UTILITY', `🔍 Full metadata:`, storedMetadata);
                                             
                                             // Verify ship reference if it's an enemy_ship
                                             if (storedMetadata.type === 'enemy_ship' && storedMetadata.ship) {
-                                                console.log(`✅ Ship reference found:`, storedMetadata.ship.shipName || 'Unknown ship');
+debug('UTILITY', `✅ Ship reference found:`, storedMetadata.ship.shipName || 'Unknown ship');
                                             }
                                             
                                             entityInfo = storedMetadata;
@@ -1049,9 +1051,9 @@ export class PhysicsManager {
                         
                         // Final debug output (only if identification failed or used fallback)
                         if (!metadata && entityInfo) {
-                            console.log(`✅ FALLBACK IDENTIFICATION: ${entityInfo.type} ${entityInfo.id}`);
+debug('UTILITY', `✅ FALLBACK IDENTIFICATION: ${entityInfo.type} ${entityInfo.id}`);
                         } else if (!entityInfo) {
-                            console.log(`❌ ENTITY IDENTIFICATION FAILED - using 'unknown'`);
+debug('P1', `❌ ENTITY IDENTIFICATION FAILED - using 'unknown'`);
                         }
 
                         // Build result with manual distance calculation
@@ -1102,7 +1104,7 @@ export class PhysicsManager {
                                 
                                 const storedMetadata = this.entityMetadata.get(storedRigidBody);
                                 if (storedMetadata) {
-                                    console.log(`✅ FALLBACK SUCCESS: Found matching body ${storedMetadata.type} ${storedMetadata.id}`);
+debug('UTILITY', `✅ FALLBACK SUCCESS: Found matching body ${storedMetadata.type} ${storedMetadata.id}`);
                                     entityInfo = storedMetadata;
                                     break;
                                 }
@@ -1113,7 +1115,7 @@ export class PhysicsManager {
                     // Method 3: Position-based matching (last resort)
                     if (!entityInfo && hitPoint) {
                         if (!this._silentMode && this._debugLoggingEnabled) {
-                            console.log(`🔍 Trying position-based entity identification...`);
+debug('UTILITY', `🔍 Trying position-based entity identification...`);
                         }
                         const hitPos = new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z());
                         
@@ -1123,13 +1125,13 @@ export class PhysicsManager {
                                 const distance = objectPos.distanceTo(hitPos);
                                 
                                 if (!this._silentMode && this._debugLoggingEnabled) {
-                                    console.log(`🔍 Checking object at (${objectPos.x.toFixed(2)}, ${objectPos.y.toFixed(2)}, ${objectPos.z.toFixed(2)}) - distance ${distance.toFixed(2)}`);
+debug('UTILITY', `🔍 Checking object at (${objectPos.x.toFixed(2)}, ${objectPos.y.toFixed(2)}, ${objectPos.z.toFixed(2)}) - distance ${distance.toFixed(2)}`);
                                 }
                                 
                                 if (distance < 50) { // Within reasonable distance
                                     const storedMetadata = this.entityMetadata.get(storedRigidBody);
                                     if (!this._silentMode && this._debugLoggingEnabled) {
-                                        console.log(`🔍 Full metadata:`, storedMetadata);
+debug('UTILITY', `🔍 Full metadata:`, storedMetadata);
                                     }
                                 }
                             }
@@ -1139,9 +1141,9 @@ export class PhysicsManager {
                 
                 // Final debug output (only if identification failed or used fallback)
                 if (!metadata && entityInfo) {
-                    console.log(`✅ FALLBACK IDENTIFICATION: ${entityInfo.type} ${entityInfo.id}`);
+debug('UTILITY', `✅ FALLBACK IDENTIFICATION: ${entityInfo.type} ${entityInfo.id}`);
                 } else if (!entityInfo) {
-                    console.log(`❌ ENTITY IDENTIFICATION FAILED (regular path) - using 'unknown'`);
+debug('P1', `❌ ENTITY IDENTIFICATION FAILED (regular path) - using 'unknown'`);
                 }
 
                 const result = {
@@ -1161,7 +1163,7 @@ export class PhysicsManager {
                 
                 return result;
             } else {
-                console.log(`❌ PHYSICS RAYCAST MISS: No hits detected (checked ${this.rigidBodies.size} bodies)`);
+                debug('P1', `PHYSICS RAYCAST MISS: No hits detected (checked ${this.rigidBodies.size} bodies)`);
             }
 
             // Clean up Ammo.js objects
@@ -1171,7 +1173,7 @@ export class PhysicsManager {
             return null;
 
         } catch (error) {
-            console.log('🔄 Physics raycast failed, using Three.js fallback:', error.message);
+            debug('P1', `Physics raycast failed, using Three.js fallback: ${error.message}`);
             console.error('Full physics raycast error:', error);
             return this.raycastFallback(origin, direction, maxDistance);
         }
@@ -1188,7 +1190,7 @@ export class PhysicsManager {
         try {
             // Use Three.js raycaster as fallback
             if (typeof THREE === 'undefined') {
-                console.log('⚠️ THREE.js not available for raycast fallback');
+                debug('P1', 'THREE.js not available for raycast fallback');
                 return null;
             }
 
@@ -1234,14 +1236,14 @@ export class PhysicsManager {
                     threeObject: targetShip
                 };
 
-                console.log(`🎯 THREE.js raycast HIT: ${metadata?.name || 'unknown'} at ${firstHit.distance.toFixed(1)}m`);
+debug('UTILITY', `🎯 THREE.js raycast HIT: ${metadata?.name || 'unknown'} at ${firstHit.distance.toFixed(1)}m`);
                 return result;
             }
 
             return null;
 
         } catch (error) {
-            console.log('⚠️ Three.js raycast fallback failed:', error.message);
+            debug('P1', `Three.js raycast fallback failed: ${error.message}`);
             return null;
         }
     }
@@ -1349,7 +1351,7 @@ export class PhysicsManager {
                 }
             }
         } catch (error) {
-            console.log('⚠️ Old collision detection failed - using Ammo.js raycast instead:', error.message);
+            debug('P1', `Old collision detection failed - using Ammo.js raycast instead: ${error.message}`);
             // Skip old fallback - using Ammo.js raycast method instead (per upgrade plan)
         }
     }
@@ -1374,7 +1376,7 @@ export class PhysicsManager {
             const currentFlags = rigidBody.getCollisionFlags();
             rigidBody.setCollisionFlags(currentFlags | 4); // CF_CONTINUOUS_COLLISION_DETECTION
             
-            console.log(`✅ Enhanced CCD: collision=${collisionRadius.toFixed(2)}m, swept=${sweptRadius.toFixed(2)}m, threshold=${ccdThreshold.toFixed(3)}m, speed=${projectileSpeed}m/s`);
+debug('UTILITY', `✅ Enhanced CCD: collision=${collisionRadius.toFixed(2)}m, swept=${sweptRadius.toFixed(2)}m, threshold=${ccdThreshold.toFixed(3)}m, speed=${projectileSpeed}m/s`);
         } catch (error) {
             console.warn('⚠️ CCD configuration failed:', error.message);
         }
@@ -1399,7 +1401,7 @@ export class PhysicsManager {
                 }
             }
         } catch (error) {
-            console.log('⚠️ Native collision detection failed - using Ammo.js raycast instead:', error.message);
+            debug('P1', `Native collision detection failed - using Ammo.js raycast instead: ${error.message}`);
             // Skip old fallback - using Ammo.js raycast method instead (per upgrade plan)
         }
     }
@@ -1464,7 +1466,7 @@ export class PhysicsManager {
         const targetRadius = targetMesh.geometry.boundingSphere.radius;
 
         if (distanceToTarget - targetRadius > range) {
-            console.log('Miss (target too far)');
+debug('TARGETING', 'Miss (target too far)');
             return { hit: false };
         }
 
@@ -1492,12 +1494,12 @@ export class PhysicsManager {
                     point: new THREE.Vector3(hitPoint.x(), hitPoint.y(), hitPoint.z()),
                     distance: hitDistance
                 };
-                console.log('Hit at:', result.point);
+debug('UTILITY', 'Hit at:', result.point);
             } else {
-                console.log('Miss (out of range or wrong object)');
+debug('UTILITY', 'Miss (out of range or wrong object)');
             }
         } else {
-            console.log('Miss (no hit)');
+debug('UTILITY', 'Miss (no hit)');
         }
 
         Ammo.destroy(start);
@@ -1529,7 +1531,7 @@ export class PhysicsManager {
         if (projectiles.length > 0) {
             // Only log occasionally to prevent console spam
             if (!this._lastRaycastLog || (Date.now() - this._lastRaycastLog > 2000)) {
-                console.log(`🎯 RAYCAST COLLISION CHECK: ${projectiles.length} projectiles, ${targets.length} targets`);
+debug('TARGETING', `🎯 RAYCAST COLLISION CHECK: ${projectiles.length} projectiles, ${targets.length} targets`);
                 this._lastRaycastLog = Date.now();
             }
         }
@@ -1550,7 +1552,7 @@ export class PhysicsManager {
                 );
                 
                 if (hitResult.hit) {
-                    console.log(`✅ RAYCAST HIT: ${projectile.entity.id} -> ${target.entity.id} at distance ${hitResult.distance.toFixed(1)}m`);
+debug('TARGETING', `✅ RAYCAST HIT: ${projectile.entity.id} -> ${target.entity.id} at distance ${hitResult.distance.toFixed(1)}m`);
                     
                     // Only allow enemy ships to cause collisions for now
                     if (target.entity.type === 'enemy_ship') {
@@ -1577,7 +1579,7 @@ export class PhysicsManager {
                             this.rigidBodies.delete(projectile.entity.threeObject);
                             this.entityMetadata.delete(projectile.rigidBody);
                         } catch (error) {
-                            console.log('Error removing projectile after raycast collision:', error);
+debug('P1', 'Error removing projectile after raycast collision:', error);
                         }
                         
                         break; // Exit target loop for this projectile
@@ -1705,12 +1707,12 @@ export class PhysicsManager {
                 // This ensures subsequent collision detection works properly
                 if (this.dispatcher && typeof this.dispatcher.clearManifolds === 'function') {
                     this.physicsWorld.performDiscreteCollisionDetection();
-                    console.log(`🧹 COLLISION CLEANUP: Cleared collision manifolds for clean physics state`);
+debug('PHYSICS', `🧹 COLLISION CLEANUP: Cleared collision manifolds for clean physics state`);
                 } else {
                     // Alternative: Force physics world to refresh collision state
                     if (this.physicsWorld && typeof this.physicsWorld.performDiscreteCollisionDetection === 'function') {
                         this.physicsWorld.performDiscreteCollisionDetection();
-                        console.log(`🔄 COLLISION CLEANUP: Refreshed physics world collision state`);
+debug('PHYSICS', `🔄 COLLISION CLEANUP: Refreshed physics world collision state`);
                     }
                 }
             } else {
@@ -1718,11 +1720,11 @@ export class PhysicsManager {
             }
             
         } catch (error) {
-            console.log('Error handling projectile collision:', error.message);
-            console.log('Error stack:', error.stack);
-            console.log('Projectile:', projectile?.weaponName);
-            console.log('Contact point:', contactPoint);
-            console.log('Other body exists:', !!otherBody);
+            debug('P1', `Error handling projectile collision: ${error.message}`);
+            debug('P1', `Error stack: ${error.stack}`);
+            debug('P1', `Projectile: ${projectile?.weaponName}`);
+            debug('P1', `Contact point: ${contactPoint}`);
+            debug('P1', `Other body exists: ${!!otherBody}`);
         }
     }
 
@@ -1747,7 +1749,7 @@ export class PhysicsManager {
                     }
                 }
             } catch (error) {
-                console.log('Error syncing object with physics:', error);
+                debug('P1', `Error syncing object with physics: ${error.message}`);
             }
         });
     }
@@ -1799,7 +1801,7 @@ export class PhysicsManager {
             this.Ammo.destroy(transform);
 
         } catch (error) {
-                            console.log(`Error updating rigid body position:`, error);
+debug('P1', `Error updating rigid body position:`, error);
             throw error; // Re-throw for fallback handling
         }
     }
@@ -1810,14 +1812,14 @@ export class PhysicsManager {
     updateAllRigidBodyPositions() {
         if (!this.initialized) return;
 
-        console.log(`🔄 CTRL+P DEBUG: Syncing all physics body positions with mesh positions...`);
-        console.log(`📊 Physics World Status:`);
-        console.log(`   • Total rigid bodies registered: ${this.rigidBodies.size}`);
-        console.log(`   • Entity metadata entries: ${this.entityMetadata.size}`);
-        console.log(`   • Physics world initialized: ${this.initialized}`);
-        console.log(`   • Debug mode: ${this.debugMode ? 'ENABLED' : 'DISABLED'}`);
+debug('PHYSICS', `🔄 CTRL+P DEBUG: Syncing all physics body positions with mesh positions...`);
+debug('PHYSICS', `📊 Physics World Status:`);
+debug('UTILITY', `   • Total rigid bodies registered: ${this.rigidBodies.size}`);
+debug('UTILITY', `   • Entity metadata entries: ${this.entityMetadata.size}`);
+debug('PHYSICS', `   • Physics world initialized: ${this.initialized}`);
+debug('INSPECTION', `   • Debug mode: ${this.debugMode ? 'ENABLED' : 'DISABLED'}`);
         
-        console.log(`🔍 Physics Body Inventory:`);
+debug('UI', `🔍 Physics Body Inventory:`);
         let updateCount = 0;
         let recreateCount = 0;
         
@@ -1825,13 +1827,13 @@ export class PhysicsManager {
             const metadata = this.entityMetadata.get(rigidBody);
             const entityType = metadata ? metadata.type : 'unknown';
             const position = threeObject.position;
-            console.log(`   • ${threeObject.name || 'unnamed'} (${entityType}) at (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+debug('UTILITY', `   • ${threeObject.name || 'unnamed'} (${entityType}) at (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
             
             try {
                 this.updateRigidBodyPosition(threeObject);
                 updateCount++;
             } catch (error) {
-                console.log(`Transform update failed for ${threeObject.name || 'object'}, trying recreation:`, error.message);
+debug('P1', `Transform update failed for ${threeObject.name || 'object'}, trying recreation:`, error.message);
                 try {
                     this.recreateRigidBodyAtPosition(threeObject);
                     recreateCount++;
@@ -1841,16 +1843,16 @@ export class PhysicsManager {
             }
         }
         
-        console.log(`✅ CTRL+P SYNC COMPLETE:`);
-        console.log(`   • Successfully updated: ${updateCount} physics bodies`);
-        console.log(`   • Recreated: ${recreateCount} physics bodies`);
-        console.log(`   • Total processed: ${updateCount + recreateCount} bodies`);
+debug('UTILITY', `✅ CTRL+P SYNC COMPLETE:`);
+debug('PHYSICS', `   • Successfully updated: ${updateCount} physics bodies`);
+debug('PHYSICS', `   • Recreated: ${recreateCount} physics bodies`);
+debug('UTILITY', `   • Total processed: ${updateCount + recreateCount} bodies`);
         if (this.debugMode) {
-            console.log(`🔍 Physics debug visualization is ACTIVE`);
+debug('PHYSICS', `🔍 Physics debug visualization is ACTIVE`);
             
             // Update debug wireframes to match new physics body positions
             this.updateDebugVisualization();
-            console.log(`🔍 Debug wireframes updated to match physics body positions`);
+debug('PHYSICS', `🔍 Debug wireframes updated to match physics body positions`);
         }
     }
 
@@ -1869,7 +1871,7 @@ export class PhysicsManager {
             const isTorpedo = false; // Disable torpedo wireframe preservation to fix collision shapes around ship
             
             if (isTorpedo && this.debugMode) {
-                console.log(`🎯 TORPEDO CLEANUP: Preserving wireframe tracking for ${entityId}`);
+debug('PERFORMANCE', `🎯 TORPEDO CLEANUP: Preserving wireframe tracking for ${entityId}`);
                 
                 // Create a separate tracking entry for the torpedo wireframe
                 const wireframe = this.debugWireframes.get(rigidBody);
@@ -1893,7 +1895,7 @@ export class PhysicsManager {
                         detonated: true // Mark as properly detonated
                     });
                     
-                    console.log(`🎯 TORPEDO WIREFRAME: Stored final position (${finalPosition.x.toFixed(1)}, ${finalPosition.y.toFixed(1)}, ${finalPosition.z.toFixed(1)}) for ${entityId}`);
+debug('PERFORMANCE', `🎯 TORPEDO WIREFRAME: Stored final position (${finalPosition.x.toFixed(1)}, ${finalPosition.y.toFixed(1)}, ${finalPosition.z.toFixed(1)}) for ${entityId}`);
                 }
                 
                 // Delay wireframe removal for torpedoes so we can see them
@@ -1903,7 +1905,7 @@ export class PhysicsManager {
                     if (this.delayedWireframes && wireframe) {
                         this.delayedWireframes.delete(wireframe);
                     }
-                    console.log(`🧹 DELAYED: Removed torpedo wireframe for ${entityId}`);
+debug('PERFORMANCE', `🧹 DELAYED: Removed torpedo wireframe for ${entityId}`);
                 }, 3000); // 3 second delay
             } else {
                 // Clean up debug wireframe immediately for non-torpedoes
@@ -1924,7 +1926,7 @@ export class PhysicsManager {
                 this._torpedoLogTimestamps.delete(entityId);
             }
             
-            console.log(`🧹 Removed rigid body${isTorpedo ? ' (wireframe delayed)' : ' and wireframe'}`);
+debug('PERFORMANCE', `🧹 Removed rigid body${isTorpedo ? ' (wireframe delayed)' : ' and wireframe'}`);
         }
     }
 
@@ -1947,7 +1949,7 @@ export class PhysicsManager {
             // Remove from tracking
             this.debugWireframes.delete(rigidBody);
             
-            console.log(`🧹 Removed debug wireframe for ${wireframe.userData?.entityType || 'unknown'} entity`);
+debug('PERFORMANCE', `🧹 Removed debug wireframe for ${wireframe.userData?.entityType || 'unknown'} entity`);
         }
     }
 
@@ -1999,23 +2001,23 @@ export class PhysicsManager {
      * Set up collision detection system
      */
     setupCollisionDetection() {
-        console.log('🔧 Setting up collision detection system...');
+debug('UTILITY', 'Setting up collision detection system...');
         
         try {
             // Check if collision event callback is available
             if (typeof this.physicsWorld.setCollisionEventCallback === 'function') {
                 this.physicsWorld.setCollisionEventCallback(this.onCollisionEvent.bind(this));
-                console.log('✅ Collision event callbacks enabled');
+debug('UTILITY', '✅ Collision event callbacks enabled');
             } else {
-                console.log('⚠️ Collision event callbacks not available in this Ammo.js build');
-                console.log('💡 Will use manual collision detection instead');
+debug('AI', 'Collision event callbacks not available in this Ammo.js build');
+debug('UTILITY', '💡 Will use manual collision detection instead');
             }
         } catch (error) {
-            console.log('⚠️ Collision detection setup failed:', error.message);
-            console.log('💡 Continuing without automatic collision callbacks');
+debug('P1', 'Collision detection setup failed:', error.message);
+debug('UI', '💡 Continuing without automatic collision callbacks');
         }
         
-        console.log('🚨 Collision detection system initialized');
+debug('UTILITY', '🚨 Collision detection system initialized');
     }
 
     /**
@@ -2059,7 +2061,7 @@ export class PhysicsManager {
 
                 if (numContacts > 0) {
                     if (this._debugLoggingEnabled) {
-                        console.log(`💥 Processing ${numContacts} contacts for manifold ${i}`);
+debug('UTILITY', `💥 Processing ${numContacts} contacts for manifold ${i}`);
                     }
                     
                     let bodyA = null, bodyB = null;
@@ -2078,7 +2080,7 @@ export class PhysicsManager {
 
                     if (entityA && entityB) {
                         if (this._debugLoggingEnabled) {
-                            console.log(`💥 COLLISION: ${entityA.type} <-> ${entityB.type}`);
+debug('UTILITY', `💥 COLLISION: ${entityA.type} <-> ${entityB.type}`);
                         }
                         try {
                             this.handleCollision(entityA, entityB, contactManifold);
@@ -2139,7 +2141,7 @@ export class PhysicsManager {
         // Notify collision callbacks
         this.notifyCollisionCallbacks(entityA, entityB, impulse);
         
-        console.log(`💥 Collision detected: ${entityA.type} (${entityA.id}) <-> ${entityB.type} (${entityB.id}), impulse: ${impulse.toFixed(2)}`);
+debug('UTILITY', `💥 Collision detected: ${entityA.type} (${entityA.id}) <-> ${entityB.type} (${entityB.id}), impulse: ${impulse.toFixed(2)}`);
     }
 
     /**
@@ -2164,7 +2166,7 @@ export class PhysicsManager {
         // Apply bouncing effect
         this.applyBouncingEffect(shipA.threeObject, shipB.threeObject, impulse);
         
-        console.log(`🚀💥 Ship collision: ${shipA.id} took ${damageA.toFixed(1)} damage, ${shipB.id} took ${damageB.toFixed(1)} damage`);
+debug('COMBAT', `🚀💥 Ship collision: ${shipA.id} took ${damageA.toFixed(1)} damage, ${shipB.id} took ${damageB.toFixed(1)} damage`);
     }
 
     /**
@@ -2188,7 +2190,7 @@ export class PhysicsManager {
         // Strong bouncing effect away from celestial body
         this.applyStrongBounce(ship.threeObject, celestial.threeObject, impulse);
         
-        console.log(`🌍💥 Ship-to-celestial collision: ${ship.id} hit ${celestial.id}, took ${damage.toFixed(1)} damage`);
+debug('COMBAT', `🌍💥 Ship-to-celestial collision: ${ship.id} hit ${celestial.id}, took ${damage.toFixed(1)} damage`);
     }
 
     /**
@@ -2212,7 +2214,7 @@ export class PhysicsManager {
         // Gentle bouncing for station collisions
         this.applyBouncingEffect(ship.threeObject, station.threeObject, impulse * 0.5);
         
-        console.log(`🏭💥 Ship-to-station collision: ${ship.id} hit ${station.id}, took ${damage.toFixed(1)} damage`);
+debug('COMBAT', `🏭💥 Ship-to-station collision: ${ship.id} hit ${station.id}, took ${damage.toFixed(1)} damage`);
     }
 
     /**
@@ -2226,7 +2228,7 @@ export class PhysicsManager {
         const projectile = entityA.type === 'projectile' ? entityA : entityB;
         const ship = entityA.type === 'projectile' ? entityB : entityA;
         
-        console.log(`🚀💥 Projectile collision: ${projectile.id} hit ${ship.id}`);
+debug('UTILITY', `🚀💥 Projectile collision: ${projectile.id} hit ${ship.id}`);
         
         // Find the projectile instance via the rigid body's projectileOwner property
         let projectileInstance = null;
@@ -2235,7 +2237,7 @@ export class PhysicsManager {
         const rigidBody = this.rigidBodies.get(projectile.threeObject);
         if (rigidBody && rigidBody.projectileOwner) {
             projectileInstance = rigidBody.projectileOwner;
-            console.log(`🔍 Found projectile instance via rigidBody.projectileOwner for ${projectile.id}`);
+debug('UTILITY', `🔍 Found projectile instance via rigidBody.projectileOwner for ${projectile.id}`);
         } else {
             console.log(`No rigidBody.projectileOwner found for ${projectile.id}`, {
                 hasRigidBody: !!rigidBody,
@@ -2245,7 +2247,7 @@ export class PhysicsManager {
         }
         
         if (projectileInstance && typeof projectileInstance.onCollision === 'function') {
-            console.log(`🔥 Calling projectile onCollision for ${projectile.id}`);
+debug('UTILITY', `🔥 Calling projectile onCollision for ${projectile.id}`);
             
             // Create contact point data with cloned position to avoid corruption
             const contactPoint = {
@@ -2256,7 +2258,7 @@ export class PhysicsManager {
             // Call the projectile's collision handler
             projectileInstance.onCollision(contactPoint, ship.threeObject);
         } else {
-            console.log(`Could not find projectile instance with onCollision method for ${projectile.id}`);
+debug('UTILITY', `Could not find projectile instance with onCollision method for ${projectile.id}`);
         }
     }
 
@@ -2271,7 +2273,7 @@ export class PhysicsManager {
         const projectile = entityA.type === 'projectile' ? entityA : entityB;
         const celestial = entityA.type === 'projectile' ? entityB : entityA;
         
-        console.log(`🌍💥 Projectile-to-celestial collision: ${projectile.id} hit ${celestial.id}`);
+debug('UTILITY', `🌍💥 Projectile-to-celestial collision: ${projectile.id} hit ${celestial.id}`);
         
         // Find the projectile instance via the rigid body's projectileOwner property
         let projectileInstance = null;
@@ -2280,13 +2282,13 @@ export class PhysicsManager {
         const rigidBody = this.rigidBodies.get(projectile.threeObject);
         if (rigidBody && rigidBody.projectileOwner) {
             projectileInstance = rigidBody.projectileOwner;
-            console.log(`🔍 Found projectile instance via rigidBody.projectileOwner for ${projectile.id} (celestial collision)`);
+debug('UTILITY', `🔍 Found projectile instance via rigidBody.projectileOwner for ${projectile.id} (celestial collision)`);
         } else {
-            console.log(`No rigidBody.projectileOwner found for ${projectile.id} (celestial collision)`);
+debug('UTILITY', `No rigidBody.projectileOwner found for ${projectile.id} (celestial collision)`);
         }
         
         if (projectileInstance && typeof projectileInstance.onCollision === 'function') {
-            console.log(`🔥 Calling projectile onCollision for ${projectile.id} (hit celestial body)`);
+debug('UTILITY', `🔥 Calling projectile onCollision for ${projectile.id} (hit celestial body)`);
             
             // Create contact point data
             const contactPoint = {
@@ -2297,7 +2299,7 @@ export class PhysicsManager {
             // Call the projectile's collision handler
             projectileInstance.onCollision(contactPoint, celestial.threeObject);
         } else {
-            console.log(`Could not find projectile instance with onCollision method for ${projectile.id} (celestial collision)`);
+debug('UTILITY', `Could not find projectile instance with onCollision method for ${projectile.id} (celestial collision)`);
         }
     }
 
@@ -2325,7 +2327,7 @@ export class PhysicsManager {
                     distance = -0.1;
                 }
             } catch (error) {
-                console.log('⚠️ Error getting contact distance for impulse, using fallback:', error.message);
+debug('P1', 'Error getting contact distance for impulse, using fallback:', error.message);
                 distance = -0.1;
             }
             
@@ -2368,10 +2370,10 @@ export class PhysicsManager {
                 if (system) {
                     const systemDamage = damage * 0.3; // 30% of collision damage to systems
                     system.takeDamage(systemDamage);
-                    console.log(`🔧 Collision damaged ${randomSystem}: ${systemDamage.toFixed(1)} damage`);
+debug('COMBAT', `🔧 Collision damaged ${randomSystem}: ${systemDamage.toFixed(1)} damage`);
                 }
             } else {
-                console.log(`🔧 Collision: No operational systems available for random damage`);
+debug('COMBAT', `🔧 Collision: No operational systems available for random damage`);
             }
             }
             
@@ -2484,7 +2486,7 @@ export class PhysicsManager {
     cleanup() {
         if (!this.initialized) return;
 
-        console.log('Cleaning up PhysicsManager...');
+debug('PHYSICS', 'Cleaning up PhysicsManager...');
 
         // Remove all rigid bodies
         this.rigidBodies.forEach((rigidBody, threeObject) => {
@@ -2504,7 +2506,7 @@ export class PhysicsManager {
         }
 
         this.initialized = false;
-        console.log('PhysicsManager cleanup complete');
+debug('PHYSICS', 'PhysicsManager cleanup complete');
     }
 
     /**
@@ -2515,13 +2517,13 @@ export class PhysicsManager {
         this.debugMode = !this.debugMode;
         
         if (this.debugMode) {
-            console.log('🔍 Physics debug mode ENABLING - creating wireframes...');
+debug('PHYSICS', 'Physics debug mode ENABLING - creating wireframes...');
             this.enableDebugVisualization(scene);
-            console.log(`🔍 Physics debug mode ENABLED - showing ${this.debugWireframes.size} collision shapes`);
+debug('PHYSICS', `🔍 Physics debug mode ENABLED - showing ${this.debugWireframes.size} collision shapes`);
         } else {
-            console.log('🔍 Physics debug mode DISABLING - removing wireframes...');
+debug('PHYSICS', 'Physics debug mode DISABLING - removing wireframes...');
             this.disableDebugVisualization(scene);
-            console.log('🔍 Physics debug mode DISABLED - hiding collision shapes');
+debug('PHYSICS', 'Physics debug mode DISABLED - hiding collision shapes');
         }
         
         return this.debugMode;
@@ -2546,13 +2548,13 @@ export class PhysicsManager {
                     if (wireframe.material) wireframe.material.dispose();
                 }
                 this.delayedWireframes.clear();
-                console.log('🧹 Cleaned up delayed torpedo wireframes');
+debug('PERFORMANCE', '🧹 Cleaned up delayed torpedo wireframes');
             }
             
             // Clean up torpedo logging timestamps
             if (this._torpedoLogTimestamps) {
                 this._torpedoLogTimestamps.clear();
-                console.log('🧹 Cleaned up torpedo logging timestamps');
+debug('UTILITY', '🧹 Cleaned up torpedo logging timestamps');
             }
             
             // Remove all wireframes
@@ -2560,7 +2562,7 @@ export class PhysicsManager {
             scene.remove(this.debugGroup);
             this.debugGroup = null;
             
-            console.log('🧹 Disabled physics debug visualization and cleaned up all wireframes');
+debug('PHYSICS', '🧹 Disabled physics debug visualization and cleaned up all wireframes');
         }
     }
 
@@ -2570,13 +2572,13 @@ export class PhysicsManager {
      */
     enableDebugVisualization(scene) {
         if (!scene || typeof THREE === 'undefined') {
-            console.log('Scene or THREE.js not available for physics debug');
+debug('AI', 'Scene or THREE.js not available for physics debug');
             return;
         }
 
         // Clear console to remove existing spam
         console.clear();
-        console.log('🔍 Physics Debug Mode ENABLED - Console cleared');
+debug('PHYSICS', 'Physics Debug Mode ENABLED - Console cleared');
 
         // Create debug group if it doesn't exist
         if (!this.debugGroup) {
@@ -2585,7 +2587,7 @@ export class PhysicsManager {
             this.debugGroup.renderOrder = 999; // Render last to ensure visibility
             scene.add(this.debugGroup);
             if (!this._silentMode) {
-                console.log('📦 Created physics debug group');
+debug('PHYSICS', '📦 Created physics debug group');
             }
         }
 
@@ -2598,22 +2600,22 @@ export class PhysicsManager {
         
         // Force an immediate position update for all wireframes
         if (!this._silentMode && this._debugLoggingEnabled) {
-            console.log(`🔍 Forcing immediate wireframe position update...`);
+debug('PERFORMANCE', `🔍 Forcing immediate wireframe position update...`);
         }
         this.updateDebugVisualization();
         
         if (!this._silentMode) {
             // Silent wireframe creation
-            console.log(`👁️ PHYSICS DEBUG WIREFRAMES NOW VISIBLE: Look for colored wireframe outlines around objects`);
-            console.log(`   • Enemy ships: MAGENTA wireframes`);
-            console.log(`   • Celestial bodies (stars): ORANGE wireframes`);
-            console.log(`   • Celestial bodies (planets): YELLOW wireframes`);
-            console.log(`   • Torpedo projectiles: BRIGHT MAGENTA/RED-PINK wireframes`);
-            console.log(`   • Missile projectiles: BRIGHT ORANGE/RED-ORANGE wireframes`);
-            console.log(`   • Other projectiles: CYAN/GREEN wireframes`);
-            console.log(`   • Unknown objects: WHITE wireframes`);
-            console.log(`💡 TIP: Fire torpedoes to see their bright collision shapes in motion!`);
-            console.log(`💡 TIP: Press Ctrl+Shift+P to enhance wireframe visibility if you can't see them`);
+debug('PHYSICS', `👁️ PHYSICS DEBUG WIREFRAMES NOW VISIBLE: Look for colored wireframe outlines around objects`);
+debug('PERFORMANCE', `   • Enemy ships: MAGENTA wireframes`);
+debug('PERFORMANCE', `   • Celestial bodies (stars): ORANGE wireframes`);
+debug('PERFORMANCE', `   • Celestial bodies (planets): YELLOW wireframes`);
+debug('PERFORMANCE', `   • Torpedo projectiles: BRIGHT MAGENTA/RED-PINK wireframes`);
+debug('PERFORMANCE', `   • Missile projectiles: BRIGHT ORANGE/RED-ORANGE wireframes`);
+debug('PERFORMANCE', `   • Other projectiles: CYAN/GREEN wireframes`);
+debug('PERFORMANCE', `   • Unknown objects: WHITE wireframes`);
+debug('COMBAT', `💡 TIP: Fire torpedoes to see their bright collision shapes in motion!`);
+debug('PERFORMANCE', `💡 TIP: Press Ctrl+Shift+P to enhance wireframe visibility if you can't see them`);
         }
         
         // Expose debug methods globally for console access
@@ -2626,25 +2628,25 @@ export class PhysicsManager {
         window.disableVerboseLogging = () => this.disableVerboseLogging();
         window.disableCollisionDebug = () => this.disableCollisionDebug();
         window.clearConsole = () => console.clear();
-        window.stopProjectileWireframes = () => { this._silentMode = true; console.log('🔇 Silent mode enabled - reduced logging'); };
+window.stopProjectileWireframes = () => { this._silentMode = true; debug('UTILITY', '🔇 Silent mode enabled - reduced logging'); };
         window.checkAllPhysicsShapes = () => this.checkAllPhysicsShapes();
         
-        console.log(`💡 Physics Debug Console Commands:`);
-        console.log(`   • clearConsole() - Clear the console (recommended first step)`);
-        console.log(`   • checkAllPhysicsShapes() - Audit all physics objects and their shape metadata`);
-        console.log(`   • debugWireframes() - Show wireframe status summary`);
-        console.log(`   • testWireframes() - Make wireframes extremely obvious`);
-        console.log(`💡 Collision Mode Toggle Commands:`);
-        console.log(`   • window.useRealisticCollision = true  - Match collision sizes to visual meshes (default)`);
-        console.log(`   • window.useRealisticCollision = false - Use small collision sizes (weapon-friendly)`);
-        console.log(`   • Target dummies: Visual and collision sizes now match (3.0m) for honest hit detection`);
-        console.log(`   • moveWireframesToCamera() - Move all wireframes in front of camera`);
-        console.log(`   • enhanceWireframes() - Make wireframes more visible`);
-        console.log(`   • enableVerboseLogging() - Enable detailed debug logs`);
-        console.log(`   • disableVerboseLogging() - Disable detailed debug logs`);
-        console.log(`   • disableCollisionDebug() - Stop collision debugging spam`);
-        console.log(`   • stopProjectileWireframes() - Enable silent mode`);
-        console.log(`   • updateWireframes() - Force update wireframe positions`);
+debug('PHYSICS', `💡 Physics Debug Console Commands:`);
+debug('UTILITY', `   • clearConsole() - Clear the console (recommended first step)`);
+debug('PHYSICS', `   • checkAllPhysicsShapes() - Audit all physics objects and their shape metadata`);
+debug('PERFORMANCE', `   • debugWireframes() - Show wireframe status summary`);
+debug('PERFORMANCE', `   • testWireframes() - Make wireframes extremely obvious`);
+debug('UTILITY', `💡 Collision Mode Toggle Commands:`);
+debug('UTILITY', `   • window.useRealisticCollision = true  - Match collision sizes to visual meshes (default)`);
+debug('COMBAT', `   • window.useRealisticCollision = false - Use small collision sizes (weapon-friendly)`);
+debug('TARGETING', `   • Target dummies: Visual and collision sizes now match (3.0m) for honest hit detection`);
+debug('PERFORMANCE', `   • moveWireframesToCamera() - Move all wireframes in front of camera`);
+debug('PERFORMANCE', `   • enhanceWireframes() - Make wireframes more visible`);
+debug('AI', `   • enableVerboseLogging() - Enable detailed debug logs`);
+debug('AI', `   • disableVerboseLogging() - Disable detailed debug logs`);
+debug('INSPECTION', `   • disableCollisionDebug() - Stop collision debugging spam`);
+debug('PERFORMANCE', `   • stopProjectileWireframes() - Enable silent mode`);
+debug('PERFORMANCE', `   • updateWireframes() - Force update wireframe positions`);
     }
 
     /**
@@ -2679,7 +2681,7 @@ export class PhysicsManager {
             if (isFilteredProjectile) {
                 // Only log if debug logging is enabled
                 if (this._debugLoggingEnabled && !this._silentMode) {
-                    console.log(`🚫 Skipping wireframe for filtered projectile: ${entityId || objectName || 'unnamed'}`);
+debug('PERFORMANCE', `🚫 Skipping wireframe for filtered projectile: ${entityId || objectName || 'unnamed'}`);
                 }
                 return;
             }
@@ -2769,10 +2771,10 @@ export class PhysicsManager {
                 });
             } else if (storedShapeType === 'capsule') {
                 // Capsule shape using stored dimensions
-                console.log(`   • Creating CAPSULE wireframe (approximated as cylinder)`);
+debug('PERFORMANCE', `   • Creating CAPSULE wireframe (approximated as cylinder)`);
                 const radius = metadata?.shapeRadius || 1;
                 const height = metadata?.shapeHeight || 2;
-                console.log(`   • Using stored capsule dimensions: radius=${radius}, height=${height}`);
+debug('UTILITY', `   • Using stored capsule dimensions: radius=${radius}, height=${height}`);
                 geometry = new THREE.CylinderGeometry(radius * 1.1, radius * 1.1, height * 1.1, 16);
                 
                 // Enhanced colors for different entity types
@@ -2796,7 +2798,7 @@ export class PhysicsManager {
                 });
             } else {
                 // Default to box for unknown shapes
-                console.log(`   • Creating DEFAULT BOX wireframe (unknown shape type: ${storedShapeType})`);
+debug('PERFORMANCE', `   • Creating DEFAULT BOX wireframe (unknown shape type: ${storedShapeType})`);
                 geometry = new THREE.BoxGeometry(2, 2, 2);
                 material = new THREE.MeshBasicMaterial({
                     color: entityType === 'projectile' ? 0xffffff : 0xffffff, // White for unknown projectiles
@@ -2856,12 +2858,12 @@ export class PhysicsManager {
                                entityType === 'star' ? 'ORANGE' : 'CYAN';
                 }
                 
-                console.log(`🔍 Created ${colorName} wireframe for ${entityName} (${entityType}) at (${position.x().toFixed(2)}, ${position.y().toFixed(2)}, ${position.z().toFixed(2)})`);
+debug('PERFORMANCE', `🔍 Created ${colorName} wireframe for ${entityName} (${entityType}) at (${position.x().toFixed(2)}, ${position.y().toFixed(2)}, ${position.z().toFixed(2)})`);
             }
 
         } catch (error) {
             if (this._debugLoggingEnabled && !this._silentMode) {
-                                    console.log('Failed to create debug wireframe:', error);
+debug('P1', 'Failed to create debug wireframe:', error);
             }
         }
     }
@@ -2935,7 +2937,7 @@ export class PhysicsManager {
                     
                     updateCount++;
                 } catch (error) {
-                    console.log('Failed to update delayed torpedo wireframe:', error);
+debug('P1', 'Failed to update delayed torpedo wireframe:', error);
                     this.delayedWireframes.delete(wireframe);
                 }
             }
@@ -3000,7 +3002,7 @@ export class PhysicsManager {
             // Get metadata from old rigid body
             const metadata = this.entityMetadata.get(oldRigidBody);
             if (!metadata) {
-                console.log('No metadata found for rigid body');
+debug('UTILITY', 'No metadata found for rigid body');
                 return;
             }
 
@@ -3017,7 +3019,7 @@ export class PhysicsManager {
                 metadata.health
             );
 
-            console.log(`🔄 Recreated physics body for ${threeObject.name || 'object'} at (${threeObject.position.x.toFixed(2)}, ${threeObject.position.y.toFixed(2)}, ${threeObject.position.z.toFixed(2)})`);
+debug('PHYSICS', `🔄 Recreated physics body for ${threeObject.name || 'object'} at (${threeObject.position.x.toFixed(2)}, ${threeObject.position.y.toFixed(2)}, ${threeObject.position.z.toFixed(2)})`);
 
             return newRigidBody;
 
@@ -3069,7 +3071,7 @@ export class PhysicsManager {
             // Reduce console spam - only warn once per unknown property
             if (!this._warnedProperties) this._warnedProperties = new Set();
             if (!this._warnedProperties.has(property)) {
-                console.log(`Unknown raycast property: ${property}`);
+debug('UTILITY', `Unknown raycast property: ${property}`);
                 this._warnedProperties.add(property);
             }
             return null;
@@ -3084,7 +3086,7 @@ export class PhysicsManager {
                     // Only log success on first successful access per property to reduce spam
                     if (this._debugLoggingEnabled && !this._successfulMethods) this._successfulMethods = new Set();
                     if (this._debugLoggingEnabled && !this._successfulMethods.has(`${property}_${methodName}`)) {
-                        console.log(`✅ RAYCAST API: ${property} accessed via ${methodName}()`);
+debug('UTILITY', `✅ RAYCAST API: ${property} accessed via ${methodName}()`);
                         this._successfulMethods.add(`${property}_${methodName}`);
                     }
                     return result;
@@ -3096,7 +3098,7 @@ export class PhysicsManager {
                     // Only log success on first successful access per property to reduce spam
                     if (this._debugLoggingEnabled && !this._successfulMethods) this._successfulMethods = new Set();
                     if (this._debugLoggingEnabled && !this._successfulMethods.has(`${property}_${methodName}`)) {
-                        console.log(`✅ RAYCAST API: ${property} accessed via ${methodName} (property)`);
+debug('UTILITY', `✅ RAYCAST API: ${property} accessed via ${methodName} (property)`);
                         this._successfulMethods.add(`${property}_${methodName}`);
                     }
                     return result;
@@ -3125,7 +3127,7 @@ export class PhysicsManager {
         if (!this._silentMode && !this._lastFailureWarning) this._lastFailureWarning = {};
         const now = Date.now();
         if (!this._silentMode && (!this._lastFailureWarning[property] || now - this._lastFailureWarning[property] > 5000)) {
-            console.log(`Could not access raycast property ${property} with any known method`);
+debug('UTILITY', `Could not access raycast property ${property} with any known method`);
             this._lastFailureWarning[property] = now;
         }
 
@@ -3137,7 +3139,7 @@ export class PhysicsManager {
      */
     enhanceWireframeVisibility() {
         if (!this.debugMode || !this.debugGroup) {
-            console.log('❌ Debug mode not active - cannot enhance wireframes');
+debug('PERFORMANCE', '❌ Debug mode not active - cannot enhance wireframes');
             return;
         }
         
@@ -3156,14 +3158,14 @@ export class PhysicsManager {
             }
         }
         
-        console.log(`🔍 Enhanced visibility for ${enhancedCount} wireframes - they should now be bright red and enlarged`);
+debug('PERFORMANCE', `🔍 Enhanced visibility for ${enhancedCount} wireframes - they should now be bright red and enlarged`);
         
         // Also log the debug group status
-        console.log(`🔍 Debug group status:`);
-        console.log(`   • Parent scene: ${!!this.debugGroup.parent}`);
-        console.log(`   • Children count: ${this.debugGroup.children.length}`);
-        console.log(`   • Visible: ${this.debugGroup.visible}`);
-        console.log(`   • Position: (${this.debugGroup.position.x}, ${this.debugGroup.position.y}, ${this.debugGroup.position.z})`);
+debug('INSPECTION', `🔍 Debug group status:`);
+debug('INSPECTION', `   • Parent scene: ${!!this.debugGroup.parent}`);
+debug('INSPECTION', `   • Children count: ${this.debugGroup.children.length}`);
+debug('INSPECTION', `   • Visible: ${this.debugGroup.visible}`);
+debug('INSPECTION', `   • Position: (${this.debugGroup.position.x}, ${this.debugGroup.position.y}, ${this.debugGroup.position.z})`);
     }
 
     /**
@@ -3171,14 +3173,14 @@ export class PhysicsManager {
      */
     testWireframeVisibility() {
         if (!this.debugMode || !this.debugGroup) {
-            console.log('❌ Debug mode not active');
+debug('INSPECTION', '❌ Debug mode not active');
             return;
         }
         
-        console.log(`🔍 Testing wireframe visibility - making them extremely obvious...`);
+debug('PERFORMANCE', `🔍 Testing wireframe visibility - making them extremely obvious...`);
         
         // First, force update all wireframe positions
-        console.log(`🔍 Force updating wireframe positions first...`);
+debug('PERFORMANCE', `🔍 Force updating wireframe positions first...`);
         this.updateDebugVisualization();
         
         let count = 0;
@@ -3205,31 +3207,31 @@ export class PhysicsManager {
                 count++;
                 
                 const metadata = this.entityMetadata.get(rigidBody);
-                console.log(`🔍 Enhanced wireframe ${count}: ${metadata?.type || 'unknown'}`);
-                console.log(`   • Three.js position: (${threePos.x.toFixed(2)}, ${threePos.y.toFixed(2)}, ${threePos.z.toFixed(2)})`);
-                console.log(`   • Wireframe position: (${wireframe.position.x.toFixed(2)}, ${wireframe.position.y.toFixed(2)}, ${wireframe.position.z.toFixed(2)})`);
-                console.log(`   • Scale: (${wireframe.scale.x}, ${wireframe.scale.y}, ${wireframe.scale.z})`);
-                console.log(`   • Visible: ${wireframe.visible}`);
-                console.log(`   • Parent: ${!!wireframe.parent}`);
+debug('PERFORMANCE', `🔍 Enhanced wireframe ${count}: ${metadata?.type || 'unknown'}`);
+debug('UTILITY', `   • Three.js position: (${threePos.x.toFixed(2)}, ${threePos.y.toFixed(2)}, ${threePos.z.toFixed(2)})`);
+debug('PERFORMANCE', `   • Wireframe position: (${wireframe.position.x.toFixed(2)}, ${wireframe.position.y.toFixed(2)}, ${wireframe.position.z.toFixed(2)})`);
+debug('PERFORMANCE', `   • Scale: (${wireframe.scale.x}, ${wireframe.scale.y}, ${wireframe.scale.z})`);
+debug('PERFORMANCE', `   • Visible: ${wireframe.visible}`);
+debug('PERFORMANCE', `   • Parent: ${!!wireframe.parent}`);
             }
         }
         
-        console.log(`🔍 Made ${count} wireframes into BRIGHT RED SOLID SHAPES that are 3x larger`);
-        console.log(`🔍 All wireframes positioned using Three.js object positions (not physics transforms)`);
+debug('PERFORMANCE', `🔍 Made ${count} wireframes into BRIGHT RED SOLID SHAPES that are 3x larger`);
+debug('PHYSICS', `🔍 All wireframes positioned using Three.js object positions (not physics transforms)`);
     }
 
     /**
      * Print detailed debug information about wireframes
      */
     debugWireframeInfo() {
-        console.log(`🔍 === WIREFRAME DEBUG INFO ===`);
-        console.log(`🔍 Debug mode: ${this.debugMode}`);
-        console.log(`🔍 Debug group exists: ${!!this.debugGroup}`);
-        console.log(`🔍 Debug group parent: ${!!this.debugGroup?.parent}`);
-        console.log(`🔍 Debug group children: ${this.debugGroup?.children.length || 0}`);
-        console.log(`🔍 Wireframes in map: ${this.debugWireframes.size}`);
+debug('PERFORMANCE', `🔍 === WIREFRAME DEBUG INFO ===`);
+debug('INSPECTION', `🔍 Debug mode: ${this.debugMode}`);
+debug('INSPECTION', `🔍 Debug group exists: ${!!this.debugGroup}`);
+debug('INSPECTION', `🔍 Debug group parent: ${!!this.debugGroup?.parent}`);
+debug('INSPECTION', `🔍 Debug group children: ${this.debugGroup?.children.length || 0}`);
+debug('PERFORMANCE', `🔍 Wireframes in map: ${this.debugWireframes.size}`);
         
-        console.log(`🔍 Physics bodies: ${this.rigidBodies.size}`);
+debug('PHYSICS', `🔍 Physics bodies: ${this.rigidBodies.size}`);
         
         if (this.debugGroup && this.debugWireframes.size > 0) {
             let visibleCount = 0;
@@ -3240,17 +3242,17 @@ export class PhysicsManager {
                 
                 if (wireframe.visible) visibleCount++;
                 
-                console.log(`🔍 ${entityName} (${entityType}):`);
-                console.log(`   • Visible: ${wireframe.visible}`);
-                console.log(`   • Position: (${wireframe.position.x.toFixed(2)}, ${wireframe.position.y.toFixed(2)}, ${wireframe.position.z.toFixed(2)})`);
-                console.log(`   • Color: #${wireframe.material.color.getHexString()}`);
+debug('UTILITY', `🔍 ${entityName} (${entityType}):`);
+debug('PERFORMANCE', `   • Visible: ${wireframe.visible}`);
+debug('PERFORMANCE', `   • Position: (${wireframe.position.x.toFixed(2)}, ${wireframe.position.y.toFixed(2)}, ${wireframe.position.z.toFixed(2)})`);
+debug('PERFORMANCE', `   • Color: #${wireframe.material.color.getHexString()}`);
             });
             
-            console.log(`🔍 Summary: ${visibleCount}/${this.debugWireframes.size} wireframes visible`);
+debug('PERFORMANCE', `🔍 Summary: ${visibleCount}/${this.debugWireframes.size} wireframes visible`);
         }
         
         if (window.camera) {
-            console.log(`🔍 Camera position: (${window.camera.position.x.toFixed(2)}, ${window.camera.position.y.toFixed(2)}, ${window.camera.position.z.toFixed(2)})`);
+debug('UTILITY', `🔍 Camera position: (${window.camera.position.x.toFixed(2)}, ${window.camera.position.y.toFixed(2)}, ${window.camera.position.z.toFixed(2)})`);
         }
     }
 
@@ -3259,11 +3261,11 @@ export class PhysicsManager {
      */
     moveWireframesToCamera() {
         if (!this.debugMode || !this.debugGroup || !window.camera) {
-            console.log('❌ Debug mode not active or no camera available');
+debug('AI', '❌ Debug mode not active or no camera available');
             return;
         }
         
-        console.log(`🔍 Moving all wireframes to camera position for visibility test...`);
+debug('PERFORMANCE', `🔍 Moving all wireframes to camera position for visibility test...`);
         
         const cameraPos = window.camera.position;
         const offsetDistance = 5; // Distance in front of camera
@@ -3285,11 +3287,11 @@ export class PhysicsManager {
             wireframe.scale.set(0.5, 0.5, 0.5); // Smaller for testing
             wireframe.material.needsUpdate = true;
             
-            console.log(`🔍 Moved ${entityName} to camera front at distance ${offsetDistance + movedCount * 2}`);
+debug('UTILITY', `🔍 Moved ${entityName} to camera front at distance ${offsetDistance + movedCount * 2}`);
             movedCount++;
         });
         
-        console.log(`🔍 Moved ${movedCount} wireframes to camera position - you should see red cubes in front of you!`);
+debug('PERFORMANCE', `🔍 Moved ${movedCount} wireframes to camera position - you should see red cubes in front of you!`);
     }
 
     /**
@@ -3297,7 +3299,7 @@ export class PhysicsManager {
      */
     enableVerboseLogging() {
         this._debugLoggingEnabled = true;
-        console.log('🔍 Verbose physics debug logging ENABLED');
+debug('PHYSICS', 'Verbose physics debug logging ENABLED');
     }
 
     /**
@@ -3305,7 +3307,7 @@ export class PhysicsManager {
      */
     disableVerboseLogging() {
         this._debugLoggingEnabled = false;
-        console.log('🔍 Verbose physics debug logging DISABLED');
+debug('PHYSICS', 'Verbose physics debug logging DISABLED');
     }
 
     /**
@@ -3314,7 +3316,7 @@ export class PhysicsManager {
     disableCollisionDebug() {
         this._silentMode = true;
         this._debugLoggingEnabled = false;
-        console.log('🔇 Collision debugging disabled');
+debug('INSPECTION', '🔇 Collision debugging disabled');
     }
 
     /**
@@ -3351,7 +3353,7 @@ export class PhysicsManager {
             } else {
                 sphere.position.set(projectilePos.x, projectilePos.y, projectilePos.z);
             }
-            console.log(`🔍 SPHERE ${zone.name}: Set position to (${sphere.position.x.toFixed(1)}, ${sphere.position.y.toFixed(1)}, ${sphere.position.z.toFixed(1)})`);
+debug('UTILITY', `🔍 SPHERE ${zone.name}: Set position to (${sphere.position.x.toFixed(1)}, ${sphere.position.y.toFixed(1)}, ${sphere.position.z.toFixed(1)})`);
             
             window.starfieldManager.scene.add(sphere);
             spheres.push({ sphere, geometry, material });
@@ -3368,16 +3370,16 @@ export class PhysicsManager {
             }
         }, 3000);
         
-        console.log(`👁️ Created collision visualization showing damage zones at detonation point: ${projectilePos.x.toFixed(1)}, ${projectilePos.y.toFixed(1)}, ${projectilePos.z.toFixed(1)}`);
+debug('COMBAT', `👁️ Created collision visualization showing damage zones at detonation point: ${projectilePos.x.toFixed(1)}, ${projectilePos.y.toFixed(1)}, ${projectilePos.z.toFixed(1)}`);
     }
 
     /**
      * Check all physics objects and their shape metadata for debugging
      */
     checkAllPhysicsShapes() {
-        console.log("=== PHYSICS SHAPE METADATA AUDIT ===");
-        console.log(`📊 Total rigid bodies: ${this.rigidBodies.size}`);
-        console.log(`📊 Total entity metadata: ${this.entityMetadata.size}\n`);
+debug('PHYSICS', "=== PHYSICS SHAPE METADATA AUDIT ===");
+debug('UTILITY', `📊 Total rigid bodies: ${this.rigidBodies.size}`);
+debug('UTILITY', `📊 Total entity metadata: ${this.entityMetadata.size}\n`);
 
         let sphereCount = 0;
         let boxCount = 0;
@@ -3389,31 +3391,31 @@ export class PhysicsManager {
             const metadata = this.entityMetadata.get(rigidBody);
             
             if (!metadata) {
-                console.log(`❌ MISSING METADATA: ${threeObject.name || 'unnamed'}`);
+debug('UTILITY', `❌ MISSING METADATA: ${threeObject.name || 'unnamed'}`);
                 missingMetadataCount++;
                 continue;
             }
 
             const { type, id, shapeType, shapeRadius, shapeWidth, shapeHeight, shapeDepth } = metadata;
             
-            console.log(`🔍 ${type} "${id || 'unnamed'}":`);
-            console.log(`   • Shape: ${shapeType || 'MISSING'}`);
+debug('UTILITY', `🔍 ${type} "${id || 'unnamed'}":`);
+debug('UTILITY', `   • Shape: ${shapeType || 'MISSING'}`);
             
             switch (shapeType) {
                 case 'sphere':
-                    console.log(`   • Radius: ${shapeRadius || 'MISSING'}m`);
+debug('UTILITY', `   • Radius: ${shapeRadius || 'MISSING'}m`);
                     sphereCount++;
                     break;
                 case 'box':
-                    console.log(`   • Dimensions: ${shapeWidth || '?'}x${shapeHeight || '?'}x${shapeDepth || '?'}`);
+debug('UTILITY', `   • Dimensions: ${shapeWidth || '?'}x${shapeHeight || '?'}x${shapeDepth || '?'}`);
                     boxCount++;
                     break;
                 case 'capsule':
-                    console.log(`   • Radius: ${shapeRadius || 'MISSING'}m, Height: ${shapeHeight || 'MISSING'}m`);
+debug('UTILITY', `   • Radius: ${shapeRadius || 'MISSING'}m, Height: ${shapeHeight || 'MISSING'}m`);
                     capsuleCount++;
                     break;
                 default:
-                    console.log(`   • ❌ UNKNOWN SHAPE TYPE: ${shapeType}`);
+debug('UTILITY', `   • ❌ UNKNOWN SHAPE TYPE: ${shapeType}`);
                     unknownCount++;
             }
             
@@ -3429,30 +3431,30 @@ export class PhysicsManager {
             }
             
             if (issues.length > 0) {
-                console.log(`   • ⚠️  MISSING: ${issues.join(', ')}`);
+debug('UTILITY', `   • ⚠️  MISSING: ${issues.join(', ')}`);
             } else {
-                console.log(`   • ✅ Shape metadata complete`);
+debug('UTILITY', `   • ✅ Shape metadata complete`);
             }
             console.log('');
         }
 
-        console.log("=== SUMMARY ===");
-        console.log(`✅ Spheres: ${sphereCount}`);
-        console.log(`✅ Boxes: ${boxCount}`);
-        console.log(`✅ Capsules: ${capsuleCount}`);
-        console.log(`❌ Unknown shapes: ${unknownCount}`);
-        console.log(`❌ Missing metadata: ${missingMetadataCount}`);
+debug('UTILITY', "=== SUMMARY ===");
+debug('UTILITY', `✅ Spheres: ${sphereCount}`);
+debug('UTILITY', `✅ Boxes: ${boxCount}`);
+debug('UTILITY', `✅ Capsules: ${capsuleCount}`);
+debug('UTILITY', `❌ Unknown shapes: ${unknownCount}`);
+debug('UTILITY', `❌ Missing metadata: ${missingMetadataCount}`);
         
         const total = sphereCount + boxCount + capsuleCount + unknownCount;
         const healthyCount = sphereCount + boxCount + capsuleCount;
         const healthyPercentage = total > 0 ? ((healthyCount / total) * 100).toFixed(1) : '0';
         
-        console.log(`\n🎯 Overall Health: ${healthyPercentage}% (${healthyCount}/${total} objects have proper shape metadata)`);
+debug('UTILITY', `\n🎯 Overall Health: ${healthyPercentage}% (${healthyCount}/${total} objects have proper shape metadata)`);
         
         if (unknownCount > 0 || missingMetadataCount > 0) {
-            console.log(`\n⚠️  ISSUES FOUND: ${unknownCount + missingMetadataCount} objects need attention`);
+debug('UTILITY', `\n⚠️  ISSUES FOUND: ${unknownCount + missingMetadataCount} objects need attention`);
         } else {
-            console.log(`\n🎉 ALL PHYSICS OBJECTS HAVE PROPER SHAPE METADATA!`);
+debug('PHYSICS', `\n🎉 ALL PHYSICS OBJECTS HAVE PROPER SHAPE METADATA!`);
         }
     }
 }

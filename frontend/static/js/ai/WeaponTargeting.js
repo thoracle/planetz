@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * WeaponTargeting.js
  * 
@@ -47,7 +49,7 @@ export class WeaponTargeting {
         this.ballisticsCache = new Map(); // Cache ballistics solutions
         this.lastBallisticsUpdate = 0;
         
-        console.log(`🎯 WeaponTargeting initialized for ${this.ship.shipType} with ${this.weaponConfig.type} weapons`);
+debug('TARGETING', `🎯 WeaponTargeting initialized for ${this.ship.shipType} with ${this.weaponConfig.type} weapons`);
     }
     
     /**
@@ -171,7 +173,7 @@ export class WeaponTargeting {
         this.trackingHistory = [];
         
         if (target) {
-            console.log(`🎯 ${this.ship.shipType} targeting ${target.shipType || 'unknown'}`);
+debug('TARGETING', `🎯 ${this.ship.shipType} targeting ${target.shipType || 'unknown'}`);
         }
     }
     
@@ -524,7 +526,7 @@ export class WeaponTargeting {
         this.ship.currentEnergy -= this.weaponConfig.energyCost;
         
         // Record firing
-        console.log(`💥 ${this.ship.shipType} firing at ${this.currentTarget.shipType || 'target'} (${(this.targetingSolution.hitProbability * 100).toFixed(1)}% hit chance)`);
+debug('TARGETING', `💥 ${this.ship.shipType} firing at ${this.currentTarget.shipType || 'target'} (${(this.targetingSolution.hitProbability * 100).toFixed(1)}% hit chance)`);
         
         // Return firing solution for weapon effects
         return this.targetingSolution;

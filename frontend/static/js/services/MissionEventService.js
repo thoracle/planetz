@@ -1,3 +1,5 @@
+import { debug } from '../debug.js';
+
 /**
  * Mission Event Service
  * Handles sending game events to the backend for mission progress tracking
@@ -9,7 +11,7 @@ export class MissionEventService {
         this.enabled = true;
         this.pendingNotifications = [];
         
-        console.log('🎯 MissionEventService: Initialized');
+debug('MISSIONS', 'MissionEventService: Initialized');
     }
     
     /**
@@ -17,7 +19,7 @@ export class MissionEventService {
      */
     setEnabled(enabled) {
         this.enabled = enabled;
-        console.log(`🎯 MissionEventService: ${enabled ? 'Enabled' : 'Disabled'}`);
+debug('MISSIONS', `🎯 MissionEventService: ${enabled ? 'Enabled' : 'Disabled'}`);
     }
     
     /**
@@ -38,7 +40,7 @@ export class MissionEventService {
                 }
             };
             
-            console.log('🎯 MissionEventService: Sending enemy destroyed event:', eventData);
+debug('MISSIONS', 'MissionEventService: Sending enemy destroyed event:', eventData);
             
             const response = await fetch(`${this.baseURL}/enemy_destroyed`, {
                 method: 'POST',
@@ -55,7 +57,7 @@ export class MissionEventService {
             const result = await response.json();
             
             if (result.success && result.updated_missions.length > 0) {
-                console.log(`🎯 MissionEventService: ${result.updated_missions.length} missions updated from enemy destruction`);
+debug('MISSIONS', `🎯 MissionEventService: ${result.updated_missions.length} missions updated from enemy destruction`);
                 
                 // Trigger mission update events
                 for (const mission of result.updated_missions) {
@@ -86,7 +88,7 @@ export class MissionEventService {
                 }
             };
             
-            console.log('🎯 MissionEventService: Sending location reached event:', eventData);
+debug('MISSIONS', 'MissionEventService: Sending location reached event:', eventData);
             
             const response = await fetch(`${this.baseURL}/location_reached`, {
                 method: 'POST',
@@ -103,7 +105,7 @@ export class MissionEventService {
             const result = await response.json();
             
             if (result.success && result.updated_missions.length > 0) {
-                console.log(`🎯 MissionEventService: ${result.updated_missions.length} missions updated from location reached`);
+debug('MISSIONS', `🎯 MissionEventService: ${result.updated_missions.length} missions updated from location reached`);
                 
                 // Trigger mission update events
                 for (const mission of result.updated_missions) {
@@ -136,7 +138,7 @@ export class MissionEventService {
                 }
             };
             
-            console.log('🎯 MissionEventService: Sending cargo loaded event:', eventData);
+debug('MISSIONS', 'MissionEventService: Sending cargo loaded event:', eventData);
             
             const response = await fetch(`${this.baseURL}/cargo_loaded`, {
                 method: 'POST',
@@ -153,7 +155,7 @@ export class MissionEventService {
             const result = await response.json();
             
             if (result.success && result.updated_missions.length > 0) {
-                console.log(`🎯 MissionEventService: ${result.updated_missions.length} missions updated from cargo loading`);
+debug('MISSIONS', `🎯 MissionEventService: ${result.updated_missions.length} missions updated from cargo loading`);
                 
                 const sm = window.starfieldManager;
                 const isDocked = Boolean(sm && sm.isDocked);
@@ -217,8 +219,8 @@ export class MissionEventService {
                 }
             };
             
-            console.log('🎯 MissionEventService: Sending cargo delivered event:', eventData);
-            console.log(`🚛 DEBUG: Delivery location being sent: "${eventData.delivery_location}"`);
+debug('MISSIONS', 'MissionEventService: Sending cargo delivered event:', eventData);
+debug('INSPECTION', `🚛 DEBUG: Delivery location being sent: "${eventData.delivery_location}"`);
             
             const response = await fetch(`${this.baseURL}/cargo_delivered`, {
                 method: 'POST',
@@ -234,22 +236,22 @@ export class MissionEventService {
             
             const result = await response.json();
             
-            console.log('🎯 MissionEventService: Cargo delivered response:', result);
+debug('MISSIONS', 'MissionEventService: Cargo delivered response:', result);
             
             if (result.success && result.updated_missions.length > 0) {
-                console.log(`🎯 MissionEventService: ${result.updated_missions.length} missions updated from cargo delivery`);
+debug('MISSIONS', `🎯 MissionEventService: ${result.updated_missions.length} missions updated from cargo delivery`);
                 
                 // Trigger mission update events
                 for (const mission of result.updated_missions) {
-                    console.log(`🎯 DEBUG: Processing mission ${mission.mission_id}, state: "${mission.state}"`);
+debug('MISSIONS', `🎯 DEBUG: Processing mission ${mission.mission_id}, state: "${mission.state}"`);
                     this.triggerMissionUpdateEvent('cargo_delivered', mission, eventData);
                     
                     // Check for mission completion and trigger notifications
                     if (mission.state === 'COMPLETED' || mission.state === 'Achieved') {
-                        console.log(`🎯 DEBUG: Mission ${mission.mission_id} is completed, triggering completion notification`);
+debug('MISSIONS', `🎯 DEBUG: Mission ${mission.mission_id} is completed, triggering completion notification`);
                         this.triggerMissionCompletionNotification(mission);
                     } else {
-                        console.log(`🎯 DEBUG: Mission ${mission.mission_id} not completed yet, state: "${mission.state}"`);
+debug('MISSIONS', `🎯 DEBUG: Mission ${mission.mission_id} not completed yet, state: "${mission.state}"`);
                     }
                     
                     // Check for completed objectives and trigger notifications
@@ -273,9 +275,9 @@ export class MissionEventService {
                     }
                 }
             } else {
-                console.log('🎯 MissionEventService: No missions updated from cargo delivery');
+debug('MISSIONS', 'MissionEventService: No missions updated from cargo delivery');
                 if (result.success) {
-                    console.log('🎯 MissionEventService: Response was successful but no missions matched');
+debug('MISSIONS', 'MissionEventService: Response was successful but no missions matched');
                 }
             }
             
@@ -302,7 +304,7 @@ export class MissionEventService {
         window.dispatchEvent(event);
         // Only log events that might need debugging - reduce spam
         if (eventType !== 'cargo_loaded' && eventType !== 'cargo_delivered') {
-            console.log(`🎯 MissionEventService: Triggered missionProgressUpdate event for mission ${mission.id}`);
+debug('MISSIONS', `🎯 MissionEventService: Triggered missionProgressUpdate event for mission ${mission.id}`);
         }
     }
     
@@ -310,13 +312,13 @@ export class MissionEventService {
      * Trigger mission completion notification
      */
     triggerMissionCompletionNotification(mission) {
-        console.log(`🎯 MissionEventService: Mission completed - ${mission.title || mission.id}`);
-        console.log(`🎯 DEBUG: triggerMissionCompletionNotification called for mission:`, mission);
-        console.log(`🎯 DEBUG: window.missionNotificationHandler available:`, !!window.missionNotificationHandler);
+debug('MISSIONS', `🎯 MissionEventService: Mission completed - ${mission.title || mission.id}`);
+debug('MISSIONS', `🎯 DEBUG: triggerMissionCompletionNotification called for mission:`, mission);
+debug('AI', `🎯 DEBUG: window.missionNotificationHandler available:`, !!window.missionNotificationHandler);
         
         // Try to use the notification handler if available
         if (window.missionNotificationHandler) {
-            console.log(`🎯 DEBUG: Calling missionNotificationHandler.onMissionComplete`);
+debug('MISSIONS', `🎯 DEBUG: Calling missionNotificationHandler.onMissionComplete`);
             window.missionNotificationHandler.onMissionComplete(mission);
         } else {
             console.warn(`🎯 DEBUG: No missionNotificationHandler available!`);
@@ -335,7 +337,7 @@ export class MissionEventService {
     triggerObjectiveCompletionNotification(objective, mission) {
         // Reduced logging - only log significant objective completions
         if (objective.description.includes('deliver') || objective.description.includes('eliminate')) {
-            console.log(`🎯 MissionEventService: Objective completed - ${objective.description}`);
+debug('MISSIONS', `🎯 MissionEventService: Objective completed - ${objective.description}`);
         }
         
         // Try to use the notification handler if available
@@ -374,7 +376,7 @@ export class MissionEventService {
      * Test event sending (for debugging)
      */
     async testEnemyDestroyed() {
-        console.log('🎯 MissionEventService: Testing enemy destroyed event...');
+debug('MISSIONS', 'MissionEventService: Testing enemy destroyed event...');
         
         const mockEnemy = {
             shipType: 'enemy_fighter',
