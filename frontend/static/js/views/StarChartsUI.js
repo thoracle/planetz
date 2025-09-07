@@ -964,6 +964,9 @@ export class StarChartsUI {
             placePolar(beacon);
             const pos = this.displayModel.positions.get(beacon.id);
             console.log(`🔧 Beacon ${beacon.name} positioned at:`, pos);
+            if (pos) {
+                console.log(`🔧 Display model now has ${this.displayModel.positions.size} total positions`);
+            }
         });
     }
     
@@ -1215,9 +1218,11 @@ export class StarChartsUI {
         if (this.displayModel && this.displayModel.positions.has(object.id)) {
             const pos = this.displayModel.positions.get(object.id);
             if (object.type === 'navigation_beacon') {
-                console.log(`🎯 Beacon ${object.name}: Using display model position (${pos.x}, ${pos.y})`);
+                console.log(`🎯 Beacon ${object.name}: Using display model position (${pos.x}, ${pos.y}) - found in model`);
             }
             return pos;
+        } else if (object.type === 'navigation_beacon') {
+            console.log(`🎯 Beacon ${object.name}: Display model position NOT found, falling back to calculation`);
         }
         if (Array.isArray(object.position)) {
             if (object.position.length >= 3) {
