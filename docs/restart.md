@@ -253,6 +253,7 @@ unknown: '#44ffff'   // Cyan for unknown
 - **Wireframe Improvements**: Navigation beacons now use octahedron geometry for better visual distinction
 - **Star Charts Integration**: Completed full integration with simplified, robust target management
 - **Wireframe Update Fix**: Fixed wireframe synchronization when selecting targets from Star Charts
+- **Navigation Beacon Positioning Fix**: Fixed beacon angle calculation to properly display all 8 beacons in Star Charts
 
 **Next Steps**: Content creation, advanced gameplay mechanics, multiplayer foundation.
 
@@ -312,27 +313,28 @@ unknown: '#44ffff'   // Cyan for unknown
 ### **Navigation Beacon Positioning Bug** ✅ **FIXED**
 **Issue**: Only 2 of 8 navigation beacons were visible in Star Charts despite test mode being enabled and all beacons being discovered.
 
-**Status**: ✅ **RESOLVED** - Fixed beacon coordinate mapping in Star Charts display
+**Status**: ✅ **RESOLVED** - Fixed beacon angle calculation in Star Charts display
 
-**Root Cause**: Navigation beacons use `[x, y, z]` coordinate format, but the display logic was incorrectly using `position[2]` (z) as the y-coordinate instead of `position[1]` (y).
+**Root Cause**: The `getLiveAngleDegByName()` method was using `Math.atan2(pos.z, pos.x)` for all celestial bodies, but navigation beacons require `Math.atan2(pos.y, pos.x)` because they use `[x, y, z]` coordinates where `y` is the vertical coordinate, not `z`.
 
-**Solution**: Updated `getDisplayPosition()` method in StarChartsUI.js:
-- Added special handling for navigation beacons
-- Use `position[1]` as y-coordinate for beacons (not `position[2]`)
-- Regular objects still use `position[2]` as y-coordinate
+**Solution**: Updated `getLiveAngleDegByName()` method in StarChartsUI.js:
+- Added beacon detection logic using `name.includes('Navigation Beacon')`
+- For beacons: use `Math.atan2(pos.y, pos.x)` (correct coordinate)
+- For other objects: use `Math.atan2(pos.z, pos.x)` (existing logic)
+- Added debug logging to track coordinate selection
 
 **Technical Details**:
 - **File**: `frontend/static/js/views/StarChartsUI.js`
-- **Method**: `getDisplayPosition()` - added beacon-specific coordinate mapping
-- **Coordinate Format**:
-  - **Beacons**: `[x, y, z]` → display `(x, y)`
-  - **Other objects**: `[x, y, z]` → display `(x, z)`
-- **Impact**: All 8 navigation beacons now display correctly around the beacon ring
+- **Method**: `getLiveAngleDegByName()` - added beacon-specific angle calculation
+- **Coordinate Usage**:
+  - **Beacons**: `[x, y, z]` → angle uses `(y, x)` for proper 2D positioning
+  - **Other objects**: `[x, y, z]` → angle uses `(z, x)` for top-down display
+- **Impact**: All 8 navigation beacons now display at correct positions around the beacon ring:
+  - East: (175, 0), North: (0, 175), West: (-175, 0), South: (0, -175)
+  - NE: (124, 124), NW: (-124, 124), SW: (-124, -124), SE: (124, -124)
 
-**Before Fix**: 5 beacons stacked at (175, 0), 3 at (-175, 0)
-**After Fix**: 8 beacons properly distributed in circle:
-- East: (175, 0), North: (0, 175), West: (-175, 0), South: (0, -175)
-- NE: (124, 124), NW: (-124, 124), SW: (-124, -124), SE: (124, -124)
+**Before Fix**: Multiple beacons calculated to same angles (0° or 180°) causing overlaps
+**After Fix**: Each beacon gets unique angle for proper ring distribution
 
 ---
 
