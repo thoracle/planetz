@@ -1162,7 +1162,11 @@ export class StarChartsUI {
         const found = this.findBodyByName(name);
         if (found && found.body && found.body.position) {
             const pos = found.body.position;
-            return (Math.atan2(pos.z, pos.x) * 180) / Math.PI;
+            // For navigation beacons, use y coordinate (vertical) instead of z (depth)
+            const isBeacon = name.includes('Navigation Beacon');
+            const angleCoord = isBeacon ? pos.y : pos.z;
+            console.log(`📐 getLiveAngleDegByName: ${name} isBeacon=${isBeacon}, using ${isBeacon ? 'pos.y' : 'pos.z'} = ${angleCoord}`);
+            return (Math.atan2(angleCoord, pos.x) * 180) / Math.PI;
         }
             // Fallback for navigation beacons (exist in StarfieldManager)
         try {
