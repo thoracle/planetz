@@ -929,11 +929,22 @@ export class StarChartsUI {
                     ? (Math.atan2(y3, x3) * 180) / Math.PI
                     : (Math.atan2(z3, x3) * 180) / Math.PI;
 
+                if (isBeacon) {
+                    console.log(`🎯 Beacon ${obj.name}: Using Y-based angle calculation`);
+                    console.log(`   Position: [${x3}, ${y3}, ${z3}]`);
+                    console.log(`   Old angle (z,x): ${(Math.atan2(z3, x3) * 180) / Math.PI}°`);
+                    console.log(`   New angle (y,x): ${angleDeg}°`);
+                }
+
                 const ring = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : snapToNearestRing(300);
                 const angleRad = angleDeg * Math.PI / 180;
                 const x = ring * Math.cos(angleRad);
                 const y = ring * Math.sin(angleRad);
                 this.displayModel.positions.set(obj.id, { x, y });
+
+                if (isBeacon) {
+                    console.log(`   Final position: (${x.toFixed(1)}, ${y.toFixed(1)})`);
+                }
                 return;
             }
             // If no position information, skip
@@ -949,7 +960,7 @@ export class StarChartsUI {
         // Position beacons (they have their own dedicated ring, so less collision risk)
         console.log(`🔧 Positioning ${beacons.length} beacons`);
         beacons.forEach(beacon => {
-            console.log(`🔧 Positioning beacon: ${beacon.name} (${beacon.id})`);
+            console.log(`🔧 Positioning beacon: ${beacon.name} (${beacon.id}) with position [${beacon.position}]`);
             placePolar(beacon);
             const pos = this.displayModel.positions.get(beacon.id);
             console.log(`🔧 Beacon ${beacon.name} positioned at:`, pos);
