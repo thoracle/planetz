@@ -309,6 +309,31 @@ unknown: '#44ffff'   // Cyan for unknown
 - Moons: Octahedron (8-sided)
 - Stations: Torus (ring shape)
 
+### **Navigation Beacon Positioning Bug** ✅ **FIXED**
+**Issue**: Only 2 of 8 navigation beacons were visible in Star Charts despite test mode being enabled and all beacons being discovered.
+
+**Status**: ✅ **RESOLVED** - Fixed beacon coordinate mapping in Star Charts display
+
+**Root Cause**: Navigation beacons use `[x, y, z]` coordinate format, but the display logic was incorrectly using `position[2]` (z) as the y-coordinate instead of `position[1]` (y).
+
+**Solution**: Updated `getDisplayPosition()` method in StarChartsUI.js:
+- Added special handling for navigation beacons
+- Use `position[1]` as y-coordinate for beacons (not `position[2]`)
+- Regular objects still use `position[2]` as y-coordinate
+
+**Technical Details**:
+- **File**: `frontend/static/js/views/StarChartsUI.js`
+- **Method**: `getDisplayPosition()` - added beacon-specific coordinate mapping
+- **Coordinate Format**:
+  - **Beacons**: `[x, y, z]` → display `(x, y)`
+  - **Other objects**: `[x, y, z]` → display `(x, z)`
+- **Impact**: All 8 navigation beacons now display correctly around the beacon ring
+
+**Before Fix**: 5 beacons stacked at (175, 0), 3 at (-175, 0)
+**After Fix**: 8 beacons properly distributed in circle:
+- East: (175, 0), North: (0, 175), West: (-175, 0), South: (0, -175)
+- NE: (124, 124), NW: (-124, 124), SW: (-124, -124), SE: (124, -124)
+
 ---
 
 ## 📝 Maintenance Notes
