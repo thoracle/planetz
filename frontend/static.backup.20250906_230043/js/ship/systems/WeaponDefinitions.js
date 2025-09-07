@@ -1,0 +1,342 @@
+/**
+ * WeaponDefinitions - Specific weapon card definitions
+ * Based on docs/weapons_system_spec.md
+ * Defines all available weapon cards with their properties
+ */
+
+import { ScanHitWeapon, SplashDamageWeapon } from './WeaponCard.js';
+
+export class WeaponDefinitions {
+    /**
+     * Get all weapon definitions
+     * @returns {Object} Map of weapon definitions
+     */
+    static getAllWeaponDefinitions() {
+        return {
+            // Scan-Hit Weapons (Direct Fire Energy Weapons)
+            laser_cannon: {
+                weaponId: 'laser_cannon',
+                name: 'Laser Cannon',
+                weaponType: 'scan-hit',
+                damage: 60,
+                cooldownTime: 2.0, // seconds
+                range: 18, // km - medium range energy weapon
+                autofireEnabled: true, // UPDATED: All weapons support autofire
+                accuracy: 0.95,
+                energyCost: 10,
+                targetLockRequired: false,
+                specialProperties: {
+                    beamColor: 'red',
+                    chargeTime: 0.1
+                }
+            },
+            
+            plasma_cannon: {
+                weaponId: 'plasma_cannon',
+                name: 'Plasma Cannon',
+                weaponType: 'scan-hit',
+                damage: 85,
+                cooldownTime: 2.5, // seconds
+                range: 38.4, // km - long range energy weapon
+                autofireEnabled: true, // UPDATED: All weapons support autofire
+                accuracy: 0.80,
+                energyCost: 20,
+                targetLockRequired: false,
+                specialProperties: {
+                    penetration: true,
+                    beamColor: 'blue',
+                    chargeTime: 0.3
+                }
+            },
+            
+            pulse_cannon: {
+                weaponId: 'pulse_cannon',
+                name: 'Pulse Cannon',
+                weaponType: 'scan-hit',
+                damage: 75,
+                cooldownTime: 3.0, // seconds - doubled from 1.5s (burst fire)
+                range: 28.8, // km - medium-long range burst weapon
+                autofireEnabled: true, // UPDATED: All weapons support autofire
+                accuracy: 0.90,
+                energyCost: 15,
+                targetLockRequired: false,
+                specialProperties: {
+                    burstFire: true,
+                    burstCount: 3,
+                    beamColor: 'yellow',
+                    chargeTime: 0.05
+                }
+            },
+            
+            phaser_array: {
+                weaponId: 'phaser_array',
+                name: 'Phaser Array',
+                weaponType: 'scan-hit',
+                damage: 90,
+                cooldownTime: 2.0, // seconds
+                range: 36, // km - long range area effect weapon
+                autofireEnabled: true, // UPDATED: All weapons support autofire
+                accuracy: 0.88,
+                energyCost: 25,
+                targetLockRequired: false,
+                specialProperties: {
+                    wideBeam: true,
+                    areaEffect: 20, // meters
+                    beamColor: 'orange',
+                    chargeTime: 0.2
+                }
+            },
+            
+            // Direct-Hit Weapons (Projectile-Based)  
+            // No ammo required - work like laser weapons with cooldowns
+            standard_missile: {
+                weaponId: 'standard_missile',
+                name: 'Standard Missile',
+                weaponType: 'projectile',
+                damage: 150,
+                cooldownTime: 2.5, // seconds
+                range: 30, // km - increased for testing with target dummies
+                autofireEnabled: true, // UPDATED: All weapons support autofire
+                accuracy: 1.0, // Missiles don't miss if fired properly
+                energyCost: 8, // Moderate energy cost
+                blastRadius: 0, // NO SPLASH DAMAGE - direct hit only
+                homingCapability: false,
+                targetLockRequired: false, // CORRECTED: Non-homing projectiles fire toward crosshairs, no target lock needed
+                flightRange: 15, // km - match weapon range
+                turnRate: 0, // No turning
+                specialProperties: {
+                    explosionType: 'kinetic',
+                    armorPiercing: true,
+                    directHitOnly: true, // Flag to indicate this is direct-hit projectile
+                    projectileSpeed: 750 // m/s - Reduced by 50% to improve close-range collision detection
+                }
+            },
+            
+            homing_missile: {
+                weaponId: 'homing_missile',
+                name: 'Homing Missile',
+                weaponType: 'splash-damage',
+                damage: 180,
+                cooldownTime: 2.5, // seconds
+                range: 35, // km - increased for testing with target dummies
+                autofireEnabled: true, // Homing missiles can autofire
+                accuracy: 1.0,
+                energyCost: 8,
+                blastRadius: 45, // meters
+                homingCapability: true,
+                targetLockRequired: true,
+                flightRange: 15, // km - match weapon range
+                turnRate: 120, // degrees per second - faster turning
+                specialProperties: {
+                    trackingArc: 60, // degrees
+                    explosionType: 'kinetic',
+                    armorPiercing: true
+                }
+            },
+            
+            photon_torpedo: {
+                weaponId: 'photon_torpedo',
+                name: 'Photon Torpedo',
+                weaponType: 'splash-damage',
+                damage: 320,
+                cooldownTime: 4.0, // seconds
+                range: 25, // km - increased for testing with target dummies
+                autofireEnabled: true, // UPDATED: All weapons support autofire
+                accuracy: 1.0,
+                energyCost: 12,
+                blastRadius: 20, // meters (reduced by 75% from original 80m)
+                homingCapability: false,
+                targetLockRequired: false, // CORRECTED: Torpedoes fire toward crosshairs, no target lock needed
+                flightRange: 15, // km - match weapon range
+                turnRate: 0, // No turning
+                specialProperties: {
+                    explosionType: 'photon',
+                    armorPiercing: true,
+                    shieldPiercing: true, // Photon torpedoes pierce shields
+                    projectileSpeed: 1000 // m/s - Reduced by 50% to improve close-range collision detection
+                }
+            },
+            
+            proximity_mine: {
+                weaponId: 'proximity_mine',
+                name: 'Proximity Mine',
+                weaponType: 'splash-damage',
+                damage: 150,
+                cooldownTime: 3.5, // seconds
+                range: 1.2, // km - short deployment range
+                autofireEnabled: true, // UPDATED: All weapons support autofire
+                accuracy: 1.0,
+                energyCost: 3,
+                blastRadius: 20, // meters (reduced by 75% from original 80m)
+                homingCapability: false,
+                targetLockRequired: false, // Mines don't need target lock
+                flightRange: 0, // Deployed in place
+                turnRate: 0,
+                specialProperties: {
+                    deploymentType: 'stationary',
+                    triggerRange: 50, // meters
+                    timer: 10000, // 10 seconds before auto-detonation
+                    explosionType: 'plasma'
+                }
+            }
+        };
+    }
+    
+    /**
+     * Create weapon card instance from definition
+     * @param {string} weaponId Weapon definition ID
+     * @returns {WeaponCard} Weapon card instance
+     */
+    static createWeaponCard(weaponId) {
+        const definitions = WeaponDefinitions.getAllWeaponDefinitions();
+        const weaponDef = definitions[weaponId];
+        
+        if (!weaponDef) {
+            console.error(`Unknown weapon ID: ${weaponId}`);
+            return null;
+        }
+        
+        // Convert range from kilometers to meters for WeaponCard
+        const weaponDefWithMeters = {
+            ...weaponDef,
+            range: (weaponDef.range || 1) * 1000 // Convert km to meters
+        };
+        
+        // Create appropriate weapon type
+        if (weaponDef.weaponType === 'scan-hit') {
+            return new ScanHitWeapon(weaponDefWithMeters);
+        } else if (weaponDef.weaponType === 'splash-damage') {
+            return new SplashDamageWeapon(weaponDefWithMeters);
+        } else if (weaponDef.weaponType === 'projectile') {
+            // Direct-hit projectiles use splash damage weapon class but with blastRadius=0
+            return new SplashDamageWeapon(weaponDefWithMeters);
+        }
+        
+        console.error(`Unknown weapon type: ${weaponDef.weaponType}`);
+        return null;
+    }
+    
+    /**
+     * Get weapon definitions by type
+     * @param {string} weaponType 'scan-hit' or 'splash-damage'
+     * @returns {Object} Filtered weapon definitions
+     */
+    static getWeaponsByType(weaponType) {
+        const allWeapons = WeaponDefinitions.getAllWeaponDefinitions();
+        const filtered = {};
+        
+        for (const [id, weapon] of Object.entries(allWeapons)) {
+            if (weapon.weaponType === weaponType) {
+                filtered[id] = weapon;
+            }
+        }
+        
+        return filtered;
+    }
+    
+    /**
+     * Get scan-hit weapon definitions
+     * @returns {Object} Scan-hit weapon definitions
+     */
+    static getScanHitWeapons() {
+        return WeaponDefinitions.getWeaponsByType('scan-hit');
+    }
+    
+    /**
+     * Get splash-damage weapon definitions
+     * @returns {Object} Splash-damage weapon definitions
+     */
+    static getSplashDamageWeapons() {
+        return WeaponDefinitions.getWeaponsByType('splash-damage');
+    }
+    
+    /**
+     * Get weapons that support autofire
+     * @returns {Object} Autofire-enabled weapon definitions
+     */
+    static getAutofireWeapons() {
+        const allWeapons = WeaponDefinitions.getAllWeaponDefinitions();
+        const autofireWeapons = {};
+        
+        for (const [id, weapon] of Object.entries(allWeapons)) {
+            if (weapon.autofireEnabled) {
+                autofireWeapons[id] = weapon;
+            }
+        }
+        
+        return autofireWeapons;
+    }
+    
+    /**
+     * Get weapon definition by ID
+     * @param {string} weaponId Weapon ID
+     * @returns {Object|null} Weapon definition or null if not found
+     */
+    static getWeaponDefinition(weaponId) {
+        const definitions = WeaponDefinitions.getAllWeaponDefinitions();
+        return definitions[weaponId] || null;
+    }
+    
+    /**
+     * Get all weapon IDs
+     * @returns {Array} Array of weapon IDs
+     */
+    static getAllWeaponIds() {
+        return Object.keys(WeaponDefinitions.getAllWeaponDefinitions());
+    }
+    
+    /**
+     * Get weapon display data for UI
+     * @param {string} weaponId Weapon ID
+     * @returns {Object} Display data for UI
+     */
+    static getWeaponDisplayData(weaponId) {
+        const weapon = WeaponDefinitions.getWeaponDefinition(weaponId);
+        if (!weapon) return null;
+        
+        return {
+            id: weapon.weaponId,
+            name: weapon.name,
+            type: weapon.weaponType,
+            damage: weapon.damage,
+            cooldown: weapon.cooldownTime,
+            range: weapon.range,
+            autofire: weapon.autofireEnabled,
+            energy: weapon.energyCost,
+            blastRadius: weapon.blastRadius || 0,
+            homing: weapon.homingCapability || false,
+            targetLock: weapon.targetLockRequired,
+            description: WeaponDefinitions.generateWeaponDescription(weapon)
+        };
+    }
+    
+    /**
+     * Generate weapon description for UI
+     * @param {Object} weapon Weapon definition
+     * @returns {string} Weapon description
+     */
+    static generateWeaponDescription(weapon) {
+        let desc = `${weapon.damage} damage, ${weapon.cooldownTime}s cooldown, ${weapon.range}m range`;
+        
+        if (weapon.weaponType === 'scan-hit') {
+            desc += `, ${Math.round(weapon.accuracy * 100)}% accuracy`;
+        }
+        
+        if (weapon.weaponType === 'splash-damage') {
+            desc += `, ${weapon.blastRadius}m blast radius`;
+            if (weapon.homingCapability) {
+                desc += ', homing';
+            }
+        }
+        
+        if (weapon.autofireEnabled) {
+            desc += ', autofire';
+        }
+        
+        if (weapon.targetLockRequired) {
+            desc += ', requires target lock';
+        }
+        
+        return desc;
+    }
+} 

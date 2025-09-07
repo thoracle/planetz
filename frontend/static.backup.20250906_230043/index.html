@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Fuckers</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="stylesheet" href="static/css/views.css">
+    <link rel="stylesheet" href="static/css/card-inventory.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: 'VT323', monospace;
+            color: #00ff41;
+        }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="scene-container"></div>
+    
+    <!-- Stats.js -->
+    <script src="https://mrdoob.github.io/stats.js/build/stats.min.js"></script>
+    
+    <!-- dat.GUI -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
+    
+    <!-- Three.js Library loaded via ES modules (importmap above) -->
+    
+    <!-- Three.js-based collision and spatial systems (replaces Ammo.js) -->
+    <script>
+        console.log('🌌 Using Three.js-based spatial and collision systems');
+        console.log('✅ No physics engine loading required - using native Three.js');
+        
+        // Set flags for compatibility with existing code
+        window.spatialSystemsReady = true;
+        window.collisionSystemsReady = true;
+    </script>
+    
+    <!-- Game Application -->
+    <script type="module" src="static/js/app.js?v=1755211400"></script>
+</body>
+</html> 

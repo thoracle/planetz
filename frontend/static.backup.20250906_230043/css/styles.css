@@ -1,0 +1,12 @@
+.dock-button:hover {
+    filter: brightness(1.2);
+    transform: scale(1.05);
+}
+
+.dock-button.launch:hover {
+    background: #cc4f00 !important;
+}
+
+.dock-button {
+    transition: all 0.2s ease-in-out !important;
+} 
