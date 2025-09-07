@@ -50,6 +50,13 @@
         window.collisionSystemsReady = true;
     </script>
     
+    <!-- Debug System (load first to ensure availability) -->
+    <script type="module">
+        // Pre-load debug utility to ensure it's available for imports
+        import { debug } from 'static/js/debug.js';
+        console.log('🔧 Debug utility module loaded');
+    </script>
+
     <!-- Game Application -->
     <script type="module" src="static/js/app.js"></script>
 </body>

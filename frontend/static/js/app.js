@@ -15,6 +15,8 @@ import './ship/systems/services/HitScanService.js'; // Load Three.js hit scan se
 import './ship/systems/services/SimpleProjectileService.js'; // Load simplified projectile system
 import './cache-test.js'; // Cache test - TIMESTAMP: 1755751628397
 import './utils/ErrorReporter.js'; // Error reporting system for debugging
+import { SmartDebugManager } from './utils/DebugManager.js'; // Smart debug logging system
+import { debug } from './debug.js';
 
 // Global variables for warp control mode
 let warpControlMode = false;
@@ -28,6 +30,7 @@ let guiContainer = null;
 let viewManager = null;
 let solarSystemManager = null;
 let debugManager = null;
+let smartDebugManager = null;
 let spatialManager = null;
 let collisionManager = null;
 let dockingManager = null;
@@ -37,7 +40,7 @@ let dockingManager = null;
  * Replaces Ammo.js physics with simple, performant Three.js systems
  */
 function initializeThreeJSSystems(scene) {
-    console.log('🌌 Initializing Three.js spatial and collision systems...');
+debug('UTILITY', '🌌 Initializing Three.js spatial and collision systems...');
     
     // Create spatial manager for object tracking
     spatialManager = new SpatialManager();
@@ -47,7 +50,7 @@ function initializeThreeJSSystems(scene) {
     collisionManager = new SimpleCollisionManager(scene, spatialManager);
     window.collisionManager = collisionManager;
     
-    console.log('✅ Three.js systems initialized successfully');
+debug('UTILITY', '✅ Three.js systems initialized successfully');
     return true;
 }
 
@@ -275,9 +278,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
     document.body.appendChild(uiContainer);
 
-    // Initialize debug manager first
+    // Initialize smart debug logging system
+    smartDebugManager = new SmartDebugManager();
+
+    // Initialize Three.js debug manager (for stats, axes, grid, etc.)
     debugManager = new DebugManager();
     debugManager.initialize(scene, uiContainer);
+
+    // Set up global debug function to use smartDebugManager
+    window.debug = (channel, message) => {
+        if (smartDebugManager) {
+            smartDebugManager.debug(channel, message);
+        } else {
+            console.log(`UTILITY: ${channel}: ${message}`);
+        }
+    };
+
+    // Set up global access to debug manager
+    smartDebugManager.setupGlobalAccess();
+
+    // Test the debug system
+    debug('TARGETING', 'SmartDebugManager initialized successfully');
+    debug('MISSIONS', 'Smart debug logging system ready');
+    debug('P1', 'HIGH PRIORITY: Debug system operational');
+    debug('INSPECTION', 'This should be disabled by default');
 
     // Renderer setup
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -323,12 +347,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.starfieldManagerReady = true;
 
     // Three.js systems are ready immediately (no loading required)
-    console.log('🌌 Three.js spatial systems ready - no loading required');
+debug('UI', '🌌 Three.js spatial systems ready - no loading required');
     
     // Initialize Three.js-based systems (replaces Ammo.js physics)
     const systemsInitialized = initializeThreeJSSystems(scene);
     if (systemsInitialized) {
-        console.log('✅ Three.js spatial and collision systems ready');
+debug('UTILITY', '✅ Three.js spatial and collision systems ready');
         window.spatialManagerReady = true;
         window.collisionManagerReady = true;
         
@@ -698,7 +722,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // Create initial geometry
-    console.log('Creating initial geometry...');
+debug('UTILITY', 'Creating initial geometry...');
     const geometryParams = {
         subdivisionLevel: 4,  // Default subdivision level
         radius: 1
@@ -709,7 +733,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const planet = new THREE.Mesh(geometry, material);
     scene.add(planet);
     
-    console.log('Initial planet mesh created:', {
+    debug('STAR_CHARTS', 'Initial planet mesh created:', {
         vertices: geometry.attributes.position.count,
         faces: geometry.index ? geometry.index.count / 3 : 0,
         subdivisionLevel: geometryParams.subdivisionLevel
@@ -833,7 +857,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const terrainHeightController = controlsFolder.add(planetGenerator.params, 'terrainHeight', 0, 0.5)
         .name('Terrain Height')
         .onChange((value) => {
-            console.log('Terrain height changed to:', value);
+debug('AI', 'Terrain height changed to:', value);
             planetGenerator.params.terrainHeight = value;
             updatePlanetGeometry();
         });
@@ -842,7 +866,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const noiseScaleController = controlsFolder.add(planetGenerator.params, 'noiseScale', 0.1, 2.0)
         .name('Noise Scale')
         .onChange((value) => {
-            console.log('Noise scale changed to:', value);
+debug('UTILITY', 'Noise scale changed to:', value);
             planetGenerator.params.noiseScale = value;
             updatePlanetGeometry();
         });
@@ -851,7 +875,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const octavesController = controlsFolder.add(planetGenerator.params, 'octaves', 1, 8, 1)
         .name('Noise Octaves')
         .onChange((value) => {
-            console.log('Octaves changed to:', value);
+debug('UTILITY', 'Octaves changed to:', value);
             planetGenerator.params.octaves = value;
             updatePlanetGeometry();
         });
@@ -860,7 +884,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const persistenceController = controlsFolder.add(planetGenerator.params, 'persistence', 0.1, 1.0)
         .name('Noise Persistence')
         .onChange((value) => {
-            console.log('Persistence changed to:', value);
+debug('UTILITY', 'Persistence changed to:', value);
             planetGenerator.params.persistence = value;
             updatePlanetGeometry();
         });
@@ -869,7 +893,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const lacunarityController = controlsFolder.add(planetGenerator.params, 'lacunarity', 0.1, 4.0)
         .name('Noise Lacunarity')
         .onChange((value) => {
-            console.log('Lacunarity changed to:', value);
+debug('UTILITY', 'Lacunarity changed to:', value);
             planetGenerator.params.lacunarity = value;
             updatePlanetGeometry();
         });
@@ -880,7 +904,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const roughnessController = textureFolder.add(planetColors[planetTypes.currentType], 'roughness', 0.1, 1.0)
         .name('Surface Roughness')
         .onChange((value) => {
-            console.log('Roughness changed to:', value);
+debug('UTILITY', 'Roughness changed to:', value);
             planetColors[planetTypes.currentType].roughness = value;
             updatePlanetGeometry();
         });
@@ -889,7 +913,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detailScaleController = textureFolder.add(planetColors[planetTypes.currentType], 'detailScale', 0.5, 5.0)
         .name('Detail Scale')
         .onChange((value) => {
-            console.log('Detail scale changed to:', value);
+debug('AI', 'Detail scale changed to:', value);
             planetColors[planetTypes.currentType].detailScale = value;
             updatePlanetGeometry();
         });
@@ -901,7 +925,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     oceanFolder.add(oceanParams, 'enabled')
         .name('Enable Ocean')
         .onChange((value) => {
-            console.log('Ocean enabled:', value);
+debug('UTILITY', 'Ocean enabled:', value);
             if (planet.oceanMesh) {
                 planet.oceanMesh.visible = value;
             }
@@ -909,24 +933,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     oceanFolder.add(oceanParams, 'wavesEnabled')
         .name('Enable Waves')
         .onChange((value) => {
-            console.log('Waves enabled:', value);
+debug('UTILITY', 'Waves enabled:', value);
         });
     oceanFolder.add(oceanParams, 'depth', 0, 0.5)
         .name('Ocean Depth')
         .onChange((value) => {
-            console.log('Ocean depth changed to:', value);
+debug('UTILITY', 'Ocean depth changed to:', value);
             updatePlanetGeometry();
         });
     oceanFolder.addColor(oceanParams, 'color')
         .name('Ocean Color')
         .onChange((value) => {
-            console.log('Ocean color changed to:', value);
+debug('UTILITY', 'Ocean color changed to:', value);
             waterMaterial.color.setHex(value);
         });
     oceanFolder.add(oceanParams, 'waveHeight', 0, 0.1)
         .name('Wave Height')
         .onChange((value) => {
-            console.log('Wave height changed to:', value);
+debug('UTILITY', 'Wave height changed to:', value);
             if (waterMaterial.userData.shader) {
                 waterMaterial.userData.shader.uniforms.waveHeight.value = value;
             }
@@ -934,17 +958,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     oceanFolder.add(oceanParams, 'waveSpeed', 0.1, 5.0)
         .name('Wave Speed')
         .onChange((value) => {
-            console.log('Wave speed changed to:', value);
+debug('UTILITY', 'Wave speed changed to:', value);
         });
     oceanFolder.add(oceanParams, 'waveFrequency', 0.5, 5.0)
         .name('Wave Frequency')
         .onChange((value) => {
-            console.log('Wave frequency changed to:', value);
+debug('UTILITY', 'Wave frequency changed to:', value);
         });
     oceanFolder.add(oceanParams, 'foamThreshold', 0.1, 1.0)
         .name('Foam Threshold')
         .onChange((value) => {
-            console.log('Foam threshold changed to:', value);
+debug('UTILITY', 'Foam threshold changed to:', value);
             if (waterMaterial.userData.shader) {
                 waterMaterial.userData.shader.uniforms.foamThreshold.value = value;
             }
@@ -952,7 +976,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     oceanFolder.add(oceanParams, 'foamIntensity', 0.0, 1.0)
         .name('Foam Intensity')
         .onChange((value) => {
-            console.log('Foam intensity changed to:', value);
+debug('UTILITY', 'Foam intensity changed to:', value);
             if (waterMaterial.userData.shader) {
                 waterMaterial.userData.shader.uniforms.foamIntensity.value = value;
             }
@@ -962,7 +986,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Add a button to generate a new planet
     const newPlanetButton = {
         generateNewPlanet: function() {
-            console.log('Generating new planet...');
+debug('UTILITY', 'Generating new planet...');
             planetGenerator.generateNewSeed();
             updatePlanetGeometry();
         }
@@ -976,7 +1000,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     geometryFolder.add(geometryParams, 'subdivisionLevel', 1, 100, 1)
         .name('Smoothness')
         .onChange((value) => {
-            console.log('Subdivision level changed to:', value);
+debug('UTILITY', 'Subdivision level changed to:', value);
             updatePlanetGeometry();
         });
     geometryFolder.open();
@@ -984,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Function to handle terraforming
     function handleTerraforming(event) {
         if (!editMode) {
-            console.log('Terraforming blocked: Not in edit mode');
+debug('UTILITY', 'Terraforming blocked: Not in edit mode');
             return;
         }
 
@@ -1110,11 +1134,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     planet.oceanMesh.geometry = oceanGeometry;
                 }
                 
-                console.log('Geometry updated after terraforming');
+debug('UTILITY', 'Geometry updated after terraforming');
                 updateDebugInfo(); // Update debug info after geometry changes
             }
         } else {
-            console.log('No intersection with planet');
+debug('UTILITY', 'No intersection with planet');
         }
     }
 
@@ -1164,21 +1188,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Duplicate keyboard shortcuts removed - handled by global listener above
     
-    console.log('Container dimensions:', {
+    debug('UTILITY', 'Container dimensions:', {
         width: container.clientWidth,
         height: container.clientHeight
     });
     
     // Function to create fresh geometry
     function createPlanetGeometry() {
-        console.log('Creating fresh geometry with subdivision level:', geometryParams.subdivisionLevel);
+debug('UTILITY', 'Creating fresh geometry with subdivision level:', geometryParams.subdivisionLevel);
         const newGeometry = new THREE.IcosahedronGeometry(geometryParams.radius, geometryParams.subdivisionLevel);
             return newGeometry;
     }
     
     // Function to update planet geometry and colors
     function updatePlanetGeometry() {
-        console.log('Starting planet geometry update...');
+debug('UTILITY', 'Starting planet geometry update...');
         
         // Create and validate new geometry
         const newGeometry = createPlanetGeometry();
@@ -1336,7 +1360,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updatePlanetGeometry();
     
     // Add lights
-    console.log('Setting up lights...');
+debug('UTILITY', 'Setting up lights...');
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.set(5, 5, 5);
     scene.add(light);
@@ -1347,19 +1371,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Position camera
     camera.position.z = 3;
     
-    console.log('Camera position:', {
+    debug('UTILITY', 'Camera position:', {
         x: camera.position.x,
         y: camera.position.y,
         z: camera.position.z
     });
 
     // Create atmosphere
-    console.log('Creating atmosphere...');
+debug('UTILITY', 'Creating atmosphere...');
     const atmosphere = new Atmosphere(geometryParams.radius);
     scene.add(atmosphere.mesh);
 
     // Create cloud layer
-    console.log('Creating cloud layer...');
+debug('UTILITY', 'Creating cloud layer...');
     const clouds = new Cloud(geometryParams.radius);
     scene.add(clouds.mesh);
 
@@ -1373,25 +1397,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     atmosphereFolder.add(atmosphere.material.uniforms.rayleigh, 'value', 0, 4)
         .name('Rayleigh')
         .onChange(() => {
-            console.log('Rayleigh changed');
+debug('UTILITY', 'Rayleigh changed');
         });
 
     atmosphereFolder.add(atmosphere.material.uniforms.mieCoefficient, 'value', 0, 0.1)
         .name('Mie Coefficient')
         .onChange(() => {
-            console.log('Mie coefficient changed');
+debug('UTILITY', 'Mie coefficient changed');
         });
 
     atmosphereFolder.add(atmosphere.material.uniforms.mieDirectionalG, 'value', 0, 1)
         .name('Mie Directional G')
         .onChange(() => {
-            console.log('Mie directional G changed');
+debug('UTILITY', 'Mie directional G changed');
         });
 
     atmosphereFolder.add(atmosphere.material.uniforms.sunIntensity, 'value', 0, 50)
         .name('Sun Intensity')
         .onChange(() => {
-            console.log('Sun intensity changed');
+debug('UTILITY', 'Sun intensity changed');
         });
 
     // Add color control
@@ -1408,7 +1432,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .onChange((value) => {
             const color = new THREE.Color(value);
             atmosphere.setRayleighColor(new THREE.Vector3(color.r, color.g, color.b));
-            console.log('Atmosphere color changed');
+debug('UTILITY', 'Atmosphere color changed');
         });
 
     // Add scale control
@@ -1418,7 +1442,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .onChange((value) => {
             atmosphere.mesh.scale.set(value, value, value);
             atmosphere.setAtmosphereRadius(geometryParams.radius * value);
-            console.log('Atmosphere scale changed');
+debug('UTILITY', 'Atmosphere scale changed');
         });
 
     atmosphereFolder.open();
@@ -1430,28 +1454,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         .name('Cloud Coverage')
         .onChange((value) => {
             clouds.setCoverage(value);
-            console.log('Cloud coverage changed');
+debug('UTILITY', 'Cloud coverage changed');
         });
 
     cloudFolder.add(clouds.material.uniforms.density, 'value', 0, 1)
         .name('Cloud Density')
         .onChange((value) => {
             clouds.setDensity(value);
-            console.log('Cloud density changed');
+debug('UTILITY', 'Cloud density changed');
         });
 
     cloudFolder.add(clouds.material.uniforms.cloudSpeed, 'value', 0, 2)
         .name('Cloud Speed')
         .onChange((value) => {
             clouds.setCloudSpeed(value);
-            console.log('Cloud speed changed');
+debug('UTILITY', 'Cloud speed changed');
         });
 
     cloudFolder.add(clouds.material.uniforms.turbulence, 'value', 0, 2)
         .name('Turbulence')
         .onChange((value) => {
             clouds.setTurbulence(value);
-            console.log('Cloud turbulence changed');
+debug('UTILITY', 'Cloud turbulence changed');
         });
 
     // Add cloud color control
@@ -1464,7 +1488,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .onChange((value) => {
             const color = new THREE.Color(value);
             clouds.setCloudColor(new THREE.Vector3(color.r, color.g, color.b));
-            console.log('Cloud color changed');
+debug('UTILITY', 'Cloud color changed');
         });
 
     cloudFolder.open();
@@ -1718,7 +1742,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     // Start animation loop
-    console.log('Starting animation loop...');
+debug('UTILITY', 'Starting animation loop...');
     animate();
 
     // --- Camera Roll (Option+Command+Drag) Implementation ---
@@ -1729,7 +1753,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     renderer.domElement.addEventListener('mousedown', (event) => {
         if (!editMode) return;
-        // console.debug('[Roll Debug] mousedown', {
+        // debug('INSPECTION', '[Roll Debug] mousedown', {
         //     altKey: event.altKey,
         //     metaKey: event.metaKey,
         //     button: event.button,
@@ -1742,7 +1766,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             controls.enabled = false; // Temporarily disable OrbitControls
             controls._screenSpacePanningBeforeRoll = controls.screenSpacePanning;
             controls.screenSpacePanning = false; // Prevent OrbitControls from snapping up vector
-            // console.debug('[Roll Debug] Roll mode STARTED');
+            // debug('INSPECTION', '[Roll Debug] Roll mode STARTED');
             event.preventDefault();
         }
     }, true);
@@ -1761,7 +1785,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             camera.up.normalize();
             controls.target = controls.target.clone(); // Force OrbitControls to recalc
             controls.update();
-            // console.debug('[Roll Debug] Rolling', { deltaX, rollAngle: -deltaX * rollSensitivity });
+            // debug('INSPECTION', '[Roll Debug] Rolling', { deltaX, rollAngle: -deltaX * rollSensitivity });
             event.preventDefault();
         }
     }, true);
@@ -1773,7 +1797,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             controls.screenSpacePanning = controls._screenSpacePanningBeforeRoll !== undefined ? controls._screenSpacePanningBeforeRoll : true;
             delete controls._screenSpacePanningBeforeRoll;
             controls.update();
-            // console.debug('[Roll Debug] Roll mode ENDED');
+            // debug('INSPECTION', '[Roll Debug] Roll mode ENDED');
             event.preventDefault();
         }
     }, true);
@@ -1809,7 +1833,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             for (const [key, body] of solarSystemManager.celestialBodies.entries()) {
                 if (body === nextBody) {
                     foundKey = key;
-                    console.log('Found body key:', { key, body, starSystem: solarSystemManager.starSystem });
+debug('UTILITY', 'Found body key:', { key, body, starSystem: solarSystemManager.starSystem });
                     if (key === 'star') {
                         if (solarSystemManager.starSystem && solarSystemManager.starSystem.star_name) {
                             bodyName = `${solarSystemManager.starSystem.star_name} (Star)`;
@@ -1875,7 +1899,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        console.log('Updating GUI controls for body:', { bodyKey, body });
+debug('UI', 'Updating GUI controls for body:', { bodyKey, body });
         
         // Add new controls based on body type
         if (bodyKey === 'star') {
@@ -2036,21 +2060,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const maxWarpController = warpDriveFolder.add(viewManager.warpDriveManager.warpDrive, 'maxWarpFactor', 1.0, 9.9)
         .name('Max Warp Factor')
         .onChange((value) => {
-            console.log('Max warp factor changed:', value);
+debug('UTILITY', 'Max warp factor changed:', value);
         });
     maxWarpController.__li.setAttribute('title', 'Maximum warp speed achievable by the ship. Higher values allow faster interstellar travel.');
 
     const energyController = warpDriveFolder.add(viewManager.warpDriveManager.warpDrive, 'energyConsumptionRate', 0.1, 2.0)
         .name('Energy Consumption')
         .onChange((value) => {
-            console.log('Energy consumption rate changed:', value);
+debug('UTILITY', 'Energy consumption rate changed:', value);
         });
     energyController.__li.setAttribute('title', 'Rate at which the warp drive consumes ship energy. Higher values drain energy faster but may improve performance.');
 
     const cooldownController = warpDriveFolder.add(viewManager.warpDriveManager.warpDrive, 'cooldownTime', 5, 60)
         .name('Cooldown Time (s)')
         .onChange((value) => {
-            console.log('Warp drive cooldown time changed:', value);
+debug('UTILITY', 'Warp drive cooldown time changed:', value);
         });
     cooldownController.__li.setAttribute('title', 'Time in seconds required between warp jumps to allow the drive to cool down and recharge.');
 
@@ -2070,7 +2094,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .name('Effect Duration (ms)')
         .onChange((value) => {
             warpEffects.warpDuration = value;
-            console.log('Warp effect duration changed:', value);
+debug('UTILITY', 'Warp effect duration changed:', value);
         });
     durationController.__li.setAttribute('title', 'Duration of the warp effect animation in milliseconds. Longer durations create more dramatic warp sequences.');
 
@@ -2078,7 +2102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .name('Arrival Time (ms)')
         .onChange((value) => {
             warpEffects.arrivalTime = value;
-            console.log('Warp arrival time changed:', value);
+debug('UTILITY', 'Warp arrival time changed:', value);
         });
     arrivalController.__li.setAttribute('title', 'Time until arrival at destination during warp. Affects the timing of the warp exit sequence.');
 
@@ -2102,7 +2126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     warpEffects.container.add(streak);
                 }
             }
-            console.log('Warp streak count changed:', value);
+debug('UTILITY', 'Warp streak count changed:', value);
         });
     streakController.__li.setAttribute('title', 'Number of light streaks during warp. Higher values create a denser, more intense warp effect.');
 
@@ -2136,7 +2160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     warpEffects.container.add(ring);
                 }
             }
-            console.log('Warp ring count changed:', value);
+debug('UTILITY', 'Warp ring count changed:', value);
         });
     ringController.__li.setAttribute('title', 'Number of warp rings displayed during travel. More rings create a more pronounced tunnel effect.');
 
@@ -2152,7 +2176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             warpEffects.rings.forEach(ring => {
                 ring.material.color = color;
             });
-            console.log('Warp effect color changed:', value);
+debug('UTILITY', 'Warp effect color changed:', value);
         });
     colorController.__li.setAttribute('title', 'Color of the warp effect visuals. Customize the appearance of streaks and rings during warp travel.');
 
@@ -2162,7 +2186,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (warpEffects.warpSound) {
                 warpEffects.warpSound.setVolume(value);
             }
-            console.log('Warp sound volume changed:', value);
+debug('UTILITY', 'Warp sound volume changed:', value);
         });
     warpSoundController.__li.setAttribute('title', 'Volume of the warp drive sound effects. Adjust for the desired audio intensity during warp.');
 
@@ -2172,7 +2196,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (warpEffects.warpRedAlertSound) {
                 warpEffects.warpRedAlertSound.setVolume(value);
             }
-            console.log('Red alert volume changed:', value);
+debug('UTILITY', 'Red alert volume changed:', value);
         });
     alertSoundController.__li.setAttribute('title', 'Volume of the red alert sound during emergency warp procedures.');
 
@@ -2188,7 +2212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .name('Acceleration')
         .onChange((value) => {
             starfieldManager.acceleration = value;
-            console.log('Ship acceleration changed:', value);
+debug('UTILITY', 'Ship acceleration changed:', value);
         });
     accelController.__li.setAttribute('title', 'Rate at which the ship increases speed. Higher values mean faster acceleration.');
 
@@ -2196,7 +2220,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .name('Deceleration')
         .onChange((value) => {
             starfieldManager.deceleration = value;
-            console.log('Ship deceleration changed:', value);
+debug('UTILITY', 'Ship deceleration changed:', value);
         });
     decelController.__li.setAttribute('title', 'Rate at which the ship decreases speed. Higher values mean faster braking.');
 
@@ -2204,7 +2228,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .name('Turn Rate')
         .onChange((value) => {
             starfieldManager.rotationSpeed = value;
-            console.log('Ship rotation speed changed:', value);
+debug('UTILITY', 'Ship rotation speed changed:', value);
         });
     turnRateController.__li.setAttribute('title', 'Speed at which the ship rotates when turning. Higher values increase maneuverability.');
 
@@ -2218,7 +2242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .onChange((value) => {
             starfieldManager.starCount = value;
             starfieldManager.recreateStarfield();
-            console.log('Starfield density changed:', value);
+debug('UTILITY', 'Starfield density changed:', value);
         });
     densityController.__li.setAttribute('title', 'Number of visible stars in space. Higher values create a denser star field but may impact performance.');
 
@@ -2243,7 +2267,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const velocityController = impulseFolder.add(impulseSettings.velocityKeys, i.toString(), 0, 50)
             .name(`Impulse ${i} Velocity`)
             .onChange((value) => {
-                console.log(`Impulse velocity for key ${i} changed:`, value);
+debug('UTILITY', `Impulse velocity for key ${i} changed:`, value);
             });
         velocityController.__li.setAttribute('title', `Speed setting for Impulse ${i}. Press ${i} key to engage this velocity (in metrons per second).`);
     }
@@ -2289,8 +2313,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Debug logging function for mouse events
     function logMouseEvent(type, event) {
-        if (!debugManager || !debugManager.visible) return;
-        console.debug(`Mouse ${type}:`, {
+        if (!smartDebugManager || !smartDebugManager.config.global.enabled) return;
+        debug('INSPECTION', `Mouse ${type}: ${JSON.stringify({
             button: event.button,
             buttons: event.buttons,
             modifiers: {
@@ -2306,7 +2330,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 enablePan: controls.enablePan,
                 enableZoom: controls.enableZoom
             }
-        });
+        })}`);
     }
 }); 
 
@@ -2318,19 +2342,19 @@ window.WeaponEffectsManager = WeaponEffectsManager;
 function setGlobalSpatialManagers(spatial, collision) {
     window.spatialManager = spatial;
     window.collisionManager = collision;
-    console.log('🔧 Spatial and collision managers made globally available');
+debug('UTILITY', 'Spatial and collision managers made globally available');
 }
 
 // Add projectile debugging console command
 window.checkActiveProjectiles = () => {
     if (!window.activeProjectiles) {
-        console.log('📊 PROJECTILE DEBUG: No activeProjectiles array found');
+debug('INSPECTION', 'PROJECTILE DEBUG: No activeProjectiles array found');
         return;
     }
     
-    console.log(`📊 PROJECTILE DEBUG: ${window.activeProjectiles.length} active projectiles`);
+debug('INSPECTION', `PROJECTILE DEBUG: ${window.activeProjectiles.length} active projectiles`);
     window.activeProjectiles.forEach((projectile, index) => {
         const flightTimeMs = Date.now() - (projectile.launchTimeMs || projectile.launchTime || 0);
-        console.log(`  ${index + 1}. ${projectile.weaponName || 'Unknown'} - Flight time: ${(flightTimeMs/1000).toFixed(1)}s, Active: ${projectile.isActive ? projectile.isActive() : 'N/A'}, Detonated: ${projectile.hasDetonated || false}`);
+        debug('INSPECTION', `  ${index + 1}. ${projectile.weaponName || 'Unknown'} - Flight time: ${(flightTimeMs/1000).toFixed(1)}s, Active: ${projectile.isActive ? projectile.isActive() : 'N/A'}, Detonated: ${projectile.hasDetonated || false}`);
     });
 }; 

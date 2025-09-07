@@ -1,0 +1,72 @@
+{
+    "version": "1.0",
+    "lastModified": "2025-01-15T10:30:00Z",
+    "channels": {
+        "🎯 TARGETING": {
+            "enabled": true,
+            "description": "Target acquisition and management"
+        },
+        "🗺️ STAR_CHARTS": {
+            "enabled": true,
+            "description": "Star Charts navigation and UI"
+        },
+        "🔍 INSPECTION": {
+            "enabled": false,
+            "description": "Click detection and object inspection"
+        },
+        "🗣️ COMMUNICATION": {
+            "enabled": false,
+            "description": "NPC and player communication"
+        },
+        "🔧 UTILITY": {
+            "enabled": false,
+            "description": "System utilities and positioning"
+        },
+        "🤖 AI": {
+            "enabled": false,
+            "description": "Enemy AI and ship behaviors"
+        },
+        "👆 INTERACTION": {
+            "enabled": false,
+            "description": "Touch and mouse interactions"
+        },
+        "🚀 MISSIONS": {
+            "enabled": true,
+            "description": "Mission system operations"
+        },
+        "⚔️ COMBAT": {
+            "enabled": false,
+            "description": "Combat mechanics and AI"
+        },
+        "🧭 NAVIGATION": {
+            "enabled": false,
+            "description": "Navigation and movement systems"
+        },
+        "📡 SCANNER": {
+            "enabled": false,
+            "description": "Long range scanner operations"
+        },
+        "💰 ECONOMY": {
+            "enabled": false,
+            "description": "Trading and economy systems"
+        },
+        "🏗️ INFRASTRUCTURE": {
+            "enabled": false,
+            "description": "Space stations and facilities"
+        },
+        "🧪 TESTING": {
+            "enabled": false,
+            "description": "Test functions and debugging helpers"
+        },
+        "🔴 P1": {
+            "enabled": true,
+            "description": "HIGH PRIORITY - Critical debugging",
+            "alwaysEnabled": true
+        }
+    },
+    "global": {
+        "enabled": true,
+        "timestamp": false,
+        "maxHistory": 1000
+    }
+}
