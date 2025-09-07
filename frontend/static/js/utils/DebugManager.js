@@ -30,6 +30,7 @@ export class SmartDebugManager {
             'COMBAT': '⚔️',
             'NAVIGATION': '🧭',
             'SCANNER': '📡',
+            'RADAR': '📡',
             'ECONOMY': '💰',
             'MONEY': '💵',
             'INFRASTRUCTURE': '🏗️',
@@ -114,6 +115,10 @@ export class SmartDebugManager {
                 "SCANNER": {
                     enabled: false,
                     description: "Long range scanner operations"
+                },
+                "RADAR": {
+                    enabled: false,
+                    description: "Radar and proximity detector systems"
                 },
                 "ECONOMY": {
                     enabled: false,

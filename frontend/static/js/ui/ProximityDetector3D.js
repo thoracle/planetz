@@ -122,17 +122,26 @@ export class ProximityDetector3D {
      */
     logControlled(level, message, data = null, forceLog = false) {
         const now = Date.now();
-        
+
+        // Map console levels to debug channels
+        const channelMap = {
+            'log': 'RADAR',
+            'warn': 'P1',
+            'error': 'P1'
+        };
+
+        const channel = channelMap[level] || 'RADAR';
+
         // Always log errors and forced messages
         if (level === 'error' || level === 'warn' || forceLog) {
-            console[level](`🎯 ProximityDetector3D: ${message}`, data || '');
+            debug(channel, `ProximityDetector3D: ${message}`, data || '');
             if (level === 'error') this.sessionStats.errors++;
             return;
         }
-        
+
         // Throttle debug messages
         if (this.debugMode && (now - this.lastLogTime > this.logInterval)) {
-            console[level](`🎯 ProximityDetector3D: ${message}`, data || '');
+            debug(channel, `ProximityDetector3D: ${message}`, data || '');
             this.lastLogTime = now;
         }
     }

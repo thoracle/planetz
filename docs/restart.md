@@ -401,6 +401,7 @@ This project uses a **smart debug logging system** instead of `console.log()`. A
 | `COMBAT` | ⚔️ | Combat mechanics and AI | ❌ Disabled |
 | `NAVIGATION` | 🧭 | Navigation and movement systems | ❌ Disabled |
 | `SCANNER` | 📡 | Long range scanner operations | ❌ Disabled |
+| `RADAR` | 📡 | Radar and proximity detector systems | ❌ Disabled |
 | `ECONOMY` | 💰 | Trading and economy systems | ❌ Disabled |
 | `MONEY` | 💵 | Credits and money transactions | ✅ Enabled |
 | `INFRASTRUCTURE` | 🏗️ | Space stations and facilities | ❌ Disabled |
@@ -458,7 +459,8 @@ debugStats()
 - **🚀 MISSIONS**: Mission state changes, objectives, rewards
 - **⚔️ COMBAT**: Weapon firing, damage calculation, AI combat
 - **🧭 NAVIGATION**: Ship movement, docking, autopilot
-- **📡 SCANNER**: Long-range scanner, radar systems
+- **📡 SCANNER**: Long-range scanner operations
+- **📡 RADAR**: Radar and proximity detector systems
 - **💰 ECONOMY**: Trading, cargo, station services
 - **💵 MONEY**: Credit transactions, purchases, payments
 - **🏗️ INFRASTRUCTURE**: Station generation, docking ports
