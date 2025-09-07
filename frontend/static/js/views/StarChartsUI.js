@@ -892,9 +892,14 @@ export class StarChartsUI {
             return nearestRing;
         };
         const placePolar = (obj) => {
+            console.log(`🎯 placePolar: Processing ${obj.name} (${obj.type})`);
+
             // Prefer live angle if available by matching body name to SSM
             const liveAngle = this.getLiveAngleDegByName(obj.name);
+            console.log(`🎯 placePolar: liveAngle for ${obj.name} = ${liveAngle}`);
+
             if (typeof liveAngle === 'number') {
+                console.log(`✅ Using live angle ${liveAngle}° for ${obj.name}`);
                 // Snap to nearest ring or force beacon ring
                 const isBeacon = (obj.type === 'navigation_beacon');
                 const isStation = (obj.type === 'space_station');
@@ -903,8 +908,11 @@ export class StarChartsUI {
                 const rad = liveAngle * Math.PI / 180;
                 const x = ring * Math.cos(rad);
                 const y = ring * Math.sin(rad);
+                console.log(`📍 Final position for ${obj.name}: (${x.toFixed(1)}, ${y.toFixed(1)}) using ring ${ring}`);
                 this.displayModel.positions.set(obj.id, { x, y });
                 return;
+            } else {
+                console.log(`❌ No live angle for ${obj.name}, falling back to static coordinates`);
             }
             // Handle static/polar data
             const isBeacon = (obj.type === 'navigation_beacon');
@@ -1156,14 +1164,24 @@ export class StarChartsUI {
             const pos = found.body.position;
             return (Math.atan2(pos.z, pos.x) * 180) / Math.PI;
         }
-        // Fallback for navigation beacons (exist in StarfieldManager)
+            // Fallback for navigation beacons (exist in StarfieldManager)
         try {
             const beacons = this.viewManager?.starfieldManager?.navigationBeacons || [];
+            console.log(`🔍 getLiveAngleDegByName: Looking for "${name}" in ${beacons.length} beacons`);
             const b = beacons.find(bc => (bc.userData?.name || 'Navigation Beacon') === name);
-            if (b && b.position) {
-                return (Math.atan2(b.position.z, b.position.x) * 180) / Math.PI;
+            if (b) {
+                console.log(`✅ Found beacon "${name}" at position (${b.position.x.toFixed(1)}, ${b.position.y.toFixed(1)}, ${b.position.z.toFixed(1)})`);
+                console.log(`📐 Calculated angle: ${(Math.atan2(b.position.y, b.position.x) * 180) / Math.PI)}°`);
+                return (Math.atan2(b.position.y, b.position.x) * 180) / Math.PI;
+            } else {
+                console.log(`❌ Beacon "${name}" not found. Available beacons:`);
+                beacons.forEach((bc, i) => {
+                    console.log(`  ${i+1}. "${bc.userData?.name || 'Navigation Beacon'}"`);
+                });
             }
-        } catch (e) {}
+        } catch (e) {
+            console.error('❌ Error in beacon angle lookup:', e);
+        }
         return null;
     }
 
@@ -1173,7 +1191,7 @@ export class StarChartsUI {
             const beacons = this.viewManager?.starfieldManager?.navigationBeacons || [];
             const b = beacons.find(bc => (bc.userData?.name || 'Navigation Beacon') === name);
             if (b && b.position) {
-                return (Math.atan2(b.position.z, b.position.x) * 180) / Math.PI;
+                return (Math.atan2(b.position.y, b.position.x) * 180) / Math.PI;
             }
         } catch (e) {}
         return null;
