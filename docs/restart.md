@@ -374,6 +374,137 @@ unknown: '#44ffff'   // Cyan for unknown
 
 ---
 
+## 🔧 Debug System - Essential for New Team Members
+
+### **🚨 IMPORTANT: Use `debug()` instead of `console.log()`**
+
+This project uses a **smart debug logging system** instead of `console.log()`. All debug output goes through the `debug(channel, message)` function which provides:
+
+- ✅ **Channel-based filtering** - Toggle specific debug categories on/off
+- ✅ **Icon-coded messages** - Visual categorization of log types
+- ✅ **Performance optimization** - Disabled channels don't generate output
+- ✅ **Runtime control** - Enable/disable channels via browser console
+- ✅ **Persistent settings** - Channel states saved in localStorage
+
+### **Available Debug Channels**
+
+| Channel | Icon | Description | Default State |
+|---------|------|-------------|---------------|
+| `TARGETING` | 🎯 | Target acquisition and management | ✅ Enabled |
+| `STAR_CHARTS` | 🗺️ | Star Charts navigation and UI | ✅ Enabled |
+| `INSPECTION` | 🔍 | Click detection and object inspection | ❌ Disabled |
+| `COMMUNICATION` | 🗣️ | NPC and player communication | ❌ Disabled |
+| `UTILITY` | 🔧 | System utilities and positioning | ❌ Disabled |
+| `AI` | 🤖 | Enemy AI and ship behaviors | ❌ Disabled |
+| `INTERACTION` | 👆 | Touch and mouse interactions | ❌ Disabled |
+| `MISSIONS` | 🚀 | Mission system operations | ✅ Enabled |
+| `COMBAT` | ⚔️ | Combat mechanics and AI | ❌ Disabled |
+| `NAVIGATION` | 🧭 | Navigation and movement systems | ❌ Disabled |
+| `SCANNER` | 📡 | Long range scanner operations | ❌ Disabled |
+| `ECONOMY` | 💰 | Trading and economy systems | ❌ Disabled |
+| `MONEY` | 💵 | Credits and money transactions | ✅ Enabled |
+| `INFRASTRUCTURE` | 🏗️ | Space stations and facilities | ❌ Disabled |
+| `TESTING` | 🧪 | Test functions and debugging helpers | ❌ Disabled |
+| `P1` | 🔴 | HIGH PRIORITY - Critical debugging | ✅ Always Enabled |
+
+### **How to Use Debug System**
+
+#### **Basic Usage:**
+```javascript
+// ✅ DO THIS - Use debug() with appropriate channel
+debug('TARGETING', 'Target acquired:', target.name);
+debug('MONEY', 'PlayerCredits: Credits updated to', newBalance);
+debug('P1', 'CRITICAL: System error detected!');
+
+// ❌ DON'T DO THIS - Avoid console.log()
+console.log('This will be ignored by debug system');
+
+// ❌ DON'T DO THIS - Don't embed icons in message text
+debug('MONEY', '💰 PlayerCredits: Credits updated:', newBalance);
+```
+
+#### **Browser Console Commands:**
+```javascript
+// View all available channels
+debugList()
+
+// Toggle specific channels
+debugToggle('AI')      // Enable/disable AI debugging
+debugToggle('COMBAT')  // Enable/disable combat debugging
+
+// Check current states
+debugStates()
+
+// Enable/disable multiple channels
+debugEnable('TARGETING', 'COMBAT')
+debugDisable('INSPECTION')
+
+// Reset to defaults
+debugReset()
+
+// View usage statistics
+debugStats()
+```
+
+#### **Channel Selection Guidelines:**
+
+- **🎯 TARGETING**: Weapon targeting, lock-on, target cycling
+- **🗺️ STAR_CHARTS**: Star chart navigation, discovery, waypoints
+- **🔍 INSPECTION**: Click detection, object selection, UI interactions
+- **🗣️ COMMUNICATION**: NPC dialogue, radio messages, faction comms
+- **🔧 UTILITY**: System initialization, positioning, cleanup
+- **🤖 AI**: Enemy ship behaviors, flocking, pathfinding
+- **👆 INTERACTION**: Mouse/touch events, keyboard input
+- **🚀 MISSIONS**: Mission state changes, objectives, rewards
+- **⚔️ COMBAT**: Weapon firing, damage calculation, AI combat
+- **🧭 NAVIGATION**: Ship movement, docking, autopilot
+- **📡 SCANNER**: Long-range scanner, radar systems
+- **💰 ECONOMY**: Trading, cargo, station services
+- **💵 MONEY**: Credit transactions, purchases, payments
+- **🏗️ INFRASTRUCTURE**: Station generation, docking ports
+- **🧪 TESTING**: Unit tests, debug helpers, dev tools
+- **🔴 P1**: Critical errors, system failures, important events
+
+#### **Why This System Exists:**
+
+1. **Console Spam Reduction**: Only see debug messages you care about
+2. **Performance**: Disabled channels don't generate output overhead
+3. **Organization**: Related messages grouped by category and icon
+4. **Persistence**: Settings remembered between browser sessions
+5. **Runtime Control**: Change debug levels without code changes
+
+#### **Migration from console.log():**
+
+When you see `console.log()` in existing code, replace it with `debug()` using the most appropriate channel:
+
+```javascript
+// OLD CODE - Avoid this
+console.log('Player credits updated:', credits);
+console.log('🎯 Target acquired:', target.name);
+
+// NEW CODE - Use this (SmartDebugManager adds icons automatically)
+debug('MONEY', 'PlayerCredits: Credits updated to', credits);
+debug('TARGETING', 'Target acquired:', target.name);
+```
+
+**Output Format:**
+```
+💵 MONEY: PlayerCredits: Credits updated to 50000
+🎯 TARGETING: Target acquired: Enemy Ship
+🔴 P1: CRITICAL: System error detected!
+```
+
+### **For New Team Members:**
+
+1. **Always use `debug()` instead of `console.log()`**
+2. **Choose the most specific channel available**
+3. **Use `P1` channel for critical errors/warnings**
+4. **NEVER embed icons in debug message text - SmartDebugManager adds them automatically**
+5. **Test your debug statements by toggling channels on/off**
+6. **Use descriptive messages that include relevant data**
+
+---
+
 ## 📝 Maintenance Notes
 
 **To update this file's dynamic content:**
