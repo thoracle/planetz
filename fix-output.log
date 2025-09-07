@@ -1,0 +1,424 @@
+🔧 COMPREHENSIVE DEBUG IMPORT PATH FIXER
+=======================================
+JS Root: /Users/retroverse/Desktop/LLM/planetz/frontend/static/js
+Debug file: /Users/retroverse/Desktop/LLM/planetz/frontend/static/js/debug.js
+
+🔍 Scanning for files with debug.js imports...
+
+📁 Processing ui/ directory...
+  Found import: '../debug.js' in ui/CardInventoryUI.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/CardRewardAnimator.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/CommodityExchange.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/CommunicationHUD.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/DamageControlHUD.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/DamageControlInterface.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/DockingInterface.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/DockingModal.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/HelpInterface.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/MissionBoard.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/MissionCompletionUI.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/MissionEventHandler.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/MissionNotificationHandler.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/MissionStatusHUD.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/ProximityDetector3D.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/RadarHUD.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/SimplifiedDamageControl.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/StationRepairInterface.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/SubspaceRadio.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/WeaponHUD.js
+    ✅ Already correct: '../debug.js'
+  ✅ ui/ directory: 0 fixes in 20 files
+
+📁 Processing views/ directory...
+  Found import: '../debug.js' in views/GalacticChart.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/LongRangeScanner.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/NavigationSystemManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/StarChartsManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/StarChartsTargetComputerIntegration.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/StarChartsUI.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/StarfieldAudioManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/StarfieldManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/StarfieldRenderer.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/TargetComputerManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/ViewManager.js
+    ✅ Already correct: '../debug.js'
+  ✅ views/ directory: 0 fixes in 11 files
+
+📁 Processing ship/ directory...
+  Found import: '../debug.js' in ship/AutoRepairSystem.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/CardInventory.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/CardSystemIntegration.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/DockingSystemManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/EnemyShip.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/ImpulseEnginesTest.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/PhysicsDockingManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/ShieldsTest.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/Ship.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/ShipIntegrationTest.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/SimplifiedEnergyTest.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/System.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/SystemTest.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/WarpDriveIntegrationTest.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/WeaponSyncManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../../debug.js' in ship/systems/CargoHold.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/CargoHoldManager.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/EnergyReactor.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/GalacticChartSystem.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/HullPlating.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/ImpulseEngines.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/LongRangeScanner.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/RadarSystem.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/ShieldGenerator.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/Shields.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/SimpleProjectileWeapon.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/StarChartsSystem.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/SubspaceRadioSystem.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/TargetComputer.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/WarpDrive.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/WeaponCard.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/WeaponEffectsManager.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/WeaponSlot.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/WeaponSystem.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/WeaponSystemCore.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/Weapons.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../../debug.js' in ship/systems/services/HitScanService.js
+    ✅ Already correct: '../../../debug.js'
+  Found import: '../../../debug.js' in ship/systems/services/SimpleProjectileService.js
+    ✅ Already correct: '../../../debug.js'
+  ✅ ship/ directory: 0 fixes in 47 files
+
+📁 Processing ai/ directory...
+  Found import: '../debug.js' in ai/AIDebugVisualizer.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/AIGameIntegration.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/AIPerformanceManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/AIStateMachine.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/AmbientShipManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/CombatBehavior.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/EnemyAI.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/EnemyAIManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/FlockingManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/ThreatAssessment.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/WeaponTargeting.js
+    ✅ Already correct: '../debug.js'
+  ✅ ai/ directory: 0 fixes in 14 files
+
+📁 Processing services/ directory...
+  Found import: '../debug.js' in services/MissionAPIService.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in services/MissionEventService.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in services/TargetingService.js
+    ✅ Already correct: '../debug.js'
+  ✅ services/ directory: 0 fixes in 3 files
+
+📁 Processing utils/ directory...
+  Found import: '../debug.js' in utils/ErrorReporter.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in utils/PlayerCredits.js
+    ✅ Already correct: '../debug.js'
+  ✅ utils/ directory: 0 fixes in 4 files
+
+📁 Processing root js/ directory...
+  Found import: './debug.js' in PhysicsManager.js
+    ✅ Already correct: './debug.js'
+  Found import: './debug.js' in SectorNavigation.js
+    ✅ Already correct: './debug.js'
+  Found import: './debug.js' in SimpleCollisionManager.js
+    ✅ Already correct: './debug.js'
+  Found import: './debug.js' in SimpleDockingManager.js
+    ✅ Already correct: './debug.js'
+  Found import: './debug.js' in SolarSystemManager.js
+    ✅ Already correct: './debug.js'
+  Found import: './debug.js' in SpatialManager.js
+    ✅ Already correct: './debug.js'
+  Found import: './debug.js' in WarpDriveAdapter.js
+    ✅ Already correct: './debug.js'
+  Found import: './debug.js' in WarpEffects.js
+    ✅ Already correct: './debug.js'
+  Found import: '../debug.js' in ai/AIDebugVisualizer.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/AIGameIntegration.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/AIPerformanceManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/AIStateMachine.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/AmbientShipManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/CombatBehavior.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/EnemyAI.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/EnemyAIManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/FlockingManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/ThreatAssessment.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ai/WeaponTargeting.js
+    ✅ Already correct: '../debug.js'
+  Found import: './debug.js' in app.js
+    ✅ Already correct: './debug.js'
+  Found import: './debug.js' in cache-test.js
+    ✅ Already correct: './debug.js'
+  Found import: './debug.js' in chunkManager.js
+    ✅ Already correct: './debug.js'
+  Found import: '../debug.js' in services/MissionAPIService.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in services/MissionEventService.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in services/TargetingService.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/AutoRepairSystem.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/CardInventory.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/CardSystemIntegration.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/DockingSystemManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/EnemyShip.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/ImpulseEnginesTest.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/PhysicsDockingManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/ShieldsTest.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/Ship.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/ShipIntegrationTest.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/SimplifiedEnergyTest.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/System.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/SystemTest.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/WarpDriveIntegrationTest.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ship/WeaponSyncManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../../debug.js' in ship/systems/CargoHold.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/CargoHoldManager.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/EnergyReactor.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/GalacticChartSystem.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/HullPlating.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/ImpulseEngines.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/LongRangeScanner.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/RadarSystem.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/ShieldGenerator.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/Shields.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/SimpleProjectileWeapon.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/StarChartsSystem.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/SubspaceRadioSystem.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/TargetComputer.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/WarpDrive.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/WeaponCard.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/WeaponEffectsManager.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/WeaponSlot.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/WeaponSystem.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/WeaponSystemCore.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../debug.js' in ship/systems/Weapons.js
+    ✅ Already correct: '../../debug.js'
+  Found import: '../../../debug.js' in ship/systems/services/HitScanService.js
+    ✅ Already correct: '../../../debug.js'
+  Found import: '../../../debug.js' in ship/systems/services/SimpleProjectileService.js
+    ✅ Already correct: '../../../debug.js'
+  Found import: '../debug.js' in tests/console_commands.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in tests/debug_proximity_detector.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in tests/loadTests.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in tests/minimal_test.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in tests/proximity_detector_3d_test.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in tests/radar_card_test.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in tests/radar_orientation_fix_test.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in tests/radar_test.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in tests/run_tests.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in tests/simple_test_loader.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in tests/test_object_visibility_fix.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in tests/test_player_position_fix.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in tests/test_proximity_detector_fixes.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/CardInventoryUI.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/CardRewardAnimator.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/CommodityExchange.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/CommunicationHUD.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/DamageControlHUD.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/DamageControlInterface.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/DockingInterface.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/DockingModal.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/HelpInterface.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/MissionBoard.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/MissionCompletionUI.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/MissionEventHandler.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/MissionNotificationHandler.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/MissionStatusHUD.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/ProximityDetector3D.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/RadarHUD.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/SimplifiedDamageControl.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/StationRepairInterface.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/SubspaceRadio.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in ui/WeaponHUD.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in utils/ErrorReporter.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in utils/PlayerCredits.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/GalacticChart.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/LongRangeScanner.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/NavigationSystemManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/StarChartsManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/StarChartsTargetComputerIntegration.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/StarChartsUI.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/StarfieldAudioManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/StarfieldManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/StarfieldRenderer.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/TargetComputerManager.js
+    ✅ Already correct: '../debug.js'
+  Found import: '../debug.js' in views/ViewManager.js
+    ✅ Already correct: '../debug.js'
+  ✅ root js/ directory: 0 fixes in 145 files
+
+=======================================
+🎯 FIX SUMMARY
+=======================================
+📁 Files modified: 0
+🔧 Import paths fixed: 0
+
+✅ No incorrect debug.js imports found!
+=======================================

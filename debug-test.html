@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Debug System Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .output { background: #000; color: #0f0; padding: 10px; border-radius: 4px; white-space: pre-wrap; }
+        button { margin: 5px; padding: 8px 16px; }
+    </style>
+</head>
+<body>
+    <h1>Smart Debug System Test</h1>
+
+    <div>
+        <button onclick="testDebugSystem()">Test Debug System</button>
+        <button onclick="testChannelToggle()">Toggle Testing Channel</button>
+        <button onclick="showChannelStates()">Show Channel States</button>
+        <button onclick="showStats()">Show Statistics</button>
+    </div>
+
+    <div id="output" class="output">Console output will appear here...</div>
+
+    <script type="module">
+        // Import the SmartDebugManager
+        import { SmartDebugManager } from './frontend/static/js/utils/DebugManager.js';
+
+        // Create global debug manager
+        window.smartDebugManager = new SmartDebugManager();
+
+        // Set up global debug function
+        window.debug = (channel, message) => {
+            if (window.smartDebugManager) {
+                window.smartDebugManager.debug(channel, message);
+                // Also log to our test output
+                logToOutput(`${channel}: ${message}`);
+            } else {
+                console.log(`${channel}: ${message}`);
+            }
+        };
+
+        // Function to log to our test output div
+        function logToOutput(message) {
+            const output = document.getElementById('output');
+            output.textContent += '\n' + message;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Override console.log to also show in our output
+        const originalConsoleLog = console.log;
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            logToOutput(args.join(' '));
+        };
+
+        // Test functions
+        window.testDebugSystem = function() {
+            console.log('\n=== Testing Smart Debug System ===');
+            debug('🎯 TARGETING', 'Target system initialized');
+            debug('🚀 MISSIONS', 'Mission system ready');
+            debug('🔴 P1', 'HIGH PRIORITY: Critical test');
+            debug('🧪 TESTING', 'This should be disabled by default');
+            debug('⚔️ COMBAT', 'Combat system test');
+            debug('🗺️ STAR_CHARTS', 'Star charts test');
+        };
+
+        window.testChannelToggle = function() {
+            console.log('\n=== Testing Channel Toggle ===');
+            const isEnabled = window.smartDebugManager.channels['🧪 TESTING']?.enabled;
+            window.smartDebugManager.toggleChannel('🧪 TESTING', !isEnabled);
+            debug('🧪 TESTING', 'Testing channel toggled');
+        };
+
+        window.showChannelStates = function() {
+            console.log('\n=== Channel States ===');
+            const states = window.smartDebugManager.getChannelStates();
+            Object.entries(states).forEach(([channel, enabled]) => {
+                console.log(`${enabled ? '✅' : '❌'} ${channel}`);
+            });
+        };
+
+        window.showStats = function() {
+            console.log('\n=== Debug Statistics ===');
+            const stats = window.smartDebugManager.getChannelStats();
+            Object.entries(stats).forEach(([channel, count]) => {
+                console.log(`${channel}: ${count} messages`);
+            });
+        };
+
+        // Initialize
+        console.log('Smart Debug System Test Page Loaded');
+        console.log('Use browser console or buttons above to test the system');
+    </script>
+</body>
+</html>

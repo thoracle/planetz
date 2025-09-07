@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Debug System Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007acc;
+            padding-bottom: 10px;
+        }
+        .channel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .channel-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: #fafafa;
+        }
+        .channel-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .channel-icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        .channel-name {
+            font-weight: bold;
+            color: #333;
+        }
+        .channel-status {
+            margin-left: auto;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-enabled {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-disabled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .code-example {
+            background: #f8f9fa;
+            border-left: 4px solid #007acc;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .console-output {
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .control-panel {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005aa3;
+        }
+        .usage-examples {
+            margin: 20px 0;
+        }
+        .example-section {
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Smart Debug Logging System</h1>
+
+        <div class="control-panel">
+            <h3>Browser Console Commands</h3>
+            <p>Use these commands in your browser's developer console:</p>
+            <div class="code-example">
+// List all available channels
+debugList()
+
+// Toggle channels on/off
+debugToggle('🎯 TARGETING', false)  // Disable targeting logs
+debugToggle('🧪 TESTING', true)     // Enable testing logs
+
+// Quick enable/disable
+debugEnable('⚔️ COMBAT')
+debugDisable('🔍 INSPECTION')
+
+// View statistics
+debugStats()
+
+// Reset to defaults
+debugReset()
+            </div>
+        </div>
+
+        <h2>📋 Available Channels</h2>
+        <div class="channel-grid" id="channelGrid">
+            <!-- Channels will be populated by JavaScript -->
+        </div>
+
+        <div class="usage-examples">
+            <h2>💡 Usage Examples</h2>
+
+            <div class="example-section">
+                <h3>Basic Usage</h3>
+                <div class="code-example">
+// Instead of console.log
+debug('🎯 TARGETING', 'Target acquired successfully');
+debug('🚀 MISSIONS', 'Mission objectives updated');
+debug('🔴 P1', 'CRITICAL: System failure detected');
+                </div>
+            </div>
+
+            <div class="example-section">
+                <h3>Replacing Existing Console Logs</h3>
+                <div class="code-example">
+// Before (creates spam)
+console.log('🎯 TargetComputerManager initialized');
+console.log('🎯 Targets detected while monitoring');
+
+// After (channel-based, controllable)
+debug('🎯 TARGETING', 'TargetComputerManager initialized');
+debug('🎯 TARGETING', 'Targets detected while monitoring');
+                </div>
+            </div>
+
+            <div class="example-section">
+                <h3>P1 High Priority Channel</h3>
+                <div class="code-example">
+// Always visible, even when other channels are disabled
+debug('🔴 P1', 'CRITICAL: Mission system failed to initialize');
+debug('🔴 P1', 'HIGH PRIORITY: Physics collision detection failed');
+                </div>
+            </div>
+        </div>
+
+        <h2>🎮 Console Output Demo</h2>
+        <div class="console-output" id="consoleOutput">
+🔧 DebugManager: Loaded configuration from localStorage
+🎯 TARGETING: SmartDebugManager initialized successfully
+🚀 MISSIONS: Smart debug logging system ready
+🔴 P1: HIGH PRIORITY: Debug system operational
+🧪 TESTING: This should be disabled by default (not shown - channel disabled)
+        </div>
+
+        <script>
+            // Mock debug system for demo
+            const mockChannels = {
+                "🎯 TARGETING": { enabled: true, description: "Target acquisition and management" },
+                "🗺️ STAR_CHARTS": { enabled: true, description: "Star Charts navigation and UI" },
+                "🔍 INSPECTION": { enabled: false, description: "Click detection and object inspection" },
+                "🗣️ COMMUNICATION": { enabled: false, description: "NPC and player communication" },
+                "🔧 UTILITY": { enabled: false, description: "System utilities and positioning" },
+                "🤖 AI": { enabled: false, description: "Enemy AI and ship behaviors" },
+                "👆 INTERACTION": { enabled: false, description: "Touch and mouse interactions" },
+                "🚀 MISSIONS": { enabled: true, description: "Mission system operations" },
+                "⚔️ COMBAT": { enabled: false, description: "Combat mechanics and AI" },
+                "🧭 NAVIGATION": { enabled: false, description: "Navigation and movement systems" },
+                "📡 SCANNER": { enabled: false, description: "Long range scanner operations" },
+                "💰 ECONOMY": { enabled: false, description: "Trading and economy systems" },
+                "🏗️ INFRASTRUCTURE": { enabled: false, description: "Space stations and facilities" },
+                "🧪 TESTING": { enabled: false, description: "Test functions and debugging helpers" },
+                "🔴 P1": { enabled: true, description: "HIGH PRIORITY - Critical debugging", alwaysEnabled: true }
+            };
+
+            function populateChannels() {
+                const grid = document.getElementById('channelGrid');
+
+                Object.entries(mockChannels).forEach(([channel, config]) => {
+                    const card = document.createElement('div');
+                    card.className = 'channel-card';
+
+                    const header = document.createElement('div');
+                    header.className = 'channel-header';
+
+                    const icon = document.createElement('span');
+                    icon.className = 'channel-icon';
+                    icon.textContent = channel.split(' ')[0];
+
+                    const name = document.createElement('span');
+                    name.className = 'channel-name';
+                    name.textContent = channel.split(' ').slice(1).join(' ');
+
+                    const status = document.createElement('span');
+                    status.className = `channel-status ${config.enabled ? 'status-enabled' : 'status-disabled'}`;
+                    status.textContent = config.enabled ? 'ENABLED' : 'DISABLED';
+
+                    header.appendChild(icon);
+                    header.appendChild(name);
+                    header.appendChild(status);
+
+                    const description = document.createElement('div');
+                    description.textContent = config.description;
+                    description.style.fontSize = '14px';
+                    description.style.color = '#666';
+                    description.style.marginTop = '5px';
+
+                    card.appendChild(header);
+                    card.appendChild(description);
+                    grid.appendChild(card);
+                });
+            }
+
+            // Populate channels when page loads
+            document.addEventListener('DOMContentLoaded', populateChannels);
+        </script>
+    </div>
+</body>
+</html>
