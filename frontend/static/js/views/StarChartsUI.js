@@ -1171,7 +1171,7 @@ export class StarChartsUI {
             const b = beacons.find(bc => (bc.userData?.name || 'Navigation Beacon') === name);
             if (b) {
                 console.log(`✅ Found beacon "${name}" at position (${b.position.x.toFixed(1)}, ${b.position.y.toFixed(1)}, ${b.position.z.toFixed(1)})`);
-                console.log(`📐 Calculated angle: ${(Math.atan2(b.position.y, b.position.x) * 180) / Math.PI)}°`);
+                console.log(`📐 Calculated angle: ${(Math.atan2(b.position.y, b.position.x) * 180) / Math.PI}°`);
                 return (Math.atan2(b.position.y, b.position.x) * 180) / Math.PI;
             } else {
                 console.log(`❌ Beacon "${name}" not found. Available beacons:`);
