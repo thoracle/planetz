@@ -254,6 +254,7 @@ unknown: '#44ffff'   // Cyan for unknown
 - **Star Charts Integration**: Completed full integration with simplified, robust target management
 - **Wireframe Update Fix**: Fixed wireframe synchronization when selecting targets from Star Charts
 - **Navigation Beacon Positioning Fix**: Fixed beacon angle calculation to properly display all 8 beacons in Star Charts
+- **Star Chart Hit Box Improvements**: Increased clickable areas around objects for better usability when zoomed out
 
 **Next Steps**: Content creation, advanced gameplay mechanics, multiplayer foundation.
 
@@ -335,6 +336,41 @@ unknown: '#44ffff'   // Cyan for unknown
 
 **Before Fix**: Multiple beacons calculated to same angles (0° or 180°) causing overlaps
 **After Fix**: Each beacon gets unique angle for proper ring distribution
+
+---
+
+### **Star Chart Hit Box Improvements** ✅ **COMPLETED**
+**Issue**: Small objects on the star chart were difficult to click when zoomed way out, requiring pixel-perfect accuracy.
+
+**Status**: ✅ **COMPLETED** - Added larger invisible hit boxes for improved clickability
+
+**Root Cause**: Visual elements were small but clickable areas matched their visual size exactly, making it frustrating to click objects when zoomed out.
+
+**Solution**: Implemented larger invisible hit boxes that are 2-3x larger than visual elements:
+- Added `getObjectHitBoxRadius()` method to calculate larger hit box sizes
+- Created invisible SVG elements positioned behind visual elements
+- Hit boxes scale with zoom level for consistent clickability
+- Added proper CSS styling with `starchart-hitbox` class
+
+**Technical Details**:
+- **Files Modified**:
+  - `frontend/static/js/views/StarChartsUI.js` - Added hit box rendering logic
+  - `frontend/static/css/views.css` - Added `.starchart-hitbox` styling
+- **Hit Box Sizes** (2x visual size minimum):
+  - **Stars**: 20px minimum radius (2x visual)
+  - **Planets**: 12px minimum radius (2x visual)
+  - **Moons**: 10px minimum radius (2x visual)
+  - **Space Stations**: 8px minimum radius (2x visual)
+  - **Navigation Beacons**: 6px minimum radius (2x visual)
+- **Implementation Features**:
+  - Invisible but clickable (transparent fill/stroke)
+  - Proper layering (hit boxes behind visual elements)
+  - Zoom-level scaling for consistent UX
+  - Different shapes for different object types
+
+**Impact**: Dramatically improves user experience when navigating star charts, especially when zoomed out. Users can now easily click on small objects without requiring pixel-perfect accuracy.
+
+**Testing**: Verified that hit boxes work at all zoom levels and don't interfere with visual appearance.
 
 ---
 
