@@ -135,6 +135,7 @@ debug('UTILITY', `🗺️  Discovery event: ${objectId}`, discoveryData);
      */
     handleTargetSelection(objectId) {
 debug('TARGETING', `🎯 Target selection from Star Charts: ${objectId}`);
+debug('TARGETING', `🎯 TARGET_SWITCH: Starting from Star Charts to ${objectId}`);
 
         // Temporarily pause synchronization to prevent interference
         this.pauseSync = true;
@@ -555,10 +556,12 @@ debug('TARGETING', 'Activating Target Computer for manual selection');
 
         if (success) {
 debug('TARGETING', `🎯 Successfully set target: ${objectId}`);
-            
+debug('TARGETING', `🎯 TARGET_SWITCH: Target set successfully, updating display`);
+
             // Force a display update to ensure HUD reflects the change
             if (this.targetComputer.updateTargetDisplay) {
                 this.targetComputer.updateTargetDisplay();
+                debug('TARGETING', `🎯 TARGET_SWITCH: Display update called`);
             }
             
             if (enhancedData) {

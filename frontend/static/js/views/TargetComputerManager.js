@@ -1982,14 +1982,23 @@ export class TargetComputerManager {
 
             // Update wireframe color based on diplomacy using consolidated logic
             const diplomacy = this.getTargetDiplomacy(currentTargetData);
+            debug('TARGETING', `🎯 TARGET_SWITCH: Target diplomacy: ${diplomacy} for ${currentTargetData?.name || 'unknown'}`);
+            debug('INSPECTION', `🔍 Target diplomacy details - type: ${currentTargetData?.type}, faction: ${currentTargetData?.faction}, ship.diplomacy: ${currentTargetData?.ship?.diplomacy}`);
+
             if (diplomacy === 'enemy') {
                 wireframeColor = 0xff3333; // Enemy red
+                debug('INSPECTION', `🔍 Setting wireframe color to ENEMY RED (0xff3333)`);
             } else if (diplomacy === 'neutral') {
                 wireframeColor = 0xffff00; // Neutral yellow
+                debug('INSPECTION', `🔍 Setting wireframe color to NEUTRAL YELLOW (0xffff00)`);
             } else if (diplomacy === 'friendly') {
                 wireframeColor = 0x00ff41; // Friendly green
+                debug('INSPECTION', `🔍 Setting wireframe color to FRIENDLY GREEN (0x00ff41)`);
             } else if (info?.type === 'star') {
                 wireframeColor = 0xffff00; // Stars are yellow
+                debug('INSPECTION', `🔍 Setting wireframe color to STAR YELLOW (0xffff00)`);
+            } else {
+                debug('INSPECTION', `🔍 Keeping default wireframe color (0x808080) for diplomacy: ${diplomacy}`);
             }
 
             const wireframeMaterial = new this.THREE.LineBasicMaterial({
@@ -2046,9 +2055,12 @@ export class TargetComputerManager {
 
             // Add sub-target indicators only for enemy ships
             // Note: isEnemyShip is already determined above in the wireframe color logic
+            debug('TARGETING', `🎯 TARGET_SWITCH: Subsystem indicators - isEnemyShip: ${isEnemyShip}, target type: ${currentTargetData?.type || 'unknown'}`);
             if (isEnemyShip) {
+                debug('INSPECTION', `🔍 Creating subsystem indicators for enemy ship`);
                 this.createSubTargetIndicators(radius, wireframeColor);
             } else {
+                debug('INSPECTION', `🔍 Clearing subsystem indicators (non-enemy target)`);
                 this.createSubTargetIndicators(0, 0); // clears existing indicators
             }
 
@@ -2058,7 +2070,10 @@ export class TargetComputerManager {
             this.wireframeCamera.position.z = Math.max(radius * 3, 3);
             this.targetWireframe.rotation.set(0.5, 0, 0.3);
 
+            debug('TARGETING', `🎯 TARGET_SWITCH: Wireframe creation completed for ${currentTargetData?.name || 'unknown target'}`);
+
         } catch (error) {
+            debug('TARGETING', `🎯 TARGET_SWITCH: Error creating target wireframe: ${error.message}`);
             console.error('Error creating target wireframe:', error);
         }
     }
@@ -2126,9 +2141,10 @@ export class TargetComputerManager {
      * Update target display information
      */
     updateTargetDisplay() {
-        // console.log(`🎯 DEBUG: updateTargetDisplay() called - enabled: ${this.targetComputerEnabled}, currentTarget: ${this.currentTarget?.name || 'none'}, targetIndex: ${this.targetIndex}`); // Reduced debug spam
-        
+        debug('TARGETING', `🎯 TARGET_SWITCH: updateTargetDisplay() called - target: ${this.currentTarget?.name || 'none'}, type: ${this.currentTarget?.type || 'unknown'}`);
+
         if (!this.targetComputerEnabled) {
+            debug('INSPECTION', `🔍 Target display update skipped - target computer disabled`);
             return;
         }
         
@@ -3088,11 +3104,16 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
      * Create visual indicators for sub-targeting on the wireframe
      */
     createSubTargetIndicators(radius, baseColor) {
+        debug('TARGETING', `🎯 TARGET_SWITCH: createSubTargetIndicators called - radius: ${radius}, baseColor: ${baseColor}`);
+
         // Check if sub-targeting is available
         const ship = this.viewManager?.getShip();
         const targetComputer = ship?.getSystem('target_computer');
-        
+
+        debug('INSPECTION', `🔍 Sub-targeting check - ship: ${!!ship}, targetComputer: ${!!targetComputer}, hasSubTargeting: ${targetComputer?.hasSubTargeting?.() || false}`);
+
         // Always clear existing indicators first
+        debug('INSPECTION', `🔍 Clearing existing sub-target indicators (${this.subTargetIndicators?.length || 0} indicators)`);
         if (this.subTargetIndicators) {
             this.subTargetIndicators.forEach(indicator => {
                 this.wireframeScene.remove(indicator);
@@ -3161,6 +3182,8 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
 
         // Store targetable areas for sub-targeting simulation
         this.targetableAreas = targetableAreas;
+
+        debug('TARGETING', `🎯 TARGET_SWITCH: createSubTargetIndicators completed - created ${targetableAreas.length} indicators for target: ${this.currentTarget?.name || 'unknown'}`);
     }
 
     /**
@@ -3551,7 +3574,9 @@ debug('TARGETING', `🎯 Checking target ${i}: ${target.name} (id: ${target.id |
                 }
 
                 // Clear existing wireframe before creating new one (same as cycleTarget does)
+        debug('TARGETING', `🎯 TARGET_SWITCH: Clearing existing wireframe`);
                 if (this.targetWireframe) {
+                    debug('INSPECTION', `🔍 Clearing existing wireframe: ${this.targetWireframe.type || 'unknown type'}`);
                     this.wireframeScene.remove(this.targetWireframe);
                     if (this.targetWireframe.geometry) {
                         this.targetWireframe.geometry.dispose();
@@ -3564,6 +3589,9 @@ debug('TARGETING', `🎯 Checking target ${i}: ${target.name} (id: ${target.id |
                         }
                     }
                     this.targetWireframe = null;
+                    debug('INSPECTION', `🔍 Wireframe cleared successfully`);
+                } else {
+                    debug('INSPECTION', `🔍 No existing wireframe to clear`);
                 }
 
                 // Create new wireframe for the selected target
@@ -4111,11 +4139,16 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
      * Clear target wireframe only
      */
     clearTargetWireframe() {
+        debug('TARGETING', `🎯 TARGET_SWITCH: clearTargetWireframe() called - existing wireframe: ${this.targetWireframe ? 'YES' : 'NO'}`);
         if (this.targetWireframe) {
+            debug('INSPECTION', `🔍 Clearing wireframe: ${this.targetWireframe.type || 'unknown type'}`);
             this.wireframeScene.remove(this.targetWireframe);
             this.targetWireframe.geometry.dispose();
             this.targetWireframe.material.dispose();
             this.targetWireframe = null;
+            debug('INSPECTION', `🔍 Wireframe cleared successfully`);
+        } else {
+            debug('INSPECTION', `🔍 No wireframe to clear`);
         }
     }
 

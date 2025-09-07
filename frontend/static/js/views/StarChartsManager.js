@@ -834,9 +834,12 @@ debug('UTILITY', `❓ Unknown waypoint action: ${action.type}`);
     // Target Computer integration
     selectObjectById(objectId) {
         // Select object for targeting by ID with LRS-style robustness
+        debug('TARGETING', `🎯 TARGET_SWITCH: Star Charts selection started - objectId: ${objectId}`);
+        debug('STAR_CHARTS', `🗺️ Starting target selection process for ${objectId}`);
 
         // Normalize object ID to match Target Computer format
         const normalizedId = this.normalizeObjectId(objectId);
+        debug('STAR_CHARTS', `🗺️ Normalized ID: ${normalizedId}`);
 
         // Lazy-acquire TargetComputerManager if not provided at construction
         if (!this.targetComputerManager && this.viewManager?.starfieldManager?.targetComputerManager) {
@@ -848,6 +851,7 @@ debug('UTILITY', `❓ Unknown waypoint action: ${action.type}`);
             const objectData = this.getObjectData(objectId);
             if (objectData) {
 debug('TARGETING', `🎯 Star Charts: Setting robust target for ${objectData.name} (${normalizedId})`);
+debug('STAR_CHARTS', `🗺️ Object data found - name: ${objectData.name}, type: ${objectData.type}`);
             }
 
             // Ensure Target Computer is activated for manual selection
@@ -857,15 +861,19 @@ debug('TARGETING', 'Star Charts: Activating Target Computer for selection');
             }
 
             // Set target by ID - no fallbacks, crash on failure for debugging
+            debug('TARGETING', `🎯 TARGET_SWITCH: Calling setTargetById with normalizedId: ${normalizedId}`);
             const success = this.targetComputerManager.setTargetById(normalizedId);
             if (!success) {
                 const errorMsg = `❌ CRITICAL: Failed to set target for ${objectData.name} (${normalizedId}) - target lookup failed`;
+                debug('TARGETING', `🎯 TARGET_SWITCH: setTargetById FAILED for ${normalizedId}`);
                 console.error(errorMsg);
                 throw new Error(errorMsg); // Crash in dev to find bugs
             }
 
 debug('TARGETING', `🎯 Star Charts: Successfully targeted ${objectData.name}`);
+debug('TARGETING', `🎯 TARGET_SWITCH: setTargetById SUCCEEDED for ${normalizedId}`);
             // Trigger target selection callbacks
+            debug('STAR_CHARTS', `🗺️ Triggering target selection callbacks for ${normalizedId}`);
             this.triggerTargetSelectionCallbacks(normalizedId);
             return true;
         }
