@@ -830,6 +830,21 @@ body.warp-control-mode .crosshair {
     stroke-width: 1.5;
 }
 
+/* Star Chart larger hit boxes for improved clickability */
+.starchart-hitbox {
+    fill: transparent !important;
+    stroke: transparent !important;
+    pointer-events: all;
+    cursor: pointer;
+    opacity: 0; /* Completely invisible but still clickable */
+}
+
+/* Prevent hit boxes from interfering with visual elements */
+.starchart-hitbox:hover {
+    fill: transparent !important;
+    stroke: transparent !important;
+}
+
 .scanner-orbit-highlight {
     fill: none;
     stroke: transparent;

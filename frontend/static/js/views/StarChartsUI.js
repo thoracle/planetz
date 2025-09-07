@@ -191,6 +191,7 @@ export class StarChartsUI {
                 clickedElement.classList.contains('scanner-moon-hitbox') ||
                 clickedElement.classList.contains('scanner-station') ||
                 clickedElement.classList.contains('scanner-beacon') ||
+                clickedElement.classList.contains('starchart-hitbox') || // New larger hit boxes
                 clickedElement.hasAttribute('data-name') // Any element with targeting data
             );
             
@@ -1520,7 +1521,56 @@ export class StarChartsUI {
         if (object.type === 'navigation_beacon') {
             console.log(`🎯 Rendering beacon ${object.name} at (${x}, ${y})`);
         }
-        
+
+        // Create larger invisible hit box first (rendered behind visual element)
+        const hitBoxRadius = this.getObjectHitBoxRadius(object);
+        let hitBox = null;
+
+        if (object.type === 'space_station') {
+            // Station hit box: larger rotated square
+            const hitBoxSize = Math.max(12, hitBoxRadius * 2.4);
+            hitBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            hitBox.setAttribute('x', x - hitBoxSize / 2);
+            hitBox.setAttribute('y', y - hitBoxSize / 2);
+            hitBox.setAttribute('width', hitBoxSize);
+            hitBox.setAttribute('height', hitBoxSize);
+            hitBox.setAttribute('transform', `rotate(45 ${x} ${y})`);
+            hitBox.setAttribute('fill', 'transparent'); // Invisible
+            hitBox.setAttribute('stroke', 'none');
+            hitBox.style.pointerEvents = 'all';
+        } else if (object.type === 'navigation_beacon') {
+            // Beacon hit box: larger triangle
+            const hitBoxSize = Math.max(20, hitBoxRadius * 4);
+            const points = [
+                `${x},${y - hitBoxSize / 1.2}`,
+                `${x - hitBoxSize / 2},${y + hitBoxSize / 2}`,
+                `${x + hitBoxSize / 2},${y + hitBoxSize / 2}`
+            ].join(' ');
+            hitBox = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            hitBox.setAttribute('points', points);
+            hitBox.setAttribute('fill', 'transparent'); // Invisible
+            hitBox.setAttribute('stroke', 'none');
+            hitBox.style.pointerEvents = 'all';
+        } else {
+            // Default hit box: larger circle
+            hitBox = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            hitBox.setAttribute('cx', x);
+            hitBox.setAttribute('cy', y);
+            hitBox.setAttribute('r', hitBoxRadius);
+            hitBox.setAttribute('fill', 'transparent'); // Invisible
+            hitBox.setAttribute('stroke', 'none');
+            hitBox.style.pointerEvents = 'all';
+        }
+
+        // Add hit box attributes
+        hitBox.setAttribute('data-object-id', object.id);
+        hitBox.setAttribute('data-name', object.name);
+        hitBox.setAttribute('class', 'starchart-hitbox');
+        hitBox.style.cursor = 'pointer';
+
+        // Add hit box to SVG first (behind visual element)
+        this.svg.appendChild(hitBox);
+
         // Match LRS iconography: star (circle), planet (circle), moon (small circle), station (diamond), beacon (triangle)
         let element = null;
         if (object.type === 'space_station') {
@@ -1563,7 +1613,7 @@ export class StarChartsUI {
         }
         element.setAttribute('data-object-id', object.id);
         element.setAttribute('data-name', object.name); // For click detection compatibility
-        
+
         // Add selection highlight like LRS
         if (this.lastClickedObject && this.lastClickedObject.id === object.id) {
             element.setAttribute('stroke', '#ffff00');
@@ -1572,21 +1622,22 @@ export class StarChartsUI {
                 element.style.filter = 'brightness(1.3)';
             }
         }
-        
+
         // Add hover effects like LRS
         this.addHoverEffects(element, object);
-        
+
+        // Add visual element on top of hit box
         this.svg.appendChild(element);
-        
+
         // Labels removed - tooltips now provide object names on hover (match LRS)
     }
     
     getObjectDisplayRadius(object) {
         // Get display radius for object based on type and zoom
-        
+
         const baseRadius = object.visualRadius || 1;
         const zoomFactor = Math.max(0.5, this.currentZoomLevel / 2);
-        
+
         switch (object.type) {
             case 'star':
                 return Math.max(8, baseRadius * 4 * zoomFactor);
@@ -1600,6 +1651,29 @@ export class StarChartsUI {
                 return Math.max(2, 2 * zoomFactor);
             default:
                 return Math.max(2, baseRadius * zoomFactor);
+        }
+    }
+
+    getObjectHitBoxRadius(object) {
+        // Get larger hit box radius for better clickability, especially when zoomed out
+
+        const baseRadius = object.visualRadius || 1;
+        const zoomFactor = Math.max(0.5, this.currentZoomLevel / 2);
+
+        // Hit boxes are 2-3x larger than visual elements for easier clicking
+        switch (object.type) {
+            case 'star':
+                return Math.max(20, baseRadius * 8 * zoomFactor); // 2x visual size
+            case 'planet':
+                return Math.max(12, baseRadius * 6 * zoomFactor); // 2x visual size
+            case 'moon':
+                return Math.max(10, baseRadius * 7 * zoomFactor); // 2x visual size
+            case 'space_station':
+                return Math.max(8, (object.size || 1) * 4 * zoomFactor); // 2x visual size
+            case 'navigation_beacon':
+                return Math.max(6, 4 * zoomFactor); // 2x visual size
+            default:
+                return Math.max(8, baseRadius * 2 * zoomFactor); // 2x visual size
         }
     }
     
