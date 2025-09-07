@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wireframe Debug Helper</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #000;
+            color: #0f0;
+            padding: 20px;
+        }
+        .debug-section {
+            background: #111;
+            border: 1px solid #0f0;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        button:hover {
+            background: #4f4;
+        }
+        .output {
+            background: #222;
+            border: 1px solid #444;
+            padding: 10px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Wireframe Debug Helper</h1>
+    <p>This tool helps debug the wireframe issue where Star Charts selection shows different wireframes than TAB targeting.</p>
+
+    <div class="debug-section">
+        <h2>Quick Test Instructions</h2>
+        <ol>
+            <li>Open the game in another tab/window</li>
+            <li>Click on an object in Star Charts</li>
+            <li>Run the debug functions below</li>
+            <li>Press TAB to cycle to the same target</li>
+            <li>Compare the wireframe geometries</li>
+        </ol>
+    </div>
+
+    <div class="debug-section">
+        <h2>Debug Functions</h2>
+        <button onclick="debugCurrentTargetWireframe()">Check Current Target Wireframe</button>
+        <button onclick="debugAllTargets()">List All Targets</button>
+        <button onclick="debugTargetingComparison()">Show Comparison Instructions</button>
+        <button onclick="clearOutput()">Clear Output</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>Console Output</h2>
+        <div id="output" class="output">Click debug buttons above to see results...</div>
+    </div>
+
+    <script>
+        // Load the debug helper
+        const script = document.createElement('script');
+        script.src = 'test_wireframe_debug.js';
+        document.head.appendChild(script);
+
+        // Override console.log to also output to our debug area
+        const originalLog = console.log;
+        const outputDiv = document.getElementById('output');
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.map(arg =>
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            outputDiv.textContent += message + '\n';
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        };
+
+        function clearOutput() {
+            document.getElementById('output').textContent = 'Output cleared...\n';
+        }
+
+        // Make functions available globally
+        window.debugCurrentTargetWireframe = function() {
+            try {
+                if (!window.viewManager?.starfieldManager?.targetComputerManager) {
+                    console.log('❌ Cannot access Target Computer Manager from this window');
+                    console.log('Make sure the game is running in another tab/window');
+                    return;
+                }
+
+                const tcm = window.viewManager.starfieldManager.targetComputerManager;
+                const currentTargetData = tcm.getCurrentTargetData();
+
+                if (!currentTargetData) {
+                    console.log('❌ No current target');
+                    return;
+                }
+
+                const resolvedType = (currentTargetData.type || '').toLowerCase();
+                const wireframeConfig = tcm.getWireframeConfig(resolvedType);
+
+                console.log('🎯 CURRENT TARGET WIREFRAME INFO:');
+                console.log(`  Target: ${currentTargetData.name}`);
+                console.log(`  Type: ${currentTargetData.type}`);
+                console.log(`  Resolved Type: ${resolvedType}`);
+                console.log(`  Wireframe: ${wireframeConfig.geometry} (${wireframeConfig.description})`);
+                console.log(`  From Star Charts: ${currentTargetData.fromStarCharts}`);
+                console.log(`  Manual Selection: ${tcm.isManualSelection}`);
+                console.log(`  From Scanner: ${tcm.isFromLongRangeScanner}`);
+
+                return {
+                    targetData: currentTargetData,
+                    wireframeConfig: wireframeConfig
+                };
+            } catch (error) {
+                console.log('❌ Error in debugCurrentTargetWireframe:', error.message);
+            }
+        };
+
+        window.debugAllTargets = function() {
+            try {
+                if (!window.viewManager?.starfieldManager?.targetComputerManager) {
+                    console.log('❌ Cannot access Target Computer Manager from this window');
+                    return;
+                }
+
+                const tcm = window.viewManager.starfieldManager.targetComputerManager;
+
+                console.log('🎯 ALL TARGETS IN TARGET COMPUTER:');
+                tcm.targetObjects.forEach((target, index) => {
+                    const resolvedType = (target.type || '').toLowerCase();
+                    const wireframeConfig = tcm.getWireframeConfig(resolvedType);
+                    console.log(`${index}: ${target.name} (${target.type}) → ${wireframeConfig.geometry}`);
+                });
+            } catch (error) {
+                console.log('❌ Error in debugAllTargets:', error.message);
+            }
+        };
+
+        window.debugTargetingComparison = function() {
+            console.log('🔍 TARGETING COMPARISON DEBUG INSTRUCTIONS:');
+            console.log('1. In the game window, click on an object in Star Charts');
+            console.log('2. Come back here and click "Check Current Target Wireframe"');
+            console.log('3. Note the wireframe geometry shown');
+            console.log('4. In the game window, press TAB to cycle to the same target');
+            console.log('5. Come back here and click "Check Current Target Wireframe" again');
+            console.log('6. Compare the two wireframe geometries');
+            console.log('7. If they differ, we found the bug!');
+        };
+    </script>
+</body>
+</html>
