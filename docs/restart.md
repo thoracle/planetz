@@ -405,7 +405,7 @@ This project uses a **smart debug logging system** instead of `console.log()`. A
 | `MONEY` | 💵 | Credits and money transactions | ✅ Enabled |
 | `INFRASTRUCTURE` | 🏗️ | Space stations and facilities | ❌ Disabled |
 | `TESTING` | 🧪 | Test functions and debugging helpers | ❌ Disabled |
-| `P1` | 🔴 | HIGH PRIORITY - Critical debugging | ✅ Always Enabled |
+| `P1` | 🔴 | HIGH PRIORITY - Critical debugging | ❌ Disabled (default) |
 
 ### **How to Use Debug System**
 
@@ -463,7 +463,7 @@ debugStats()
 - **💵 MONEY**: Credit transactions, purchases, payments
 - **🏗️ INFRASTRUCTURE**: Station generation, docking ports
 - **🧪 TESTING**: Unit tests, debug helpers, dev tools
-- **🔴 P1**: Critical errors, system failures, important events
+- **🔴 P1**: Critical errors, system failures, important events (disabled by default, can be toggled)
 
 #### **Why This System Exists:**
 

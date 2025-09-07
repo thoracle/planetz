@@ -132,9 +132,9 @@ export class SmartDebugManager {
                     description: "Test functions and debugging helpers"
                 },
                 "P1": {
-                    enabled: true,
+                    enabled: false,
                     description: "HIGH PRIORITY - Critical debugging",
-                    alwaysEnabled: true
+                    alwaysEnabled: false
                 }
             },
             global: {
@@ -165,8 +165,7 @@ export class SmartDebugManager {
      */
     debug(channel, message) {
         // Early return for performance if channel is disabled
-        // P1 channel is always enabled regardless of settings
-        if (!this.channels[channel]?.enabled && channel !== 'P1' && !this.channels[channel]?.alwaysEnabled) {
+        if (!this.channels[channel]?.enabled && !this.channels[channel]?.alwaysEnabled) {
             return;
         }
 
@@ -203,11 +202,7 @@ export class SmartDebugManager {
             return false;
         }
 
-        // Don't allow toggling P1 channel
-        if (channel === 'P1') {
-            console.warn(`🔧 DebugManager: Cannot toggle P1 channel - it's always enabled`);
-            return false;
-        }
+        // Allow toggling P1 channel (previously was always enabled)
 
         const newState = enabled !== null ? enabled : !this.channels[channel].enabled;
         this.channels[channel].enabled = newState;
