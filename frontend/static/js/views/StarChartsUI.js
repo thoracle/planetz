@@ -1196,11 +1196,24 @@ export class StarChartsUI {
     getDisplayPosition(object) {
         // Prefer normalized display position if model built
         if (this.displayModel && this.displayModel.positions.has(object.id)) {
-            return this.displayModel.positions.get(object.id);
+            const pos = this.displayModel.positions.get(object.id);
+            if (object.type === 'navigation_beacon') {
+                console.log(`🎯 Beacon ${object.name}: Using display model position (${pos.x}, ${pos.y})`);
+            }
+            return pos;
         }
         if (Array.isArray(object.position)) {
             if (object.position.length >= 3) {
-                return { x: object.position[0], y: object.position[2] };
+                // Special handling for navigation beacons - they use [x, y, z] format
+                // where y is the vertical coordinate, not z
+                const pos = object.type === 'navigation_beacon'
+                    ? { x: object.position[0], y: object.position[1] }
+                    : { x: object.position[0], y: object.position[2] };
+
+                if (object.type === 'navigation_beacon') {
+                    console.log(`🎯 Beacon ${object.name}: Using beacon position [${object.position[0]}, ${object.position[1]}, ${object.position[2]}] -> display (${pos.x}, ${pos.y})`);
+                }
+                return pos;
             }
             if (object.position.length === 2) {
                 const radiusAU = object.position[0];
@@ -1208,8 +1221,15 @@ export class StarChartsUI {
                 const angleRad = (angleDeg * Math.PI) / 180;
                 const AU_TO_DISPLAY = 149.6; // Keep consistent with planet units
                 const r = radiusAU * AU_TO_DISPLAY;
-                return { x: r * Math.cos(angleRad), y: r * Math.sin(angleRad) };
+                const pos = { x: r * Math.cos(angleRad), y: r * Math.sin(angleRad) };
+                if (object.type === 'navigation_beacon') {
+                    console.log(`🎯 Beacon ${object.name}: Using polar position [${radiusAU}, ${angleDeg}] -> display (${pos.x}, ${pos.y})`);
+                }
+                return pos;
             }
+        }
+        if (object.type === 'navigation_beacon') {
+            console.log(`🎯 Beacon ${object.name}: No position data found, using (0,0)`);
         }
         return { x: 0, y: 0 };
     }
@@ -1331,11 +1351,12 @@ export class StarChartsUI {
             
             sectorData.infrastructure.beacons?.forEach(beacon => {
                 const discovered = isDiscovered(beacon.id);
-                console.log(`🔧 Beacon ${beacon.name} (${beacon.id}): discovered=${discovered}`);
+                console.log(`🔧 Beacon ${beacon.name} (${beacon.id}): discovered=${discovered}, position=(${beacon.position?.[0]}, ${beacon.position?.[1]}, ${beacon.position?.[2]})`);
                 if (discovered) {
                     // Normalize beacon type to match LRS icon rules
-                    allObjects.push({ ...beacon, type: 'navigation_beacon' });
-                    console.log(`🔧 Added beacon ${beacon.name} to allObjects`);
+                    const beaconData = { ...beacon, type: 'navigation_beacon' };
+                    allObjects.push(beaconData);
+                    console.log(`🔧 Added beacon ${beacon.name} to allObjects with type=${beaconData.type}, position=(${beaconData.position?.[0]}, ${beaconData.position?.[1]}, ${beaconData.position?.[2]})`);
                 }
             });
         }

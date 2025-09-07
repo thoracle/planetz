@@ -846,26 +846,26 @@ export class StarChartsManager {
             const objectData = this.getObjectData(objectId);
             if (objectData) {
                 console.log(`🎯 Star Charts: Setting robust target for ${objectData.name} (${normalizedId})`);
-
-                // Ensure Target Computer is activated for manual selection
-                if (this.targetComputerManager.targetComputerEnabled === false) {
-                    console.log('🎯 Star Charts: Activating Target Computer for selection');
-                    this.targetComputerManager.targetComputerEnabled = true;
-                }
-
-                // Set target by ID - no fallbacks, crash on failure for debugging
-                const success = this.targetComputerManager.setTargetById(normalizedId);
-                if (!success) {
-                    const errorMsg = `❌ CRITICAL: Failed to set target for ${objectData.name} (${normalizedId}) - target lookup failed`;
-                    console.error(errorMsg);
-                    throw new Error(errorMsg); // Crash in dev to find bugs
-                }
-
-                console.log(`🎯 Star Charts: Successfully targeted ${objectData.name}`);
-                // Trigger target selection callbacks
-                this.triggerTargetSelectionCallbacks(normalizedId);
-                return true;
             }
+
+            // Ensure Target Computer is activated for manual selection
+            if (this.targetComputerManager.targetComputerEnabled === false) {
+                console.log('🎯 Star Charts: Activating Target Computer for selection');
+                this.targetComputerManager.targetComputerEnabled = true;
+            }
+
+            // Set target by ID - no fallbacks, crash on failure for debugging
+            const success = this.targetComputerManager.setTargetById(normalizedId);
+            if (!success) {
+                const errorMsg = `❌ CRITICAL: Failed to set target for ${objectData.name} (${normalizedId}) - target lookup failed`;
+                console.error(errorMsg);
+                throw new Error(errorMsg); // Crash in dev to find bugs
+            }
+
+            console.log(`🎯 Star Charts: Successfully targeted ${objectData.name}`);
+            // Trigger target selection callbacks
+            this.triggerTargetSelectionCallbacks(normalizedId);
+            return true;
         }
         
         console.warn('⚠️  Target Computer integration not available');
