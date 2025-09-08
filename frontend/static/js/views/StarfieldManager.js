@@ -1296,7 +1296,13 @@ export class StarfieldManager {
                 
                 // Set target speed to the actual clamped speed
                 this.targetSpeed = actualSpeed;
-                
+                debug('NAVIGATION', `Setting target speed to ${actualSpeed} (current: ${this.currentSpeed.toFixed(3)}), decelerating: ${actualSpeed < this.currentSpeed}`);
+
+                // Special debug for Impulse 4 transitions
+                if (actualSpeed === 4) {
+                    debug('NAVIGATION', `🎯 IMPULSE 4 ACTIVATED: target=${this.targetSpeed}, current=${this.currentSpeed.toFixed(3)}, diff=${Math.abs(this.targetSpeed - this.currentSpeed).toFixed(3)}`);
+                }
+
                 // Determine if we need to decelerate
                 if (actualSpeed < this.currentSpeed) {
                     this.decelerating = true;
@@ -2411,15 +2417,7 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
         // DEBUG: Log target info for wireframe debugging
         setTimeout(() => {
             const currentTarget = this.targetComputerManager.currentTarget;
-            console.log(`🎯 Tab Target DEBUG - Target object:`, JSON.stringify({
-                name: currentTarget?.name,
-                id: currentTarget?.id,
-                type: currentTarget?.type,
-                hasObject: !!currentTarget?.object,
-                objectType: currentTarget?.object?.type,
-                geometryType: currentTarget?.object?.geometry?.type,
-                position: currentTarget?.position
-            }, null, 2));
+            debug('TARGETING', `Target object details: name=${currentTarget?.name}, id=${currentTarget?.id}, type=${currentTarget?.type}, hasObject=${!!currentTarget?.object}, objType=${currentTarget?.object?.type}, geometry=${currentTarget?.object?.geometry?.type}`);
         }, 100);
         
         // Update target display to reflect the new target in the UI
@@ -2576,25 +2574,38 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
 
         // Handle speed changes with acceleration/deceleration
         if (this.decelerating) {
-            // Calculate deceleration rate based on current speed
-            const baseDecelRate = this.deceleration;
-            const speedDiff = this.currentSpeed - this.targetSpeed;
-            const decelRate = baseDecelRate * (1 + (speedDiff / this.maxSpeed) * 2);
-            
-            // Apply deceleration
+            // Calculate truly proportional deceleration rate to prevent oscillation near target
             const previousSpeed = this.currentSpeed;
+            const speedDifference = this.currentSpeed - this.targetSpeed;
+
+            // Truly proportional deceleration that scales with remaining distance
+            // This prevents oscillation by ensuring deceleration decreases as we approach target
+            const proportionalDecel = Math.min(this.deceleration, Math.max(0.001, speedDifference * 0.5));
+
+            // Apply deceleration
             this.currentSpeed = Math.max(
                 this.targetSpeed,
-                this.currentSpeed - decelRate
+                this.currentSpeed - proportionalDecel
             );
-            
+
             // Check if we've reached target speed
-            if (Math.abs(this.currentSpeed - this.targetSpeed) < 0.01) {
+            const speedDiff = Math.abs(this.currentSpeed - this.targetSpeed);
+            if (speedDiff < 0.01) {
                 this.currentSpeed = this.targetSpeed;
                 this.decelerating = false;
+                debug('NAVIGATION', `Deceleration complete: Reached target speed ${this.targetSpeed}`);
             }
-            
-            // Update engine sound
+
+            // Debug deceleration behavior
+            const speedChange = Math.abs(this.currentSpeed - previousSpeed);
+            debug('NAVIGATION', `Deceleration: prev ${previousSpeed.toFixed(3)} -> current ${this.currentSpeed.toFixed(3)} -> target ${this.targetSpeed} (diff: ${speedDiff.toFixed(3)}, proportional: ${proportionalDecel.toFixed(4)})`);
+
+            // Check for oscillation (rapid changes near target)
+            if (speedChange > 0.001 && speedDiff < 0.05) { // Small changes near target = potential oscillation
+                debug('NAVIGATION', `⚠️ POTENTIAL OSCILLATION: Small change ${speedChange.toFixed(4)} but close to target (diff: ${speedDiff.toFixed(3)})`);
+            }
+
+            // Update engine sound during deceleration
             if (this.audioManager.getEngineState() === 'running') {
                 const volume = this.currentSpeed / this.maxSpeed;
                 if (volume < 0.01) {
@@ -2606,12 +2617,28 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
         } else if (this.currentSpeed < this.targetSpeed) {
             // Only handle acceleration if we're not decelerating
             const previousSpeed = this.currentSpeed;
+            const speedDiff = this.targetSpeed - this.currentSpeed;
+
+            // Truly proportional acceleration that scales with remaining distance
+            // This prevents oscillation by ensuring acceleration decreases as we approach target
+            const proportionalAccel = Math.min(this.acceleration, Math.max(0.001, speedDiff * 0.5));
+
             const newSpeed = Math.min(
                 this.targetSpeed,
-                this.currentSpeed + this.acceleration
+                this.currentSpeed + proportionalAccel
             );
             this.currentSpeed = newSpeed;
-            
+
+            // Debug acceleration behavior
+            const accelSpeedDiff = Math.abs(this.currentSpeed - this.targetSpeed);
+            debug('NAVIGATION', `Acceleration: prev ${previousSpeed.toFixed(3)} -> current ${this.currentSpeed.toFixed(3)} -> target ${this.targetSpeed} (diff: ${accelSpeedDiff.toFixed(3)}, proportional: ${proportionalAccel.toFixed(4)})`);
+
+            // Check for oscillation (rapid changes near target)
+            const accelSpeedChange = Math.abs(this.currentSpeed - previousSpeed);
+            if (accelSpeedChange > 0.001 && accelSpeedDiff < 0.05) { // Small changes near target = potential oscillation
+                debug('NAVIGATION', `⚠️ POTENTIAL OSCILLATION: Small change ${accelSpeedChange.toFixed(4)} but close to target (diff: ${accelSpeedDiff.toFixed(3)})`);
+            }
+
             // Update engine sound during acceleration
             if (this.soundLoaded) {
                 const volume = this.currentSpeed / this.maxSpeed;
@@ -2662,17 +2689,25 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
                 // Exponential reduction for impulse 1-3
                 const reductionFactor = Math.pow(0.15, 4 - this.currentSpeed); // Changed from 0.3 to 0.15 to reduce impulse 1 speed by 50%
                 speedMultiplier *= reductionFactor;
+                debug('NAVIGATION', `Impulse ${this.currentSpeed}: Base multiplier ${0.3}, reduction ${reductionFactor.toFixed(4)}, final multiplier ${speedMultiplier.toFixed(4)}`);
             } else if (this.currentSpeed === 4) {
-                // Impulse 4: 25% faster than impulse 3 (reduced from previous speed)
-                const impulse3Speed = 3 * 0.3 * 0.15; // 0.135
-                const targetSpeed = impulse3Speed * 1.25; // 25% faster = 0.16875
-                speedMultiplier = targetSpeed;
+                // Impulse 4: Use consistent exponential formula like other speeds
+                const reductionFactor = Math.pow(0.15, 4 - this.currentSpeed); // Same formula as impulse 1-3
+                speedMultiplier *= reductionFactor;
+                debug('NAVIGATION', `Impulse 4: Base multiplier ${0.3}, reduction ${reductionFactor.toFixed(4)}, final multiplier ${speedMultiplier.toFixed(4)} (consistent exponential)`);
+            } else if (this.currentSpeed >= 5) {
+                // Impulse 5+: Standard calculation without reduction
+                debug('NAVIGATION', `Impulse ${this.currentSpeed}: Standard multiplier ${speedMultiplier}`);
             }
             
             // Calculate actual movement based on current speed
             const forwardVector = new this.THREE.Vector3(0, 0, -speedMultiplier * moveDirection);
             forwardVector.applyQuaternion(this.camera.quaternion);
-            
+
+            // Debug speed vs movement correlation
+            const movementMagnitude = forwardVector.length();
+            debug('NAVIGATION', `Movement: speed=${this.currentSpeed.toFixed(2)}, multiplier=${speedMultiplier.toFixed(4)}, movement=${movementMagnitude.toFixed(4)}`);
+
             // Apply movement
             this.camera.position.add(forwardVector);
             this.camera.updateMatrixWorld();
