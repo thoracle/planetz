@@ -581,9 +581,9 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     getDiscoveryRadius() {
         //Get discovery radius - independent of target computer range for better solar system coverage
 
-        // Use a fixed discovery radius optimized for SOL's clustered object distribution
-        // Objects are clustered much closer to SOL than initially assumed
-        const baseDiscoveryRadius = 150.0; // 150km for precise discovery around SOL cluster
+        // Testing very small discovery radius for precise object detection
+        // This will require players to get very close to objects
+        const baseDiscoveryRadius = 10.0; // 10km for extremely precise discovery
 
         debug('STAR_CHARTS', `🔍 Using discovery radius: ${baseDiscoveryRadius}km`);
         return baseDiscoveryRadius;
