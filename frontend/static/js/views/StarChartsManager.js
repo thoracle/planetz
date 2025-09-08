@@ -81,7 +81,7 @@ export class StarChartsManager {
             enabled: true,
             fallbackToLRS: true,
             sectors: ['A0'], // Phase 0: A0 only
-            maxDiscoveriesPerFrame: 15, // Further increased for comprehensive discovery coverage
+            maxDiscoveriesPerFrame: 50, // Testing with higher limit to see if current limit is too restrictive
             performanceMonitoring: true
         };
         
