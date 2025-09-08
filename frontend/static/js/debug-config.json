@@ -79,6 +79,10 @@
         "SYSTEM_CHECK": {
             "enabled": true,
             "description": "System creation and existence checking"
+        },
+        "SYSTEM_FLOW": {
+            "enabled": true,
+            "description": "Detailed system creation flow and debugging"
         }
     },
     "global": {

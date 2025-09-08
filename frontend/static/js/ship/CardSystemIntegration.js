@@ -972,9 +972,14 @@ debug('COMBAT', `🔧 Weapon systems refresh complete: removed ${removedCount + 
      * @returns {boolean} True if system has cards and should be created from cards
      */
     hasCardsForSystem(systemName) {
+        debug('SYSTEM_FLOW', `🔍 CardSystemIntegration checking for ${systemName} cards`);
+
         if (!this.installedCards || this.installedCards.size === 0) {
+            debug('SYSTEM_FLOW', `📭 No installed cards found for ${systemName} (empty or null)`);
             return false;
         }
+
+        debug('SYSTEM_FLOW', `📚 Checking ${this.installedCards.size} installed cards for ${systemName}`);
 
         // Define the card to system mapping (same as in createSystemsFromCards)
         const cardToSystemMap = {
@@ -1005,11 +1010,15 @@ debug('COMBAT', `🔧 Weapon systems refresh complete: removed ${removedCount + 
         // Check if there are cards installed for this system
         for (const [slotId, cardData] of this.installedCards) {
             const mappedSystem = cardToSystemMap[cardData.cardType];
+            debug('SYSTEM_FLOW', `🔍 Checking card ${cardData.cardType} → ${mappedSystem} (looking for ${systemName})`);
+
             if (mappedSystem === systemName) {
+                debug('SYSTEM_FLOW', `✅ FOUND: ${systemName} has card ${cardData.cardType}`);
                 return true;
             }
         }
 
+        debug('SYSTEM_FLOW', `❌ NOT FOUND: ${systemName} has no matching cards`);
         return false;
     }
 } 

@@ -201,19 +201,27 @@ debug('UTILITY', 'Default systems initialized for', this.shipType);
             }
             
             // Skip star_charts if it will be created from cards
+            debug('SYSTEM_FLOW', `🏗️ Initializing star_charts system`);
             if (defaultSystems.star_charts && !this.hasSystemFromCards('star_charts')) {
+                debug('SYSTEM_FLOW', `🚀 Creating star_charts from default config`);
                 const starCharts = new StarChartsSystem(defaultSystems.star_charts.level);
                 // Override slot cost from ship configuration
                 starCharts.slotCost = defaultSystems.star_charts.slots;
                 this.addSystem('star_charts', starCharts);
+            } else {
+                debug('SYSTEM_FLOW', `⏭️ Skipping star_charts creation (will be created from cards)`);
             }
             
             // Add new gear systems that provide base ship stats
             // Skip hull_plating if it will be created from cards
+            debug('SYSTEM_FLOW', `🏗️ Initializing hull_plating system`);
             if (defaultSystems.hull_plating && !this.hasSystemFromCards('hull_plating')) {
+                debug('SYSTEM_FLOW', `🚀 Creating hull_plating from default config`);
                 const hullPlating = new HullPlating(defaultSystems.hull_plating.level);
                 hullPlating.slotCost = defaultSystems.hull_plating.slots;
                 this.addSystem('hull_plating', hullPlating);
+            } else {
+                debug('SYSTEM_FLOW', `⏭️ Skipping hull_plating creation (will be created from cards)`);
             }
             
             if (defaultSystems.shield_generator) {
@@ -454,9 +462,12 @@ debug('AI', `Repaired ${systemName} by ${(repairAmount * 100).toFixed(1)}%`);
      * @param {System} system - System instance
      */
     addSystem(systemName, system) {
+        debug('SYSTEM_FLOW', `⚙️ Attempting to add system: ${systemName} (caller: ${new Error().stack.split('\n')[2]?.trim() || 'unknown'})`);
+
         // Check if system already exists (prevent duplicates)
         if (this.systems.has(systemName)) {
             debug('P1', `System ${systemName} already exists - skipping duplicate addition`);
+            debug('SYSTEM_FLOW', `❌ DUPLICATE: ${systemName} already exists, rejecting addition`);
             return false;
         }
         
@@ -468,7 +479,8 @@ debug('AI', `Repaired ${systemName} by ${(repairAmount * 100).toFixed(1)}%`);
         
         // Add the system
         this.systems.set(systemName, system);
-        
+        debug('SYSTEM_FLOW', `✅ SUCCESS: ${systemName} added to ship systems`);
+
         // Update slot usage
         this.usedSlots += system.slotCost;
         this.availableSlots = this.totalSlots - this.usedSlots;
@@ -490,12 +502,17 @@ debug('AI', `Repaired ${systemName} by ${(repairAmount * 100).toFixed(1)}%`);
      * @returns {boolean} True if system has cards and should be created from cards
      */
     hasSystemFromCards(systemName) {
+        debug('SYSTEM_FLOW', `🔍 Checking if ${systemName} should be created from cards`);
+
         if (!this.cardSystemIntegration) {
+            debug('SYSTEM_FLOW', `❌ No CardSystemIntegration available for ${systemName}`);
             return false;
         }
 
         // Delegate to CardSystemIntegration to check
-        return this.cardSystemIntegration.hasCardsForSystem(systemName);
+        const result = this.cardSystemIntegration.hasCardsForSystem(systemName);
+        debug('SYSTEM_FLOW', `📋 ${systemName} card check result: ${result}`);
+        return result;
     }
 
     /**
