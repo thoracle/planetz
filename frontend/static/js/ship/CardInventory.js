@@ -245,11 +245,11 @@ debug('UI', 'All initialized card types:', Array.from(this.cardStacks.keys()));
     }
 
     /**
-     * Get discovered cards only (with count > 0)
-     * @returns {Array} - Array of discovered card stacks that have cards available
+     * Get discovered cards (including those with count = 0)
+     * @returns {Array} - Array of discovered card stacks (count >= 0)
      */
     getDiscoveredCards() {
-        return this.getAllCardStacks().filter(stack => stack.discovered && stack.count > 0);
+        return this.getAllCardStacks().filter(stack => stack.discovered && stack.count >= 0);
     }
 
     /**

@@ -27,6 +27,10 @@
             "enabled": false,
             "description": "Enemy AI and ship behaviors"
         },
+        "UI": {
+            "enabled": true,
+            "description": "User interface events and updates"
+        },
         "INTERACTION": {
             "enabled": false,
             "description": "Touch and mouse interactions"
