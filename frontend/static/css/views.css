@@ -951,6 +951,29 @@ body.warp-control-mode .crosshair {
     pointer-events: none;
 }
 
+/* Star Charts Status Bar */
+.star-charts-status {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    color: #00ff41;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 5px 10px;
+    border: 1px solid #00ff41;
+    border-radius: 3px;
+    z-index: 10;
+    pointer-events: none;
+    text-align: left;
+}
+
+.star-charts-status div {
+    margin: 2px 0;
+    line-height: 1.2;
+}
+
 /* Scanner Map Tooltip */
 .scanner-tooltip {
     position: fixed;
