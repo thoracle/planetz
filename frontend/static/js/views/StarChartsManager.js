@@ -272,25 +272,32 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
     
     getNearbyObjects(playerPosition, radius) {
         //Get objects within radius using spatial partitioning
-        
+
         const nearbyObjects = [];
         const gridRadius = Math.ceil(radius / this.gridSize);
         const playerGridKey = this.getGridKey(playerPosition);
         const [px, py, pz] = playerGridKey.split(',').map(Number);
-        
+
+        let checkedCells = 0;
+        let totalObjectsFound = 0;
+
         // Check surrounding grid cells
         for (let x = px - gridRadius; x <= px + gridRadius; x++) {
             for (let y = py - gridRadius; y <= py + gridRadius; y++) {
                 for (let z = pz - gridRadius; z <= pz + gridRadius; z++) {
                     const gridKey = `${x},${y},${z}`;
                     const cellObjects = this.spatialGrid.get(gridKey);
-                    if (cellObjects) {
+                    checkedCells++;
+                    if (cellObjects && cellObjects.length > 0) {
                         nearbyObjects.push(...cellObjects);
+                        totalObjectsFound += cellObjects.length;
+                        debug('STAR_CHARTS', `🔍 Cell ${gridKey}: ${cellObjects.length} objects`);
                     }
                 }
             }
         }
-        
+
+        debug('STAR_CHARTS', `🔍 Checked ${checkedCells} grid cells, found ${totalObjectsFound} objects total`);
         return nearbyObjects;
     }
     
@@ -334,6 +341,11 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
 
             debug('STAR_CHARTS', `🔍 Discovery check: ${nearbyObjects.length} objects within ${discoveryRadius.toFixed(0)}km radius`);
             debug('STAR_CHARTS', `📊 Spatial grid: ${gridCells} cells, ${totalObjectsInGrid} total objects`);
+
+            // Debug spatial search details
+            const gridRadius = Math.ceil(discoveryRadius / this.gridSize);
+            const playerGridKey = this.getGridKey(playerPosition);
+            debug('STAR_CHARTS', `🔍 Spatial search: gridRadius=${gridRadius}, playerGridKey=${playerGridKey}, gridSize=${this.gridSize}`);
 
             // Batch process discoveries
             this.batchProcessDiscoveries(nearbyObjects, playerPosition, discoveryRadius);
