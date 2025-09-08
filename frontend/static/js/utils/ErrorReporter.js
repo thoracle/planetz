@@ -111,4 +111,4 @@ window.getErrorReport = () => window.errorReporter.getErrorReport();
 window.downloadErrorReport = () => window.errorReporter.downloadErrorReport();
 window.clearErrors = () => window.errorReporter.clearErrors();
 
-        debug('P1', 'ErrorReporter initialized. Use Ctrl+Shift+E to download error report, Ctrl+Shift+C to clear.');
+        debug('UTILITY', 'ErrorReporter initialized. Use Ctrl+Shift+E to download error report, Ctrl+Shift+C to clear.');

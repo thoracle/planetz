@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Config Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { color: green; }
+        .error { color: red; }
+        button { margin: 5px; padding: 8px 16px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Debug Configuration Test</h1>
+    <p>Testing file-based debug configuration system. Only P1 messages should appear in console.</p>
+
+    <div class="test-section">
+        <h3>Test 1: Load Configuration from File</h3>
+        <button onclick="testLoadConfig()">Load Config from File</button>
+        <button onclick="testConfigFile()">View Config File</button>
+        <button onclick="testSyncFile()">Sync with File</button>
+    </div>
+
+    <div class="test-section">
+        <h3>Test 2: Test Debug Channels (Open Console)</h3>
+        <p>Click these buttons and check browser console - only P1 messages should appear:</p>
+        <button onclick="testTargetingDebug()">Test TARGETING Channel</button>
+        <button onclick="testMoneyDebug()">Test MONEY Channel</button>
+        <button onclick="testP1Debug()">Test P1 Channel</button>
+        <button onclick="testMissionDebug()">Test MISSIONS Channel</button>
+    </div>
+
+    <div class="test-section">
+        <h3>Test 3: Browser Console Commands</h3>
+        <p>Open browser console and try these commands:</p>
+        <ul>
+            <li><code>debugList()</code> - Show all channels</li>
+            <li><code>debugStates()</code> - Show current states</li>
+            <li><code>debugLoadFile()</code> - Load from file</li>
+            <li><code>debugConfigFile()</code> - View file config</li>
+        </ul>
+    </div>
+
+    <script type="module">
+        // Import debug function
+        import { debug } from './frontend/static/js/debug.js';
+
+        window.testLoadConfig = async function() {
+            console.log('🔄 Testing file configuration loading...');
+            try {
+                const response = await fetch('/data/debug-config.json');
+                if (response.ok) {
+                    const config = await response.json();
+                    console.log('✅ File config loaded successfully:', config);
+                    alert('✅ File config loaded! Check console for details.');
+                } else {
+                    console.error('❌ Failed to load file config');
+                    alert('❌ Failed to load file config');
+                }
+            } catch (error) {
+                console.error('❌ Error loading config:', error);
+                alert('❌ Error loading config: ' + error.message);
+            }
+        };
+
+        window.testConfigFile = function() {
+            console.log('📁 Debug Configuration File Test');
+            console.log('Location: /data/debug-config.json');
+            console.log('URL: http://127.0.0.1:5001/data/debug-config.json');
+
+            fetch('/data/debug-config.json')
+                .then(r => r.json())
+                .then(config => {
+                    console.log('Current file configuration:', config);
+                    alert('✅ Config file displayed in console');
+                })
+                .catch(error => {
+                    console.error('❌ Error reading config file:', error);
+                    alert('❌ Error reading config file');
+                });
+        };
+
+        window.testSyncFile = function() {
+            console.log('🔄 Testing file sync...');
+            if (window.debugLoadFile) {
+                window.debugLoadFile();
+            } else {
+                console.log('❌ debugLoadFile function not available');
+                alert('❌ debugLoadFile function not available');
+            }
+        };
+
+        // Test different debug channels
+        window.testTargetingDebug = function() {
+            console.log('🎯 Testing TARGETING channel (should be DISABLED)');
+            debug('TARGETING', 'This TARGETING message should NOT appear');
+            debug('P1', 'This P1 message SHOULD appear');
+        };
+
+        window.testMoneyDebug = function() {
+            console.log('💰 Testing MONEY channel (should be DISABLED)');
+            debug('MONEY', 'This MONEY message should NOT appear');
+            debug('P1', 'This P1 message SHOULD appear');
+        };
+
+        window.testP1Debug = function() {
+            console.log('🔴 Testing P1 channel (should be ENABLED)');
+            debug('P1', 'This P1 message SHOULD appear - CRITICAL TEST');
+        };
+
+        window.testMissionDebug = function() {
+            console.log('🚀 Testing MISSIONS channel (should be DISABLED)');
+            debug('MISSIONS', 'This MISSIONS message should NOT appear');
+            debug('P1', 'This P1 message SHOULD appear');
+        };
+
+        // Wait for debug system to initialize
+        setTimeout(() => {
+            console.log('🔧 Debug system initialized. Ready for testing.');
+            console.log('Expected behavior: Only P1 messages should appear in console.');
+        }, 1000);
+    </script>
+</body>
+</html>

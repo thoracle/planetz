@@ -680,7 +680,7 @@ def get_repair_kits():
                 'description': 'Emergency repair kit for complete restoration'
             }
         }
-        
+
         return jsonify({
             'status': 'success',
             'data': repair_kits
@@ -690,4 +690,82 @@ def get_repair_kits():
         return jsonify({
             'status': 'error',
             'message': 'Failed to get repair kits'
+        }), 500
+
+# =============================================================================
+# DEBUG SYSTEM API ENDPOINTS
+# =============================================================================
+
+@api_bp.route('/api/debug-config', methods=['GET'])
+def get_debug_config():
+    """Get current debug configuration."""
+    try:
+        import os
+        import json
+
+        config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'debug-config.json')
+
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+
+            return jsonify({
+                'status': 'success',
+                'data': config
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Debug configuration file not found'
+            }), 404
+
+    except Exception as e:
+        logger.error(f"Error getting debug config: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to get debug configuration'
+        }), 500
+
+@api_bp.route('/api/debug-config', methods=['POST'])
+def save_debug_config():
+    """Save debug configuration to file."""
+    try:
+        import os
+        import json
+
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'No configuration data provided'
+            }), 400
+
+        # Validate required fields
+        if 'channels' not in data or 'version' not in data:
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid configuration format'
+            }), 400
+
+        # Save to file
+        config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'debug-config.json')
+
+        # Ensure data directory exists
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+
+        with open(config_path, 'w') as f:
+            json.dump(data, f, indent=2)
+
+        logger.info(f"Debug configuration saved to {config_path}")
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Debug configuration saved successfully'
+        })
+
+    except Exception as e:
+        logger.error(f"Error saving debug config: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to save debug configuration'
         }), 500
