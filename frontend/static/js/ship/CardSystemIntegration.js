@@ -1041,10 +1041,10 @@ debug('COMBAT', `🔧 Weapon systems refresh complete: removed ${removedCount + 
         for (const [slotId, cardData] of this.installedCards) {
             const mappedSystem = cardToSystemMap[cardData.cardType];
             debug('SYSTEM_FLOW', `🔍 Checking card ${cardData.cardType} → ${mappedSystem} (looking for ${systemName})`);
-            debug('SYSTEM_FLOW', `🔍 Comparison: "${mappedSystem}" === "${systemName}" ? ${mappedSystem === systemName}`);
 
-            if (mappedSystem === systemName) {
-                debug('SYSTEM_FLOW', `✅ FOUND: ${systemName} has card ${cardData.cardType}`);
+            // Compare the card type with the system name (both should be keys like 'star_charts')
+            if (cardData.cardType === systemName) {
+                debug('SYSTEM_FLOW', `✅ FOUND: ${systemName} has card ${cardData.cardType} (maps to ${mappedSystem})`);
                 return true;
             }
         }
