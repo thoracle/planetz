@@ -45,18 +45,18 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `data_refactor` | **Status**: In Development (15 uncommitted changes) | **Last Updated**: 2025-09-05
+**Branch**: `data_refactor` | **Status**: In Development (3 uncommitted changes) | **Last Updated**: 2025-09-07
 
 **Recent Work** (Last 5 commits):
-- added master specs
-- star chart fixes
-- Added Realistic Orbital Mechanics Toggle
-- Phase 2 Complete: Static Data Enhancement - Positioning & Infrastructure
-- Phase 1 Complete: Foundation Setup for Unified Data Architecture
+- 🎯 COMPLETED: Target Switching Bug Fix - Enhanced Debug System
+- feat: Add RADAR debug channel and migrate ProximityDetector3D messages
+- feat: Update debug channel manager to reflect P1 disabled by default
+- feat: Disable P1 debug channel by default for cleaner console output
+- feat: Switch target switching debug from P1 to TARGETING channel
 
-**Codebase Stats**: 
-- JavaScript Files: 144 | Python Files: 1619 | Documentation: 88 files
-- Total Lines: 30,000+ | Architecture: Fully modular ES6+ modules
+**Codebase Stats**:
+- JavaScript Files: 146 | Python Files: 1619 | Documentation: 89 files
+- Total Lines: 339786 | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
 ## 🏗️ Architecture Overview
@@ -102,9 +102,7 @@ open http://127.0.0.1:5001
 - **0-9**: Set impulse speed | **+ / =**: Increase speed | **- / _**: Decrease speed | **\**: Emergency stop
 
 ### **AI Debug Controls** (Mac: Cmd+Shift+[Key])
-- **A**: Toggle AI debug | **S**: Show AI stats | **E**: Force engage | **F**: Force flee | **I**: Force idle
-- **V**: V-Formation | **C**: Column formation | **L**: Line formation | **B**: Show flocking stats
-- **T**: Combat stats | **W**: Weapon debug | **X**: Target player | **P**: Performance stats | **D**: Debug visualization
+- **A**: Toggle AI debug
 
 
 
@@ -120,7 +118,7 @@ open http://127.0.0.1:5001
 
 **Technical References**:
 - [Card System](card_system_user_guide.md) - Ship upgrade mechanics
-- [Space Station System](space_station_system_guide.md) - Station types and functions
+- [Space Station System](space_station_user_guide.md) - Station types and functions
 - [Sol System Layout](sol_system_layout.md) - Universe structure
 <!-- DYNAMIC_DOCS_END -->
 
