@@ -837,6 +837,48 @@ debug('UTILITY', `❓ Unknown waypoint action: ${action.type}`);
         debug('TARGETING', `🎯 TARGET_SWITCH: Star Charts selection started - objectId: ${objectId}`);
         debug('STAR_CHARTS', `🗺️ Starting target selection process for ${objectId}`);
 
+        // DEBUG: Check if star is discovered
+        const isStarDiscovered = this.isDiscovered(objectId);
+        debug('STAR_CHARTS', `🗺️ Star discovered check: ${objectId} = ${isStarDiscovered}`);
+
+        // DEBUG: Check target computer integration
+        if (this.targetComputerManager) {
+            const targetObjectsCount = this.targetComputerManager.targetObjects ? this.targetComputerManager.targetObjects.length : 0;
+            debug('TARGETING', `🎯 Target Computer targetObjects count: ${targetObjectsCount}`);
+
+            // Check if A0_star is in targetObjects
+            if (this.targetComputerManager.targetObjects) {
+                const foundTarget = this.targetComputerManager.targetObjects.find(t => t.id === objectId);
+                debug('TARGETING', `🎯 A0_star in targetObjects: ${!!foundTarget}`);
+                if (foundTarget) {
+                    debug('TARGETING', `🎯 Found target: ${foundTarget.name} (${foundTarget.id})`);
+                }
+
+                // List all targets for debugging
+                debug('TARGETING', `🎯 All targets in targetObjects: ${this.targetComputerManager.targetObjects.map(t => `${t.name}(${t.id})`).join(', ')}`);
+            }
+        }
+
+        // Add global debug function for runtime inspection
+        if (typeof window !== 'undefined') {
+            window.debugStarChartsState = () => {
+                console.log('🗺️ Star Charts State:');
+                console.log('  - Current sector:', this.currentSector);
+                console.log('  - Discovered objects:', Array.from(this.discoveredObjects));
+                console.log('  - Is A0_star discovered:', this.isDiscovered('A0_star'));
+
+                if (this.targetComputerManager && this.targetComputerManager.targetObjects) {
+                    console.log('🎯 Target Computer State:');
+                    console.log('  - Target objects count:', this.targetComputerManager.targetObjects.length);
+                    console.log('  - Has A0_star:', !!this.targetComputerManager.targetObjects.find(t => t.id === 'A0_star'));
+                    console.log('  - All targets:', this.targetComputerManager.targetObjects.map(t => `${t.name}(${t.id})`));
+                }
+
+                return 'Debug info logged to console';
+            };
+            debug('STAR_CHARTS', '🗺️ Use debugStarChartsState() in console to inspect current state');
+        }
+
         // Normalize object ID to match Target Computer format
         const normalizedId = this.normalizeObjectId(objectId);
         debug('STAR_CHARTS', `🗺️ Normalized ID: ${normalizedId}`);
