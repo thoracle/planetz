@@ -258,6 +258,9 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         let processedCount = 0;
         let skippedCount = 0;
 
+        // Debug: Log ALL objects being processed
+        debug('STAR_CHARTS', `   📋 Processing all ${allObjects.length} objects:`);
+
         allObjects.forEach((obj, index) => {
             if (obj && obj.position) {
                 const gridKey = this.getGridKey(obj.position);
@@ -267,38 +270,74 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
                 this.spatialGrid.get(gridKey).push(obj);
                 processedCount++;
 
-                if (index < 5) { // Log first 5 objects
-                    debug('STAR_CHARTS', `   ✅ ${obj.id}: position [${obj.position.join(', ')}] → grid ${gridKey}`);
-                }
+                // Log ALL objects during initialization
+                debug('STAR_CHARTS', `   ✅ ${obj.id}: pos[${obj.position.join(',')}] → grid[${gridKey}]`);
             } else {
                 skippedCount++;
-                if (index < 3) { // Log first 3 skipped objects
-                    debug('STAR_CHARTS', `   ❌ Skipped object ${index}: ${obj?.id || 'unknown'} (missing position)`);
-                }
+                // Log ALL skipped objects
+                debug('STAR_CHARTS', `   ❌ Skipped ${index}: ${obj?.id || 'unknown'} (no position)`);
             }
         });
 
 debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} cells, ${allObjects.length} objects (${processedCount} processed, ${skippedCount} skipped)`);
+
+        // Add global debug function for spatial grid inspection
+        if (typeof window !== 'undefined') {
+            window.debugSpatialGrid = () => {
+                console.log('🗺️ Spatial Grid Debug:');
+                console.log(`  Total cells: ${this.spatialGrid.size}`);
+                console.log(`  Grid size: ${this.gridSize}`);
+                console.log('  All cells:');
+                for (const [cellKey, objects] of this.spatialGrid) {
+                    console.log(`    ${cellKey}: ${objects.length} objects`);
+                    objects.forEach(obj => {
+                        console.log(`      - ${obj.id} at [${obj.position.join(', ')}]`);
+                    });
+                }
+                return 'Spatial grid logged to console';
+            };
+            debug('STAR_CHARTS', '🗺️ Use debugSpatialGrid() in console to inspect spatial grid');
+        }
     }
     
     getGridKey(position) {
-        //Get spatial grid key for position
+        //Get spatial grid key for position (handles both 2D and 3D positions)
+        if (!position || !Array.isArray(position) || position.length < 2) {
+            debug('STAR_CHARTS', `❌ Invalid position for grid key:`, position);
+            return '0,0,0'; // Fallback
+        }
+
         const x = Math.floor(position[0] / this.gridSize);
         const y = Math.floor(position[1] / this.gridSize);
-        const z = Math.floor(position[2] / this.gridSize);
+
+        // Handle 2D positions (infrastructure) by assuming z=0
+        const z = position.length >= 3 ? Math.floor(position[2] / this.gridSize) : 0;
+
         return `${x},${y},${z}`;
     }
     
     getNearbyObjects(playerPosition, radius) {
         //Get objects within radius using spatial partitioning
 
+        debug('STAR_CHARTS', `🔍 getNearbyObjects called with playerPos[${playerPosition.join(',')}], radius=${radius}`);
+
         const nearbyObjects = [];
         const gridRadius = Math.ceil(radius / this.gridSize);
+        const playerPos3D = this.ensure3DPosition(playerPosition);
         const playerGridKey = this.getGridKey(playerPosition);
         const [px, py, pz] = playerGridKey.split(',').map(Number);
 
+        debug('STAR_CHARTS', `🔍 gridRadius=${gridRadius}, playerGridKey=${playerGridKey}, gridSize=${this.gridSize}`);
+        debug('STAR_CHARTS', `🔍 Spatial grid has ${this.spatialGrid.size} total cells`);
+
         let checkedCells = 0;
         let totalObjectsFound = 0;
+
+        // Log all cells in the spatial grid first
+        debug('STAR_CHARTS', `🔍 All spatial grid cells:`);
+        for (const [cellKey, objects] of this.spatialGrid) {
+            debug('STAR_CHARTS', `   📦 Cell ${cellKey}: ${objects.length} objects`);
+        }
 
         // Check surrounding grid cells
         for (let x = px - gridRadius; x <= px + gridRadius; x++) {
@@ -308,23 +347,29 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
                     const cellObjects = this.spatialGrid.get(gridKey);
                     checkedCells++;
                     if (cellObjects && cellObjects.length > 0) {
-                        nearbyObjects.push(...cellObjects);
-                        totalObjectsFound += cellObjects.length;
-                        debug('STAR_CHARTS', `🔍 Cell ${gridKey}: ${cellObjects.length} objects`);
+                        // Filter objects to ensure they're actually within range (spatial grid gives nearby cells, but we need precise distance check)
+                        const inRangeObjects = cellObjects.filter(obj => {
+                            const objPos3D = this.ensure3DPosition(obj.position);
+                            const distance = this.calculateDistance(objPos3D, playerPos3D);
+                            return distance <= radius;
+                        });
+
+                        nearbyObjects.push(...inRangeObjects);
+                        totalObjectsFound += inRangeObjects.length;
+                        debug('STAR_CHARTS', `🔍 Cell ${gridKey}: ${cellObjects.length} objects total, ${inRangeObjects.length} in range (${inRangeObjects.map(o => o.id).join(', ')})`);
                     } else if (this.spatialGrid.has(gridKey)) {
                         // Cell exists but is empty
-                        debug('STAR_CHARTS', `🔍 Cell ${gridKey}: empty`);
+                        debug('STAR_CHARTS', `🔍 Cell ${gridKey}: empty (exists in grid)`);
                     } else {
                         // Cell doesn't exist in grid
-                        if (checkedCells <= 5) { // Only log first few missing cells
-                            debug('STAR_CHARTS', `🔍 Cell ${gridKey}: not in grid`);
-                        }
+                        debug('STAR_CHARTS', `🔍 Cell ${gridKey}: not in grid`);
                     }
                 }
             }
         }
 
-        debug('STAR_CHARTS', `🔍 Checked ${checkedCells} grid cells, found ${totalObjectsFound} objects total`);
+        debug('STAR_CHARTS', `🔍 SUMMARY: Checked ${checkedCells} grid cells, found ${totalObjectsFound} objects total`);
+        debug('STAR_CHARTS', `🔍 Returning ${nearbyObjects.length} nearby objects`);
         return nearbyObjects;
     }
     
@@ -452,12 +497,29 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
     isWithinRange(object, playerPosition, discoveryRadius) {
         //Check if object is within discovery range
 
-        if (!object.position || object.position.length < 3) {
+        if (!object.position || object.position.length < 2) {
             return false;
         }
 
-        const distance = this.calculateDistance(object.position, playerPosition);
+        // Ensure both positions are 3D for distance calculation
+        const objPos = this.ensure3DPosition(object.position);
+        const playerPos = this.ensure3DPosition(playerPosition);
+
+        const distance = this.calculateDistance(objPos, playerPos);
         return distance <= discoveryRadius;
+    }
+
+    ensure3DPosition(position) {
+        //Ensure position is 3D by adding z=0 if missing
+        if (!position || !Array.isArray(position)) {
+            return [0, 0, 0];
+        }
+
+        if (position.length === 2) {
+            return [position[0], position[1], 0];
+        }
+
+        return position;
     }
     
     processDiscovery(object) {
