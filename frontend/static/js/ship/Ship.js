@@ -487,29 +487,12 @@ debug('AI', `Repaired ${systemName} by ${(repairAmount * 100).toFixed(1)}%`);
      * @returns {boolean} True if system has cards and should be created from cards
      */
     hasSystemFromCards(systemName) {
-        if (!this.cardSystemIntegration || !this.cardSystemIntegration.installedCards) {
+        if (!this.cardSystemIntegration) {
             return false;
         }
 
-        // Define which systems can be created from cards
-        const cardSystems = [
-            'star_charts', 'hull_plating', 'target_computer', 'impulse_engines',
-            'energy_reactor', 'long_range_scanner', 'radar', 'shields'
-        ];
-
-        if (!cardSystems.includes(systemName)) {
-            return false;
-        }
-
-        // Check if there are cards installed for this system
-        for (const [slotId, cardData] of this.cardSystemIntegration.installedCards) {
-            const mappedSystem = this.cardSystemIntegration.cardToSystemMap[cardData.cardType];
-            if (mappedSystem === systemName) {
-                return true;
-            }
-        }
-
-        return false;
+        // Delegate to CardSystemIntegration to check
+        return this.cardSystemIntegration.hasCardsForSystem(systemName);
     }
 
     /**

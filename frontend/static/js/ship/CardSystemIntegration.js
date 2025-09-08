@@ -965,4 +965,51 @@ debug('COMBAT', `🔧 Weapon systems refresh complete: removed ${removedCount + 
         ];
         return weaponCardTypes.includes(cardType);
     }
+
+    /**
+     * Check if there are cards installed for a specific system
+     * @param {string} systemName - Name of the system to check
+     * @returns {boolean} True if system has cards and should be created from cards
+     */
+    hasCardsForSystem(systemName) {
+        if (!this.installedCards || this.installedCards.size === 0) {
+            return false;
+        }
+
+        // Define the card to system mapping (same as in createSystemsFromCards)
+        const cardToSystemMap = {
+            'impulse_engines': 'ImpulseEngines',
+            'target_computer': 'TargetComputer',
+            'energy_reactor': 'EnergyReactor',
+            'subspace_radio': 'SubspaceRadioSystem',
+            'long_range_scanner': 'LongRangeScanner',
+            'galactic_chart': 'GalacticChartSystem',
+            'star_charts': 'StarChartsSystem',
+            'basic_radar': 'RadarSystem',
+            'advanced_radar': 'RadarSystem',
+            'tactical_radar': 'RadarSystem',
+            'shields': 'Shields',
+            'hull_plating': 'HullPlating',
+            'shield_generator': 'Shields',
+            'cargo_hold': 'CargoHold',
+            'reinforced_cargo_hold': 'ReinforcedCargoHold',
+            'shielded_cargo_hold': 'ShieldedCargoHold',
+            'warp_drive': 'WarpDrive',
+            'missile_tubes': 'MissileTubes',
+            'torpedo_launcher': 'MissileTubes',
+            'tactical_computer': 'TargetComputer',
+            'combat_computer': 'TargetComputer',
+            'strategic_computer': 'TargetComputer'
+        };
+
+        // Check if there are cards installed for this system
+        for (const [slotId, cardData] of this.installedCards) {
+            const mappedSystem = cardToSystemMap[cardData.cardType];
+            if (mappedSystem === systemName) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 } 
