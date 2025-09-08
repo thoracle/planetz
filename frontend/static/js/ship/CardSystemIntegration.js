@@ -578,35 +578,36 @@ debug('UI', `🔧 UTILITY CARD: ${cardType} - provides passive benefits (no syst
             // Check if system already exists
             if (this.ship.systems.has(systemName)) {
                 const existingSystem = this.ship.systems.get(systemName);
-                if (existingSystem.level === cardData.level) {
-debug('UI', `✅ EXISTING: ${systemName} (Level ${cardData.level}) - no change needed`);
+                const currentLevel = existingSystem.level || 1;
+                const newLevel = cardData.level || 1;
+
+                debug('SYSTEM_CHECK', `🔍 System ${systemName}: existing level ${currentLevel}, card level ${newLevel}`);
+
+                if (currentLevel === newLevel) {
+                    debug('UI', `✅ EXISTING: ${systemName} (Level ${newLevel}) - no change needed`);
+                    systemsUpdated++; // Count as updated since it's already at correct level
                     continue;
                 } else {
                     // Update existing system level instead of removing and recreating
-debug('UI', `🔄 UPDATING: ${systemName} Level ${existingSystem.level} → Level ${cardData.level}`);
-                    existingSystem.level = cardData.level;
+                    debug('UI', `🔄 UPDATING: ${systemName} Level ${currentLevel} → Level ${newLevel}`);
+                    existingSystem.level = newLevel;
                     systemsUpdated++;
-                    
+
                     // Recalculate system stats after level change
                     if (existingSystem.calculateStats) {
                         existingSystem.calculateStats();
                     }
-                    
-debug('UI', `✅ UPDATED: ${systemName} to Level ${cardData.level}`);
+
+                    debug('UI', `✅ UPDATED: ${systemName} to Level ${newLevel}`);
                     continue;
                 }
+            } else {
+                debug('SYSTEM_CHECK', `🆕 System ${systemName} does not exist, will create new`);
             }
             
             // Skip if we don't know how to create this system
             if (!cardToSystemMap[cardType] || !systemPathMap[cardToSystemMap[cardType]]) {
 debug('P1', `❌ SYSTEM CREATION FAILED: ${cardType} → Unknown system type`);
-                continue;
-            }
-            
-            // Check if system already exists before trying to create it
-            if (this.ship.systems.has(systemName)) {
-debug('UI', `✅ SKIPPED: ${systemName} already exists (duplicate creation attempt)`);
-                systemsUpdated++; // Count as updated since it's already there
                 continue;
             }
 

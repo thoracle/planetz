@@ -75,6 +75,10 @@
             "enabled": true,
             "description": "HIGH PRIORITY - Critical debugging",
             "alwaysEnabled": true
+        },
+        "SYSTEM_CHECK": {
+            "enabled": true,
+            "description": "System creation and existence checking"
         }
     },
     "global": {

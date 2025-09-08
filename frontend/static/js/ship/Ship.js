@@ -197,7 +197,8 @@ debug('UTILITY', 'Default systems initialized for', this.shipType);
                 this.addSystem('galactic_chart', galacticChart);
             }
             
-            if (defaultSystems.star_charts) {
+            // Skip star_charts if it will be created from cards
+            if (defaultSystems.star_charts && !this.hasSystemFromCards('star_charts')) {
                 const starCharts = new StarChartsSystem(defaultSystems.star_charts.level);
                 // Override slot cost from ship configuration
                 starCharts.slotCost = defaultSystems.star_charts.slots;
@@ -205,7 +206,8 @@ debug('UTILITY', 'Default systems initialized for', this.shipType);
             }
             
             // Add new gear systems that provide base ship stats
-            if (defaultSystems.hull_plating) {
+            // Skip hull_plating if it will be created from cards
+            if (defaultSystems.hull_plating && !this.hasSystemFromCards('hull_plating')) {
                 const hullPlating = new HullPlating(defaultSystems.hull_plating.level);
                 hullPlating.slotCost = defaultSystems.hull_plating.slots;
                 this.addSystem('hull_plating', hullPlating);
@@ -478,7 +480,38 @@ debug('AI', `Repaired ${systemName} by ${(repairAmount * 100).toFixed(1)}%`);
         
         return true;
     }
-    
+
+    /**
+     * Check if a system should be created from cards instead of during initialization
+     * @param {string} systemName - Name of the system to check
+     * @returns {boolean} True if system has cards and should be created from cards
+     */
+    hasSystemFromCards(systemName) {
+        if (!this.cardSystemIntegration || !this.cardSystemIntegration.installedCards) {
+            return false;
+        }
+
+        // Define which systems can be created from cards
+        const cardSystems = [
+            'star_charts', 'hull_plating', 'target_computer', 'impulse_engines',
+            'energy_reactor', 'long_range_scanner', 'radar', 'shields'
+        ];
+
+        if (!cardSystems.includes(systemName)) {
+            return false;
+        }
+
+        // Check if there are cards installed for this system
+        for (const [slotId, cardData] of this.cardSystemIntegration.installedCards) {
+            const mappedSystem = this.cardSystemIntegration.cardToSystemMap[cardData.cardType];
+            if (mappedSystem === systemName) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Remove a system from the ship
      * @param {string} systemName - Name of the system
