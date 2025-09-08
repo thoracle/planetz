@@ -1608,16 +1608,26 @@ export class TargetComputerManager {
 
         // Update distances for all targets (some may have moved via physics)
         this.targetObjects.forEach(targetData => {
-            if (targetData.physicsEntity) {
-                // Get updated position from physics if available
-                const physicsBody = window.physicsManager.getRigidBody(targetData.object);
-                if (physicsBody && physicsBody.isActive()) {
-                    // Position is already synced by physics manager
+            // Handle targets that don't have physical objects attached (e.g., Star Charts targets)
+            if (targetData.object && targetData.object.position) {
+                if (targetData.physicsEntity) {
+                    // Get updated position from physics if available
+                    const physicsBody = window.physicsManager.getRigidBody(targetData.object);
+                    if (physicsBody && physicsBody.isActive()) {
+                        // Position is already synced by physics manager
+                        targetData.distance = this.calculateDistance(this.camera.position, targetData.object.position);
+                    }
+                } else {
+                    // Fallback to regular distance calculation
                     targetData.distance = this.calculateDistance(this.camera.position, targetData.object.position);
                 }
+            } else if (targetData.position) {
+                // Fallback to stored position if available
+                targetData.distance = this.calculateDistance(this.camera.position, targetData.position);
             } else {
-                // Fallback to regular distance calculation
-                targetData.distance = this.calculateDistance(this.camera.position, targetData.object.position);
+                // Last resort: set to a large distance so these targets sort to the end
+                targetData.distance = 999999;
+                debug('TARGETING', `⚠️ Target ${targetData.name} has no position data - setting distance to ${targetData.distance}km`);
             }
             
             // Clear outOfRange flag if target is back within normal range
@@ -1646,8 +1656,18 @@ export class TargetComputerManager {
 
         // Update distances for all targets
         this.targetObjects.forEach(targetData => {
-            targetData.distance = this.calculateDistance(this.camera.position, targetData.object.position);
-            
+            // Handle targets that don't have physical objects attached (e.g., Star Charts targets)
+            if (targetData.object && targetData.object.position) {
+                targetData.distance = this.calculateDistance(this.camera.position, targetData.object.position);
+            } else if (targetData.position) {
+                // Fallback to stored position if available
+                targetData.distance = this.calculateDistance(this.camera.position, targetData.position);
+            } else {
+                // Last resort: set to a large distance so these targets sort to the end
+                targetData.distance = 999999;
+                debug('TARGETING', `⚠️ Target ${targetData.name} has no position data - setting distance to ${targetData.distance}km`);
+            }
+
             // Clear outOfRange flag if target is back within normal range
             const ship = this.viewManager?.getShip();
             const targetComputer = ship?.getSystem('target_computer');
