@@ -519,7 +519,20 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
         
         this.render();
     }
-    
+
+    zoomToLocation(x, y) {
+        // Zoom to a specific location (used for unknown object clicks)
+        this.currentCenter = { x: x, y: y };
+
+        // Zoom in unless already at max zoom
+        if (this.currentZoomLevel < this.maxZoomLevel) {
+            this.currentZoomLevel++;
+        }
+
+        this.render();
+        debug('STAR_CHARTS', `🔍 Zoomed to location (${x.toFixed(1)}, ${y.toFixed(1)}) at zoom level ${this.currentZoomLevel}`);
+    }
+
     screenToWorld(screenX, screenY) {
         // Convert screen coordinates to world coordinates
         
@@ -1533,6 +1546,25 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
     renderUndiscoveredObject(x, y) {
         // Render undiscovered objects as "?" with unknown faction color (cyan)
 
+        // Calculate zoom-scaled font size (appears same size regardless of zoom)
+        const baseFontSize = 16;
+        const scaledFontSize = baseFontSize / this.currentZoomLevel;
+
+        // Create hit box for interaction (invisible, larger than text)
+        const hitBoxSize = Math.max(20, scaledFontSize * 2);
+        const hitBox = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        hitBox.setAttribute('cx', x);
+        hitBox.setAttribute('cy', y);
+        hitBox.setAttribute('r', hitBoxSize / 2);
+        hitBox.setAttribute('fill', 'transparent');
+        hitBox.setAttribute('stroke', 'none');
+        hitBox.style.pointerEvents = 'all';
+        hitBox.style.cursor = 'pointer'; // Finger cursor for interaction
+
+        // Add tooltip
+        hitBox.setAttribute('title', 'Unknown'); // Browser tooltip
+        hitBox.setAttribute('data-tooltip', 'Unknown'); // Custom tooltip data
+
         // Create text element for "?"
         const questionMark = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         questionMark.setAttribute('x', x);
@@ -1540,17 +1572,44 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         questionMark.setAttribute('text-anchor', 'middle');
         questionMark.setAttribute('dominant-baseline', 'middle');
         questionMark.setAttribute('fill', '#44ffff'); // Unknown faction color (cyan)
-        questionMark.setAttribute('font-size', '16px');
+        questionMark.setAttribute('font-size', `${scaledFontSize}px`);
         questionMark.setAttribute('font-family', 'Courier New, monospace');
         questionMark.setAttribute('font-weight', 'bold');
         questionMark.setAttribute('class', 'star-charts-undiscovered');
         questionMark.textContent = '?';
 
-        // Add glow effect for better visibility
+        // Add glow effect for better visibility (scaled with zoom)
         questionMark.setAttribute('stroke', '#44ffff');
-        questionMark.setAttribute('stroke-width', '0.5px');
+        questionMark.setAttribute('stroke-width', `${0.5 / this.currentZoomLevel}px`);
 
+        // Add hover effects for interactivity feedback
+        const originalFill = '#44ffff';
+        const hoverFill = '#66ffff';
+
+        // Hit box hover effects
+        hitBox.addEventListener('mouseenter', () => {
+            questionMark.setAttribute('fill', hoverFill);
+            questionMark.setAttribute('stroke', hoverFill);
+        });
+
+        hitBox.addEventListener('mouseleave', () => {
+            questionMark.setAttribute('fill', originalFill);
+            questionMark.setAttribute('stroke', originalFill);
+        });
+
+        // Click handler for zoom interaction
+        hitBox.addEventListener('click', (event) => {
+            event.stopPropagation();
+            // Zoom to the unknown object location
+            this.zoomToLocation(x, y);
+            debug('STAR_CHARTS', `🖱️ Clicked unknown object at (${x}, ${y}), zooming in`);
+        });
+
+        // Add elements to SVG (hit box first for proper layering)
+        this.svg.appendChild(hitBox);
         this.svg.appendChild(questionMark);
+
+        debug('STAR_CHARTS', `❓ Rendered unknown object at (${x}, ${y}) with scaled font ${scaledFontSize.toFixed(1)}px`);
     }
 
     renderObject(object) {
