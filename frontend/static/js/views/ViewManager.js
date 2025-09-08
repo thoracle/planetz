@@ -1679,7 +1679,13 @@ debug('UI', `🃏 Loaded card: ${cardData.cardType} (Lv.${cardData.level || 1}) 
                     });
                     
                     // Initialize systems from the loaded cards
-                    await this.ship.cardSystemIntegration.createSystemsFromCards();
+                    // Only create systems if they haven't been created yet (prevent duplicates)
+                    const hasExistingSystems = this.ship.systems && this.ship.systems.size > 0;
+                    if (!hasExistingSystems) {
+                        await this.ship.cardSystemIntegration.createSystemsFromCards();
+                    } else {
+                        debug('SYSTEM_FLOW', '⏭️ Skipping system creation from saved config - systems already exist');
+                    }
                     
                     // Re-initialize cargo holds from updated cards
                     if (this.ship.cargoHoldManager) {
@@ -1709,7 +1715,13 @@ debug('UI', `🃏 Installed starter card: ${cardType} (Lv.${level}) in slot ${sl
                         });
                         
                         // Initialize systems from starter cards
-                        await this.ship.cardSystemIntegration.createSystemsFromCards();
+                        // Only create systems if they haven't been created yet (prevent duplicates)
+                        const hasExistingSystems = this.ship.systems && this.ship.systems.size > 0;
+                        if (!hasExistingSystems) {
+                            await this.ship.cardSystemIntegration.createSystemsFromCards();
+                        } else {
+                            debug('SYSTEM_FLOW', '⏭️ Skipping system creation from starter cards - systems already exist');
+                        }
                         
                         // Re-initialize cargo holds from starter cards
                         if (this.ship.cargoHoldManager) {
