@@ -28,7 +28,7 @@
             "description": "Enemy AI and ship behaviors"
         },
         "UI": {
-            "enabled": true,
+            "enabled": false,
             "description": "User interface events and updates"
         },
         "INTERACTION": {
