@@ -552,6 +552,7 @@ debug('TARGETING', 'Activating Target Computer for manual selection');
         }
 
         // First set the target normally
+        debug('TARGETING', `🎯 Star Charts: Attempting to set target: ${objectId}`);
         const success = this.targetComputer.setTargetById(objectId);
 
         if (success) {
@@ -572,6 +573,30 @@ debug('TARGETING', `🎯 TARGET_SWITCH: Target set successfully, updating displa
             }
         } else {
             console.warn(`🎯 Failed to set target: ${objectId}`);
+            debug('P1', `❌ CRITICAL: Failed to set target for ${objectData?.name || 'Unknown'} (${objectId}) - target lookup failed`);
+            debug('TARGETING', `🎯 TARGET_SWITCH: Target lookup failed, attempting cleanup and fallback`);
+
+            // CRITICAL FIX: When target switching fails, clear the wireframe and reset display
+            // This prevents old enemy wireframes from remaining visible
+            if (this.targetComputer.clearTargetWireframe) {
+                debug('TARGETING', '🎯 TARGET_SWITCH: Clearing wireframe due to target lookup failure');
+                this.targetComputer.clearTargetWireframe();
+            }
+
+            // Reset current target to prevent stale data
+            this.targetComputer.currentTarget = null;
+            this.targetComputer.targetIndex = -1;
+
+            // Force display update to show "no target" state
+            if (this.targetComputer.updateTargetDisplay) {
+                this.targetComputer.updateTargetDisplay();
+                debug('TARGETING', '🎯 TARGET_SWITCH: Display reset due to target lookup failure');
+            }
+
+            // Update reticle to show no target
+            if (this.targetComputer.updateReticleTargetInfo) {
+                this.targetComputer.updateReticleTargetInfo();
+            }
         }
 
         return success;

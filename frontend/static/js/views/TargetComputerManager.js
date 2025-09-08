@@ -1963,13 +1963,8 @@ export class TargetComputerManager {
                type: currentTargetData?.type || enhancedTargetInfo.type,
                name: currentTargetData?.name || enhancedTargetInfo.name
            };
-           isEnemyShip = enhancedTargetInfo.diplomacy === 'enemy' || enhancedTargetInfo.faction === 'enemy';
        } else if (currentTargetData?.isShip) {
            info = { type: 'enemy_ship' };
-           // Check if this is an enemy ship or target dummy
-           isEnemyShip = currentTargetData.ship?.diplomacy === 'enemy' ||
-                        currentTargetData.ship?.isTargetDummy ||
-                        currentTargetData.ship?.faction === 'enemy';
            radius = Math.max(radius, 2);
        } else if (!info.type) {
            // Fallback to SolarSystemManager only if we don't have type info
@@ -1979,11 +1974,14 @@ export class TargetComputerManager {
            }
        }
 
+       // CRITICAL FIX: Update wireframe color and isEnemyShip based on diplomacy using consolidated logic
+       const diplomacy = this.getTargetDiplomacy(currentTargetData);
+       debug('TARGETING', `🎯 TARGET_SWITCH: Target diplomacy: ${diplomacy} for ${currentTargetData?.name || 'unknown'}`);
+       debug('INSPECTION', `🔍 Target diplomacy details - type: ${currentTargetData?.type}, faction: ${currentTargetData?.faction}, ship.diplomacy: ${currentTargetData?.ship?.diplomacy}`);
 
-            // Update wireframe color based on diplomacy using consolidated logic
-            const diplomacy = this.getTargetDiplomacy(currentTargetData);
-            debug('TARGETING', `🎯 TARGET_SWITCH: Target diplomacy: ${diplomacy} for ${currentTargetData?.name || 'unknown'}`);
-            debug('INSPECTION', `🔍 Target diplomacy details - type: ${currentTargetData?.type}, faction: ${currentTargetData?.faction}, ship.diplomacy: ${currentTargetData?.ship?.diplomacy}`);
+       // FIX: Set isEnemyShip correctly - only enemy ships should have subsystem indicators
+       isEnemyShip = diplomacy === 'enemy' && currentTargetData?.isShip;
+       debug('TARGETING', `🎯 TARGET_SWITCH: Final isEnemyShip determination: ${isEnemyShip} (diplomacy: ${diplomacy}, isShip: ${currentTargetData?.isShip})`);
 
             if (diplomacy === 'enemy') {
                 wireframeColor = 0xff3333; // Enemy red
@@ -2214,8 +2212,10 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: About to get target info 
         if (enhancedTargetInfo) {
             // Use the comprehensive target information from TargetComputer
             info = enhancedTargetInfo;
-            isEnemyShip = enhancedTargetInfo.diplomacy === 'enemy' || enhancedTargetInfo.faction === 'enemy';
-            // console.log(`🎯 Enhanced target info: diplomacy=${enhancedTargetInfo.diplomacy}, faction=${enhancedTargetInfo.faction}, isEnemyShip=${isEnemyShip}`);
+            // Use consolidated diplomacy logic instead of old hardcoded check
+            const diplomacy = this.getTargetDiplomacy(currentTargetData);
+            isEnemyShip = diplomacy === 'enemy' && currentTargetData?.isShip;
+            debug('TARGETING', `🎯 UPDATE_DISPLAY: Enhanced target info diplomacy=${enhancedTargetInfo.diplomacy}, faction=${enhancedTargetInfo.faction}, isEnemyShip=${isEnemyShip}`);
         } else if (currentTargetData.isShip && currentTargetData.ship) {
             // Use consolidated diplomacy logic for ships and target dummies
             const diplomacy = this.getTargetDiplomacy(currentTargetData);
@@ -2243,6 +2243,7 @@ if (window?.DEBUG_TCM) debug('INSPECTION', `🎯 DEBUG: Final info object:`, inf
         
         // Update HUD border color based on diplomacy using consolidated logic
         const diplomacy = this.getTargetDiplomacy(currentTargetData);
+        debug('TARGETING', `🎯 UPDATE_DISPLAY: getTargetDiplomacy returned: ${diplomacy} for target: ${currentTargetData?.name || 'unknown'}`);
         let diplomacyColor = '#D0D0D0'; // Default gray
 
         if (diplomacy === 'enemy') {
@@ -2256,7 +2257,8 @@ if (window?.DEBUG_TCM) debug('INSPECTION', `🎯 DEBUG: Final info object:`, inf
         }
         
         this.targetHUD.style.borderColor = diplomacyColor;
-        
+        debug('TARGETING', `🎯 UPDATE_DISPLAY: Setting targetHUD border color to ${diplomacyColor} for diplomacy: ${diplomacy}`);
+
         // Update wireframe container border color to match
         if (this.wireframeContainer) {
             this.wireframeContainer.style.borderColor = diplomacyColor;
@@ -2856,17 +2858,19 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         let isEnemyShip = false;
         let targetName = 'Unknown Target';
         
-        // Check if this is an enemy ship
+        // Check if this is an enemy ship using consolidated diplomacy logic
         if (currentTargetData.isShip && currentTargetData.ship) {
-            isEnemyShip = true;
+            // Use consolidated diplomacy logic instead of assuming all ships are enemy
+            const diplomacy = this.getTargetDiplomacy(currentTargetData);
+            isEnemyShip = diplomacy === 'enemy';
             info = {
                 type: 'enemy_ship',
-                diplomacy: currentTargetData.ship.diplomacy || 'enemy',
+                diplomacy: diplomacy,
                 name: currentTargetData.ship.shipName,
                 shipType: currentTargetData.ship.shipType
             };
-            targetName = info.name || 'Enemy Ship';
-            // console.log(`🎯 DEBUG: updateReticleTargetInfo() - Enemy ship target: ${targetName}, diplomacy: ${info.diplomacy}`);
+            targetName = info.name || (isEnemyShip ? 'Enemy Ship' : 'Ship');
+            debug('TARGETING', `🎯 RETICLE: Ship target: ${targetName}, diplomacy: ${diplomacy}, isEnemyShip: ${isEnemyShip}`);
         } else {
             // Get celestial body info - need to pass the actual Three.js object
             const targetObject = this.currentTarget?.object || this.currentTarget;
@@ -2882,17 +2886,8 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         // Determine reticle color based on diplomacy using faction color rules
         let reticleColor = '#D0D0D0'; // Default gray
         
-        // Use diplomacy if available, otherwise try to get it from faction
-        let diplomacyStatus = info?.diplomacy;
-
-        // For target dummies, get diplomacy from the ship object
-        if (!diplomacyStatus && currentTargetData?.ship?.isTargetDummy) {
-            diplomacyStatus = currentTargetData.ship.diplomacy;
-        }
-
-        if (!diplomacyStatus && info?.faction) {
-            diplomacyStatus = this.getFactionDiplomacy(info.faction);
-        }
+        // Use consolidated diplomacy logic for consistent color determination
+        const diplomacyStatus = this.getTargetDiplomacy(currentTargetData);
         
         // Target dummies should use standard faction colors (red for enemy/hostile)
         if (isEnemyShip) {
@@ -3513,6 +3508,9 @@ debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.ship
         const normalizedId = typeof objectId === 'string' ? objectId.replace(/^a0_/i, 'A0_') : objectId;
 
 debug('TARGETING', `🎯 Setting target by ID: ${normalizedId}, targetObjects.length: ${this.targetObjects.length}`);
+        if (this.targetObjects.length === 0) {
+            debug('TARGETING', `🎯 WARNING: targetObjects array is empty! No targets available for lookup.`);
+        }
 
         for (let i = 0; i < this.targetObjects.length; i++) {
             const target = this.targetObjects[i];
@@ -3605,7 +3603,120 @@ debug('TARGETING', `🎯 Star Charts: Target set to ${target.name} (ID: ${normal
         }
 
         console.warn(`🎯 Target not found by ID: ${normalizedId}`);
-debug('TARGETING', `🎯 Available targets:`, this.targetObjects.map(t => `${t.name} (${t.id || t?.object?.userData?.id || 'no-id'})`));
+        debug('TARGETING', `🎯 Available targets:`, this.targetObjects.map(t => `${t.name} (${t.id || t?.object?.userData?.id || 'no-id'})`));
+
+        // FALLBACK: Try to find by name if ID lookup fails
+        // This handles cases where objects have names but no IDs
+        const objectName = normalizedId.replace(/^A0_/, '').replace(/_/g, ' ');
+        debug('TARGETING', `🎯 FALLBACK: Attempting name-based lookup for "${objectName}"`);
+
+        // Log all available target names for debugging
+        const availableNames = this.targetObjects.map(t => t.name).filter(n => n);
+        debug('TARGETING', `🎯 FALLBACK: Available target names: ${availableNames.join(', ')}`);
+
+        for (let i = 0; i < this.targetObjects.length; i++) {
+            const target = this.targetObjects[i];
+
+            // Try multiple matching strategies
+            let nameMatch = false;
+            const targetName = target.name;
+
+            if (!targetName) continue;
+
+            // Exact match
+            if (targetName.toLowerCase() === objectName.toLowerCase()) {
+                nameMatch = true;
+                debug('TARGETING', `🎯 FALLBACK: Exact match found: "${targetName}"`);
+            }
+            // Handle star/star mapping
+            else if (objectName === 'star' && (targetName.toLowerCase().includes('sol') || targetName.toLowerCase().includes('star'))) {
+                nameMatch = true;
+                debug('TARGETING', `🎯 FALLBACK: Star match found: "${targetName}"`);
+            }
+            // Handle terra prime variations
+            else if (objectName === 'terra_prime' && targetName.toLowerCase().includes('terra prime')) {
+                nameMatch = true;
+                debug('TARGETING', `🎯 FALLBACK: Terra Prime match found: "${targetName}"`);
+            }
+            // Handle luna variations
+            else if (objectName === 'luna' && targetName.toLowerCase().includes('luna')) {
+                nameMatch = true;
+                debug('TARGETING', `🎯 FALLBACK: Luna match found: "${targetName}"`);
+            }
+            // Handle europa variations
+            else if (objectName === 'europa' && targetName.toLowerCase().includes('europa')) {
+                nameMatch = true;
+                debug('TARGETING', `🎯 FALLBACK: Europa match found: "${targetName}"`);
+            }
+            // Generic partial match as last resort
+            else if (objectName.length > 2 && targetName.toLowerCase().includes(objectName.toLowerCase())) {
+                nameMatch = true;
+                debug('TARGETING', `🎯 FALLBACK: Partial match found: "${targetName}" contains "${objectName}"`);
+            }
+
+            if (nameMatch) {
+                debug('TARGETING', `🎯 FALLBACK: Found target by name: ${targetName}`);
+
+                this.targetIndex = i;
+                this.currentTarget = target.object || target;
+                this.isManualSelection = true;
+                this.isFromLongRangeScanner = true;
+
+                // Force immediate HUD refresh (same as successful ID lookup)
+                if (!this.currentTarget || !this.currentTarget.position) {
+                    try {
+                        const vm = this.viewManager || window.viewManager;
+                        const ssm = this.solarSystemManager || vm?.solarSystemManager || window.solarSystemManager;
+                        const sfm = vm?.starfieldManager || window.starfieldManager;
+
+                        let resolved = null;
+                        if (target.type === 'navigation_beacon' && sfm?.navigationBeacons) {
+                            resolved = sfm.navigationBeacons.find(b => (b?.userData?.name || b?.name) === target.name);
+                        }
+                        if (!resolved && ssm?.celestialBodies && typeof ssm.celestialBodies.get === 'function') {
+                            resolved = ssm.celestialBodies.get(normalizedId) ||
+                                       ssm.celestialBodies.get(`beacon_${normalizedId}`) ||
+                                       ssm.celestialBodies.get(`station_${target.name?.toLowerCase()?.replace(/\s+/g, '_')}`);
+                        }
+                        if (resolved) {
+                            this.currentTarget = resolved;
+                            this.targetObjects[i] = { ...target, object: resolved, position: resolved.position };
+                        }
+                    } catch (e) {
+                        debug('TARGETING', `🎯 FALLBACK: Resolution failed: ${e.message}`);
+                    }
+                }
+
+                // Clear existing wireframe and create new one
+                debug('TARGETING', `🎯 TARGET_SWITCH: Clearing existing wireframe for fallback target`);
+                if (this.targetWireframe) {
+                    debug('INSPECTION', `🔍 Clearing existing wireframe: ${this.targetWireframe.type || 'unknown type'}`);
+                    this.wireframeScene.remove(this.targetWireframe);
+                    if (this.targetWireframe.geometry) {
+                        this.targetWireframe.geometry.dispose();
+                    }
+                    if (this.targetWireframe.material) {
+                        if (Array.isArray(this.targetWireframe.material)) {
+                            this.targetWireframe.material.forEach(material => material.dispose());
+                        } else {
+                            this.targetWireframe.material.dispose();
+                        }
+                    }
+                }
+                this.targetWireframe = null;
+
+                // Create new wireframe for the selected target
+                this.createTargetWireframe();
+                this.updateTargetDisplay();
+                this.updateReticleTargetInfo();
+
+                debug('TARGETING', `🎯 FALLBACK: Target set successfully to ${target.name} (originally ${normalizedId})`);
+                return true;
+            }
+        }
+
+        debug('TARGETING', `🎯 FALLBACK: Name-based lookup also failed for "${objectName}"`);
+        debug('TARGETING', `🎯 CRITICAL: All lookup methods failed for ${normalizedId}. Target switching will not work until target objects are properly populated with IDs or names.`);
         return false;
     }
 
