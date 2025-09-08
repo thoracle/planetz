@@ -804,7 +804,7 @@ debug('UI', 'Starter cards installation complete');
         
         // Optional logging when explicitly requested
         if (enableLogging && !result.hasCards && result.missingCards.length > 0) {
-debug('P1', `🔴 CARD CHECK FAILED: ${systemName} missing [${result.missingCards.join(', ')}]`);
+debug('UI', `📋 Card Check: ${systemName} missing [${result.missingCards.join(', ')}]`);
         }
         
         return result.hasCards;

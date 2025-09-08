@@ -327,7 +327,9 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
             
             // Get nearby objects using spatial partitioning
             const nearbyObjects = this.getNearbyObjects(playerPosition, discoveryRadius);
-            
+
+            debug('STAR_CHARTS', `🔍 Discovery check: ${nearbyObjects.length} objects within ${discoveryRadius.toFixed(0)}km radius`);
+
             // Batch process discoveries
             this.batchProcessDiscoveries(nearbyObjects, playerPosition, discoveryRadius);
             
@@ -354,12 +356,13 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
     
     batchProcessDiscoveries(objects, playerPosition, discoveryRadius) {
         //Process discoveries in batches to avoid frame drops
-        
-        const discoveries = objects
-            .filter(obj => !this.isDiscovered(obj.id))
-            .filter(obj => this.isWithinRange(obj, playerPosition, discoveryRadius))
-            .slice(0, this.config.maxDiscoveriesPerFrame);
-        
+
+        const undiscovered = objects.filter(obj => !this.isDiscovered(obj.id));
+        const inRange = undiscovered.filter(obj => this.isWithinRange(obj, playerPosition, discoveryRadius));
+        const discoveries = inRange.slice(0, this.config.maxDiscoveriesPerFrame);
+
+        debug('STAR_CHARTS', `📊 Discovery batch: ${objects.length} total → ${undiscovered.length} undiscovered → ${inRange.length} in range → ${discoveries.length} processing`);
+
         discoveries.forEach(obj => this.processDiscovery(obj));
     }
     
@@ -449,80 +452,91 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         
         // Show notification
         const message = `${object.name} discovered!`;
-        
+
         if (config.notification === 'prominent') {
             this.showProminentNotification(message);
         } else if (config.notification === 'subtle') {
             this.showSubtleNotification(message);
+        } else if (config.notification === 'log_only') {
+            debug('STAR_CHARTS', `📝 ${message}`);
         } else {
-debug('UTILITY', `📝 ${message}`);
+            debug('STAR_CHARTS', `📝 ${message}`);
         }
     }
     
     showProminentNotification(message) {
-        //Show prominent discovery notification
-        
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = 'star-charts-discovery-notification prominent';
-        notification.textContent = message;
-        
-        // Style the notification
-        Object.assign(notification.style, {
-            position: 'fixed',
-            top: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: 'rgba(0, 255, 68, 0.9)',
-            color: '#000',
-            padding: '10px 20px',
-            borderRadius: '5px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            zIndex: '10000',
-            animation: 'fadeInOut 3s ease-in-out'
-        });
-        
-        document.body.appendChild(notification);
-        
-        // Remove after animation
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 3000);
+        //Show prominent discovery notification using HUD system
+
+        // Use StarfieldManager's HUD notification if available
+        if (this.viewManager?.starfieldManager?.showHUDMessage) {
+            this.viewManager.starfieldManager.showHUDMessage('DISCOVERY', message);
+        } else {
+            // Fallback to creating notification element
+            const notification = document.createElement('div');
+            notification.className = 'star-charts-discovery-notification prominent';
+            notification.textContent = message;
+
+            // Style the notification
+            Object.assign(notification.style, {
+                position: 'fixed',
+                top: '20px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: 'rgba(0, 255, 68, 0.9)',
+                color: '#000',
+                padding: '10px 20px',
+                borderRadius: '5px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                zIndex: '10000',
+                animation: 'fadeInOut 3s ease-in-out'
+            });
+
+            document.body.appendChild(notification);
+
+            // Remove after animation
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 3000);
+        }
     }
     
     showSubtleNotification(message) {
-        //Show subtle discovery notification
-        
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = 'star-charts-discovery-notification subtle';
-        notification.textContent = message;
-        
-        // Style the notification
-        Object.assign(notification.style, {
-            position: 'fixed',
-            top: '60px',
-            right: '20px',
-            backgroundColor: 'rgba(255, 255, 68, 0.7)',
-            color: '#000',
-            padding: '8px 15px',
-            borderRadius: '3px',
-            fontSize: '14px',
-            zIndex: '9999',
-            animation: 'slideInOut 2s ease-in-out'
-        });
-        
-        document.body.appendChild(notification);
-        
-        // Remove after animation
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 2000);
+        //Show subtle discovery notification using HUD system
+
+        // Use StarfieldManager's HUD notification if available
+        if (this.viewManager?.starfieldManager?.showHUDMessage) {
+            this.viewManager.starfieldManager.showHUDMessage('DISCOVERY', message, 'subtle');
+        } else {
+            // Fallback to creating notification element
+            const notification = document.createElement('div');
+            notification.className = 'star-charts-discovery-notification subtle';
+            notification.textContent = message;
+
+            // Style the notification
+            Object.assign(notification.style, {
+                position: 'fixed',
+                top: '60px',
+                right: '20px',
+                backgroundColor: 'rgba(255, 255, 68, 0.7)',
+                color: '#000',
+                padding: '8px 15px',
+                borderRadius: '3px',
+                fontSize: '14px',
+                zIndex: '9999',
+                animation: 'slideInOut 2s ease-in-out'
+            });
+
+            document.body.appendChild(notification);
+
+            // Remove after animation
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 2000);
     }
     
     getPlayerPosition() {
@@ -578,8 +592,8 @@ debug('UTILITY', `📝 ${message}`);
             }
         }
         
-        // Default baseline discovery radius (km)
-        return 150.0;
+        // Default baseline discovery radius (km) - increased for better solar system coverage
+        return 1000.0; // Increased from 150km to 1000km for better discovery
     }
     
     isDiscovered(objectId) {
