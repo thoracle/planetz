@@ -572,21 +572,30 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     
     getPlayerPosition() {
         //Get current player position with robust fallbacks
-        
+
         // Primary: ship position from SolarSystemManager
         if (this.solarSystemManager && this.solarSystemManager.ship) {
             const position = this.solarSystemManager.ship.position;
             if (position && typeof position.x === 'number') {
+                debug('STAR_CHARTS', `📍 Player position (ship): (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
                 return [position.x, position.y, position.z];
+            } else {
+                debug('STAR_CHARTS', `❌ Invalid ship position:`, position);
             }
+        } else {
+            debug('STAR_CHARTS', `❌ No solarSystemManager.ship available`);
         }
-        
+
         // Fallback: use active camera position (always available in gameplay)
         if (this.camera && this.camera.position) {
             const pos = this.camera.position;
+            debug('STAR_CHARTS', `📍 Player position (camera): (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`);
             return [pos.x, pos.y, pos.z];
+        } else {
+            debug('STAR_CHARTS', `❌ No camera position available`);
         }
-        
+
+        debug('STAR_CHARTS', `❌ Returning null position`);
         return null;
     }
     
