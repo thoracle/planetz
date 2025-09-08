@@ -422,7 +422,7 @@ debug('MISSIONS', 'MissionAPIService: All mission data refreshed');
             const response = await fetch(`${this.baseURL}/templates`);
             const isConnected = response.ok;
             
-debug('P1', `🎯 MissionAPIService: Connection test ${isConnected ? 'PASSED' : 'FAILED'}`);
+debug('MISSIONS', `🎯 MissionAPIService: Connection test ${isConnected ? 'PASSED' : 'FAILED'}`);
             return isConnected;
             
         } catch (error) {

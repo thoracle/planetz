@@ -1047,7 +1047,7 @@ debug('UTILITY', `📡 Beacon ${i + 1} created at position (${position[0].toFixe
                         window.collisionManager.addObjectToLayer(beacon, 'stations');
                     }
 
-debug('NAVIGATION', `📡 Navigation beacon ${beaconInfo.name} added to spatial tracking`);
+debug('INFRASTRUCTURE', `📡 Navigation beacon ${beaconInfo.name} added to spatial tracking`);
                 }
 
                 // Track in StarfieldManager so we can clean up on destroy
