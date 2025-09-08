@@ -1350,13 +1350,14 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
     }
     
     getDiscoveredObjectsForRender() {
-        // Get all discovered objects for current sector (or all objects in test mode)
-        
+        // Get all objects for current sector - discovered objects show normally, undiscovered show as "?"
+        // In test mode, all objects show normally
+
         // Get sector data
         const sectorData = this.starChartsManager.objectDatabase?.sectors[this.starChartsManager.getCurrentSector()];
         if (!sectorData) return [];
-        
-        // Check if test mode is enabled (show all objects)
+
+        // Check if test mode is enabled (show all objects normally)
         const isTestMode = this.isTestModeEnabled();
         const discoveredIds = isTestMode ? null : this.starChartsManager.getDiscoveredObjects();
         const norm = (id) => (typeof id === 'string' ? id.replace(/^a0_/i, 'A0_') : id);
@@ -1366,38 +1367,62 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             const nid = norm(id);
             return discoveredIds.some(did => norm(did) === nid);
         };
-        
+
         const allObjects = [];
-        
-        // Add star (always include if exists, or check discovery in normal mode)
-        if (sectorData.star && isDiscovered(sectorData.star.id)) {
-            allObjects.push(sectorData.star);
+
+        // Add star (discovered = normal, undiscovered = with ? flag)
+        if (sectorData.star) {
+            const discovered = isDiscovered(sectorData.star.id);
+            allObjects.push({
+                ...sectorData.star,
+                _isUndiscovered: !discovered && !isTestMode
+            });
         }
-        
-        // Add celestial objects
+
+        // Add celestial objects (discovered = normal, undiscovered = with ? flag)
         sectorData.objects.forEach(obj => {
-            if (isDiscovered(obj.id)) {
+            const discovered = isDiscovered(obj.id);
+            if (discovered || isTestMode) {
                 allObjects.push(obj);
+            } else {
+                // Add undiscovered object with special flag
+                allObjects.push({
+                    ...obj,
+                    _isUndiscovered: true
+                });
             }
         });
-        
+
         // Add infrastructure
         if (sectorData.infrastructure) {
             sectorData.infrastructure.stations?.forEach(station => {
-                if (isDiscovered(station.id)) {
+                const discovered = isDiscovered(station.id);
+                if (discovered || isTestMode) {
                     // Normalize station type to match LRS icon rules
                     allObjects.push({ ...station, type: 'space_station' });
+                } else {
+                    // Add undiscovered station with special flag
+                    allObjects.push({
+                        ...station,
+                        type: 'space_station',
+                        _isUndiscovered: true
+                    });
                 }
             });
-            
+
             sectorData.infrastructure.beacons?.forEach(beacon => {
                 const discovered = isDiscovered(beacon.id);
-                // console.log(`🔧 Beacon ${beacon.name} (${beacon.id}): discovered=${discovered}, position=(${beacon.position?.[0]}, ${beacon.position?.[1]}, ${beacon.position?.[2]})`);
-                if (discovered) {
+                if (discovered || isTestMode) {
                     // Normalize beacon type to match LRS icon rules
                     const beaconData = { ...beacon, type: 'navigation_beacon' };
                     allObjects.push(beaconData);
-                    // console.log(`🔧 Added beacon ${beacon.name} to allObjects with type=${beaconData.type}, position=(${beaconData.position?.[0]}, ${beaconData.position?.[1]}, ${beaconData.position?.[2]})`);
+                } else {
+                    // Add undiscovered beacon with special flag
+                    allObjects.push({
+                        ...beacon,
+                        type: 'navigation_beacon',
+                        _isUndiscovered: true
+                    });
                 }
             });
         }
@@ -1504,13 +1529,43 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         
         this.svg.appendChild(moonOrbitHighlight);
     }
-    
+
+    renderUndiscoveredObject(x, y) {
+        // Render undiscovered objects as "?" with unknown faction color (cyan)
+
+        // Create text element for "?"
+        const questionMark = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        questionMark.setAttribute('x', x);
+        questionMark.setAttribute('y', y);
+        questionMark.setAttribute('text-anchor', 'middle');
+        questionMark.setAttribute('dominant-baseline', 'middle');
+        questionMark.setAttribute('fill', '#44ffff'); // Unknown faction color (cyan)
+        questionMark.setAttribute('font-size', '16px');
+        questionMark.setAttribute('font-family', 'Courier New, monospace');
+        questionMark.setAttribute('font-weight', 'bold');
+        questionMark.setAttribute('class', 'star-charts-undiscovered');
+        questionMark.textContent = '?';
+
+        // Add glow effect for better visibility
+        questionMark.setAttribute('stroke', '#44ffff');
+        questionMark.setAttribute('stroke-width', '0.5px');
+
+        this.svg.appendChild(questionMark);
+    }
+
     renderObject(object) {
         // Render a single object
 
         const pos = this.getDisplayPosition(object);
         const x = pos.x;
         const y = pos.y; // Use Z as Y for top-down view
+
+        // Handle undiscovered objects - render as "?" with unknown faction color
+        if (object._isUndiscovered) {
+            this.renderUndiscoveredObject(x, y);
+            return; // Don't render the normal object
+        }
+
         const radius = this.getObjectDisplayRadius(object);
         const color = this.getObjectColor(object);
 
