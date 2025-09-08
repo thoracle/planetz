@@ -81,7 +81,7 @@ export class StarChartsManager {
             enabled: true,
             fallbackToLRS: true,
             sectors: ['A0'], // Phase 0: A0 only
-            maxDiscoveriesPerFrame: 10, // Increased for better discovery coverage
+            maxDiscoveriesPerFrame: 15, // Further increased for comprehensive discovery coverage
             performanceMonitoring: true
         };
         
@@ -328,7 +328,12 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
             // Get nearby objects using spatial partitioning
             const nearbyObjects = this.getNearbyObjects(playerPosition, discoveryRadius);
 
+            // Debug spatial grid status
+            const gridCells = this.spatialGrid.size;
+            const totalObjectsInGrid = Array.from(this.spatialGrid.values()).reduce((sum, cell) => sum + cell.length, 0);
+
             debug('STAR_CHARTS', `🔍 Discovery check: ${nearbyObjects.length} objects within ${discoveryRadius.toFixed(0)}km radius`);
+            debug('STAR_CHARTS', `📊 Spatial grid: ${gridCells} cells, ${totalObjectsInGrid} total objects`);
 
             // Batch process discoveries
             this.batchProcessDiscoveries(nearbyObjects, playerPosition, discoveryRadius);
@@ -361,7 +366,11 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
         const inRange = undiscovered.filter(obj => this.isWithinRange(obj, playerPosition, discoveryRadius));
         const discoveries = inRange.slice(0, this.config.maxDiscoveriesPerFrame);
 
-        debug('STAR_CHARTS', `📊 Discovery batch: ${objects.length} total → ${undiscovered.length} undiscovered → ${inRange.length} in range → ${discoveries.length} processing`);
+        // Get total objects in database for context
+        const totalInDatabase = this.objectDatabase?.sectors?.[this.currentSector]?.objects?.length || 0;
+
+        debug('STAR_CHARTS', `📊 Discovery batch: ${objects.length}/${totalInDatabase} nearby → ${undiscovered.length} undiscovered → ${inRange.length} in range → ${discoveries.length}/${this.config.maxDiscoveriesPerFrame} processing`);
+        debug('STAR_CHARTS', `📈 Progress: ${this.discoveredObjects.size} total discovered`);
 
         discoveries.forEach(obj => this.processDiscovery(obj));
     }
@@ -572,9 +581,9 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     getDiscoveryRadius() {
         //Get discovery radius - independent of target computer range for better solar system coverage
 
-        // Use a fixed discovery radius that's optimized for solar system exploration
-        // This is separate from targeting range for gameplay reasons
-        const baseDiscoveryRadius = 800.0; // 800km for good coverage without performance issues
+        // Use a fixed discovery radius optimized for SOL's clustered object distribution
+        // Objects are clustered much closer to SOL than initially assumed
+        const baseDiscoveryRadius = 150.0; // 150km for precise discovery around SOL cluster
 
         debug('STAR_CHARTS', `🔍 Using discovery radius: ${baseDiscoveryRadius}km`);
         return baseDiscoveryRadius;
