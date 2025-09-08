@@ -33,14 +33,78 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 **Production-ready space shooter** featuring:
 - **Simplified Three.js physics** - Recently refactored from Ammo.js for better maintainability
 - Complete weapon systems (lasers, torpedoes, missiles) with raycasting collision
-- Advanced targeting with sub-system precision and faction colors  
+- Advanced targeting with sub-system precision and faction colors
 - Enemy AI system (8 ship types, state machines, flocking behaviors)
 - Mission framework with cargo delivery, elimination, and escort missions
 - Faction system (10 unique factions with diplomatic complexity)
 - Space stations (13 types) and complete Sol system implementation
 - 3D radar, docking, trading, and ship upgrade systems
 
-> 📖 **Essential Reading**: See [`docs/design_pillars.md`](design_pillars.md) for the foundational design philosophy, including player agency, strategic depth through collection mechanics, and the dynamic reactive universe that drives all game systems.
+## 🎮 Game Design Philosophy: "Star Fuckers" Collection-Driven Vision
+
+**Star Fuckers** is not just a space shooter—it's a collection-driven space adventure that transforms exploration into meaningful progression. Every system, mechanic, and feature serves the core fantasy of being a cosmic adventurer collecting rare items across a living universe.
+
+### **Core Design Pillars**
+
+#### **🌟 Collection as the Heart of Gameplay**
+- **Pokédex-Style Inventory**: Discover, collect, and catalog thousands of unique items across the Sol system
+- **Strategic Item Combinations**: Mix and match collected items to create powerful loadouts and ship configurations
+- **Exploration-Driven Rewards**: Every mission, combat, and trade opportunity revolves around collection opportunities
+- **Visual Collection Feedback**: Clear progression through item upgrades and ship customization
+
+#### **🎲 Player Agency Through Meaningful Choices**
+- **Multiple Paths to Victory**: Different collection strategies lead to unique playstyles and endings
+- **Visible World Impact**: Player actions directly influence faction relationships, item availability, and universe state
+- **Diplomatic Consequences**: Collection choices affect faction alliances and available missions
+- **Economic Butterfly Effects**: Trading decisions ripple through the galactic economy
+
+#### **🌌 Living, Reactive Universe**
+- **Dynamic Faction Relationships**: Political alliances shift based on player actions and collection milestones
+- **Procedural Mission Generation**: New opportunities emerge from your collection progress and reputation
+- **Economic Fluctuations**: Market prices and item availability respond to player trading activities
+- **Persistent World Changes**: Your actions create lasting consequences in the game world
+
+#### **🎨 Retro-Futuristic Aesthetic**
+- **Timeless Low-Poly Art**: Clean, accessible visuals that won't age poorly
+- **Faction Visual Identity**: Each of the 10 factions has distinct colors, architecture, and design language
+- **Intuitive UI Integration**: Diegetic elements integrated into the game world, minimal HUD breaks
+- **Clear Visual Hierarchy**: Important information is immediately readable without cognitive load
+
+#### **⚡ Accessible Space Adventure**
+- **Arcade-Style Combat**: Fast-paced, mouse-controlled shooting that prioritizes fun over realism
+- **Seamless Transitions**: Fluid movement between ship cockpit and on-foot exploration
+- **Progressive Difficulty**: Easy to learn core mechanics with deep mastery opportunities
+- **Futurama > Star Trek**: Fun, accessible sci-fi adventure rather than hardcore simulation
+
+### **Collection Mechanics Drive Everything**
+
+**Your journey as a cosmic collector:**
+1. **Discovery Phase**: Explore the Sol system, discovering planets, stations, and hidden locations
+2. **Collection Phase**: Gather unique items through missions, combat, and trading
+3. **Synthesis Phase**: Combine items to create powerful upgrades and abilities
+4. **Mastery Phase**: Unlock new areas, factions, and opportunities through collection milestones
+
+**Example Collection Flow:**
+- Complete cargo mission → Unlock rare mineral deposit location
+- Mine minerals → Craft advanced ship component
+- Upgrade ship → Access previously unreachable sector
+- Discover new faction outpost → New collection opportunities
+
+### **Why This Design Matters**
+
+**For Players:**
+- Clear sense of progression through tangible collection achievements
+- Multiple viable strategies keep gameplay fresh
+- Living universe creates replayability and emergent storytelling
+- Accessible entry point with room for mastery
+
+**For Developers:**
+- Collection mechanics provide clear design constraints and goals
+- Modular item system enables easy content expansion
+- Reactive universe creates meaningful player impact
+- Performance optimizations focused on exploration and collection features
+
+> 📖 **Essential Reading**: See [`docs/design_pillars.md`](design_pillars.md) for the detailed design philosophy, including player agency, strategic depth through collection mechanics, and the dynamic reactive universe that drives all game systems.
 
 ## 📊 Current Project Status
 
@@ -656,7 +720,27 @@ debug('TESTING', 'Test assertion failed:', condition);
 #### **🔴 P1 (HIGH PRIORITY)**
 **When to enable:** Debugging high-priority issues, system state tracking, workflow debugging (default: disabled)
 
+**⚠️ IMPORTANT: Reserve P1 for:**
+- **Critical system failures**
+- **Data corruption**
+- **Security issues**
+- **Game-breaking errors**
+
+**DO NOT use P1 for:**
+- Status messages (use appropriate channel like `STATUS`)
+- Connection tests (use `MISSIONS` channel)
+- Normal operation logging (use specific channel)
+
 ```javascript
+// ✅ CORRECT - P1 for critical issues
+debug('P1', 'CRITICAL: System initialization failed');
+debug('P1', 'SECURITY: Invalid authentication detected');
+debug('P1', 'DATA: Corruption detected in save file');
+
+// ❌ WRONG - P1 misused for status messages
+debug('P1', 'MissionAPIService: Connection test PASSED'); // Use MISSIONS channel
+debug('P1', 'System ready for operation'); // Use UTILITY or STATUS channel
+
 // Examples of when to use P1:
 debug('P1', 'System initialization sequence started');
 debug('P1', 'Database connection pool size: 10');

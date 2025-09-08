@@ -35,6 +35,7 @@ export class SmartDebugManager {
             'MONEY': '💵',
             'INFRASTRUCTURE': '🏗️',
             'TESTING': '🧪',
+            'STATUS': '📊',
             'P1': '🔴'
         };
 
@@ -219,6 +220,10 @@ export class SmartDebugManager {
                 "TESTING": {
                     enabled: false,
                     description: "Test functions and debugging helpers"
+                },
+                "STATUS": {
+                    enabled: false,
+                    description: "System status messages and connection tests"
                 },
                 "P1": {
                     enabled: false,

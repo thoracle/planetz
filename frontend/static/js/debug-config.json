@@ -83,6 +83,10 @@
         "SYSTEM_FLOW": {
             "enabled": false,
             "description": "Detailed system creation flow and debugging"
+        },
+        "STATUS": {
+            "enabled": false,
+            "description": "System status messages and connection tests"
         }
     },
     "global": {
