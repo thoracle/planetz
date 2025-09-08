@@ -81,7 +81,7 @@ export class StarChartsManager {
             enabled: true,
             fallbackToLRS: true,
             sectors: ['A0'], // Phase 0: A0 only
-            maxDiscoveriesPerFrame: 5,
+            maxDiscoveriesPerFrame: 10, // Increased for better discovery coverage
             performanceMonitoring: true
         };
         
@@ -414,12 +414,15 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     
     shouldNotifyDiscovery(objectType) {
         //Check if discovery should trigger notification based on pacing
-        
-        const category = this.getDiscoveryCategory(objectType);
-        const lastTime = this.lastDiscoveryTime.get(category) || 0;
-        const cooldown = this.discoveryTypes[category].cooldown;
-        
-        return Date.now() - lastTime > cooldown;
+        // TEMPORARILY DISABLED: Always notify for testing purposes
+
+        // const category = this.getDiscoveryCategory(objectType);
+        // const lastTime = this.lastDiscoveryTime.get(category) || 0;
+        // const cooldown = this.discoveryTypes[category].cooldown;
+        //
+        // return Date.now() - lastTime > cooldown;
+
+        return true; // Always notify for testing - remove suppression
     }
     
     showDiscoveryNotification(object, category) {
@@ -467,9 +470,12 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     showProminentNotification(message) {
         //Show prominent discovery notification using HUD system
 
-        // Use StarfieldManager's HUD notification if available
-        if (this.viewManager?.starfieldManager?.showHUDMessage) {
-            this.viewManager.starfieldManager.showHUDMessage('DISCOVERY', message);
+        // Use StarfieldManager's communication HUD for proper notifications
+        if (this.viewManager?.starfieldManager?.communicationHUD?.showMessage) {
+            this.viewManager.starfieldManager.communicationHUD.showMessage('DISCOVERY', message, {
+                duration: 3000,
+                priority: 'normal'
+            });
         } else {
             // Fallback to creating notification element
             const notification = document.createElement('div');
@@ -506,9 +512,12 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     showSubtleNotification(message) {
         //Show subtle discovery notification using HUD system
 
-        // Use StarfieldManager's HUD notification if available
-        if (this.viewManager?.starfieldManager?.showHUDMessage) {
-            this.viewManager.starfieldManager.showHUDMessage('DISCOVERY', message, 'subtle');
+        // Use StarfieldManager's communication HUD for proper notifications
+        if (this.viewManager?.starfieldManager?.communicationHUD?.showMessage) {
+            this.viewManager.starfieldManager.communicationHUD.showMessage('DISCOVERY', message, {
+                duration: 2000,
+                priority: 'low'
+            });
         } else {
             // Fallback to creating notification element
             const notification = document.createElement('div');
@@ -561,40 +570,14 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     }
     
     getDiscoveryRadius() {
-        //Get discovery radius based on equipped Target CPU with method-based API
-        
-        // Prefer TargetComputerManager's system if exposed
-        if (this.targetComputerManager && this.targetComputerManager.targetComputer) {
-            const tc = this.targetComputerManager.targetComputer;
-            if (typeof tc.getCurrentTargetingRange === 'function') {
-                const r = tc.getCurrentTargetingRange();
-                if (typeof r === 'number' && r > 0) return r;
-            }
-        }
-        
-        // Fallback: ship system lookup
-        if (this.solarSystemManager && this.solarSystemManager.ship && this.solarSystemManager.ship.systems) {
-            const targetComputer = this.solarSystemManager.ship.systems.get('target_computer');
-            if (targetComputer && typeof targetComputer.getCurrentTargetingRange === 'function') {
-                const r = targetComputer.getCurrentTargetingRange();
-                if (typeof r === 'number' && r > 0) return r;
-            }
-        }
+        //Get discovery radius - independent of target computer range for better solar system coverage
 
-        // Secondary fallback: viewManager ship (available even if solarSystemManager not wired yet)
-        if (this.viewManager && typeof this.viewManager.getShip === 'function') {
-            const ship = this.viewManager.getShip();
-            if (ship && ship.systems) {
-                const targetComputer = ship.systems.get('target_computer');
-                if (targetComputer && typeof targetComputer.getCurrentTargetingRange === 'function') {
-                    const r = targetComputer.getCurrentTargetingRange();
-                    if (typeof r === 'number' && r > 0) return r;
-                }
-            }
-        }
-        
-        // Default baseline discovery radius (km) - increased for better solar system coverage
-        return 1000.0; // Increased from 150km to 1000km for better discovery
+        // Use a fixed discovery radius that's optimized for solar system exploration
+        // This is separate from targeting range for gameplay reasons
+        const baseDiscoveryRadius = 800.0; // 800km for good coverage without performance issues
+
+        debug('STAR_CHARTS', `🔍 Using discovery radius: ${baseDiscoveryRadius}km`);
+        return baseDiscoveryRadius;
     }
     
     isDiscovered(objectId) {
