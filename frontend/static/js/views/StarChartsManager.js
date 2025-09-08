@@ -248,18 +248,37 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
             ...(sectorData.infrastructure?.stations || []),
             ...(sectorData.infrastructure?.beacons || [])
         ];
-        
-        allObjects.forEach(obj => {
+
+        debug('STAR_CHARTS', `📊 Processing ${allObjects.length} objects for sector ${this.currentSector}`);
+        debug('STAR_CHARTS', `   - Star: ${sectorData.star?.id || 'none'}`);
+        debug('STAR_CHARTS', `   - Objects: ${sectorData.objects?.length || 0}`);
+        debug('STAR_CHARTS', `   - Stations: ${sectorData.infrastructure?.stations?.length || 0}`);
+        debug('STAR_CHARTS', `   - Beacons: ${sectorData.infrastructure?.beacons?.length || 0}`);
+
+        let processedCount = 0;
+        let skippedCount = 0;
+
+        allObjects.forEach((obj, index) => {
             if (obj && obj.position) {
                 const gridKey = this.getGridKey(obj.position);
                 if (!this.spatialGrid.has(gridKey)) {
                     this.spatialGrid.set(gridKey, []);
                 }
                 this.spatialGrid.get(gridKey).push(obj);
+                processedCount++;
+
+                if (index < 5) { // Log first 5 objects
+                    debug('STAR_CHARTS', `   ✅ ${obj.id}: position [${obj.position.join(', ')}] → grid ${gridKey}`);
+                }
+            } else {
+                skippedCount++;
+                if (index < 3) { // Log first 3 skipped objects
+                    debug('STAR_CHARTS', `   ❌ Skipped object ${index}: ${obj?.id || 'unknown'} (missing position)`);
+                }
             }
         });
-        
-debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} cells, ${allObjects.length} objects`);
+
+debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} cells, ${allObjects.length} objects (${processedCount} processed, ${skippedCount} skipped)`);
     }
     
     getGridKey(position) {
@@ -292,6 +311,14 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
                         nearbyObjects.push(...cellObjects);
                         totalObjectsFound += cellObjects.length;
                         debug('STAR_CHARTS', `🔍 Cell ${gridKey}: ${cellObjects.length} objects`);
+                    } else if (this.spatialGrid.has(gridKey)) {
+                        // Cell exists but is empty
+                        debug('STAR_CHARTS', `🔍 Cell ${gridKey}: empty`);
+                    } else {
+                        // Cell doesn't exist in grid
+                        if (checkedCells <= 5) { // Only log first few missing cells
+                            debug('STAR_CHARTS', `🔍 Cell ${gridKey}: not in grid`);
+                        }
                     }
                 }
             }
@@ -374,9 +401,22 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
     batchProcessDiscoveries(objects, playerPosition, discoveryRadius) {
         //Process discoveries in batches to avoid frame drops
 
+        debug('STAR_CHARTS', `🔍 Processing ${objects?.length || 0} nearby objects for discovery`);
+
         const undiscovered = objects.filter(obj => !this.isDiscovered(obj.id));
         const inRange = undiscovered.filter(obj => this.isWithinRange(obj, playerPosition, discoveryRadius));
         const discoveries = inRange.slice(0, this.config.maxDiscoveriesPerFrame);
+
+        // Debug what we're finding
+        if (objects && objects.length > 0) {
+            debug('STAR_CHARTS', `📋 First 3 nearby objects:`);
+            objects.slice(0, 3).forEach((obj, index) => {
+                const distance = this.calculateDistance(obj.position, playerPosition);
+                const discovered = this.isDiscovered(obj.id);
+                const withinRange = this.isWithinRange(obj, playerPosition, discoveryRadius);
+                debug('STAR_CHARTS', `   ${index + 1}. ${obj.id} (${obj.type}) - ${distance.toFixed(1)}km - ${discovered ? 'ALREADY DISCOVERED' : 'NEW'} - ${withinRange ? 'IN RANGE' : 'OUT OF RANGE'}`);
+            });
+        }
 
         // Get total objects in database for context
         const totalInDatabase = this.objectDatabase?.sectors?.[this.currentSector]?.objects?.length || 0;
@@ -384,7 +424,16 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
         debug('STAR_CHARTS', `📊 Discovery batch: ${objects?.length || 0}/${totalInDatabase} nearby → ${undiscovered.length} undiscovered → ${inRange.length} in range → ${discoveries.length}/${this.config.maxDiscoveriesPerFrame} processing`);
         debug('STAR_CHARTS', `📈 Progress: ${this.discoveredObjects.size} total discovered`);
 
-        discoveries.forEach(obj => this.processDiscovery(obj));
+        if (discoveries.length > 0) {
+            debug('STAR_CHARTS', `🎯 Processing ${discoveries.length} discoveries:`);
+            discoveries.forEach((obj, index) => {
+                const distance = this.calculateDistance(obj.position, playerPosition);
+                debug('STAR_CHARTS', `   ${index + 1}. Discovering ${obj.id} (${obj.type}) at ${distance.toFixed(1)}km`);
+                this.processDiscovery(obj);
+            });
+        } else {
+            debug('STAR_CHARTS', `❌ No objects to discover in this batch`);
+        }
     }
     
     isWithinRange(object, playerPosition, discoveryRadius) {
