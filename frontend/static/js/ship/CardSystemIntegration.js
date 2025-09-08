@@ -542,7 +542,8 @@ debug('UI', `❌ NO CARDS LOADED for ${this.ship.shipType}`);
             'WarpDrive': './systems/WarpDrive.js',
             'Weapons': './systems/Weapons.js',
             'MissileTubes': './systems/MissileTubes.js',
-            'RadarSystem': './systems/RadarSystem.js'
+            'RadarSystem': './systems/RadarSystem.js',
+            'StarChartsSystem': './systems/StarChartsSystem.js'
         };
         
         let systemsCreated = 0;
@@ -602,6 +603,13 @@ debug('P1', `❌ SYSTEM CREATION FAILED: ${cardType} → Unknown system type`);
                 continue;
             }
             
+            // Check if system already exists before trying to create it
+            if (this.ship.systems.has(systemName)) {
+debug('UI', `✅ SKIPPED: ${systemName} already exists (duplicate creation attempt)`);
+                systemsUpdated++; // Count as updated since it's already there
+                continue;
+            }
+
             try {
                 // Import and create the system
                 const modulePath = systemPathMap[cardToSystemMap[cardType]];

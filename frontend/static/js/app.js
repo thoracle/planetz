@@ -303,9 +303,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     debug('P1', 'HIGH PRIORITY: Debug system operational');
     debug('INSPECTION', 'This should be disabled by default');
 
-    // Renderer setup
+    // Renderer setup with safe dimensions
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
+
+    // Ensure container has valid dimensions before setting renderer size
+    const initialWidth = Math.max(1, container.clientWidth || window.innerWidth || 800);
+    const initialHeight = Math.max(1, container.clientHeight || window.innerHeight || 600);
+
+    renderer.setSize(initialWidth, initialHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     container.appendChild(renderer.domElement);
     
