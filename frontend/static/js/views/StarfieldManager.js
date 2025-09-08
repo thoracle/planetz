@@ -2336,17 +2336,29 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
 debug('COMBAT', 'Refreshing ship systems before showing damage control...');
                 // Force reload cards and refresh systems
                 ship.cardSystemIntegration.loadCards().then(() => {
-                    ship.cardSystemIntegration.createSystemsFromCards().then(() => {
-                        // Re-initialize cargo holds from updated cards
-                        if (ship.cargoHoldManager) {
-                            ship.cargoHoldManager.initializeFromCards();
-debug('UI', '🚛 Cargo holds refreshed from updated cards');
-                        }
-                        
-                        // Show the damage control HUD after systems are refreshed
+                    // Check if systems already exist to prevent duplicates
+                    const existingSystemCount = ship.systems ? ship.systems.size : 0;
+                    debug('SYSTEM_FLOW', `🔍 StarfieldManager damage control check: existing systems = ${existingSystemCount}`);
+
+                    if (existingSystemCount === 0) {
+                        debug('SYSTEM_FLOW', '🚀 StarfieldManager creating systems for damage control');
+                        ship.cardSystemIntegration.createSystemsFromCards().then(() => {
+                            // Re-initialize cargo holds from updated cards
+                            if (ship.cargoHoldManager) {
+                                ship.cargoHoldManager.initializeFromCards();
+                                debug('UI', '🚛 Cargo holds refreshed from updated cards');
+                            }
+
+                            // Show the damage control HUD after systems are refreshed
+                            this.damageControlHUD.show();
+                            debug('COMBAT', 'Damage control HUD shown with refreshed systems');
+                        });
+                    } else {
+                        debug('SYSTEM_FLOW', '⏭️ StarfieldManager skipping system creation for damage control - systems already exist');
+                        // Still show damage control even if we didn't recreate systems
                         this.damageControlHUD.show();
-debug('COMBAT', 'Damage control HUD shown with refreshed systems');
-                    });
+                        debug('COMBAT', 'Damage control HUD shown (systems not recreated)');
+                    }
                 });
             } else {
                 // Fallback: show immediately if no card system integration
@@ -6210,7 +6222,16 @@ debug('UI', '🔄 Refreshing ship systems from current card configuration...');
                 await ship.cardSystemIntegration.loadCards();
                 
                 // Recreate all systems from the refreshed card data
-                await ship.cardSystemIntegration.createSystemsFromCards();
+                // Check if systems already exist to prevent duplicates
+                const existingSystemCount = ship.systems ? ship.systems.size : 0;
+                debug('SYSTEM_FLOW', `🔍 StarfieldManager check: existing systems = ${existingSystemCount}`);
+
+                if (existingSystemCount === 0) {
+                    debug('SYSTEM_FLOW', '🚀 StarfieldManager creating systems from cards');
+                    await ship.cardSystemIntegration.createSystemsFromCards();
+                } else {
+                    debug('SYSTEM_FLOW', '⏭️ StarfieldManager skipping system creation - systems already exist');
+                }
                 
                 // Re-initialize cargo holds from updated cards
                 if (ship.cargoHoldManager) {
