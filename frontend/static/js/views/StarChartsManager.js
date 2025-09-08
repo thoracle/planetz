@@ -537,6 +537,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
                     notification.parentNode.removeChild(notification);
                 }
             }, 2000);
+        }
     }
     
     getPlayerPosition() {
