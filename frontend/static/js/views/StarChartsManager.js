@@ -436,19 +436,27 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
         }
     }
     
+    calculateDistance(pos1, pos2) {
+        //Calculate Euclidean distance between two 3D positions
+        if (!pos1 || !pos2 || pos1.length < 3 || pos2.length < 3) {
+            return Infinity;
+        }
+
+        return Math.sqrt(
+            Math.pow(pos1[0] - pos2[0], 2) +
+            Math.pow(pos1[1] - pos2[1], 2) +
+            Math.pow(pos1[2] - pos2[2], 2)
+        );
+    }
+
     isWithinRange(object, playerPosition, discoveryRadius) {
         //Check if object is within discovery range
-        
+
         if (!object.position || object.position.length < 3) {
             return false;
         }
-        
-        const distance = Math.sqrt(
-            Math.pow(object.position[0] - playerPosition[0], 2) +
-            Math.pow(object.position[1] - playerPosition[1], 2) +
-            Math.pow(object.position[2] - playerPosition[2], 2)
-        );
-        
+
+        const distance = this.calculateDistance(object.position, playerPosition);
         return distance <= discoveryRadius;
     }
     
