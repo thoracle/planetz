@@ -395,6 +395,14 @@ debug('TARGETING', `🎯 Refreshed Target Computer display`);
                         targetDataForTC.position = targetDataForTC.object.position;
                     }
                 }
+            } else if (targetData.type === 'star') {
+                // Special handling for stars - they're stored with key 'star' in celestialBodies
+                if (ssm?.celestialBodies) {
+                    targetDataForTC.object = findByIdInMap(ssm.celestialBodies, 'star');
+                    if (targetDataForTC.object && targetDataForTC.object.position) {
+                        targetDataForTC.position = targetDataForTC.object.position;
+                    }
+                }
             } else {
                 // Stations/planets: try celestialBodies by id first
                 if (ssm?.celestialBodies) {
@@ -461,8 +469,13 @@ debug('TARGETING', `🎯 Added target to Target Computer: ${targetData.name} (${
                               sfm.navigationBeacons.find(b => (b?.userData?.name || b?.name) === t.name);
                     }
                     if (!obj && ssm?.celestialBodies && typeof ssm.celestialBodies.get === 'function') {
-                        obj = ssm.celestialBodies.get(id) || ssm.celestialBodies.get(`beacon_${id}`) ||
-                              ssm.celestialBodies.get(`station_${t.name?.toLowerCase()?.replace(/\s+/g, '_')}`);
+                        if (t.type === 'star') {
+                            // Special handling for stars - they're stored with key 'star'
+                            obj = ssm.celestialBodies.get('star');
+                        } else {
+                            obj = ssm.celestialBodies.get(id) || ssm.celestialBodies.get(`beacon_${id}`) ||
+                                  ssm.celestialBodies.get(`station_${t.name?.toLowerCase()?.replace(/\s+/g, '_')}`);
+                        }
                     }
                     if (obj) {
                         this.targetComputer.targetObjects[idx] = { ...t, object: obj, position: obj.position };
