@@ -460,13 +460,34 @@ debug('UI', `❌ NO CARDS LOADED for ${this.ship.shipType}`);
      * This ensures that if a card is installed, the corresponding system exists
      */
     async createSystemsFromCards() {
-        // STEP 0: Refresh card data to ensure we have the latest levels and configuration
-        this.initializeCardData();
+        // Prevent concurrent calls to avoid duplicate system creation
+        if (this._creatingSystems) {
+            debug('SYSTEM_FLOW', '⏭️ createSystemsFromCards() already running, skipping duplicate call');
+            return;
+        }
+
+        this._creatingSystems = true;
+        const callId = `createSystemsFromCards_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        debug('SYSTEM_FLOW', `🚀 [${callId}] Starting createSystemsFromCards()`);
+
+        try {
+            // STEP 0: Refresh card data to ensure we have the latest levels and configuration
+            this.initializeCardData();
+            debug('SYSTEM_FLOW', `📚 [${callId}] Card data initialized, ${this.installedCards?.size || 0} cards found`);
+        } catch (error) {
+            debug('SYSTEM_FLOW', `❌ [${callId}] Failed to initialize card data: ${error.message}`);
+            this._creatingSystems = false;
+            throw error;
+        }
         
         // STEP 1: Clean up orphaned systems that no longer have cards
         await this.cleanupOrphanedSystems();
-        
-        const cardToSystemMap = {
+
+        let systemsCreated = 0;
+        let systemsUpdated = 0;
+
+        try {
+            const cardToSystemMap = {
             'impulse_engines': 'ImpulseEngines',
             'target_computer': 'TargetComputer',
             'energy_reactor': 'EnergyReactor',
@@ -671,9 +692,18 @@ debug('UI', `✅ Created ${systemsCreated} systems, updated ${systemsUpdated} sy
                     window.starfieldManager.updateShipSystemsDisplay();
                 }
             }
-        } else {
-debug('UTILITY', `✅ No system changes needed - all systems are current`);
+            } else {
+                debug('UTILITY', `✅ No system changes needed - all systems are current`);
+            }
+
+            debug('SYSTEM_FLOW', `✅ [${callId}] Completed createSystemsFromCards(), created: ${systemsCreated}, updated: ${systemsUpdated}`);
+        } catch (error) {
+            debug('SYSTEM_FLOW', `❌ [${callId}] createSystemsFromCards() failed: ${error.message}`);
+            this._creatingSystems = false;
+            throw error;
         }
+
+        this._creatingSystems = false;
     }
     
     /**
