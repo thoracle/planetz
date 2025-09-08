@@ -638,7 +638,7 @@ debug('P1', `❌ SYSTEM CREATION FAILED: ${cardType} → Unknown system type`);
                 }
                 
                 // Add the system to the ship
-                if (this.ship.addSystem(systemName, system)) {
+                if (this.ship.addSystem(systemName, system, 'CardSystemIntegration.createSystemsFromCards')) {
                     systemsCreated++;
                     // System created from card (reduced logging for cleaner console)
                 } else {

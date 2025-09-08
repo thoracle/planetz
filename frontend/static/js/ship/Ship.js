@@ -84,7 +84,12 @@ debug('UI', `Ship ${this.shipType} fully initialized with card-based systems`);
             // Fallback: initialize default systems anyway
             this.initializeDefaultSystems();
         });
-        
+
+        // Validate system integrity after initialization is complete
+        setTimeout(() => {
+            this.validateSystemIntegrity();
+        }, 1000); // Small delay to ensure all async operations complete
+
         // Install starter cards if this is a starter ship
         if (this.shipConfig.starterCards) {
             this.installStarterCards();
@@ -207,7 +212,7 @@ debug('UTILITY', 'Default systems initialized for', this.shipType);
                 const starCharts = new StarChartsSystem(defaultSystems.star_charts.level);
                 // Override slot cost from ship configuration
                 starCharts.slotCost = defaultSystems.star_charts.slots;
-                this.addSystem('star_charts', starCharts);
+                this.addSystem('star_charts', starCharts, 'Ship.initDefault');
             } else {
                 debug('SYSTEM_FLOW', `⏭️ Skipping star_charts creation (will be created from cards)`);
             }
@@ -219,7 +224,7 @@ debug('UTILITY', 'Default systems initialized for', this.shipType);
                 debug('SYSTEM_FLOW', `🚀 Creating hull_plating from default config`);
                 const hullPlating = new HullPlating(defaultSystems.hull_plating.level);
                 hullPlating.slotCost = defaultSystems.hull_plating.slots;
-                this.addSystem('hull_plating', hullPlating);
+                this.addSystem('hull_plating', hullPlating, 'Ship.initDefault');
             } else {
                 debug('SYSTEM_FLOW', `⏭️ Skipping hull_plating creation (will be created from cards)`);
             }
@@ -461,13 +466,21 @@ debug('AI', `Repaired ${systemName} by ${(repairAmount * 100).toFixed(1)}%`);
      * @param {string} systemName - System identifier
      * @param {System} system - System instance
      */
-    addSystem(systemName, system) {
-        debug('SYSTEM_FLOW', `⚙️ Attempting to add system: ${systemName} (caller: ${new Error().stack.split('\n')[2]?.trim() || 'unknown'})`);
+    addSystem(systemName, system, source = 'unknown') {
+        const callerInfo = new Error().stack.split('\n')[2]?.trim() || 'unknown';
+        const uniqueId = `${source}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        debug('SYSTEM_FLOW', `⚙️ [${uniqueId}] Attempting to add system: ${systemName} from ${source} (caller: ${callerInfo})`);
 
         // Check if system already exists (prevent duplicates)
         if (this.systems.has(systemName)) {
             debug('P1', `System ${systemName} already exists - skipping duplicate addition`);
-            debug('SYSTEM_FLOW', `❌ DUPLICATE: ${systemName} already exists, rejecting addition`);
+            debug('SYSTEM_FLOW', `❌ DUPLICATE [${uniqueId}]: ${systemName} already exists, rejecting addition from ${source}`);
+
+            // Log existing system info for debugging
+            const existingSystem = this.systems.get(systemName);
+            debug('SYSTEM_FLOW', `📋 Existing system: ${systemName}, level: ${existingSystem.level || 'unknown'}`);
+
             return false;
         }
         
@@ -479,7 +492,7 @@ debug('AI', `Repaired ${systemName} by ${(repairAmount * 100).toFixed(1)}%`);
         
         // Add the system
         this.systems.set(systemName, system);
-        debug('SYSTEM_FLOW', `✅ SUCCESS: ${systemName} added to ship systems`);
+        debug('SYSTEM_FLOW', `✅ SUCCESS [${uniqueId}]: ${systemName} added to ship systems from ${source}`);
 
         // Update slot usage
         this.usedSlots += system.slotCost;
@@ -494,6 +507,28 @@ debug('AI', `Repaired ${systemName} by ${(repairAmount * 100).toFixed(1)}%`);
         this.calculateTotalStats();
         
         return true;
+    }
+
+    /**
+     * Validate system creation integrity (for debugging P1 errors)
+     */
+    validateSystemIntegrity() {
+        const systemCounts = {};
+        const duplicateSystems = [];
+
+        // Count occurrences of each system type in creation logs
+        // This is a simple validation method
+
+        debug('SYSTEM_FLOW', `🔍 System integrity check: ${this.systems.size} total systems`);
+
+        for (const [systemName, system] of this.systems) {
+            debug('SYSTEM_FLOW', `📋 System: ${systemName}, level: ${system.level || 'unknown'}`);
+        }
+
+        return {
+            totalSystems: this.systems.size,
+            duplicateSystems: duplicateSystems
+        };
     }
 
     /**

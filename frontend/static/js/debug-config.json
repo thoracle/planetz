@@ -77,11 +77,11 @@
             "alwaysEnabled": true
         },
         "SYSTEM_CHECK": {
-            "enabled": false,
+            "enabled": true,
             "description": "System creation and existence checking"
         },
         "SYSTEM_FLOW": {
-            "enabled": false,
+            "enabled": true,
             "description": "Detailed system creation flow and debugging"
         }
     },
