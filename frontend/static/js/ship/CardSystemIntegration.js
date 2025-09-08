@@ -1041,6 +1041,7 @@ debug('COMBAT', `🔧 Weapon systems refresh complete: removed ${removedCount + 
         for (const [slotId, cardData] of this.installedCards) {
             const mappedSystem = cardToSystemMap[cardData.cardType];
             debug('SYSTEM_FLOW', `🔍 Checking card ${cardData.cardType} → ${mappedSystem} (looking for ${systemName})`);
+            debug('SYSTEM_FLOW', `🔍 Comparison: "${mappedSystem}" === "${systemName}" ? ${mappedSystem === systemName}`);
 
             if (mappedSystem === systemName) {
                 debug('SYSTEM_FLOW', `✅ FOUND: ${systemName} has card ${cardData.cardType}`);
@@ -1048,7 +1049,7 @@ debug('COMBAT', `🔧 Weapon systems refresh complete: removed ${removedCount + 
             }
         }
 
-        debug('SYSTEM_FLOW', `❌ NOT FOUND: ${systemName} has no matching cards`);
+        debug('SYSTEM_FLOW', `❌ NOT FOUND: ${systemName} has no matching cards after checking ${this.installedCards.size} cards`);
         return false;
     }
 } 
