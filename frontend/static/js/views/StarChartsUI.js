@@ -96,9 +96,9 @@ debug('UI', 'StarChartsUI: Interface created');
         this.container.appendChild(this.detailsPanel);
         
         // Create status bar
-        // Optional status bar is omitted in LRS; retain internally without layout impact
         this.statusBar = document.createElement('div');
         this.statusBar.className = 'star-charts-status';
+        this.container.appendChild(this.statusBar);
         
         // Create tooltip
         this.tooltip = document.createElement('div');

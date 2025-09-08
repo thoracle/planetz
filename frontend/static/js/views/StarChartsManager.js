@@ -369,7 +369,7 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
         // Get total objects in database for context
         const totalInDatabase = this.objectDatabase?.sectors?.[this.currentSector]?.objects?.length || 0;
 
-        debug('STAR_CHARTS', `📊 Discovery batch: ${objects.length}/${totalInDatabase} nearby → ${undiscovered.length} undiscovered → ${inRange.length} in range → ${discoveries.length}/${this.config.maxDiscoveriesPerFrame} processing`);
+        debug('STAR_CHARTS', `📊 Discovery batch: ${objects?.length || 0}/${totalInDatabase} nearby → ${undiscovered.length} undiscovered → ${inRange.length} in range → ${discoveries.length}/${this.config.maxDiscoveriesPerFrame} processing`);
         debug('STAR_CHARTS', `📈 Progress: ${this.discoveredObjects.size} total discovered`);
 
         discoveries.forEach(obj => this.processDiscovery(obj));
