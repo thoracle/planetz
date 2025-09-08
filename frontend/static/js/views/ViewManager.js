@@ -1681,7 +1681,10 @@ debug('UI', `🃏 Loaded card: ${cardData.cardType} (Lv.${cardData.level || 1}) 
                     // Initialize systems from the loaded cards
                     // Only create systems if they haven't been created yet (prevent duplicates)
                     const hasExistingSystems = this.ship.systems && this.ship.systems.size > 0;
+                    debug('SYSTEM_FLOW', `🔍 ViewManager check: systems=${this.ship.systems}, size=${this.ship.systems?.size || 'undefined'}, hasExisting=${hasExistingSystems}`);
+
                     if (!hasExistingSystems) {
+                        debug('SYSTEM_FLOW', '🚀 ViewManager creating systems from saved config');
                         await this.ship.cardSystemIntegration.createSystemsFromCards();
                     } else {
                         debug('SYSTEM_FLOW', '⏭️ Skipping system creation from saved config - systems already exist');
@@ -1717,7 +1720,10 @@ debug('UI', `🃏 Installed starter card: ${cardType} (Lv.${level}) in slot ${sl
                         // Initialize systems from starter cards
                         // Only create systems if they haven't been created yet (prevent duplicates)
                         const hasExistingSystems = this.ship.systems && this.ship.systems.size > 0;
+                        debug('SYSTEM_FLOW', `🔍 ViewManager starter check: systems=${this.ship.systems}, size=${this.ship.systems?.size || 'undefined'}, hasExisting=${hasExistingSystems}`);
+
                         if (!hasExistingSystems) {
+                            debug('SYSTEM_FLOW', '🚀 ViewManager creating systems from starter cards');
                             await this.ship.cardSystemIntegration.createSystemsFromCards();
                         } else {
                             debug('SYSTEM_FLOW', '⏭️ Skipping system creation from starter cards - systems already exist');
