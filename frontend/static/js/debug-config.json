@@ -81,7 +81,7 @@
             "description": "System creation and existence checking"
         },
         "SYSTEM_FLOW": {
-            "enabled": false,
+            "enabled": true,
             "description": "Detailed system creation flow and debugging"
         }
     },

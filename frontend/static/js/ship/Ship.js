@@ -184,11 +184,14 @@ debug('UTILITY', 'Default systems initialized for', this.shipType);
                 this.addSystem('weapons', weapons);
             }
             
-            if (defaultSystems.long_range_scanner) {
+            // Skip long_range_scanner if it will be created from cards
+            if (defaultSystems.long_range_scanner && !this.hasSystemFromCards('long_range_scanner')) {
                 const scanner = new LongRangeScanner(defaultSystems.long_range_scanner.level);
                 // Override slot cost from ship configuration
                 scanner.slotCost = defaultSystems.long_range_scanner.slots;
-                this.addSystem('long_range_scanner', scanner);
+                this.addSystem('long_range_scanner', scanner, 'Ship.initDefault');
+            } else if (defaultSystems.long_range_scanner) {
+                debug('SYSTEM_FLOW', `⏭️ Skipping long_range_scanner creation (will be created from cards)`);
             }
             
             if (defaultSystems.subspace_radio) {
