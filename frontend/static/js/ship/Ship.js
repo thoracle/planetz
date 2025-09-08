@@ -60,26 +60,29 @@ export default class Ship {
         // Initialize weapons system
         this.weaponSystem = null; // Will be initialized after systems are available
         
-        // Initialize default systems
-        this.initializeDefaultSystems();
-        
-        // Initialize card system integration
+        // Initialize card system integration first
         this.cardSystemIntegration = new CardSystemIntegration(this);
-        
-        // Initialize card data and create systems from cards asynchronously
+
+        // Initialize card data and then create systems (both default and card-based)
         this.cardSystemIntegration.initializeCardData().then(async () => {
+            // Now that card data is loaded, initialize default systems
+            // This will check for card conflicts and only create systems that don't have cards
+            this.initializeDefaultSystems();
+
             // Create additional systems based on installed cards
             await this.cardSystemIntegration.createSystemsFromCards();
-            
+
             // Initialize cargo holds from installed cards
             this.cargoHoldManager.initializeFromCards();
-            
+
             // Initialize weapons system after all systems are loaded
             await this.initializeWeaponSystem();
-            
+
 debug('UI', `Ship ${this.shipType} fully initialized with card-based systems`);
         }).catch(error => {
             console.error('Failed to initialize card data or create systems:', error);
+            // Fallback: initialize default systems anyway
+            this.initializeDefaultSystems();
         });
         
         // Install starter cards if this is a starter ship
