@@ -8,7 +8,7 @@
             "description": "Target acquisition and management"
         },
         "STAR_CHARTS": {
-            "enabled": false,
+            "enabled": true,
             "description": "Star Charts navigation and UI"
         },
         "INSPECTION": {
@@ -20,7 +20,7 @@
             "description": "NPC and player communication"
         },
         "UTILITY": {
-            "enabled": false,
+            "enabled": true,
             "description": "System utilities and positioning"
         },
         "AI": {
@@ -44,7 +44,7 @@
             "description": "Combat mechanics and AI"
         },
         "NAVIGATION": {
-            "enabled": false,
+            "enabled": true,
             "description": "Navigation and movement systems"
         },
         "SCANNER": {

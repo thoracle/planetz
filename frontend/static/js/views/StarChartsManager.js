@@ -378,37 +378,17 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
                     const cellObjects = this.spatialGrid.get(gridKey);
                     checkedCells++;
 
-                    // DEBUG: Log grid cell search
-                    debug('STAR_CHARTS', `🔍 Checking cell ${gridKey}: exists=${this.spatialGrid.has(gridKey)}, objects=${cellObjects ? cellObjects.length : 0}`);
-
                     if (cellObjects && cellObjects.length > 0) {
-                        // DEBUG: Log object details in this cell
-                        debug('STAR_CHARTS', `🔍 Cell ${gridKey} contains:`);
-                        cellObjects.forEach((obj, idx) => {
-                            debug('STAR_CHARTS', `   ${idx + 1}. ${obj.id} at [${obj.position.map(p => p.toFixed(2)).join(', ')}]`);
-                        });
-
                         // Filter objects to ensure they're actually within range (spatial grid gives nearby cells, but we need precise distance check)
                         const inRangeObjects = cellObjects.filter(obj => {
                             // Use stored Cartesian coordinates for accurate distance calculation
                             const objPos3D = obj.cartesianPosition || obj.position || [0, 0, 0];
                             const distance = this.calculateDistance(objPos3D, playerPos3D);
-                            const inRange = distance <= radius;
-                            debug('STAR_CHARTS', `   → ${obj.id}: distance=${distance.toFixed(2)}, inRange=${inRange}`);
-                            return inRange;
+                            return distance <= radius;
                         });
 
                         nearbyObjects.push(...inRangeObjects);
                         totalObjectsFound += inRangeObjects.length;
-                        debug('STAR_CHARTS', `🔍 Cell ${gridKey}: ${cellObjects.length} objects total, ${inRangeObjects.length} in range (${inRangeObjects.map(o => o.id).join(', ')})`);
-                    } else if (this.spatialGrid.has(gridKey)) {
-                        // Cell exists but is empty
-                        debug('STAR_CHARTS', `🔍 Cell ${gridKey}: empty (exists in grid)`);
-                    } else {
-                        // Cell doesn't exist in grid
-                        if (checkedCells <= 10) { // Only log first few missing cells
-                            debug('STAR_CHARTS', `🔍 Cell ${gridKey}: not in grid`);
-                        }
                     }
                 }
             }
@@ -498,15 +478,15 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
         const inRange = undiscovered.filter(obj => this.isWithinRange(obj, playerPosition, discoveryRadius));
         const discoveries = inRange.slice(0, this.config.maxDiscoveriesPerFrame);
 
-        // Debug what we're finding
-        if (objects && objects.length > 0) {
-            debug('STAR_CHARTS', `📋 First 3 nearby objects:`);
-            objects.slice(0, 3).forEach((obj, index) => {
+        // Debug undiscovered objects in range
+        if (undiscovered.length > 0) {
+            undiscovered.forEach(obj => {
                 const objPos = obj.cartesianPosition || obj.position || [0, 0, 0];
                 const distance = this.calculateDistance(objPos, playerPosition);
-                const discovered = this.isDiscovered(obj.id);
                 const withinRange = this.isWithinRange(obj, playerPosition, discoveryRadius);
-                debug('STAR_CHARTS', `   ${index + 1}. ${obj.id} (${obj.type}) - ${distance.toFixed(1)}km - ${discovered ? 'ALREADY DISCOVERED' : 'NEW'} - ${withinRange ? 'IN RANGE' : 'OUT OF RANGE'}`);
+                if (withinRange) {
+                    debug('STAR_CHARTS', `🎯 IN RANGE: ${obj.id} (${obj.type}) at ${distance.toFixed(1)}km - ready for discovery`);
+                }
             });
         }
 
@@ -517,15 +497,12 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
         debug('STAR_CHARTS', `📈 Progress: ${this.discoveredObjects.size} total discovered`);
 
         if (discoveries.length > 0) {
-            debug('STAR_CHARTS', `🎯 Processing ${discoveries.length} discoveries:`);
             discoveries.forEach((obj, index) => {
                 const objPos = obj.cartesianPosition || obj.position || [0, 0, 0];
                 const distance = this.calculateDistance(objPos, playerPosition);
-                debug('STAR_CHARTS', `   ${index + 1}. Discovering ${obj.id} (${obj.type}) at ${distance.toFixed(1)}km`);
+                debug('STAR_CHARTS', `✅ DISCOVERED: ${obj.id} (${obj.type}) at ${distance.toFixed(1)}km`);
                 this.processDiscovery(obj);
             });
-        } else {
-            debug('STAR_CHARTS', `❌ No objects to discover in this batch`);
         }
     }
     
@@ -838,6 +815,15 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     // Debug helper: Get current discovery radius (with debug override)
     getEffectiveDiscoveryRadius() {
         return this.debugDiscoveryRadius || this.getDiscoveryRadius();
+    }
+    
+    // Debug helper: Reset discovery state for testing
+    resetDiscoveryState() {
+        this.discoveredObjects.clear();
+        this.discoveryMetadata.clear();
+        debug('STAR_CHARTS', '🧹 Discovery state reset - all objects now undiscovered');
+        debug('STAR_CHARTS', `📊 Discovered objects: ${this.discoveredObjects.size}`);
+        return this.discoveredObjects.size;
     }
     
     isDiscovered(objectId) {
