@@ -348,7 +348,7 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
     getNearbyObjects(playerPosition, radius) {
         //Get objects within radius using spatial partitioning
 
-        debug('STAR_CHARTS', `🔍 getNearbyObjects called with playerPos[${playerPosition.join(',')}], radius=${radius}`);
+        // debug('STAR_CHARTS', `🔍 getNearbyObjects called with playerPos[${playerPosition.join(',')}], radius=${radius}`);  // Commented out to reduce spam
 
         const nearbyObjects = [];
         // Fix: Ensure we search enough grid cells to cover the full radius
@@ -358,17 +358,17 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
         const playerGridKey = this.getGridKey(playerPosition);
         const [px, py, pz] = playerGridKey.split(',').map(Number);
 
-        debug('STAR_CHARTS', `🔍 gridRadius=${gridRadius}, playerGridKey=${playerGridKey}, gridSize=${this.gridSize}`);
-        debug('STAR_CHARTS', `🔍 Spatial grid has ${this.spatialGrid.size} total cells`);
+        // debug('STAR_CHARTS', `🔍 gridRadius=${gridRadius}, playerGridKey=${playerGridKey}, gridSize=${this.gridSize}`);  // Commented out to reduce spam
+        // debug('STAR_CHARTS', `🔍 Spatial grid has ${this.spatialGrid.size} total cells`);  // Commented out to reduce spam
 
         let checkedCells = 0;
         let totalObjectsFound = 0;
 
-        // Log all cells in the spatial grid first
-        debug('STAR_CHARTS', `🔍 All spatial grid cells:`);
-        for (const [cellKey, objects] of this.spatialGrid) {
-            debug('STAR_CHARTS', `   📦 Cell ${cellKey}: ${objects.length} objects`);
-        }
+        // Spatial grid cell logging commented out to reduce spam
+        // debug('STAR_CHARTS', `🔍 All spatial grid cells:`);
+        // for (const [cellKey, objects] of this.spatialGrid) {
+        //     debug('STAR_CHARTS', `   📦 Cell ${cellKey}: ${objects.length} objects`);
+        // }
 
         // Check surrounding grid cells
         for (let x = px - gridRadius; x <= px + gridRadius; x++) {
@@ -394,8 +394,8 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
             }
         }
 
-        debug('STAR_CHARTS', `🔍 SUMMARY: Checked ${checkedCells} grid cells, found ${totalObjectsFound} objects total`);
-        debug('STAR_CHARTS', `🔍 Returning ${nearbyObjects.length} nearby objects`);
+        // debug('STAR_CHARTS', `🔍 SUMMARY: Checked ${checkedCells} grid cells, found ${totalObjectsFound} objects total`);  // Commented out to reduce spam
+        // debug('STAR_CHARTS', `🔍 Returning ${nearbyObjects.length} nearby objects`);  // Commented out to reduce spam
         return nearbyObjects;
     }
     
@@ -438,12 +438,12 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
             const totalObjectsInGrid = Array.from(this.spatialGrid.values()).reduce((sum, cell) => sum + cell.length, 0);
 
             debug('STAR_CHARTS', `🔍 Discovery check: ${nearbyObjects.length} objects within ${discoveryRadius.toFixed(0)}km radius`);
-            debug('STAR_CHARTS', `📊 Spatial grid: ${gridCells} cells, ${totalObjectsInGrid} total objects`);
+            // debug('STAR_CHARTS', `📊 Spatial grid: ${gridCells} cells, ${totalObjectsInGrid} total objects`);  // Commented out to reduce spam
 
-            // Debug spatial search details
-            const gridRadius = Math.ceil(discoveryRadius / this.gridSize);
-            const playerGridKey = this.getGridKey(playerPosition);
-            debug('STAR_CHARTS', `🔍 Spatial search: gridRadius=${gridRadius}, playerGridKey=${playerGridKey}, gridSize=${this.gridSize}`);
+            // Debug spatial search details - commented out to reduce spam
+            // const gridRadius = Math.ceil(discoveryRadius / this.gridSize);
+            // const playerGridKey = this.getGridKey(playerPosition);
+            // debug('STAR_CHARTS', `🔍 Spatial search: gridRadius=${gridRadius}, playerGridKey=${playerGridKey}, gridSize=${this.gridSize}`);  // Commented out to reduce spam
 
             // Batch process discoveries
             this.batchProcessDiscoveries(nearbyObjects, playerPosition, discoveryRadius);
@@ -472,13 +472,13 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
     batchProcessDiscoveries(objects, playerPosition, discoveryRadius) {
         //Process discoveries in batches to avoid frame drops
 
-        debug('STAR_CHARTS', `🔍 Processing ${objects?.length || 0} nearby objects for discovery`);
+        // debug('STAR_CHARTS', `🔍 Processing ${objects?.length || 0} nearby objects for discovery`);  // Commented out to reduce spam
 
         const undiscovered = objects.filter(obj => !this.isDiscovered(obj.id));
         const inRange = undiscovered.filter(obj => this.isWithinRange(obj, playerPosition, discoveryRadius));
         const discoveries = inRange.slice(0, this.config.maxDiscoveriesPerFrame);
 
-        // Debug undiscovered objects in range
+        // Debug undiscovered objects in range - FOCUSED DEBUG
         if (undiscovered.length > 0) {
             undiscovered.forEach(obj => {
                 const objPos = obj.cartesianPosition || obj.position || [0, 0, 0];
@@ -490,11 +490,10 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
             });
         }
 
-        // Get total objects in database for context
-        const totalInDatabase = this.objectDatabase?.sectors?.[this.currentSector]?.objects?.length || 0;
-
-        debug('STAR_CHARTS', `📊 Discovery batch: ${objects?.length || 0}/${totalInDatabase} nearby → ${undiscovered.length} undiscovered → ${inRange.length} in range → ${discoveries.length}/${this.config.maxDiscoveriesPerFrame} processing`);
-        debug('STAR_CHARTS', `📈 Progress: ${this.discoveredObjects.size} total discovered`);
+        // Simplified batch processing debug - only show when there are discoveries
+        if (discoveries.length > 0) {
+            debug('STAR_CHARTS', `📊 Discovery batch: ${inRange.length} in range → ${discoveries.length} processing`);
+        }
 
         if (discoveries.length > 0) {
             discoveries.forEach((obj, index) => {
@@ -824,6 +823,34 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         debug('STAR_CHARTS', '🧹 Discovery state reset - all objects now undiscovered');
         debug('STAR_CHARTS', `📊 Discovered objects: ${this.discoveredObjects.size}`);
         return this.discoveredObjects.size;
+    }
+
+    // Debug helper: Diagnose discovery radius issues
+    debugRadiusIssues() {
+        debug('STAR_CHARTS', '=== DISCOVERY RADIUS DEBUG ===');
+        debug('STAR_CHARTS', `🔍 getDiscoveryRadius(): ${this.getDiscoveryRadius()}km`);
+        debug('STAR_CHARTS', `🔍 debugDiscoveryRadius: ${this.debugDiscoveryRadius || 'not set'}`);
+        debug('STAR_CHARTS', `🔍 getEffectiveDiscoveryRadius(): ${this.getEffectiveDiscoveryRadius()}km`);
+        
+        const playerPos = this.getPlayerPosition();
+        if (playerPos) {
+            debug('STAR_CHARTS', `📍 Player position: [${playerPos.join(', ')}]`);
+            
+            // Test different radii
+            const radii = [25, 50, 75, 100];
+            radii.forEach(radius => {
+                const nearby = this.getNearbyObjects(playerPos, radius);
+                debug('STAR_CHARTS', `🔍 Objects within ${radius}km: ${nearby.length}`);
+                nearby.forEach(obj => {
+                    const objPos = obj.cartesianPosition || obj.position || [0, 0, 0];
+                    const distance = this.calculateDistance(objPos, playerPos);
+                    const discovered = this.isDiscovered(obj.id) ? 'DISCOVERED' : 'undiscovered';
+                    debug('STAR_CHARTS', `  - ${obj.id}: ${distance.toFixed(1)}km (${discovered})`);
+                });
+            });
+        }
+        
+        debug('STAR_CHARTS', '=== END DEBUG ===');
     }
     
     isDiscovered(objectId) {
