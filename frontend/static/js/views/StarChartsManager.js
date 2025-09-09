@@ -102,6 +102,11 @@ debug('UTILITY', 'StarChartsManager: Initializing...');
             // Load discovery state
             await this.loadDiscoveryState();
 
+            // DEBUGGING: Auto-discovery disabled - no test mode or beacon auto-discovery
+            debug('UTILITY', '🔧 DEBUG MODE: Auto-discovery disabled (test mode and beacon auto-discovery)');
+            
+            // COMMENTED OUT FOR DEBUGGING - Re-enable when discovery system is stable
+            /*
             // Optional test mode: auto-discover everything in current sector for parity testing
             if (this.isTestDiscoverAllEnabled()) {
                 this.discoverAllInCurrentSector();
@@ -109,6 +114,7 @@ debug('UTILITY', 'StarChartsManager: Initializing...');
 
             // TEMPORARY FIX: Auto-discover beacons for debugging
             this.autoDiscoverBeacons();
+            */
             
             // Initialize spatial grid
             this.initializeSpatialGrid();
@@ -249,6 +255,9 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
             ...(sectorData.infrastructure?.beacons || [])
         ];
 
+        // Store as class property for access by other methods
+        this.allObjects = allObjects;
+
         debug('STAR_CHARTS', `📊 Processing ${allObjects.length} objects for sector ${this.currentSector}`);
         debug('STAR_CHARTS', `   - Star: ${sectorData.star?.id || 'none'}`);
         debug('STAR_CHARTS', `   - Objects: ${sectorData.objects?.length || 0}`);
@@ -263,15 +272,34 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
 
         allObjects.forEach((obj, index) => {
             if (obj && obj.position) {
-                const gridKey = this.getGridKey(obj.position);
+                // All objects now use standard 3D Cartesian coordinates [x, y, z] in km
+                const position3D = obj.position && obj.position.length >= 3 ? obj.position : [0, 0, 0];
+                const gridKey = this.getGridKey(position3D);
+
+                // Store the position for discovery calculations
+                obj.cartesianPosition = position3D;
+
+                debug('STAR_CHARTS', `   🔍 ${obj.id}: position[${obj.position.map(p => p.toFixed(2)).join(',')}] → grid key: ${gridKey}`);
+                debug('STAR_CHARTS', `      → Grid key: ${gridKey}`);
+
                 if (!this.spatialGrid.has(gridKey)) {
                     this.spatialGrid.set(gridKey, []);
+                    debug('STAR_CHARTS', `      → Created new cell ${gridKey}`);
+                } else {
+                    debug('STAR_CHARTS', `      → Using existing cell ${gridKey}`);
                 }
+
+                const beforeCount = this.spatialGrid.get(gridKey).length;
                 this.spatialGrid.get(gridKey).push(obj);
+                const afterCount = this.spatialGrid.get(gridKey).length;
+
+                debug('STAR_CHARTS', `      → Added to cell ${gridKey}: ${beforeCount} → ${afterCount} objects`);
                 processedCount++;
 
-                // Log ALL objects during initialization
-                debug('STAR_CHARTS', `   ✅ ${obj.id}: pos[${obj.position.join(',')}] → grid[${gridKey}]`);
+                // Log summary for first few objects
+                if (index < 5) {
+                    debug('STAR_CHARTS', `   ✅ ${obj.id}: pos[${position3D.map(p => p.toFixed(2)).join(',')}] → grid[${gridKey}]`);
+                }
             } else {
                 skippedCount++;
                 // Log ALL skipped objects
@@ -300,6 +328,7 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
         }
     }
     
+    
     getGridKey(position) {
         //Get spatial grid key for position (handles both 2D and 3D positions)
         if (!position || !Array.isArray(position) || position.length < 2) {
@@ -322,7 +351,9 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
         debug('STAR_CHARTS', `🔍 getNearbyObjects called with playerPos[${playerPosition.join(',')}], radius=${radius}`);
 
         const nearbyObjects = [];
-        const gridRadius = Math.ceil(radius / this.gridSize);
+        // Fix: Ensure we search enough grid cells to cover the full radius
+        // Add buffer to account for objects near cell boundaries
+        const gridRadius = Math.ceil(radius / this.gridSize) + 1;
         const playerPos3D = this.ensure3DPosition(playerPosition);
         const playerGridKey = this.getGridKey(playerPosition);
         const [px, py, pz] = playerGridKey.split(',').map(Number);
@@ -346,12 +377,25 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
                     const gridKey = `${x},${y},${z}`;
                     const cellObjects = this.spatialGrid.get(gridKey);
                     checkedCells++;
+
+                    // DEBUG: Log grid cell search
+                    debug('STAR_CHARTS', `🔍 Checking cell ${gridKey}: exists=${this.spatialGrid.has(gridKey)}, objects=${cellObjects ? cellObjects.length : 0}`);
+
                     if (cellObjects && cellObjects.length > 0) {
+                        // DEBUG: Log object details in this cell
+                        debug('STAR_CHARTS', `🔍 Cell ${gridKey} contains:`);
+                        cellObjects.forEach((obj, idx) => {
+                            debug('STAR_CHARTS', `   ${idx + 1}. ${obj.id} at [${obj.position.map(p => p.toFixed(2)).join(', ')}]`);
+                        });
+
                         // Filter objects to ensure they're actually within range (spatial grid gives nearby cells, but we need precise distance check)
                         const inRangeObjects = cellObjects.filter(obj => {
-                            const objPos3D = this.ensure3DPosition(obj.position);
+                            // Use stored Cartesian coordinates for accurate distance calculation
+                            const objPos3D = obj.cartesianPosition || obj.position || [0, 0, 0];
                             const distance = this.calculateDistance(objPos3D, playerPos3D);
-                            return distance <= radius;
+                            const inRange = distance <= radius;
+                            debug('STAR_CHARTS', `   → ${obj.id}: distance=${distance.toFixed(2)}, inRange=${inRange}`);
+                            return inRange;
                         });
 
                         nearbyObjects.push(...inRangeObjects);
@@ -362,7 +406,9 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
                         debug('STAR_CHARTS', `🔍 Cell ${gridKey}: empty (exists in grid)`);
                     } else {
                         // Cell doesn't exist in grid
-                        debug('STAR_CHARTS', `🔍 Cell ${gridKey}: not in grid`);
+                        if (checkedCells <= 10) { // Only log first few missing cells
+                            debug('STAR_CHARTS', `🔍 Cell ${gridKey}: not in grid`);
+                        }
                     }
                 }
             }
@@ -401,8 +447,8 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
             const playerPosition = this.getPlayerPosition();
             if (!playerPosition) return;
             
-            // Get discovery radius from Target CPU
-            const discoveryRadius = this.getDiscoveryRadius();
+            // Get discovery radius from Target CPU (with debug override support)
+            const discoveryRadius = this.getEffectiveDiscoveryRadius();
             
             // Get nearby objects using spatial partitioning
             const nearbyObjects = this.getNearbyObjects(playerPosition, discoveryRadius);
@@ -456,7 +502,8 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
         if (objects && objects.length > 0) {
             debug('STAR_CHARTS', `📋 First 3 nearby objects:`);
             objects.slice(0, 3).forEach((obj, index) => {
-                const distance = this.calculateDistance(obj.position, playerPosition);
+                const objPos = obj.cartesianPosition || obj.position || [0, 0, 0];
+                const distance = this.calculateDistance(objPos, playerPosition);
                 const discovered = this.isDiscovered(obj.id);
                 const withinRange = this.isWithinRange(obj, playerPosition, discoveryRadius);
                 debug('STAR_CHARTS', `   ${index + 1}. ${obj.id} (${obj.type}) - ${distance.toFixed(1)}km - ${discovered ? 'ALREADY DISCOVERED' : 'NEW'} - ${withinRange ? 'IN RANGE' : 'OUT OF RANGE'}`);
@@ -472,7 +519,8 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
         if (discoveries.length > 0) {
             debug('STAR_CHARTS', `🎯 Processing ${discoveries.length} discoveries:`);
             discoveries.forEach((obj, index) => {
-                const distance = this.calculateDistance(obj.position, playerPosition);
+                const objPos = obj.cartesianPosition || obj.position || [0, 0, 0];
+                const distance = this.calculateDistance(objPos, playerPosition);
                 debug('STAR_CHARTS', `   ${index + 1}. Discovering ${obj.id} (${obj.type}) at ${distance.toFixed(1)}km`);
                 this.processDiscovery(obj);
             });
@@ -482,15 +530,30 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
     }
     
     calculateDistance(pos1, pos2) {
-        //Calculate Euclidean distance between two 3D positions
-        if (!pos1 || !pos2 || pos1.length < 3 || pos2.length < 3) {
+        //Calculate Euclidean distance between two 3D positions (handles both arrays and objects)
+        if (!pos1 || !pos2) {
+            return Infinity;
+        }
+
+        // Handle both array [x, y, z] and object {x, y, z} formats
+        const x1 = Array.isArray(pos1) ? pos1[0] : pos1.x;
+        const y1 = Array.isArray(pos1) ? pos1[1] : pos1.y;
+        const z1 = Array.isArray(pos1) ? pos1[2] : pos1.z;
+        
+        const x2 = Array.isArray(pos2) ? pos2[0] : pos2.x;
+        const y2 = Array.isArray(pos2) ? pos2[1] : pos2.y;
+        const z2 = Array.isArray(pos2) ? pos2[2] : pos2.z;
+
+        // Validate we have valid coordinates
+        if (x1 === undefined || y1 === undefined || z1 === undefined ||
+            x2 === undefined || y2 === undefined || z2 === undefined) {
             return Infinity;
         }
 
         return Math.sqrt(
-            Math.pow(pos1[0] - pos2[0], 2) +
-            Math.pow(pos1[1] - pos2[1], 2) +
-            Math.pow(pos1[2] - pos2[2], 2)
+            Math.pow(x1 - x2, 2) +
+            Math.pow(y1 - y2, 2) +
+            Math.pow(z1 - z2, 2)
         );
     }
 
@@ -501,8 +564,8 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
             return false;
         }
 
-        // Ensure both positions are 3D for distance calculation
-        const objPos = this.ensure3DPosition(object.position);
+        // Use stored Cartesian coordinates for accurate distance calculation
+        const objPos = object.cartesianPosition || object.position || [0, 0, 0];
         const playerPos = this.ensure3DPosition(playerPosition);
 
         const distance = this.calculateDistance(objPos, playerPos);
@@ -610,14 +673,45 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     showProminentNotification(message) {
         //Show prominent discovery notification using HUD system
 
-        // Use StarfieldManager's communication HUD for proper notifications
+        debug('STAR_CHARTS', `🔔 DISCOVERY NOTIFICATION: ${message}`);
+
+        // Try multiple notification methods for debugging
+        let notificationShown = false;
+
+        // Method 1: Use StarfieldManager's communication HUD
         if (this.viewManager?.starfieldManager?.communicationHUD?.showMessage) {
-            this.viewManager.starfieldManager.communicationHUD.showMessage('DISCOVERY', message, {
-                duration: 3000,
-                priority: 'normal'
-            });
-        } else {
-            // Fallback to creating notification element
+            try {
+                this.viewManager.starfieldManager.communicationHUD.showMessage('DISCOVERY', message, {
+                    duration: 5000,
+                    priority: 'normal'
+                });
+                debug('STAR_CHARTS', `✅ Discovery notification sent to CommunicationHUD`);
+                notificationShown = true;
+            } catch (e) {
+                debug('STAR_CHARTS', `❌ CommunicationHUD notification failed: ${e.message}`);
+            }
+        }
+
+        // Method 2: Try WeaponHUD unified message system
+        if (this.viewManager?.starfieldManager?.weaponHUD?.showUnifiedMessage) {
+            try {
+                this.viewManager.starfieldManager.weaponHUD.showUnifiedMessage(
+                    message, 
+                    5000, // duration
+                    3,    // high priority
+                    '#00ff41', // green color
+                    '#00ff41', // green border
+                    'rgba(0, 0, 0, 0.9)' // dark background
+                );
+                debug('STAR_CHARTS', `✅ Discovery notification sent to WeaponHUD`);
+                notificationShown = true;
+            } catch (e) {
+                debug('STAR_CHARTS', `❌ WeaponHUD notification failed: ${e.message}`);
+            }
+        }
+
+        // Method 3: Fallback to creating notification element
+        if (!notificationShown) {
             const notification = document.createElement('div');
             notification.className = 'star-charts-discovery-notification prominent';
             notification.textContent = message;
@@ -719,14 +813,31 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     }
     
     getDiscoveryRadius() {
-        //Get discovery radius - independent of target computer range for better solar system coverage
+        //Get discovery radius - close-range exploration requiring players to fly near objects
 
-        // Testing very small discovery radius for precise object detection
-        // This will require players to get very close to objects
-        const baseDiscoveryRadius = 10.0; // 10km for extremely precise discovery
+        // System uses kilometers as primary unit (1 game unit = 1km)
+        // No conversion needed - return radius directly in kilometers
+        // Increased from 25km to 100km to match Sol system object distances
+        // - SOL: ~20km (always discovered first)
+        // - Stations/Infrastructure: 40-60km range
+        // - Aphrodite research: ~107km (just in range)
+        // - Planets/Beacons: 150-200km range (exploration targets)
+        const discoveryRangeKm = 100; // 100 kilometers - balanced discovery progression
 
-        debug('STAR_CHARTS', `🔍 Using discovery radius: ${baseDiscoveryRadius}km`);
-        return baseDiscoveryRadius;
+        debug('STAR_CHARTS', `🔍 Using discovery radius: ${discoveryRangeKm}km`);
+        return discoveryRangeKm;
+    }
+    
+    // Debug helper: Set discovery radius from console
+    setDiscoveryRadius(newRadius) {
+        this.debugDiscoveryRadius = newRadius;
+        debug('STAR_CHARTS', `🔧 Debug: Discovery radius set to ${newRadius}km`);
+        return newRadius;
+    }
+    
+    // Debug helper: Get current discovery radius (with debug override)
+    getEffectiveDiscoveryRadius() {
+        return this.debugDiscoveryRadius || this.getDiscoveryRadius();
     }
     
     isDiscovered(objectId) {
@@ -739,10 +850,20 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         return this.discoveryMetadata.get(objectId) || null;
     }
 
+    getObjectById(objectId) {
+        //Get object data by ID from all loaded objects
+        if (this.allObjects) {
+            return this.allObjects.find(obj => obj && obj.id === objectId);
+        }
+        return null;
+    }
+
     addDiscoveredObject(objectId, discoveryMethod = 'proximity', source = 'player') {
         //Add object to discovered list with metadata and save state
 
         const wasAlreadyDiscovered = this.discoveredObjects.has(objectId);
+
+        debug('STAR_CHARTS', `🔍 DISCOVERY ATTEMPT: ${objectId} (method: ${discoveryMethod}, already discovered: ${wasAlreadyDiscovered})`);
 
         if (!wasAlreadyDiscovered) {
             this.discoveredObjects.add(objectId);
@@ -759,11 +880,30 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
             this.discoveryMetadata.set(objectId, discoveryData);
 
             this.saveDiscoveryState();
-debug('UTILITY', `🗺️ Discovered: ${objectId} (${discoveryMethod})`);
+            debug('STAR_CHARTS', `✅ DISCOVERED: ${objectId} (${discoveryMethod}) - Total discovered: ${this.discoveredObjects.size}`);
+
+            // Get object data for notification
+            const objectData = this.getObjectById(objectId);
+            if (objectData) {
+                debug('STAR_CHARTS', `📋 Object data found: ${objectData.name} (${objectData.type})`);
+                
+                // Check if we should notify
+                const shouldNotify = this.shouldNotifyDiscovery(objectData.type);
+                debug('STAR_CHARTS', `🔔 Should notify: ${shouldNotify}`);
+                
+                if (shouldNotify) {
+                    const category = this.getDiscoveryCategory(objectData.type);
+                    debug('STAR_CHARTS', `📂 Discovery category: ${category}`);
+                    this.showDiscoveryNotification(objectData, category);
+                }
+            } else {
+                debug('STAR_CHARTS', `❌ No object data found for ${objectId}`);
+            }
 
             // Trigger discovery callbacks
             this.triggerDiscoveryCallbacks(objectId, discoveryData);
         } else {
+            debug('STAR_CHARTS', `⏭️ Object ${objectId} already discovered, updating metadata`);
             // Update metadata for re-discovery
             const existing = this.discoveryMetadata.get(objectId);
             if (existing) {
@@ -813,7 +953,15 @@ debug('UTILITY', `🗺️ Discovered: ${objectId} (${discoveryMethod})`);
     // Discovery state persistence
     async loadDiscoveryState() {
         //Load discovery state from localStorage with metadata
+        // DEBUGGING: Discovery persistence disabled - always start fresh
 
+        debug('UTILITY', '🔧 DEBUG MODE: Discovery persistence disabled - starting fresh each session');
+        
+        // Always initialize with fresh state for debugging
+        this.initializeDiscoveryState();
+
+        // COMMENTED OUT FOR DEBUGGING - Re-enable when discovery system is stable
+        /*
         try {
             const key = `star_charts_discovery_${this.currentSector}`;
             const savedState = localStorage.getItem(key);
@@ -839,28 +987,29 @@ debug('UTILITY', `📊 Discovery metadata: ${this.discoveryMetadata.size} entrie
             // Initialize with star always discovered
             this.initializeDiscoveryState();
         }
+        */
     }
     
     initializeDiscoveryState() {
-        //Initialize discovery state with central star
-        const starId = `${this.currentSector}_star`;
-        this.discoveredObjects.add(starId);
-
-        // Add metadata for the star
-        this.discoveryMetadata.set(starId, {
-            discoveredAt: new Date().toISOString(),
-            discoveryMethod: 'initial',
-            source: 'system',
-            sector: this.currentSector,
-            firstDiscovered: true
-        });
-
-debug('UTILITY', '🌟 Initialized discovery state with central star');
+        //Initialize discovery state with completely empty state - no objects discovered
+        
+        // DEBUGGING: Start completely fresh - no objects discovered, including central star
+        // Players must fly within 10km of SOL (or any object) to discover it
+        // this.discoveredObjects is already initialized as empty Set in constructor
+        
+        debug('UTILITY', '🌟 Initialized discovery state - COMPLETELY FRESH (no objects discovered)');
+        debug('UTILITY', `📊 Total discovered objects: ${this.discoveredObjects.size}`);
+        debug('UTILITY', `🎯 Players must fly within 10km of any object (including SOL) to discover it`);
     }
 
     saveDiscoveryState() {
         //Save discovery state to localStorage with metadata
+        // DEBUGGING: Discovery persistence disabled - no saving to localStorage
 
+        debug('UTILITY', `🔧 DEBUG MODE: Discovery save skipped - persistence disabled (${this.discoveredObjects.size} objects in memory)`);
+        
+        // COMMENTED OUT FOR DEBUGGING - Re-enable when discovery system is stable
+        /*
         try {
             const key = `star_charts_discovery_${this.currentSector}`;
             const state = {
@@ -877,6 +1026,7 @@ debug('UTILITY', `💾 Saved discovery state: ${this.discoveredObjects.size} obj
         } catch (error) {
             console.error('❌ Failed to save discovery state:', error);
         }
+        */
     }
     
     // Mission waypoint system

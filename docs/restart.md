@@ -212,6 +212,42 @@ open http://127.0.0.1:5001
 - ✅ **Easier Maintenance** - No complex physics engine setup or debugging
 - ✅ **Future-Proof** - Direct control over collision and physics behavior
 
+### **Coordinate System & World Units** 📏 **CRITICAL REFERENCE**
+
+**PRIMARY WORLD UNIT: KILOMETERS** 🌍
+
+The Planetz game engine uses **kilometers (km)** as the fundamental world unit across all systems:
+
+#### **Core Coordinate System**:
+- ✅ **World Scale**: 1 game unit = 1 kilometer
+- ✅ **Camera Position**: Measured in kilometers from origin
+- ✅ **Object Positions**: All celestial bodies, stations, and ships positioned in km
+- ✅ **Distance Calculations**: All proximity, targeting, and collision systems use km
+- ✅ **Discovery Range**: 10km discovery radius (no unit conversion needed)
+
+#### **System Consistency**:
+- ✅ **Three.js Scene**: Direct km coordinates (no scaling factors)
+- ✅ **Physics Calculations**: Native km-based distance and velocity calculations
+- ✅ **Weapon Systems**: Range and targeting calculations in km
+- ✅ **Navigation**: All navigation beacons and waypoints positioned in km
+- ✅ **Spatial Partitioning**: Grid cells sized in km for optimal performance
+
+#### **Important Notes**:
+- ❌ **NOT Meters**: Avoid meter-based calculations or conversions
+- ❌ **NOT Astronomical Units (AU)**: No AU conversions in core systems
+- ✅ **Unified Coordinates**: ALL objects use standard 3D Cartesian coordinates `[x, y, z]` in km
+- ✅ **No Coordinate Exceptions**: Beacons, stations, ships - everything uses the same `[x, y, z]` format
+- ✅ **Simplified System**: No polar coordinate conversion needed - direct km positioning
+- ✅ **Discovery System**: 10km range works directly with km-based positions
+
+#### **Why Kilometers**:
+- **Human-Scale Comprehension**: Distances like "175km to beacon" are intuitive
+- **Performance Optimization**: No constant unit conversions during gameplay
+- **Precision Balance**: Sufficient precision for space combat without floating-point issues
+- **Consistency**: Single unit system eliminates coordinate system bugs
+
+**🚨 CRITICAL**: When adding new systems, always use kilometers as the base unit. Any unit conversions should be clearly documented and isolated to specific display/UI functions only.
+
 ### **Mission System Architecture**
 - **States**: UNKNOWN → MENTIONED → ACCEPTED → ACHIEVED → COMPLETED
 - **Dual Delivery Types**: `auto_delivery` (on docking) vs `market_sale` (on selling)
@@ -231,9 +267,20 @@ open http://127.0.0.1:5001
 - **Hitscan weapons**: Direct raycasting for instant-hit weapons (lasers, pulse)
 - **Spatial management**: Three.js Vector3 math for all positioning and movement
 
-### **Star Charts System** ✅ **FULLY IMPLEMENTED**
+### **Star Charts System** ✅ **FULLY IMPLEMENTED** 🔧 **OPTIMIZED DISCOVERY**
 - **Status**: Complete navigation database system with full UX parity to LRS
 - **Discovery**: Proximity-based discovery (major/minor/background pacing) with HUD banners + audio
+- **🔧 DISCOVERY RADIUS**: Optimized to 100km for balanced progression
+  - SOL star: ~20km (always discovered first)
+  - Stations/Infrastructure: 40-60km range
+  - Aphrodite research: ~107km (just in range)
+  - Planets/Beacons: 150-200km range (exploration targets)
+  - Debug helpers: `starChartsManager.setDiscoveryRadius(km)` for testing
+- **🔧 DEBUG MODE**: Discovery persistence **DISABLED** for debugging
+  - Discovery state resets on each browser session
+  - No localStorage caching of discovered objects
+  - Backend game state persistence also disabled
+  - Fresh discovery state every time for consistent testing
 - **Core Features**:
   - Planet rings normalized to LRS layout (100/250/400/…) with parent-centered moon orbits
   - Dedicated beacon ring at 350 with matching iconography and dashed orbit lines
@@ -249,6 +296,7 @@ open http://127.0.0.1:5001
 - **Test Mode**: Discover-all for comprehensive testing
   - Enable: `localStorage.setItem('star_charts_test_discover_all','true')` + reload
   - Shows all objects in sector for complete system validation
+- **Debug Testing**: Use `test_discovery_reset.html` to verify persistence is disabled
 
 ### **Unified Data Architecture Refactor Plan** 🚀 **IMPLEMENTATION PHASE**
 
@@ -343,6 +391,7 @@ unknown: '#44ffff'   // Cyan for unknown
 - ✅ **Simplified Target System** with persistent targeting and fail-fast error handling
 
 **Recent Major Updates**:
+- **Discovery System Optimization**: Increased discovery radius from 25km to 100km for balanced progression
 - **Target System Simplification**: Removed automatic target clearing, persistent targeting, fail-fast debugging
 - **Wireframe Improvements**: Navigation beacons now use octahedron geometry for better visual distinction
 - **Star Charts Integration**: Completed full integration with simplified, robust target management
@@ -351,6 +400,46 @@ unknown: '#44ffff'   // Cyan for unknown
 - **Star Chart Hit Box Improvements**: Increased clickable areas around objects for better usability when zoomed out
 
 **Next Steps**: Content creation, advanced gameplay mechanics, multiplayer foundation.
+
+---
+
+## 🔧 Debug Mode - Discovery System Configured for Testing
+
+### **Discovery System Debug Mode** 🔧 **ACTIVE**
+**Status**: Discovery persistence **TEMPORARILY DISABLED** + **10km Close-Range Discovery**
+
+**What's Changed**:
+- ✅ **Frontend**: `StarChartsManager.loadDiscoveryState()` and `saveDiscoveryState()` disabled
+- ✅ **Backend**: `GameStateManager.load_state()` and `save_state()` discovery persistence disabled
+- ✅ **Fresh State**: Each browser session starts with completely clean discovery state (NO objects discovered)
+- ✅ **Discovery Range**: Set to **10km** - requires close approach to discover objects
+- ✅ **Auto-Discovery**: Disabled (no test mode or beacon auto-discovery)
+- ✅ **Debug Messages**: Console shows persistence disabled messages
+
+**Discovery Mechanics**:
+- **Range**: 10 kilometers (6.68e-8 AU) - very close approach required
+- **Behavior**: Players must fly within 10km of ANY object to discover it (including SOL)
+- **Fresh Start**: No objects discovered initially - complete exploration required
+- **Notifications**: Enhanced debug logging for discovery events
+- **Reset**: Discovery state resets completely between sessions
+
+**Testing**:
+- **Test Script**: `test_10km_discovery.js` - Test 10km discovery range mechanics
+- **Test Page**: `test_discovery_reset.html` - Standalone testing interface
+- **Debug Commands**: `showNearestObjects()`, `simulateCloseApproach(objectId)`
+- **Verification**: Discovery state resets completely between sessions
+
+**Re-enabling Persistence** (when debugging complete):
+1. **Frontend**: Uncomment persistence code in `StarChartsManager.js` methods `loadDiscoveryState()` and `saveDiscoveryState()`
+2. **Backend**: Uncomment persistence code in `GameStateManager.py` methods `load_state()` and `save_state()`
+3. **Testing**: Verify discovery state persists correctly between sessions
+4. **Documentation**: Update this section to reflect restored persistence
+
+**Files Modified**:
+- `frontend/static/js/views/StarChartsManager.js` - Discovery persistence methods
+- `backend/game_state.py` - Game state persistence methods
+- `test_discovery_reset.js` - Debug testing script
+- `test_discovery_reset.html` - Debug testing interface
 
 ---
 
