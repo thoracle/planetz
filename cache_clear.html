@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PlanetZ Cache Clear</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #111; color: #fff; }
+        .button { background: #44ff44; color: #000; padding: 10px 20px; border: none; cursor: pointer; margin: 10px 0; }
+        .button:hover { background: #66ff66; }
+        .warning { color: #ffaa44; }
+    </style>
+</head>
+<body>
+    <h1>🔧 PlanetZ Discovery Cache Clear Tool</h1>
+    <p class="warning">⚠️ Use this tool when discovery is not working due to cached data issues.</p>
+    <p>This tool will:</p>
+    <ul>
+        <li>Clear all localStorage data</li>
+        <li>Force reload of cached JSON files (objects.json)</li>
+        <li>Reset discovery state</li>
+        <li>Reload the main game</li>
+    </ul>
+
+    <button class="button" onclick="clearCache()">🧹 Clear Cache & Reload Game</button>
+
+    <div id="status"></div>
+
+    <script>
+        function clearCache() {
+            const status = document.getElementById('status');
+            status.innerHTML = "🔄 Clearing cache...";
+
+            try {
+                console.log("🔧 Clearing browser cache for planetz discovery testing...");
+
+                // Clear all localStorage
+                localStorage.clear();
+
+                // Clear specific discovery-related keys
+                delete localStorage["starCharts_discovered"];
+                delete localStorage["planetz_discovery_state"];
+                delete localStorage["navigation_state"];
+
+                // Force cache clear by adding timestamp to all JSON file requests
+                console.log("🔧 FORCE CACHE CLEAR - Setting up cache-busting...");
+
+                // Clear localStorage
+                localStorage.clear();
+                delete localStorage["starCharts_discovered"];
+                delete localStorage["planetz_discovery_state"];
+                delete localStorage["navigation_state"];
+
+                // Add cache-busting to all future fetch requests
+                const originalFetch = window.fetch;
+                window.fetch = function(url, options) {
+                    if (typeof url === 'string' && url.includes('.json')) {
+                        url += (url.includes('?') ? '&' : '?') + 'nocache=' + Date.now();
+                    }
+                    return originalFetch.call(this, url, options);
+                };
+
+                status.innerHTML = "✅ Cache-busting setup complete! Reloading game...";
+
+                // Small delay to show success message
+                setTimeout(() => {
+                    // Force reload the page with cache-busting parameters
+                    const cacheBustParam = '?nocache=' + Date.now();
+                    const newUrl = window.location.origin + "/index.html" + cacheBustParam;
+                    window.location.href = newUrl;
+                }, 1000);
+
+            } catch (error) {
+                console.error("❌ Error during cache clear:", error);
+                status.innerHTML = "❌ Error during cache clear. Reloading anyway...";
+                setTimeout(() => {
+                    window.location.href = "index.html?" + Date.now();
+                }, 1000);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Force Cache Clear</title>
+</head>
+<body>
+    <h1>Cache Clear Instructions</h1>
+    <p>The debug spam reduction changes are in the code but your browser is using cached JavaScript files.</p>
+    
+    <h2>Quick Fix:</h2>
+    <ol>
+        <li><strong>Hard Refresh:</strong> Press <code>Ctrl+Shift+R</code> (Windows/Linux) or <code>Cmd+Shift+R</code> (Mac)</li>
+        <li><strong>Or Clear Cache:</strong> Open DevTools (F12) → Network tab → Check "Disable cache" → Refresh</li>
+        <li><strong>Or Force Reload:</strong> Right-click refresh button → "Empty Cache and Hard Reload"</li>
+    </ol>
+    
+    <h2>Verify the Fix:</h2>
+    <p>After clearing cache, you should see:</p>
+    <ul>
+        <li>✅ <code>🔍 Discovery status changed: A0_sol -> false</code> (only once, not repeated)</li>
+        <li>✅ <code>🎯 RETICLE: Undiscovered object "Sol" showing as "Unknown"</code> (with target name, only once)</li>
+        <li>✅ Much less spam overall</li>
+    </ul>
+    
+    <script>
+        // Force reload with cache bypass
+        function forceReload() {
+            location.reload(true);
+        }
+        
+        // Add button for convenience
+        document.body.innerHTML += '<br><button onclick="forceReload()" style="padding: 10px 20px; font-size: 16px;">Force Reload This Page</button>';
+    </script>
+</body>
+</html>

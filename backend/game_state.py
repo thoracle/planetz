@@ -273,6 +273,13 @@ class GameStateManager:
     def save_state(self) -> None:
         """
         Save the current game state to persistent storage.
+        DEBUGGING: Discovery persistence disabled - skip saving discovery state
+        """
+        print(f"🔧 DEBUG MODE: Game state saving disabled - persistence disabled for debugging")
+        print(f"   - Discovery count in memory: {len(self.player_discoveries)}")
+        print(f"   - Mission states in memory: {len(self.mission_states)}")
+        
+        # COMMENTED OUT FOR DEBUGGING - Re-enable when discovery system is stable
         """
         try:
             state_data = {
@@ -294,10 +301,17 @@ class GameStateManager:
 
         except Exception as e:
             print(f"❌ Failed to save game state: {e}")
+        """
 
     def load_state(self) -> None:
         """
         Load game state from persistent storage.
+        DEBUGGING: Discovery persistence disabled - skip loading discovery state
+        """
+        print(f"🔧 DEBUG MODE: Game state loading disabled - starting fresh each session")
+        print(f"   - Discovery persistence disabled for debugging")
+        
+        # COMMENTED OUT FOR DEBUGGING - Re-enable when discovery system is stable
         """
         try:
             if not os.path.exists(self.state_file):
@@ -327,6 +341,7 @@ class GameStateManager:
 
         except Exception as e:
             print(f"❌ Failed to load game state: {e}")
+        """
 
     def get_stats(self) -> Dict[str, Any]:
         """

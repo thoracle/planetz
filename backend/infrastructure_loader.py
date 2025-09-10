@@ -11,6 +11,8 @@ import os
 from typing import Dict, List, Optional, Any
 
 
+import math
+
 def load_starter_infrastructure_template() -> Dict[str, Any]:
     """
     Load A0 infrastructure template from existing JSON file.
@@ -48,12 +50,25 @@ def convert_stations_to_verse_format(stations_data: List[Dict[str, Any]]) -> Lis
     converted_stations = []
 
     for station in stations_data:
+        # Convert 2D coordinates to 3D
+        position_2d = station.get('position', [0, 0])
+        if len(position_2d) == 2:
+            # Convert polar coordinates (r, theta) to cartesian (x, z) with y=0
+            r = position_2d[0]
+            theta_deg = position_2d[1]
+            theta_rad = math.radians(theta_deg)
+            x = r * math.cos(theta_rad)
+            z = r * math.sin(theta_rad)
+            position_3d = [x, 0, z]
+        else:
+            position_3d = position_2d
+
         converted = {
             'id': station.get('id', ''),
             'name': station.get('name', 'Unknown Station'),
             'type': station.get('type', 'station'),
             'faction': station.get('faction', 'neutral'),
-            'position': station.get('position', [0, 0, 0]),
+            'position': position_3d,
             'services': station.get('services', []),
             'size': station.get('size', 1.0),
             'description': station.get('description', ''),

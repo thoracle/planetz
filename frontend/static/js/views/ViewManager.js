@@ -149,6 +149,12 @@ debug('NAVIGATION', 'ViewManager: Initializing NavigationSystemManager with all 
             // Expose globally for testing
             window.navigationSystemManager = this.navigationSystemManager;
             
+            // Also expose StarChartsManager directly for debugging
+            if (this.navigationSystemManager.starChartsManager) {
+                window.starChartsManager = this.navigationSystemManager.starChartsManager;
+                debug('UTILITY', '🔧 StarChartsManager exposed globally for debugging');
+            }
+            
 debug('NAVIGATION', '✅ NavigationSystemManager initialized and exposed globally');
         }
     }

@@ -586,10 +586,13 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
     
     showTooltip(screenX, screenY, object) {
         // Show tooltip for hovered object - match LRS simple text format
-        
+
+        // For undiscovered objects, show "Unknown" instead of revealing the name
+        const tooltipText = object._isUndiscovered ? 'Unknown' : object.name;
+
         // Simple text tooltip like LRS (no HTML formatting)
-        this.tooltip.textContent = object.name;
-        
+        this.tooltip.textContent = tooltipText;
+
         // Position tooltip at cursor like LRS
         this.tooltip.style.left = screenX + 'px';
         this.tooltip.style.top = screenY + 'px';
@@ -732,6 +735,17 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
                 this.container.classList.add('targeting-active');
             } else {
                 this.container.classList.remove('targeting-active');
+            }
+            
+            // Debug: Log discovered objects when opening Star Charts
+            if (this.starChartsManager && this.starChartsManager.discoveredObjects) {
+                const discoveredCount = this.starChartsManager.discoveredObjects.size;
+                if (discoveredCount > 0) {
+                    const discoveredList = Array.from(this.starChartsManager.discoveredObjects).join(', ');
+                    debug('STAR_CHARTS', `📋 Star Charts opened - Discovered objects (${discoveredCount}): ${discoveredList}`);
+                } else {
+                    debug('STAR_CHARTS', '📋 Star Charts opened - No objects discovered yet');
+                }
             }
             
             // Render the map
@@ -1546,12 +1560,13 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
     renderUndiscoveredObject(x, y) {
         // Render undiscovered objects as "?" with unknown faction color (cyan)
 
-        // Calculate zoom-scaled font size (appears same size regardless of zoom)
-        const baseFontSize = 16;
-        const scaledFontSize = baseFontSize / this.currentZoomLevel;
+        // Calculate zoom-scaled font size - ensure minimum readability even at max zoom
+        const baseFontSize = 32; // Increased from 28 for better readability
+        const zoomFactor = Math.sqrt(this.currentZoomLevel);
+        const scaledFontSize = Math.max(16, baseFontSize / zoomFactor); // Minimum 16px for readability
 
-        // Create hit box for interaction (invisible, larger than text)
-        const hitBoxSize = Math.max(20, scaledFontSize * 2);
+        // Create hit box for interaction (invisible, much larger than text for better usability)
+        const hitBoxSize = Math.max(60, scaledFontSize * 3.0); // Much larger minimum and multiplier for better clickability
         const hitBox = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         hitBox.setAttribute('cx', x);
         hitBox.setAttribute('cy', y);
@@ -1561,9 +1576,11 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         hitBox.style.pointerEvents = 'all';
         hitBox.style.cursor = 'pointer'; // Finger cursor for interaction
 
-        // Add tooltip
-        hitBox.setAttribute('title', 'Unknown'); // Browser tooltip
-        hitBox.setAttribute('data-tooltip', 'Unknown'); // Custom tooltip data
+        // Add required attributes for interaction detection
+        hitBox.setAttribute('data-name', 'unknown-object'); // For handleMapClick detection
+        hitBox.classList.add('starchart-hitbox'); // Required class for interactive elements
+        hitBox.setAttribute('title', 'Unknown Object - Click to zoom'); // Browser tooltip
+        hitBox.setAttribute('data-tooltip', 'Unknown Object - Click to zoom'); // Custom tooltip data
 
         // Create text element for "?"
         const questionMark = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -1578,9 +1595,10 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         questionMark.setAttribute('class', 'star-charts-undiscovered');
         questionMark.textContent = '?';
 
-        // Add glow effect for better visibility (scaled with zoom)
+        // Add glow effect for better visibility (scaled with zoom, minimum thickness)
         questionMark.setAttribute('stroke', '#44ffff');
-        questionMark.setAttribute('stroke-width', `${0.5 / this.currentZoomLevel}px`);
+        const strokeWidth = Math.max(0.5, 1.2 / Math.sqrt(this.currentZoomLevel)); // Minimum 0.5px, increased base
+        questionMark.setAttribute('stroke-width', `${strokeWidth}px`);
 
         // Add hover effects for interactivity feedback
         const originalFill = '#44ffff';
@@ -1597,12 +1615,24 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             questionMark.setAttribute('stroke', originalFill);
         });
 
-        // Click handler for zoom interaction
+        // Click handler for zoom interaction and targeting
         hitBox.addEventListener('click', (event) => {
             event.stopPropagation();
-            // Zoom to the unknown object location
-            this.zoomToLocation(x, y);
-            debug('STAR_CHARTS', `🖱️ Clicked unknown object at (${x}, ${y}), zooming in`);
+            
+            // Find the actual object at this position
+            const objectAtPosition = this.getObjectAtPosition(x, y);
+            if (objectAtPosition) {
+                debug('STAR_CHARTS', `🖱️ Clicked unknown object: ${objectAtPosition.name} at (${x}, ${y})`);
+                console.log(`🖱️ Unknown object clicked: ${objectAtPosition.name} at (${x}, ${y}), attempting to target`);
+                
+                // Try to select the object for targeting (same as discovered objects)
+                this.selectObject(objectAtPosition);
+            } else {
+                // Fallback: just zoom to the location
+                this.zoomToLocation(x, y);
+                debug('STAR_CHARTS', `🖱️ Clicked unknown object at (${x}, ${y}), no object data found - zooming only`);
+                console.log(`🖱️ Unknown object clicked at (${x}, ${y}), no object data - zooming only`);
+            }
         });
 
         // Add elements to SVG (hit box first for proper layering)

@@ -27,6 +27,12 @@ sys.path.insert(0, str(project_root / 'backend'))
 
 try:
     from backend.verse import generate_universe, sector_to_seed
+    from backend.infrastructure_positioning import InfrastructurePositioning
+    from backend.infrastructure_loader import (
+        load_starter_infrastructure_template,
+        convert_stations_to_verse_format,
+        convert_beacons_to_verse_format
+    )
     print("✅ Successfully imported verse.py functions")
 except ImportError as e:
     print(f"❌ Failed to import verse.py: {e}")
@@ -67,15 +73,56 @@ def main():
             if i % 10 == 0:  # Progress indicator
                 print(f"   Processed {i+1}/{len(universe)} sectors...")
         
-        # Load A0 infrastructure data
+        # Load and position A0 infrastructure data
         print("🔄 Loading A0 infrastructure data...")
-        infrastructure_data = load_starter_infrastructure()
+        infrastructure_data = load_starter_infrastructure_template()
         if infrastructure_data and 'A0' in star_charts_db["sectors"]:
-            star_charts_db["sectors"]["A0"]["infrastructure"] = {
-                "stations": infrastructure_data.get("stations", []),
-                "beacons": infrastructure_data.get("beacons", [])
+            # Convert 2D coordinates to 3D before positioning
+            print("🔄 Converting 2D coordinates to 3D...")
+            stations_3d = convert_stations_to_verse_format(infrastructure_data.get('stations', []))
+            beacons_3d = convert_beacons_to_verse_format(infrastructure_data.get('beacons', []))
+
+            # Use InfrastructurePositioning for final positioning
+            positioning_system = InfrastructurePositioning(universe_seed=universe_seed)
+            a0_system = {
+                'sector': 'A0',
+                'star_name': star_charts_db["sectors"]["A0"]["star"]["name"],
+                'star_type': star_charts_db["sectors"]["A0"]["star"]["class"],
+                'planets': []  # Will be populated from objects array
             }
-            print(f"✅ Added {len(infrastructure_data.get('stations', []))} stations and {len(infrastructure_data.get('beacons', []))} beacons to A0")
+
+            # Extract planets from A0 sector for positioning context
+            for obj in star_charts_db["sectors"]["A0"]["objects"]:
+                if obj["type"] == "planet":
+                    a0_system['planets'].append({
+                        'planet_name': obj["name"],
+                        'position': obj["position"],
+                        'planet_type': obj["class"]
+                    })
+
+            # Create infrastructure data with 3D coordinates
+            infrastructure_3d = {
+                'stations': stations_3d,
+                'beacons': beacons_3d
+            }
+
+            positioned_infrastructure = positioning_system.position_infrastructure(a0_system, infrastructure_3d)
+
+            # Extract positioned stations and beacons
+            positioned_stations = []
+            positioned_beacons = []
+
+            for infra_obj in positioned_infrastructure.get('infrastructure', []):
+                if infra_obj.get('type') == 'navigation_beacon':
+                    positioned_beacons.append(infra_obj)
+                else:
+                    positioned_stations.append(infra_obj)
+
+            star_charts_db["sectors"]["A0"]["infrastructure"] = {
+                "stations": positioned_stations,
+                "beacons": positioned_beacons
+            }
+            print(f"✅ Added {len(positioned_stations)} positioned stations and {len(positioned_beacons)} positioned beacons to A0")
         
         # Ensure output directory exists
         output_dir = project_root / "data" / "star_charts"
@@ -202,20 +249,6 @@ def extract_moon_data(moon, planet, sector):
         "description": moon.get('description', f"A {moon.get('moon_type', 'rocky')} moon")
     }
 
-def load_starter_infrastructure():
-    """Load infrastructure data from JSON file"""
-    
-    infrastructure_path = project_root / "data" / "starter_system_infrastructure.json"
-    
-    try:
-        with open(infrastructure_path, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        print(f"⚠️  Infrastructure file not found: {infrastructure_path}")
-        return None
-    except json.JSONDecodeError as e:
-        print(f"⚠️  Error parsing infrastructure JSON: {e}")
-        return None
 
 if __name__ == "__main__":
     print("🚀 Star Charts Database Generator")

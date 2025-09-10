@@ -223,7 +223,7 @@ The Planetz game engine uses **kilometers (km)** as the fundamental world unit a
 - ✅ **Camera Position**: Measured in kilometers from origin
 - ✅ **Object Positions**: All celestial bodies, stations, and ships positioned in km
 - ✅ **Distance Calculations**: All proximity, targeting, and collision systems use km
-- ✅ **Discovery Range**: 10km discovery radius (no unit conversion needed)
+- ✅ **Discovery Range**: 100km discovery radius (no unit conversion needed)
 
 #### **System Consistency**:
 - ✅ **Three.js Scene**: Direct km coordinates (no scaling factors)
@@ -238,7 +238,7 @@ The Planetz game engine uses **kilometers (km)** as the fundamental world unit a
 - ✅ **Unified Coordinates**: ALL objects use standard 3D Cartesian coordinates `[x, y, z]` in km
 - ✅ **No Coordinate Exceptions**: Beacons, stations, ships - everything uses the same `[x, y, z]` format
 - ✅ **Simplified System**: No polar coordinate conversion needed - direct km positioning
-- ✅ **Discovery System**: 10km range works directly with km-based positions
+- ✅ **Discovery System**: 100km range works directly with km-based positions
 
 #### **Why Kilometers**:
 - **Human-Scale Comprehension**: Distances like "175km to beacon" are intuitive
@@ -406,19 +406,19 @@ unknown: '#44ffff'   // Cyan for unknown
 ## 🔧 Debug Mode - Discovery System Configured for Testing
 
 ### **Discovery System Debug Mode** 🔧 **ACTIVE**
-**Status**: Discovery persistence **TEMPORARILY DISABLED** + **10km Close-Range Discovery**
+**Status**: Discovery persistence **TEMPORARILY DISABLED** + **100km Optimized Discovery**
 
 **What's Changed**:
 - ✅ **Frontend**: `StarChartsManager.loadDiscoveryState()` and `saveDiscoveryState()` disabled
 - ✅ **Backend**: `GameStateManager.load_state()` and `save_state()` discovery persistence disabled
 - ✅ **Fresh State**: Each browser session starts with completely clean discovery state (NO objects discovered)
-- ✅ **Discovery Range**: Set to **10km** - requires close approach to discover objects
+- ✅ **Discovery Range**: Set to **100km** - balanced progression for exploration
 - ✅ **Auto-Discovery**: Disabled (no test mode or beacon auto-discovery)
 - ✅ **Debug Messages**: Console shows persistence disabled messages
 
 **Discovery Mechanics**:
-- **Range**: 10 kilometers (6.68e-8 AU) - very close approach required
-- **Behavior**: Players must fly within 10km of ANY object to discover it (including SOL)
+- **Range**: 100 kilometers - balanced exploration progression
+- **Behavior**: Players must fly within 100km of objects to discover them
 - **Fresh Start**: No objects discovered initially - complete exploration required
 - **Notifications**: Enhanced debug logging for discovery events
 - **Reset**: Discovery state resets completely between sessions

@@ -1922,6 +1922,18 @@ export class TargetComputerManager {
     createTargetWireframe() {
         if (!this.currentTarget) return;
 
+        debug('TARGETING', `🎯 WIREFRAME: createTargetWireframe() called for ${this.currentTarget.name || 'unnamed target'}`);
+        const childrenBefore = this.wireframeScene.children.length;
+
+        // Clear any existing wireframe first to prevent duplicates
+        this.clearTargetWireframe();
+        
+        const childrenAfter = this.wireframeScene.children.length;
+        // Only log if there's a significant change
+        if (childrenBefore !== childrenAfter) {
+            debug('UI', `🖼️ WIREFRAME: Scene children: ${childrenBefore} -> ${childrenAfter}`);
+        }
+
         try {
             // Ensure currentTarget is hydrated with a real object/position before building geometry
             if (!this.currentTarget.position) {
@@ -1999,25 +2011,37 @@ export class TargetComputerManager {
        debug('TARGETING', `🎯 TARGET_SWITCH: Target diplomacy: ${diplomacy} for ${currentTargetData?.name || 'unknown'}`);
        debug('INSPECTION', `🔍 Target diplomacy details - type: ${currentTargetData?.type}, faction: ${currentTargetData?.faction}, ship.diplomacy: ${currentTargetData?.ship?.diplomacy}`);
 
-       // FIX: Set isEnemyShip correctly - only enemy ships should have subsystem indicators
-       isEnemyShip = diplomacy === 'enemy' && currentTargetData?.isShip;
-       debug('TARGETING', `🎯 TARGET_SWITCH: Final isEnemyShip determination: ${isEnemyShip} (diplomacy: ${diplomacy}, isShip: ${currentTargetData?.isShip})`);
+       // Check discovery status for wireframe color
+       const isDiscovered = currentTargetData?.isDiscovered !== false; // Default to true if not specified
+       
+       if (!isDiscovered) {
+           // Undiscovered objects use unknown faction color (cyan)
+           wireframeColor = 0x44ffff; // Cyan for unknown/undiscovered
+           debug('INSPECTION', `🔍 Setting wireframe color to UNDISCOVERED CYAN (0x44ffff)`);
+       } else {
+           // FIX: Set isEnemyShip correctly - only enemy ships should have subsystem indicators
+           isEnemyShip = diplomacy === 'enemy' && currentTargetData?.isShip;
+           debug('TARGETING', `🎯 TARGET_SWITCH: Final isEnemyShip determination: ${isEnemyShip} (diplomacy: ${diplomacy}, isShip: ${currentTargetData?.isShip})`);
 
-            if (diplomacy === 'enemy') {
-                wireframeColor = 0xff3333; // Enemy red
-                debug('INSPECTION', `🔍 Setting wireframe color to ENEMY RED (0xff3333)`);
-            } else if (diplomacy === 'neutral') {
-                wireframeColor = 0xffff00; // Neutral yellow
-                debug('INSPECTION', `🔍 Setting wireframe color to NEUTRAL YELLOW (0xffff00)`);
-            } else if (diplomacy === 'friendly') {
-                wireframeColor = 0x00ff41; // Friendly green
-                debug('INSPECTION', `🔍 Setting wireframe color to FRIENDLY GREEN (0x00ff41)`);
-            } else if (info?.type === 'star') {
-                wireframeColor = 0xffff00; // Stars are yellow
-                debug('INSPECTION', `🔍 Setting wireframe color to STAR YELLOW (0xffff00)`);
-            } else {
-                debug('INSPECTION', `🔍 Keeping default wireframe color (0x808080) for diplomacy: ${diplomacy}`);
-            }
+           if (diplomacy === 'enemy') {
+               wireframeColor = 0xff3333; // Enemy red
+               debug('INSPECTION', `🔍 Setting wireframe color to ENEMY RED (0xff3333)`);
+           } else if (diplomacy === 'neutral') {
+               wireframeColor = 0xffff00; // Neutral yellow
+               debug('INSPECTION', `🔍 Setting wireframe color to NEUTRAL YELLOW (0xffff00)`);
+           } else if (diplomacy === 'friendly') {
+               wireframeColor = 0x00ff41; // Friendly green
+               debug('INSPECTION', `🔍 Setting wireframe color to FRIENDLY GREEN (0x00ff41)`);
+           } else if (info?.type === 'star') {
+               wireframeColor = 0xffff00; // Stars are yellow
+               debug('INSPECTION', `🔍 Setting wireframe color to STAR YELLOW (0xffff00)`);
+           } else if (diplomacy === 'unknown') {
+               wireframeColor = 0x44ffff; // Unknown faction cyan
+               debug('INSPECTION', `🔍 Setting wireframe color to UNKNOWN CYAN (0x44ffff)`);
+           } else {
+               debug('INSPECTION', `🔍 Keeping default wireframe color (0x808080) for diplomacy: ${diplomacy}`);
+           }
+       }
 
             const wireframeMaterial = new this.THREE.LineBasicMaterial({
                 color: wireframeColor,
@@ -2026,64 +2050,76 @@ export class TargetComputerManager {
                 opacity: 0.8
             });
 
-            // Use centralized wireframe type mapping - single source of truth
-            const resolvedType = (currentTargetData?.type || '').toLowerCase();
-            const wireframeConfig = this.getWireframeConfig(resolvedType);
-
-
-            if (wireframeConfig.geometry === 'star') {
-                const starGeometry = this.createStarGeometry(radius);
-                this.targetWireframe = new this.THREE.LineSegments(starGeometry, wireframeMaterial);
+            // Check if object is discovered to determine wireframe type
+            if (!isDiscovered) {
+                // Undiscovered objects use a standard "unknown" wireframe shape
+                debug('INSPECTION', `🔍 Creating unknown wireframe for undiscovered object`);
+                const unknownGeometry = this.createUnknownWireframeGeometry(radius);
+                this.targetWireframe = new this.THREE.LineSegments(unknownGeometry, wireframeMaterial);
             } else {
-                let baseGeometry = null;
+                // Use centralized wireframe type mapping for discovered objects
+                const resolvedType = (currentTargetData?.type || '').toLowerCase();
+                const wireframeConfig = this.getWireframeConfig(resolvedType);
 
-                // Handle special cases that need additional logic
-                if (wireframeConfig.geometry === 'box') {
-                    // Enemy ships - check both info and currentTargetData
-                    if (info?.type === 'enemy_ship' || currentTargetData?.isShip) {
-                        baseGeometry = new this.THREE.BoxGeometry(radius, radius, radius);
-                    }
-                } else if (wireframeConfig.geometry === 'torus') {
-                    // Space stations - use centralized configuration
-                    const ringR = Math.max(radius * 0.8, 1.0);
-                    const ringTube = Math.max(radius * 0.25, 0.3);
-                    baseGeometry = new this.THREE.TorusGeometry(ringR, ringTube, 8, 16);
+                if (wireframeConfig.geometry === 'star') {
+                    const starGeometry = this.createStarGeometry(radius);
+                    this.targetWireframe = new this.THREE.LineSegments(starGeometry, wireframeMaterial);
                 } else {
-                    // Standard geometries from centralized mapping
-                    baseGeometry = this.createGeometryFromConfig(wireframeConfig.geometry, radius);
-                }
+                    let baseGeometry = null;
 
-                // Fallback to actual target geometry if no base geometry was created
-                if (!baseGeometry && targetObject?.geometry && targetObject.geometry.isBufferGeometry) {
-                    const edgesGeometry = new this.THREE.EdgesGeometry(targetObject.geometry);
-                    this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
-                }
-
-                if (!this.targetWireframe) {
-                    // Create edges from our base geometry
-                    if (!baseGeometry) {
-                        baseGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
+                    // Handle special cases that need additional logic
+                    if (wireframeConfig.geometry === 'box') {
+                        // Box geometry is only for enemy ships - verify this is actually an enemy ship
+                        if (info?.type === 'enemy_ship' || currentTargetData?.isShip) {
+                            baseGeometry = new this.THREE.BoxGeometry(radius, radius, radius);
+                        }
+                        // If not an enemy ship but config says 'box', baseGeometry stays null
+                        // and we'll fall through to the standard geometry creation
+                    } else if (wireframeConfig.geometry === 'torus') {
+                        // Space stations - use centralized configuration
+                        const ringR = Math.max(radius * 0.8, 1.0);
+                        const ringTube = Math.max(radius * 0.25, 0.3);
+                        baseGeometry = new this.THREE.TorusGeometry(ringR, ringTube, 8, 16);
+                    } else {
+                        // Standard geometries from centralized mapping
+                        baseGeometry = this.createGeometryFromConfig(wireframeConfig.geometry, radius);
                     }
-                    const edgesGeometry = new this.THREE.EdgesGeometry(baseGeometry);
-                    this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
-                    // Dispose only the temporary base geometry; keep edgesGeometry until clear
-                    baseGeometry.dispose();
+
+                    // Create wireframe from base geometry if we have one
+                    if (baseGeometry) {
+                        const edgesGeometry = new this.THREE.EdgesGeometry(baseGeometry);
+                        this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
+                        // Dispose the temporary base geometry; keep edgesGeometry until clear
+                        baseGeometry.dispose();
+                    } else if (targetObject?.geometry && targetObject.geometry.isBufferGeometry) {
+                        // Fallback to actual target geometry if no base geometry was created
+                        const edgesGeometry = new this.THREE.EdgesGeometry(targetObject.geometry);
+                        this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
+                    } else {
+                        // Final fallback - create default icosahedron geometry
+                        const defaultGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
+                        const edgesGeometry = new this.THREE.EdgesGeometry(defaultGeometry);
+                        this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
+                        defaultGeometry.dispose();
+                    }
                 }
             }
 
-            // Add sub-target indicators only for enemy ships
-            // Note: isEnemyShip is already determined above in the wireframe color logic
-            debug('TARGETING', `🎯 TARGET_SWITCH: Subsystem indicators - isEnemyShip: ${isEnemyShip}, target type: ${currentTargetData?.type || 'unknown'}`);
-            if (isEnemyShip) {
-                debug('INSPECTION', `🔍 Creating subsystem indicators for enemy ship`);
-                this.createSubTargetIndicators(radius, wireframeColor);
-            } else {
-                debug('INSPECTION', `🔍 Clearing subsystem indicators (non-enemy target)`);
-                this.createSubTargetIndicators(0, 0); // clears existing indicators
+            // Clear any existing sub-target indicators (they are disabled)
+            this.createSubTargetIndicators(0, 0);
+
+            // Ensure wireframe was created successfully before using it
+            if (!this.targetWireframe) {
+                debug('TARGETING', `🎯 WIREFRAME: ERROR - No wireframe created for ${currentTargetData?.name || 'unknown'}`);
+                return;
             }
 
             this.targetWireframe.position.set(0, 0, 0);
             this.wireframeScene.add(this.targetWireframe);
+            
+            const finalChildren = this.wireframeScene.children.length;
+            const childTypes = this.wireframeScene.children.map(child => child.constructor.name).join(', ');
+            debug('TARGETING', `🎯 WIREFRAME: Created for ${this.currentTarget?.name || 'unknown'} (${finalChildren} total objects: ${childTypes})`);
 
             this.wireframeCamera.position.z = Math.max(radius * 3, 3);
             this.targetWireframe.rotation.set(0.5, 0, 0.3);
@@ -2159,7 +2195,11 @@ export class TargetComputerManager {
      * Update target display information
      */
     updateTargetDisplay() {
-        debug('TARGETING', `🎯 TARGET_SWITCH: updateTargetDisplay() called - target: ${this.currentTarget?.name || 'none'}, type: ${this.currentTarget?.type || 'unknown'}`);
+        // Only log when target actually changes
+        if (this._lastLoggedTarget !== this.currentTarget?.name) {
+            debug('TARGETING', `🎯 TARGET_SWITCH: updateTargetDisplay() - target: ${this.currentTarget?.name || 'none'}, type: ${this.currentTarget?.type || 'unknown'}`);
+            this._lastLoggedTarget = this.currentTarget?.name;
+        }
 
         if (!this.targetComputerEnabled) {
             debug('INSPECTION', `🔍 Target display update skipped - target computer disabled`);
@@ -2169,6 +2209,38 @@ export class TargetComputerManager {
         // Don't update display during power-up animation
         if (this.isPoweringUp) {
             return;
+        }
+
+        // Check if we need to recreate wireframe due to discovery status change
+        const targetDataForDiscoveryCheck = this.getCurrentTargetData();
+        if (targetDataForDiscoveryCheck && this.currentTarget) {
+            const currentDiscoveryStatus = targetDataForDiscoveryCheck.isDiscovered !== false;
+            
+            // Store the last known discovery status for this target
+            if (this.currentTarget._lastDiscoveryStatus === undefined) {
+                this.currentTarget._lastDiscoveryStatus = currentDiscoveryStatus;
+                debug('TARGETING', `🎯 Initial discovery status for ${targetDataForDiscoveryCheck.name}: ${currentDiscoveryStatus}`);
+            } else if (this.currentTarget._lastDiscoveryStatus !== currentDiscoveryStatus) {
+                // Discovery status changed - recreate wireframe with new colors
+                debug('TARGETING', `🎯 Discovery status changed for ${targetDataForDiscoveryCheck.name}: ${this.currentTarget._lastDiscoveryStatus} -> ${currentDiscoveryStatus}`);
+                this.currentTarget._lastDiscoveryStatus = currentDiscoveryStatus;
+                
+                // Clear existing wireframe first - CRITICAL FIX: Use wireframeScene not main scene
+                if (this.targetWireframe) {
+                    this.wireframeScene.remove(this.targetWireframe);
+                    if (this.targetWireframe.geometry) {
+                        this.targetWireframe.geometry.dispose();
+                    }
+                    if (this.targetWireframe.material) {
+                        this.targetWireframe.material.dispose();
+                    }
+                    this.targetWireframe = null;
+                }
+                
+                // Recreate wireframe with updated discovery status
+                this.createTargetWireframe();
+                debug('TARGETING', `🎯 Wireframe recreated for discovery status change: ${targetDataForDiscoveryCheck.name}`);
+            }
         }
         
         // Handle case where no target is selected
@@ -2465,7 +2537,19 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 Sub-targeting check: isEnemyShip
         }
         
         // Prefer currentTargetData for display name/type to avoid mismatches
-        const displayName = currentTargetData?.name || info?.name || 'Unknown Target';
+        // Check discovery status to determine if we should show real name or "Unknown"
+        const isDiscovered = currentTargetData?.isDiscovered !== false; // Default to true if not specified
+        let displayName;
+        
+        if (!isDiscovered && !currentTargetData?.isShip) {
+            // Undiscovered non-ship objects show as "Unknown"
+            displayName = 'Unknown';
+            debug('TARGETING', `🎯 DISPLAY: Undiscovered object - showing as "Unknown"`);
+        } else {
+            // Discovered objects or ships show their real name
+            displayName = currentTargetData?.name || info?.name || 'Unknown Target';
+        }
+        
         let displayType = (currentTargetData?.type || info?.type || 'Unknown');
         if (isEnemyShip && info?.shipType) {
             displayType = info.shipType;
@@ -2610,12 +2694,54 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
     }
 
     /**
+     * Check if an object is discovered using StarChartsManager
+     */
+    isObjectDiscovered(targetData) {
+        // Try to get StarChartsManager through viewManager
+        const starChartsManager = this.viewManager?.navigationSystemManager?.starChartsManager;
+        if (!starChartsManager) {
+            // If no StarChartsManager available, assume discovered (fallback behavior)
+            return true;
+        }
+
+        // Get object ID from target data
+        let objectId = targetData.id;
+        if (!objectId && targetData.name) {
+            // Try to construct ID from name for objects without explicit ID
+            const normalizedName = targetData.name.toLowerCase().replace(/\s+/g, '_');
+            objectId = `a0_${normalizedName}`;
+        }
+
+        if (!objectId) {
+            // If we can't determine object ID, assume discovered
+            return true;
+        }
+
+        // Normalize the ID to match StarChartsManager format (A0_ instead of a0_)
+        const normalizedId = objectId.replace(/^a0_/i, 'A0_');
+        
+        // Check discovery status
+        const isDiscovered = starChartsManager.isDiscovered(normalizedId);
+        // Only log discovery checks when status changes or for initial checks
+        if (!this._lastDiscoveryStatus || this._lastDiscoveryStatus[normalizedId] !== isDiscovered) {
+            debug('TARGETING', `🔍 Discovery status changed: ${normalizedId} -> ${isDiscovered}`);
+            if (!this._lastDiscoveryStatus) this._lastDiscoveryStatus = {};
+            this._lastDiscoveryStatus[normalizedId] = isDiscovered;
+        }
+        
+        return isDiscovered;
+    }
+
+    /**
      * Process target data and return standardized format
      */
     processTargetData(targetData) {
         if (!targetData) {
             return null;
         }
+
+        // Check discovery status for non-ship objects
+        const isDiscovered = targetData.isShip || this.isObjectDiscovered(targetData);
 
         // Check if this is a ship (either 'ship' or 'enemy_ship' type, or has isShip flag)
         if (targetData.type === 'ship' || targetData.type === 'enemy_ship' || targetData.isShip) {
@@ -2652,6 +2778,7 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
                 isMoon: targetData.isMoon || false,
                 diplomacy: targetData.diplomacy || shipInstance?.diplomacy,
                 faction: targetData.faction || shipInstance?.faction || targetData.diplomacy || shipInstance?.diplomacy,
+                isDiscovered: isDiscovered,
                 ...targetData // Include all original properties
             };
         } else {
@@ -2660,14 +2787,15 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
             if (targetData.type && targetData.type !== 'unknown') {
                 return {
                     object: this.currentTarget,
-                    name: targetData.name || 'Unknown',
+                    name: isDiscovered ? (targetData.name || 'Unknown') : 'Unknown',
                     type: targetData.type,
                     isShip: false,
                     distance: targetData.distance,
                     isMoon: targetData.isMoon || false,
                     isSpaceStation: targetData.isSpaceStation,
-                    faction: targetData.faction,
-                    diplomacy: targetData.diplomacy,
+                    faction: isDiscovered ? targetData.faction : 'unknown',
+                    diplomacy: isDiscovered ? targetData.diplomacy : 'unknown',
+                    isDiscovered: isDiscovered,
                     ...targetData
                 };
             } else if (targetData.name && targetData.name !== 'Unknown') {
@@ -2676,14 +2804,15 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
 debug('TARGETING', `🎯 Processing target with name but no type: ${targetData.name}`);
                 return {
                     object: this.currentTarget,
-                    name: targetData.name,
+                    name: isDiscovered ? targetData.name : 'Unknown',
                     type: targetData.type || 'celestial_body', // Default type for celestial objects
                     isShip: false,
                     distance: targetData.distance,
                     isMoon: targetData.isMoon || false,
                     isSpaceStation: targetData.isSpaceStation,
-                    faction: targetData.faction,
-                    diplomacy: targetData.diplomacy,
+                    faction: isDiscovered ? targetData.faction : 'unknown',
+                    diplomacy: isDiscovered ? targetData.diplomacy : 'unknown',
+                    isDiscovered: isDiscovered,
                     ...targetData
                 };
             } else {
@@ -2692,11 +2821,14 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                 const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
                 return {
                     object: this.currentTarget,
-                    name: info?.name || targetData.name || 'Unknown',
+                    name: isDiscovered ? (info?.name || targetData.name || 'Unknown') : 'Unknown',
                     type: info?.type || targetData.type || 'unknown',
                     isShip: false,
                     distance: targetData.distance,
                     isMoon: targetData.isMoon || false,
+                    faction: isDiscovered ? info?.faction : 'unknown',
+                    diplomacy: isDiscovered ? info?.diplomacy : 'unknown',
+                    isDiscovered: isDiscovered,
                     ...info
                 };
             }
@@ -2903,23 +3035,43 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
             // console.log(`🎯 DEBUG: updateReticleTargetInfo() - Target: ${targetName}, type: ${preferredType || 'unknown'}`);
         }
         
-        // Determine reticle color based on diplomacy using faction color rules
+        // Check if object is discovered BEFORE setting colors and final name
+        const isDiscovered = currentTargetData?.isDiscovered !== false; // Default to true if not specified
+        
+        // Override target name for undiscovered objects
+        if (!isDiscovered && !currentTargetData.isShip) {
+            targetName = 'Unknown';
+            // Only log once per target when showing as unknown
+            if (this._lastUnknownTarget !== this.currentTarget?.name) {
+                debug('TARGETING', `🎯 RETICLE: Undiscovered object "${this.currentTarget?.name}" showing as "Unknown"`);
+                this._lastUnknownTarget = this.currentTarget?.name;
+            }
+        }
+        
+        // Determine reticle color based on discovery status and diplomacy
         let reticleColor = '#D0D0D0'; // Default gray
         
-        // Use consolidated diplomacy logic for consistent color determination
-        const diplomacyStatus = this.getTargetDiplomacy(currentTargetData);
-        
-        // Target dummies should use standard faction colors (red for enemy/hostile)
-        if (isEnemyShip) {
-            reticleColor = '#ff3333'; // Enemy ships are darker neon red
-        } else if (info?.type === 'star') {
-            reticleColor = '#ffff00'; // Stars are neutral yellow
-        } else if (diplomacyStatus?.toLowerCase() === 'enemy') {
-            reticleColor = '#ff3333'; // Darker neon red
-        } else if (diplomacyStatus?.toLowerCase() === 'neutral') {
-            reticleColor = '#ffff00';
-        } else if (diplomacyStatus?.toLowerCase() === 'friendly') {
-            reticleColor = '#00ff41';
+        if (!isDiscovered) {
+            // Undiscovered objects use unknown faction color (cyan)
+            reticleColor = '#44ffff'; // Cyan for unknown/undiscovered
+        } else {
+            // Use consolidated diplomacy logic for discovered objects
+            const diplomacyStatus = this.getTargetDiplomacy(currentTargetData);
+            
+            // Target dummies should use standard faction colors (red for enemy/hostile)
+            if (isEnemyShip) {
+                reticleColor = '#ff3333'; // Enemy ships are darker neon red
+            } else if (info?.type === 'star') {
+                reticleColor = '#ffff00'; // Stars are neutral yellow
+            } else if (diplomacyStatus?.toLowerCase() === 'enemy') {
+                reticleColor = '#ff3333'; // Darker neon red
+            } else if (diplomacyStatus?.toLowerCase() === 'neutral') {
+                reticleColor = '#ffff00';
+            } else if (diplomacyStatus?.toLowerCase() === 'friendly') {
+                reticleColor = '#00ff41';
+            } else if (diplomacyStatus?.toLowerCase() === 'unknown') {
+                reticleColor = '#44ffff'; // Cyan for unknown faction
+            }
         }
 
         // Update name display
@@ -3119,16 +3271,8 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
      * Create visual indicators for sub-targeting on the wireframe
      */
     createSubTargetIndicators(radius, baseColor) {
-        debug('TARGETING', `🎯 TARGET_SWITCH: createSubTargetIndicators called - radius: ${radius}, baseColor: ${baseColor}`);
-
-        // Check if sub-targeting is available
-        const ship = this.viewManager?.getShip();
-        const targetComputer = ship?.getSystem('target_computer');
-
-        debug('INSPECTION', `🔍 Sub-targeting check - ship: ${!!ship}, targetComputer: ${!!targetComputer}, hasSubTargeting: ${targetComputer?.hasSubTargeting?.() || false}`);
-
-        // Always clear existing indicators first
-        debug('INSPECTION', `🔍 Clearing existing sub-target indicators (${this.subTargetIndicators?.length || 0} indicators)`);
+        // DISABLED: Sub-target indicators completely removed to prevent wireframe stacking
+        // Always clear existing indicators if they exist
         if (this.subTargetIndicators) {
             this.subTargetIndicators.forEach(indicator => {
                 this.wireframeScene.remove(indicator);
@@ -3138,113 +3282,18 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         }
         this.subTargetIndicators = [];
         
-        // Only create new indicators if sub-targeting is available
-        if (!targetComputer || !targetComputer.hasSubTargeting()) {
-            return;
-        }
-
-        // Get diplomacy color for the target to influence sub-target indicators
-        let baseDiplomacyColor = 0x808080; // Default gray
-        const currentTargetData = this.getCurrentTargetData();
-        
-        if (currentTargetData?.isShip) {
-            baseDiplomacyColor = 0xff3333; // Enemy ships
-        } else {
-            const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-            if (info?.diplomacy?.toLowerCase() === 'enemy') {
-                baseDiplomacyColor = 0xff3333;
-            } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-                baseDiplomacyColor = 0xffff00;
-            } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-                baseDiplomacyColor = 0x00ff41;
-            }
-        }
-
-        // Create targetable area indicators (tinted by diplomacy but maintaining system identity)
-        const targetableAreas = [
-            { name: 'Command Center', position: [0, radius * 0.7, 0], color: baseDiplomacyColor === 0xff3333 ? 0xff6666 : 0xff3333 },
-            { name: 'Power Core', position: [0, 0, 0], color: baseDiplomacyColor === 0x00ff41 ? 0x66ff66 : 0x44ff44 },
-            { name: 'Communications', position: [radius * 0.6, 0, 0], color: baseDiplomacyColor === 0xffff00 ? 0x6666ff : 0x4444ff },
-            { name: 'Defense Grid', position: [-radius * 0.6, 0, 0], color: baseDiplomacyColor === 0xffff00 ? 0xffff66 : 0xffff44 },
-            { name: 'Sensor Array', position: [0, -radius * 0.7, 0], color: baseDiplomacyColor === 0xff3333 ? 0xff66ff : 0xff44ff },
-            { name: 'Docking Bay', position: [0, 0, radius * 0.8], color: baseDiplomacyColor === 0x00ff41 ? 0x66ffff : 0x44ffff }
-        ];
-
-        // Create indicators for each targetable area
-        targetableAreas.forEach((area, index) => {
-            // Create a small sphere to represent the targetable area
-            const indicatorGeometry = new this.THREE.SphereGeometry(radius * 0.15, 8, 6);
-            const indicatorMaterial = new this.THREE.MeshBasicMaterial({
-                color: area.color,
-                transparent: true,
-                opacity: 0.6,
-                wireframe: true
-            });
-            
-            const indicator = new this.THREE.Mesh(indicatorGeometry, indicatorMaterial);
-            indicator.position.set(area.position[0], area.position[1], area.position[2]);
-            
-            // Store area information for sub-targeting
-            indicator.userData = {
-                areaName: area.name,
-                areaIndex: index,
-                isTargetable: true
-            };
-            
-            this.wireframeScene.add(indicator);
-            this.subTargetIndicators.push(indicator);
-        });
-
-        // Store targetable areas for sub-targeting simulation
-        this.targetableAreas = targetableAreas;
-
-        debug('TARGETING', `🎯 TARGET_SWITCH: createSubTargetIndicators completed - created ${targetableAreas.length} indicators for target: ${this.currentTarget?.name || 'unknown'}`);
+        // Early return - sub-target indicators are completely disabled
+        debug('TARGETING', `🎯 SUB-TARGETS: Sub-target indicators disabled to prevent stacking`);
+        return;
     }
 
     /**
      * Update sub-target visual indicators based on current selection
+     * DISABLED: Sub-target indicators are completely disabled
      */
     updateSubTargetIndicators() {
-        if (!this.subTargetIndicators || !this.targetableAreas) {
-            return;
-        }
-
-        const ship = this.viewManager?.getShip();
-        const targetComputer = ship?.getSystem('target_computer');
-        
-        if (!targetComputer || !targetComputer.hasSubTargeting()) {
-            return;
-        }
-
-        // Get current sub-target index (simulate based on available areas)
-        const currentSubTargetIndex = targetComputer.subTargetIndex || 0;
-        const hasSubTarget = targetComputer.currentSubTarget !== null;
-
-        // Update each indicator based on selection state
-        this.subTargetIndicators.forEach((indicator, index) => {
-            const isSelected = hasSubTarget && (index === currentSubTargetIndex % this.targetableAreas.length);
-            
-            if (isSelected) {
-                // Highlight the selected sub-target
-                indicator.scale.setScalar(1.3); // Make it larger
-                
-                // Add pulsing effect
-                const time = Date.now() * 0.005;
-                const pulse = 0.8 + Math.sin(time) * 0.2;
-                indicator.material.opacity = pulse;
-                
-                // Make it brighter by setting color to white
-                indicator.material.color.setHex(0xffffff);
-            } else {
-                // Normal state for non-selected indicators
-                indicator.material.opacity = 0.6;
-                indicator.scale.setScalar(1.0);
-                
-                // Restore original color from targetable areas
-                const originalColor = this.targetableAreas[index]?.color || 0xffffff;
-                indicator.material.color.setHex(originalColor);
-            }
-        });
+        // Sub-target indicators are disabled - nothing to update
+        return;
     }
 
     /**
@@ -3736,6 +3785,51 @@ debug('TARGETING', `🎯 Star Charts: Target set to ${target.name} (ID: ${normal
         }
 
         debug('TARGETING', `🎯 FALLBACK: Name-based lookup also failed for "${objectName}"`);
+        
+        // FINAL FALLBACK: Try to add object dynamically from StarCharts data
+        debug('TARGETING', `🎯 FINAL FALLBACK: Attempting to add object from StarCharts data: ${normalizedId}`);
+        
+        const starChartsManager = this.viewManager?.navigationSystemManager?.starChartsManager;
+        if (starChartsManager) {
+            const objectData = starChartsManager.getObjectData(normalizedId);
+            if (objectData) {
+                debug('TARGETING', `🎯 FINAL FALLBACK: Found object data in StarCharts: ${objectData.name}, adding to target list`);
+                
+                // Create a target entry for this object
+                const targetData = {
+                    id: normalizedId,
+                    name: objectData.name,
+                    type: objectData.type,
+                    position: objectData.cartesianPosition || objectData.position || [0, 0, 0],
+                    distance: 0, // Will be calculated
+                    isShip: false,
+                    object: null, // No Three.js object yet
+                    faction: objectData.faction,
+                    diplomacy: objectData.diplomacy,
+                    isSpaceStation: objectData.type === 'space_station',
+                    isMoon: objectData.type === 'moon'
+                };
+                
+                // Add to target list
+                this.targetObjects.push(targetData);
+                const newIndex = this.targetObjects.length - 1;
+                
+                // Set as current target
+                this.targetIndex = newIndex;
+                this.currentTarget = targetData;
+                this.isManualSelection = true;
+                this.isFromLongRangeScanner = true;
+                
+                // Update display
+                this.createTargetWireframe();
+                this.updateTargetDisplay();
+                this.updateReticleTargetInfo();
+                
+                debug('TARGETING', `🎯 FINAL FALLBACK: Successfully added and targeted object from StarCharts: ${objectData.name}`);
+                return true;
+            }
+        }
+        
         debug('TARGETING', `🎯 CRITICAL: All lookup methods failed for ${normalizedId}. Target switching will not work until target objects are properly populated with IDs or names.`);
         return false;
     }
@@ -4270,16 +4364,55 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
      * Clear target wireframe only
      */
     clearTargetWireframe() {
-        debug('TARGETING', `🎯 TARGET_SWITCH: clearTargetWireframe() called - existing wireframe: ${this.targetWireframe ? 'YES' : 'NO'}`);
+        debug('TARGETING', `🎯 WIREFRAME: clearTargetWireframe() called - existing wireframe: ${this.targetWireframe ? 'YES' : 'NO'}`);
+        const childrenBefore = this.wireframeScene.children.length;
+        const childTypesBefore = this.wireframeScene.children.map(child => child.constructor.name).join(', ');
+        debug('TARGETING', `🎯 WIREFRAME: Before clear - ${childrenBefore} objects: ${childTypesBefore}`);
+        
+        // Store reference to current wireframe before clearing for orphan detection
+        const currentWireframe = this.targetWireframe;
+        
+        // Clear main wireframe
         if (this.targetWireframe) {
-            debug('INSPECTION', `🔍 Clearing wireframe: ${this.targetWireframe.type || 'unknown type'}`);
             this.wireframeScene.remove(this.targetWireframe);
             this.targetWireframe.geometry.dispose();
             this.targetWireframe.material.dispose();
             this.targetWireframe = null;
-            debug('INSPECTION', `🔍 Wireframe cleared successfully`);
-        } else {
-            debug('INSPECTION', `🔍 No wireframe to clear`);
+        }
+        
+        // SAFETY: Remove any orphaned LineSegments that might be wireframes
+        // This handles cases where wireframe references were lost but wireframes remain in scene
+        // Note: We exclude the wireframe we just removed to avoid double-processing
+        const orphanedWireframes = this.wireframeScene.children.filter(child => 
+            child.constructor.name === 'LineSegments' && 
+            child !== currentWireframe
+        );
+        
+        if (orphanedWireframes.length > 0) {
+            debug('TARGETING', `🎯 WIREFRAME: Found ${orphanedWireframes.length} orphaned wireframes, removing...`);
+            orphanedWireframes.forEach(wireframe => {
+                this.wireframeScene.remove(wireframe);
+                if (wireframe.geometry) wireframe.geometry.dispose();
+                if (wireframe.material) wireframe.material.dispose();
+            });
+        }
+        
+        // Clear sub-target indicators to prevent accumulation
+        const indicatorCount = this.subTargetIndicators?.length || 0;
+        if (this.subTargetIndicators) {
+            this.subTargetIndicators.forEach(indicator => {
+                this.wireframeScene.remove(indicator);
+                if (indicator.geometry) indicator.geometry.dispose();
+                if (indicator.material) indicator.material.dispose();
+            });
+        }
+        this.subTargetIndicators = [];
+        
+        const childrenAfter = this.wireframeScene.children.length;
+        const childTypesAfter = this.wireframeScene.children.map(child => child.constructor.name).join(', ');
+        debug('TARGETING', `🎯 WIREFRAME: After clear - ${childrenAfter} objects: ${childTypesAfter}`);
+        if (childrenBefore !== childrenAfter || indicatorCount > 0 || orphanedWireframes.length > 0) {
+            debug('TARGETING', `🎯 WIREFRAME: Cleared ${childrenBefore - childrenAfter} objects (${indicatorCount} sub-targets, ${orphanedWireframes.length} orphaned wireframes)`);
         }
     }
 
@@ -4521,6 +4654,26 @@ debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
      */
     getWireframeConfig(objectType) {
         return getWireframeType(objectType);
+    }
+
+    /**
+     * Create a standard wireframe geometry for unknown/undiscovered objects
+     * @param {number} radius - The radius/size of the geometry
+     * @returns {THREE.BufferGeometry} A simple geometric shape for unknown objects
+     */
+    createUnknownWireframeGeometry(radius) {
+        // Create a simple diamond/octahedron shape for unknown objects
+        // This gives a generic, mysterious appearance that doesn't reveal the actual object type
+        const geometry = new this.THREE.OctahedronGeometry(radius * 0.8, 0);
+        
+        // Convert to edges geometry for wireframe display
+        const edgesGeometry = new this.THREE.EdgesGeometry(geometry);
+        
+        // Dispose the temporary geometry
+        geometry.dispose();
+        
+        debug('INSPECTION', `🔍 Created unknown wireframe geometry with radius ${radius * 0.8}`);
+        return edgesGeometry;
     }
 
     /**

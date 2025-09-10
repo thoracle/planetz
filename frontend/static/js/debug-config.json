@@ -4,11 +4,11 @@
     "description": "Debug channel configuration - edit this file to control debug output between sessions",
     "channels": {
         "TARGETING": {
-            "enabled": false,
+            "enabled": true,
             "description": "Target acquisition and management"
         },
         "STAR_CHARTS": {
-            "enabled": true,
+            "enabled": false,
             "description": "Star Charts navigation and UI"
         },
         "INSPECTION": {
@@ -28,7 +28,7 @@
             "description": "Enemy AI and ship behaviors"
         },
         "UI": {
-            "enabled": false,
+            "enabled": true,
             "description": "User interface events and updates"
         },
         "INTERACTION": {
@@ -44,7 +44,7 @@
             "description": "Combat mechanics and AI"
         },
         "NAVIGATION": {
-            "enabled": true,
+            "enabled": false,
             "description": "Navigation and movement systems"
         },
         "SCANNER": {

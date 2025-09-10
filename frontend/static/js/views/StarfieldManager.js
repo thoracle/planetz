@@ -2641,15 +2641,15 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
             );
             this.currentSpeed = newSpeed;
 
-            // Debug acceleration behavior
-            const accelSpeedDiff = Math.abs(this.currentSpeed - this.targetSpeed);
-            debug('NAVIGATION', `Acceleration: prev ${previousSpeed.toFixed(3)} -> current ${this.currentSpeed.toFixed(3)} -> target ${this.targetSpeed} (diff: ${accelSpeedDiff.toFixed(3)}, proportional: ${proportionalAccel.toFixed(4)})`);
+            // Debug acceleration behavior (commented out to reduce spam)
+            // const accelSpeedDiff = Math.abs(this.currentSpeed - this.targetSpeed);
+            // debug('NAVIGATION', `Acceleration: prev ${previousSpeed.toFixed(3)} -> current ${this.currentSpeed.toFixed(3)} -> target ${this.targetSpeed} (diff: ${accelSpeedDiff.toFixed(3)}, proportional: ${proportionalAccel.toFixed(4)})`);
 
             // Check for oscillation (rapid changes near target)
-            const accelSpeedChange = Math.abs(this.currentSpeed - previousSpeed);
-            if (accelSpeedChange > 0.001 && accelSpeedDiff < 0.05) { // Small changes near target = potential oscillation
-                debug('NAVIGATION', `⚠️ POTENTIAL OSCILLATION: Small change ${accelSpeedChange.toFixed(4)} but close to target (diff: ${accelSpeedDiff.toFixed(3)})`);
-            }
+            // const accelSpeedChange = Math.abs(this.currentSpeed - previousSpeed);
+            // if (accelSpeedChange > 0.001 && accelSpeedDiff < 0.05) { // Small changes near target = potential oscillation
+            //     debug('NAVIGATION', `⚠️ POTENTIAL OSCILLATION: Small change ${accelSpeedChange.toFixed(4)} but close to target (diff: ${accelSpeedDiff.toFixed(3)})`);
+            // }
 
             // Update engine sound during acceleration
             if (this.soundLoaded) {
@@ -2701,24 +2701,24 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
                 // Exponential reduction for impulse 1-3
                 const reductionFactor = Math.pow(0.15, 4 - this.currentSpeed); // Changed from 0.3 to 0.15 to reduce impulse 1 speed by 50%
                 speedMultiplier *= reductionFactor;
-                debug('NAVIGATION', `Impulse ${this.currentSpeed}: Base multiplier ${0.3}, reduction ${reductionFactor.toFixed(4)}, final multiplier ${speedMultiplier.toFixed(4)}`);
+                // debug('NAVIGATION', `Impulse ${this.currentSpeed}: Base multiplier ${0.3}, reduction ${reductionFactor.toFixed(4)}, final multiplier ${speedMultiplier.toFixed(4)}`);
             } else if (this.currentSpeed === 4) {
                 // Impulse 4: Use consistent exponential formula like other speeds
                 const reductionFactor = Math.pow(0.15, 4 - this.currentSpeed); // Same formula as impulse 1-3
                 speedMultiplier *= reductionFactor;
-                debug('NAVIGATION', `Impulse 4: Base multiplier ${0.3}, reduction ${reductionFactor.toFixed(4)}, final multiplier ${speedMultiplier.toFixed(4)} (consistent exponential)`);
+                // debug('NAVIGATION', `Impulse 4: Base multiplier ${0.3}, reduction ${reductionFactor.toFixed(4)}, final multiplier ${speedMultiplier.toFixed(4)} (consistent exponential)`);
             } else if (this.currentSpeed >= 5) {
                 // Impulse 5+: Standard calculation without reduction
-                debug('NAVIGATION', `Impulse ${this.currentSpeed}: Standard multiplier ${speedMultiplier}`);
+                // debug('NAVIGATION', `Impulse ${this.currentSpeed}: Standard multiplier ${speedMultiplier}`);
             }
             
             // Calculate actual movement based on current speed
             const forwardVector = new this.THREE.Vector3(0, 0, -speedMultiplier * moveDirection);
             forwardVector.applyQuaternion(this.camera.quaternion);
 
-            // Debug speed vs movement correlation
-            const movementMagnitude = forwardVector.length();
-            debug('NAVIGATION', `Movement: speed=${this.currentSpeed.toFixed(2)}, multiplier=${speedMultiplier.toFixed(4)}, movement=${movementMagnitude.toFixed(4)}`);
+            // Debug speed vs movement correlation (commented out to reduce spam)
+            // const movementMagnitude = forwardVector.length();
+            // debug('NAVIGATION', `Movement: speed=${this.currentSpeed.toFixed(2)}, multiplier=${speedMultiplier.toFixed(4)}, movement=${movementMagnitude.toFixed(4)}`);
 
             // Apply movement
             this.camera.position.add(forwardVector);

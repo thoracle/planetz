@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discovery Reset Test - Planetz Debug</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status-good { color: #00ff00; }
+        .status-warning { color: #ffaa00; }
+        .status-error { color: #ff3333; }
+        .test-section {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #00ff00;
+        }
+        button {
+            background: #333;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        button:hover {
+            background: #00ff00;
+            color: #000;
+        }
+        #output {
+            background: #000;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #333;
+            white-space: pre-wrap;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Discovery Reset Test - Debug Mode</h1>
+        
+        <div class="test-section">
+            <h2>Purpose</h2>
+            <p>This test verifies that discovery state properly resets between sessions when persistence is disabled for debugging.</p>
+            <p><strong>Expected Behavior:</strong></p>
+            <ul>
+                <li>No discovery data persists in localStorage</li>
+                <li>Only central star is discovered on fresh start</li>
+                <li>Debug messages indicate persistence is disabled</li>
+                <li>Each browser session starts with clean discovery state</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>Test Controls</h2>
+            <button onclick="runDiscoveryTest()">🧪 Test Current Discovery State</button>
+            <button onclick="clearDiscoveryData()">🧹 Clear All Discovery Data</button>
+            <button onclick="reloadPage()">🔄 Reload Page</button>
+            <button onclick="openGameInNewTab()">🎮 Open Game in New Tab</button>
+        </div>
+
+        <div class="test-section">
+            <h2>Test Results</h2>
+            <div id="output">Click "Test Current Discovery State" to run tests...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>Instructions</h2>
+            <ol>
+                <li><strong>Initial Test:</strong> Click "Test Current Discovery State" to check current state</li>
+                <li><strong>Clear Test:</strong> Click "Clear All Discovery Data" to ensure clean state</li>
+                <li><strong>Reload Test:</strong> Click "Reload Page" and test again - should show fresh state</li>
+                <li><strong>Game Test:</strong> Click "Open Game in New Tab" to test in actual game context</li>
+                <li><strong>Session Test:</strong> Close browser completely, reopen, and test - should be fresh</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'warning' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
+            output.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function runDiscoveryTest() {
+            log('Starting Discovery Reset Test...', 'info');
+            
+            // Test localStorage
+            log('\n📂 Testing localStorage state:', 'info');
+            const discoveryKeys = Object.keys(localStorage).filter(key => 
+                key.includes('star_charts_discovery') || 
+                key.includes('planetz_discovery') ||
+                key.includes('discovery')
+            );
+            
+            if (discoveryKeys.length === 0) {
+                log('No discovery keys found in localStorage (expected for debug mode)', 'success');
+            } else {
+                log(`Found ${discoveryKeys.length} discovery keys in localStorage:`, 'warning');
+                discoveryKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    try {
+                        const parsed = JSON.parse(value);
+                        const count = parsed.discovered?.length || 0;
+                        log(`   ${key}: ${count} objects`, 'warning');
+                    } catch (e) {
+                        log(`   ${key}: (invalid JSON)`, 'error');
+                    }
+                });
+            }
+            
+            // Test debug mode indicators
+            log('\n🔧 Testing debug mode indicators:', 'info');
+            const debugModeActive = localStorage.getItem('debug_discovery_disabled') === 'true';
+            if (debugModeActive) {
+                log('Debug mode flag found in localStorage', 'success');
+            } else {
+                log('Debug mode flag not found - may be controlled by code', 'info');
+            }
+            
+            // Test game state file existence (if accessible)
+            log('\n📄 Testing backend state files:', 'info');
+            fetch('/api/debug/game-state-files')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.files && data.files.length === 0) {
+                        log('No game state files found (expected for debug mode)', 'success');
+                    } else if (data.files) {
+                        log(`Found ${data.files.length} game state files:`, 'warning');
+                        data.files.forEach(file => log(`   ${file}`, 'warning'));
+                    }
+                })
+                .catch(error => {
+                    log('Backend state file check not available (normal for frontend-only testing)', 'info');
+                });
+            
+            // Summary
+            log('\n🎯 Test Summary:', 'info');
+            const testPassed = discoveryKeys.length === 0;
+            if (testPassed) {
+                log('✅ PASS: Discovery persistence appears to be disabled', 'success');
+            } else {
+                log('❌ FAIL: Discovery data found in localStorage', 'error');
+            }
+            
+            log('\nExpected behavior for debug mode:', 'info');
+            log('- No discovery keys in localStorage', 'info');
+            log('- Fresh discovery state on each session', 'info');
+            log('- Debug messages in console indicating disabled persistence', 'info');
+        }
+
+        function clearDiscoveryData() {
+            log('🧹 Clearing all discovery data...', 'info');
+            
+            // Clear localStorage
+            const discoveryKeys = Object.keys(localStorage).filter(key => 
+                key.includes('discovery') || key.includes('star_charts')
+            );
+            
+            let clearedCount = 0;
+            discoveryKeys.forEach(key => {
+                localStorage.removeItem(key);
+                log(`   Removed: ${key}`, 'success');
+                clearedCount++;
+            });
+            
+            if (clearedCount === 0) {
+                log('No discovery data found to clear', 'info');
+            } else {
+                log(`Cleared ${clearedCount} discovery-related localStorage entries`, 'success');
+            }
+            
+            log('✅ Discovery data cleared - reload page to test fresh state', 'success');
+        }
+
+        function reloadPage() {
+            log('🔄 Reloading page to test fresh state...', 'info');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
+
+        function openGameInNewTab() {
+            log('🎮 Opening game in new tab for testing...', 'info');
+            window.open('/index.html', '_blank');
+        }
+
+        // Auto-run initial test
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                log('🔧 Discovery Reset Test Page Loaded', 'info');
+                log('Click "Test Current Discovery State" to run tests', 'info');
+            }, 500);
+        });
+    </script>
+</body>
+</html>

@@ -88,8 +88,9 @@
             "faction": "Terran Republic Alliance",
             "type": "Research Lab",
             "position": [
-              0.39,
-              45
+              41.31,
+              0,
+              41.31
             ],
             "description": "Solar energy research and power generation",
             "color": "#00ff44",
@@ -108,8 +109,9 @@
             "faction": "Free Trader Consortium",
             "type": "Refinery",
             "position": [
-              0.39,
-              135
+              -41.31,
+              0,
+              41.31
             ],
             "description": "Processing rare metals from Mercury mining",
             "color": "#ffff00",
@@ -127,8 +129,9 @@
             "faction": "Nexus Corporate Syndicate",
             "type": "Research Lab",
             "position": [
-              0.72,
-              90
+              0,
+              0,
+              107.75
             ],
             "description": "Atmospheric research and chemical extraction",
             "color": "#44ffff",
@@ -146,8 +149,9 @@
             "faction": "Ethereal Wanderers",
             "type": "Frontier Outpost",
             "position": [
-              0.72,
-              270
+              0,
+              0,
+              -107.75
             ],
             "description": "Spiritual retreat and meditation center",
             "color": "#ff44ff",
@@ -165,7 +169,8 @@
             "faction": "Terran Republic Alliance",
             "type": "Communications Array",
             "position": [
-              1.0,
+              149.6,
+              0,
               0
             ],
             "description": "Central communication hub for Alliance",
@@ -184,8 +189,9 @@
             "faction": "Terran Republic Alliance",
             "type": "Shipyard",
             "position": [
-              1.003,
-              60
+              75.05,
+              0,
+              129.88
             ],
             "description": "Construction of Alliance starships",
             "color": "#00ff44",
@@ -203,8 +209,9 @@
             "faction": "Free Trader Consortium",
             "type": "Storage Depot",
             "position": [
-              1.0,
-              300
+              74.8,
+              0,
+              -129.55
             ],
             "description": "Major trading hub and cargo distribution",
             "color": "#ffff00",
@@ -222,8 +229,9 @@
             "faction": "Nexus Corporate Syndicate",
             "type": "Factory",
             "position": [
-              1.003,
-              240
+              -75.05,
+              0,
+              -129.88
             ],
             "description": "Automated manufacturing and rare earth processing",
             "color": "#44ffff",
@@ -241,8 +249,9 @@
             "faction": "Terran Republic Alliance",
             "type": "Repair Station",
             "position": [
-              1.25,
-              90
+              0,
+              0,
+              187.0
             ],
             "description": "Fleet maintenance and military training",
             "color": "#00ff44",
@@ -260,8 +269,9 @@
             "faction": "Free Trader Consortium",
             "type": "Mining Station",
             "position": [
-              1.26,
-              120
+              -94.2,
+              0,
+              163.1
             ],
             "description": "Mining station and cargo depot",
             "color": "#ffff00",
@@ -279,8 +289,9 @@
             "faction": "Scientists Consortium",
             "type": "Research Lab",
             "position": [
-              1.27,
-              60
+              95.1,
+              0,
+              164.7
             ],
             "description": "Research facility and communication relay",
             "color": "#44ff44",
@@ -298,8 +309,9 @@
             "faction": "Scientists Consortium",
             "type": "Research Lab",
             "position": [
-              1.4,
-              180
+              -209.4,
+              0,
+              0
             ],
             "description": "Research on dwarf planet and asteroid mining",
             "color": "#44ff44",
@@ -317,8 +329,9 @@
             "faction": "Free Trader Consortium",
             "type": "Mining Station",
             "position": [
-              1.3,
-              135
+              -137.4,
+              0,
+              137.4
             ],
             "description": "Major asteroid mining operations",
             "color": "#ffff00",
@@ -336,8 +349,9 @@
             "faction": "Scientists Consortium",
             "type": "Research Lab",
             "position": [
-              1.001,
-              270
+              0,
+              0,
+              -149.75
             ],
             "description": "Research stations studying subsurface ocean",
             "color": "#44ff44",
@@ -355,8 +369,9 @@
             "faction": "Terran Republic Alliance",
             "type": "Defense Platform",
             "position": [
-              1.05,
-              210
+              -135.8,
+              0,
+              -78.4
             ],
             "description": "Military bases and defensive installations",
             "color": "#ff6600",
