@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Charts Hit Box Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .debug-panel {
+            background-color: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .button.danger {
+            background-color: #f44336;
+        }
+        .button.danger:hover {
+            background-color: #da190b;
+        }
+        .info {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        .instructions {
+            background-color: #444;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        code {
+            background-color: #555;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Star Charts Hit Box Debug Tool</h1>
+        
+        <div class="debug-panel">
+            <h2>Debug Controls</h2>
+            <p>Use these buttons to control the Star Charts hit box debug visualization:</p>
+            
+            <button class="button" onclick="enableDebugMode()">🔴 Enable Hit Box Debug</button>
+            <button class="button danger" onclick="disableDebugMode()">⚫ Disable Hit Box Debug</button>
+            <button class="button" onclick="openStarCharts()">🗺️ Open Star Charts</button>
+            <button class="button" onclick="refreshPage()">🔄 Refresh Page</button>
+        </div>
+
+        <div class="info">
+            <h3>Current Status</h3>
+            <p class="status" id="status">Debug mode status will appear here</p>
+        </div>
+
+        <div class="instructions">
+            <h3>How to Use</h3>
+            <ol>
+                <li>Click <strong>"Enable Hit Box Debug"</strong> to make hit boxes visible</li>
+                <li>Click <strong>"Open Star Charts"</strong> to open the game's Star Charts</li>
+                <li>Look for red dashed circles/rectangles around objects - these are the hit boxes</li>
+                <li>Yellow coordinate labels show the exact position of each object</li>
+                <li>Compare the visual objects with their hit boxes to identify positioning issues</li>
+                <li>Click <strong>"Disable Hit Box Debug"</strong> when done debugging</li>
+            </ol>
+        </div>
+
+        <div class="info">
+            <h3>What You'll See</h3>
+            <ul>
+                <li><strong>Red dashed circles</strong> - Hit boxes for planets, stars, moons</li>
+                <li><strong>Red dashed squares</strong> - Hit boxes for space stations (rotated 45°)</li>
+                <li><strong>Red dashed triangles</strong> - Hit boxes for navigation beacons</li>
+                <li><strong>Yellow coordinate labels</strong> - Show exact X,Y coordinates (only at zoom level > 2)</li>
+                <li><strong>Cyan "?" icons</strong> - Undiscovered objects with their own hit boxes</li>
+            </ul>
+        </div>
+
+        <div class="info">
+            <h3>Debugging Tips</h3>
+            <ul>
+                <li>If hit boxes appear "off to the left", check the coordinate calculation in <code>getDisplayPosition()</code></li>
+                <li>Compare the visual object center with the hit box center - they should match</li>
+                <li>Look for objects where the hit box doesn't align with the visual element</li>
+                <li>Check if the issue is consistent across all object types or specific to certain types</li>
+                <li>Use browser dev tools to inspect the SVG elements and their attributes</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function enableDebugMode() {
+            // This would normally modify the StarChartsUI.js file, but for now we'll just show a message
+            document.getElementById('status').innerHTML = '✅ Debug mode enabled - Red hit boxes should now be visible in Star Charts';
+            document.getElementById('status').style.color = '#4CAF50';
+            
+            // Store debug state in localStorage for the game to read
+            localStorage.setItem('star_charts_debug_hitboxes', 'true');
+            
+            console.log('🎯 Star Charts hit box debug mode enabled');
+        }
+
+        function disableDebugMode() {
+            document.getElementById('status').innerHTML = '❌ Debug mode disabled - Hit boxes are now invisible';
+            document.getElementById('status').style.color = '#f44336';
+            
+            // Remove debug state from localStorage
+            localStorage.removeItem('star_charts_debug_hitboxes');
+            
+            console.log('🎯 Star Charts hit box debug mode disabled');
+        }
+
+        function openStarCharts() {
+            // Open the game in a new tab
+            window.open('http://127.0.0.1:5001', '_blank');
+        }
+
+        function refreshPage() {
+            location.reload();
+        }
+
+        // Check if debug mode is already enabled
+        if (localStorage.getItem('star_charts_debug_hitboxes') === 'true') {
+            document.getElementById('status').innerHTML = '✅ Debug mode is currently ENABLED';
+            document.getElementById('status').style.color = '#4CAF50';
+        } else {
+            document.getElementById('status').innerHTML = '❌ Debug mode is currently DISABLED';
+            document.getElementById('status').style.color = '#f44336';
+        }
+    </script>
+</body>
+</html>

@@ -90,6 +90,9 @@ export class StarChartsManager {
         
         // Initialize system
         this.initialize();
+        
+        // Add console commands for hit box debugging
+        this.setupHitBoxDebugCommands();
     }
     
     async initialize() {
@@ -1009,7 +1012,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         if (this.viewManager && this.viewManager.starfieldManager && this.viewManager.starfieldManager.ship && this.viewManager.starfieldManager.ship.position) {
             const position = this.viewManager.starfieldManager.ship.position;
             if (position && typeof position.x === 'number') {
-                // debug('STAR_CHARTS', `📍 Player position (starfield ship): (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`); // Reduced spam
+                console.log('🚀 DEBUG: getPlayerPosition() - starfield ship position:', [position.x, position.y, position.z]);
                 return [position.x, position.y, position.z];
             } else {
                 debug('STAR_CHARTS', `❌ Invalid starfield ship position:`, position);
@@ -1022,7 +1025,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         if (this.viewManager && this.viewManager.ship && this.viewManager.ship.position) {
             const position = this.viewManager.ship.position;
             if (position && typeof position.x === 'number') {
-                // debug('STAR_CHARTS', `📍 Player position (viewManager ship): (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`); // Reduced spam
+                console.log('🚀 DEBUG: getPlayerPosition() - viewManager ship position:', [position.x, position.y, position.z]);
                 return [position.x, position.y, position.z];
             } else {
                 debug('STAR_CHARTS', `❌ Invalid viewManager ship position:`, position);
@@ -1035,7 +1038,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         if (this.solarSystemManager && this.solarSystemManager.ship) {
             const position = this.solarSystemManager.ship.position;
             if (position && typeof position.x === 'number') {
-                // debug('STAR_CHARTS', `📍 Player position (solarSystem ship): (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`); // Reduced spam
+                console.log('🚀 DEBUG: getPlayerPosition() - solarSystem ship position:', [position.x, position.y, position.z]);
                 return [position.x, position.y, position.z];
             } else {
                 debug('STAR_CHARTS', `❌ Invalid solarSystem ship position:`, position);
@@ -1047,14 +1050,16 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         // Fallback: use active camera position (always available in gameplay)
         if (this.camera && this.camera.position) {
             const pos = this.camera.position;
-            // debug('STAR_CHARTS', `📍 Player position (camera): (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`); // Reduced spam
+            console.log('🚀 DEBUG: getPlayerPosition() - camera position:', [pos.x, pos.y, pos.z]);
             return [pos.x, pos.y, pos.z];
         } else {
             debug('STAR_CHARTS', `❌ No camera position available`);
         }
 
-        debug('STAR_CHARTS', `❌ Returning null position`);
-        return null;
+        // Fallback: Default to (0,0,0) if no ship position found
+        debug('STAR_CHARTS', `⚠️ No player ship position found, defaulting to [0, 0, 0]`);
+        console.log('🚀 DEBUG: getPlayerPosition() returning:', [0, 0, 0]); // New log
+        return [0, 0, 0];
     }
     
     getDiscoveryRadius() {
@@ -1625,6 +1630,96 @@ debug('UTILITY', `   - Spatial grid cells: ${metrics.spatialGridCells}`);
         
         // Check virtual waypoints
         return this.virtualWaypoints.get(objectId) || null;
+    }
+    
+    /**
+     * Setup console commands for hit box debugging
+     */
+    setupHitBoxDebugCommands() {
+        // Add hit box debug commands to window object
+        window.toggleHitBoxDebug = () => {
+            const currentState = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
+            const newState = !currentState;
+            localStorage.setItem('star_charts_debug_hitboxes', newState.toString());
+            
+            if (newState) {
+                console.log('🎯 Hit box debug mode ENABLED - Red hit boxes will be visible in Star Charts');
+                console.log('💡 Refreshing Star Charts view to show changes...');
+                // Force refresh of Star Charts if it's currently open
+                if (this.starChartsUI) {
+                    this.starChartsUI.render();
+                    console.log('✅ Star Charts refreshed with debug hit boxes');
+                } else {
+                    console.log('💡 Open Star Charts (press G) to see the debug hit boxes');
+                }
+            } else {
+                console.log('🎯 Hit box debug mode DISABLED - Hit boxes are now invisible');
+                console.log('💡 Refreshing Star Charts view to hide debug elements...');
+                // Force refresh of Star Charts if it's currently open
+                if (this.starChartsUI) {
+                    this.starChartsUI.render();
+                    console.log('✅ Star Charts refreshed without debug hit boxes');
+                } else {
+                    console.log('💡 Open Star Charts (press G) to see the changes');
+                }
+            }
+            
+            return newState;
+        };
+        
+        window.enableHitBoxDebug = () => {
+            localStorage.setItem('star_charts_debug_hitboxes', 'true');
+            console.log('🎯 Hit box debug mode ENABLED - Red hit boxes will be visible in Star Charts');
+            console.log('💡 Refreshing Star Charts view to show changes...');
+            // Force refresh of Star Charts if it's currently open
+            if (this.starChartsUI) {
+                this.starChartsUI.render();
+                console.log('✅ Star Charts refreshed with debug hit boxes');
+            } else {
+                console.log('💡 Open Star Charts (press G) to see the debug hit boxes');
+            }
+            return true;
+        };
+        
+        window.disableHitBoxDebug = () => {
+            localStorage.removeItem('star_charts_debug_hitboxes');
+            console.log('🎯 Hit box debug mode DISABLED - Hit boxes are now invisible');
+            console.log('💡 Refreshing Star Charts view to hide debug elements...');
+            // Force refresh of Star Charts if it's currently open
+            if (this.starChartsUI) {
+                this.starChartsUI.render();
+                console.log('✅ Star Charts refreshed without debug hit boxes');
+            } else {
+                console.log('💡 Open Star Charts (press G) to see the changes');
+            }
+            return false;
+        };
+        
+        window.hitBoxDebugStatus = () => {
+            const isEnabled = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
+            console.log(`🎯 Hit box debug mode is currently: ${isEnabled ? 'ENABLED' : 'DISABLED'}`);
+            return isEnabled;
+        };
+        
+        window.refreshStarCharts = () => {
+            if (this.starChartsUI) {
+                console.log('🔄 Refreshing Star Charts view...');
+                this.starChartsUI.render();
+                console.log('✅ Star Charts refreshed');
+                return true;
+            } else {
+                console.log('❌ Star Charts UI not available - open Star Charts first (press G)');
+                return false;
+            }
+        };
+        
+        // Log available commands
+        console.log('🎯 Star Charts Hit Box Debug Commands:');
+        console.log('  • toggleHitBoxDebug() - Toggle hit box visibility');
+        console.log('  • enableHitBoxDebug() - Enable hit box visibility');
+        console.log('  • disableHitBoxDebug() - Disable hit box visibility');
+        console.log('  • hitBoxDebugStatus() - Check current debug status');
+        console.log('  • refreshStarCharts() - Force refresh Star Charts view');
     }
 }
 

@@ -644,6 +644,52 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
             }
         }
         
+        // Check for ship icon
+        const shipIcon = this.svg.querySelector('.ship-position-icon');
+        if (shipIcon) {
+            const points = shipIcon.getAttribute('points');
+            if (points) {
+                // Parse polygon points to get center position
+                const pointArray = points.split(' ').map(p => p.split(','));
+                if (pointArray.length >= 4) {
+                    // Calculate center from polygon points
+                    let centerX = 0, centerY = 0;
+                    for (const point of pointArray) {
+                        if (point.length === 2) {
+                            centerX += parseFloat(point[0]);
+                            centerY += parseFloat(point[1]);
+                        }
+                    }
+                    centerX /= pointArray.length;
+                    centerY /= pointArray.length;
+                    
+                    // Convert screen coordinates to world coordinates for comparison
+                    const rect = this.svg.getBoundingClientRect();
+                    const svgWidth = rect.width;
+                    const svgHeight = rect.height;
+                    const worldSize = this.getWorldSize();
+                    
+                    const shipWorldX = (centerX / svgWidth - 0.5) * worldSize + this.currentCenter.x;
+                    const shipWorldY = (centerY / svgHeight - 0.5) * worldSize + this.currentCenter.y;
+                    
+                    const dx = shipWorldX - worldX;
+                    const dy = shipWorldY - worldY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Ship icon radius (approximate)
+                    const shipRadius = 10;
+                    if (distance <= shipRadius + worldTolerance) {
+                        return {
+                            id: 'player_ship',
+                            name: 'You are here',
+                            type: 'ship',
+                            _isShip: true
+                        };
+                    }
+                }
+            }
+        }
+        
         return null;
     }
     
@@ -651,7 +697,15 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
         // Show tooltip for hovered object - match LRS simple text format
 
         // For undiscovered objects, show "Unknown" instead of revealing the name
-        const tooltipText = object._isUndiscovered ? 'Unknown' : object.name;
+        // For ship, show "You are here"
+        let tooltipText;
+        if (object._isShip) {
+            tooltipText = 'You are here';
+        } else if (object._isUndiscovered) {
+            tooltipText = 'Unknown';
+        } else {
+            tooltipText = object.name;
+        }
 
         // Simple text tooltip like LRS (no HTML formatting)
         this.tooltip.textContent = tooltipText;
@@ -1693,18 +1747,30 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         const zoomFactor = Math.sqrt(this.currentZoomLevel);
         const scaledFontSize = Math.max(16, baseFontSize / zoomFactor); // Minimum 16px for readability
 
-        // Create hit box for interaction (invisible, much larger than text for better usability)
-        const hitBoxSize = Math.max(60, scaledFontSize * 3.0); // Much larger minimum and multiplier for better clickability
+        // Create hit box for interaction (invisible, reasonably sized for usability)
+        const hitBoxSize = Math.max(30, scaledFontSize * 1.5); // Reasonable minimum and multiplier for clickability
         const hitBox = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         hitBox.setAttribute('cx', x);
         hitBox.setAttribute('cy', y);
         hitBox.setAttribute('r', hitBoxSize / 2);
         
-        // TEMPORARY DEBUG: Make hitbox visible to debug positioning
-        hitBox.setAttribute('fill', 'rgba(255, 0, 0, 0.2)'); // Semi-transparent red
-        hitBox.setAttribute('stroke', 'red');
-        hitBox.setAttribute('stroke-width', '1');
-        hitBox.setAttribute('stroke-dasharray', '2,2'); // Dashed line
+        // DEBUG: Make hitbox visible to debug positioning (can be toggled via console)
+        const debugMode = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
+        if (debugMode) {
+            // Make hit box EXTREMELY visible for debugging
+            hitBox.setAttribute('fill', 'rgba(255, 0, 0, 0.8)'); // Very opaque red
+            hitBox.setAttribute('stroke', 'red');
+            hitBox.setAttribute('stroke-width', '5'); // Very thick stroke
+            hitBox.setAttribute('stroke-dasharray', '10,5'); // Very visible dashed line
+            hitBox.style.zIndex = '9999'; // Maximum z-index
+            hitBox.style.pointerEvents = 'all';
+            hitBox.style.opacity = '1'; // Force full opacity
+            hitBox.style.visibility = 'visible'; // Force visibility
+            console.log(`🎯 DEBUG: Rendering hit box for undiscovered object at (${x}, ${y}) with radius ${hitBoxSize / 2}`);
+        } else {
+            hitBox.setAttribute('fill', 'transparent');
+            hitBox.setAttribute('stroke', 'none');
+        }
         
         hitBox.style.pointerEvents = 'all';
         hitBox.style.cursor = 'pointer'; // Finger cursor for interaction
@@ -1773,9 +1839,18 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             }
         });
 
-        // Add elements to SVG (hit box first for proper layering)
-        this.svg.appendChild(hitBox);
-        this.svg.appendChild(questionMark);
+
+        // DEBUG: Add elements in proper order for debug mode
+        const debugModeOrder = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
+        if (debugModeOrder) {
+            // In debug mode, add question mark first, then hit box on top
+            this.svg.appendChild(questionMark);
+            this.svg.appendChild(hitBox);
+        } else {
+            // In normal mode, add hit box first (behind), then question mark
+            this.svg.appendChild(hitBox);
+            this.svg.appendChild(questionMark);
+        }
 
         // Debug logging removed to reduce spam
     }
@@ -1784,7 +1859,10 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Render ship position icon on star chart
         
         const playerPos = this.starChartsManager.getPlayerPosition();
+        console.log('🚀 DEBUG: renderShipPosition() - playerPos:', playerPos);
+        
         if (!playerPos || !Array.isArray(playerPos) || playerPos.length < 3) {
+            console.log('🚀 DEBUG: No valid ship position, returning early');
             return; // No valid ship position
         }
         
@@ -1794,10 +1872,32 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         if (existingIcon) existingIcon.remove();
         if (existingLabel) existingLabel.remove();
         
-        // Convert world position to display coordinates
+        // Calculate display position directly using the same coordinate transformation as other objects
         // For star charts, we use X and Z coordinates (top-down view)
-        const x = playerPos[0];
-        const z = playerPos[2];
+        const worldX = playerPos[0];
+        const worldZ = playerPos[2]; // Use Z coordinate for display Y
+        
+        // Apply the inverse of screenToWorld transformation (world to screen)
+        const rect = this.svg.getBoundingClientRect();
+        const svgWidth = rect.width;
+        const svgHeight = rect.height;
+        const worldSize = this.getWorldSize();
+        
+        const x = ((worldX - this.currentCenter.x) / worldSize + 0.5) * svgWidth;
+        const z = ((worldZ - this.currentCenter.y) / worldSize + 0.5) * svgHeight;
+        
+        console.log('🚀 DEBUG: worldPos:', {x: worldX, z: worldZ}, 'displayPos:', {x, z}, 'currentCenter:', this.currentCenter, 'worldSize:', worldSize, 'svgSize:', {width: svgWidth, height: svgHeight});
+        
+        // Check if coordinates are valid
+        if (isNaN(x) || isNaN(z)) {
+            console.log('❌ Invalid display coordinates:', {x, z});
+            return;
+        }
+        
+        // Check if coordinates are within reasonable bounds
+        if (x < -1000 || x > svgWidth + 1000 || z < -1000 || z > svgHeight + 1000) {
+            console.log('⚠️ Ship icon may be off-screen:', {x, z, svgWidth, svgHeight});
+        }
         
         // Calculate zoom-scaled size
         const baseSize = 20;
@@ -1823,11 +1923,13 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Add glow effect
         shipIcon.setAttribute('filter', 'drop-shadow(0 0 3px #00ff00)');
         
-        // Add hover tooltip
-        shipIcon.setAttribute('title', 'You are here');
+        // Add cursor pointer for interaction
         shipIcon.style.cursor = 'pointer';
         
         this.svg.appendChild(shipIcon);
+        console.log('🚀 DEBUG: Ship icon added to SVG at position:', x, z);
+        console.log('🚀 DEBUG: Ship icon points:', points);
+        console.log('🚀 DEBUG: Ship icon size:', scaledSize);
         
         // Add ship label
         const shipLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -1842,6 +1944,39 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         shipLabel.textContent = 'SHIP';
         
         this.svg.appendChild(shipLabel);
+        console.log('🚀 DEBUG: Ship label added to SVG');
+        
+        // Verify the ship icon is actually in the DOM
+        setTimeout(() => {
+            const verifyIcon = this.svg.querySelector('.ship-position-icon');
+            if (verifyIcon) {
+                console.log('✅ Ship icon verified in DOM');
+                console.log('📍 Ship icon points:', verifyIcon.getAttribute('points'));
+                console.log('🎨 Ship icon fill:', verifyIcon.getAttribute('fill'));
+                console.log('👁️ Ship icon visibility:', verifyIcon.style.visibility);
+                console.log('📐 Ship icon display:', verifyIcon.style.display);
+                console.log('🔍 Ship icon opacity:', verifyIcon.style.opacity);
+                
+                // Check SVG properties
+                console.log('📐 SVG viewBox:', this.svg.getAttribute('viewBox'));
+                console.log('📐 SVG width:', this.svg.getAttribute('width'));
+                console.log('📐 SVG height:', this.svg.getAttribute('height'));
+                
+                // Check if ship icon is within viewBox
+                const viewBox = this.svg.getAttribute('viewBox');
+                if (viewBox) {
+                    const [minX, minY, width, height] = viewBox.split(' ').map(Number);
+                    console.log('📐 ViewBox bounds:', {minX, minY, width, height});
+                    console.log('📐 Ship position relative to viewBox:', {
+                        x: x - minX,
+                        y: z - minY,
+                        withinBounds: x >= minX && x <= minX + width && z >= minY && z <= minY + height
+                    });
+                }
+            } else {
+                console.log('❌ Ship icon NOT found in DOM after creation');
+            }
+        }, 100);
     }
 
     renderObject(object) {
@@ -1878,8 +2013,23 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             hitBox.setAttribute('width', hitBoxSize);
             hitBox.setAttribute('height', hitBoxSize);
             hitBox.setAttribute('transform', `rotate(45 ${x} ${y})`);
-            hitBox.setAttribute('fill', 'transparent'); // Invisible
-            hitBox.setAttribute('stroke', 'none');
+            // DEBUG: Make hitbox visible to debug positioning (can be toggled via console)
+            const debugMode = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
+            if (debugMode) {
+                // Make hit box EXTREMELY visible for debugging
+                hitBox.setAttribute('fill', 'rgba(255, 0, 0, 0.7)'); // Very opaque red
+                hitBox.setAttribute('stroke', 'red');
+                hitBox.setAttribute('stroke-width', '4'); // Very thick stroke
+                hitBox.setAttribute('stroke-dasharray', '8,4'); // Very visible dashed line
+                hitBox.style.zIndex = '9999'; // Maximum z-index
+                hitBox.style.pointerEvents = 'all';
+                hitBox.style.opacity = '1'; // Force full opacity
+                hitBox.style.visibility = 'visible'; // Force visibility
+                console.log(`🎯 DEBUG: Rendering ${object.type} hit box for ${object.name} at (${x}, ${y})`);
+            } else {
+                hitBox.setAttribute('fill', 'transparent');
+                hitBox.setAttribute('stroke', 'none');
+            }
             hitBox.style.pointerEvents = 'all';
         } else if (object.type === 'navigation_beacon') {
             // Beacon hit box: larger triangle
@@ -1891,8 +2041,23 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             ].join(' ');
             hitBox = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
             hitBox.setAttribute('points', points);
-            hitBox.setAttribute('fill', 'transparent'); // Invisible
-            hitBox.setAttribute('stroke', 'none');
+            // DEBUG: Make hitbox visible to debug positioning (can be toggled via console)
+            const debugMode = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
+            if (debugMode) {
+                // Make hit box EXTREMELY visible for debugging
+                hitBox.setAttribute('fill', 'rgba(255, 0, 0, 0.7)'); // Very opaque red
+                hitBox.setAttribute('stroke', 'red');
+                hitBox.setAttribute('stroke-width', '4'); // Very thick stroke
+                hitBox.setAttribute('stroke-dasharray', '8,4'); // Very visible dashed line
+                hitBox.style.zIndex = '9999'; // Maximum z-index
+                hitBox.style.pointerEvents = 'all';
+                hitBox.style.opacity = '1'; // Force full opacity
+                hitBox.style.visibility = 'visible'; // Force visibility
+                console.log(`🎯 DEBUG: Rendering ${object.type} hit box for ${object.name} at (${x}, ${y})`);
+            } else {
+                hitBox.setAttribute('fill', 'transparent');
+                hitBox.setAttribute('stroke', 'none');
+            }
             hitBox.style.pointerEvents = 'all';
         } else {
             // Default hit box: larger circle
@@ -1900,8 +2065,23 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             hitBox.setAttribute('cx', x);
             hitBox.setAttribute('cy', y);
             hitBox.setAttribute('r', hitBoxRadius);
-            hitBox.setAttribute('fill', 'transparent'); // Invisible
-            hitBox.setAttribute('stroke', 'none');
+            // DEBUG: Make hitbox visible to debug positioning (can be toggled via console)
+            const debugMode = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
+            if (debugMode) {
+                // Make hit box EXTREMELY visible for debugging
+                hitBox.setAttribute('fill', 'rgba(255, 0, 0, 0.7)'); // Very opaque red
+                hitBox.setAttribute('stroke', 'red');
+                hitBox.setAttribute('stroke-width', '4'); // Very thick stroke
+                hitBox.setAttribute('stroke-dasharray', '8,4'); // Very visible dashed line
+                hitBox.style.zIndex = '9999'; // Maximum z-index
+                hitBox.style.pointerEvents = 'all';
+                hitBox.style.opacity = '1'; // Force full opacity
+                hitBox.style.visibility = 'visible'; // Force visibility
+                console.log(`🎯 DEBUG: Rendering ${object.type} hit box for ${object.name} at (${x}, ${y})`);
+            } else {
+                hitBox.setAttribute('fill', 'transparent');
+                hitBox.setAttribute('stroke', 'none');
+            }
             hitBox.style.pointerEvents = 'all';
         }
 
@@ -1910,9 +2090,6 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         hitBox.setAttribute('data-name', object.name);
         hitBox.setAttribute('class', 'starchart-hitbox');
         hitBox.style.cursor = 'pointer';
-
-        // Add hit box to SVG first (behind visual element)
-        this.svg.appendChild(hitBox);
 
         // Match LRS iconography: star (circle), planet (circle), moon (small circle), station (diamond), beacon (triangle)
         let element = null;
@@ -1990,8 +2167,19 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Add hover effects like LRS
         this.addHoverEffects(element, object);
 
-        // Add visual element on top of hit box
+        // Add visual element first
         this.svg.appendChild(element);
+
+        // DEBUG: Add hit box on top in debug mode, or behind in normal mode
+        const debugModeRender = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
+        if (debugModeRender) {
+            // In debug mode, add hit box AFTER visual element so it's visible on top
+            this.svg.appendChild(hitBox);
+        } else {
+            // In normal mode, add hit box BEFORE visual element so it's behind
+            this.svg.insertBefore(hitBox, element);
+        }
+
 
         // Labels removed - tooltips now provide object names on hover (match LRS)
     }
@@ -2026,20 +2214,20 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Improved zoom factor: more responsive to zoom level changes
         const zoomFactor = Math.max(1.0, 4.0 / this.currentZoomLevel);
 
-        // Hit boxes are 3-4x larger than visual elements for easier clicking
+        // Hit boxes are 1.5-2x larger than visual elements for easier clicking
         switch (object.type) {
             case 'star':
-                return Math.max(25, baseRadius * 12 * zoomFactor); // 3x visual size
+                return Math.max(15, baseRadius * 6 * zoomFactor); // 1.5x visual size
             case 'planet':
-                return Math.max(18, baseRadius * 9 * zoomFactor); // 3x visual size
+                return Math.max(12, baseRadius * 4.5 * zoomFactor); // 1.5x visual size
             case 'moon':
-                return Math.max(15, baseRadius * 10 * zoomFactor); // 3x visual size
+                return Math.max(10, baseRadius * 5 * zoomFactor); // 1.5x visual size
             case 'space_station':
-                return Math.max(12, (object.size || 1) * 6 * zoomFactor); // 3x visual size
+                return Math.max(8, (object.size || 1) * 3 * zoomFactor); // 1.5x visual size
             case 'navigation_beacon':
-                return Math.max(10, 6 * zoomFactor); // 3x visual size
+                return Math.max(6, 3 * zoomFactor); // 1.5x visual size
             default:
-                return Math.max(12, baseRadius * 3 * zoomFactor); // 3x visual size
+                return Math.max(8, baseRadius * 1.5 * zoomFactor); // 1.5x visual size
         }
     }
     
