@@ -133,7 +133,7 @@ debug('UTILITY', 'SolarSystemManager set in ViewManager');
     initializeNavigationSystemIfReady() {
         // Initialize NavigationSystemManager once both managers are available
         if (this.starfieldManager && this.solarSystemManager && !this.navigationSystemManager) {
-debug('NAVIGATION', 'ViewManager: Initializing NavigationSystemManager with all dependencies');
+            // debug('NAVIGATION', 'ViewManager: Initializing NavigationSystemManager with all dependencies');
             
             this.navigationSystemManager = new NavigationSystemManager(
                 this,
@@ -154,8 +154,8 @@ debug('NAVIGATION', 'ViewManager: Initializing NavigationSystemManager with all 
                 window.starChartsManager = this.navigationSystemManager.starChartsManager;
                 debug('UTILITY', '🔧 StarChartsManager exposed globally for debugging');
             }
-            
-debug('NAVIGATION', '✅ NavigationSystemManager initialized and exposed globally');
+
+            // debug('NAVIGATION', '✅ NavigationSystemManager initialized and exposed globally');
         }
     }
 

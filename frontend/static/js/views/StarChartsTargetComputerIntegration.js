@@ -24,7 +24,7 @@ export class StarChartsTargetComputerIntegration {
         // Integration state
         this.isActive = false;
         this.lastSyncTime = 0;
-        this.syncInterval = 10000; // Sync every 10 seconds (reduced frequency)
+        this.syncInterval = 1000; // Sync every 1 second for responsive updates
         this.syncIntervalId = null;
         this.pauseSync = false; // Flag to pause sync during manual target selection
 
@@ -313,9 +313,18 @@ debug('TARGETING', `🔄 Syncing targets: ${discoveredObjects.length} discovered
         // Ensure all discovered objects are available as targets
         let addedCount = 0;
         starChartsTargets.forEach(starChartsTarget => {
-            const existsInTargetComputer = targetComputerTargets.some(tcTarget => tcTarget.id === starChartsTarget.id);
+            const normalizedId = this.normalizeObjectId(starChartsTarget.id);
+            
+            // Check both the provided targets AND the actual targetObjects array for duplicates
+            const existsInTargetComputer = targetComputerTargets.some(tcTarget => 
+                this.normalizeObjectId(tcTarget.id) === normalizedId || tcTarget.name === starChartsTarget.name
+            );
+            
+            const existsInTargetObjects = this.targetComputer?.targetObjects?.some(target => 
+                this.normalizeObjectId(target.id) === normalizedId || target.name === starChartsTarget.name
+            );
 
-            if (!existsInTargetComputer) {
+            if (!existsInTargetComputer && !existsInTargetObjects) {
                 // Add to Target Computer's known targets
                 this.addTargetToTargetComputer(starChartsTarget);
                 addedCount++;
@@ -340,7 +349,12 @@ debug('TARGETING', `🎯 Refreshed Target Computer display`);
 
 
         // Normalize ID to uppercase to match Star Charts database format
-        const normalizedId = targetData.id.replace(/^a0_/i, 'A0_');
+        const normalizedId = targetData.id ? targetData.id.replace(/^a0_/i, 'A0_') : null;
+        
+        if (!normalizedId) {
+            debug('TARGETING', `🚨 WARNING: Target ${targetData.name} has no ID, skipping sync`);
+            return;
+        }
 
         // Use centralized wireframe type mapping - single source of truth
         const wireframeConfig = this.getWireframeType(targetData.type);
@@ -363,9 +377,30 @@ debug('TARGETING', `🎯 Refreshed Target Computer display`);
             type: targetData.type, // CRITICAL: Keep original type for wireframe consistency
             normalizedType: normalizedType, // Store normalized type separately if needed
             isSpaceStation: isSpaceStation,
-            discovered: true,
-            fromStarCharts: true
+            discovered: !targetData._isUndiscovered, // Set based on discovery status
+            fromStarCharts: true,
+            // Set diplomacy for undiscovered objects
+            diplomacy: targetData._isUndiscovered ? 'unknown' : (targetData.diplomacy || 'neutral'),
+            faction: targetData._isUndiscovered ? 'Unknown' : targetData.faction
         };
+
+        // Debug logging for beacons
+        if (targetData.type === 'navigation_beacon') {
+            console.log(`🔍 DEBUG ADD: Adding beacon to target computer:`, {
+                originalData: {
+                    name: targetData.name,
+                    type: targetData.type,
+                    _isUndiscovered: targetData._isUndiscovered
+                },
+                processedData: {
+                    name: targetDataForTC.name,
+                    type: targetDataForTC.type,
+                    discovered: targetDataForTC.discovered,
+                    diplomacy: targetDataForTC.diplomacy,
+                    faction: targetDataForTC.faction
+                }
+            });
+        }
 
         // Attach actual Three.js object for first-class targets when available
         try {
@@ -422,25 +457,32 @@ debug('TARGETING', `🎯 Refreshed Target Computer display`);
             this.targetComputer.knownTargets.set(targetData.name, targetDataForTC);
         }
 
-        // CRITICAL: Also add to targetObjects array so setTargetById can find it
+        // CRITICAL: Add to targetObjects array through proper deduplication
         if (this.targetComputer.targetObjects) {
-            // Check if target already exists
-            const existingIndex = this.targetComputer.targetObjects.findIndex(target =>
-                target.id === normalizedId || target.name === targetData.name
-            );
-
-            if (existingIndex === -1) {
-                // Add new target to the array
-                this.targetComputer.targetObjects.push(targetDataForTC);
-debug('TARGETING', `🎯 Added target to Target Computer targetObjects: ${targetData.name} (${normalizedId})`);
+            // Use the target computer's built-in deduplication method
+            if (this.targetComputer.addTargetWithDeduplication) {
+                this.targetComputer.addTargetWithDeduplication(targetDataForTC);
+                debug('TARGETING', `🎯 Added target via deduplication: ${targetData.name} (${normalizedId})`);
             } else {
-                // Update existing target
-                this.targetComputer.targetObjects[existingIndex] = { ...this.targetComputer.targetObjects[existingIndex], ...targetDataForTC };
-debug('TARGETING', `🎯 Updated existing target in Target Computer: ${targetData.name} (${normalizedId})`);
+                // Fallback: Check if target already exists (robust deduplication with ID normalization)
+                const existingIndex = this.targetComputer.targetObjects.findIndex(target => {
+                    const targetNormalizedId = this.normalizeObjectId(target.id);
+                    return targetNormalizedId === normalizedId || target.name === targetData.name;
+                });
+
+                if (existingIndex === -1) {
+                    // Add new target to the array
+                    this.targetComputer.targetObjects.push(targetDataForTC);
+                    debug('TARGETING', `🎯 Added target to Target Computer targetObjects: ${targetData.name} (${normalizedId})`);
+                } else {
+                    // Update existing target
+                    this.targetComputer.targetObjects[existingIndex] = { ...this.targetComputer.targetObjects[existingIndex], ...targetDataForTC };
+                    debug('TARGETING', `🎯 Updated existing target in Target Computer: ${targetData.name} (${normalizedId})`);
+                }
             }
         }
 
-debug('TARGETING', `🎯 Added target to Target Computer: ${targetData.name} (${normalizedId})`);
+        debug('TARGETING', `🎯 Added target to Target Computer: ${targetData.name} (${normalizedId})`);
 
         // Refresh the target display to show the new target
         if (this.targetComputer && this.targetComputer.updateTargetDisplay) {
@@ -632,6 +674,18 @@ debug('TARGETING', `🎯 TARGET_SWITCH: Target set successfully, updating displa
             type: objectData.type,
             discovered: true
         });
+
+        // Force immediate target computer update for responsive discovery
+        if (this.targetComputer && this.targetComputer.updateTargetList) {
+            this.targetComputer.updateTargetList();
+            debug('TARGETING', `🔄 Forced immediate target list update for discovery: ${objectData.name}`);
+        }
+        
+        // Also force display update if this is the current target
+        if (this.targetComputer && this.targetComputer.updateTargetDisplay) {
+            this.targetComputer.updateTargetDisplay();
+            debug('TARGETING', `🔄 Forced immediate display update for discovery: ${objectData.name}`);
+        }
 
 debug('TARGETING', `📡 Notified Target Computer of discovery: ${objectData.name}`);
     }

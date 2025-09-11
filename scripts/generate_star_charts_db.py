@@ -17,6 +17,7 @@ This script:
 import os
 import json
 import sys
+import math
 from datetime import datetime
 from pathlib import Path
 
@@ -27,7 +28,6 @@ sys.path.insert(0, str(project_root / 'backend'))
 
 try:
     from backend.verse import generate_universe, sector_to_seed
-    from backend.infrastructure_positioning import InfrastructurePositioning
     from backend.infrastructure_loader import (
         load_starter_infrastructure_template,
         convert_stations_to_verse_format,
@@ -82,41 +82,52 @@ def main():
             stations_3d = convert_stations_to_verse_format(infrastructure_data.get('stations', []))
             beacons_3d = convert_beacons_to_verse_format(infrastructure_data.get('beacons', []))
 
-            # Use InfrastructurePositioning for final positioning
-            positioning_system = InfrastructurePositioning(universe_seed=universe_seed)
-            a0_system = {
-                'sector': 'A0',
-                'star_name': star_charts_db["sectors"]["A0"]["star"]["name"],
-                'star_type': star_charts_db["sectors"]["A0"]["star"]["class"],
-                'planets': []  # Will be populated from objects array
-            }
-
-            # Extract planets from A0 sector for positioning context
-            for obj in star_charts_db["sectors"]["A0"]["objects"]:
-                if obj["type"] == "planet":
-                    a0_system['planets'].append({
-                        'planet_name': obj["name"],
-                        'position': obj["position"],
-                        'planet_type': obj["class"]
-                    })
-
-            # Create infrastructure data with 3D coordinates
-            infrastructure_3d = {
-                'stations': stations_3d,
-                'beacons': beacons_3d
-            }
-
-            positioned_infrastructure = positioning_system.position_infrastructure(a0_system, infrastructure_3d)
-
-            # Extract positioned stations and beacons
+            # Use original infrastructure positions instead of calculated orbital positions
+            # This ensures stations are created at the same positions used in the game scene
             positioned_stations = []
             positioned_beacons = []
 
-            for infra_obj in positioned_infrastructure.get('infrastructure', []):
-                if infra_obj.get('type') == 'navigation_beacon':
-                    positioned_beacons.append(infra_obj)
+            # Process stations with their original positions
+            for station in stations_3d:
+                positioned_station = station.copy()
+
+                # Ensure position is in the correct format [x, y, z]
+                if 'position' in station and isinstance(station['position'], list):
+                    positioned_station['position'] = station['position']
                 else:
-                    positioned_stations.append(infra_obj)
+                    # Fallback to calculated position if position is missing
+                    positioned_station['position'] = [100.0, 0.0, 0.0]
+
+                # Calculate orbit data for consistency
+                positioned_station['orbit'] = {
+                    'parent': 'star',
+                    'radius': math.sqrt(positioned_station['position'][0]**2 + positioned_station['position'][2]**2),
+                    'angle': math.degrees(math.atan2(positioned_station['position'][2], positioned_station['position'][0])),
+                    'period': 0.0
+                }
+
+                positioned_stations.append(positioned_station)
+
+            # Process beacons with their original positions
+            for beacon in beacons_3d:
+                positioned_beacon = beacon.copy()
+
+                # Ensure position is in the correct format [x, y, z]
+                if 'position' in beacon and isinstance(beacon['position'], list):
+                    positioned_beacon['position'] = beacon['position']
+                else:
+                    # Fallback to calculated position if position is missing
+                    positioned_beacon['position'] = [100.0, 0.0, 0.0]
+
+                # Calculate orbit data for consistency
+                positioned_beacon['orbit'] = {
+                    'parent': 'star',
+                    'radius': math.sqrt(positioned_beacon['position'][0]**2 + positioned_beacon['position'][2]**2),
+                    'angle': math.degrees(math.atan2(positioned_beacon['position'][2], positioned_beacon['position'][0])),
+                    'period': 0.0
+                }
+
+                positioned_beacons.append(positioned_beacon)
 
             star_charts_db["sectors"]["A0"]["infrastructure"] = {
                 "stations": positioned_stations,

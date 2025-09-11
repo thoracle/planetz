@@ -35,7 +35,7 @@ export class StarChartsManager {
         this.spatialGrid = new Map();        // Spatial partitioning for performance
         this.gridSize = 50;                  // Grid cell size in game units
         this.lastDiscoveryCheck = 0;         // Last proximity check time
-        this.discoveryInterval = 5000;       // Check every 5 seconds
+        this.discoveryInterval = 1000;       // Check every 1 second for responsive discovery
         
         // Discovery pacing system
         this.discoveryTypes = {
@@ -288,9 +288,104 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
             }
             
             // 4. Direct ID lookup (for beacons and other objects)
-            const celestialBody = this.solarSystemManager.celestialBodies?.get(obj.id);
+            let celestialBody = this.solarSystemManager.celestialBodies?.get(obj.id);
             if (celestialBody && celestialBody.position) {
                 return [celestialBody.position.x, celestialBody.position.y, celestialBody.position.z];
+            }
+
+            // 4b. Station ID mapping (a0_hermes_refinery -> station_hermes_refinery)
+            // Handle all station types by checking if obj.id starts with 'a0_' and has a valid station type
+            if (obj.id && obj.id.startsWith('a0_') && obj.type && 
+                (obj.type === 'station' || 
+                 obj.type === 'Refinery' || 
+                 obj.type === 'Research Lab' || 
+                 obj.type === 'Defense Platform' || 
+                 obj.type === 'Storage Depot' || 
+                 obj.type === 'Factory' || 
+                 obj.type === 'Frontier Outpost' ||
+                 obj.type === 'Communications Array' ||
+                 obj.type === 'Repair Station' ||
+                 obj.type === 'Mining Station' ||
+                 obj.type === 'Shipyard' ||
+                 obj.type.includes('Station') ||
+                 obj.type.includes('Lab') ||
+                 obj.type.includes('Platform') ||
+                 obj.type.includes('Depot') ||
+                 obj.type.includes('Factory') ||
+                 obj.type.includes('Outpost') ||
+                 obj.type.includes('Array') ||
+                 obj.type.includes('Complex') ||
+                 obj.type.includes('Facility') ||
+                 obj.type.includes('Shipyard'))) {
+                const stationKey = `station_${obj.name.toLowerCase().replace(/\s+/g, '_')}`;
+                debug('STAR_CHARTS', `🔍 Looking for station ${obj.name} with key: ${stationKey}`);
+                debug('STAR_CHARTS', `🔍 CelestialBodies map has ${this.solarSystemManager.celestialBodies?.size || 0} entries`);
+                
+                // Debug: Show all available keys
+                if (this.solarSystemManager.celestialBodies?.size > 0) {
+                    const allKeys = Array.from(this.solarSystemManager.celestialBodies.keys());
+                    debug('STAR_CHARTS', `🔍 Available keys: ${allKeys.join(', ')}`);
+                }
+                
+                celestialBody = this.solarSystemManager.celestialBodies?.get(stationKey);
+                if (celestialBody && celestialBody.position) {
+                    debug('STAR_CHARTS', `✅ Found station ${obj.name} at scene position: [${celestialBody.position.x.toFixed(2)}, ${celestialBody.position.y.toFixed(2)}, ${celestialBody.position.z.toFixed(2)}]`);
+                    return [celestialBody.position.x, celestialBody.position.y, celestialBody.position.z];
+                } else {
+                    debug('STAR_CHARTS', `❌ Station ${obj.name} not found with key: ${stationKey}`);
+                }
+
+                // Enhanced fallback: Try multiple key formats
+                const alternativeKeys = [
+                    obj.id,  // a0_hermes_refinery
+                    obj.id.replace('a0_', ''),  // hermes_refinery
+                    obj.id.replace('a0_', 'A0_'),  // A0_hermes_refinery
+                    obj.name,  // Hermes Refinery
+                    obj.name.toLowerCase().replace(/\s+/g, '_'),  // hermes_refinery
+                ];
+                
+                debug('STAR_CHARTS', `🔍 Trying alternative keys: ${alternativeKeys.join(', ')}`);
+                
+                for (const altKey of alternativeKeys) {
+                    celestialBody = this.solarSystemManager.celestialBodies?.get(altKey);
+                    if (celestialBody && celestialBody.position) {
+                        debug('STAR_CHARTS', `✅ Found station ${obj.name} with alternative key "${altKey}" at: [${celestialBody.position.x.toFixed(2)}, ${celestialBody.position.y.toFixed(2)}, ${celestialBody.position.z.toFixed(2)}]`);
+                        return [celestialBody.position.x, celestialBody.position.y, celestialBody.position.z];
+                    }
+                }
+
+                // Fallback: Search all station entries by name matching
+                if (this.solarSystemManager.celestialBodies) {
+                    debug('STAR_CHARTS', `🔍 Searching all ${this.solarSystemManager.celestialBodies.size} celestial bodies for station ${obj.name}`);
+                    for (const [key, body] of this.solarSystemManager.celestialBodies.entries()) {
+                        if (body && body.position && (
+                            key.includes('station') || 
+                            (body.name && body.name === obj.name) ||
+                            (body.userData?.name && body.userData.name === obj.name)
+                        )) {
+                            debug('STAR_CHARTS', `✅ Found station ${obj.name} via fallback search (key: ${key}) at: [${body.position.x.toFixed(2)}, ${body.position.y.toFixed(2)}, ${body.position.z.toFixed(2)}]`);
+                            return [body.position.x, body.position.y, body.position.z];
+                        }
+                    }
+                }
+
+                debug('STAR_CHARTS', `❌ Station ${obj.name} not found in scene (tried key: ${stationKey} and alternatives)`);
+            }
+
+            // 4c. Beacon ID mapping (a0_navigation_beacon_1 -> beacon key)
+            if (obj.id && obj.id.startsWith('a0_navigation_beacon_')) {
+                // Try multiple beacon lookup strategies
+                const beaconNum = obj.id.replace('a0_navigation_beacon_', '');
+                const beaconKey = `beacon_${beaconNum}`;
+
+                // Try different beacon storage patterns
+                celestialBody = this.solarSystemManager.celestialBodies?.get(beaconKey) ||
+                               this.solarSystemManager.celestialBodies?.get(obj.id) ||
+                               this.solarSystemManager.celestialBodies?.get(`navigation_beacon_${beaconNum}`);
+
+                if (celestialBody && celestialBody.position) {
+                    return [celestialBody.position.x, celestialBody.position.y, celestialBody.position.z];
+                }
             }
             
             // 5. Scene object lookup by name
@@ -311,7 +406,8 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
                 }
             }
             
-            // Fallback: return null to use data coordinates
+            // CRITICAL: Return null - object will be SKIPPED from spatial grid (no fallback to data coordinates)
+            debug('STAR_CHARTS', `❌ No scene position found for ${obj.id || obj.name} - will be skipped`);
             return null;
             
         } catch (error) {
@@ -324,6 +420,7 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         // Initialize spatial partitioning for optimized proximity checking
         
         if (!this.objectDatabase || !this.objectDatabase.sectors[this.currentSector]) {
+            debug('STAR_CHARTS', '⚠️ Cannot initialize spatial grid: no object database or sector data');
             return;
         }
         
@@ -341,57 +438,70 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         // Store as class property for access by other methods
         this.allObjects = allObjects;
 
-        debug('STAR_CHARTS', `📊 Processing ${allObjects.length} objects for sector ${this.currentSector}`);
-        debug('STAR_CHARTS', `   - Star: ${sectorData.star?.id || 'none'}`);
-        debug('STAR_CHARTS', `   - Objects: ${sectorData.objects?.length || 0}`);
-        debug('STAR_CHARTS', `   - Stations: ${sectorData.infrastructure?.stations?.length || 0}`);
-        debug('STAR_CHARTS', `   - Beacons: ${sectorData.infrastructure?.beacons?.length || 0}`);
+        // debug('STAR_CHARTS', `📊 Processing ${allObjects.length} objects for sector ${this.currentSector}`);
+        // debug('STAR_CHARTS', `   - Star: ${sectorData.star?.id || 'none'}`);
+        // debug('STAR_CHARTS', `   - Objects: ${sectorData.objects?.length || 0}`);
+        // debug('STAR_CHARTS', `   - Stations: ${sectorData.infrastructure?.stations?.length || 0}`);
+        // debug('STAR_CHARTS', `   - Beacons: ${sectorData.infrastructure?.beacons?.length || 0}`);
 
         let processedCount = 0;
         let skippedCount = 0;
 
         // Debug: Log ALL objects being processed
-        debug('STAR_CHARTS', `   📋 Processing all ${allObjects.length} objects:`);
+        // debug('STAR_CHARTS', `   📋 Processing all ${allObjects.length} objects:`);
 
         allObjects.forEach((obj, index) => {
             if (obj && obj.position) {
-                // Get actual 3D scene coordinates instead of data coordinates
+                // Get actual 3D scene coordinates - NO FALLBACK to data coordinates
                 const scenePosition3D = this.getScenePosition(obj);
-                const position3D = scenePosition3D || (obj.position && obj.position.length >= 3 ? obj.position : [0, 0, 0]);
+                
+                // CRITICAL: Only use scene positions - skip objects without valid scene positions
+                if (!scenePosition3D) {
+                    debug('STAR_CHARTS', `❌ SKIPPING ${obj.id || obj.name} - no valid scene position found`);
+                    skippedCount++;
+                    return; // Skip this object entirely
+                }
+                
+                const position3D = scenePosition3D;
+
                 const gridKey = this.getGridKey(position3D);
 
                 // Store the scene position for discovery calculations
                 obj.cartesianPosition = position3D;
 
-                debug('STAR_CHARTS', `   🔍 ${obj.id}: data[${obj.position.map(p => p.toFixed(2)).join(',')}] scene[${position3D.map(p => p.toFixed(2)).join(',')}] → grid key: ${gridKey}`);
-                debug('STAR_CHARTS', `      → Grid key: ${gridKey}`);
+                // debug('STAR_CHARTS', `   🔍 ${obj.id}: data[${obj.position.map(p => p.toFixed(2)).join(',')}] scene[${position3D.map(p => p.toFixed(2)).join(',')}] → grid key: ${gridKey}`);
+                // debug('STAR_CHARTS', `      → Grid key: ${gridKey}`);
 
                 if (!this.spatialGrid.has(gridKey)) {
                     this.spatialGrid.set(gridKey, []);
-                    debug('STAR_CHARTS', `      → Created new cell ${gridKey}`);
+                    // debug('STAR_CHARTS', `      → Created new cell ${gridKey}`);
                 } else {
-                    debug('STAR_CHARTS', `      → Using existing cell ${gridKey}`);
+                    // debug('STAR_CHARTS', `      → Using existing cell ${gridKey}`);
                 }
 
                 const beforeCount = this.spatialGrid.get(gridKey).length;
                 this.spatialGrid.get(gridKey).push(obj);
                 const afterCount = this.spatialGrid.get(gridKey).length;
 
-                debug('STAR_CHARTS', `      → Added to cell ${gridKey}: ${beforeCount} → ${afterCount} objects`);
+                // debug('STAR_CHARTS', `      → Added to cell ${gridKey}: ${beforeCount} → ${afterCount} objects`);
                 processedCount++;
 
                 // Log summary for first few objects
                 if (index < 5) {
-                    debug('STAR_CHARTS', `   ✅ ${obj.id}: pos[${position3D.map(p => p.toFixed(2)).join(',')}] → grid[${gridKey}]`);
+                    // debug('STAR_CHARTS', `   ✅ ${obj.id}: pos[${position3D.map(p => p.toFixed(2)).join(',')}] → grid[${gridKey}]`);
                 }
             } else {
                 skippedCount++;
                 // Log ALL skipped objects
-                debug('STAR_CHARTS', `   ❌ Skipped ${index}: ${obj?.id || 'unknown'} (no position)`);
+                // debug('STAR_CHARTS', `   ❌ Skipped ${index}: ${obj?.id || 'unknown'} (no position)`);
             }
         });
 
-debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} cells, ${allObjects.length} objects (${processedCount} processed, ${skippedCount} skipped)`);
+        // Only log spatial grid initialization on first setup, not on refresh
+        if (!this.spatialGridInitialized) {
+            debug('UTILITY', `🗺️ Spatial grid initialized: ${this.spatialGrid.size} cells, ${allObjects.length} objects`);
+            this.spatialGridInitialized = true;
+        }
 
         // Add global debug function for spatial grid inspection
         if (typeof window !== 'undefined') {
@@ -408,8 +518,24 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
                 }
                 return 'Spatial grid logged to console';
             };
-            debug('STAR_CHARTS', '🗺️ Use debugSpatialGrid() in console to inspect spatial grid');
+            
+            // Add manual refresh function for testing
+            window.refreshSpatialGrid = () => {
+                console.log('🔄 Manually refreshing spatial grid...');
+                this.refreshSpatialGrid();
+                return 'Spatial grid refreshed';
+            };
+            // debug('STAR_CHARTS', '🗺️ Use debugSpatialGrid() in console to inspect spatial grid'); // Reduced spam
         }
+    }
+
+    /**
+     * Refresh spatial grid after system generation
+     * Call this after SolarSystemManager creates all stations
+     */
+    refreshSpatialGrid() {
+        // debug('STAR_CHARTS', '🔄 Refreshing spatial grid after system generation...'); // Reduced spam
+        this.initializeSpatialGrid();
     }
     
     
@@ -436,14 +562,16 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
 
         const nearbyObjects = [];
         // Fix: Ensure we search enough grid cells to cover the full radius
-        // Add buffer to account for objects near cell boundaries
-        const gridRadius = Math.ceil(radius / this.gridSize) + 1;
+        // Add larger buffer to account for objects near cell boundaries
+        // With 50km grid size and 10km discovery radius, we need at least 2 cell buffer
+        const gridRadius = Math.ceil(radius / this.gridSize) + 2;
         const playerPos3D = this.ensure3DPosition(playerPosition);
         const playerGridKey = this.getGridKey(playerPosition);
         const [px, py, pz] = playerGridKey.split(',').map(Number);
 
-        // debug('STAR_CHARTS', `🔍 gridRadius=${gridRadius}, playerGridKey=${playerGridKey}, gridSize=${this.gridSize}`);  // Commented out to reduce spam
-        // debug('STAR_CHARTS', `🔍 Spatial grid has ${this.spatialGrid.size} total cells`);  // Commented out to reduce spam
+        // Enhanced debug logging for spatial grid search (commented out to reduce spam)
+        // debug('STAR_CHARTS', `🔍 Spatial search: radius=${radius}km, gridRadius=${gridRadius}, playerGridKey=${playerGridKey}, gridSize=${this.gridSize}`);
+        // debug('STAR_CHARTS', `🔍 Searching cells from [${px-gridRadius},${py-gridRadius},${pz-gridRadius}] to [${px+gridRadius},${py+gridRadius},${pz+gridRadius}]`);
 
         let checkedCells = 0;
         let totalObjectsFound = 0;
@@ -463,16 +591,23 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
                     checkedCells++;
 
                     if (cellObjects && cellObjects.length > 0) {
+                        // debug('STAR_CHARTS', `📦 Cell ${gridKey}: ${cellObjects.length} objects found`); // Commented out to reduce spam
+                        
                         // Filter objects to ensure they're actually within range (spatial grid gives nearby cells, but we need precise distance check)
                         const inRangeObjects = cellObjects.filter(obj => {
                             // Use stored Cartesian coordinates for accurate distance calculation
                             const objPos3D = obj.cartesianPosition || obj.position || [0, 0, 0];
                             const distance = this.calculateDistance(objPos3D, playerPos3D);
-                            return distance <= radius;
+                            const inRange = distance <= radius;
+                            
+                            // debug('STAR_CHARTS', `  - ${obj.id || obj.name}: ${distance.toFixed(1)}km ${inRange ? '✅ IN RANGE' : '❌ OUT OF RANGE'}`); // Commented out to reduce spam
+                            return inRange;
                         });
 
                         nearbyObjects.push(...inRangeObjects);
                         totalObjectsFound += inRangeObjects.length;
+                    } else {
+                        // debug('STAR_CHARTS', `📦 Cell ${gridKey}: empty`); // Commented out to reduce spam
                     }
                 }
             }
@@ -521,8 +656,15 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
             const gridCells = this.spatialGrid.size;
             const totalObjectsInGrid = Array.from(this.spatialGrid.values()).reduce((sum, cell) => sum + cell.length, 0);
 
-            debug('STAR_CHARTS', `🔍 Discovery check: ${nearbyObjects.length} objects within ${discoveryRadius.toFixed(0)}km radius`);
-            // debug('STAR_CHARTS', `📊 Spatial grid: ${gridCells} cells, ${totalObjectsInGrid} total objects`);  // Commented out to reduce spam
+            // Only log discovery checks when objects are found to reduce spam
+            if (nearbyObjects.length > 0) {
+                debug('STAR_CHARTS', `🔍 Discovery check: ${nearbyObjects.length} objects within ${discoveryRadius.toFixed(0)}km radius`);
+            }
+
+            // Debug: Show what objects are being checked
+            if (nearbyObjects.length > 0) {
+                debug('STAR_CHARTS', `📋 Nearby objects: ${nearbyObjects.map(obj => obj.name || obj.id).join(', ')}`);
+            }
 
             // Debug spatial search details - commented out to reduce spam
             // const gridRadius = Math.ceil(discoveryRadius / this.gridSize);
@@ -568,6 +710,16 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
                 const objPos = obj.cartesianPosition || obj.position || [0, 0, 0];
                 const distance = this.calculateDistance(objPos, playerPosition);
                 const withinRange = this.isWithinRange(obj, playerPosition, discoveryRadius);
+                
+                // Enhanced debug logging to diagnose discovery issues (reduced spam)
+                // debug('STAR_CHARTS', `🔍 CHECKING: ${obj.id || obj.name} (${obj.type || 'unknown'})`);
+                // debug('STAR_CHARTS', `   📍 Object pos: [${objPos.join(', ')}]`);
+                // debug('STAR_CHARTS', `   📍 Player pos: [${playerPosition.join(', ')}]`);
+                // debug('STAR_CHARTS', `   📏 Distance: ${distance.toFixed(1)}km`);
+                // debug('STAR_CHARTS', `   🎯 Within range (${discoveryRadius}km): ${withinRange}`);
+                // debug('STAR_CHARTS', `   ✅ Has position: ${!!obj.position}`);
+                debug('STAR_CHARTS', `   ✅ Has cartesianPosition: ${!!obj.cartesianPosition}`);
+                
                 if (withinRange) {
                     debug('STAR_CHARTS', `🎯 IN RANGE: ${obj.id} (${obj.type}) at ${distance.toFixed(1)}km - ready for discovery`);
                 }
@@ -583,7 +735,7 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
             discoveries.forEach((obj, index) => {
                 const objPos = obj.cartesianPosition || obj.position || [0, 0, 0];
                 const distance = this.calculateDistance(objPos, playerPosition);
-                debug('STAR_CHARTS', `✅ DISCOVERED: ${obj.id} (${obj.type}) at ${distance.toFixed(1)}km`);
+                // debug('STAR_CHARTS', `✅ DISCOVERED: ${obj.id} (${obj.type}) at ${distance.toFixed(1)}km`);
                 
                 // Stagger notifications to prevent overlap when multiple objects are discovered simultaneously
                 if (index === 0) {
@@ -630,12 +782,15 @@ debug('UTILITY', `🗺️  Spatial grid initialized: ${this.spatialGrid.size} ce
     isWithinRange(object, playerPosition, discoveryRadius) {
         //Check if object is within discovery range
 
-        if (!object.position || object.position.length < 2) {
+        // Use stored Cartesian coordinates for accurate distance calculation
+        const objPos = object.cartesianPosition || object.position || [0, 0, 0];
+        
+        // Check if we have valid position data
+        if (!objPos || (Array.isArray(objPos) && objPos.length < 2)) {
+            debug('STAR_CHARTS', `❌ Invalid position for ${object.id}: ${objPos}`);
             return false;
         }
 
-        // Use stored Cartesian coordinates for accurate distance calculation
-        const objPos = object.cartesianPosition || object.position || [0, 0, 0];
         const playerPos = this.ensure3DPosition(playerPosition);
 
         const distance = this.calculateDistance(objPos, playerPos);
@@ -748,17 +903,14 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         // Try multiple notification methods for debugging
         let notificationShown = false;
 
-        // Method 1: Use StarfieldManager's communication HUD
-        if (this.viewManager?.starfieldManager?.communicationHUD?.showMessage) {
+        // Method 1: Use StarfieldManager's ephemeral HUD (top center)
+        if (this.viewManager?.starfieldManager?.showHUDEphemeral) {
             try {
-                this.viewManager.starfieldManager.communicationHUD.showMessage('DISCOVERY', message, {
-                    duration: 5000,
-                    priority: 'normal'
-                });
-                debug('STAR_CHARTS', `✅ Discovery notification sent to CommunicationHUD`);
+                this.viewManager.starfieldManager.showHUDEphemeral('🔍 DISCOVERY', message, 4000);
+                debug('STAR_CHARTS', `✅ Discovery notification sent to Ephemeral HUD (top center)`);
                 notificationShown = true;
             } catch (e) {
-                debug('STAR_CHARTS', `❌ CommunicationHUD notification failed: ${e.message}`);
+                debug('STAR_CHARTS', `❌ Ephemeral HUD notification failed: ${e.message}`);
             }
         }
 
@@ -816,12 +968,9 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     showSubtleNotification(message) {
         //Show subtle discovery notification using HUD system
 
-        // Use StarfieldManager's communication HUD for proper notifications
-        if (this.viewManager?.starfieldManager?.communicationHUD?.showMessage) {
-            this.viewManager.starfieldManager.communicationHUD.showMessage('DISCOVERY', message, {
-                duration: 2000,
-                priority: 'low'
-            });
+        // Use StarfieldManager's ephemeral HUD for proper notifications (top center)
+        if (this.viewManager?.starfieldManager?.showHUDEphemeral) {
+            this.viewManager.starfieldManager.showHUDEphemeral('🔍 DISCOVERY', message, 3000);
         } else {
             // Fallback to creating notification element
             const notification = document.createElement('div');
@@ -860,7 +1009,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         if (this.viewManager && this.viewManager.starfieldManager && this.viewManager.starfieldManager.ship && this.viewManager.starfieldManager.ship.position) {
             const position = this.viewManager.starfieldManager.ship.position;
             if (position && typeof position.x === 'number') {
-                debug('STAR_CHARTS', `📍 Player position (starfield ship): (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+                // debug('STAR_CHARTS', `📍 Player position (starfield ship): (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`); // Reduced spam
                 return [position.x, position.y, position.z];
             } else {
                 debug('STAR_CHARTS', `❌ Invalid starfield ship position:`, position);
@@ -873,7 +1022,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         if (this.viewManager && this.viewManager.ship && this.viewManager.ship.position) {
             const position = this.viewManager.ship.position;
             if (position && typeof position.x === 'number') {
-                debug('STAR_CHARTS', `📍 Player position (viewManager ship): (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+                // debug('STAR_CHARTS', `📍 Player position (viewManager ship): (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`); // Reduced spam
                 return [position.x, position.y, position.z];
             } else {
                 debug('STAR_CHARTS', `❌ Invalid viewManager ship position:`, position);
@@ -886,7 +1035,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         if (this.solarSystemManager && this.solarSystemManager.ship) {
             const position = this.solarSystemManager.ship.position;
             if (position && typeof position.x === 'number') {
-                debug('STAR_CHARTS', `📍 Player position (solarSystem ship): (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+                // debug('STAR_CHARTS', `📍 Player position (solarSystem ship): (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`); // Reduced spam
                 return [position.x, position.y, position.z];
             } else {
                 debug('STAR_CHARTS', `❌ Invalid solarSystem ship position:`, position);
@@ -898,7 +1047,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         // Fallback: use active camera position (always available in gameplay)
         if (this.camera && this.camera.position) {
             const pos = this.camera.position;
-            debug('STAR_CHARTS', `📍 Player position (camera): (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`);
+            // debug('STAR_CHARTS', `📍 Player position (camera): (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`); // Reduced spam
             return [pos.x, pos.y, pos.z];
         } else {
             debug('STAR_CHARTS', `❌ No camera position available`);
@@ -913,14 +1062,14 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
 
         // System uses kilometers as primary unit (1 game unit = 1km)
         // No conversion needed - return radius directly in kilometers
-        // Reduced to 10km for precise testing with unified coordinate system
+        // Using 50km for normal gameplay - allows comfortable exploration
         // - SOL: ~20km (close approach needed)
         // - Stations/Infrastructure: 40-60km range (exploration required)
         // - Planets/Moons: Variable based on 3D scene coordinates
-        // - Testing radius for coordinate system validation
-        const discoveryRangeKm = 10; // 10 kilometers - testing radius
+        // - Production radius for normal gameplay
+        const discoveryRangeKm = 50; // 50 kilometers - normal gameplay radius
 
-        debug('STAR_CHARTS', `🔍 Using discovery radius: ${discoveryRangeKm}km`);
+        // debug('STAR_CHARTS', `🔍 Using discovery radius: ${discoveryRangeKm}km`); // Commented out to reduce spam
         return discoveryRangeKm;
     }
     
@@ -954,7 +1103,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         
         const playerPos = this.getPlayerPosition();
         if (playerPos) {
-            debug('STAR_CHARTS', `📍 Player position: [${playerPos.join(', ')}]`);
+            // debug('STAR_CHARTS', `📍 Player position: [${playerPos.join(', ')}]`); // Reduced spam
             
             // Test different radii
             const radii = [25, 50, 75, 100];
@@ -975,12 +1124,16 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     
     isDiscovered(objectId) {
         //Check if object has been discovered
-        return this.discoveredObjects.has(objectId);
+        // Normalize ID to handle case sensitivity (a0_ vs A0_)
+        const normalizedId = objectId.replace(/^a0_/i, 'A0_');
+        return this.discoveredObjects.has(normalizedId);
     }
 
     getDiscoveryMetadata(objectId) {
         //Get metadata for a discovered object
-        return this.discoveryMetadata.get(objectId) || null;
+        // Normalize ID to handle case sensitivity (a0_ vs A0_)
+        const normalizedId = objectId.replace(/^a0_/i, 'A0_');
+        return this.discoveryMetadata.get(normalizedId) || null;
     }
 
     getObjectById(objectId) {
@@ -993,13 +1146,15 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
 
     addDiscoveredObject(objectId, discoveryMethod = 'proximity', source = 'player') {
         //Add object to discovered list with metadata and save state
+        
+        // Normalize ID to handle case sensitivity (a0_ vs A0_)
+        const normalizedId = objectId.replace(/^a0_/i, 'A0_');
+        const wasAlreadyDiscovered = this.discoveredObjects.has(normalizedId);
 
-        const wasAlreadyDiscovered = this.discoveredObjects.has(objectId);
-
-        debug('STAR_CHARTS', `🔍 DISCOVERY ATTEMPT: ${objectId} (method: ${discoveryMethod}, already discovered: ${wasAlreadyDiscovered})`);
+        debug('STAR_CHARTS', `🔍 DISCOVERY ATTEMPT: ${normalizedId} (method: ${discoveryMethod}, already discovered: ${wasAlreadyDiscovered})`);
 
         if (!wasAlreadyDiscovered) {
-            this.discoveredObjects.add(objectId);
+            this.discoveredObjects.add(normalizedId);
 
             // Add discovery metadata
             const discoveryData = {
@@ -1010,10 +1165,10 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
                 firstDiscovered: true
             };
 
-            this.discoveryMetadata.set(objectId, discoveryData);
+            this.discoveryMetadata.set(normalizedId, discoveryData);
 
             this.saveDiscoveryState();
-            debug('STAR_CHARTS', `✅ DISCOVERED: ${objectId} (${discoveryMethod}) - Total discovered: ${this.discoveredObjects.size}`);
+            debug('STAR_CHARTS', `✅ DISCOVERED: ${normalizedId} (${discoveryMethod}) - Total discovered: ${this.discoveredObjects.size}`);
 
             // Get object data for notification
             const objectData = this.getObjectById(objectId);
@@ -1034,7 +1189,13 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
             }
 
             // Trigger discovery callbacks
-            this.triggerDiscoveryCallbacks(objectId, discoveryData);
+            this.triggerDiscoveryCallbacks(normalizedId, discoveryData);
+            
+            // Force immediate target computer sync for responsive updates
+            if (this.viewManager?.navigationSystemManager?.starChartsTargetComputerIntegration) {
+                this.viewManager.navigationSystemManager.starChartsTargetComputerIntegration.syncTargetData();
+                debug('STAR_CHARTS', `🔄 Triggered immediate target computer sync for discovery: ${normalizedId}`);
+            }
         } else {
             debug('STAR_CHARTS', `⏭️ Object ${objectId} already discovered, updating metadata`);
             // Update metadata for re-discovery
@@ -1429,25 +1590,34 @@ debug('UTILITY', `   - Spatial grid cells: ${metrics.spatialGridCells}`);
         
         const sectorData = this.objectDatabase.sectors[this.currentSector];
         
+        // Helper function to match IDs (handles both normalized and original formats)
+        const matchesId = (dbId, searchId) => {
+            if (dbId === searchId) return true;
+            // Try normalized versions
+            const normalizedDbId = this.normalizeObjectId(dbId);
+            const normalizedSearchId = this.normalizeObjectId(searchId);
+            return normalizedDbId === normalizedSearchId;
+        };
+        
         // Check star
-        if (sectorData.star && sectorData.star.id === objectId) {
+        if (sectorData.star && matchesId(sectorData.star.id, objectId)) {
             return sectorData.star;
         }
         
         // Check celestial objects
-        const celestialObject = sectorData.objects.find(obj => obj.id === objectId);
+        const celestialObject = sectorData.objects.find(obj => matchesId(obj.id, objectId));
         if (celestialObject) {
             return celestialObject;
         }
         
         // Check infrastructure
         if (sectorData.infrastructure) {
-            const station = sectorData.infrastructure.stations?.find(obj => obj.id === objectId);
+            const station = sectorData.infrastructure.stations?.find(obj => matchesId(obj.id, objectId));
             if (station) {
                 return station;
             }
             
-            const beacon = sectorData.infrastructure.beacons?.find(obj => obj.id === objectId);
+            const beacon = sectorData.infrastructure.beacons?.find(obj => matchesId(obj.id, objectId));
             if (beacon) {
                 return beacon;
             }

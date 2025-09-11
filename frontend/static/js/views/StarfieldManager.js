@@ -1163,10 +1163,10 @@ export class StarfieldManager {
     connectWeaponHUDToSystem() {
         const ship = this.viewManager?.getShip();
         
-        debug('INSPECTION', 'Attempting to connect WeaponHUD to WeaponSystemCore...');
-        debug('INSPECTION', `Ship available: ${!!ship}`);
-        debug('INSPECTION', `Ship weaponSystem available: ${!!(ship?.weaponSystem)}`);
-        debug('INSPECTION', `WeaponHUD available: ${!!this.weaponHUD}`);
+        // debug('INSPECTION', 'Attempting to connect WeaponHUD to WeaponSystemCore...');
+        // debug('INSPECTION', `Ship available: ${!!ship}`);
+        // debug('INSPECTION', `Ship weaponSystem available: ${!!(ship?.weaponSystem)}`);
+        // debug('INSPECTION', `WeaponHUD available: ${!!this.weaponHUD}`);
         
         if (ship && ship.weaponSystem && this.weaponHUD) {
             // Set HUD reference in weapon system
@@ -1180,10 +1180,10 @@ export class StarfieldManager {
         } else {
             this.weaponHUDConnected = false;
             // Use debug logging instead of warnings during startup
-            debug('INSPECTION', 'WeaponHUD connection pending:');
-            if (!ship) debug('INSPECTION', 'Ship initializing...');
-            if (!ship?.weaponSystem) debug('INSPECTION', 'WeaponSystem initializing...');
-            if (!this.weaponHUD) debug('INSPECTION', 'WeaponHUD initializing...');
+            // debug('INSPECTION', 'WeaponHUD connection pending:');
+            // if (!ship) debug('INSPECTION', 'Ship initializing...');
+            // if (!ship?.weaponSystem) debug('INSPECTION', 'WeaponSystem initializing...');
+            // if (!this.weaponHUD) debug('INSPECTION', 'WeaponHUD initializing...');
         }
     }
     bindKeyEvents() {
@@ -1238,11 +1238,11 @@ export class StarfieldManager {
                 if (window.spatialManager) {
                     debug('UTILITY', 'SpatialManager Status: Initialized and ready');
                     const stats = window.spatialManager.getStats();
-                    debug('INSPECTION', `Tracked objects: ${stats.totalObjects}`);
-                    debug('INSPECTION', `Object types: ${Object.keys(stats.typeBreakdown).join(', ')}`);
+                    // debug('INSPECTION', `Tracked objects: ${stats.totalObjects}`);
+                    // debug('INSPECTION', `Object types: ${Object.keys(stats.typeBreakdown).join(', ')}`);
 
                     // Future: Add debug visualization for spatial bounding volumes
-                    debug('INSPECTION', 'Spatial debug info displayed in console');
+                    // debug('INSPECTION', 'Spatial debug info displayed in console');
                 } else {
                     debug('P1', 'SpatialManager not available for debug visualization');
                 }
@@ -1296,11 +1296,11 @@ export class StarfieldManager {
                 
                 // Set target speed to the actual clamped speed
                 this.targetSpeed = actualSpeed;
-                debug('NAVIGATION', `Setting target speed to ${actualSpeed} (current: ${this.currentSpeed.toFixed(3)}), decelerating: ${actualSpeed < this.currentSpeed}`);
+                // debug('NAVIGATION', `Setting target speed to ${actualSpeed} (current: ${this.currentSpeed.toFixed(3)}), decelerating: ${actualSpeed < this.currentSpeed}`);
 
                 // Special debug for Impulse 4 transitions
                 if (actualSpeed === 4) {
-                    debug('NAVIGATION', `🎯 IMPULSE 4 ACTIVATED: target=${this.targetSpeed}, current=${this.currentSpeed.toFixed(3)}, diff=${Math.abs(this.targetSpeed - this.currentSpeed).toFixed(3)}`);
+                    // debug('NAVIGATION', `🎯 IMPULSE 4 ACTIVATED: target=${this.targetSpeed}, current=${this.currentSpeed.toFixed(3)}, diff=${Math.abs(this.targetSpeed - this.currentSpeed).toFixed(3)}`);
                 }
 
                 // Determine if we need to decelerate
@@ -1477,7 +1477,7 @@ export class StarfieldManager {
                 // Block target cycling when docked
                 if (this.isDocked) {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'TARGET CYCLING UNAVAILABLE',
                         'Targeting systems offline while docked'
                     );
@@ -1488,7 +1488,7 @@ export class StarfieldManager {
                 if (this.undockCooldown && Date.now() < this.undockCooldown) {
                     const remainingSeconds = Math.ceil((this.undockCooldown - Date.now()) / 1000);
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'TARGETING SYSTEMS WARMING UP',
                         `Systems initializing after launch - ${remainingSeconds}s remaining`
                     );
@@ -1514,34 +1514,34 @@ export class StarfieldManager {
                         this.playCommandFailedSound();
                         
                         if (!targetComputer) {
-                            this.showHUDError(
+                            this.showHUDEphemeral(
                                 'TARGET CYCLING UNAVAILABLE',
                                 'No Target Computer card installed in ship slots'
                             );
                         } else if (!targetComputer.isOperational()) {
-                            this.showHUDError(
+                            this.showHUDEphemeral(
                                 'TARGET CYCLING OFFLINE',
                                 `Target Computer damaged (${Math.round(targetComputer.healthPercentage * 100)}% health) - repair required`
                             );
                         } else if (!ship.hasSystemCardsSync('target_computer')) {
-                            this.showHUDError(
+                            this.showHUDEphemeral(
                                 'TARGET CYCLING UNAVAILABLE',
                                 'No Target Computer card installed in ship slots'
                             );
                         } else if (!this.targetComputerEnabled) {
-                            this.showHUDError(
+                            this.showHUDEphemeral(
                                 'TARGET CYCLING DISABLED',
                                 'Activate Target Computer (T key) first'
                             );
                         } else if (!energyReactor || !energyReactor.isOperational()) {
                             // Energy reactor is the problem
                             if (!energyReactor) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'TARGET CYCLING FAILURE',
                                     'No Energy Reactor installed - cannot power systems'
                                 );
                             } else {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'TARGET CYCLING FAILURE',
                                     `Energy Reactor disabled (${Math.round(energyReactor.healthPercentage * 100)}% health) - repair immediately`
                                 );
@@ -1549,7 +1549,7 @@ export class StarfieldManager {
                         } else {
                             // Target cycling should not require energy - removed the energy check
                             // Generic fallback
-                            this.showHUDError(
+                            this.showHUDEphemeral(
                                 'TARGET CYCLING FAILURE',
                                 'System requirements not met - check power and repair status'
                             );
@@ -1557,7 +1557,7 @@ export class StarfieldManager {
                     }
                 } else {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'TARGET CYCLING UNAVAILABLE',
                         'No ship systems available'
                     );
@@ -1597,27 +1597,27 @@ export class StarfieldManager {
                         } else {
                             // System can't be activated - provide specific error message
                             if (!galacticChart) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'GALACTIC CHART UNAVAILABLE',
                                     'System not installed on this ship'
                                 );
                             } else if (!galacticChart.isOperational()) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'GALACTIC CHART DAMAGED',
                                     'Repair system to enable navigation'
                                 );
                             } else if (!ship.hasSystemCardsSync('galactic_chart')) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'GALACTIC CHART MISSING',
                                     'Install galactic chart card to enable navigation'
                                 );
                             } else if (!ship.hasEnergy(15)) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'INSUFFICIENT ENERGY',
                                     'Need 15 energy units to activate galactic chart'
                                 );
                             } else {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'GALACTIC CHART ERROR',
                                     'System cannot be activated'
                                 );
@@ -1644,22 +1644,22 @@ export class StarfieldManager {
                         } else {
                             // System can't be activated - provide specific error message
                             if (!scanner) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'LONG RANGE SCANNER UNAVAILABLE',
                                     'No Long Range Scanner card installed in ship slots'
                                 );
                             } else if (!scanner.isOperational()) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'LONG RANGE SCANNER OFFLINE',
                                     'System damaged or offline - repair required'
                                 );
                             } else if (!ship.hasSystemCardsSync('long_range_scanner')) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'LONG RANGE SCANNER UNAVAILABLE',
                                     'No Long Range Scanner card installed in ship slots'
                                 );
                             } else {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'LONG RANGE SCANNER ACTIVATION FAILED',
                                     'Insufficient energy for scanning operations'
                                 );
@@ -1669,7 +1669,7 @@ export class StarfieldManager {
                         this.playCommandFailedSound();
                     }
                 } else {
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'LONG RANGE SCANNER UNAVAILABLE',
                         'Scanner systems offline while docked'
                     );
@@ -1692,29 +1692,29 @@ export class StarfieldManager {
                             this.playCommandFailedSound();
                             
                             if (!targetComputer) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'TARGET COMPUTER UNAVAILABLE',
                                     'No Target Computer card installed in ship slots'
                                 );
                             } else if (!targetComputer.isOperational()) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'TARGET COMPUTER OFFLINE',
                                     `System damaged (${Math.round(targetComputer.healthPercentage * 100)}% health) - repair required`
                                 );
                             } else if (!ship.hasSystemCardsSync('target_computer')) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'TARGET COMPUTER UNAVAILABLE',
                                     'No Target Computer card installed in ship slots'
                                 );
                             } else if (!energyReactor || !energyReactor.isOperational()) {
                                 // Energy reactor is the problem
                                 if (!energyReactor) {
-                                    this.showHUDError(
+                                    this.showHUDEphemeral(
                                         'POWER FAILURE',
                                         'No Energy Reactor installed - cannot power systems'
                                     );
                                 } else {
-                                    this.showHUDError(
+                                    this.showHUDEphemeral(
                                         'POWER FAILURE',
                                         `Energy Reactor disabled (${Math.round(energyReactor.healthPercentage * 100)}% health) - repair immediately`
                                     );
@@ -1723,13 +1723,13 @@ export class StarfieldManager {
                                 // Insufficient energy
                                 const required = targetComputer.getEnergyConsumptionRate();
                                 const available = Math.round(ship.currentEnergy);
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'INSUFFICIENT ENERGY',
                                     `Need ${required}/sec energy. Available: ${available} units`
                                 );
                             } else {
                                 // Generic fallback
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'TARGET COMPUTER ACTIVATION FAILED',
                                     'System requirements not met - check power and repair status'
                                 );
@@ -1737,13 +1737,13 @@ export class StarfieldManager {
                         }
                     } else {
                         this.playCommandFailedSound();
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'SHIP SYSTEMS OFFLINE',
                             'No ship systems available'
                         );
                     }
                 } else {
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'TARGET COMPUTER UNAVAILABLE',
                         'Targeting systems offline while docked'
                     );
@@ -1755,7 +1755,7 @@ export class StarfieldManager {
                 // Block intel when docked
                 if (this.isDocked) {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'INTEL UNAVAILABLE',
                         'Intelligence systems offline while docked'
                     );
@@ -1766,7 +1766,7 @@ export class StarfieldManager {
                 const ship = this.viewManager?.getShip();
                 if (!ship) {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'INTEL UNAVAILABLE',
                         'No ship systems available'
                     );
@@ -1790,34 +1790,34 @@ export class StarfieldManager {
                     
                     // Priority order: Target Computer issues first (most critical)
                     if (!targetComputer) {
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'INTEL UNAVAILABLE',
                             'No Target Computer card installed in ship slots'
                         );
                     } else if (!targetComputer.isOperational()) {
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'INTEL UNAVAILABLE',
                             `Target Computer damaged (${Math.round(targetComputer.healthPercentage * 100)}% health) - repair required`
                         );
                     } else if (!ship.hasSystemCardsSync('target_computer')) {
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'INTEL UNAVAILABLE',
                             'No Target Computer card installed in ship slots'
                         );
                     } else if (!this.targetComputerEnabled) {
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'INTEL UNAVAILABLE',
                             'Activate Target Computer (T key) first'
                         );
                     } else if (!energyReactor || !energyReactor.isOperational()) {
                         // Energy reactor issues
                         if (!energyReactor) {
-                            this.showHUDError(
+                            this.showHUDEphemeral(
                                 'INTEL UNAVAILABLE',
                                 'No Energy Reactor installed - cannot power systems'
                             );
                         } else {
-                            this.showHUDError(
+                            this.showHUDEphemeral(
                                 'INTEL UNAVAILABLE',
                                 `Energy Reactor disabled (${Math.round(energyReactor.healthPercentage * 100)}% health) - repair immediately`
                             );
@@ -1826,43 +1826,43 @@ export class StarfieldManager {
                         // Insufficient energy for both systems
                         const required = targetComputer.getEnergyConsumptionRate() + (scanner?.getEnergyConsumptionRate() || 0);
                         const available = Math.round(ship.currentEnergy);
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'INTEL UNAVAILABLE',
                             `Insufficient energy - need ${required}/sec for intel operations. Available: ${available} units`
                         );
                     } else if (!targetComputer.hasIntelCapabilities()) {
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'INTEL UNAVAILABLE',
                             'Requires Level 3+ Target Computer with intel capabilities'
                         );
                     } else if (!scanner) {
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'INTEL UNAVAILABLE',
                             'No Long Range Scanner card installed - required for detailed analysis'
                         );
                     } else if (!scanner.isOperational()) {
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'INTEL UNAVAILABLE',
                             `Long Range Scanner damaged (${Math.round(scanner.healthPercentage * 100)}% health) - repair required`
                         );
                     } else if (!ship.hasSystemCardsSync('long_range_scanner')) {
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'INTEL UNAVAILABLE',
                             'No Long Range Scanner card installed - required for detailed analysis'
                         );
                     } else if (!this.currentTarget) {
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'INTEL UNAVAILABLE',
                             'No target selected - activate Target Computer and select target first'
                         );
                     } else if (!this.intelAvailable) {
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'INTEL UNAVAILABLE',
                             'Target out of scanner range or intel data not available'
                         );
                     } else {
                         // Generic fallback
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'INTEL UNAVAILABLE',
                             'System requirements not met - check power and repair status'
                         );
@@ -1881,19 +1881,19 @@ export class StarfieldManager {
                     if (!radarSystem) {
                         // No radar system exists (no cards installed)
                         this.playCommandFailedSound();
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'PROXIMITY DETECTOR UNAVAILABLE',
                             'No Proximity Detector card installed in ship slots'
                         );
                     } else if (!radarSystem.canActivate(ship)) {
                         // System exists but can't be activated
                         if (!radarSystem.isOperational()) {
-                            this.showHUDError(
+                            this.showHUDEphemeral(
                                 'PROXIMITY DETECTOR DAMAGED',
                                 'Proximity Detector system requires repair'
                             );
                         } else {
-                            this.showHUDError(
+                            this.showHUDEphemeral(
                                 'INSUFFICIENT ENERGY',
                                 'Need energy to activate proximity detector'
                             );
@@ -1906,7 +1906,7 @@ export class StarfieldManager {
                     }
                 } else {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'PROXIMITY DETECTOR UNAVAILABLE',
                         'Proximity Detector offline while docked'
                     );
@@ -1925,13 +1925,13 @@ export class StarfieldManager {
                     }
                 } else if (this.isDocked) {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'PROXIMITY DETECTOR ZOOM UNAVAILABLE',
                         'Proximity Detector offline while docked'
                     );
                 } else {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'PROXIMITY DETECTOR ZOOM UNAVAILABLE',
                         'Proximity Detector not active (press P to enable)'
                     );
@@ -1950,13 +1950,13 @@ export class StarfieldManager {
                     }
                 } else if (this.isDocked) {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'PROXIMITY DETECTOR ZOOM UNAVAILABLE',
                         'Proximity Detector offline while docked'
                     );
                 } else {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'PROXIMITY DETECTOR ZOOM UNAVAILABLE',
                         'Proximity Detector not active (press P to enable)'
                     );
@@ -1974,13 +1974,13 @@ export class StarfieldManager {
                     }
                 } else if (this.isDocked) {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'PROXIMITY DETECTOR VIEW TOGGLE UNAVAILABLE',
                         'Proximity Detector offline while docked'
                     );
                 } else {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'PROXIMITY DETECTOR VIEW TOGGLE UNAVAILABLE',
                         'Proximity Detector not active (press P to enable)'
                     );
@@ -2009,7 +2009,7 @@ debug('UI', 'Communication HUD effects:', this.communicationHUD.effectsEnabled ?
                     }
                 } else {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'COMMUNICATION HUD UNAVAILABLE',
                         'Communication system not initialized'
                     );
@@ -2047,14 +2047,14 @@ debug('UI', 'Mission Status HUD toggled:', this.missionStatusHUD.visible ? 'ON' 
                         }
                     } else {
                         this.playCommandFailedSound();
-                        this.showHUDError(
+                        this.showHUDEphemeral(
                             'MISSION STATUS UNAVAILABLE',
                             'Mission system not initialized'
                         );
                     }
                 } else {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'MISSION STATUS UNAVAILABLE', 
                         'Use Mission Board while docked'
                     );
@@ -2097,30 +2097,30 @@ debug('UI', '  • ship.hasSystemCardsSync result:', shipHasSystemCards);
                             // System can't be activated - provide specific error message
                             if (!shields) {
 debug('COMBAT', 'SHIELD DEBUG: No shields system found');
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'SHIELDS UNAVAILABLE',
                                     'System not installed on this ship'
                                 );
                             } else if (!shields.isOperational()) {
 debug('COMBAT', 'SHIELD DEBUG: Shields system not operational');
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'SHIELDS DAMAGED',
                                     'Repair system to enable shield protection'
                                 );
                             } else if (!ship.hasSystemCardsSync('shields', true)) {
 debug('COMBAT', 'SHIELD DEBUG: Missing shield cards - this is the problem!');
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'SHIELDS MISSING',
                                     'Install shield card to enable protection'
                                 );
                             } else if (!ship.hasEnergy(25)) {
 debug('COMBAT', 'SHIELD DEBUG: Insufficient energy');
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'INSUFFICIENT ENERGY',
                                     'Need 25 energy units to activate shields'
                                 );
                             } else {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'SHIELDS ERROR',
                                     'System cannot be activated'
                                 );
@@ -2147,7 +2147,7 @@ debug('COMBAT', 'SHIELD DEBUG: Insufficient energy');
                         
                         if (!radio) {
                             // System doesn't exist (starter ship case)
-                            this.showHUDError(
+                            this.showHUDEphemeral(
                                 'SUBSPACE RADIO UNAVAILABLE',
                                 'Install subspace radio card to enable communications'
                             );
@@ -2155,22 +2155,22 @@ debug('COMBAT', 'SHIELD DEBUG: Insufficient energy');
                         } else if (!radio.canActivate(ship)) {
                             // System exists but can't activate
                             if (!radio.isOperational()) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'SUBSPACE RADIO DAMAGED',
                                     'Repair system to enable communications'
                                 );
                             } else if (!ship.hasSystemCardsSync('subspace_radio')) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'SUBSPACE RADIO MISSING',
                                     'Install subspace radio card to enable communications'
                                 );
                             } else if (!ship.hasEnergy(15)) {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'INSUFFICIENT ENERGY',
                                     'Need 15 energy units to activate radio'
                                 );
                             } else {
-                                this.showHUDError(
+                                this.showHUDEphemeral(
                                     'SUBSPACE RADIO ERROR',
                                     'System cannot be activated'
                                 );
@@ -2272,7 +2272,7 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                     }
                 } else {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'TARGET SPAWNING UNAVAILABLE',
                         'Cannot spawn targets while docked'
                     );
@@ -2286,7 +2286,7 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                     this.toggleTargetOutline();
                 } else {
                     this.playCommandFailedSound();
-                    this.showHUDError(
+                    this.showHUDEphemeral(
                         'OUTLINE TOGGLE UNAVAILABLE',
                         'Outline controls disabled while docked'
                     );
@@ -2605,16 +2605,16 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
             if (speedDiff < 0.01) {
                 this.currentSpeed = this.targetSpeed;
                 this.decelerating = false;
-                debug('NAVIGATION', `Deceleration complete: Reached target speed ${this.targetSpeed}`);
+                // debug('NAVIGATION', `Deceleration complete: Reached target speed ${this.targetSpeed}`);
             }
 
             // Debug deceleration behavior
             const speedChange = Math.abs(this.currentSpeed - previousSpeed);
-            debug('NAVIGATION', `Deceleration: prev ${previousSpeed.toFixed(3)} -> current ${this.currentSpeed.toFixed(3)} -> target ${this.targetSpeed} (diff: ${speedDiff.toFixed(3)}, proportional: ${proportionalDecel.toFixed(4)})`);
+            // debug('NAVIGATION', `Deceleration: prev ${previousSpeed.toFixed(3)} -> current ${this.currentSpeed.toFixed(3)} -> target ${this.targetSpeed} (diff: ${speedDiff.toFixed(3)}, proportional: ${proportionalDecel.toFixed(4)})`);
 
             // Check for oscillation (rapid changes near target)
             if (speedChange > 0.001 && speedDiff < 0.05) { // Small changes near target = potential oscillation
-                debug('NAVIGATION', `⚠️ POTENTIAL OSCILLATION: Small change ${speedChange.toFixed(4)} but close to target (diff: ${speedDiff.toFixed(3)})`);
+                // debug('NAVIGATION', `⚠️ POTENTIAL OSCILLATION: Small change ${speedChange.toFixed(4)} but close to target (diff: ${speedDiff.toFixed(3)})`);
             }
 
             // Update engine sound during deceleration
@@ -3446,7 +3446,7 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
 
         // Determine faction color using same logic as target HUD
         let isEnemyShip = false;
-        let diplomacyColor = '#D0D0D0'; // Default gray
+        let diplomacyColor = '#44ffff'; // Default teal for unknown
         
         // Check if this is an enemy ship
         if (currentTargetData.isShip && currentTargetData.ship) {
@@ -3680,7 +3680,7 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
             }
             
             // Determine diplomacy color using same logic as target HUD
-            let diplomacyColor = '#D0D0D0'; // Default gray
+            let diplomacyColor = '#44ffff'; // Default teal for unknown
             if (isEnemyShip) {
                 diplomacyColor = '#ff3333'; // Enemy ships are darker neon red
             } else if (info?.type === 'star') {
@@ -3919,7 +3919,7 @@ debug('UTILITY', '🔇 Engine state check:', this.audioManager ? this.audioManag
             // Close galactic chart if open - navigation systems powered down when docked
             if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
                 this.viewManager.galacticChart.hide(false);
-debug('NAVIGATION', '🚪 Galactic Chart dismissed during docking - navigation systems powered down');
+                // debug('NAVIGATION', '🚪 Galactic Chart dismissed during docking - navigation systems powered down');
             }
             
             // Close long range scanner if open - scanner systems powered down when docked
@@ -4561,7 +4561,7 @@ debug('UTILITY', '⚡ Power management restored and enabled');
         // Restore navigation computer
         if (this.ship.equipment.navigationComputer) {
             this.navigationComputerEnabled = true;
-debug('NAVIGATION', 'Navigation computer restored and enabled');
+            // debug('NAVIGATION', 'Navigation computer restored and enabled');
         }
         
         // Target computer should remain INACTIVE after launch - user must manually enable it
@@ -4975,16 +4975,16 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
         return mesh.userData?.ship || null;
     }
     /**
-     * Show a temporary error message in the HUD
-     * @param {string} title - Error title
-     * @param {string} message - Error message
+     * Show a temporary ephemeral message in the HUD (errors, notifications, etc.)
+     * @param {string} title - Message title
+     * @param {string} message - Message content
      * @param {number} duration - Duration in milliseconds (default 3000)
      */
-    showHUDError(title, message, duration = 3000) {
-        // Create error message element if it doesn't exist
-        if (!this.hudErrorElement) {
-            this.hudErrorElement = document.createElement('div');
-            this.hudErrorElement.style.cssText = `
+    showHUDEphemeral(title, message, duration = 3000) {
+        // Create ephemeral message element if it doesn't exist
+        if (!this.hudEphemeralElement) {
+            this.hudEphemeralElement = document.createElement('div');
+            this.hudEphemeralElement.style.cssText = `
                 position: fixed;
                 top: 80px;
                 left: 50%;
@@ -5008,9 +5008,9 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
             `;
             
             // Add animation keyframes
-            if (!document.getElementById('hud-error-animations')) {
+            if (!document.getElementById('hud-ephemeral-animations')) {
                 const style = document.createElement('style');
-                style.id = 'hud-error-animations';
+                style.id = 'hud-ephemeral-animations';
                 style.textContent = `
                     @keyframes slideInFromTop {
                         0% {
@@ -5037,11 +5037,11 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
                 document.head.appendChild(style);
             }
             
-            document.body.appendChild(this.hudErrorElement);
+            document.body.appendChild(this.hudEphemeralElement);
         }
         
-        // Set error content with improved styling
-        this.hudErrorElement.innerHTML = `
+        // Set ephemeral message content with improved styling
+        this.hudEphemeralElement.innerHTML = `
             <div style="
                 font-size: 16px; 
                 margin-bottom: 8px; 
@@ -5057,17 +5057,17 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
             ">${message}</div>
         `;
         
-        // Show the error with animation
-        this.hudErrorElement.style.display = 'block';
-        this.hudErrorElement.style.animation = 'slideInFromTop 0.3s ease-out';
+        // Show the ephemeral message with animation
+        this.hudEphemeralElement.style.display = 'block';
+        this.hudEphemeralElement.style.animation = 'slideInFromTop 0.3s ease-out';
         
         // Hide after duration with animation
         setTimeout(() => {
-            if (this.hudErrorElement) {
-                this.hudErrorElement.style.animation = 'slideOutToTop 0.3s ease-in';
+            if (this.hudEphemeralElement) {
+                this.hudEphemeralElement.style.animation = 'slideOutToTop 0.3s ease-in';
                 setTimeout(() => {
-                    if (this.hudErrorElement) {
-                        this.hudErrorElement.style.display = 'none';
+                    if (this.hudEphemeralElement) {
+                        this.hudEphemeralElement.style.display = 'none';
                     }
                 }, 300);
             }
@@ -5233,7 +5233,7 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
         }
         
         // Update HUD border color based on diplomacy
-        let diplomacyColor = '#D0D0D0'; // Default gray
+        let diplomacyColor = '#44ffff'; // Default teal for unknown
         if (isEnemyShip) {
             diplomacyColor = '#ff3333'; // Enemy ships are darker neon red
         } else if (info?.type === 'star') {
@@ -5387,7 +5387,7 @@ debug('INSPECTION', `🎯 RETICLE DEBUG: Enemy ship detected - diplomacy: ${info
         }
         
         // Determine reticle color based on diplomacy using faction color rules
-        let reticleColor = '#D0D0D0'; // Default gray
+        let reticleColor = '#44ffff'; // Default teal for unknown
         if (isEnemyShip) {
             reticleColor = '#ff0000'; // Enemy ships are bright red
         } else if (info?.type === 'star') {
@@ -5449,6 +5449,12 @@ debug('INSPECTION', `🎯 RETICLE DEBUG: Enemy ship detected - diplomacy: ${info
     }
 
     calculateDistance(point1, point2) {
+        // Add null checks to prevent errors
+        if (!point1 || !point2) {
+            console.warn('🎯 StarfieldManager calculateDistance: Invalid points provided', { point1, point2 });
+            return 0;
+        }
+        
         // Calculate raw distance in world units
         const rawDistance = Math.sqrt(
             Math.pow(point2.x - point1.x, 2) +
@@ -5530,14 +5536,14 @@ debug('COMBAT', '🎆 WeaponEffectsManager connected to ship');
         if (this.debugMode) {
             this.playCommandSound();
 debug('COMBAT', '🐛 DEBUG MODE ENABLED - Weapon hit detection spheres will be shown');
-            this.showHUDError(
+            this.showHUDEphemeral(
                 'DEBUG MODE ENABLED',
                 'Weapon hit detection spheres will be visible'
             );
         } else {
             this.playCommandSound();
 debug('INSPECTION', '🐛 DEBUG MODE DISABLED - Cleaning up debug spheres');
-            this.showHUDError(
+            this.showHUDEphemeral(
                 'DEBUG MODE DISABLED',
                 'Debug spheres cleared'
             );
@@ -5802,7 +5808,7 @@ debug('TARGETING', `🎯 Target outline ${this.outlineEnabled ? 'enabled' : 'dis
      * @returns {string} Hex color string
      */
     getOutlineColorForTarget(targetData) {
-        if (!targetData) return '#808080'; // Gray for unknown
+        if (!targetData) return '#44ffff'; // Teal for unknown
         
         if (targetData.isShip) {
             return '#ff3333'; // Red for enemy ships
@@ -5872,7 +5878,7 @@ debug('UTILITY', `🗑️ Removed ${destroyedShip.shipName} from dummyShipMeshes
             for (let i = this.navigationBeacons.length - 1; i >= 0; i--) {
                 const mesh = this.navigationBeacons[i];
                 if (mesh === destroyedShip || mesh.userData === destroyedShip || mesh.userData?.isBeacon === true && mesh === destroyedShip) {
-debug('NAVIGATION', `🗑️ Removing Navigation Beacon from scene`);
+                    // debug('NAVIGATION', `🗑️ Removing Navigation Beacon from scene`);
                     this.scene.remove(mesh);
                     if (window.physicsManager && typeof window.physicsManager.removeRigidBody === 'function') {
                         window.physicsManager.removeRigidBody(mesh);
@@ -6254,7 +6260,7 @@ debug('UTILITY', '  ⚡ Power management initialized and enabled');
         // Initialize navigation computer
         if (ship.equipment?.navigationComputer) {
             this.navigationComputerEnabled = true;
-debug('NAVIGATION', '  🧭 Navigation computer initialized and enabled');
+            // debug('NAVIGATION', '  🧭 Navigation computer initialized and enabled');
         }
         
         // CRITICAL: Properly initialize targeting computer with complete state reset
@@ -6469,7 +6475,7 @@ debug('COMBAT', '✅ WeaponHUD connected immediately, retry interval cleared');
         }
 
         // Determine target type and faction color using same logic as main target display
-        let diplomacyColor = '#D0D0D0'; // Default gray
+        let diplomacyColor = '#44ffff'; // Default teal for unknown
         let isCelestialBody = false;
         let isSpaceStation = false;
         
@@ -7485,7 +7491,7 @@ debug('UI', 'Mission Status HUD refreshed after clearing');
                 );
             } else {
                 console.error('❌ Failed to clear active missions:', result.error);
-                this.showHUDError(
+                this.showHUDEphemeral(
                     'CLEAR FAILED',
                     result.error || 'Unknown error'
                 );
@@ -7495,7 +7501,7 @@ debug('UI', 'Mission Status HUD refreshed after clearing');
             
         } catch (error) {
             console.error('🎯 Failed to clear active missions:', error);
-            this.showHUDError(
+            this.showHUDEphemeral(
                 'CLEAR FAILED',
                 'Connection error'
             );

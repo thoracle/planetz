@@ -170,11 +170,27 @@ debug('UI', 'StarChartsUI: Interface created');
         
         // Add small delay to prevent double-click interference (match LRS)
         setTimeout(() => {
-            const clickedElement = document.elementFromPoint(event.clientX, event.clientY);
-            // console.log(`🔍 Star Charts Click: element=${clickedElement?.tagName || 'null'}, classes=[${clickedElement?.className || 'none'}], zoomLevel=${this.currentZoomLevel}`);
+            // Improved click detection: try multiple points around the click for better precision
+            const clickPoints = [
+                { x: event.clientX, y: event.clientY }, // Original click point
+                { x: event.clientX - 2, y: event.clientY }, // Slightly left
+                { x: event.clientX + 2, y: event.clientY }, // Slightly right
+                { x: event.clientX, y: event.clientY - 2 }, // Slightly up
+                { x: event.clientX, y: event.clientY + 2 }, // Slightly down
+            ];
+            
+            let clickedElement = null;
+            for (const point of clickPoints) {
+                clickedElement = document.elementFromPoint(point.x, point.y);
+                if (clickedElement && clickedElement !== this.svg) {
+                    break;
+                }
+            }
+            
+            debug('STAR_CHARTS', `🔍 Star Charts Click: element=${clickedElement?.tagName || 'null'}, classes=[${clickedElement?.className || 'none'}], zoomLevel=${this.currentZoomLevel}`);
             
             if (!clickedElement) {
-                // console.log(`🔍 Star Charts: No element found at click position`);
+                debug('STAR_CHARTS', `🔍 Star Charts: No element found at click position`);
                 return;
             }
             
@@ -473,6 +489,52 @@ debug('UI', 'StarChartsUI: Interface created');
         }
         
         // Integrate with Target Computer
+        // For undiscovered objects, ensure they're added to target computer first
+        if (object._isUndiscovered) {
+            console.log(`🎯 Adding undiscovered object ${object.name} to target computer before targeting`);
+            console.log(`🔍 DEBUG OBJECT: Object properties before adding:`, {
+                name: object.name,
+                type: object.type,
+                _isUndiscovered: object._isUndiscovered,
+                id: object.id
+            });
+            
+            // Add the necessary properties directly to the object for undiscovered targeting
+            object.discovered = false;
+            object.diplomacy = 'unknown';
+            object.faction = 'Unknown';
+            
+            console.log(`🔍 DEBUG PROPERTIES: Set properties on object:`, {
+                name: object.name,
+                discovered: object.discovered,
+                diplomacy: object.diplomacy,
+                faction: object.faction,
+                _isUndiscovered: object._isUndiscovered
+            });
+            
+            // Debug: Check if beacon is already in target computer
+            const targetComputerManager = this.starChartsManager?.targetComputerManager;
+            if (targetComputerManager) {
+                const existingIndex = targetComputerManager.targetObjects.findIndex(t => t.id === object.id);
+                debug('TARGETING', `Beacon ${object.name} (${object.id}) in target list check:`, {
+                    found: existingIndex !== -1,
+                    index: existingIndex,
+                    totalTargets: targetComputerManager.targetObjects.length
+                });
+                
+                if (existingIndex !== -1) {
+                    const existingTarget = targetComputerManager.targetObjects[existingIndex];
+                    debug('TARGETING', `Existing target details:`, {
+                        name: existingTarget.name,
+                        id: existingTarget.id,
+                        type: existingTarget.type,
+                        discovered: existingTarget.discovered,
+                        diplomacy: existingTarget.diplomacy
+                    });
+                }
+            }
+        }
+        
         // console.log(`🎯 Star Charts: About to call selectObjectById for ${object.name} (${object.id})`);
         const targetingSuccess = this.starChartsManager.selectObjectById(object.id);
         // console.log(`🎯 Star Charts: selectObjectById result: ${targetingSuccess} for ${object.name}`);
@@ -563,13 +625,14 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
     
     getObjectAtPosition(worldX, worldY, screenTolerancePixels = 12) {
         // Get object at world position with zoom-aware tolerance
+        // This searches ALL objects (both discovered and undiscovered)
         
-        const discoveredObjects = this.getDiscoveredObjectsForRender();
+        const allObjects = this.getDiscoveredObjectsForRender(); // This actually returns all objects
         
         // Convert screen tolerance to world coordinates based on current zoom
         const worldTolerance = this.screenPixelsToWorldUnits(screenTolerancePixels);
         
-        for (const object of discoveredObjects) {
+        for (const object of allObjects) {
             const pos = this.getDisplayPosition(object);
             const dx = pos.x - worldX;
             const dy = pos.y - worldY;
@@ -601,6 +664,29 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
     
     showObjectDetails(object) {
         // Show detailed information about selected object
+        
+        // For undiscovered objects, only show minimal info
+        if (object._isUndiscovered) {
+            const p = this.getDisplayPosition(object);
+            const detailsHTML = `
+                <div class="object-details">
+                    <h3 style="color: #44ffff; margin-top: 0;">
+                        Unknown Object
+                    </h3>
+                    <div><strong>Status:</strong> Undiscovered</div>
+                    <div><strong>Position:</strong></div>
+                    <div style="margin-left: 10px;">
+                        X: ${p.x.toFixed(1)}<br>
+                        Z: ${p.y.toFixed(1)}
+                    </div>
+                    <div style="margin-top: 10px; font-style: italic; color: #888;">
+                        Move closer to discover more information
+                    </div>
+                </div>
+            `;
+            this.detailsPanel.innerHTML = detailsHTML;
+            return;
+        }
         
         let detailsHTML = `
             <div class="object-details">
@@ -1367,6 +1453,20 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         
         const discoveredObjects = this.getDiscoveredObjectsForRender();
         
+        // DEBUG: Log undiscovered objects once per render cycle
+        const undiscoveredCount = discoveredObjects.filter(obj => obj._isUndiscovered).length;
+        if (!this._lastUndiscoveredCount || this._lastUndiscoveredCount !== undiscoveredCount) {
+            this._lastUndiscoveredCount = undiscoveredCount;
+            if (undiscoveredCount > 0) {
+                // console.log(`🔴 DEBUG: Found ${undiscoveredCount} undiscovered objects to render`);
+                // discoveredObjects.filter(obj => obj._isUndiscovered).forEach((obj, i) => {
+                //     console.log(`  ${i + 1}. ${obj.name || obj.id} (${obj.type}) - _isUndiscovered: ${obj._isUndiscovered}`);
+                // });
+            } else {
+                console.log(`🔴 DEBUG: No undiscovered objects found - all ${discoveredObjects.length} objects are discovered`);
+            }
+        }
+        
         // Render orbit lines first (behind objects) to match LRS
         this.renderOrbitLines(discoveredObjects);
         
@@ -1374,6 +1474,9 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         discoveredObjects.forEach(object => {
             this.renderObject(object);
         });
+        
+        // Render ship position icon
+        this.renderShipPosition();
     }
     
     getDiscoveredObjectsForRender() {
@@ -1406,15 +1509,29 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             });
         }
 
+        // Helper function to normalize station types
+        const normalizeStationType = (type) => {
+            const stationTypes = [
+                'Research Lab', 'Refinery', 'Research Outpost', 'Frontier Outpost',
+                'Communications Array', 'Shipyard', 'Storage Depot', 'Factory',
+                'Colony', 'Mining Station', 'Mining Complex', 'Research Station',
+                'Defense Platform', 'space_station'
+            ];
+            return stationTypes.includes(type) ? 'space_station' : type;
+        };
+
         // Add celestial objects (discovered = normal, undiscovered = with ? flag)
         sectorData.objects.forEach(obj => {
             const discovered = isDiscovered(obj.id);
+            const normalizedType = normalizeStationType(obj.type);
+            
             if (discovered || isTestMode) {
-                allObjects.push(obj);
+                allObjects.push({ ...obj, type: normalizedType });
             } else {
                 // Add undiscovered object with special flag
                 allObjects.push({
                     ...obj,
+                    type: normalizedType,
                     _isUndiscovered: true
                 });
             }
@@ -1473,6 +1590,16 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             return String(flag).toLowerCase() === 'true' || flag === '1';
         } catch (e) {}
         return false;
+    }
+    
+    matchesTargetId(targetId, objectId) {
+        // Helper to match target IDs with normalization
+        if (!targetId || !objectId) return false;
+        if (targetId === objectId) return true;
+        
+        // Try normalized versions
+        const norm = (id) => (typeof id === 'string' ? id.replace(/^a0_/i, 'A0_') : id);
+        return norm(targetId) === norm(objectId);
     }
     
     renderOrbitLines(objects) {
@@ -1559,6 +1686,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
 
     renderUndiscoveredObject(x, y) {
         // Render undiscovered objects as "?" with unknown faction color (cyan)
+        // Debug logging removed to reduce spam
 
         // Calculate zoom-scaled font size - ensure minimum readability even at max zoom
         const baseFontSize = 32; // Increased from 28 for better readability
@@ -1571,8 +1699,13 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         hitBox.setAttribute('cx', x);
         hitBox.setAttribute('cy', y);
         hitBox.setAttribute('r', hitBoxSize / 2);
-        hitBox.setAttribute('fill', 'transparent');
-        hitBox.setAttribute('stroke', 'none');
+        
+        // TEMPORARY DEBUG: Make hitbox visible to debug positioning
+        hitBox.setAttribute('fill', 'rgba(255, 0, 0, 0.2)'); // Semi-transparent red
+        hitBox.setAttribute('stroke', 'red');
+        hitBox.setAttribute('stroke-width', '1');
+        hitBox.setAttribute('stroke-dasharray', '2,2'); // Dashed line
+        
         hitBox.style.pointerEvents = 'all';
         hitBox.style.cursor = 'pointer'; // Finger cursor for interaction
 
@@ -1619,10 +1752,15 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         hitBox.addEventListener('click', (event) => {
             event.stopPropagation();
             
-            // Find the actual object at this position
-            const objectAtPosition = this.getObjectAtPosition(x, y);
+            // Try to find object at the exact rendered position first
+            let objectAtPosition = this.getObjectAtPosition(x, y);
+            
+            // If not found at exact position, try a wider search area
+            if (!objectAtPosition) {
+                objectAtPosition = this.getObjectAtPosition(x, y, 50); // Increase tolerance to 50 pixels
+            }
+            
             if (objectAtPosition) {
-                debug('STAR_CHARTS', `🖱️ Clicked unknown object: ${objectAtPosition.name} at (${x}, ${y})`);
                 console.log(`🖱️ Unknown object clicked: ${objectAtPosition.name} at (${x}, ${y}), attempting to target`);
                 
                 // Try to select the object for targeting (same as discovered objects)
@@ -1639,7 +1777,71 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         this.svg.appendChild(hitBox);
         this.svg.appendChild(questionMark);
 
-        debug('STAR_CHARTS', `❓ Rendered unknown object at (${x}, ${y}) with scaled font ${scaledFontSize.toFixed(1)}px`);
+        // Debug logging removed to reduce spam
+    }
+    
+    renderShipPosition() {
+        // Render ship position icon on star chart
+        
+        const playerPos = this.starChartsManager.getPlayerPosition();
+        if (!playerPos || !Array.isArray(playerPos) || playerPos.length < 3) {
+            return; // No valid ship position
+        }
+        
+        // Remove existing ship icon and label if they exist
+        const existingIcon = this.svg.querySelector('.ship-position-icon');
+        const existingLabel = this.svg.querySelector('.ship-position-label');
+        if (existingIcon) existingIcon.remove();
+        if (existingLabel) existingLabel.remove();
+        
+        // Convert world position to display coordinates
+        // For star charts, we use X and Z coordinates (top-down view)
+        const x = playerPos[0];
+        const z = playerPos[2];
+        
+        // Calculate zoom-scaled size
+        const baseSize = 20;
+        const zoomFactor = Math.sqrt(this.currentZoomLevel);
+        const scaledSize = Math.max(8, baseSize / zoomFactor);
+        
+        // Create ship icon (diamond shape)
+        const shipIcon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        const halfSize = scaledSize / 2;
+        const points = [
+            `${x},${z - halfSize}`,      // Top
+            `${x + halfSize},${z}`,      // Right
+            `${x},${z + halfSize}`,      // Bottom
+            `${x - halfSize},${z}`       // Left
+        ].join(' ');
+        
+        shipIcon.setAttribute('points', points);
+        shipIcon.setAttribute('fill', '#00ff00');
+        shipIcon.setAttribute('stroke', '#ffffff');
+        shipIcon.setAttribute('stroke-width', '1');
+        shipIcon.setAttribute('class', 'ship-position-icon');
+        
+        // Add glow effect
+        shipIcon.setAttribute('filter', 'drop-shadow(0 0 3px #00ff00)');
+        
+        // Add hover tooltip
+        shipIcon.setAttribute('title', 'You are here');
+        shipIcon.style.cursor = 'pointer';
+        
+        this.svg.appendChild(shipIcon);
+        
+        // Add ship label
+        const shipLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        shipLabel.setAttribute('x', x);
+        shipLabel.setAttribute('y', z + halfSize + 15);
+        shipLabel.setAttribute('text-anchor', 'middle');
+        shipLabel.setAttribute('fill', '#00ff00');
+        shipLabel.setAttribute('font-size', `${Math.max(10, scaledSize * 0.6)}px`);
+        shipLabel.setAttribute('font-family', 'Courier New, monospace');
+        shipLabel.setAttribute('font-weight', 'bold');
+        shipLabel.setAttribute('class', 'ship-position-label');
+        shipLabel.textContent = 'SHIP';
+        
+        this.svg.appendChild(shipLabel);
     }
 
     renderObject(object) {
@@ -1651,6 +1853,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
 
         // Handle undiscovered objects - render as "?" with unknown faction color
         if (object._isUndiscovered) {
+            // Debug logging removed to reduce spam
             this.renderUndiscoveredObject(x, y);
             return; // Don't render the normal object
         }
@@ -1762,6 +1965,27 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
                 element.style.filter = 'brightness(1.3)';
             }
         }
+        
+        // Add blinking effect for current targeting CPU target
+        const currentTarget = this.starChartsManager.targetComputerManager?.currentTarget;
+        if (currentTarget && this.matchesTargetId(currentTarget.id, object.id)) {
+            element.classList.add('target-blink');
+            // Add CSS animation for blinking
+            if (!document.querySelector('#star-charts-target-blink-style')) {
+                const style = document.createElement('style');
+                style.id = 'star-charts-target-blink-style';
+                style.textContent = `
+                    .target-blink {
+                        animation: targetBlink 1.5s infinite;
+                    }
+                    @keyframes targetBlink {
+                        0%, 50% { opacity: 1; }
+                        51%, 100% { opacity: 0.3; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
 
         // Add hover effects like LRS
         this.addHoverEffects(element, object);
@@ -1796,24 +2020,26 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
 
     getObjectHitBoxRadius(object) {
         // Get larger hit box radius for better clickability, especially when zoomed out
+        // Fixed: Better zoom scaling and more generous hitboxes
 
         const baseRadius = object.visualRadius || 1;
-        const zoomFactor = Math.max(0.5, this.currentZoomLevel / 2);
+        // Improved zoom factor: more responsive to zoom level changes
+        const zoomFactor = Math.max(1.0, 4.0 / this.currentZoomLevel);
 
-        // Hit boxes are 2-3x larger than visual elements for easier clicking
+        // Hit boxes are 3-4x larger than visual elements for easier clicking
         switch (object.type) {
             case 'star':
-                return Math.max(20, baseRadius * 8 * zoomFactor); // 2x visual size
+                return Math.max(25, baseRadius * 12 * zoomFactor); // 3x visual size
             case 'planet':
-                return Math.max(12, baseRadius * 6 * zoomFactor); // 2x visual size
+                return Math.max(18, baseRadius * 9 * zoomFactor); // 3x visual size
             case 'moon':
-                return Math.max(10, baseRadius * 7 * zoomFactor); // 2x visual size
+                return Math.max(15, baseRadius * 10 * zoomFactor); // 3x visual size
             case 'space_station':
-                return Math.max(8, (object.size || 1) * 4 * zoomFactor); // 2x visual size
+                return Math.max(12, (object.size || 1) * 6 * zoomFactor); // 3x visual size
             case 'navigation_beacon':
-                return Math.max(6, 4 * zoomFactor); // 2x visual size
+                return Math.max(10, 6 * zoomFactor); // 3x visual size
             default:
-                return Math.max(8, baseRadius * 2 * zoomFactor); // 2x visual size
+                return Math.max(12, baseRadius * 3 * zoomFactor); // 3x visual size
         }
     }
     
@@ -1921,7 +2147,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         
         const discoveredCount = this.starChartsManager.getDiscoveredObjects().length;
         const currentSector = this.starChartsManager.getCurrentSector();
-        const zoomText = `Zoom: ${this.currentZoomLevel}x`;
+        const zoomText = `Zoom: ${this.currentZoomLevel.toFixed(2)}x`;
         
         this.statusBar.innerHTML = `
             <div>Sector: ${currentSector} | Discovered: ${discoveredCount} objects</div>

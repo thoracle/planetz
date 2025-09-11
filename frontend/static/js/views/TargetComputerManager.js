@@ -906,7 +906,7 @@ export class TargetComputerManager {
                     } else {
                         // Current target not found in list - select nearest available target unless user is actively holding a manual lock
                         if (!this.isManualSelection) {
-                            debug('TARGETING', 'Current target not found - selecting nearest available target');
+                            // debug('TARGETING', 'Current target not found - selecting nearest available target');
                             this.targetIndex = -1;
                             this.cycleTarget();
                         } else {
@@ -1056,14 +1056,8 @@ export class TargetComputerManager {
         // Store previous target list for comparison
         const previousTargets = [...this.targetObjects];
         
-        // Use physics-based spatial queries if available, otherwise fall back to traditional method
-        if (window.physicsManager && window.physicsManagerReady) {
-            // console.log(`🎯 Using updateTargetListWithPhysics()`);
-            this.updateTargetListWithPhysics();
-        } else {
-            // console.log(`🎯 Using updateTargetListTraditional()`);
-            this.updateTargetListTraditional();
-        }
+        // Always use Three.js-based target list update (physics system removed)
+        this.updateTargetListWithPhysics();
         
         // Update the known targets cache with current targets
         this.updateKnownTargetsCache(this.targetObjects);
@@ -1158,199 +1152,11 @@ export class TargetComputerManager {
     }
 
     /**
-     * Enhanced target list update using physics-based spatial queries
+     * Enhanced target list update using Three.js native approach
      */
     updateTargetListWithPhysics() {
-        // console.log('🎯 TargetComputerManager.updateTargetListWithPhysics() called');
-        
-        // Get the actual range from the target computer system
-        const ship = this.viewManager?.getShip();
-        const targetComputer = ship?.getSystem('target_computer');
-        const maxTargetingRange = targetComputer?.range || 150; // Fallback to 150km if system not found
-        
-        // Perform spatial query around the camera position
-        // Convert km to meters for spatial query (spatial query expects radius in meters)
-        const maxTargetingRangeMeters = maxTargetingRange * 1000;
-        // console.log(`🔍 TARGET COMPUTER: Performing spatial query from position (${this.camera.position.x.toFixed(1)}, ${this.camera.position.y.toFixed(1)}, ${this.camera.position.z.toFixed(1)}) with range ${maxTargetingRange}km (${maxTargetingRangeMeters}m)`);
-        const nearbyEntities = window.physicsManager.spatialQuery(
-            this.camera.position, 
-            maxTargetingRangeMeters
-        );
-        // console.log(`🔍 TARGET COMPUTER: Spatial query returned ${nearbyEntities.length} entities`);
-        
-        // console.log(`🎯 Physics spatial query found ${nearbyEntities.length} entities within ${maxTargetingRange}km (Target Computer Level ${targetComputer?.level || 'Unknown'})`);
-        
-        let allTargets = [];
-        
-        // Process entities found by physics spatial query
-        nearbyEntities.forEach(entity => {
-            if (!entity.threeObject || !entity.threeObject.position) {
-                return; // Skip invalid entities
-            }
-            
-            // Debug logging for beacons
-            if (entity.type === 'beacon' || entity.threeObject?.userData?.isBeacon) {
-                // console.log(`🔍 Processing beacon entity:`, {
-                //     entityType: entity.type,
-                //     name: entity.name || entity.threeObject?.userData?.name,
-                //     distance: this.calculateDistance(this.camera.position, entity.threeObject.position),
-                //     userData: entity.threeObject?.userData
-                // });
-            }
-            
-            // Skip docking collision boxes - they are not targetable
-            if (entity.type === 'docking_zone' || 
-                entity.threeObject.userData?.isDockingCollisionBox) {
-                return;
-            }
-            
-            const distance = this.calculateDistance(this.camera.position, entity.threeObject.position);
-            
-            // Skip entities beyond target computer range (double-check spatial query results)
-            if (distance > maxTargetingRange) {
-                // console.log(`🎯 Skipping ${entity.name || entity.id} - beyond range (${distance.toFixed(1)}km > ${maxTargetingRange}km)`);
-                return;
-            }
-            
-            // Create target data based on entity type
-            let targetData = null;
-            
-            if (entity.type === 'enemy_ship') {
-                // Handle enemy ships
-                const ship = entity.threeObject.userData?.ship;
-                if (ship && ship.currentHull > 0.001) { // Filter out destroyed ships
-                    targetData = {
-                        name: ship.shipName || entity.id,
-                        type: 'enemy_ship',
-                        position: entity.threeObject.position.toArray(),
-                        isMoon: false,
-                        object: entity.threeObject,
-                        isShip: true,
-                        ship: ship,
-                        distance: distance,
-                        physicsEntity: entity
-                    };
-                } else if (ship && ship.currentHull <= 0.001) {
-                    debug('TARGETING', `Physics query filtering out destroyed ship: ${ship.shipName} (Hull: ${ship.currentHull})`);
-                }
-            } else if (entity.type === 'star' || entity.type === 'planet' || entity.type === 'moon' || entity.type === 'station' || entity.type === 'beacon') {
-                // Handle celestial bodies and stations
-                if (entity.type === 'beacon') {
-                        // console.log(`🔍 Found beacon in main conditional:`, {
-                        //     entityName: entity.name,
-                        //     entityId: entity.id,
-                        //     threeObjectName: entity.threeObject?.userData?.name
-                        // });
-                }
-                const info = entity.type === 'beacon' ? {
-                    name: entity.name || entity.threeObject?.userData?.name || 'Navigation Beacon',
-                    type: 'beacon',
-                    faction: 'Neutral',
-                    description: 'A navigation marker for local traffic lanes',
-                    intel_brief: 'Transmits local traffic advisories on subspace band',
-                    diplomacy: 'Neutral'
-                } : this.solarSystemManager.getCelestialBodyInfo(entity.threeObject);
-                if (info) {
-                    targetData = {
-                        name: info.name,
-                        type: info.type,
-                        position: entity.threeObject.position.toArray(),
-                        isMoon: entity.type === 'moon',
-                        isSpaceStation: entity.type === 'station' || info.type === 'station',
-                        object: entity.threeObject,
-                        isShip: false,
-                        distance: distance,
-                        physicsEntity: entity,
-                        ...info
-                    };
-                }
-            } else {
-                // Handle unknown physics entities - try to get info from userData or object properties
-                const obj = entity.threeObject;
-                if (obj.userData) {
-                    const userData = obj.userData;
-                    
-                    // Check if this is a navigation beacon from userData
-                    if (userData.type === 'beacon' || userData.isBeacon) {
-                        // console.log(`🔍 Found beacon in unknown entities section: ${userData.name || 'Navigation Beacon'}`);
-                        targetData = {
-                            name: userData.name || 'Navigation Beacon',
-                            type: 'beacon',
-                            position: obj.position.toArray(),
-                            isMoon: false,
-                            isSpaceStation: false,
-                            object: obj,
-                            isShip: false,
-                            distance: distance,
-                            physicsEntity: entity,
-                            faction: userData.faction || 'Neutral',
-                            description: 'A navigation marker for local traffic lanes',
-                            intel_brief: 'Transmits local traffic advisories on subspace band',
-                            diplomacy: 'Neutral'
-                        };
-                    }
-                    // Check if this is a space station from userData
-                    else if (userData.type === 'station' || userData.isSpaceStation) {
-                        const info = this.solarSystemManager.getCelestialBodyInfo(obj);
-                        targetData = {
-                            name: userData.stationName || userData.name || info?.name || 'Unknown Station',
-                            type: 'station',
-                            position: obj.position.toArray(),
-                            isMoon: false,
-                            isSpaceStation: true,
-                            object: obj,
-                            isShip: false,
-                            distance: distance,
-                            physicsEntity: entity,
-                            faction: userData.faction,
-                            stationType: userData.stationType,
-                            canDock: userData.canDock
-                        };
-                    }
-                }
-            }
-            
-            if (targetData) {
-                allTargets.push(targetData);
-            }
-        });
-        
-        // Add any targets that might not have physics bodies yet (fallback)
-        this.addNonPhysicsTargets(allTargets, maxTargetingRange);
-        
-        // Preserve scanner targets when rebuilding target list
-        if (this.currentTarget && this.isFromLongRangeScanner) {
-            // Check if scanner target is already in the list
-            const scannerTargetExists = allTargets.some(target => target.name === this.currentTarget.name);
-            if (!scannerTargetExists) {
-                // console.log(`🎯 Preserving scanner target: ${this.currentTarget.name} (out of normal range)`);
-                allTargets.push(this.currentTarget);
-            }
-        }
-        
-        // Update target list
-        this.targetObjects = allTargets;
-        
-        // Log target list for debugging
-        // console.log(`🎯 Target list updated: ${allTargets.length} targets available for cycling`, allTargets.map(t => t.name)); // Reduce spam
-        
-        // Sort targets by distance using physics-enhanced sorting
-        this.sortTargetsByDistanceWithPhysics(true); // Force sort on target list update
-        
-        // Update target index AFTER sorting (sorting changes array order)
-        if (this.currentTarget) {
-            const newIndex = this.targetObjects.findIndex(target => target.name === this.currentTarget.name);
-            if (newIndex !== -1) {
-                this.targetIndex = newIndex;
-            }
-        }
-        
-        // Update target display (unless power-up animation is running or in no targets monitoring mode)
-        if (!this.isPoweringUp && !this.isInNoTargetsMode) {
-            this.updateTargetDisplay();
-        }
-        
-        // console.log(`🎯 Physics-enhanced targeting: ${allTargets.length} total targets`);
+        // Delegate to traditional method which now has all our enhancements
+        return this.updateTargetListTraditional();
     }
 
     /**
@@ -1364,43 +1170,19 @@ export class TargetComputerManager {
         const targetComputer = ship?.getSystem('target_computer');
         const maxTargetingRange = targetComputer?.range || 150; // Fallback to 150km if system not found
         
-        // Add comprehensive debugging
-        // console.log('🎯 TargetComputerManager.updateTargetListTraditional() called');
-        // console.log('🎯 Debug info:', {
-        //     hasSolarSystemManager: !!this.solarSystemManager,
-        //     viewManager: !!this.viewManager,
-        //     starfieldManager: !!this.viewManager?.starfieldManager,
-        //     dummyShips: this.viewManager?.starfieldManager?.dummyShipMeshes?.length || 0
-        // });
-        
-        // Get celestial bodies from SolarSystemManager
+        // Get celestial bodies from SolarSystemManager (same as traditional method)
         if (this.solarSystemManager) {
             const bodies = this.solarSystemManager.getCelestialBodies();
-            // console.log('🎯 Celestial bodies found:', {
-            //     bodiesMapSize: bodies.size,
-            //     bodiesKeys: Array.from(bodies.keys()),
-            //     hasStarSystem: !!this.solarSystemManager.starSystem
-            // });
             
             const celestialBodies = Array.from(bodies.entries())
                 .map(([key, body]) => {
                     const info = this.solarSystemManager.getCelestialBodyInfo(body);
-                    
-                    // Add detailed debugging for each body
-                        // console.log(`🎯 Processing celestial body: ${key}`, {
-                        //     hasBody: !!body,
-                        //     hasPosition: !!body?.position,
-                        //     position: body?.position ? [body.position.x, body.position.y, body.position.z] : null,
-                        //     info: info,
-                        //     bodyType: typeof body
-                        // });
                     
                     // Validate body position
                     if (!body.position || 
                         isNaN(body.position.x) || 
                         isNaN(body.position.y) || 
                         isNaN(body.position.z)) {
-                        // console.warn('🎯 Invalid position detected for celestial body:', info?.name);
                         return null;
                     }
                     
@@ -1411,101 +1193,92 @@ export class TargetComputerManager {
                         return null;
                     }
                     
-                    return {
+                    // Ensure consistent ID format with Star Charts (A0_ prefix)
+                    let targetId = this.constructStarChartsId(info);
+                    if (!targetId) {
+                        // Fallback to key-based ID if name-based construction fails
+                        const normalizedKey = key.replace(/^(station_|planet_|moon_|star_)/, '');
+                        targetId = `A0_${normalizedKey}`;
+                    }
+                    
+                    // Check if this object is discovered before including faction info
+                    const isDiscovered = this.isObjectDiscovered({id: targetId, name: info.name, type: info.type});
+                    
+                    const baseTarget = {
+                        id: targetId, // CRITICAL: Use consistent A0_ format
                         name: info.name,
                         type: info.type,
                         position: body.position.toArray(),
                         isMoon: key.startsWith('moon_'),
-                        object: body,  // Store the actual THREE.js object
+                        isSpaceStation: info.type === 'station' || (info.type && (
+                            info.type.toLowerCase().includes('station') ||
+                            info.type.toLowerCase().includes('complex') ||
+                            info.type.toLowerCase().includes('platform') ||
+                            info.type.toLowerCase().includes('facility') ||
+                            info.type.toLowerCase().includes('base')
+                        )),
+                        object: body,
                         isShip: false,
                         distance: distance
                     };
+                    
+                    // Only include faction/diplomacy info for discovered objects
+                    if (isDiscovered) {
+                        return {
+                            ...baseTarget,
+                            ...info, // Include all info properties (diplomacy, faction, etc.)
+                            discovered: true
+                        };
+                    } else {
+                        // For undiscovered objects, set unknown status
+                        return {
+                            ...baseTarget,
+                            diplomacy: 'unknown',
+                            faction: 'Unknown',
+                            discovered: false
+                        };
+                    }
                 })
-                .filter(body => body !== null); // Remove any invalid bodies
-            
-            // console.log(`🎯 Processed ${celestialBodies.length} valid celestial bodies:`, 
-            //     celestialBodies.map(b => ({ name: b.name, type: b.type, distance: b.distance.toFixed(1) + 'km' }))
-            // );
+                .filter(body => body !== null);
             
             allTargets = allTargets.concat(celestialBodies);
-        } else {
-            // console.warn('🎯 No SolarSystemManager available for targeting');
         }
         
-        // Add any targets that might not have physics bodies yet (fallback)
-        this.addNonPhysicsTargets(allTargets, 150); // Use 150km as max range (same as target computer range)
-
-        // Preserve scanner targets when rebuilding target list
-        if (this.currentTarget && this.isFromLongRangeScanner) {
-            // Check if scanner target is already in the list
-            const scannerTargetExists = allTargets.some(target => target.name === this.currentTarget.name);
-            if (!scannerTargetExists) {
-                // console.log(`🎯 Preserving scanner target: ${this.currentTarget.name} (out of normal range, index: ${this.targetIndex})`);
-                allTargets.push(this.currentTarget);
-            } else {
-                // console.log(`🎯 Scanner target ${this.currentTarget.name} already exists in updated list`);
+        // Add any targets that might not have physics bodies yet (ships, beacons, etc.)
+        this.addNonPhysicsTargets(allTargets, maxTargetingRange);
+        
+        // Apply deduplication to prevent duplicate targets
+        const deduplicatedTargets = [];
+        const seenIds = new Set();
+        const seenNames = new Set();
+        const duplicatesFound = [];
+        
+        for (const target of allTargets) {
+            const targetId = target.id;
+            const targetName = target.name;
+            
+            // Skip if we've seen this ID or name before
+            if ((targetId && seenIds.has(targetId)) || seenNames.has(targetName)) {
+                duplicatesFound.push({ name: targetName, id: targetId, reason: targetId && seenIds.has(targetId) ? 'duplicate ID' : 'duplicate name' });
+                continue;
             }
+            
+            // Add to seen sets
+            if (targetId) seenIds.add(targetId);
+            seenNames.add(targetName);
+            deduplicatedTargets.push(target);
+        }
+        
+        // Log duplicates found (rate limited)
+        if (duplicatesFound.length > 0 && Math.random() < 0.1) {
+            debug('TARGETING', `🎯 DEDUP: Removed ${duplicatesFound.length} duplicates:`, duplicatesFound.slice(0, 3));
         }
         
         // Update target list
-        this.targetObjects = allTargets;
+        this.targetObjects = deduplicatedTargets;
         
-        // Log target list for debugging
-        // console.log(`🎯 Target list updated (traditional): ${allTargets.length} targets available for cycling`, allTargets.map(t => t.name)); // Reduce spam
-        
-        // Sort targets by distance ONCE (sorting changes array order)
-        this.sortTargetsByDistance(true);
-
-        // Update target index AFTER sorting (sorting changes array order)
-        if (this.currentTarget) {
-            const newIndex = this.targetObjects.findIndex(target => target.name === this.currentTarget.name);
-            if (newIndex !== -1) {
-                this.targetIndex = newIndex;
-                // console.log(`🎯 Target index updated after sort: ${this.targetIndex} for ${this.currentTarget.name}`);
-            } else {
-                console.warn(`🎯 Could not find current target ${this.currentTarget.name} in sorted list - clearing target`);
-                this.clearCurrentTarget();
-            }
-        }
-
-        // Update target display (unless power-up animation is running or in no targets monitoring mode)
-        if (!this.isPoweringUp && !this.isInNoTargetsMode) {
-            this.updateTargetDisplay();
-        }
-    }
-
-    /**
-     * Get diplomacy status for any target type with consistent fallback logic
-     * @param {Object} targetData - Target data object
-     * @returns {string} Diplomacy status ('enemy', 'friendly', 'neutral')
-     */
-    getTargetDiplomacy(targetData) {
-        if (!targetData) return 'neutral';
-
-        // Priority order for diplomacy determination:
-        // 1. targetData.diplomacy (most reliable for processed targets)
-        if (targetData.diplomacy) {
-            return targetData.diplomacy;
-        }
-
-        // 2. targetData.ship.diplomacy (for target dummies and enemy ships)
-        if (targetData.ship?.diplomacy) {
-            return targetData.ship.diplomacy;
-        }
-
-        // 3. targetData.faction diplomacy lookup
-        if (targetData.faction) {
-            return this.getFactionDiplomacy(targetData.faction);
-        }
-
-        // 4. Celestial body info diplomacy (for planets, stations, etc.)
-        const info = this.solarSystemManager?.getCelestialBodyInfo(targetData.object || targetData);
-        if (info?.diplomacy) {
-            return info.diplomacy;
-        }
-
-        // 5. Ultimate fallback
-        return 'neutral';
+        // Sort targets by distance
+        this.sortTargetsByDistance();
     }
 
     /**
@@ -1542,6 +1315,7 @@ export class TargetComputerManager {
                     if (distance <= maxRange) {
                         // console.log(`🎯 addNonPhysicsTargets: Adding dummy ship: ${targetId}`);
                         allTargets.push({
+                            id: ship.id || mesh.userData?.id || ship.shipName, // CRITICAL: Include the ID field
                             name: ship.shipName,
                             type: 'enemy_ship',
                             position: mesh.position.toArray(),
@@ -1576,11 +1350,18 @@ export class TargetComputerManager {
                     if (info && !existingTargetIds.has(info.name)) {
                         // console.log(`🎯 addNonPhysicsTargets: Adding celestial body: ${info.name} (${info.type})`);
                         const targetData = {
+                            id: info.id || body.userData?.id || key, // CRITICAL: Include the ID field
                             name: info.name,
                             type: info.type,
                             position: body.position.toArray(),
                             isMoon: key.startsWith('moon_'),
-                            isSpaceStation: info.type === 'station',
+                            isSpaceStation: info.type === 'station' || (info.type && (
+                            info.type.toLowerCase().includes('station') ||
+                            info.type.toLowerCase().includes('complex') ||
+                            info.type.toLowerCase().includes('platform') ||
+                            info.type.toLowerCase().includes('facility') ||
+                            info.type.toLowerCase().includes('base')
+                        )),
                             object: body,
                             isShip: false,
                             distance: distance,
@@ -1594,6 +1375,85 @@ export class TargetComputerManager {
         }
         
         // console.log(`🎯 addNonPhysicsTargets: Processing ${this.viewManager.starfieldManager.dummyShipMeshes?.length || 0} dummy ships`);
+    }
+
+    /**
+     * Get diplomacy status for any target type with consistent fallback logic
+     * @param {Object} targetData - Target data object
+     * @returns {string} Diplomacy status ('enemy', 'friendly', 'neutral')
+     */
+    getTargetDiplomacy(targetData) {
+        if (!targetData) {
+            return 'neutral';
+        }
+
+        // Debug logging for beacons to understand the issue (much less frequent)
+        const isBeacon = targetData.type === 'navigation_beacon';
+        if (isBeacon && Math.random() < 0.001) {
+            debug('TARGETING', `getTargetDiplomacy for beacon: ${targetData.name}`, {
+                diplomacy: targetData.diplomacy,
+                faction: targetData.faction,
+                discovered: targetData.discovered,
+                _isUndiscovered: targetData._isUndiscovered
+            });
+        }
+
+        // 1. Direct diplomacy property (highest priority)
+        if (targetData.diplomacy) {
+            if (isBeacon && Math.random() < 0.001) debug('TARGETING', `Using direct diplomacy: ${targetData.diplomacy}`);
+            return targetData.diplomacy;
+        }
+
+        // 2. Faction-based diplomacy
+        if (targetData.faction) {
+            const factionDiplomacy = this.getFactionDiplomacy(targetData.faction);
+            if (isBeacon && Math.random() < 0.001) debug('TARGETING', `Using faction diplomacy: ${factionDiplomacy} (faction: ${targetData.faction})`);
+            return factionDiplomacy;
+        }
+
+        // 3. Ship diplomacy (for ship targets)
+        if (targetData.ship?.diplomacy) {
+            if (isBeacon && Math.random() < 0.001) debug('TARGETING', `Using ship diplomacy: ${targetData.ship.diplomacy}`);
+            return targetData.ship.diplomacy;
+        }
+
+        // 4. Celestial body info diplomacy (for planets, stations, etc.)
+        const info = this.solarSystemManager?.getCelestialBodyInfo(targetData.object || targetData);
+        if (info?.diplomacy) {
+            if (isBeacon && Math.random() < 0.001) debug('TARGETING', `Using celestial body diplomacy: ${info.diplomacy}`);
+            return info.diplomacy;
+        }
+
+        // 5. Ultimate fallback
+        if (isBeacon && Math.random() < 0.001) debug('TARGETING', `Using fallback diplomacy: neutral`);
+        return 'neutral';
+    }
+
+    /**
+     * Add a single target with proper deduplication
+     */
+    addTargetWithDeduplication(targetData) {
+        if (!targetData || !targetData.id) {
+            debug('TARGETING', `🚨 Cannot add target without ID: ${targetData?.name || 'unknown'}`);
+            return false;
+        }
+
+        // Check for existing target by ID and name
+        const existingIndex = this.targetObjects.findIndex(target => {
+            return target.id === targetData.id || target.name === targetData.name;
+        });
+
+        if (existingIndex === -1) {
+            // Add new target
+            this.targetObjects.push(targetData);
+            debug('TARGETING', `🎯 DEDUP: Added new target: ${targetData.name} (${targetData.id})`);
+            return true;
+        } else {
+            // Update existing target
+            this.targetObjects[existingIndex] = { ...this.targetObjects[existingIndex], ...targetData };
+            debug('TARGETING', `🎯 DEDUP: Updated existing target: ${targetData.name} (${targetData.id})`);
+            return false; // Not a new addition
+        }
     }
 
     /**
@@ -1922,7 +1782,7 @@ export class TargetComputerManager {
     createTargetWireframe() {
         if (!this.currentTarget) return;
 
-        debug('TARGETING', `🎯 WIREFRAME: createTargetWireframe() called for ${this.currentTarget.name || 'unnamed target'}`);
+        // debug('TARGETING', `🎯 WIREFRAME: createTargetWireframe() called for ${this.currentTarget.name || 'unnamed target'}`);
         const childrenBefore = this.wireframeScene.children.length;
 
         // Clear any existing wireframe first to prevent duplicates
@@ -1974,7 +1834,7 @@ export class TargetComputerManager {
 
             // Determine target info (use same logic as updateTargetDisplay)
         let info = null;
-       let wireframeColor = 0x808080; // default gray
+       let wireframeColor = 0x44ffff; // default teal for unknown
        let isEnemyShip = false;
 
 
@@ -2008,16 +1868,16 @@ export class TargetComputerManager {
 
        // CRITICAL FIX: Update wireframe color and isEnemyShip based on diplomacy using consolidated logic
        const diplomacy = this.getTargetDiplomacy(currentTargetData);
-       debug('TARGETING', `🎯 TARGET_SWITCH: Target diplomacy: ${diplomacy} for ${currentTargetData?.name || 'unknown'}`);
-       debug('INSPECTION', `🔍 Target diplomacy details - type: ${currentTargetData?.type}, faction: ${currentTargetData?.faction}, ship.diplomacy: ${currentTargetData?.ship?.diplomacy}`);
+       // debug('TARGETING', `🎯 TARGET_SWITCH: Target diplomacy: ${diplomacy} for ${currentTargetData?.name || 'unknown'}`);
+       // debug('INSPECTION', `🔍 Target diplomacy details - type: ${currentTargetData?.type}, faction: ${currentTargetData?.faction}, ship.diplomacy: ${currentTargetData?.ship?.diplomacy}`);
 
-       // Check discovery status for wireframe color
-       const isDiscovered = currentTargetData?.isDiscovered !== false; // Default to true if not specified
+       // Check discovery status for wireframe color using proper discovery logic
+       const isDiscovered = currentTargetData?.isShip || this.isObjectDiscovered(currentTargetData);
        
        if (!isDiscovered) {
            // Undiscovered objects use unknown faction color (cyan)
            wireframeColor = 0x44ffff; // Cyan for unknown/undiscovered
-           debug('INSPECTION', `🔍 Setting wireframe color to UNDISCOVERED CYAN (0x44ffff)`);
+           // debug('INSPECTION', `🔍 Setting wireframe color to UNDISCOVERED CYAN (0x44ffff)`);
        } else {
            // FIX: Set isEnemyShip correctly - only enemy ships should have subsystem indicators
            isEnemyShip = diplomacy === 'enemy' && currentTargetData?.isShip;
@@ -2025,21 +1885,21 @@ export class TargetComputerManager {
 
            if (diplomacy === 'enemy') {
                wireframeColor = 0xff3333; // Enemy red
-               debug('INSPECTION', `🔍 Setting wireframe color to ENEMY RED (0xff3333)`);
+               // debug('INSPECTION', `🔍 Setting wireframe color to ENEMY RED (0xff3333)`);
            } else if (diplomacy === 'neutral') {
                wireframeColor = 0xffff00; // Neutral yellow
-               debug('INSPECTION', `🔍 Setting wireframe color to NEUTRAL YELLOW (0xffff00)`);
+               // debug('INSPECTION', `🔍 Setting wireframe color to NEUTRAL YELLOW (0xffff00)`);
            } else if (diplomacy === 'friendly') {
                wireframeColor = 0x00ff41; // Friendly green
-               debug('INSPECTION', `🔍 Setting wireframe color to FRIENDLY GREEN (0x00ff41)`);
+               // debug('INSPECTION', `🔍 Setting wireframe color to FRIENDLY GREEN (0x00ff41)`);
            } else if (info?.type === 'star') {
                wireframeColor = 0xffff00; // Stars are yellow
-               debug('INSPECTION', `🔍 Setting wireframe color to STAR YELLOW (0xffff00)`);
+               // debug('INSPECTION', `🔍 Setting wireframe color to STAR YELLOW (0xffff00)`);
            } else if (diplomacy === 'unknown') {
                wireframeColor = 0x44ffff; // Unknown faction cyan
-               debug('INSPECTION', `🔍 Setting wireframe color to UNKNOWN CYAN (0x44ffff)`);
+               // debug('INSPECTION', `🔍 Setting wireframe color to UNKNOWN CYAN (0x44ffff)`);
            } else {
-               debug('INSPECTION', `🔍 Keeping default wireframe color (0x808080) for diplomacy: ${diplomacy}`);
+               // debug('INSPECTION', `🔍 Keeping default wireframe color (0x808080) for diplomacy: ${diplomacy}`);
            }
        }
 
@@ -2119,12 +1979,12 @@ export class TargetComputerManager {
             
             const finalChildren = this.wireframeScene.children.length;
             const childTypes = this.wireframeScene.children.map(child => child.constructor.name).join(', ');
-            debug('TARGETING', `🎯 WIREFRAME: Created for ${this.currentTarget?.name || 'unknown'} (${finalChildren} total objects: ${childTypes})`);
+            // debug('TARGETING', `🎯 WIREFRAME: Created for ${this.currentTarget?.name || 'unknown'} (${finalChildren} total objects: ${childTypes})`);
 
             this.wireframeCamera.position.z = Math.max(radius * 3, 3);
             this.targetWireframe.rotation.set(0.5, 0, 0.3);
 
-            debug('TARGETING', `🎯 TARGET_SWITCH: Wireframe creation completed for ${currentTargetData?.name || 'unknown target'}`);
+            // debug('TARGETING', `🎯 TARGET_SWITCH: Wireframe creation completed for ${currentTargetData?.name || 'unknown target'}`);
 
         } catch (error) {
             debug('TARGETING', `🎯 TARGET_SWITCH: Error creating target wireframe: ${error.message}`);
@@ -2214,7 +2074,7 @@ export class TargetComputerManager {
         // Check if we need to recreate wireframe due to discovery status change
         const targetDataForDiscoveryCheck = this.getCurrentTargetData();
         if (targetDataForDiscoveryCheck && this.currentTarget) {
-            const currentDiscoveryStatus = targetDataForDiscoveryCheck.isDiscovered !== false;
+            const currentDiscoveryStatus = targetDataForDiscoveryCheck.isShip || this.isObjectDiscovered(targetDataForDiscoveryCheck);
             
             // Store the last known discovery status for this target
             if (this.currentTarget._lastDiscoveryStatus === undefined) {
@@ -2259,6 +2119,17 @@ export class TargetComputerManager {
             return;
         }
 
+        // Get target position safely FIRST - before getting currentTargetData
+        // This prevents the race condition where we get target data, set HUD colors,
+        // then discover the target has no valid position and gets cleared
+        const targetPos = this.getTargetPosition(this.currentTarget);
+        if (!targetPos) {
+            console.warn('🎯 Cannot calculate distance for range check - invalid target position');
+            // Clear the target immediately to prevent inconsistent state
+            this.clearCurrentTarget();
+            return;
+        }
+
         const currentTargetData = this.getCurrentTargetData();
         // Debug logging for target data issues
         if (!currentTargetData) {
@@ -2281,13 +2152,6 @@ export class TargetComputerManager {
         //     rawData: currentTargetData
         // }); // Reduce spam
 
-        // Get target position safely
-        const targetPos = this.getTargetPosition(this.currentTarget);
-        if (!targetPos) {
-            console.warn('🎯 Cannot calculate distance for range check - invalid target position');
-            return;
-        }
-
         const distance = this.calculateDistance(this.camera.position, targetPos);
         
         // Get target info for diplomacy status and actions
@@ -2307,7 +2171,7 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: About to get target info 
             // Use consolidated diplomacy logic instead of old hardcoded check
             const diplomacy = this.getTargetDiplomacy(currentTargetData);
             isEnemyShip = diplomacy === 'enemy' && currentTargetData?.isShip;
-            debug('TARGETING', `🎯 UPDATE_DISPLAY: Enhanced target info diplomacy=${enhancedTargetInfo.diplomacy}, faction=${enhancedTargetInfo.faction}, isEnemyShip=${isEnemyShip}`);
+            // debug('TARGETING', `🎯 UPDATE_DISPLAY: Enhanced target info diplomacy=${enhancedTargetInfo.diplomacy}, faction=${enhancedTargetInfo.faction}, isEnemyShip=${isEnemyShip}`);
         } else if (currentTargetData.isShip && currentTargetData.ship) {
             // Use consolidated diplomacy logic for ships and target dummies
             const diplomacy = this.getTargetDiplomacy(currentTargetData);
@@ -2334,9 +2198,12 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: About to get target info 
 if (window?.DEBUG_TCM) debug('INSPECTION', `🎯 DEBUG: Final info object:`, info);
         
         // Update HUD border color based on diplomacy using consolidated logic
-        const diplomacy = this.getTargetDiplomacy(currentTargetData);
-        debug('TARGETING', `🎯 UPDATE_DISPLAY: getTargetDiplomacy returned: ${diplomacy} for target: ${currentTargetData?.name || 'unknown'}`);
-        let diplomacyColor = '#D0D0D0'; // Default gray
+        // Check discovery status first - undiscovered objects should always show as unknown
+        // Also check if object has valid position - objects without positions should show as unknown
+        const hasValidPosition = this.getTargetPosition(currentTargetData) !== null;
+        const isObjectDiscoveredForDiplomacy = currentTargetData?.isShip || (this.isObjectDiscovered(currentTargetData) && hasValidPosition);
+        const diplomacy = isObjectDiscoveredForDiplomacy ? this.getTargetDiplomacy(currentTargetData) : 'unknown';
+        let diplomacyColor = '#44ffff'; // Default teal for unknown
 
         if (diplomacy === 'enemy') {
             diplomacyColor = '#ff3333'; // Enemy red
@@ -2344,12 +2211,14 @@ if (window?.DEBUG_TCM) debug('INSPECTION', `🎯 DEBUG: Final info object:`, inf
             diplomacyColor = '#ffff00'; // Neutral yellow
         } else if (diplomacy === 'friendly') {
             diplomacyColor = '#00ff41'; // Friendly green
+        } else if (diplomacy === 'unknown') {
+            diplomacyColor = '#44ffff'; // Unknown teal
         } else if (info?.type === 'star') {
             diplomacyColor = '#ffff00'; // Stars are neutral yellow
         }
         
         this.targetHUD.style.borderColor = diplomacyColor;
-        debug('TARGETING', `🎯 UPDATE_DISPLAY: Setting targetHUD border color to ${diplomacyColor} for diplomacy: ${diplomacy}`);
+        // debug('TARGETING', `🎯 UPDATE_DISPLAY: Setting targetHUD border color to ${diplomacyColor} for diplomacy: ${diplomacy}`);
 
         // Update wireframe container border color to match
         if (this.wireframeContainer) {
@@ -2361,10 +2230,38 @@ if (window?.DEBUG_TCM) debug('INSPECTION', `🎯 DEBUG: Final info object:`, inf
         const targetComputerForSubTargets = playerShip?.getSystem('target_computer');
         let subTargetHTML = '';
         
-        // Add sub-target information if available
-        if (targetComputerForSubTargets && targetComputerForSubTargets.hasSubTargeting()) {
+        // Add sub-target information if available and target is discovered
+        const isTargetDiscovered = currentTargetData?.discovered === true; // Only true if explicitly discovered
+        
+            // Debug logging for subsystem targeting (for undiscovered objects)
+            if ((currentTargetData?.discovered === false || currentTargetData?._isUndiscovered) && Math.random() < 0.1) {
+                debug('TARGETING', `🚫 SUBSYSTEM CHECK for undiscovered ${currentTargetData.name}`, {
+                    discovered: currentTargetData.discovered,
+                    _isUndiscovered: currentTargetData._isUndiscovered,
+                    isTargetDiscovered: isTargetDiscovered,
+                    hasSubTargeting: targetComputerForSubTargets?.hasSubTargeting(),
+                    willShowSubsystems: targetComputerForSubTargets && targetComputerForSubTargets.hasSubTargeting() && (currentTargetData?.isShip || isTargetDiscovered)
+                });
+            }
+        
+        if (targetComputerForSubTargets && targetComputerForSubTargets.hasSubTargeting() && (currentTargetData?.isShip || isTargetDiscovered)) {
             // For enemy ships and space stations, use actual sub-targeting
-            const isSpaceStation = info?.type === 'station' || currentTargetData.type === 'station' || 
+            const isSpaceStation = info?.type === 'station' || 
+                                    (info?.type && (
+                                        info.type.toLowerCase().includes('station') ||
+                                        info.type.toLowerCase().includes('complex') ||
+                                        info.type.toLowerCase().includes('platform') ||
+                                        info.type.toLowerCase().includes('facility') ||
+                                        info.type.toLowerCase().includes('base')
+                                    )) ||
+                                    currentTargetData.type === 'station' || 
+                                    (currentTargetData.type && (
+                                        currentTargetData.type.toLowerCase().includes('station') ||
+                                        currentTargetData.type.toLowerCase().includes('complex') ||
+                                        currentTargetData.type.toLowerCase().includes('platform') ||
+                                        currentTargetData.type.toLowerCase().includes('facility') ||
+                                        currentTargetData.type.toLowerCase().includes('base')
+                                    )) ||
                                     (this.currentTarget?.userData?.isSpaceStation);
             
             // Reduced debug noise
@@ -2501,7 +2398,13 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 Sub-targeting check: isEnemyShip
                         <div style="background-color: white; height: 100%; width: ${hullPercentage}%; transition: width 0.3s ease;"></div>
                     </div>
                 </div>`;
-        } else if (info?.type === 'station' && targetComputer) {
+        } else if ((info?.type === 'station' || (info?.type && (
+                            info.type.toLowerCase().includes('station') ||
+                            info.type.toLowerCase().includes('complex') ||
+                            info.type.toLowerCase().includes('platform') ||
+                            info.type.toLowerCase().includes('facility') ||
+                            info.type.toLowerCase().includes('base')
+                        ))) && targetComputer && isTargetDiscovered) {
             // Use station's Hull Plating sub-system as hull indicator
             const hullSystem = targetComputer.availableSubTargets?.find(s => s.systemName === 'hull_plating');
             if (hullSystem) {
@@ -2538,21 +2441,29 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 Sub-targeting check: isEnemyShip
         
         // Prefer currentTargetData for display name/type to avoid mismatches
         // Check discovery status to determine if we should show real name or "Unknown"
-        const isDiscovered = currentTargetData?.isDiscovered !== false; // Default to true if not specified
+        // Use the same logic as diplomacy - require both discovery and valid position
+        const isObjectDiscovered = currentTargetData?.isShip || (this.isObjectDiscovered(currentTargetData) && hasValidPosition);
         let displayName;
         
-        if (!isDiscovered && !currentTargetData?.isShip) {
+        if (!isObjectDiscovered && !currentTargetData?.isShip) {
             // Undiscovered non-ship objects show as "Unknown"
             displayName = 'Unknown';
-            debug('TARGETING', `🎯 DISPLAY: Undiscovered object - showing as "Unknown"`);
+            // debug('TARGETING', `🎯 DISPLAY: Undiscovered object - showing as "Unknown"`);
         } else {
             // Discovered objects or ships show their real name
             displayName = currentTargetData?.name || info?.name || 'Unknown Target';
         }
         
-        let displayType = (currentTargetData?.type || info?.type || 'Unknown');
-        if (isEnemyShip && info?.shipType) {
-            displayType = info.shipType;
+        let displayType;
+        if (!isObjectDiscovered && !currentTargetData?.isShip) {
+            // Undiscovered non-ship objects show type as "Unknown"
+            displayType = 'Unknown';
+        } else {
+            // Discovered objects or ships show their real type
+            displayType = (currentTargetData?.type || info?.type || 'Unknown');
+            if (isEnemyShip && info?.shipType) {
+                displayType = info.shipType;
+            }
         }
 if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: Setting targetInfoDisplay.innerHTML with name: "${displayName}", type: "${displayType}", distance: "${formattedDistance}"`);
         this.targetInfoDisplay.innerHTML = `
@@ -2568,7 +2479,7 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
 
 
         // Update status icons with diplomacy color
-        this.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info);
+        this.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info, isObjectDiscovered);
 
         // Ensure hull/subsystem labels use black for friendly/neutral, white for hostile
         const hullLabels = this.targetInfoDisplay.querySelectorAll('.tcm-hull-label');
@@ -2599,9 +2510,15 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
      * Get current target data
      */
     getCurrentTargetData() {
-        // console.log(`🔍 DEBUG: getCurrentTargetData() called - currentTarget: ${this.currentTarget?.name}, targetIndex: ${this.targetIndex}, targetObjects.length: ${this.targetObjects.length}`);
+        // Debug logging for beacons (much less frequent)
+        if (this.currentTarget?.name?.includes('Navigation Beacon') && Math.random() < 0.001) {
+            debug('TARGETING', `getCurrentTargetData() called for beacon: ${this.currentTarget?.name}`, {
+                targetIndex: this.targetIndex,
+                targetObjectsLength: this.targetObjects.length
+            });
+        }
+        
         if (!this.currentTarget) {
-            // console.log(`🔍 DEBUG: getCurrentTargetData() - no current target, returning null`);
             return null;
         }
 
@@ -2635,7 +2552,10 @@ if (window?.DEBUG_TCM) debug('INSPECTION', `🔍 DEBUG: Index mismatch detected 
                         return this.processTargetData(this.targetObjects[correctIndex]);
                     }
                     
-debug('TARGETING', `🔍 getCurrentTargetData: Index ${this.targetIndex} target mismatch - targetData: ${targetData.name}, currentTarget: ${this.currentTarget?.name}, type: ${typeof this.currentTarget}`);
+// Rate limit debug output to prevent spam
+                if (Math.random() < 0.001) {
+                    debug('TARGETING', `🔍 getCurrentTargetData: Index ${this.targetIndex} target mismatch - targetData: ${targetData.name}, currentTarget: ${this.currentTarget?.name}, type: ${typeof this.currentTarget}`);
+                }
                 }
             }
         }
@@ -2677,7 +2597,10 @@ debug('TARGETING', `⚠️ Current target not found in target list - may have be
         
         // For scanner targets (including Star Charts), don't clear the target - return it directly
         if (this.isFromLongRangeScanner && this.currentTarget && this.currentTarget.name && this.currentTarget.type) {
-debug('TARGETING', `🎯 Using scanner target data directly: ${this.currentTarget.name}`);
+            // Rate limit debug output to prevent spam
+            if (Math.random() < 0.001) {
+                debug('TARGETING', `🎯 Using scanner target data directly: ${this.currentTarget.name}`);
+            }
             return this.processTargetData(this.currentTarget);
         }
         
@@ -2687,10 +2610,71 @@ debug('TARGETING', `🎯 Using manual selection target data directly: ${this.cur
             return this.processTargetData(this.currentTarget);
         }
         
-        // Clear the invalid target to prevent repeated warnings (only for non-scanner/non-manual targets)
+        // For Star Charts objects that may have lost their 3D position, try to preserve them
+        // Check if this is a Star Charts object (has A0_ ID or is discovered)
+        if (this.currentTarget && this.currentTarget.name) {
+            const hasStarChartsId = this.currentTarget.id && this.currentTarget.id.toString().startsWith('A0_');
+            const isDiscoveredObject = this.isObjectDiscovered(this.currentTarget);
+            
+            if (hasStarChartsId || isDiscoveredObject) {
+                debug('TARGETING', `🎯 Preserving Star Charts object without 3D position: ${this.currentTarget.name}`);
+                return this.processTargetData(this.currentTarget);
+            }
+        }
+        
+        // Clear the invalid target to prevent repeated warnings (only for non-scanner/non-manual/non-StarCharts targets)
 if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearing invalid target and returning null`);
         this.clearCurrentTarget();
         return null;
+    }
+
+    /**
+     * Construct a proper A0_ ID from target data
+     */
+    constructStarChartsId(targetData) {
+        if (!targetData) return null;
+        
+        // If already has proper A0_ ID, return it
+        let objectId = targetData.id;
+        if (objectId && objectId.toString().startsWith('A0_')) {
+            return objectId;
+        }
+        
+        if (!targetData.name) return null;
+        
+        // Clean the name by removing faction suffixes like "(friendly)", "(neutral)", etc.
+        const cleanName = targetData.name.replace(/\s*\([^)]*\)\s*$/, '').trim();
+        
+        // Special handling for common celestial bodies
+        let normalizedName;
+        switch (cleanName.toLowerCase()) {
+            case 'terra prime':
+                normalizedName = 'terra_prime';
+                break;
+            case 'luna':
+                normalizedName = 'luna';
+                break;
+            case 'europa':
+                normalizedName = 'europa';
+                break;
+            case 'sol':
+                normalizedName = 'star';
+                break;
+            default:
+                // Construct ID from cleaned name for Star Charts compatibility
+                // Remove invalid characters like # and replace spaces with underscores
+                normalizedName = cleanName.toLowerCase()
+                    .replace(/\s+/g, '_')
+                    .replace(/[^a-z0-9_]/g, ''); // Remove any non-alphanumeric characters except underscore
+                break;
+        }
+        
+        // Prevent double A0_ prefixes
+        if (normalizedName.startsWith('a0_')) {
+            return normalizedName.replace(/^a0_/i, 'A0_');
+        } else {
+            return `A0_${normalizedName}`;
+        }
     }
 
     /**
@@ -2704,29 +2688,31 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
             return true;
         }
 
-        // Get object ID from target data
-        let objectId = targetData.id;
-        if (!objectId && targetData.name) {
-            // Try to construct ID from name for objects without explicit ID
-            const normalizedName = targetData.name.toLowerCase().replace(/\s+/g, '_');
-            objectId = `a0_${normalizedName}`;
-        }
-
+        // Use consolidated ID construction method
+        const objectId = this.constructStarChartsId(targetData);
         if (!objectId) {
             // If we can't determine object ID, assume discovered
             return true;
         }
-
-        // Normalize the ID to match StarChartsManager format (A0_ instead of a0_)
-        const normalizedId = objectId.replace(/^a0_/i, 'A0_');
         
         // Check discovery status
-        const isDiscovered = starChartsManager.isDiscovered(normalizedId);
-        // Only log discovery checks when status changes or for initial checks
-        if (!this._lastDiscoveryStatus || this._lastDiscoveryStatus[normalizedId] !== isDiscovered) {
-            debug('TARGETING', `🔍 Discovery status changed: ${normalizedId} -> ${isDiscovered}`);
-            if (!this._lastDiscoveryStatus) this._lastDiscoveryStatus = {};
-            this._lastDiscoveryStatus[normalizedId] = isDiscovered;
+        const isDiscovered = starChartsManager.isDiscovered(objectId);
+        
+        // Only log discovery status changes (with heavy rate limiting to prevent spam)
+        if (!this._lastDiscoveryStatus) this._lastDiscoveryStatus = {};
+        if (this._lastDiscoveryStatus[objectId] !== isDiscovered) {
+            // Only log 0.1% of status changes to prevent spam
+            if (Math.random() < 0.001) {
+                debug('TARGETING', `🔍 Discovery status changed: ${objectId} -> ${isDiscovered}`);
+            }
+            this._lastDiscoveryStatus[objectId] = isDiscovered;
+            
+            // Clean up old entries to prevent memory leak (keep only last 100 entries)
+            const entries = Object.keys(this._lastDiscoveryStatus);
+            if (entries.length > 100) {
+                const toDelete = entries.slice(0, entries.length - 100);
+                toDelete.forEach(key => delete this._lastDiscoveryStatus[key]);
+            }
         }
         
         return isDiscovered;
@@ -2740,8 +2726,91 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
             return null;
         }
 
-        // Check discovery status for non-ship objects
-        const isDiscovered = targetData.isShip || this.isObjectDiscovered(targetData);
+        // Debug logging for beacons (much less frequent)
+        if (targetData.name?.includes('Navigation Beacon') && Math.random() < 0.001) {
+            debug('TARGETING', `processTargetData for beacon: ${targetData.name}`, {
+                type: targetData.type,
+                discovered: targetData.discovered,
+                diplomacy: targetData.diplomacy,
+                faction: targetData.faction,
+                _isUndiscovered: targetData._isUndiscovered
+            });
+        }
+
+        // For navigation beacons, check actual discovery status and apply appropriate properties
+        if (targetData.type === 'navigation_beacon') {
+            const actuallyDiscovered = this.isObjectDiscovered(targetData);
+            if (!actuallyDiscovered) {
+                // Beacon is undiscovered - apply unknown properties
+                if (targetData.diplomacy !== 'unknown' || targetData.faction !== 'Unknown') {
+                    try {
+                        targetData.discovered = false;
+                        targetData.diplomacy = 'unknown';
+                        targetData.faction = 'Unknown';
+                        debug('TARGETING', `Applied undiscovered properties to beacon: ${targetData.name}`);
+                    } catch (e) {
+                        // Ignore readonly property errors
+                        if (e.message && !e.message.includes('readonly')) {
+                            console.warn('🎯 Error setting undiscovered beacon properties:', e);
+                        }
+                    }
+                }
+            } else {
+                // Beacon is discovered - ensure it has proper faction properties
+                try {
+                    targetData.discovered = true;
+                    // Only set neutral faction if no faction is already set
+                    if (!targetData.faction || targetData.faction === 'Unknown') {
+                        targetData.faction = 'Neutral';
+                        targetData.diplomacy = 'neutral';
+                        debug('TARGETING', `Applied discovered properties to beacon: ${targetData.name} (neutral faction)`);
+                    }
+                } catch (e) {
+                    // Ignore readonly property errors
+                    if (e.message && !e.message.includes('readonly')) {
+                        console.warn('🎯 Error setting discovered beacon properties:', e);
+                    }
+                }
+            }
+        }
+
+        // CRITICAL: Ensure target data has proper Star Charts ID for consistent discovery checks
+        // This MUST happen before any discovery status checks
+        const constructedId = this.constructStarChartsId(targetData);
+        if (constructedId && (!targetData.id || !targetData.id.toString().startsWith('A0_'))) {
+            // Update the target data to use the proper Star Charts ID
+            try {
+                targetData.id = constructedId;
+            } catch (e) {
+                // Ignore readonly property errors
+                if (e.message && !e.message.includes('readonly')) {
+                    console.warn('🎯 Error setting target ID:', e);
+                }
+            }
+        }
+        
+        // Check discovery status for non-ship objects (now with proper ID)
+        // Use same position validation logic as display update for consistency
+        const hasValidPositionForStar = this.getTargetPosition(targetData) !== null;
+        const isDiscovered = targetData.isShip || (this.isObjectDiscovered(targetData) && hasValidPositionForStar);
+
+        // SPECIAL CASE: Stars should always show as neutral when discovered
+        if (targetData.type === 'star' && isDiscovered) {
+            try {
+                targetData.discovered = true;
+                targetData.diplomacy = 'neutral';
+                targetData.faction = 'Neutral';
+                // Rate limit Sol debug spam to prevent console flooding
+                if (targetData.name === 'Sol' && Math.random() < 0.0001) {
+                    debug('TARGETING', `Applied discovered properties to star: ${targetData.name} (neutral faction)`);
+                }
+            } catch (e) {
+                // Ignore readonly property errors
+                if (e.message && !e.message.includes('readonly')) {
+                    console.warn('🎯 Error setting star properties:', e);
+                }
+            }
+        }
 
         // Check if this is a ship (either 'ship' or 'enemy_ship' type, or has isShip flag)
         if (targetData.type === 'ship' || targetData.type === 'enemy_ship' || targetData.isShip) {
@@ -3036,7 +3105,7 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         }
         
         // Check if object is discovered BEFORE setting colors and final name
-        const isDiscovered = currentTargetData?.isDiscovered !== false; // Default to true if not specified
+        const isDiscovered = currentTargetData?.isShip || this.isObjectDiscovered(currentTargetData);
         
         // Override target name for undiscovered objects
         if (!isDiscovered && !currentTargetData.isShip) {
@@ -3049,7 +3118,7 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         }
         
         // Determine reticle color based on discovery status and diplomacy
-        let reticleColor = '#D0D0D0'; // Default gray
+        let reticleColor = '#44ffff'; // Default teal for unknown
         
         if (!isDiscovered) {
             // Undiscovered objects use unknown faction color (cyan)
@@ -3183,7 +3252,7 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
             // Get target info for color using consolidated diplomacy logic
             const currentTargetData = this.getCurrentTargetData();
             const diplomacy = this.getTargetDiplomacy(currentTargetData);
-            let arrowColor = '#D0D0D0';
+            let arrowColor = '#44ffff';
 
             if (diplomacy === 'enemy') {
                 arrowColor = '#ff3333';
@@ -3577,6 +3646,10 @@ debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.ship
         const normalizedId = typeof objectId === 'string' ? objectId.replace(/^a0_/i, 'A0_') : objectId;
 
 debug('TARGETING', `🎯 Setting target by ID: ${normalizedId}, targetObjects.length: ${this.targetObjects.length}`);
+        
+        // Debug: Log all target IDs for comparison
+        debug('TARGETING', `🎯 All target IDs in list:`, this.targetObjects.map((t, i) => `[${i}] ${t.name}: "${t.id}"`));
+        
         if (this.targetObjects.length === 0) {
             debug('TARGETING', `🎯 WARNING: targetObjects array is empty! No targets available for lookup.`);
         }
@@ -3806,7 +3879,13 @@ debug('TARGETING', `🎯 Star Charts: Target set to ${target.name} (ID: ${normal
                     object: null, // No Three.js object yet
                     faction: objectData.faction,
                     diplomacy: objectData.diplomacy,
-                    isSpaceStation: objectData.type === 'space_station',
+                    isSpaceStation: objectData.type === 'space_station' || objectData.type === 'station' || (objectData.type && (
+                        objectData.type.toLowerCase().includes('station') ||
+                        objectData.type.toLowerCase().includes('complex') ||
+                        objectData.type.toLowerCase().includes('platform') ||
+                        objectData.type.toLowerCase().includes('facility') ||
+                        objectData.type.toLowerCase().includes('base')
+                    )),
                     isMoon: objectData.type === 'moon'
                 };
                 
@@ -3964,7 +4043,7 @@ debug('TARGETING', `🎯 Virtual target set: ${waypointId}`);
     /**
      * Update reticle color based on target faction
      */
-    updateReticleColor(diplomacyColor = '#D0D0D0') {
+    updateReticleColor(diplomacyColor = '#44ffff') {
         if (this.targetReticle) {
             const corners = this.targetReticle.querySelectorAll('.reticle-corner');
             corners.forEach(corner => {
@@ -3997,13 +4076,13 @@ debug('TARGETING', `🎯 Virtual target set: ${waypointId}`);
     /**
      * Update status icons with diplomacy color and info
      */
-    updateStatusIcons(distance, diplomacyColor, isEnemyShip, info) {
+    updateStatusIcons(distance, diplomacyColor, isEnemyShip, info, isObjectDiscovered) {
         // New service availability logic
         if (this.serviceIcons) {
             const isEnemy = (info?.diplomacy || '').toLowerCase() === 'enemy';
             const isStar = info?.type === 'star' || (this.getStarSystem && this.getStarSystem() && info?.name === this.getStarSystem().star_name);
             const isPlanet = info?.type === 'planet';
-            const canUse = !isEnemy;
+            const canUse = !isEnemy && isObjectDiscovered; // Only show services for discovered, non-enemy objects
 
             const availability = isStar ? {
                 repairRefuel: false,
@@ -4474,19 +4553,52 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
             }
             // General celestial bodies
             if (!resolved && ssm?.celestialBodies && typeof ssm.celestialBodies.get === 'function') {
-                resolved = ssm.celestialBodies.get(id) ||
-                           ssm.celestialBodies.get(`beacon_${id}`) ||
-                           (name ? ssm.celestialBodies.get(`station_${name.toLowerCase().replace(/\s+/g, '_')}`) : null);
+                // Handle star ID mapping (A0_star -> 'star')
+                if (id === 'A0_star') {
+                    resolved = ssm.celestialBodies.get('star');
+                } else {
+                    resolved = ssm.celestialBodies.get(id) ||
+                               ssm.celestialBodies.get(`beacon_${id}`) ||
+                               (name ? ssm.celestialBodies.get(`station_${name.toLowerCase().replace(/\s+/g, '_')}`) : null);
+                }
+                
+                // If still not found, try to find by name in celestial bodies
+                // This handles cases where Star Charts objects have specific names but SolarSystemManager uses generic keys
+                if (!resolved && name) {
+                    // Try to find by iterating through celestial bodies and matching names
+                    for (const [key, body] of ssm.celestialBodies) {
+                        if (body && (body.name === name || body.userData?.name === name)) {
+                            resolved = body;
+                            debug('TARGETING', `🎯 Found celestial body by name lookup: ${name} -> ${key}`);
+                            break;
+                        }
+                    }
+                }
             }
             if (resolved && resolved.position && typeof resolved.position.clone === 'function') {
                 // Persist the resolution onto target/currentTarget if possible
-                if (this.currentTarget === target) {
-                    this.currentTarget = resolved;
+                // Check if currentTarget is writable before assignment
+                try {
+                    if (this.currentTarget === target) {
+                        this.currentTarget = resolved;
+                    }
+                } catch (e) {
+                    // Ignore readonly property errors - this is just an optimization
+                    if (e.message && !e.message.includes('readonly')) {
+                        console.warn('🎯 Error updating currentTarget:', e);
+                    }
                 }
                 // Also try to update corresponding entry in targetObjects
-                const idx = Array.isArray(this.targetObjects) ? this.targetObjects.findIndex(t => (t.id || '') === id || t.name === name) : -1;
-                if (idx >= 0) {
-                    this.targetObjects[idx] = { ...(this.targetObjects[idx] || {}), object: resolved, position: resolved.position };
+                try {
+                    const idx = Array.isArray(this.targetObjects) ? this.targetObjects.findIndex(t => (t.id || '') === id || t.name === name) : -1;
+                    if (idx >= 0) {
+                        this.targetObjects[idx] = { ...(this.targetObjects[idx] || {}), object: resolved, position: resolved.position };
+                    }
+                } catch (e) {
+                    // Ignore readonly property errors - this is just an optimization
+                    if (e.message && !e.message.includes('readonly')) {
+                        console.warn('🎯 Error updating targetObjects:', e);
+                    }
                 }
                 return resolved.position;
             }

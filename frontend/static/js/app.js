@@ -393,8 +393,17 @@ debug('UTILITY', '✅ Three.js spatial and collision systems ready');
             const success = await solarSystemManager.generateStarSystem('A0');
             if (success) {
                 
-                // Wait a moment to ensure all celestial bodies are fully created
-                await new Promise(resolve => setTimeout(resolve, 100));
+                // Wait longer to ensure all celestial bodies and stations are fully created
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // CRITICAL FIX: Refresh spatial grid after system generation
+                // The spatial grid was initialized before stations were created
+                if (viewManager.navigationSystemManager?.starChartsManager) {
+                    viewManager.navigationSystemManager.starChartsManager.refreshSpatialGrid();
+                    debug('UTILITY', '✅ Spatial grid refreshed after system generation');
+                } else {
+                    debug('UTILITY', '❌ Could not refresh spatial grid - StarChartsManager not found');
+                }
                 
                 // Force an immediate update of the target list to include celestial bodies
                 if (starfieldManager?.targetComputerManager) {

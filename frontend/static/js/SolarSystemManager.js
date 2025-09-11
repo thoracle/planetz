@@ -19,9 +19,10 @@ export class SolarSystemManager {
         this.scene = scene;
         this.camera = camera;
         
-        // Set up camera position
-        this.camera.position.set(0, 20, 30);
-        this.camera.lookAt(0, 0, 0);
+        // Set up camera position - Start near Hermes Refinery station for testing
+        // Hermes Refinery is at [-75, 0, 75], so start 5km away at [-70, 5, 80]
+        this.camera.position.set(-70, 5, 80);
+        this.camera.lookAt(-75, 0, 75);
         
         this.starSystem = null;
         this.celestialBodies = new Map();
@@ -993,13 +994,21 @@ debug('UTILITY', `📋 Loaded ${beaconData.length} beacons from JSON data`);
                 });
 
                 const beacon = new THREE.Mesh(geometry, material);
-                beacon.position.set(position[0], position[1], position[2]);
+                // Infrastructure positions are designed for gameplay distances
+                const INFRASTRUCTURE_SCALE = 1.0; // Direct coordinates for gameplay
+                beacon.position.set(
+                    position[0] * INFRASTRUCTURE_SCALE,
+                    position[1] * INFRASTRUCTURE_SCALE,
+                    position[2] * INFRASTRUCTURE_SCALE
+                );
 
-                // Calculate rotation based on position
-                const angle = Math.atan2(position[2], position[0]);
+                // Calculate rotation based on infrastructure position
+                const scaledX = position[0] * INFRASTRUCTURE_SCALE;
+                const scaledZ = position[2] * INFRASTRUCTURE_SCALE;
+                const angle = Math.atan2(scaledZ, scaledX);
                 beacon.rotation.y = angle;
 
-debug('UTILITY', `📡 Beacon ${i + 1} created at position (${position[0].toFixed(1)}, ${position[1].toFixed(1)}, ${position[2].toFixed(1)})`);
+debug('UTILITY', `📡 Beacon ${i + 1} created at position (${scaledX.toFixed(1)}, ${(position[1] * INFRASTRUCTURE_SCALE).toFixed(1)}, ${scaledZ.toFixed(1)})`);
 
                 // Set name directly on beacon object for target computer
                 beacon.name = beaconInfo.name;
@@ -1096,8 +1105,23 @@ debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for d
         // Handle position conversion from JSON array to THREE.Vector3
         let position;
         if (Array.isArray(stationData.position)) {
-            // JSON format: [distance, angle] - convert to 3D position
-            position = this.getOrbitPosition(stationData.position[0], stationData.position[1]);
+            if (stationData.position.length === 3) {
+                // JSON format: [x, y, z] - direct 3D coordinates
+                // Infrastructure positions are designed for gameplay distances, not astronomical
+                // Use a smaller scale factor appropriate for station placement (not celestial bodies)
+                const INFRASTRUCTURE_SCALE = 1.0; // Direct coordinates for gameplay
+                position = new THREE.Vector3(
+                    stationData.position[0] * INFRASTRUCTURE_SCALE,
+                    stationData.position[1] * INFRASTRUCTURE_SCALE,
+                    stationData.position[2] * INFRASTRUCTURE_SCALE
+                );
+            } else if (stationData.position.length === 2) {
+                // Legacy format: [distance, angle] - convert to 3D position
+                position = this.getOrbitPosition(stationData.position[0], stationData.position[1]);
+            } else {
+                console.warn(`Invalid position format for station ${stationData.name}:`, stationData.position);
+                position = new THREE.Vector3(0, 0, 0);
+            }
         } else {
             // Legacy format: already a THREE.Vector3
             position = stationData.position;

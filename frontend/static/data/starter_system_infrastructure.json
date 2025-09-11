@@ -9,7 +9,7 @@
   },
   "stations": [
     {
-      "id": "a0_helios_solar_array",
+      "id": "A0_helios_solar_array",
       "name": "Helios Solar Array",
       "faction": "Terran Republic Alliance",
       "type": "Research Lab",
@@ -21,7 +21,7 @@
       "intel_brief": "Alliance solar research facility powering Terra Prime. Advanced energy technology available."
     },
     {
-      "id": "a0_hermes_refinery",
+      "id": "A0_hermes_refinery",
       "name": "Hermes Refinery",
       "faction": "Free Trader Consortium",
       "type": "Refinery",
@@ -33,7 +33,7 @@
       "intel_brief": "Major rare metals processing facility. Competitive pricing on refined materials."
     },
     {
-      "id": "a0_aphrodite_atmospheric_research",
+      "id": "A0_aphrodite_atmospheric_research",
       "name": "Aphrodite Atmospheric Research",
       "faction": "Nexus Corporate Syndicate",
       "type": "Research Lab",
@@ -45,7 +45,7 @@
       "intel_brief": "Corporate atmospheric research station. Access to advanced chemical compounds."
     },
     {
-      "id": "a0_venus_cloud_city",
+      "id": "A0_venus_cloud_city",
       "name": "Venus Cloud City",
       "faction": "Ethereal Wanderers",
       "type": "Frontier Outpost",
@@ -57,7 +57,7 @@
       "intel_brief": "Ethereal spiritual retreat. Peaceful environment for crew rest and contemplation."
     },
     {
-      "id": "a0_terra_station",
+      "id": "A0_terra_station",
       "name": "Terra Station",
       "faction": "Terran Republic Alliance",
       "type": "Communications Array",
@@ -69,7 +69,7 @@
       "intel_brief": "Alliance communications hub. Real-time tactical updates and fleet coordination available."
     },
     {
-      "id": "a0_luna_shipyards",
+      "id": "A0_luna_shipyards",
       "name": "Luna Shipyards",
       "faction": "Terran Republic Alliance",
       "type": "Shipyard",
@@ -81,7 +81,7 @@
       "intel_brief": "Alliance ship construction facility. Full shipyard services available."
     },
     {
-      "id": "a0_l4_trading_post",
+      "id": "A0_l4_trading_post",
       "name": "L4 Trading Post",
       "faction": "Free Trader Consortium",
       "type": "Storage Depot",
@@ -93,7 +93,7 @@
       "intel_brief": "Major trading hub. Best prices in the system for cargo and commodities."
     },
     {
-      "id": "a0_lunar_mining_consortium",
+      "id": "A0_lunar_mining_consortium",
       "name": "Lunar Mining Consortium",
       "faction": "Nexus Corporate Syndicate",
       "type": "Factory",
@@ -105,7 +105,7 @@
       "intel_brief": "Corporate manufacturing facility. High-quality equipment and rare earth materials."
     },
     {
-      "id": "a0_mars_base",
+      "id": "A0_mars_base",
       "name": "Mars Base",
       "faction": "Terran Republic Alliance",
       "type": "Repair Station",
@@ -117,7 +117,7 @@
       "intel_brief": "Alliance military base. Fleet maintenance and tactical training available."
     },
     {
-      "id": "a0_phobos_mining_station",
+      "id": "A0_phobos_mining_station",
       "name": "Phobos Mining Station",
       "faction": "Free Trader Consortium",
       "type": "Mining Station",
@@ -129,7 +129,7 @@
       "intel_brief": "Mining operations depot. Raw materials and refined fuel available."
     },
     {
-      "id": "a0_deimos_research_facility",
+      "id": "A0_deimos_research_facility",
       "name": "Deimos Research Facility",
       "faction": "Scientists Consortium",
       "type": "Research Lab",
@@ -141,7 +141,7 @@
       "intel_brief": "Scientific research facility. Advanced data analysis and communication services."
     },
     {
-      "id": "a0_ceres_outpost",
+      "id": "A0_ceres_outpost",
       "name": "Ceres Outpost",
       "faction": "Scientists Consortium",
       "type": "Research Lab",
@@ -153,7 +153,7 @@
       "intel_brief": "Scientific outpost on Ceres. Asteroid research and mining data available."
     },
     {
-      "id": "a0_vesta_mining_complex",
+      "id": "A0_vesta_mining_complex",
       "name": "Vesta Mining Complex",
       "faction": "Free Trader Consortium",
       "type": "Mining Station",
@@ -165,7 +165,7 @@
       "intel_brief": "Major mining complex. Bulk cargo handling and industrial supplies."
     },
     {
-      "id": "a0_europa_research_station",
+      "id": "A0_europa_research_station",
       "name": "Europa Research Station",
       "faction": "Scientists Consortium",
       "type": "Research Lab",
@@ -177,7 +177,7 @@
       "intel_brief": "Europa subsurface research station. Biological samples and ocean data available."
     },
     {
-      "id": "a0_callisto_defense_platform",
+      "id": "A0_callisto_defense_platform",
       "name": "Callisto Defense Platform",
       "faction": "Terran Republic Alliance",
       "type": "Defense Platform",
@@ -191,7 +191,7 @@
   ],
   "beacons": [
     {
-      "id": "a0_navigation_beacon_1",
+      "id": "A0_navigation_beacon_1",
       "name": "Navigation Beacon #1",
       "type": "navigation_beacon",
       "position": [175, 0, 0],
@@ -199,7 +199,7 @@
       "color": "#ffff44"
     },
     {
-      "id": "a0_navigation_beacon_2",
+      "id": "A0_navigation_beacon_2",
       "name": "Navigation Beacon #2",
       "type": "navigation_beacon",
       "position": [0, 175, 0],
@@ -207,7 +207,7 @@
       "color": "#ffff44"
     },
     {
-      "id": "a0_navigation_beacon_3",
+      "id": "A0_navigation_beacon_3",
       "name": "Navigation Beacon #3",
       "type": "navigation_beacon",
       "position": [-175, 0, 0],
@@ -215,7 +215,7 @@
       "color": "#ffff44"
     },
     {
-      "id": "a0_navigation_beacon_4",
+      "id": "A0_navigation_beacon_4",
       "name": "Navigation Beacon #4",
       "type": "navigation_beacon",
       "position": [0, -175, 0],
@@ -223,7 +223,7 @@
       "color": "#ffff44"
     },
     {
-      "id": "a0_navigation_beacon_5",
+      "id": "A0_navigation_beacon_5",
       "name": "Navigation Beacon #5",
       "type": "navigation_beacon",
       "position": [123.74, 123.74, 0],
@@ -231,7 +231,7 @@
       "color": "#ffff44"
     },
     {
-      "id": "a0_navigation_beacon_6",
+      "id": "A0_navigation_beacon_6",
       "name": "Navigation Beacon #6",
       "type": "navigation_beacon",
       "position": [-123.74, 123.74, 0],
@@ -239,7 +239,7 @@
       "color": "#ffff44"
     },
     {
-      "id": "a0_navigation_beacon_7",
+      "id": "A0_navigation_beacon_7",
       "name": "Navigation Beacon #7",
       "type": "navigation_beacon",
       "position": [-123.74, -123.74, 0],
@@ -247,7 +247,7 @@
       "color": "#ffff44"
     },
     {
-      "id": "a0_navigation_beacon_8",
+      "id": "A0_navigation_beacon_8",
       "name": "Navigation Beacon #8",
       "type": "navigation_beacon",
       "position": [123.74, -123.74, 0],

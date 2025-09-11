@@ -20,7 +20,7 @@
             "description": "NPC and player communication"
         },
         "UTILITY": {
-            "enabled": true,
+            "enabled": false,
             "description": "System utilities and positioning"
         },
         "AI": {
@@ -28,7 +28,7 @@
             "description": "Enemy AI and ship behaviors"
         },
         "UI": {
-            "enabled": true,
+            "enabled": false,
             "description": "User interface events and updates"
         },
         "INTERACTION": {
