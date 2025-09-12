@@ -246,6 +246,9 @@ debug('UI', 'StarChartsUI: Interface created');
         const hoveredObject = this.getObjectAtPosition(worldPos.x, worldPos.y);
         
         if (hoveredObject) {
+            if (hoveredObject._isShip) {
+                console.log('🚀 Ship tooltip showing!');
+            }
             this.showTooltip(event.clientX, event.clientY, hoveredObject);
         } else {
             this.tooltip.style.display = 'none';
@@ -676,9 +679,10 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
                     const dy = shipWorldY - worldY;
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     
-                    // Ship icon radius (approximate)
-                    const shipRadius = 10;
+                    // Ship icon radius (approximate) - convert to world units
+                    const shipRadius = this.screenPixelsToWorldUnits(15); // 15 pixel radius
                     if (distance <= shipRadius + worldTolerance) {
+                        console.log('🚀 Ship tooltip detected! Distance:', distance, 'Radius:', shipRadius, 'Tolerance:', worldTolerance);
                         return {
                             id: 'player_ship',
                             name: 'You are here',
