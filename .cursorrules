@@ -1,0 +1,14 @@
+# PlanetZ Playwright Testing Rules
+
+# Always use the MCP Playwright server for testing Star Charts functionality
+# The server provides tools to run automated Playwright tests without manual setup
+
+# When testing Star Charts tooltips:
+# - Use run_star_charts_tooltip_tests tool for tooltip validation
+# - Use run_star_charts_hitbox_tests tool for hitbox validation
+# - Use run_full_test_suite tool for comprehensive testing
+
+# Before running tests, ensure the test environment is set up using setup_test_environment tool
+
+# Test results will be provided in real-time through the MCP server output
+

@@ -19,7 +19,7 @@ try:
     # For Bluehost, we might need to handle different configurations
     if __name__ == '__main__':
         # Development/testing mode
-        app.run(debug=False, host='127.0.0.1', port=5000)
+        app.run(debug=False, host='127.0.0.1', port=8000)
     else:
         # Production mode (called by Bluehost)
         # The app object will be used by the WSGI server

@@ -87,6 +87,7 @@ debug('UI', 'StarChartsUI: Interface created');
         
         // Create SVG for rendering
         this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        this.svg.setAttribute('class', 'starcharts-svg'); // Add class for debugging
         this.svg.style.cssText = `width: 100%; height: 100%; cursor: default;`; // Match LRS default cursor
         this.mapContainer.appendChild(this.svg);
         
@@ -204,21 +205,28 @@ debug('UI', 'StarChartsUI: Interface created');
                 clickedElement.classList.contains('scanner-station') ||
                 clickedElement.classList.contains('scanner-beacon') ||
                 clickedElement.classList.contains('starchart-hitbox') || // New larger hit boxes
+                clickedElement.classList.contains('ship-position-icon') || // Ship icon is clickable
                 clickedElement.hasAttribute('data-name') // Any element with targeting data
             );
             
             // console.log(`🔍 Star Charts: isInteractiveElement=${isInteractiveElement}`);
             
             if (isInteractiveElement) {
-                const objectId = clickedElement.getAttribute('data-object-id') || 
+                // Special handling for ship icon - it has its own click handler
+                if (clickedElement.classList.contains('ship-position-icon')) {
+                    // Ship icon click is handled by its own event listener, skip normal processing
+                    return;
+                }
+
+                const objectId = clickedElement.getAttribute('data-object-id') ||
                                clickedElement.getAttribute('data-name');
                 // console.log(`🔍 Star Charts: Found objectId=${objectId}`);
-                
+
                 if (objectId) {
-                    const objectData = this.starChartsManager.getObjectData(objectId) || 
+                    const objectData = this.starChartsManager.getObjectData(objectId) ||
                                      this.findObjectByName(objectId);
                     // console.log(`🔍 Star Charts: Found objectData:`, objectData?.name || 'null');
-                    
+
                     if (objectData) {
                         // console.log(`🔍 Star Charts: Clicked interactive element, selecting object ${objectData.name}`);
                         this.selectObject(objectData);
@@ -229,28 +237,42 @@ debug('UI', 'StarChartsUI: Interface created');
                     // console.log(`🔍 Star Charts: Interactive element has no object ID`);
                 }
             } else {
-                // console.log(`🔍 Star Charts: Clicked empty space, zooming out`);
-                this.zoomOut();
+                // NEW BEHAVIOR: Any click zooms in, Shift+click zooms out
+                if (event.shiftKey) {
+                    this.zoomOut();
+                } else {
+                    this.zoomIn();
+                }
             }
         }, 50); // Match LRS delay
     }
     
     handleMouseMove(event) {
         // Handle mouse movement for tooltips
-        
+        console.log('🖱️ handleMouseMove called');
+
         const rect = this.svg.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        
-        const worldPos = this.screenToWorld(x, y);
-        const hoveredObject = this.getObjectAtPosition(worldPos.x, worldPos.y);
-        
+        const screenX = event.clientX - rect.left;
+        const screenY = event.clientY - rect.top;
+
+        console.log('🖱️ Mouse position:', { screenX, screenY });
+
+                    // Use zoom-independent pixel tolerance for tooltip detection
+                    const hoveredObject = this.getObjectAtScreenPosition(screenX, screenY, 16); // 16 pixel tolerance for better detection
+
+        console.log('🖱️ Hovered object found:', hoveredObject ? {
+            id: hoveredObject.id,
+            name: hoveredObject.name,
+            type: hoveredObject.type
+        } : 'none');
+
         if (hoveredObject) {
             if (hoveredObject._isShip) {
                 console.log('🚀 Ship tooltip showing!');
             }
             this.showTooltip(event.clientX, event.clientY, hoveredObject);
         } else {
+            console.log('🖱️ No hovered object - hiding tooltip');
             this.tooltip.style.display = 'none';
         }
     }
@@ -585,6 +607,21 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
         this.render();
     }
 
+    zoomIn() {
+        // NEW BEHAVIOR: Zoom in one level, centering on current center
+        // console.log(`🔍 Star Charts: Zooming in from level ${this.currentZoomLevel}`);
+
+        if (this.currentZoomLevel < this.maxZoomLevel) {
+            this.currentZoomLevel++;
+            // console.log(`🔍 Star Charts: Zoomed in to level ${this.currentZoomLevel}, maintaining center at (${this.currentCenter.x}, ${this.currentCenter.y})`);
+        } else {
+            // Already at maximum zoom level
+            // console.log(`🔍 Star Charts: Already at maximum zoom level ${this.currentZoomLevel}, not zooming in further`);
+        }
+
+        this.render();
+    }
+
     zoomToLocation(x, y) {
         // Zoom to a specific location (used for unknown object clicks)
         this.currentCenter = { x: x, y: y };
@@ -629,24 +666,24 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
     getObjectAtPosition(worldX, worldY, screenTolerancePixels = 12) {
         // Get object at world position with zoom-aware tolerance
         // This searches ALL objects (both discovered and undiscovered)
-        
+
         const allObjects = this.getDiscoveredObjectsForRender(); // This actually returns all objects
-        
+
         // Convert screen tolerance to world coordinates based on current zoom
         const worldTolerance = this.screenPixelsToWorldUnits(screenTolerancePixels);
-        
+
         for (const object of allObjects) {
             const pos = this.getDisplayPosition(object);
             const dx = pos.x - worldX;
             const dy = pos.y - worldY;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            
+
             const objectRadius = this.getObjectDisplayRadius(object);
             if (distance <= objectRadius + worldTolerance) {
                 return object;
             }
         }
-        
+
         // Check for ship icon
         const shipIcon = this.svg.querySelector('.ship-position-icon');
         if (shipIcon) {
@@ -665,20 +702,20 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
                     }
                     centerX /= pointArray.length;
                     centerY /= pointArray.length;
-                    
+
                     // Convert screen coordinates to world coordinates for comparison
                     const rect = this.svg.getBoundingClientRect();
                     const svgWidth = rect.width;
                     const svgHeight = rect.height;
                     const worldSize = this.getWorldSize();
-                    
+
                     const shipWorldX = (centerX / svgWidth - 0.5) * worldSize + this.currentCenter.x;
                     const shipWorldY = (centerY / svgHeight - 0.5) * worldSize + this.currentCenter.y;
-                    
+
                     const dx = shipWorldX - worldX;
                     const dy = shipWorldY - worldY;
                     const distance = Math.sqrt(dx * dx + dy * dy);
-                    
+
                     // Ship icon radius (approximate) - convert to world units
                     const shipRadius = this.screenPixelsToWorldUnits(15); // 15 pixel radius
                     if (distance <= shipRadius + worldTolerance) {
@@ -693,12 +730,125 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
                 }
             }
         }
-        
+
         return null;
+    }
+
+    getObjectAtScreenPosition(screenX, screenY, pixelTolerance = 8) {
+        // Get object at screen position with zoom-independent pixel tolerance
+        // This searches ALL objects (both discovered and undiscovered)
+
+        const allObjects = this.getDiscoveredObjectsForRender(); // This actually returns all objects
+
+        // Convert screen position to world coordinates for object lookup
+        const worldPos = this.screenToWorld(screenX, screenY);
+
+        for (const object of allObjects) {
+            // Get object's screen position
+            const objectScreenPos = this.worldToScreen(object);
+
+            if (objectScreenPos) {
+                const dx = objectScreenPos.x - screenX;
+                const dy = objectScreenPos.y - screenY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Debug: Log object positions and distances occasionally
+                if (Math.random() < 0.01) { // Only log 1% of the time to reduce spam
+                    console.log(`🔍 Object ${object.id} (${object.name}): screen(${objectScreenPos.x.toFixed(1)}, ${objectScreenPos.y.toFixed(1)}) mouse(${screenX.toFixed(1)}, ${screenY.toFixed(1)}) dist=${distance.toFixed(1)} tolerance=${pixelTolerance}`);
+                }
+
+                    // Use fixed pixel tolerance - this doesn't change with zoom (increased for better detection)
+                    if (distance <= pixelTolerance) {
+                    console.log(`🎯 FOUND: Object ${object.id} (${object.name}) at distance ${distance.toFixed(1)}`);
+                    // For tooltips, we need complete object data including name
+                    // Always fetch complete data for tooltips to ensure accuracy
+                    if (object.id && !object._isShip) {
+                        const completeData = this.starChartsManager.getObjectData(object.id);
+                        console.log(`🔍 Tooltip: Object ${object.id}, fetched complete data:`, completeData?.name);
+                        if (completeData) {
+                            // Return object with complete data merged
+                            return {
+                                ...object,
+                                ...completeData
+                            };
+                        }
+                    }
+                    return object;
+                }
+            }
+        }
+
+        // Check for ship icon using screen coordinates
+        const shipIcon = this.svg.querySelector('.ship-position-icon');
+        if (shipIcon) {
+            const points = shipIcon.getAttribute('points');
+            if (points) {
+                // Parse polygon points to get center position
+                const pointArray = points.split(' ').map(p => p.split(','));
+                if (pointArray.length >= 4) {
+                    // Calculate center from polygon points
+                    let centerX = 0, centerY = 0;
+                    for (const point of pointArray) {
+                        if (point.length === 2) {
+                            centerX += parseFloat(point[0]);
+                            centerY += parseFloat(point[1]);
+                        }
+                    }
+                    centerX /= pointArray.length;
+                    centerY /= pointArray.length;
+
+                    // Calculate distance from mouse to ship center (both in screen coordinates)
+                    const dx = centerX - screenX;
+                    const dy = centerY - screenY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // Use fixed pixel tolerance for ship too
+                    if (distance <= pixelTolerance + 5) { // Slightly larger for ship (diamond shape)
+                        console.log('🚀 Ship tooltip detected at screen distance:', distance, 'pixels');
+                        return {
+                            id: 'player_ship',
+                            name: 'You are here',
+                            type: 'ship',
+                            _isShip: true
+                        };
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    worldToScreen(object) {
+        // Convert world coordinates to screen coordinates for an object
+        // This is the inverse of screenToWorld
+
+        if (!object) return null;
+
+        const pos = this.getDisplayPosition(object);
+        if (!pos) return null;
+
+        const rect = this.svg.getBoundingClientRect();
+        const svgWidth = rect.width;
+        const svgHeight = rect.height;
+        const worldSize = this.getWorldSize();
+
+        // Convert world coordinates back to screen coordinates
+        const screenX = ((pos.x - this.currentCenter.x) / worldSize + 0.5) * svgWidth;
+        const screenY = ((pos.y - this.currentCenter.y) / worldSize + 0.5) * svgHeight;
+
+        return { x: screenX, y: screenY };
     }
     
     showTooltip(screenX, screenY, object) {
         // Show tooltip for hovered object - match LRS simple text format
+        console.log('🖱️ showTooltip called for object:', {
+            id: object.id,
+            name: object.name,
+            type: object.type,
+            _isShip: object._isShip,
+            _isUndiscovered: object._isUndiscovered
+        });
 
         // For undiscovered objects, show "Unknown" instead of revealing the name
         // For ship, show "You are here"
@@ -710,6 +860,8 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
         } else {
             tooltipText = object.name;
         }
+
+        console.log('🖱️ Tooltip text will be:', tooltipText);
 
         // Simple text tooltip like LRS (no HTML formatting)
         this.tooltip.textContent = tooltipText;
@@ -869,7 +1021,7 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
                     <div>Click on discovered objects</div>
                     <div>to view details and target</div>
                     <br>
-                    <div>Click empty space to zoom out</div>
+                    <div>Click to zoom in | Shift+click to zoom out</div>
                     <div>Double-click for beacon ring view</div>
                 </div>
             `;
@@ -1698,7 +1850,8 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         orbit.setAttribute('cy', '0');
         orbit.setAttribute('r', String(orbitRadius));
         orbit.setAttribute('class', 'scanner-orbit'); // Use same CSS class as LRS
-        
+        orbit.style.pointerEvents = 'none'; // Prevent click events
+
         this.svg.appendChild(orbit);
     }
     
@@ -1729,16 +1882,18 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         moonOrbit.setAttribute('cy', String(parentPos.y));
         moonOrbit.setAttribute('r', String(moonOrbitRadius));
         moonOrbit.setAttribute('class', 'scanner-orbit'); // Use same CSS class as LRS
-        
+        moonOrbit.style.pointerEvents = 'none'; // Prevent click events
+
         this.svg.appendChild(moonOrbit);
-        
+
         // Add orbit highlight element for hover effects (like LRS)
         const moonOrbitHighlight = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         moonOrbitHighlight.setAttribute('cx', String(parentPos.x));
         moonOrbitHighlight.setAttribute('cy', String(parentPos.y));
         moonOrbitHighlight.setAttribute('r', String(moonOrbitRadius));
         moonOrbitHighlight.setAttribute('class', 'scanner-orbit-highlight'); // Use same CSS class as LRS
-        
+        moonOrbitHighlight.style.pointerEvents = 'none'; // Prevent click events
+
         this.svg.appendChild(moonOrbitHighlight);
     }
 
@@ -1929,7 +2084,14 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         
         // Add cursor pointer for interaction
         shipIcon.style.cursor = 'pointer';
-        
+
+        // Add click handler for ship icon
+        shipIcon.addEventListener('click', (event) => {
+            event.stopPropagation(); // Prevent the SVG click handler from firing
+            this.zoomIn();
+            debug('STAR_CHARTS', '🚀 Ship icon clicked - zooming in');
+        });
+
         this.svg.appendChild(shipIcon);
         console.log('🚀 DEBUG: Ship icon added to SVG at position:', x, z);
         console.log('🚀 DEBUG: Ship icon points:', points);
@@ -2343,7 +2505,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         
         this.statusBar.innerHTML = `
             <div>Sector: ${currentSector} | Discovered: ${discoveredCount} objects</div>
-            <div>${zoomText} | Click objects to target | Click empty space to zoom out</div>
+            <div>${zoomText} | Click objects to target | Click to zoom in | Shift+click to zoom out</div>
         `;
     }
     

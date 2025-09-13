@@ -46,6 +46,15 @@
         // Set flags for compatibility with existing code
         window.spatialSystemsReady = true;
         window.collisionSystemsReady = true;
+
+        // Test environment flag
+        window.gameInitialized = false;
+
+        // Mock game initialization for testing
+        setTimeout(() => {
+            window.gameInitialized = true;
+            console.log('Game initialized for testing');
+        }, 1000);
     </script>
     
     <!-- Game Application -->

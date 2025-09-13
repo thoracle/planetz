@@ -1,0 +1,17 @@
+{
+  "name": "planetz-playwright-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for running PlanetZ Playwright tests",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

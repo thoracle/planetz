@@ -11,7 +11,12 @@
     "test:ship": "jest --testNamePattern='Ship'",
     "test:cards": "jest --testNamePattern='Card'",
     "test:weapons": "jest --testNamePattern='Weapon'",
-    "test:integration": "jest --testNamePattern='Integration'"
+    "test:integration": "jest --testNamePattern='Integration'",
+    "test:e2e": "python scripts/run_playwright_tests.py --full",
+    "test:e2e:tooltips": "python scripts/run_playwright_tests.py --tooltips",
+    "test:e2e:hitboxes": "python scripts/run_playwright_tests.py --hitboxes",
+    "test:e2e:headed": "python scripts/run_playwright_tests.py --full --headed",
+    "test:e2e:install": "python scripts/run_playwright_tests.py --install"
   },
   "jest": {
     "testEnvironment": "jsdom",

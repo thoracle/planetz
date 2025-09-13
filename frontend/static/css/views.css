@@ -752,6 +752,7 @@ body.warp-control-mode .crosshair {
     stroke-width: 1.5;
     stroke-dasharray: 8,4;
     filter: drop-shadow(0 0 2px rgba(0, 255, 65, 0.3));
+    pointer-events: none;
 }
 
 .scanner-planet {

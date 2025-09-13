@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Charts Debug Helper</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff00;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .command {
+            background: #111;
+            border: 1px solid #00ff00;
+            padding: 10px;
+            margin: 10px 0;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .command:hover {
+            background: #222;
+        }
+        .command:active {
+            background: #333;
+        }
+        .status {
+            background: #001100;
+            border: 1px solid #008800;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .warning {
+            color: #ffaa00;
+        }
+        .error {
+            color: #ff4444;
+        }
+        .success {
+            color: #44ff44;
+        }
+        pre {
+            background: #111;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #004400;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        button:hover {
+            background: #006600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Star Charts Debug Helper</h1>
+
+        <div class="status">
+            <h3>Current Debug Configuration:</h3>
+            <div id="config-status">Loading...</div>
+        </div>
+
+        <div class="status warning">
+            <h3>🐛 Issues to Debug:</h3>
+            <ul>
+                <li>🚀 Ship icon appears to move when stationary</li>
+                <li>🖱️ Tooltips show up unreliably</li>
+                <li>📍 Mysterious long narrow hitbox on left panel</li>
+            </ul>
+            <p><strong>⚠️ IMPORTANT:</strong> Open the Star Charts in the game first before running debug commands! Press <strong>C</strong> to open Star Charts.</p>
+        </div>
+
+        <h2>🎮 Quick Debug Commands</h2>
+
+        <div class="command" onclick="runDebugCommand('testDebugScript')">
+            <strong>testDebugScript()</strong> - Test if debug script loaded correctly
+        </div>
+
+        <div class="command" onclick="runDebugCommand('enableHitBoxDebug')">
+            <strong>enableHitBoxDebug()</strong> - Enable hit box debugging (shows red circles around clickable areas)
+        </div>
+
+        <div class="command" onclick="runDebugCommand('inspectSVGHitboxes')">
+            <strong>inspectSVGHitboxes()</strong> - Find invisible hitbox elements that might be causing the left panel issue
+        </div>
+
+        <div class="command" onclick="runDebugCommand('monitorShipPosition')">
+            <strong>monitorShipPosition()</strong> - Monitor ship position changes for 10 seconds
+        </div>
+
+        <div class="command" onclick="runDebugCommand('debugTooltips')">
+            <strong>debugTooltips()</strong> - Enable detailed tooltip detection logging
+        </div>
+
+        <div class="command" onclick="runDebugCommand('checkEventListeners')">
+            <strong>checkEventListeners()</strong> - List all event listeners on SVG elements
+        </div>
+
+        <div class="command" onclick="runDebugCommand('testZoomBehavior')">
+            <strong>testZoomBehavior()</strong> - Test zoom in/out functionality
+        </div>
+
+        <div class="command" onclick="runDebugCommand('debugObjectData')">
+            <strong>debugObjectData()</strong> - Debug what data objects have for tooltips
+        </div>
+
+        <h2>📋 Debug Checklist</h2>
+        <ol>
+            <li class="success">✅ Debug channels configured (TARGETING disabled, STAR_CHARTS/HITBOX/DEBUG enabled)</li>
+            <li>🔍 Run <code>inspectSVGHitboxes()</code> to find the mysterious left panel hitbox</li>
+            <li>🚀 Run <code>monitorShipPosition()</code> to verify if ship position is actually changing</li>
+            <li>🖱️ Run <code>debugTooltips()</code> and hover over objects to test tooltip reliability</li>
+            <li>📊 Use <code>checkEventListeners()</code> to identify any rogue event handlers</li>
+        </ol>
+
+        <h2>🔧 Manual Commands</h2>
+        <p>You can also run these commands directly in the browser console:</p>
+        <pre>
+// Enable hit box debugging
+enableHitBoxDebug()
+
+// Find invisible elements
+inspectSVGHitboxes()
+
+// Monitor position changes
+monitorShipPosition()
+
+// Debug tooltips
+debugTooltips()
+
+// Check event listeners
+checkEventListeners()
+
+// Test zoom
+testZoomBehavior()
+
+// Other useful commands
+toggleHitBoxDebug()
+hitBoxDebugStatus()
+refreshStarCharts()
+        </pre>
+
+        <div class="status">
+            <h3>💡 Expected Results:</h3>
+            <ul>
+                <li><strong>inspectSVGHitboxes()</strong> should reveal any invisible elements causing the left panel hitbox</li>
+                <li><strong>monitorShipPosition()</strong> should show "Total changes: 0" if ship isn't actually moving</li>
+                <li><strong>debugTooltips()</strong> should show mouse position and object detection details</li>
+                <li>Red hit boxes should appear around clickable objects when debug mode is enabled</li>
+            </ul>
+        </div>
+
+        <div class="status error">
+            <h3>🚨 If Issues Persist:</h3>
+            <ol>
+                <li>Try <code>disableHitBoxDebug()</code> to turn off hit box debugging</li>
+                <li>Check browser console for JavaScript errors</li>
+                <li>Try refreshing the page and reloading the Star Charts</li>
+                <li>Clear browser cache if problems continue</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="debug_star_charts_issues.js"></script>
+    <script>
+        // Function to run debug commands with proper error handling
+        function runDebugCommand(commandName) {
+            console.log(`🎮 Running debug command: ${commandName}`);
+
+            // Check if the function exists immediately
+            if (window[commandName]) {
+                try {
+                    window[commandName]();
+                    console.log(`✅ ${commandName} executed successfully`);
+                } catch (error) {
+                    console.error(`❌ Error running ${commandName}:`, error);
+                }
+                return;
+            }
+
+            // If not available, wait for it to load
+            const maxWait = 5000;
+            const startTime = Date.now();
+
+            function waitAndRun() {
+                if (window[commandName]) {
+                    try {
+                        window[commandName]();
+                        console.log(`✅ ${commandName} executed successfully (after waiting)`);
+                    } catch (error) {
+                        console.error(`❌ Error running ${commandName}:`, error);
+                    }
+                    return;
+                }
+
+                if (Date.now() - startTime > maxWait) {
+                    console.error(`❌ ${commandName} function not found after ${maxWait}ms`);
+                    console.log('💡 Make sure you\'re on the main game page and Star Charts are loaded');
+                    return;
+                }
+
+                setTimeout(waitAndRun, 100);
+            }
+
+            console.log(`⏳ Waiting for ${commandName} function to load...`);
+            waitAndRun();
+        }
+
+        // Update config status
+        function updateConfigStatus() {
+            const statusDiv = document.getElementById('config-status');
+            if (window.debugConfig) {
+                const enabledChannels = Object.entries(window.debugConfig.channels || {})
+                    .filter(([key, channel]) => channel.enabled)
+                    .map(([key]) => key);
+
+                statusDiv.innerHTML = `
+                    <strong>Enabled Channels:</strong> ${enabledChannels.join(', ')}<br>
+                    <strong>Global Debug:</strong> ${window.debugConfig.global?.enabled ? 'ON' : 'OFF'}
+                `;
+            } else {
+                statusDiv.innerHTML = 'Debug system not loaded. Make sure you\'re on the main game page.';
+            }
+        }
+
+        // Check if we're in the right context
+        setTimeout(updateConfigStatus, 1000);
+    </script>
+</body>
+</html>
