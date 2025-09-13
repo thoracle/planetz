@@ -76,7 +76,7 @@ class TestStarChartsIntegration:
         # Test coordinate calculations
         test_coords = [
             ({"x": 0, "y": 0, "z": 0}, {"x": 3, "y": 4, "z": 0}, 5.0),  # 3-4-5 triangle
-            ({"x": 1, "y": 1, "z": 1}, {"x": 4, "y": 5, "z": 6}, 5.196),  # Space diagonal
+            ({"x": 1, "y": 1, "z": 1}, {"x": 4, "y": 5, "z": 6}, 7.071),  # Space diagonal: √(3²+4²+5²)=√50≈7.071
         ]
 
         for i, (coord1, coord2, expected_distance) in enumerate(test_coords):
@@ -145,9 +145,10 @@ class TestStarChartsIntegration:
             for obj in objects_in_range:
                 assert obj['distance'] <= range_distance
 
-            # Inject into page for verification
+            # Inject into page for verification (convert float to int for valid JS property name)
+            range_int = int(range_distance)
             page.evaluate(f"""() => {{
-                window.rangeTest_{range_distance} = {{
+                window.rangeTest_{range_int} = {{
                     center: {json.dumps(center_point)},
                     range: {range_distance},
                     objectsFound: {len(objects_in_range)},

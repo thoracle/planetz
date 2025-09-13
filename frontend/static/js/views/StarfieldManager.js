@@ -13,6 +13,7 @@ import { MissionAPIService } from '../services/MissionAPIService.js';
 import { MissionEventService } from '../services/MissionEventService.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { debug } from '../debug.js';
+import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 
 // TESTING CONFIGURATION
 const TESTING_CONFIG = {
@@ -5449,21 +5450,8 @@ debug('INSPECTION', `🎯 RETICLE DEBUG: Enemy ship detected - diplomacy: ${info
     }
 
     calculateDistance(point1, point2) {
-        // Add null checks to prevent errors
-        if (!point1 || !point2) {
-            console.warn('🎯 StarfieldManager calculateDistance: Invalid points provided', { point1, point2 });
-            return 0;
-        }
-        
-        // Calculate raw distance in world units
-        const rawDistance = Math.sqrt(
-            Math.pow(point2.x - point1.x, 2) +
-            Math.pow(point2.y - point1.y, 2) +
-            Math.pow(point2.z - point1.z, 2)
-        );
-        
-        // Convert to kilometers (1 unit = 1 kilometer)
-        return rawDistance;
+        // Use unified DistanceCalculator for consistent results across all systems
+        return DistanceCalculator.calculate(point1, point2);
     }
 
     getParentPlanetName(moon) {

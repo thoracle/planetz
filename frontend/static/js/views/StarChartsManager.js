@@ -1,4 +1,5 @@
 import { debug } from '../debug.js';
+import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 
 /**
  * StarChartsManager - Advanced discovery-based navigation system
@@ -755,31 +756,8 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
     }
     
     calculateDistance(pos1, pos2) {
-        //Calculate Euclidean distance between two 3D positions (handles both arrays and objects)
-        if (!pos1 || !pos2) {
-            return Infinity;
-        }
-
-        // Handle both array [x, y, z] and object {x, y, z} formats
-        const x1 = Array.isArray(pos1) ? pos1[0] : pos1.x;
-        const y1 = Array.isArray(pos1) ? pos1[1] : pos1.y;
-        const z1 = Array.isArray(pos1) ? pos1[2] : pos1.z;
-        
-        const x2 = Array.isArray(pos2) ? pos2[0] : pos2.x;
-        const y2 = Array.isArray(pos2) ? pos2[1] : pos2.y;
-        const z2 = Array.isArray(pos2) ? pos2[2] : pos2.z;
-
-        // Validate we have valid coordinates
-        if (x1 === undefined || y1 === undefined || z1 === undefined ||
-            x2 === undefined || y2 === undefined || z2 === undefined) {
-            return Infinity;
-        }
-
-        return Math.sqrt(
-            Math.pow(x1 - x2, 2) +
-            Math.pow(y1 - y2, 2) +
-            Math.pow(z1 - z2, 2)
-        );
+        // Use unified DistanceCalculator for consistent results across all systems
+        return DistanceCalculator.calculate(pos1, pos2);
     }
 
     isWithinRange(object, playerPosition, discoveryRadius) {

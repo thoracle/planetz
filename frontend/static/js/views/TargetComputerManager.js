@@ -1,8 +1,9 @@
 import { debug } from '../debug.js';
+import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
- * 
+ *
  * This class is responsible for:
  * - Target computer HUD creation and management
  * - Target list management and sorting
@@ -10,7 +11,7 @@ import { debug } from '../debug.js';
  * - Wireframe rendering and sub-target indicators
  * - Target outlines and reticles
  * - Direction arrows and distance calculations
- * 
+ *
  * Extracted from StarfieldManager to improve code organization and maintainability.
  */
 import { WIREFRAME_TYPES, getWireframeType } from '../constants/WireframeTypes.js';
@@ -2915,46 +2916,8 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
      * Calculate distance between two points
      */
     calculateDistance(point1, point2) {
-        if (!point1 || !point2) {
-            console.warn('🎯 calculateDistance: Invalid points provided', { point1, point2 });
-            return 0;
-        }
-        
-        // Convert points to Vector3 if needed
-        let vec1 = point1;
-        let vec2 = point2;
-        
-        // Convert point1 to Vector3 if it's an array
-        if (Array.isArray(point1)) {
-            vec1 = new this.THREE.Vector3(point1[0], point1[1], point1[2]);
-        } else if (point1 && typeof point1 === 'object' && typeof point1.x === 'number' && !point1.distanceTo) {
-            vec1 = new this.THREE.Vector3(point1.x, point1.y, point1.z);
-        }
-        
-        // Convert point2 to Vector3 if it's an array
-        if (Array.isArray(point2)) {
-            vec2 = new this.THREE.Vector3(point2[0], point2[1], point2[2]);
-        } else if (point2 && typeof point2 === 'object' && typeof point2.x === 'number' && !point2.distanceTo) {
-            vec2 = new this.THREE.Vector3(point2.x, point2.y, point2.z);
-        }
-        
-        // Ensure we have Vector3 objects
-        if (!vec1 || !vec2 || typeof vec1.distanceTo !== 'function' || typeof vec2.distanceTo !== 'function') {
-            console.warn('🎯 calculateDistance: Could not convert to Vector3 objects', { 
-                originalPoint1: point1, 
-                originalPoint2: point2,
-                vec1: vec1,
-                vec2: vec2
-            });
-            return 0;
-        }
-        
-        try {
-            return vec1.distanceTo(vec2);
-        } catch (error) {
-            console.warn('🎯 calculateDistance: Error calculating distance', error);
-            return 0;
-        }
+        // Use unified DistanceCalculator for consistent results across all systems
+        return DistanceCalculator.calculate(point1, point2);
     }
 
     /**
