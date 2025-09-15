@@ -128,7 +128,6 @@ debug('UTILITY', 'Initial max speed:', initialMaxSpeed);
     engines.takeDamage(80); // 80 damage to 150 health = critical state
     
 debug('COMBAT', 'After damage - Health:', engines.healthPercentage.toFixed(2));
-debug('COMBAT', 'After damage - State:', engines.state);
 debug('COMBAT', 'After damage - Current speed:', engines.getImpulseSpeed());
 debug('COMBAT', 'After damage - Max speed:', engines.getMaxImpulseSpeed());
 debug('COMBAT', 'After damage - Energy consumption:', engines.getEnergyConsumptionRate(), '/sec');

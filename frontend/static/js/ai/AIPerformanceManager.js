@@ -456,7 +456,6 @@ debug('UTILITY', `⚡ LOD system ${enabled ? 'enabled' : 'disabled'}`);
             Object.assign(this.LODUpdateIntervals, settings.updateIntervals);
         }
         
-debug('PERFORMANCE', '⚡ Performance settings updated:', settings);
     }
     
     /**

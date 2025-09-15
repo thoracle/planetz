@@ -9,4 +9,3 @@ export function kmToMeters(km) {
 	return (typeof km === 'number' && isFinite(km)) ? km * 1000 : 0;
 }
 
-

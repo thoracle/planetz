@@ -275,7 +275,6 @@ debug('MISSIONS', `🎯 DEBUG: Mission ${mission.mission_id} not completed yet, 
                     }
                 }
             } else {
-debug('MISSIONS', 'MissionEventService: No missions updated from cargo delivery');
                 if (result.success) {
 debug('MISSIONS', 'MissionEventService: Response was successful but no missions matched');
                 }

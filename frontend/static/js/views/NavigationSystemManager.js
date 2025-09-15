@@ -399,7 +399,6 @@ debug('UTILITY', `     • Discovered objects: ${report.starCharts.discoveredObj
         // Update system configuration
         
         this.config = { ...this.config, ...newConfig };
-debug('NAVIGATION', 'Navigation system configuration updated:', this.config);
         
         // Apply configuration changes
         if (this.starChartsManager) {

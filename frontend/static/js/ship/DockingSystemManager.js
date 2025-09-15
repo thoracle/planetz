@@ -309,6 +309,5 @@ debug('UTILITY', 'DockingSystemManager initialized');
      */
     updateDockingRequirements(newRequirements) {
         this.dockingRequirements = { ...this.dockingRequirements, ...newRequirements };
-debug('UI', 'Docking requirements updated:', this.dockingRequirements);
     }
 } 

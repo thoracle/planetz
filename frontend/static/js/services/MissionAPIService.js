@@ -38,7 +38,6 @@ debug('MISSIONS', `🎯 MissionAPIService: Player location set to ${location}`);
      */
     updatePlayerData(playerData) {
         this.playerData = { ...playerData };
-debug('MISSIONS', 'MissionAPIService: Player data updated', this.playerData);
     }
     
     /**

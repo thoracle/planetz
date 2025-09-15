@@ -82,13 +82,10 @@ debug('UTILITY', '\nTest 6: Energy Depletion and Auto-Deactivation');
     // Drain energy to near zero
     ship.currentEnergy = 50;
 debug('UTILITY', 'Set energy to 50');
-debug('COMBAT', 'Systems active before update:', shields.isActive, scanner.isActive);
     
     // Update with 1 second - should consume more energy than available
     ship.update(2000); // 2 seconds = 60 energy needed, but only 50 available
     
-debug('UTILITY', 'Energy after update:', ship.currentEnergy.toFixed(1));
-debug('COMBAT', 'Systems active after update:', shields.isActive, scanner.isActive);
 debug('UTILITY', 'At least one system should have auto-deactivated due to insufficient energy');
     
     // Test 7: System status

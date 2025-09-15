@@ -101,11 +101,15 @@ debug('UI', 'StarChartsUI: Interface created');
         this.statusBar.className = 'star-charts-status';
         this.container.appendChild(this.statusBar);
         
-        // Create tooltip
+        // Create tooltip with unique ID to avoid conflicts with LRS
         this.tooltip = document.createElement('div');
-        this.tooltip.className = 'scanner-tooltip';
+        this.tooltip.id = 'star-charts-tooltip';
+        this.tooltip.className = 'scanner-tooltip star-charts-tooltip';
         this.tooltip.style.display = 'none';
         document.body.appendChild(this.tooltip);
+        
+        console.log('✅ Star Charts tooltip element created:', this.tooltip);
+        console.log('🔧 TOOLTIP FIX VERSION LOADED - v2.0 with enhanced object data loading');
         
         // Add to document
         document.body.appendChild(this.container);
@@ -248,31 +252,49 @@ debug('UI', 'StarChartsUI: Interface created');
     }
     
     handleMouseMove(event) {
-        // Handle mouse movement for tooltips
-        console.log('🖱️ handleMouseMove called');
-
-        const rect = this.svg.getBoundingClientRect();
-        const screenX = event.clientX - rect.left;
-        const screenY = event.clientY - rect.top;
-
-        console.log('🖱️ Mouse position:', { screenX, screenY });
-
-                    // Use zoom-independent pixel tolerance for tooltip detection
-                    const hoveredObject = this.getObjectAtScreenPosition(screenX, screenY, 16); // 16 pixel tolerance for better detection
-
-        console.log('🖱️ Hovered object found:', hoveredObject ? {
-            id: hoveredObject.id,
-            name: hoveredObject.name,
-            type: hoveredObject.type
-        } : 'none');
-
-        if (hoveredObject) {
-            if (hoveredObject._isShip) {
-                console.log('🚀 Ship tooltip showing!');
+        // Handle mouse movement for tooltips - USE LRS APPROACH (direct DOM detection)
+        
+        // Use global screen coordinates like LRS (not local SVG coordinates)
+        const x = event.clientX;
+        const y = event.clientY;
+        
+        // Find the element under the cursor using direct DOM query (LRS approach)
+        const element = document.elementFromPoint(x, y);
+        
+        // Check if it's a Star Charts interactive element (visual element or hitbox)
+        if (element && (element.hasAttribute('data-object-id') || element.hasAttribute('data-name'))) {
+            const objectId = element.getAttribute('data-object-id') || element.getAttribute('data-name');
+            
+            // Special handling for player ship
+            if (objectId === 'player_ship' || element.classList.contains('ship-position-icon')) {
+                // Show "You are here" tooltip for ship
+                this.tooltip.textContent = 'You are here';
+                this.tooltip.style.left = x + 'px';
+                this.tooltip.style.top = y + 'px';
+                this.tooltip.style.display = 'block';
+            } else {
+                // Check if this is an unknown object (question mark)
+                if (element.classList.contains('star-charts-undiscovered') || 
+                    element.getAttribute('data-name') === 'Unknown') {
+                    // Show "Unknown" tooltip for undiscovered objects
+                    this.tooltip.textContent = 'Unknown';
+                    this.tooltip.style.left = x + 'px';
+                    this.tooltip.style.top = y + 'px';
+                    this.tooltip.style.display = 'block';
+                } else {
+                    // Get the object data for tooltip (discovered objects)
+                    const hoveredObject = this.starChartsManager.getObjectData(objectId) || 
+                                        this.findObjectByName(objectId);
+                    
+                    if (hoveredObject) {
+                        this.showTooltip(x, y, hoveredObject);
+                    } else {
+                        this.tooltip.style.display = 'none';
+                    }
+                }
             }
-            this.showTooltip(event.clientX, event.clientY, hoveredObject);
         } else {
-            console.log('🖱️ No hovered object - hiding tooltip');
+            // No interactive element found - hide tooltip
             this.tooltip.style.display = 'none';
         }
     }
@@ -516,7 +538,7 @@ debug('UI', 'StarChartsUI: Interface created');
         // Integrate with Target Computer
         // For undiscovered objects, ensure they're added to target computer first
         if (object._isUndiscovered) {
-            console.log(`🎯 Adding undiscovered object ${object.name} to target computer before targeting`);
+
             console.log(`🔍 DEBUG OBJECT: Object properties before adding:`, {
                 name: object.name,
                 type: object.type,
@@ -719,7 +741,7 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
                     // Ship icon radius (approximate) - convert to world units
                     const shipRadius = this.screenPixelsToWorldUnits(15); // 15 pixel radius
                     if (distance <= shipRadius + worldTolerance) {
-                        console.log('🚀 Ship tooltip detected! Distance:', distance, 'Radius:', shipRadius, 'Tolerance:', worldTolerance);
+
                         return {
                             id: 'player_ship',
                             name: 'You are here',
@@ -739,6 +761,19 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
         // This searches ALL objects (both discovered and undiscovered)
 
         const allObjects = this.getDiscoveredObjectsForRender(); // This actually returns all objects
+        
+        // Debug: Log available objects occasionally
+        if (Math.random() < 0.01) { // Only log 1% of the time
+            console.log('🌟 Available objects for hover detection:', {
+                count: allObjects.length,
+                objects: allObjects.map(obj => ({
+                    id: obj.id,
+                    name: obj.name,
+                    type: obj.type,
+                    _isUndiscovered: obj._isUndiscovered
+                }))
+            });
+        }
 
         // Convert screen position to world coordinates for object lookup
         const worldPos = this.screenToWorld(screenX, screenY);
@@ -754,26 +789,14 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
 
                 // Debug: Log object positions and distances occasionally
                 if (Math.random() < 0.01) { // Only log 1% of the time to reduce spam
-                    console.log(`🔍 Object ${object.id} (${object.name}): screen(${objectScreenPos.x.toFixed(1)}, ${objectScreenPos.y.toFixed(1)}) mouse(${screenX.toFixed(1)}, ${screenY.toFixed(1)}) dist=${distance.toFixed(1)} tolerance=${pixelTolerance}`);
+
                 }
 
                     // Use fixed pixel tolerance - this doesn't change with zoom (increased for better detection)
                     if (distance <= pixelTolerance) {
-                    console.log(`🎯 FOUND: Object ${object.id} (${object.name}) at distance ${distance.toFixed(1)}`);
-                    // For tooltips, we need complete object data including name
-                    // Always fetch complete data for tooltips to ensure accuracy
-                    if (object.id && !object._isShip) {
-                        const completeData = this.starChartsManager.getObjectData(object.id);
-                        console.log(`🔍 Tooltip: Object ${object.id}, fetched complete data:`, completeData?.name);
-                        if (completeData) {
-                            // Return object with complete data merged
-                            return {
-                                ...object,
-                                ...completeData
-                            };
-                        }
-                    }
-                    return object;
+                        // Ensure object has complete data including name
+                        const completeObject = this.ensureObjectHasName(object);
+                        return completeObject;
                 }
             }
         }
@@ -804,7 +827,7 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
 
                     // Use fixed pixel tolerance for ship too
                     if (distance <= pixelTolerance + 5) { // Slightly larger for ship (diamond shape)
-                        console.log('🚀 Ship tooltip detected at screen distance:', distance, 'pixels');
+
                         return {
                             id: 'player_ship',
                             name: 'You are here',
@@ -839,31 +862,94 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
 
         return { x: screenX, y: screenY };
     }
+    ensureObjectDataLoaded() {
+        // Ensure object database is loaded before showing tooltips
+        if (!this.starChartsManager.objectDatabase || !this.starChartsManager.isInitialized) {
+            console.log('🖱️ Object database not ready for tooltips yet');
+            return false;
+        }
+        return true;
+    }
+    
+    ensureObjectHasName(object) {
+        // Ensure object has a name, fetching from database if needed
+        if (!object) return null;
+        
+        // If object already has a name, return it
+        if (object.name && object.name !== 'undefined' && object.name.trim() !== '') {
+            return object;
+        }
+        
+        // If it's a ship, handle specially
+        if (object._isShip) {
+            return {
+                ...object,
+                name: 'Your Ship',
+                type: 'ship'
+            };
+        }
+        
+        // Try to get complete data from database
+        if (object.id && this.starChartsManager.objectDatabase) {
+            const completeData = this.starChartsManager.getObjectData(object.id);
+            if (completeData && completeData.name) {
+                return {
+                    ...object,
+                    ...completeData
+                };
+            }
+        }
+        
+        // Fallback: create a meaningful name from available data
+        let fallbackName = 'Unknown Object';
+        if (object.id) {
+            // Try to extract meaningful name from ID
+            const cleanId = object.id.replace(/^[A-Z]\d+_/, ''); // Remove sector prefix like "A0_"
+            fallbackName = cleanId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+        
+        return {
+            ...object,
+            name: fallbackName,
+            type: object.type || 'Unknown'
+        };
+    }
+    
+    
     
     showTooltip(screenX, screenY, object) {
-        // Show tooltip for hovered object - match LRS simple text format
-        console.log('🖱️ showTooltip called for object:', {
-            id: object.id,
-            name: object.name,
-            type: object.type,
-            _isShip: object._isShip,
-            _isUndiscovered: object._isUndiscovered
-        });
-
+        // Ensure object database is ready
+        if (!this.ensureObjectDataLoaded()) {
+            return;
+        }
+        
+        // Ensure object has complete data including name
+        const completeObject = this.ensureObjectHasName(object);
+        if (!completeObject) {
+            console.log('⚠️ Could not get complete object data for tooltip');
+            return;
+        }
+        
         // For undiscovered objects, show "Unknown" instead of revealing the name
         // For ship, show "You are here"
         let tooltipText;
-        if (object._isShip) {
+        if (completeObject._isShip) {
             tooltipText = 'You are here';
-        } else if (object._isUndiscovered) {
+        } else if (completeObject._isUndiscovered) {
             tooltipText = 'Unknown';
         } else {
-            tooltipText = object.name;
+            // Use the name from the complete object
+            tooltipText = completeObject.name || 'Unknown Object';
         }
 
-        console.log('🖱️ Tooltip text will be:', tooltipText);
+        // Show tooltip for hovered object - match LRS simple text format
 
         // Simple text tooltip like LRS (no HTML formatting)
+        if (!this.tooltip) {
+            console.log('❌ Tooltip element not found!');
+            return;
+        }
+        
         this.tooltip.textContent = tooltipText;
 
         // Position tooltip at cursor like LRS
@@ -1071,8 +1157,19 @@ debug('UI', 'Star Charts: Interface hidden');
             return;
         }
         
-        // Clear SVG
+        // Clear SVG and ensure all blinking classes are removed
         this.svg.innerHTML = '';
+        
+        // Additional safety: Remove any lingering target-blink classes from the entire document
+        // This handles edge cases where elements might persist outside the SVG
+        const existingBlinkingElements = document.querySelectorAll('.target-blink');
+        existingBlinkingElements.forEach(element => {
+            element.classList.remove('target-blink');
+            // Force style recalculation to ensure animation stops immediately
+            element.offsetHeight; // Trigger reflow
+        });
+        
+        debug('TARGETING', `🎯 RENDER: Cleared ${existingBlinkingElements.length} existing blinking elements and forced reflow`);
         
         // Build a display model that mirrors LRS ring layout (planets normalized to rings)
         this.buildDisplayModel();
@@ -1090,6 +1187,11 @@ debug('UI', 'Star Charts: Interface hidden');
         
         // Update status bar
         this.updateStatusBar();
+        
+        // Add diagnostic display for click-first bug analysis
+        this.updateDiagnosticDisplay();
+        
+        debug('TARGETING', `🎯 RENDER: Star Charts render completed`);
     }
 
     // Build normalized ring model to match LRS visual layout
@@ -1673,7 +1775,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
                 //     console.log(`  ${i + 1}. ${obj.name || obj.id} (${obj.type}) - _isUndiscovered: ${obj._isUndiscovered}`);
                 // });
             } else {
-                console.log(`🔴 DEBUG: No undiscovered objects found - all ${discoveredObjects.length} objects are discovered`);
+
             }
         }
         
@@ -1713,8 +1815,13 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Add star (discovered = normal, undiscovered = with ? flag)
         if (sectorData.star) {
             const discovered = isDiscovered(sectorData.star.id);
+            
+            // Ensure complete data by fetching from database
+            const completeStarData = this.starChartsManager.getObjectData(sectorData.star.id) || sectorData.star;
+            
             allObjects.push({
                 ...sectorData.star,
+                ...completeStarData, // Merge complete data
                 _isUndiscovered: !discovered && !isTestMode
             });
         }
@@ -1735,12 +1842,20 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             const discovered = isDiscovered(obj.id);
             const normalizedType = normalizeStationType(obj.type);
             
+            // Ensure complete data by fetching from database
+            const completeObjectData = this.starChartsManager.getObjectData(obj.id) || obj;
+            
             if (discovered || isTestMode) {
-                allObjects.push({ ...obj, type: normalizedType });
+                allObjects.push({ 
+                    ...obj, 
+                    ...completeObjectData, // Merge complete data
+                    type: normalizedType 
+                });
             } else {
                 // Add undiscovered object with special flag
                 allObjects.push({
                     ...obj,
+                    ...completeObjectData, // Merge complete data
                     type: normalizedType,
                     _isUndiscovered: true
                 });
@@ -1751,13 +1866,22 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         if (sectorData.infrastructure) {
             sectorData.infrastructure.stations?.forEach(station => {
                 const discovered = isDiscovered(station.id);
+                
+                // Ensure complete data by fetching from database
+                const completeStationData = this.starChartsManager.getObjectData(station.id) || station;
+                
                 if (discovered || isTestMode) {
                     // Normalize station type to match LRS icon rules
-                    allObjects.push({ ...station, type: 'space_station' });
+                    allObjects.push({ 
+                        ...station, 
+                        ...completeStationData, // Merge complete data
+                        type: 'space_station' 
+                    });
                 } else {
                     // Add undiscovered station with special flag
                     allObjects.push({
                         ...station,
+                        ...completeStationData, // Merge complete data
                         type: 'space_station',
                         _isUndiscovered: true
                     });
@@ -1766,14 +1890,23 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
 
             sectorData.infrastructure.beacons?.forEach(beacon => {
                 const discovered = isDiscovered(beacon.id);
+                
+                // Ensure complete data by fetching from database
+                const completeBeaconData = this.starChartsManager.getObjectData(beacon.id) || beacon;
+                
                 if (discovered || isTestMode) {
                     // Normalize beacon type to match LRS icon rules
-                    const beaconData = { ...beacon, type: 'navigation_beacon' };
+                    const beaconData = { 
+                        ...beacon, 
+                        ...completeBeaconData, // Merge complete data
+                        type: 'navigation_beacon' 
+                    };
                     allObjects.push(beaconData);
                 } else {
                     // Add undiscovered beacon with special flag
                     allObjects.push({
                         ...beacon,
+                        ...completeBeaconData, // Merge complete data
                         type: 'navigation_beacon',
                         _isUndiscovered: true
                     });
@@ -1810,6 +1943,30 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Try normalized versions
         const norm = (id) => (typeof id === 'string' ? id.replace(/^a0_/i, 'A0_') : id);
         return norm(targetId) === norm(objectId);
+    }
+    
+    matchesCurrentTarget(object) {
+        // Enhanced target matching that handles both ID and name matching
+        const currentTarget = this.starChartsManager.targetComputerManager?.currentTarget;
+        if (!currentTarget || !object) return false;
+        
+        // Try ID matching first
+        if (this.matchesTargetId(currentTarget.id, object.id)) {
+            return true;
+        }
+        
+        // Try name matching as fallback
+        if (currentTarget.name && object.name && currentTarget.name === object.name) {
+            return true;
+        }
+        
+        // Try to get target data from target computer and match by name
+        const targetData = this.starChartsManager.targetComputerManager.getCurrentTargetData?.();
+        if (targetData && targetData.name && object.name && targetData.name === object.name) {
+            return true;
+        }
+        
+        return false;
     }
     
     renderOrbitLines(objects) {
@@ -1897,7 +2054,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         this.svg.appendChild(moonOrbitHighlight);
     }
 
-    renderUndiscoveredObject(x, y) {
+    renderUndiscoveredObject(x, y, object = null) {
         // Render undiscovered objects as "?" with unknown faction color (cyan)
         // Debug logging removed to reduce spam
 
@@ -1913,35 +2070,29 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         hitBox.setAttribute('cy', y);
         hitBox.setAttribute('r', hitBoxSize / 2);
         
-        // DEBUG: Make hitbox visible to debug positioning (can be toggled via console)
-        const debugMode = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
-        if (debugMode) {
-            // Make hit box EXTREMELY visible for debugging
-            hitBox.setAttribute('fill', 'rgba(255, 0, 0, 0.8)'); // Very opaque red
-            hitBox.setAttribute('stroke', 'red');
-            hitBox.setAttribute('stroke-width', '5'); // Very thick stroke
-            hitBox.setAttribute('stroke-dasharray', '10,5'); // Very visible dashed line
-            hitBox.style.zIndex = '9999'; // Maximum z-index
-            hitBox.style.pointerEvents = 'all';
-            hitBox.style.opacity = '1'; // Force full opacity
-            hitBox.style.visibility = 'visible'; // Force visibility
-            console.log(`🎯 DEBUG: Rendering hit box for undiscovered object at (${x}, ${y}) with radius ${hitBoxSize / 2}`);
-        } else {
-            hitBox.setAttribute('fill', 'transparent');
-            hitBox.setAttribute('stroke', 'none');
-        }
+        hitBox.setAttribute('fill', 'transparent');
+        hitBox.setAttribute('stroke', 'none');
         
         hitBox.style.pointerEvents = 'all';
         hitBox.style.cursor = 'pointer'; // Finger cursor for interaction
 
+        // Create text element for "?" (must be created before setting attributes)
+        const questionMark = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+
         // Add required attributes for interaction detection
-        hitBox.setAttribute('data-name', 'unknown-object'); // For handleMapClick detection
+        if (object) {
+            // Use actual object ID for proper targeting, but hide the name for discovery mechanic
+            hitBox.setAttribute('data-object-id', object.id || 'unknown');
+            hitBox.setAttribute('data-name', 'Unknown'); // Always show "Unknown" for undiscovered objects
+            questionMark.setAttribute('data-object-id', object.id || 'unknown');
+            questionMark.setAttribute('data-name', 'Unknown'); // Always show "Unknown" for undiscovered objects
+        } else {
+            // Fallback for legacy calls without object
+            hitBox.setAttribute('data-name', 'Unknown');
+        }
         hitBox.classList.add('starchart-hitbox'); // Required class for interactive elements
         hitBox.setAttribute('title', 'Unknown Object - Click to zoom'); // Browser tooltip
         hitBox.setAttribute('data-tooltip', 'Unknown Object - Click to zoom'); // Custom tooltip data
-
-        // Create text element for "?"
-        const questionMark = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         questionMark.setAttribute('x', x);
         questionMark.setAttribute('y', y);
         questionMark.setAttribute('text-anchor', 'middle');
@@ -1986,30 +2137,51 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             }
             
             if (objectAtPosition) {
-                console.log(`🖱️ Unknown object clicked: ${objectAtPosition.name} at (${x}, ${y}), attempting to target`);
-                
+
                 // Try to select the object for targeting (same as discovered objects)
                 this.selectObject(objectAtPosition);
             } else {
                 // Fallback: just zoom to the location
                 this.zoomToLocation(x, y);
                 debug('STAR_CHARTS', `🖱️ Clicked unknown object at (${x}, ${y}), no object data found - zooming only`);
-                console.log(`🖱️ Unknown object clicked at (${x}, ${y}), no object data - zooming only`);
+
             }
         });
 
-
-        // DEBUG: Add elements in proper order for debug mode
-        const debugModeOrder = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
-        if (debugModeOrder) {
-            // In debug mode, add question mark first, then hit box on top
-            this.svg.appendChild(questionMark);
-            this.svg.appendChild(hitBox);
-        } else {
-            // In normal mode, add hit box first (behind), then question mark
-            this.svg.appendChild(hitBox);
-            this.svg.appendChild(questionMark);
+        // Add blinking effect for current targeting CPU target (same logic as discovered objects)
+        if (object) {
+            const currentTarget = this.starChartsManager.targetComputerManager?.currentTarget;
+            const isCurrentTarget = this.matchesCurrentTarget(object);
+            
+            debug('TARGETING', `🎯 UNKNOWN BLINKING CHECK: Object ${object.name} (ID: ${object.id}) vs Current Target ${currentTarget?.name || 'none'} (ID: ${currentTarget?.id || 'none'}) - Match: ${isCurrentTarget}`);
+            
+            if (isCurrentTarget) {
+                debug('TARGETING', `🎯 UNKNOWN BLINKING: Adding blink to ${object.name} (ID: ${object.id})`);
+                questionMark.classList.add('target-blink');
+                // Add CSS animation for blinking (reuse existing style)
+                if (!document.querySelector('#star-charts-target-blink-style')) {
+                    const style = document.createElement('style');
+                    style.id = 'star-charts-target-blink-style';
+                    style.textContent = `
+                        .target-blink {
+                            animation: targetBlink 1.5s infinite;
+                        }
+                        @keyframes targetBlink {
+                            0%, 50% { opacity: 1; }
+                            51%, 100% { opacity: 0.3; }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+            } else {
+                // Remove blinking if this is not the current target
+                questionMark.classList.remove('target-blink');
+            }
         }
+
+        // Add hit box first (behind), then question mark on top
+        this.svg.appendChild(hitBox);
+        this.svg.appendChild(questionMark);
 
         // Debug logging removed to reduce spam
     }
@@ -2018,10 +2190,9 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Render ship position icon on star chart
         
         const playerPos = this.starChartsManager.getPlayerPosition();
-        console.log('🚀 DEBUG: renderShipPosition() - playerPos:', playerPos);
-        
+
         if (!playerPos || !Array.isArray(playerPos) || playerPos.length < 3) {
-            console.log('🚀 DEBUG: No valid ship position, returning early');
+
             return; // No valid ship position
         }
         
@@ -2031,32 +2202,18 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         if (existingIcon) existingIcon.remove();
         if (existingLabel) existingLabel.remove();
         
-        // Calculate display position directly using the same coordinate transformation as other objects
-        // For star charts, we use X and Z coordinates (top-down view)
-        const worldX = playerPos[0];
-        const worldZ = playerPos[2]; // Use Z coordinate for display Y
+        // Use the same coordinate system as other objects for consistency
+        // Create a temporary ship object to use getDisplayPosition()
+        const shipObject = {
+            id: 'player_ship',
+            name: 'Your Ship',
+            type: 'ship',
+            position: playerPos
+        };
         
-        // Apply the inverse of screenToWorld transformation (world to screen)
-        const rect = this.svg.getBoundingClientRect();
-        const svgWidth = rect.width;
-        const svgHeight = rect.height;
-        const worldSize = this.getWorldSize();
-        
-        const x = ((worldX - this.currentCenter.x) / worldSize + 0.5) * svgWidth;
-        const z = ((worldZ - this.currentCenter.y) / worldSize + 0.5) * svgHeight;
-        
-        console.log('🚀 DEBUG: worldPos:', {x: worldX, z: worldZ}, 'displayPos:', {x, z}, 'currentCenter:', this.currentCenter, 'worldSize:', worldSize, 'svgSize:', {width: svgWidth, height: svgHeight});
-        
-        // Check if coordinates are valid
-        if (isNaN(x) || isNaN(z)) {
-            console.log('❌ Invalid display coordinates:', {x, z});
-            return;
-        }
-        
-        // Check if coordinates are within reasonable bounds
-        if (x < -1000 || x > svgWidth + 1000 || z < -1000 || z > svgHeight + 1000) {
-            console.log('⚠️ Ship icon may be off-screen:', {x, z, svgWidth, svgHeight});
-        }
+        const pos = this.getDisplayPosition(shipObject);
+        const x = pos.x;
+        const z = pos.y; // getDisplayPosition returns {x, y} where y is the Z coordinate
         
         // Calculate zoom-scaled size
         const baseSize = 20;
@@ -2079,6 +2236,10 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         shipIcon.setAttribute('stroke-width', '1');
         shipIcon.setAttribute('class', 'ship-position-icon');
         
+        // Add data attributes for tooltip detection
+        shipIcon.setAttribute('data-object-id', 'player_ship');
+        shipIcon.setAttribute('data-name', 'Your Ship');
+        
         // Add glow effect
         shipIcon.setAttribute('filter', 'drop-shadow(0 0 3px #00ff00)');
         
@@ -2088,15 +2249,12 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Add click handler for ship icon
         shipIcon.addEventListener('click', (event) => {
             event.stopPropagation(); // Prevent the SVG click handler from firing
-            this.zoomIn();
-            debug('STAR_CHARTS', '🚀 Ship icon clicked - zooming in');
+            this.zoomToLocation(x, z); // Zoom to ship's location like other objects
+            debug('STAR_CHARTS', `🚀 Ship icon clicked - zooming to ship location (${x.toFixed(1)}, ${z.toFixed(1)})`);
         });
 
         this.svg.appendChild(shipIcon);
-        console.log('🚀 DEBUG: Ship icon added to SVG at position:', x, z);
-        console.log('🚀 DEBUG: Ship icon points:', points);
-        console.log('🚀 DEBUG: Ship icon size:', scaledSize);
-        
+
         // Add ship label
         const shipLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         shipLabel.setAttribute('x', x);
@@ -2110,29 +2268,19 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         shipLabel.textContent = 'SHIP';
         
         this.svg.appendChild(shipLabel);
-        console.log('🚀 DEBUG: Ship label added to SVG');
-        
+
         // Verify the ship icon is actually in the DOM
         setTimeout(() => {
             const verifyIcon = this.svg.querySelector('.ship-position-icon');
             if (verifyIcon) {
-                console.log('✅ Ship icon verified in DOM');
-                console.log('📍 Ship icon points:', verifyIcon.getAttribute('points'));
-                console.log('🎨 Ship icon fill:', verifyIcon.getAttribute('fill'));
-                console.log('👁️ Ship icon visibility:', verifyIcon.style.visibility);
-                console.log('📐 Ship icon display:', verifyIcon.style.display);
-                console.log('🔍 Ship icon opacity:', verifyIcon.style.opacity);
-                
+
                 // Check SVG properties
-                console.log('📐 SVG viewBox:', this.svg.getAttribute('viewBox'));
-                console.log('📐 SVG width:', this.svg.getAttribute('width'));
-                console.log('📐 SVG height:', this.svg.getAttribute('height'));
-                
+
                 // Check if ship icon is within viewBox
                 const viewBox = this.svg.getAttribute('viewBox');
                 if (viewBox) {
                     const [minX, minY, width, height] = viewBox.split(' ').map(Number);
-                    console.log('📐 ViewBox bounds:', {minX, minY, width, height});
+
                     console.log('📐 Ship position relative to viewBox:', {
                         x: x - minX,
                         y: z - minY,
@@ -2140,7 +2288,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
                     });
                 }
             } else {
-                console.log('❌ Ship icon NOT found in DOM after creation');
+
             }
         }, 100);
     }
@@ -2155,7 +2303,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Handle undiscovered objects - render as "?" with unknown faction color
         if (object._isUndiscovered) {
             // Debug logging removed to reduce spam
-            this.renderUndiscoveredObject(x, y);
+            this.renderUndiscoveredObject(x, y, object);
             return; // Don't render the normal object
         }
 
@@ -2179,23 +2327,8 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             hitBox.setAttribute('width', hitBoxSize);
             hitBox.setAttribute('height', hitBoxSize);
             hitBox.setAttribute('transform', `rotate(45 ${x} ${y})`);
-            // DEBUG: Make hitbox visible to debug positioning (can be toggled via console)
-            const debugMode = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
-            if (debugMode) {
-                // Make hit box EXTREMELY visible for debugging
-                hitBox.setAttribute('fill', 'rgba(255, 0, 0, 0.7)'); // Very opaque red
-                hitBox.setAttribute('stroke', 'red');
-                hitBox.setAttribute('stroke-width', '4'); // Very thick stroke
-                hitBox.setAttribute('stroke-dasharray', '8,4'); // Very visible dashed line
-                hitBox.style.zIndex = '9999'; // Maximum z-index
-                hitBox.style.pointerEvents = 'all';
-                hitBox.style.opacity = '1'; // Force full opacity
-                hitBox.style.visibility = 'visible'; // Force visibility
-                console.log(`🎯 DEBUG: Rendering ${object.type} hit box for ${object.name} at (${x}, ${y})`);
-            } else {
-                hitBox.setAttribute('fill', 'transparent');
-                hitBox.setAttribute('stroke', 'none');
-            }
+            hitBox.setAttribute('fill', 'transparent');
+            hitBox.setAttribute('stroke', 'none');
             hitBox.style.pointerEvents = 'all';
         } else if (object.type === 'navigation_beacon') {
             // Beacon hit box: larger triangle
@@ -2207,23 +2340,8 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             ].join(' ');
             hitBox = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
             hitBox.setAttribute('points', points);
-            // DEBUG: Make hitbox visible to debug positioning (can be toggled via console)
-            const debugMode = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
-            if (debugMode) {
-                // Make hit box EXTREMELY visible for debugging
-                hitBox.setAttribute('fill', 'rgba(255, 0, 0, 0.7)'); // Very opaque red
-                hitBox.setAttribute('stroke', 'red');
-                hitBox.setAttribute('stroke-width', '4'); // Very thick stroke
-                hitBox.setAttribute('stroke-dasharray', '8,4'); // Very visible dashed line
-                hitBox.style.zIndex = '9999'; // Maximum z-index
-                hitBox.style.pointerEvents = 'all';
-                hitBox.style.opacity = '1'; // Force full opacity
-                hitBox.style.visibility = 'visible'; // Force visibility
-                console.log(`🎯 DEBUG: Rendering ${object.type} hit box for ${object.name} at (${x}, ${y})`);
-            } else {
-                hitBox.setAttribute('fill', 'transparent');
-                hitBox.setAttribute('stroke', 'none');
-            }
+            hitBox.setAttribute('fill', 'transparent');
+            hitBox.setAttribute('stroke', 'none');
             hitBox.style.pointerEvents = 'all';
         } else {
             // Default hit box: larger circle
@@ -2231,23 +2349,8 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             hitBox.setAttribute('cx', x);
             hitBox.setAttribute('cy', y);
             hitBox.setAttribute('r', hitBoxRadius);
-            // DEBUG: Make hitbox visible to debug positioning (can be toggled via console)
-            const debugMode = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
-            if (debugMode) {
-                // Make hit box EXTREMELY visible for debugging
-                hitBox.setAttribute('fill', 'rgba(255, 0, 0, 0.7)'); // Very opaque red
-                hitBox.setAttribute('stroke', 'red');
-                hitBox.setAttribute('stroke-width', '4'); // Very thick stroke
-                hitBox.setAttribute('stroke-dasharray', '8,4'); // Very visible dashed line
-                hitBox.style.zIndex = '9999'; // Maximum z-index
-                hitBox.style.pointerEvents = 'all';
-                hitBox.style.opacity = '1'; // Force full opacity
-                hitBox.style.visibility = 'visible'; // Force visibility
-                console.log(`🎯 DEBUG: Rendering ${object.type} hit box for ${object.name} at (${x}, ${y})`);
-            } else {
-                hitBox.setAttribute('fill', 'transparent');
-                hitBox.setAttribute('stroke', 'none');
-            }
+            hitBox.setAttribute('fill', 'transparent');
+            hitBox.setAttribute('stroke', 'none');
             hitBox.style.pointerEvents = 'all';
         }
 
@@ -2311,7 +2414,12 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         
         // Add blinking effect for current targeting CPU target
         const currentTarget = this.starChartsManager.targetComputerManager?.currentTarget;
-        if (currentTarget && this.matchesTargetId(currentTarget.id, object.id)) {
+        const isCurrentTarget = this.matchesCurrentTarget(object);
+        
+        debug('TARGETING', `🎯 BLINKING CHECK: Object ${object.name} (ID: ${object.id}) vs Current Target ${currentTarget?.name || 'none'} (ID: ${currentTarget?.id || 'none'}) - Match: ${isCurrentTarget}`);
+        
+        if (isCurrentTarget) {
+            debug('TARGETING', `🎯 BLINKING: Adding blink to ${object.name} (ID: ${object.id})`);
             element.classList.add('target-blink');
             // Add CSS animation for blinking
             if (!document.querySelector('#star-charts-target-blink-style')) {
@@ -2328,6 +2436,9 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
                 `;
                 document.head.appendChild(style);
             }
+        } else {
+            // Remove blinking if this is not the current target
+            element.classList.remove('target-blink');
         }
 
         // Add hover effects like LRS
@@ -2336,16 +2447,8 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Add visual element first
         this.svg.appendChild(element);
 
-        // DEBUG: Add hit box on top in debug mode, or behind in normal mode
-        const debugModeRender = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
-        if (debugModeRender) {
-            // In debug mode, add hit box AFTER visual element so it's visible on top
-            this.svg.appendChild(hitBox);
-        } else {
-            // In normal mode, add hit box BEFORE visual element so it's behind
-            this.svg.insertBefore(hitBox, element);
-        }
-
+        // Add hit box BEFORE visual element so it's behind
+        this.svg.insertBefore(hitBox, element);
 
         // Labels removed - tooltips now provide object names on hover (match LRS)
     }
@@ -2487,8 +2590,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
                 return '#666666';
         }
     }
-    
-    
+
     renderVirtualWaypoints() {
         // Render mission waypoints
         
@@ -2569,4 +2671,71 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             this.render();
         }
     }
+    
+    updateDiagnosticDisplay() {
+        // Show diagnostic data for all objects in the details panel for click-first bug analysis
+        if (!this.detailsPanel) return;
+        
+        const allObjects = this.getDiscoveredObjectsForRender();
+        if (allObjects.length === 0) return;
+        
+        let diagnosticHTML = `
+            <div class="diagnostic-display" style="font-family: monospace; font-size: 11px; line-height: 1.3;">
+                <h3 style="color: #ffff00; margin: 0 0 10px 0; font-size: 14px;">🔍 OBJECT DIAGNOSTIC DATA</h3>
+                <div style="color: #888; margin-bottom: 10px;">Total objects: ${allObjects.length}</div>
+        `;
+        
+        allObjects.forEach((obj, index) => {
+            const num = index + 1;
+            
+            // Get complete object data
+            const completeObject = this.ensureObjectHasName(obj);
+            const dbData = this.starChartsManager.getObjectData(obj.id);
+            
+            // Generate tooltip text using actual logic
+            let tooltipText;
+            if (completeObject._isShip) {
+                tooltipText = 'You are here';
+            } else if (completeObject._isUndiscovered) {
+                tooltipText = 'Unknown';
+            } else {
+                tooltipText = completeObject.name || 'Unknown Object';
+            }
+            
+            // Determine status
+            const hasValidName = completeObject.name && completeObject.name !== 'Unknown' && completeObject.name.trim() !== '';
+            const shouldShowName = hasValidName && !completeObject._isUndiscovered;
+            const actuallyShowsName = tooltipText !== 'Unknown';
+            const isWorking = shouldShowName === actuallyShowsName;
+            
+            const statusColor = isWorking ? '#00ff00' : '#ff4444';
+            const statusText = isWorking ? 'OK' : 'BUG';
+            
+            diagnosticHTML += `
+                <div style="margin-bottom: 8px; padding: 4px; border-left: 3px solid ${statusColor}; background: rgba(0,0,0,0.3);">
+                    <div style="color: ${statusColor}; font-weight: bold;">${num}. "${tooltipText}" - ${obj.id} [${statusText}]</div>
+                    <div style="margin-left: 10px; color: #ccc;">
+                        <div>Object Name: "${completeObject.name || 'null'}"</div>
+                        <div>Type: ${obj.type}</div>
+                        <div>Undiscovered: ${completeObject._isUndiscovered ? 'YES' : 'NO'}</div>
+                        <div>DB Lookup: ${dbData ? `"${dbData.name}"` : 'null'}</div>
+                        <div style="color: ${statusColor};">Expected: ${shouldShowName ? 'SHOW NAME' : 'SHOW UNKNOWN'}</div>
+                        <div style="color: ${statusColor};">Actual: ${actuallyShowsName ? 'SHOWS NAME' : 'SHOWS UNKNOWN'}</div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        diagnosticHTML += `
+                <div style="margin-top: 15px; color: #888; font-size: 10px;">
+                    🐛 BUG = Object should show name but shows "Unknown"<br>
+                    ✅ OK = Object behavior matches expected<br>
+                    Hover over objects to see tooltip behavior
+                </div>
+            </div>
+        `;
+        
+        this.detailsPanel.innerHTML = diagnosticHTML;
+    }
+    
 }

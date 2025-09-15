@@ -249,7 +249,6 @@ debug('UTILITY', 'Not in a docking zone - move closer to the station');
         const zonePosition = this.currentDockingZone.object.position;
         
         if (!targetPosition || !zonePosition) {
-debug('TARGETING', 'Invalid target or zone position data');
             return false;
         }
         
@@ -263,9 +262,6 @@ debug('TARGETING', 'Invalid target or zone position data');
             );
             
         if (positionDistance > 0.1) { // 0.1km tolerance
-debug('TARGETING', 'Target position mismatch with current docking zone');
-debug('TARGETING', '  Target position:', targetPosition);
-debug('UTILITY', '  Zone position:', zonePosition);
 debug('UTILITY', '  Distance:', positionDistance);
             return false;
         }
@@ -398,7 +394,6 @@ debug('UTILITY', 'Not currently docked');
                 this.starfieldManager.launch();
             }
 
-debug('UTILITY', 'Launch successful - positioned safely away from station');
             return true;
 
         } catch (error) {

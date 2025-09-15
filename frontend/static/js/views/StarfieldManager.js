@@ -1024,10 +1024,6 @@ export class StarfieldManager {
         this.viewBox.textContent = `View: ${this.view}`;
     }
 
-
-
-
-
     createIntelHUD() {
         // Create intel HUD container - match targeting CPU screen exactly and cover all panels
         this.intelHUD = document.createElement('div');
@@ -1163,12 +1159,7 @@ export class StarfieldManager {
      */
     connectWeaponHUDToSystem() {
         const ship = this.viewManager?.getShip();
-        
-        // debug('INSPECTION', 'Attempting to connect WeaponHUD to WeaponSystemCore...');
-        // debug('INSPECTION', `Ship available: ${!!ship}`);
-        // debug('INSPECTION', `Ship weaponSystem available: ${!!(ship?.weaponSystem)}`);
-        // debug('INSPECTION', `WeaponHUD available: ${!!this.weaponHUD}`);
-        
+
         if (ship && ship.weaponSystem && this.weaponHUD) {
             // Set HUD reference in weapon system
             ship.weaponSystem.setWeaponHUD(this.weaponHUD);
@@ -1181,13 +1172,15 @@ export class StarfieldManager {
         } else {
             this.weaponHUDConnected = false;
             // Use debug logging instead of warnings during startup
-            // debug('INSPECTION', 'WeaponHUD connection pending:');
+
             // if (!ship) debug('INSPECTION', 'Ship initializing...');
             // if (!ship?.weaponSystem) debug('INSPECTION', 'WeaponSystem initializing...');
             // if (!this.weaponHUD) debug('INSPECTION', 'WeaponHUD initializing...');
         }
     }
     bindKeyEvents() {
+        debug('TARGETING', `🎯 StarfieldManager.bindKeyEvents() called - setting up TAB handler`);
+        
         // Track key presses for speed control
         this.keys = {
             ArrowUp: false,
@@ -1197,8 +1190,11 @@ export class StarfieldManager {
         };
 
         document.addEventListener('keydown', (event) => {
-    
-            
+            // Basic TAB detection test
+            if (event.key === 'Tab') {
+                debug('TARGETING', `🎯 RAW TAB detected in StarfieldManager keydown handler`);
+            }
+
             // Debug commands for testing damage (only in development)
             if (event.ctrlKey && event.shiftKey) {
                 const key = event.key.toLowerCase();
@@ -1239,11 +1235,9 @@ export class StarfieldManager {
                 if (window.spatialManager) {
                     debug('UTILITY', 'SpatialManager Status: Initialized and ready');
                     const stats = window.spatialManager.getStats();
-                    // debug('INSPECTION', `Tracked objects: ${stats.totalObjects}`);
-                    // debug('INSPECTION', `Object types: ${Object.keys(stats.typeBreakdown).join(', ')}`);
 
                     // Future: Add debug visualization for spatial bounding volumes
-                    // debug('INSPECTION', 'Spatial debug info displayed in console');
+
                 } else {
                     debug('P1', 'SpatialManager not available for debug visualization');
                 }
@@ -1297,11 +1291,10 @@ export class StarfieldManager {
                 
                 // Set target speed to the actual clamped speed
                 this.targetSpeed = actualSpeed;
-                // debug('NAVIGATION', `Setting target speed to ${actualSpeed} (current: ${this.currentSpeed.toFixed(3)}), decelerating: ${actualSpeed < this.currentSpeed}`);
 
                 // Special debug for Impulse 4 transitions
                 if (actualSpeed === 4) {
-                    // debug('NAVIGATION', `🎯 IMPULSE 4 ACTIVATED: target=${this.targetSpeed}, current=${this.currentSpeed.toFixed(3)}, diff=${Math.abs(this.targetSpeed - this.currentSpeed).toFixed(3)}`);
+
                 }
 
                 // Determine if we need to decelerate
@@ -1463,7 +1456,6 @@ export class StarfieldManager {
                                 showThreatLevels: currentSettings.showThreatLevels
                             };
                             visualizer.configure(newSettings);
-                            debug('INSPECTION', 'Debug visualization settings updated');
                         }
                         return;
                 }
@@ -1471,12 +1463,15 @@ export class StarfieldManager {
             
             // Handle Tab key for cycling targets (Tab = forward, Shift+Tab = backward)
             if (event.key === 'Tab') {
+                console.log('🎯 TAB DETECTED in StarfieldManager');
                 event.preventDefault(); // Prevent Tab from changing focus
                 const forward = !event.shiftKey; // Shift+Tab cycles backward
+                debug('TARGETING', `🎯 TAB key pressed (forward=${forward})`);
                 // console.log(`🎯 ${event.shiftKey ? 'Shift+' : ''}TAB key pressed for ${forward ? 'forward' : 'backward'} target cycling`);
                 
                 // Block target cycling when docked
                 if (this.isDocked) {
+                    console.log('🎯 TAB blocked - ship is docked');
                     this.playCommandFailedSound();
                     this.showHUDEphemeral(
                         'TARGET CYCLING UNAVAILABLE',
@@ -1488,6 +1483,7 @@ export class StarfieldManager {
                 // Check for undock cooldown with proper user feedback
                 if (this.undockCooldown && Date.now() < this.undockCooldown) {
                     const remainingSeconds = Math.ceil((this.undockCooldown - Date.now()) / 1000);
+                    console.log('🎯 TAB blocked - undock cooldown active');
                     this.playCommandFailedSound();
                     this.showHUDEphemeral(
                         'TARGETING SYSTEMS WARMING UP',
@@ -1498,13 +1494,26 @@ export class StarfieldManager {
                 
                 // Check if target computer system is operational
                 const ship = this.viewManager?.getShip();
+                console.log('🎯 TAB: Checking ship and target computer', {
+                    hasShip: !!ship,
+                    targetComputerEnabled: this.targetComputerEnabled
+                });
+                
                 if (ship) {
                     const targetComputer = ship.getSystem('target_computer');
                     const energyReactor = ship.getSystem('energy_reactor');
                     
+                    console.log('🎯 TAB: System check', {
+                        hasTargetComputer: !!targetComputer,
+                        canActivate: targetComputer?.canActivate(ship),
+                        targetComputerEnabled: this.targetComputerEnabled,
+                        hasEnergyReactor: !!energyReactor
+                    });
+                    
                     if (targetComputer && targetComputer.canActivate(ship) && this.targetComputerEnabled) {
                         // Target computer is operational and activated - allow cycling
-                        // Removed target cycling call log to prevent console spam
+                        console.log('🎯 TAB: All checks passed, calling cycleTarget');
+                        debug('TARGETING', `🎯 TAB: Calling cycleTarget(${forward}) - target computer operational`);
                         // console.log(`🎯 Cycling target ${forward ? 'forward' : 'backward'} from ${event.shiftKey ? 'Shift+' : ''}TAB key press`);
                         this.cycleTarget(forward); // Manual cycle via TAB key
                         // Reset outline suppression for manual cycles
@@ -2072,7 +2081,6 @@ debug('UI', 'Mission Status HUD toggled:', this.missionStatusHUD.visible ? 'ON' 
                         const shields = ship.getSystem('shields');
                         
                         // DEBUG: Add comprehensive shield debugging
-debug('COMBAT', 'SHIELD DEBUG - Analyzing shield system state:');
 debug('COMBAT', '  • Shields system object:', shields);
 debug('UI', '  • Ship has cardSystemIntegration:', !!ship.cardSystemIntegration);
                         
@@ -2347,7 +2355,6 @@ debug('COMBAT', 'Refreshing ship systems before showing damage control...');
                             // Re-initialize cargo holds from updated cards
                             if (ship.cargoHoldManager) {
                                 ship.cargoHoldManager.initializeFromCards();
-                                debug('UI', '🚛 Cargo holds refreshed from updated cards');
                             }
 
                             // Show the damage control HUD after systems are refreshed
@@ -2419,8 +2426,17 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
     }
 
     cycleTarget(forward = true) {
+        console.log(`🎯 StarfieldManager.cycleTarget called (forward=${forward})`);
+        debug('TARGETING', `🎯 StarfieldManager.cycleTarget called (forward=${forward})`);
+        
+        console.log('🎯 StarfieldManager: About to delegate to targetComputerManager', {
+            hasTargetComputerManager: !!this.targetComputerManager,
+            hasCycleTargetMethod: !!this.targetComputerManager?.cycleTarget
+        });
+        
         // Delegate to target computer manager
         this.targetComputerManager.cycleTarget(forward);
+        console.log('🎯 StarfieldManager: Delegated to targetComputerManager.cycleTarget');
 
         // Update local state to match
         this.currentTarget = this.targetComputerManager.currentTarget?.object || this.targetComputerManager.currentTarget;
@@ -2606,16 +2622,15 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
             if (speedDiff < 0.01) {
                 this.currentSpeed = this.targetSpeed;
                 this.decelerating = false;
-                // debug('NAVIGATION', `Deceleration complete: Reached target speed ${this.targetSpeed}`);
+
             }
 
             // Debug deceleration behavior
             const speedChange = Math.abs(this.currentSpeed - previousSpeed);
-            // debug('NAVIGATION', `Deceleration: prev ${previousSpeed.toFixed(3)} -> current ${this.currentSpeed.toFixed(3)} -> target ${this.targetSpeed} (diff: ${speedDiff.toFixed(3)}, proportional: ${proportionalDecel.toFixed(4)})`);
 
             // Check for oscillation (rapid changes near target)
             if (speedChange > 0.001 && speedDiff < 0.05) { // Small changes near target = potential oscillation
-                // debug('NAVIGATION', `⚠️ POTENTIAL OSCILLATION: Small change ${speedChange.toFixed(4)} but close to target (diff: ${speedDiff.toFixed(3)})`);
+
             }
 
             // Update engine sound during deceleration
@@ -2644,12 +2659,11 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
 
             // Debug acceleration behavior (commented out to reduce spam)
             // const accelSpeedDiff = Math.abs(this.currentSpeed - this.targetSpeed);
-            // debug('NAVIGATION', `Acceleration: prev ${previousSpeed.toFixed(3)} -> current ${this.currentSpeed.toFixed(3)} -> target ${this.targetSpeed} (diff: ${accelSpeedDiff.toFixed(3)}, proportional: ${proportionalAccel.toFixed(4)})`);
 
             // Check for oscillation (rapid changes near target)
             // const accelSpeedChange = Math.abs(this.currentSpeed - previousSpeed);
             // if (accelSpeedChange > 0.001 && accelSpeedDiff < 0.05) { // Small changes near target = potential oscillation
-            //     debug('NAVIGATION', `⚠️ POTENTIAL OSCILLATION: Small change ${accelSpeedChange.toFixed(4)} but close to target (diff: ${accelSpeedDiff.toFixed(3)})`);
+
             // }
 
             // Update engine sound during acceleration
@@ -2702,15 +2716,15 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
                 // Exponential reduction for impulse 1-3
                 const reductionFactor = Math.pow(0.15, 4 - this.currentSpeed); // Changed from 0.3 to 0.15 to reduce impulse 1 speed by 50%
                 speedMultiplier *= reductionFactor;
-                // debug('NAVIGATION', `Impulse ${this.currentSpeed}: Base multiplier ${0.3}, reduction ${reductionFactor.toFixed(4)}, final multiplier ${speedMultiplier.toFixed(4)}`);
+
             } else if (this.currentSpeed === 4) {
                 // Impulse 4: Use consistent exponential formula like other speeds
                 const reductionFactor = Math.pow(0.15, 4 - this.currentSpeed); // Same formula as impulse 1-3
                 speedMultiplier *= reductionFactor;
-                // debug('NAVIGATION', `Impulse 4: Base multiplier ${0.3}, reduction ${reductionFactor.toFixed(4)}, final multiplier ${speedMultiplier.toFixed(4)} (consistent exponential)`);
+
             } else if (this.currentSpeed >= 5) {
                 // Impulse 5+: Standard calculation without reduction
-                // debug('NAVIGATION', `Impulse ${this.currentSpeed}: Standard multiplier ${speedMultiplier}`);
+
             }
             
             // Calculate actual movement based on current speed
@@ -2719,7 +2733,6 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
 
             // Debug speed vs movement correlation (commented out to reduce spam)
             // const movementMagnitude = forwardVector.length();
-            // debug('NAVIGATION', `Movement: speed=${this.currentSpeed.toFixed(2)}, multiplier=${speedMultiplier.toFixed(4)}, movement=${movementMagnitude.toFixed(4)}`);
 
             // Apply movement
             this.camera.position.add(forwardVector);
@@ -2991,8 +3004,7 @@ debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
         const damagePercent = Math.random() * 0.4 + 0.3; // 30-70%
         const newHull = Math.floor(ship.maxHull * (1 - damagePercent));
         ship.currentHull = Math.max(1, newHull); // Ensure at least 1 hull
-        
-        
+
         // Update the damage control display if it's currently visible
         if (this.damageControlVisible) {
             this.updateShipSystemsDisplay();
@@ -3011,8 +3023,7 @@ debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
         
         const actualDrain = originalEnergy - ship.currentEnergy;
         const drainPercentage = (actualDrain / ship.maxEnergy) * 100;
-        
-        
+
         // Update the damage control display if it's currently visible
         if (this.damageControlVisible) {
             this.updateShipSystemsDisplay();
@@ -3042,8 +3053,7 @@ debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
         
         // Recharge energy
         ship.currentEnergy = ship.maxEnergy;
-        
-        
+
         // Update the damage control display if it's currently visible
         if (this.damageControlVisible) {
             this.updateShipSystemsDisplay();
@@ -3336,8 +3346,7 @@ debug('TARGETING', 'Target computer completely cleared - all state reset');
             // Play the beep for 0.15 seconds
             oscillator.start(audioContext.currentTime);
             oscillator.stop(audioContext.currentTime + 0.15);
-            
-            
+
         } catch (error) {
             console.error('Failed to generate command success beep:', error);
         }
@@ -3378,8 +3387,7 @@ debug('TARGETING', 'Target computer completely cleared - all state reset');
             // Play the beep for 0.2 seconds
             oscillator.start(audioContext.currentTime);
             oscillator.stop(audioContext.currentTime + 0.2);
-            
-            
+
         } catch (error) {
             console.error('Failed to generate command failed beep:', error);
         }
@@ -3920,7 +3928,7 @@ debug('UTILITY', '🔇 Engine state check:', this.audioManager ? this.audioManag
             // Close galactic chart if open - navigation systems powered down when docked
             if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
                 this.viewManager.galacticChart.hide(false);
-                // debug('NAVIGATION', '🚪 Galactic Chart dismissed during docking - navigation systems powered down');
+
             }
             
             // Close long range scanner if open - scanner systems powered down when docked
@@ -4562,7 +4570,7 @@ debug('UTILITY', '⚡ Power management restored and enabled');
         // Restore navigation computer
         if (this.ship.equipment.navigationComputer) {
             this.navigationComputerEnabled = true;
-            // debug('NAVIGATION', 'Navigation computer restored and enabled');
+
         }
         
         // Target computer should remain INACTIVE after launch - user must manually enable it
@@ -4921,8 +4929,7 @@ debug('TARGETING', `✅ Target dummy ships created successfully - target preserv
                 const damagePercent = 0.1 + Math.random() * 0.4;
                 const damage = system.maxHealth * damagePercent;
                 system.takeDamage(damage);
-                
-                
+
                 // Remove from list to avoid damaging the same system twice
                 const index = damageableSystemNames.indexOf(randomSystem);
                 if (index > -1) {
@@ -5646,7 +5653,6 @@ debug('TARGETING', `🎯 Created 3D outline for target: ${currentTargetData.name
         if (!this.targetObjects || this.targetObjects.length === 0) {
             // Only log this message once per state change to avoid spam
             if (!this._noTargetsWarningLogged) {
-debug('TARGETING', '🚫 updateTargetOutline: No targets available - clearing outline');
                 this._noTargetsWarningLogged = true;
             }
             if (this.targetOutline) {
@@ -5668,7 +5674,6 @@ debug('TARGETING', '🚫 updateTargetOutline: No targets available - clearing ou
         
         // CRITICAL: Check if we have a valid current target
         if (!this.currentTarget) {
-debug('TARGETING', '🚫 updateTargetOutline: No current target - clearing outline');
             if (this.targetOutline) {
                 this.clearTargetOutline();
             }
@@ -5678,7 +5683,6 @@ debug('TARGETING', '🚫 updateTargetOutline: No current target - clearing outli
         // Validate target data before proceeding
         const targetData = this.getCurrentTargetData();
         if (!targetData || !targetData.name || targetData.name === 'unknown') {
-debug('TARGETING', '🚫 updateTargetOutline: Invalid target data - clearing outline');
             // Clear outline for invalid targets
             if (this.targetOutline) {
                 this.clearTargetOutline();
@@ -5688,7 +5692,6 @@ debug('TARGETING', '🚫 updateTargetOutline: Invalid target data - clearing out
         
         // Additional check: Ensure targetObject is valid and exists in scene
         if (!targetObject || !targetObject.position) {
-debug('TARGETING', '🚫 updateTargetOutline: Invalid target object - clearing outline');
             if (this.targetOutline) {
                 this.clearTargetOutline();
             }
@@ -5866,7 +5869,7 @@ debug('UTILITY', `🗑️ Removed ${destroyedShip.shipName} from dummyShipMeshes
             for (let i = this.navigationBeacons.length - 1; i >= 0; i--) {
                 const mesh = this.navigationBeacons[i];
                 if (mesh === destroyedShip || mesh.userData === destroyedShip || mesh.userData?.isBeacon === true && mesh === destroyedShip) {
-                    // debug('NAVIGATION', `🗑️ Removing Navigation Beacon from scene`);
+
                     this.scene.remove(mesh);
                     if (window.physicsManager && typeof window.physicsManager.removeRigidBody === 'function') {
                         window.physicsManager.removeRigidBody(mesh);
@@ -6230,7 +6233,6 @@ debug('UI', '🔄 Refreshing ship systems from current card configuration...');
                 // Re-initialize cargo holds from updated cards
                 if (ship.cargoHoldManager) {
                     ship.cargoHoldManager.initializeFromCards();
-debug('UI', '🚛 Cargo holds refreshed from updated cards');
                 }
                 
 debug('UI', '✅ Ship systems refreshed from cards - equipment changes applied');
@@ -6248,7 +6250,7 @@ debug('UTILITY', '  ⚡ Power management initialized and enabled');
         // Initialize navigation computer
         if (ship.equipment?.navigationComputer) {
             this.navigationComputerEnabled = true;
-            // debug('NAVIGATION', '  🧭 Navigation computer initialized and enabled');
+
         }
         
         // CRITICAL: Properly initialize targeting computer with complete state reset
@@ -6384,13 +6386,11 @@ debug('COMBAT', '    🎯 Updating weapon selection UI...');
         
         const ship = this.viewManager?.getShip();
         if (!ship) {
-debug('COMBAT', '    🔍 Ship initializing - weapon UI updates deferred');
             return;
         }
         
         const weaponsSystem = ship.getSystem('weapons');
         if (!weaponsSystem) {
-debug('COMBAT', '    🔍 No weapons system installed - weapon UI updates skipped');
             return;
         }
         
@@ -6408,7 +6408,6 @@ debug('COMBAT', '    🔍 No weapons system installed - weapon UI updates skippe
             this.weaponHUD.updateActiveWeaponHighlight(ship.weaponSystem.activeSlotIndex);
         }
         
-debug('COMBAT', '    🎯 Weapon selection UI updated');
     }
 
     /**
@@ -6518,9 +6517,7 @@ debug('COMBAT', '✅ WeaponHUD connected immediately, retry interval cleared');
                 weaponType = 'splash-damage';
             }
         }
-        
 
-        
         // Determine availability and reason
         let available = true;
         let reason = '';
@@ -6925,7 +6922,6 @@ debug('MISSIONS', 'Game resumed from mission completion');
             this.missionStatusHUD.updatePlayerData(playerData);
         }
         
-debug('MISSIONS', 'StarfieldManager: Updated mission system with player data', playerData);
     }
     
     /**

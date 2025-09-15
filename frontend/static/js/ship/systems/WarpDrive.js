@@ -383,8 +383,6 @@ debug('COMBAT', `${this.name} took ${damage.toFixed(1)} damage. Health: ${this.h
 debug('AI', `${this.name} has been completely destroyed but can still be repaired`);
         }
     }
-    
-
 
     /**
      * Check if system is operational

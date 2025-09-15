@@ -59,7 +59,6 @@ debug('UI', '📋 Test 4: Checking proximity detector HUD...');
 debug('UI', `Proximity Detector HUD can be used: ${canUseRadar ? '✅ YES' : '❌ NO'}`);
         
         if (canUseRadar) {
-debug('UTILITY', 'Testing proximity detector specifications update...');
             radarHUD.updateRadarSpecifications();
 debug('UI', `Current proximity detector range: ${(radarHUD.config.range / 1000).toFixed(0)}km`);
 debug('UI', `Current update frequency: ${radarHUD.config.updateFrequency}Hz`);
@@ -105,7 +104,6 @@ debug('UI', '\n🎯 Proximity Detector Card Integration Test Summary:');
 debug('UI', '✅ Card types defined in NFTCard.js');
 debug('UI', '✅ Card system integration mapping added');
 debug('UTILITY', '✅ ProximityDetector system class created');
-debug('UI', '✅ ProximityDetector HUD updated for card requirements');
 debug('UI', '✅ Starter ship configured with basic proximity detector card');
 debug('UI', '✅ Key binding (P) includes card validation');
     

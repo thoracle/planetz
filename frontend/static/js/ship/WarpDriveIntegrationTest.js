@@ -71,7 +71,6 @@ debug('COMBAT', '\nTest 5: Testing WarpDrive damage effects');
                     warpDrive.takeDamage(warpDrive.maxHealth * 0.75);
                     
 debug('COMBAT', 'After 75% damage:');
-debug('UTILITY', '  System state:', warpDrive.state);
 debug('UTILITY', '  Max warp factor:', warpDrive.getMaxWarpFactor(), '(was', originalMaxWarp + ')');
 debug('UTILITY', '  Cooldown time:', `${warpDrive.getEffectiveCooldownTime() / 1000}s`, `(was ${originalCooldown / 1000}s)`);
 debug('UTILITY', '  Effectiveness:', `${(warpDrive.getEffectiveness() * 100).toFixed(1)}%`);
@@ -84,7 +83,6 @@ debug('COMBAT', '  Energy cost multiplier:', `${(damagedCost / baseCost).toFixed
                     // Repair the system
                     warpDrive.repair(1.0); // Full repair
 debug('AI', 'After full repair:');
-debug('UTILITY', '  System state:', warpDrive.state);
 debug('UTILITY', '  Max warp factor:', warpDrive.getMaxWarpFactor());
 debug('UTILITY', '  Effectiveness:', `${(warpDrive.getEffectiveness() * 100).toFixed(1)}%`);
                 }

@@ -44,7 +44,7 @@ export function debug(channel, ...args) {
             return window.debug(channel, message);
         } catch (error) {
             // Fallback if window.debug fails
-            console.log(`${channel}:`, ...args);
+
         }
     }
 
@@ -53,7 +53,7 @@ export function debug(channel, ...args) {
 
     // Also do immediate fallback for critical debugging
     if (channel === 'P1') {
-        console.log(`🔴 ${channel}:`, ...args);
+
     }
 }
 
@@ -73,4 +73,3 @@ export function getDebugManager() {
 
 // Note: window.debug is set by SmartDebugManager in app.js
 // This module provides the importable debug function for ES6 modules
-console.log('🔧 Debug utility module loaded');

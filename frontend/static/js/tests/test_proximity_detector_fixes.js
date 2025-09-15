@@ -19,7 +19,6 @@ debug('UTILITY', '=== TESTING PROXIMITY DETECTOR IMPROVEMENTS ===');
     }
     
     // Test 1: Configuration updates
-debug('UTILITY', '📋 Testing configuration updates:');
 debug('UTILITY', `  Grid size: ${detector.config.gridSize}x${detector.config.gridSize} (should be 12x12)`);
 debug('UTILITY', `  Grid spacing: ${detector.config.gridSpacing}m (should be 1000m)`);
 debug('UTILITY', `  Screen size: ${detector.config.screenWidth * 100}% x ${detector.config.screenHeight * 100}% (should be 35% x 35%)`);
@@ -43,7 +42,6 @@ debug('UI', `📇 Has radar cards: ${hasCards ? '✅' : '❌'}`);
     }
     
     // Test 3: Toggle detector and check positioning
-debug('UTILITY', '🔄 Testing detector toggle and positioning...');
     
     if (!detector.isVisible) {
 debug('UTILITY', 'Turning ON proximity detector...');
@@ -55,7 +53,6 @@ debug('UTILITY', 'Turning ON proximity detector...');
         const container = detector.detectorContainer;
         if (container) {
             const style = window.getComputedStyle(container);
-debug('AI', '📦 Container positioning:');
 debug('UI', `  Display: ${style.display} (should be block)`);
 debug('UTILITY', `  Position: ${style.position} (should be fixed)`);
 debug('UTILITY', `  Bottom: ${style.bottom} (should be 20px)`);

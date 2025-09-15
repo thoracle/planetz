@@ -34,7 +34,7 @@ debug('UTILITY', '✅ Tests loaded successfully!');
 debug('AI', '📋 Available functions:');
 debug('UTILITY', '  • testProximityDetector()');
 debug('UI', '  • testProximityDetectorCardIntegration()');
-        console.log('');
+
 debug('UTILITY', 'Running basic proximity detector test...');
         
         // Run basic test automatically

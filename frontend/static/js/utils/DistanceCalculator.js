@@ -34,7 +34,6 @@ export class DistanceCalculator {
 
             // Validate coordinate objects
             if (!this.validateCoordinates(coord1) || !this.validateCoordinates(coord2)) {
-                debug('TARGETING', 'DistanceCalculator: Invalid coordinate format', { coord1, coord2 });
                 return Infinity;
             }
 

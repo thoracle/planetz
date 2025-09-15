@@ -554,6 +554,7 @@ unknown: '#44ffff'   // Cyan for unknown
 - **Star Chart Hit Box Improvements**: Increased clickable areas around objects for better usability when zoomed out
 - **Discovery System Security Fixes**: Comprehensive fixes to prevent information leakage for undiscovered objects
 - **Target Loss & Position Validation Fixes**: Fixed race conditions causing discovered objects to show "Unknown" colors and resolved position lookup issues for celestial bodies
+- **⭐ TAB Targeting Real-Time Updates**: Fixed TAB key target cycling to update Star Charts blinking targets in real-time - resolved navigation path issue where StarChartsUI was accessed incorrectly
 
 **Next Steps**: Content creation, advanced gameplay mechanics, multiplayer foundation.
 
@@ -842,6 +843,119 @@ try {
 5. **Celestial bodies** → Found by name when ID lookup fails
 
 This comprehensive fix ensures that the targeting system is robust, consistent, and error-free while maintaining all discovery system functionality.
+
+---
+
+## 🎯 TAB Targeting Real-Time Updates ✅ **COMPLETED**
+
+**Status**: ✅ **FULLY IMPLEMENTED** - TAB key target cycling now updates Star Charts blinking targets in real-time
+
+### **🚨 Critical Issue Resolved**
+
+#### **Problem**: TAB Targeting Not Updating Star Charts Blinking
+**Issue**: When pressing TAB to cycle targets while Star Charts was open, the blinking target indicator on the Star Charts would not update to match the new CPU target. Clicking objects worked fine, but TAB cycling appeared to be ignored by the Star Charts UI.
+
+**Symptoms**:
+- TAB key successfully changed CPU target (visible in HUD)
+- Star Charts continued showing old target as blinking
+- No debug messages appeared from Star Charts render calls
+- Zoom/pan operations DID update the blinking target correctly
+
+#### **Root Cause**: Incorrect Navigation Path to StarChartsUI
+**The Issue**: `TargetComputerManager.notifyStarChartsOfTargetChange()` was trying to access StarChartsUI via:
+```javascript
+// ❌ WRONG PATH - starChartsManager.ui doesn't exist
+const starChartsManager = this.viewManager?.navigationSystemManager?.starChartsManager;
+if (starChartsManager && starChartsManager.ui && starChartsManager.ui.isVisible) {
+    starChartsManager.ui.render(); // starChartsManager.ui was undefined
+}
+```
+
+**The Reality**: StarChartsUI is stored directly in NavigationSystemManager as `starChartsUI`:
+```javascript
+// From NavigationSystemManager.js line 110:
+this.starChartsUI = new StarChartsUI(this.viewManager, this.starChartsManager);
+```
+
+#### **Solution**: Fixed Navigation Path
+**Corrected Access Pattern**:
+```javascript
+// ✅ CORRECT PATH - direct access to starChartsUI
+const starChartsUI = this.viewManager?.navigationSystemManager?.starChartsUI;
+if (starChartsUI && starChartsUI.isVisible) {
+    starChartsUI.render(); // Now works correctly
+}
+```
+
+### **🔧 Technical Implementation**
+
+#### **Files Modified**:
+- **`TargetComputerManager.js`**: Fixed `notifyStarChartsOfTargetChange()` method navigation path
+- **`debug-config.json`**: Enabled TARGETING channel for debugging
+
+#### **Key Changes**:
+1. **Navigation Path Fix**: Changed from `starChartsManager.ui` to direct `starChartsUI` access
+2. **Real-Time Synchronization**: TAB targeting now triggers immediate Star Charts render
+3. **Debug Channel Activation**: Enabled TARGETING debug channel for troubleshooting
+4. **Comprehensive Logging**: Added detailed debug messages to trace the notification flow
+
+#### **Integration Points**:
+- **TAB Key Handler** (`StarfieldManager.js`) → **Target Cycling** (`TargetComputerManager.js`) → **Star Charts Notification** → **UI Render** (`StarChartsUI.js`)
+- **Notification Timing**: Uses `requestAnimationFrame()` for smooth UI updates
+- **Visibility Check**: Only updates Star Charts when actually visible to user
+
+### **🎯 Result: Seamless Real-Time Updates**
+
+**Before Fix**:
+- ❌ TAB targeting ignored by Star Charts
+- ❌ Blinking target out of sync with CPU target
+- ❌ Manual zoom/pan required to refresh blinking state
+
+**After Fix**:
+- ✅ **Instant Updates**: TAB targeting immediately updates Star Charts blinking
+- ✅ **Perfect Synchronization**: CPU target and Star Charts target always match
+- ✅ **Smooth UX**: No manual refresh needed, seamless real-time updates
+- ✅ **Consistent Behavior**: TAB and click targeting both work identically
+
+### **🧪 Validation & Testing**
+
+**Test Cases Verified**:
+- ✅ **TAB Cycling**: Press TAB while Star Charts open → Blinking updates immediately
+- ✅ **Unknown Objects**: TAB targeting unknown objects → Blinking works correctly
+- ✅ **Mixed Targeting**: Combine TAB and click targeting → Always synchronized
+- ✅ **Visibility States**: Star Charts closed/open → Notifications only when visible
+- ✅ **Performance**: Real-time updates with no lag or frame drops
+
+**Debug Flow Confirmed**:
+1. **TAB Detected** → `🎯 TAB DETECTED in StarfieldManager`
+2. **Target Cycling** → `🎯 TargetComputerManager.cycleTarget called`
+3. **Notification Sent** → `🎯 notifyStarChartsOfTargetChange() ENTRY`
+4. **UI Access Verified** → `🎯 starChartsUI exists: true`
+5. **Render Triggered** → `🎯 FRAME render - current target: [name]`
+6. **Update Complete** → `🎯 AFTER frame Star Charts render`
+
+### **📚 Documentation Created**
+
+**Sequence Diagram**: `docs/tab-targeting-star-charts-sequence.md`
+- Complete Mermaid UML sequence diagram showing the full TAB targeting flow
+- Detailed interaction between StarfieldManager, TargetComputerManager, and StarChartsUI
+- Visual representation of the notification chain and timing
+
+### **🏆 Impact: Enhanced User Experience**
+
+**Gameplay Benefits**:
+- **Intuitive Navigation**: TAB targeting now works as expected across all UI systems
+- **Reduced Cognitive Load**: No need to remember which targeting method updates which UI
+- **Seamless Exploration**: Real-time target updates enhance space navigation experience
+- **Professional Polish**: Consistent behavior across all targeting interactions
+
+**Technical Benefits**:
+- **Robust Architecture**: Proper separation of concerns with clear notification patterns
+- **Maintainable Code**: Well-documented interaction flow for future development
+- **Debug-Friendly**: Comprehensive logging for troubleshooting similar issues
+- **Performance Optimized**: Efficient real-time updates without unnecessary overhead
+
+This fix represents a significant improvement in the Star Charts system's integration with the core targeting mechanics, providing users with the seamless, real-time experience they expect from a professional space navigation interface.
 
 ---
 

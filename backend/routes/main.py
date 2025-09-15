@@ -16,7 +16,7 @@ mimetypes.add_type('image/svg+xml', '.svg')
 def get_mime_type(path):
     """Get MIME type for a file path."""
     if path.endswith('.js'):
-        return 'text/javascript'
+        return 'application/javascript'  # ES6 modules require application/javascript
     if path.endswith('.css'):
         return 'text/css'
     return mimetypes.guess_type(path)[0] or 'application/octet-stream'
@@ -31,7 +31,7 @@ def index():
         logger.error(f"Error serving index.html: {str(e)}")
         return "Error serving frontend application", 500
 
-@bp.route('/static/<path:path>')
+@bp.route('/frontend/static/<path:path>')
 def serve_static_files(path):
     """Serve static files with proper MIME types."""
     try:
@@ -46,7 +46,7 @@ def serve_static_files(path):
         
         # Add headers for JavaScript files
         if path.endswith('.js'):
-            response.headers['Content-Type'] = 'text/javascript'
+            response.headers['Content-Type'] = 'application/javascript'
         
         # Add cache control headers for development
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
@@ -66,6 +66,10 @@ def serve_frontend_routes(path):
         # Skip API routes
         if path.startswith('api/'):
             return "API endpoint not found", 404
+            
+        # Skip static file routes - these should be handled by serve_static_files
+        if path.startswith('frontend/static/'):
+            return "Static file not found", 404
             
         # For all other paths, serve index.html (for client-side routing)
         logger.info(f"Serving index.html for route: {path}")

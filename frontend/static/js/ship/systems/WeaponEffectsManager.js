@@ -232,8 +232,6 @@ debug('COMBAT', 'WeaponEffectsManager: Audio context resumed');
             }
         }
     }
-    
-
 
     /**
      * Load a single sound file

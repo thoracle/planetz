@@ -57,7 +57,6 @@ debug('UTILITY', `  ${index}: ${child.type} at (${child.position.x.toFixed(2)}, 
     }
     
     // Force a manual update
-debug('UTILITY', '🔄 Forcing detector update...');
     detector.forceUpdate?.();
     
     return {

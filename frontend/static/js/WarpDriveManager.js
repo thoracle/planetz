@@ -106,9 +106,7 @@ class WarpDriveManager {
                     console.error('Failed to generate new star system');
                     return;
                 }
-                
 
-                
                 // Update galactic chart with new position
                 if (this.viewManager.galacticChart) {
     
@@ -129,7 +127,6 @@ class WarpDriveManager {
                 if (wasTargetComputerEnabled && this.viewManager.starfieldManager) {
                     this.viewManager.starfieldManager.toggleTargetComputer();
                 }
-                
 
             } catch (error) {
                 console.error('Error in post-warp sequence:', error);

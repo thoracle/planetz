@@ -43,7 +43,6 @@ debug('COMBAT', `WeaponCard created: ${this.name} (${this.weaponType})`);
      */
     fire(origin, target = null) {
 
-        
         // Check cooldown
         const currentTime = Date.now();
         if (currentTime < this.nextFireTime) {
@@ -717,8 +716,7 @@ debug('PHYSICS', `🔧 ${this.name}: PhysicsManager not ready, initializing...`)
             if (window.physicsManager.isReady()) {
                 try {
 debug('PHYSICS', `✅ ${this.name}: Creating physics-based projectile`);
-            
-                    
+
                     const physicsProjectile = new PhysicsProjectile({
                         origin: origin,
                         direction: direction,
@@ -1275,8 +1273,7 @@ export class PhysicsProjectile {
                 // Long range (>= 5km): Standard delay
                 adaptiveDelayMs = Math.max(2, Math.min(3, timeToTargetMs * 0.03)); // 3% of flight time, 2-3ms
             }
-            
-            console.log(`🕐 COLLISION TIMING: ${this.weaponName} target=${targetDistanceKm.toFixed(2)}km, speed=${projectileSpeed}m/s, flight_time=${timeToTargetMs.toFixed(1)}ms, delay=${adaptiveDelayMs.toFixed(1)}ms`);
+
         }
         
         this.collisionDelayMs = adaptiveDelayMs;
@@ -1429,8 +1426,7 @@ debug('TARGETING', `🔍 COLLISION DEBUG: target.distance value: ${target ? targ
                 }
                 
                 collisionRadius = Math.max(baseRadius, speedCompensatedRadius);
-                
-                console.log(`🎯 ${this.weaponName}: ENHANCED collision radius: distance=${targetDistance.toFixed(1)}km, tolerance=${aimToleranceKm.toFixed(4)}km, base=${baseRadius.toFixed(1)}m, speed_comp=${speedCompensatedRadius.toFixed(1)}m, final=${collisionRadius.toFixed(1)}m`);
+
             } else {
                 // STRICT FALLBACK: For free-aim firing without precise target, use minimal radius
                 // This prevents "spray and pray" tactics from working too well
@@ -1659,7 +1655,6 @@ debug('COMBAT', `🧹 TRAIL: Started fade-out for ${this.weaponName} trail`);
             };
 debug('COMBAT', `🎯 COLLISION: ${this.weaponName} collision position:`, position);
         } catch (error) {
-debug('UTILITY', 'Using fallback position for collision');
             // Clone position to avoid corruption when object is removed
             const clonedPos = this.threeObject.position.clone();
             position = {
@@ -1908,7 +1903,6 @@ debug('COMBAT', `🚫 ${this.weaponName}: Skipping projectile entity: ${entity.i
                 } else if (entity.position) {
                     entityPosition = entity.position;
                 } else {
-debug('COMBAT', 'Entity has no position, skipping damage application');
                     return;
                 }
                 
@@ -2080,7 +2074,6 @@ debug('P1', 'Error during splash damage target removal:', error.message);
     showDamageFeedback(target, damage) {
         try {
 
-            
             // Try to get weapon HUD reference through various paths
             let weaponHUD = null;
             
@@ -2110,7 +2103,6 @@ debug('P1', 'Failed to show damage feedback:', error.message);
         }
     }
 
-    
     /**
      * Create visual explosion effect
      * @param {Object} position Explosion position

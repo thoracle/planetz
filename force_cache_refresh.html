@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Force Cache Refresh - PlanetZ Tooltip Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #000;
+            color: #00ff00;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .step {
+            background: #111;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #333;
+        }
+        button {
+            background: #003300;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #006600;
+        }
+        .code {
+            background: #001100;
+            padding: 10px;
+            font-family: monospace;
+            border: 1px solid #006600;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 PlanetZ Tooltip Fix - Cache Refresh</h1>
+        
+        <div class="step">
+            <h3>Problem Detected:</h3>
+            <p>The browser appears to be loading a cached version of StarChartsUI.js that doesn't contain our tooltip fix.</p>
+            <p>Your logs show old debug messages that aren't in the current file.</p>
+        </div>
+        
+        <div class="step">
+            <h3>Step 1: Force Browser Cache Refresh</h3>
+            <p>In your browser:</p>
+            <ul>
+                <li><strong>Chrome/Edge:</strong> Press Ctrl+Shift+R (Cmd+Shift+R on Mac)</li>
+                <li><strong>Firefox:</strong> Press Ctrl+F5 (Cmd+Shift+R on Mac)</li>
+                <li><strong>Safari:</strong> Press Cmd+Option+R</li>
+            </ul>
+            <button onclick="location.reload(true)">Force Reload This Page</button>
+        </div>
+        
+        <div class="step">
+            <h3>Step 2: Clear Browser Cache Completely</h3>
+            <p>If step 1 doesn't work:</p>
+            <ul>
+                <li>Open Developer Tools (F12)</li>
+                <li>Right-click the refresh button</li>
+                <li>Select "Empty Cache and Hard Reload"</li>
+            </ul>
+        </div>
+        
+        <div class="step">
+            <h3>Step 3: Verify Fix is Loaded</h3>
+            <p>After refreshing, open the game and check console for:</p>
+            <div class="code">
+                🔧 TOOLTIP FIX VERSION LOADED - v2.0 with enhanced object data loading
+            </div>
+            <p>If you see this message, the fix is loaded correctly.</p>
+        </div>
+        
+        <div class="step">
+            <h3>Step 4: Test Tooltips</h3>
+            <p>Open Star Charts (press 'C') and hover over objects. You should see:</p>
+            <div class="code">
+                🎯 FIXED VERSION - showTooltip called for object: { ... }
+            </div>
+            <p>Instead of the old empty messages.</p>
+        </div>
+        
+        <div class="step">
+            <h3>Step 5: Alternative - Restart Game Server</h3>
+            <p>If browser cache refresh doesn't work, restart the game server:</p>
+            <div class="code">
+                # Stop the server (Ctrl+C)
+                # Then restart:
+                python3 main.py
+            </div>
+        </div>
+        
+        <div class="step">
+            <h3>Debug Commands</h3>
+            <p>Run these in browser console to verify the fix:</p>
+            
+            <button onclick="copyToClipboard('console.log(\"Fix loaded:\", !!window.navigationSystemManager?.starChartsUI?.ensureObjectHasName);')">
+                Check Fix Loaded
+            </button>
+            
+            <button onclick="copyToClipboard('if(window.navigationSystemManager?.starChartsUI) { const ui = window.navigationSystemManager.starChartsUI; const objs = ui.getDiscoveredObjectsForRender(); console.log(\"Objects:\", objs.slice(0,3).map(o => ({id:o.id, name:o.name, type:o.type}))); }')">
+                Check Object Data
+            </button>
+            
+            <button onclick="copyToClipboard('location.reload(true);')">
+                Force Reload
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard! Paste in browser console.');
+            }).catch(() => {
+                prompt('Copy this command:', text);
+            });
+        }
+        
+        // Auto-check if we're in the game context
+        if (window.navigationSystemManager) {
+            document.body.innerHTML += '<div style="background: #003300; padding: 20px; margin: 20px 0; border: 2px solid #00ff00;"><h3>✅ Game Context Detected!</h3><p>You can run the debug commands directly here.</p></div>';
+        }
+    </script>
+</body>
+</html>

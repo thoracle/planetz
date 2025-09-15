@@ -442,17 +442,10 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         // Store as class property for access by other methods
         this.allObjects = allObjects;
 
-        // debug('STAR_CHARTS', `📊 Processing ${allObjects.length} objects for sector ${this.currentSector}`);
-        // debug('STAR_CHARTS', `   - Star: ${sectorData.star?.id || 'none'}`);
-        // debug('STAR_CHARTS', `   - Objects: ${sectorData.objects?.length || 0}`);
-        // debug('STAR_CHARTS', `   - Stations: ${sectorData.infrastructure?.stations?.length || 0}`);
-        // debug('STAR_CHARTS', `   - Beacons: ${sectorData.infrastructure?.beacons?.length || 0}`);
-
         let processedCount = 0;
         let skippedCount = 0;
 
         // Debug: Log ALL objects being processed
-        // debug('STAR_CHARTS', `   📋 Processing all ${allObjects.length} objects:`);
 
         allObjects.forEach((obj, index) => {
             if (obj && obj.position) {
@@ -473,31 +466,27 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
                 // Store the scene position for discovery calculations
                 obj.cartesianPosition = position3D;
 
-                // debug('STAR_CHARTS', `   🔍 ${obj.id}: data[${obj.position.map(p => p.toFixed(2)).join(',')}] scene[${position3D.map(p => p.toFixed(2)).join(',')}] → grid key: ${gridKey}`);
-                // debug('STAR_CHARTS', `      → Grid key: ${gridKey}`);
-
                 if (!this.spatialGrid.has(gridKey)) {
                     this.spatialGrid.set(gridKey, []);
-                    // debug('STAR_CHARTS', `      → Created new cell ${gridKey}`);
+
                 } else {
-                    // debug('STAR_CHARTS', `      → Using existing cell ${gridKey}`);
+
                 }
 
                 const beforeCount = this.spatialGrid.get(gridKey).length;
                 this.spatialGrid.get(gridKey).push(obj);
                 const afterCount = this.spatialGrid.get(gridKey).length;
 
-                // debug('STAR_CHARTS', `      → Added to cell ${gridKey}: ${beforeCount} → ${afterCount} objects`);
                 processedCount++;
 
                 // Log summary for first few objects
                 if (index < 5) {
-                    // debug('STAR_CHARTS', `   ✅ ${obj.id}: pos[${position3D.map(p => p.toFixed(2)).join(',')}] → grid[${gridKey}]`);
+
                 }
             } else {
                 skippedCount++;
                 // Log ALL skipped objects
-                // debug('STAR_CHARTS', `   ❌ Skipped ${index}: ${obj?.id || 'unknown'} (no position)`);
+
             }
         });
 
@@ -510,14 +499,11 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         // Add global debug function for spatial grid inspection
         if (typeof window !== 'undefined') {
             window.debugSpatialGrid = () => {
-                console.log('🗺️ Spatial Grid Debug:');
-                console.log(`  Total cells: ${this.spatialGrid.size}`);
-                console.log(`  Grid size: ${this.gridSize}`);
-                console.log('  All cells:');
+
                 for (const [cellKey, objects] of this.spatialGrid) {
-                    console.log(`    ${cellKey}: ${objects.length} objects`);
+
                     objects.forEach(obj => {
-                        console.log(`      - ${obj.id} at [${obj.position.join(', ')}]`);
+
                     });
                 }
                 return 'Spatial grid logged to console';
@@ -525,7 +511,7 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
             
             // Add manual refresh function for testing
             window.refreshSpatialGrid = () => {
-                console.log('🔄 Manually refreshing spatial grid...');
+
                 this.refreshSpatialGrid();
                 return 'Spatial grid refreshed';
             };
@@ -541,8 +527,7 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         // debug('STAR_CHARTS', '🔄 Refreshing spatial grid after system generation...'); // Reduced spam
         this.initializeSpatialGrid();
     }
-    
-    
+
     getGridKey(position) {
         //Get spatial grid key for position (handles both 2D and 3D positions)
         if (!position || !Array.isArray(position) || position.length < 2) {
@@ -574,16 +559,14 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         const [px, py, pz] = playerGridKey.split(',').map(Number);
 
         // Enhanced debug logging for spatial grid search (commented out to reduce spam)
-        // debug('STAR_CHARTS', `🔍 Spatial search: radius=${radius}km, gridRadius=${gridRadius}, playerGridKey=${playerGridKey}, gridSize=${this.gridSize}`);
-        // debug('STAR_CHARTS', `🔍 Searching cells from [${px-gridRadius},${py-gridRadius},${pz-gridRadius}] to [${px+gridRadius},${py+gridRadius},${pz+gridRadius}]`);
 
         let checkedCells = 0;
         let totalObjectsFound = 0;
 
         // Spatial grid cell logging commented out to reduce spam
-        // debug('STAR_CHARTS', `🔍 All spatial grid cells:`);
+
         // for (const [cellKey, objects] of this.spatialGrid) {
-        //     debug('STAR_CHARTS', `   📦 Cell ${cellKey}: ${objects.length} objects`);
+
         // }
 
         // Check surrounding grid cells
@@ -716,12 +699,7 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
                 const withinRange = this.isWithinRange(obj, playerPosition, discoveryRadius);
                 
                 // Enhanced debug logging to diagnose discovery issues (reduced spam)
-                // debug('STAR_CHARTS', `🔍 CHECKING: ${obj.id || obj.name} (${obj.type || 'unknown'})`);
-                // debug('STAR_CHARTS', `   📍 Object pos: [${objPos.join(', ')}]`);
-                // debug('STAR_CHARTS', `   📍 Player pos: [${playerPosition.join(', ')}]`);
-                // debug('STAR_CHARTS', `   📏 Distance: ${distance.toFixed(1)}km`);
-                // debug('STAR_CHARTS', `   🎯 Within range (${discoveryRadius}km): ${withinRange}`);
-                // debug('STAR_CHARTS', `   ✅ Has position: ${!!obj.position}`);
+
                 debug('STAR_CHARTS', `   ✅ Has cartesianPosition: ${!!obj.cartesianPosition}`);
                 
                 if (withinRange) {
@@ -739,8 +717,7 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
             discoveries.forEach((obj, index) => {
                 const objPos = obj.cartesianPosition || obj.position || [0, 0, 0];
                 const distance = this.calculateDistance(objPos, playerPosition);
-                // debug('STAR_CHARTS', `✅ DISCOVERED: ${obj.id} (${obj.type}) at ${distance.toFixed(1)}km`);
-                
+
                 // Stagger notifications to prevent overlap when multiple objects are discovered simultaneously
                 if (index === 0) {
                     // Process first discovery immediately
@@ -990,7 +967,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         if (this.viewManager && this.viewManager.starfieldManager && this.viewManager.starfieldManager.ship && this.viewManager.starfieldManager.ship.position) {
             const position = this.viewManager.starfieldManager.ship.position;
             if (position && typeof position.x === 'number') {
-                console.log('🚀 DEBUG: getPlayerPosition() - starfield ship position:', [position.x, position.y, position.z]);
+
                 return [position.x, position.y, position.z];
             } else {
                 debug('STAR_CHARTS', `❌ Invalid starfield ship position:`, position);
@@ -1003,7 +980,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         if (this.viewManager && this.viewManager.ship && this.viewManager.ship.position) {
             const position = this.viewManager.ship.position;
             if (position && typeof position.x === 'number') {
-                console.log('🚀 DEBUG: getPlayerPosition() - viewManager ship position:', [position.x, position.y, position.z]);
+
                 return [position.x, position.y, position.z];
             } else {
                 debug('STAR_CHARTS', `❌ Invalid viewManager ship position:`, position);
@@ -1016,7 +993,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         if (this.solarSystemManager && this.solarSystemManager.ship) {
             const position = this.solarSystemManager.ship.position;
             if (position && typeof position.x === 'number') {
-                console.log('🚀 DEBUG: getPlayerPosition() - solarSystem ship position:', [position.x, position.y, position.z]);
+
                 return [position.x, position.y, position.z];
             } else {
                 debug('STAR_CHARTS', `❌ Invalid solarSystem ship position:`, position);
@@ -1028,7 +1005,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         // Fallback: use active camera position (always available in gameplay)
         if (this.camera && this.camera.position) {
             const pos = this.camera.position;
-            console.log('🚀 DEBUG: getPlayerPosition() - camera position:', [pos.x, pos.y, pos.z]);
+
             return [pos.x, pos.y, pos.z];
         } else {
             debug('STAR_CHARTS', `❌ No camera position available`);
@@ -1077,32 +1054,14 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         return this.discoveredObjects.size;
     }
 
-    // Debug helper: Diagnose discovery radius issues
+    // Debug helper: Diagnose discovery radius issues (simplified)
     debugRadiusIssues() {
-        debug('STAR_CHARTS', '=== DISCOVERY RADIUS DEBUG ===');
-        debug('STAR_CHARTS', `🔍 getDiscoveryRadius(): ${this.getDiscoveryRadius()}km`);
-        debug('STAR_CHARTS', `🔍 debugDiscoveryRadius: ${this.debugDiscoveryRadius || 'not set'}`);
-        debug('STAR_CHARTS', `🔍 getEffectiveDiscoveryRadius(): ${this.getEffectiveDiscoveryRadius()}km`);
-        
+        debug('STAR_CHARTS', `Discovery radius: ${this.getEffectiveDiscoveryRadius()}km`);
         const playerPos = this.getPlayerPosition();
         if (playerPos) {
-            // debug('STAR_CHARTS', `📍 Player position: [${playerPos.join(', ')}]`); // Reduced spam
-            
-            // Test different radii
-            const radii = [25, 50, 75, 100];
-            radii.forEach(radius => {
-                const nearby = this.getNearbyObjects(playerPos, radius);
-                debug('STAR_CHARTS', `🔍 Objects within ${radius}km: ${nearby.length}`);
-                nearby.forEach(obj => {
-                    const objPos = obj.cartesianPosition || obj.position || [0, 0, 0];
-                    const distance = this.calculateDistance(objPos, playerPos);
-                    const discovered = this.isDiscovered(obj.id) ? 'DISCOVERED' : 'undiscovered';
-                    debug('STAR_CHARTS', `  - ${obj.id}: ${distance.toFixed(1)}km (${discovered})`);
-                });
-            });
+            const nearby = this.getNearbyObjects(playerPos, 100);
+            debug('STAR_CHARTS', `Objects within 100km: ${nearby.length}`);
         }
-        
-        debug('STAR_CHARTS', '=== END DEBUG ===');
     }
     
     isDiscovered(objectId) {
@@ -1436,16 +1395,9 @@ debug('UTILITY', `❓ Unknown waypoint action: ${action.type}`);
         // Add global debug function for runtime inspection
         if (typeof window !== 'undefined') {
             window.debugStarChartsState = () => {
-                console.log('🗺️ Star Charts State:');
-                console.log('  - Current sector:', this.currentSector);
-                console.log('  - Discovered objects:', Array.from(this.discoveredObjects));
-                console.log('  - Is A0_star discovered:', this.isDiscovered('A0_star'));
 
                 if (this.targetComputerManager && this.targetComputerManager.targetObjects) {
-                    console.log('🎯 Target Computer State:');
-                    console.log('  - Target objects count:', this.targetComputerManager.targetObjects.length);
-                    console.log('  - Has A0_star:', !!this.targetComputerManager.targetObjects.find(t => t.id === 'A0_star'));
-                    console.log('  - All targets:', this.targetComputerManager.targetObjects.map(t => `${t.name}(${t.id})`));
+
                 }
 
                 return 'Debug info logged to console';
@@ -1621,24 +1573,22 @@ debug('UTILITY', `   - Spatial grid cells: ${metrics.spatialGridCells}`);
             localStorage.setItem('star_charts_debug_hitboxes', newState.toString());
             
             if (newState) {
-                console.log('🎯 Hit box debug mode ENABLED - Red hit boxes will be visible in Star Charts');
-                console.log('💡 Refreshing Star Charts view to show changes...');
+
                 // Force refresh of Star Charts if it's currently open
                 if (this.starChartsUI) {
                     this.starChartsUI.render();
-                    console.log('✅ Star Charts refreshed with debug hit boxes');
+
                 } else {
-                    console.log('💡 Open Star Charts (press G) to see the debug hit boxes');
+
                 }
             } else {
-                console.log('🎯 Hit box debug mode DISABLED - Hit boxes are now invisible');
-                console.log('💡 Refreshing Star Charts view to hide debug elements...');
+
                 // Force refresh of Star Charts if it's currently open
                 if (this.starChartsUI) {
                     this.starChartsUI.render();
-                    console.log('✅ Star Charts refreshed without debug hit boxes');
+
                 } else {
-                    console.log('💡 Open Star Charts (press G) to see the changes');
+
                 }
             }
             
@@ -1647,57 +1597,50 @@ debug('UTILITY', `   - Spatial grid cells: ${metrics.spatialGridCells}`);
         
         window.enableHitBoxDebug = () => {
             localStorage.setItem('star_charts_debug_hitboxes', 'true');
-            console.log('🎯 Hit box debug mode ENABLED - Red hit boxes will be visible in Star Charts');
-            console.log('💡 Refreshing Star Charts view to show changes...');
+
             // Force refresh of Star Charts if it's currently open
             if (this.starChartsUI) {
                 this.starChartsUI.render();
-                console.log('✅ Star Charts refreshed with debug hit boxes');
+
             } else {
-                console.log('💡 Open Star Charts (press G) to see the debug hit boxes');
+
             }
             return true;
         };
         
         window.disableHitBoxDebug = () => {
             localStorage.removeItem('star_charts_debug_hitboxes');
-            console.log('🎯 Hit box debug mode DISABLED - Hit boxes are now invisible');
-            console.log('💡 Refreshing Star Charts view to hide debug elements...');
+
             // Force refresh of Star Charts if it's currently open
             if (this.starChartsUI) {
                 this.starChartsUI.render();
-                console.log('✅ Star Charts refreshed without debug hit boxes');
+
             } else {
-                console.log('💡 Open Star Charts (press G) to see the changes');
+
             }
             return false;
         };
         
         window.hitBoxDebugStatus = () => {
             const isEnabled = localStorage.getItem('star_charts_debug_hitboxes') === 'true';
-            console.log(`🎯 Hit box debug mode is currently: ${isEnabled ? 'ENABLED' : 'DISABLED'}`);
+
             return isEnabled;
         };
         
         window.refreshStarCharts = () => {
             if (this.starChartsUI) {
-                console.log('🔄 Refreshing Star Charts view...');
+
                 this.starChartsUI.render();
-                console.log('✅ Star Charts refreshed');
+
                 return true;
             } else {
-                console.log('❌ Star Charts UI not available - open Star Charts first (press G)');
+
                 return false;
             }
         };
         
         // Log available commands
-        console.log('🎯 Star Charts Hit Box Debug Commands:');
-        console.log('  • toggleHitBoxDebug() - Toggle hit box visibility');
-        console.log('  • enableHitBoxDebug() - Enable hit box visibility');
-        console.log('  • disableHitBoxDebug() - Disable hit box visibility');
-        console.log('  • hitBoxDebugStatus() - Check current debug status');
-        console.log('  • refreshStarCharts() - Force refresh Star Charts view');
+
     }
 }
 

@@ -203,7 +203,6 @@ debug('COMBAT', `Weapon fired: ${weapon.name} (no effects manager available)`);
         // Get THREE reference
         const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
         if (!THREE) {
-debug('COMBAT', 'THREE.js not available, using ship position as weapon origin');
             return ship.position;
         }
         
@@ -218,7 +217,6 @@ debug('COMBAT', 'THREE.js not available, using ship position as weapon origin');
         }
         
         if (!camera) {
-debug('COMBAT', 'Camera not available, using ship position as weapon origin');
             return ship.position;
         }
         
@@ -417,7 +415,6 @@ debug('COMBAT', `Weapon slot ${this.slotIndex}: Unequipped ${weaponName}`);
             // Fallback to camera position if ship position not available
             shipPosition = window.starfieldManager.camera.position;
         } else {
-debug('AI', 'Cannot calculate distance: no ship or camera position available');
             return 0;
         }
         
@@ -431,7 +428,6 @@ debug('AI', 'Cannot calculate distance: no ship or camera position available');
         } else if (target && target.ship && target.ship.threeObject && target.ship.threeObject.position) {
             targetPosition = target.ship.threeObject.position;
         } else {
-debug('TARGETING', 'Cannot calculate distance: target position not available', target);
             return 0;
         }
         
@@ -1016,7 +1012,6 @@ debug('TARGETING', 'Using crosshair aim direction (camera forward) - target comp
             // Fallback to ship-relative positioning if no camera available
             leftWeaponPos = weaponPosition.clone().add(new THREE.Vector3(-2.5, -1.5, 1.0));
             rightWeaponPos = weaponPosition.clone().add(new THREE.Vector3(2.5, -1.5, 1.0));
-debug('UTILITY', 'Camera not found, using fallback ship-relative positioning');
         }
         
         // Always create dual muzzle flashes with optimal sound duration
@@ -1051,7 +1046,6 @@ debug('UTILITY', 'Camera not found, using fallback ship-relative positioning');
             let hitTargets = [];
             
             // SIMPLIFIED: Use direct physics raycast from camera position
-debug('COMBAT', 'Projectile origin: Lower center screen position (unified for all weapons)');
             const preciseAimDir = centerAimPoint.clone().sub(camera.position).normalize();
             
             // Use our simple HitScanService for direct physics raycast

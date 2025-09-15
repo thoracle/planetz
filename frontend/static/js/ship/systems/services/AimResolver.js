@@ -27,4 +27,3 @@ export function getFireDirection(ship) {
 	return dir;
 }
 
-

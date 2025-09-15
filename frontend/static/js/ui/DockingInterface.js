@@ -85,8 +85,6 @@ debug('UI', `🔧 DockingInterface: Loaded ${this.cardInventoryUI.shipSlots.size
             max-width: 800px;
         `;
 
-
-
         // Create header section with launch button
         this.header = document.createElement('div');
         this.header.className = 'docking-header';
@@ -426,8 +424,6 @@ debug('UI', 'this.handleLaunch() completed');
         this.updateStationWireframe(info?.name || 'UNKNOWN', info?.type);
     }
 
-
-
     createActionButtons() {
         // Remove launch button from services (now in header)
 
@@ -573,8 +569,6 @@ debug('UI', 'Station menu hidden');
             }
         }
     }
-
-
 
     updateButtonStates() {
         if (!this.dockedLocation) return;

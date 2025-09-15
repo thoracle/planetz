@@ -228,6 +228,10 @@ function toggleWarpControlMode() {
 
 // Add global keyboard event listener
 document.addEventListener('keydown', (event) => {
+    // Global TAB detection test
+    if (event.key === 'Tab') {
+        debug('TARGETING', `🎯 GLOBAL TAB detected in app.js - editMode: ${editMode}`);
+    }
     // Handle Ctrl/Cmd key combinations
     if (event.ctrlKey || event.metaKey) {
         if (event.key === 'u') {
@@ -241,6 +245,7 @@ document.addEventListener('keydown', (event) => {
             toggleWarpControlMode();
         }
     } else if (editMode && event.key === 'Tab') {
+        debug('TARGETING', `🎯 TAB intercepted by edit mode - blocking game TAB handler`);
         event.preventDefault();
         event.stopPropagation();
         cycleCelestialBody();
@@ -290,7 +295,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (smartDebugManager) {
             smartDebugManager.debug(channel, message);
         } else {
-            console.log(`UTILITY: ${channel}: ${message}`);
+
         }
     };
 
@@ -1148,7 +1153,6 @@ debug('UTILITY', 'Terraforming blocked: Not in edit mode');
                     planet.oceanMesh.geometry = oceanGeometry;
                 }
                 
-debug('UTILITY', 'Geometry updated after terraforming');
                 updateDebugInfo(); // Update debug info after geometry changes
             }
         } else {
@@ -1216,7 +1220,6 @@ debug('UTILITY', 'Creating fresh geometry with subdivision level:', geometryPara
     
     // Function to update planet geometry and colors
     function updatePlanetGeometry() {
-debug('UTILITY', 'Starting planet geometry update...');
         
         // Create and validate new geometry
         const newGeometry = createPlanetGeometry();
@@ -1780,7 +1783,7 @@ debug('UTILITY', 'Starting animation loop...');
             controls.enabled = false; // Temporarily disable OrbitControls
             controls._screenSpacePanningBeforeRoll = controls.screenSpacePanning;
             controls.screenSpacePanning = false; // Prevent OrbitControls from snapping up vector
-            // debug('INSPECTION', '[Roll Debug] Roll mode STARTED');
+
             event.preventDefault();
         }
     }, true);
@@ -1799,7 +1802,7 @@ debug('UTILITY', 'Starting animation loop...');
             camera.up.normalize();
             controls.target = controls.target.clone(); // Force OrbitControls to recalc
             controls.update();
-            // debug('INSPECTION', '[Roll Debug] Rolling', { deltaX, rollAngle: -deltaX * rollSensitivity });
+
             event.preventDefault();
         }
     }, true);
@@ -1811,7 +1814,7 @@ debug('UTILITY', 'Starting animation loop...');
             controls.screenSpacePanning = controls._screenSpacePanningBeforeRoll !== undefined ? controls._screenSpacePanningBeforeRoll : true;
             delete controls._screenSpacePanningBeforeRoll;
             controls.update();
-            // debug('INSPECTION', '[Roll Debug] Roll mode ENDED');
+
             event.preventDefault();
         }
     }, true);

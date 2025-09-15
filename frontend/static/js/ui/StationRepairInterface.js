@@ -87,7 +87,6 @@ debug('UI', 'Creating interface...');
         this.createInterface();
 debug('UI', 'Interface created, updating...');
         this.updateInterface();
-debug('UI', 'Interface updated, showing...');
         
         // Show the interface
         if (this.container) {

@@ -244,7 +244,6 @@ debug('TARGETING', `🔄 Syncing targets: ${discoveredObjects.length} discovered
 
         const discovered = [];
 
-
         // Get discovered objects from Star Charts database
         if (this.starCharts.objectDatabase && this.starCharts.objectDatabase.sectors) {
             const currentSector = this.starCharts.currentSector || 'A0';
@@ -347,7 +346,6 @@ debug('TARGETING', `🎯 Refreshed Target Computer display`);
     addTargetToTargetComputer(targetData) {
         if (!this.targetComputer || !targetData) return;
 
-
         // Normalize ID to uppercase to match Star Charts database format
         const normalizedId = targetData.id ? targetData.id.replace(/^a0_/i, 'A0_') : null;
         
@@ -361,14 +359,12 @@ debug('TARGETING', `🎯 Refreshed Target Computer display`);
         let normalizedType = targetData.type;
         let isSpaceStation = false;
 
-
         // Apply centralized type normalization if needed
         if (wireframeConfig.geometry === 'torus') {
             // Space stations need special handling for backward compatibility
             normalizedType = 'station';
             isSpaceStation = true;
         }
-
 
         // Create target data object for Target Computer
         const targetDataForTC = {

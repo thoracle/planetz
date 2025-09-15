@@ -142,7 +142,6 @@ debug('COMBAT', 'Initial max shield strength:', shields.maxShieldStrength);
     
 debug('COMBAT', 'After system damage:');
 debug('COMBAT', '- System health:', shields.healthPercentage.toFixed(2));
-debug('COMBAT', '- System state:', shields.state);
 debug('COMBAT', '- Energy consumption:', shields.getEnergyConsumptionRate().toFixed(1), '/sec');
 debug('COMBAT', '- Shield effectiveness:', shields.getEffectiveness().toFixed(2));
     

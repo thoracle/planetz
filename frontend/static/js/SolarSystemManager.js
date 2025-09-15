@@ -119,7 +119,6 @@ debug('UTILITY', 'Starting star system generation for sector:', sector);
         
         // Update current sector immediately
         this.currentSector = sector;
-debug('UTILITY', 'Updated current sector to:', sector);
         
         try {
             // Clear existing system first

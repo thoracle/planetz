@@ -907,7 +907,7 @@ export class TargetComputerManager {
                     } else {
                         // Current target not found in list - select nearest available target unless user is actively holding a manual lock
                         if (!this.isManualSelection) {
-                            // debug('TARGETING', 'Current target not found - selecting nearest available target');
+
                             this.targetIndex = -1;
                             this.cycleTarget();
                         } else {
@@ -1401,32 +1401,32 @@ export class TargetComputerManager {
 
         // 1. Direct diplomacy property (highest priority)
         if (targetData.diplomacy) {
-            if (isBeacon && Math.random() < 0.001) debug('TARGETING', `Using direct diplomacy: ${targetData.diplomacy}`);
+            
             return targetData.diplomacy;
         }
 
         // 2. Faction-based diplomacy
         if (targetData.faction) {
             const factionDiplomacy = this.getFactionDiplomacy(targetData.faction);
-            if (isBeacon && Math.random() < 0.001) debug('TARGETING', `Using faction diplomacy: ${factionDiplomacy} (faction: ${targetData.faction})`);
+            
             return factionDiplomacy;
         }
 
         // 3. Ship diplomacy (for ship targets)
         if (targetData.ship?.diplomacy) {
-            if (isBeacon && Math.random() < 0.001) debug('TARGETING', `Using ship diplomacy: ${targetData.ship.diplomacy}`);
+            
             return targetData.ship.diplomacy;
         }
 
         // 4. Celestial body info diplomacy (for planets, stations, etc.)
         const info = this.solarSystemManager?.getCelestialBodyInfo(targetData.object || targetData);
         if (info?.diplomacy) {
-            if (isBeacon && Math.random() < 0.001) debug('TARGETING', `Using celestial body diplomacy: ${info.diplomacy}`);
+            
             return info.diplomacy;
         }
 
         // 5. Ultimate fallback
-        if (isBeacon && Math.random() < 0.001) debug('TARGETING', `Using fallback diplomacy: neutral`);
+        
         return 'neutral';
     }
 
@@ -1619,26 +1619,40 @@ export class TargetComputerManager {
      * @param {boolean} forward - Whether to cycle forward (true) or backward (false). Default: true
      */
     cycleTarget(forward = true) {
+        console.log(`🎯 TargetComputerManager.cycleTarget called (forward=${forward})`);
+        debug('TARGETING', `🎯 TAB: cycleTarget called (forward=${forward})`);
+        
         // Prevent cycling targets while docked
         if (this.viewManager?.starfieldManager?.isDocked) {
+            console.log('🎯 TargetComputerManager: Blocked - ship is docked');
+            debug('TARGETING', `🎯 TAB: Blocked - ship is docked`);
             return;
         }
 
         // Prevent cycling during undock cooldown
         if (this.viewManager?.starfieldManager?.undockCooldown && Date.now() < this.viewManager.starfieldManager.undockCooldown) {
+            console.log('🎯 TargetComputerManager: Blocked - undock cooldown active');
+            debug('TARGETING', `🎯 TAB: Blocked - undock cooldown active`);
             return;
         }
 
         // Prevent target changes during dummy creation
         if (this.preventTargetChanges) {
+            console.log('🎯 TargetComputerManager: Blocked - preventTargetChanges flag');
             // console.log(`🎯 Target change prevented during dummy creation`);
             return;
         }
 
         if (!this.targetComputerEnabled || this.targetObjects.length === 0) {
+            console.log('🎯 TargetComputerManager: Blocked - not enabled or no targets', {
+                targetComputerEnabled: this.targetComputerEnabled,
+                targetObjectsLength: this.targetObjects.length
+            });
             // console.log(`🎯 Cannot cycle targets - enabled: ${this.targetComputerEnabled}, targets: ${this.targetObjects.length}`);
             return;
         }
+        
+        console.log('🎯 TargetComputerManager: All checks passed, proceeding with target cycling');
 
         // Additional debugging for target cycling issues
         if (this.preventTargetChanges) {
@@ -1775,6 +1789,44 @@ export class TargetComputerManager {
         
         // Start monitoring the selected target's range (for both manual and automatic cycles)
         this.startRangeMonitoring();
+        
+        console.log(`🎯 TargetComputerManager: cycleTarget completed - new target: ${this.currentTarget?.name || 'none'} (ID: ${this.currentTarget?.id || 'none'})`);
+        debug('TARGETING', `🎯 TAB: cycleTarget completed - new target: ${this.currentTarget?.name || 'none'} (ID: ${this.currentTarget?.id || 'none'})`);
+        
+        // Notify Star Charts to update blinking target if it's open
+        console.log('🎯 TargetComputerManager: About to call notifyStarChartsOfTargetChange()');
+        debug('TARGETING', `🎯 TAB: About to call notifyStarChartsOfTargetChange()`);
+        this.notifyStarChartsOfTargetChange();
+        console.log('🎯 TargetComputerManager: Called notifyStarChartsOfTargetChange()');
+        debug('TARGETING', `🎯 TAB: Called notifyStarChartsOfTargetChange()`);
+    }
+
+    /**
+     * Notify Star Charts that the target has changed (for real-time blinking updates)
+     */
+    notifyStarChartsOfTargetChange() {
+        debug('TARGETING', `🎯 notifyStarChartsOfTargetChange() called`);
+        
+        // Check if Star Charts is open and available
+        // The UI is stored as starChartsUI in NavigationSystemManager, not as starChartsManager.ui
+        const starChartsUI = this.viewManager?.navigationSystemManager?.starChartsUI;
+        
+        debug('TARGETING', `🎯 starChartsUI exists: ${!!starChartsUI}`);
+        debug('TARGETING', `🎯 starChartsUI.isVisible: ${starChartsUI?.isVisible}`);
+        
+        if (starChartsUI && starChartsUI.isVisible) {
+            debug('TARGETING', `🎯 BEFORE Star Charts render - current target: ${this.currentTarget?.name || 'none'} (ID: ${this.currentTarget?.id || 'none'})`);
+            
+            // Use requestAnimationFrame to ensure render happens on next frame
+            requestAnimationFrame(() => {
+                debug('TARGETING', `🎯 FRAME render - current target: ${this.currentTarget?.name || 'none'} (ID: ${this.currentTarget?.id || 'none'})`);
+                // Force a re-render of Star Charts to update blinking targets
+                starChartsUI.render();
+                debug('TARGETING', `🎯 AFTER frame Star Charts render - notified of target change`);
+            });
+        } else {
+            debug('TARGETING', `🎯 Star Charts not available for notification - not visible or not initialized`);
+        }
     }
 
     /**
@@ -1783,7 +1835,6 @@ export class TargetComputerManager {
     createTargetWireframe() {
         if (!this.currentTarget) return;
 
-        // debug('TARGETING', `🎯 WIREFRAME: createTargetWireframe() called for ${this.currentTarget.name || 'unnamed target'}`);
         const childrenBefore = this.wireframeScene.children.length;
 
         // Clear any existing wireframe first to prevent duplicates
@@ -1838,16 +1889,13 @@ export class TargetComputerManager {
        let wireframeColor = 0x44ffff; // default teal for unknown
        let isEnemyShip = false;
 
-
        // Determine target info, prioritizing Star Charts data over spatial manager data
        const ship = this.viewManager?.getShip();
        const targetComputer = ship?.getSystem('target_computer');
        const enhancedTargetInfo = targetComputer?.getCurrentTargetInfo();
 
-
        // Start with currentTargetData from Star Charts (has correct normalized types)
        info = currentTargetData || {};
-
 
        if (enhancedTargetInfo) {
            // Merge enhanced info but preserve the correct type from Star Charts
@@ -1869,8 +1917,6 @@ export class TargetComputerManager {
 
        // CRITICAL FIX: Update wireframe color and isEnemyShip based on diplomacy using consolidated logic
        const diplomacy = this.getTargetDiplomacy(currentTargetData);
-       // debug('TARGETING', `🎯 TARGET_SWITCH: Target diplomacy: ${diplomacy} for ${currentTargetData?.name || 'unknown'}`);
-       // debug('INSPECTION', `🔍 Target diplomacy details - type: ${currentTargetData?.type}, faction: ${currentTargetData?.faction}, ship.diplomacy: ${currentTargetData?.ship?.diplomacy}`);
 
        // Check discovery status for wireframe color using proper discovery logic
        const isDiscovered = currentTargetData?.isShip || this.isObjectDiscovered(currentTargetData);
@@ -1878,7 +1924,7 @@ export class TargetComputerManager {
        if (!isDiscovered) {
            // Undiscovered objects use unknown faction color (cyan)
            wireframeColor = 0x44ffff; // Cyan for unknown/undiscovered
-           // debug('INSPECTION', `🔍 Setting wireframe color to UNDISCOVERED CYAN (0x44ffff)`);
+
        } else {
            // FIX: Set isEnemyShip correctly - only enemy ships should have subsystem indicators
            isEnemyShip = diplomacy === 'enemy' && currentTargetData?.isShip;
@@ -1886,21 +1932,21 @@ export class TargetComputerManager {
 
            if (diplomacy === 'enemy') {
                wireframeColor = 0xff3333; // Enemy red
-               // debug('INSPECTION', `🔍 Setting wireframe color to ENEMY RED (0xff3333)`);
+
            } else if (diplomacy === 'neutral') {
                wireframeColor = 0xffff00; // Neutral yellow
-               // debug('INSPECTION', `🔍 Setting wireframe color to NEUTRAL YELLOW (0xffff00)`);
+
            } else if (diplomacy === 'friendly') {
                wireframeColor = 0x00ff41; // Friendly green
-               // debug('INSPECTION', `🔍 Setting wireframe color to FRIENDLY GREEN (0x00ff41)`);
+
            } else if (info?.type === 'star') {
                wireframeColor = 0xffff00; // Stars are yellow
-               // debug('INSPECTION', `🔍 Setting wireframe color to STAR YELLOW (0xffff00)`);
+
            } else if (diplomacy === 'unknown') {
                wireframeColor = 0x44ffff; // Unknown faction cyan
-               // debug('INSPECTION', `🔍 Setting wireframe color to UNKNOWN CYAN (0x44ffff)`);
+
            } else {
-               // debug('INSPECTION', `🔍 Keeping default wireframe color (0x808080) for diplomacy: ${diplomacy}`);
+
            }
        }
 
@@ -1980,12 +2026,9 @@ export class TargetComputerManager {
             
             const finalChildren = this.wireframeScene.children.length;
             const childTypes = this.wireframeScene.children.map(child => child.constructor.name).join(', ');
-            // debug('TARGETING', `🎯 WIREFRAME: Created for ${this.currentTarget?.name || 'unknown'} (${finalChildren} total objects: ${childTypes})`);
 
             this.wireframeCamera.position.z = Math.max(radius * 3, 3);
             this.targetWireframe.rotation.set(0.5, 0, 0.3);
-
-            // debug('TARGETING', `🎯 TARGET_SWITCH: Wireframe creation completed for ${currentTargetData?.name || 'unknown target'}`);
 
         } catch (error) {
             debug('TARGETING', `🎯 TARGET_SWITCH: Error creating target wireframe: ${error.message}`);
@@ -2172,7 +2215,7 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: About to get target info 
             // Use consolidated diplomacy logic instead of old hardcoded check
             const diplomacy = this.getTargetDiplomacy(currentTargetData);
             isEnemyShip = diplomacy === 'enemy' && currentTargetData?.isShip;
-            // debug('TARGETING', `🎯 UPDATE_DISPLAY: Enhanced target info diplomacy=${enhancedTargetInfo.diplomacy}, faction=${enhancedTargetInfo.faction}, isEnemyShip=${isEnemyShip}`);
+
         } else if (currentTargetData.isShip && currentTargetData.ship) {
             // Use consolidated diplomacy logic for ships and target dummies
             const diplomacy = this.getTargetDiplomacy(currentTargetData);
@@ -2219,7 +2262,6 @@ if (window?.DEBUG_TCM) debug('INSPECTION', `🎯 DEBUG: Final info object:`, inf
         }
         
         this.targetHUD.style.borderColor = diplomacyColor;
-        // debug('TARGETING', `🎯 UPDATE_DISPLAY: Setting targetHUD border color to ${diplomacyColor} for diplomacy: ${diplomacy}`);
 
         // Update wireframe container border color to match
         if (this.wireframeContainer) {
@@ -2266,9 +2308,7 @@ if (window?.DEBUG_TCM) debug('INSPECTION', `🎯 DEBUG: Final info object:`, inf
                                     (this.currentTarget?.userData?.isSpaceStation);
             
             // Reduced debug noise
-            
 
-            
             // Only log for target dummies to debug the sub-targeting issue
             if (currentTargetData.name && currentTargetData.name.includes('Target Dummy')) {
 if (window?.DEBUG_TCM) debug('TARGETING', `🎯 Sub-targeting check: isEnemyShip=${isEnemyShip}, currentTargetData.ship=${!!currentTargetData.ship}, isSpaceStation=${isSpaceStation}`);
@@ -2449,7 +2489,7 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 Sub-targeting check: isEnemyShip
         if (!isObjectDiscovered && !currentTargetData?.isShip) {
             // Undiscovered non-ship objects show as "Unknown"
             displayName = 'Unknown';
-            // debug('TARGETING', `🎯 DISPLAY: Undiscovered object - showing as "Unknown"`);
+
         } else {
             // Discovered objects or ships show their real name
             displayName = currentTargetData?.name || info?.name || 'Unknown Target';
@@ -2477,7 +2517,6 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: Setting targetInfoDisplay
             ${subTargetHTML}
         `;
 if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHTML set to:`, this.targetInfoDisplay.innerHTML.substring(0, 200) + '...');
-
 
         // Update status icons with diplomacy color
         this.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info, isObjectDiscovered);
@@ -2676,6 +2715,11 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
         } else {
             return `A0_${normalizedName}`;
         }
+        
+        // Notify Star Charts to update blinking target if it's open
+        debug('TARGETING', `🎯 updateTargetDisplay: About to call notifyStarChartsOfTargetChange()`);
+        this.notifyStarChartsOfTargetChange();
+        debug('TARGETING', `🎯 updateTargetDisplay: Called notifyStarChartsOfTargetChange()`);
     }
 
     /**
@@ -3555,7 +3599,6 @@ debug('TARGETING', '📭 No targets remaining after destruction');
                 this.hideTargetReticle();
             }
         } else {
-debug('TARGETING', '🔄 Destroyed ship was not currently targeted - performing standard list update');
             
             // Just update the target list without changing current target
             this.updateTargetList();
@@ -3600,6 +3643,9 @@ debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.ship
      * @param {string} objectId - The ID of the object to target
      */
     setTargetById(objectId) {
+        debug('TARGETING', `🎯 setTargetById called with: ${objectId}`);
+        debug('TARGETING', `🎯 setTargetById call stack:`, new Error().stack);
+        
         if (!objectId) {
             console.warn('🎯 setTargetById: No object ID provided');
             return false;
@@ -3646,6 +3692,8 @@ debug('TARGETING', `🎯 Checking target ${i}: ${target.name} (id: ${target.id |
                     isManualSelection: this.isManualSelection,
                     targetIndex: this.targetIndex
                 });
+                
+                debug('TARGETING', `🎯 setTargetById: Target found and set, about to call updateTargetDisplay`);
 
                 // Force immediate HUD refresh
                 // If selected target lacks a Three.js object, attempt to resolve it now
@@ -3699,7 +3747,9 @@ debug('TARGETING', `🎯 Checking target ${i}: ${target.name} (id: ${target.id |
 
                 // Create new wireframe for the selected target
                 this.createTargetWireframe();
+                debug('TARGETING', `🎯 setTargetById: About to call updateTargetDisplay()`);
                 this.updateTargetDisplay();
+                debug('TARGETING', `🎯 setTargetById: Called updateTargetDisplay()`);
                 this.updateReticleTargetInfo();
 
 debug('TARGETING', `🎯 Star Charts: Target set to ${target.name} (ID: ${normalizedId}) at index ${i}`);
@@ -4196,9 +4246,6 @@ debug('TARGETING', `🎯 Virtual target set: ${waypointId}`);
         // console.log('🎯 TargetComputerManager disposed');
     }
 
-
-
-
     /**
      * Stop wireframe animation
      */
@@ -4622,7 +4669,6 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
      * Star Charts Integration Methods
      * These methods provide decoupled targeting for the Star Charts system
      */
-
 
     /**
      * Set virtual target (Mission waypoint integration)

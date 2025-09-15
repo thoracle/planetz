@@ -14,4 +14,3 @@ export function applyDamageToEntity(entity, damage, damageType = 'energy', subsy
 	return true;
 }
 
-

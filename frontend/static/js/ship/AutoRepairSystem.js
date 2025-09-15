@@ -47,7 +47,6 @@ debug('AI', 'Auto-Repair System initialized with emergency triage protocols');
     setRepairPriorities(priorities) {
         this.priorities = { ...priorities };
         this.updateRepairQueue();
-debug('AI', 'Repair priorities updated:', this.priorities);
     }
     
     /**

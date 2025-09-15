@@ -29,11 +29,9 @@ debug('UTILITY', 'Energy consumption successful:', consumed);
 debug('UTILITY', 'Energy after consumption:', viewManager.getShipEnergy());
     
     // Test 4: Energy update via ViewManager
-debug('UTILITY', '\nTest 4: Energy Update via ViewManager');
     const oldEnergy = viewManager.getShipEnergy();
     viewManager.updateShipEnergy(50);
     const newEnergy = viewManager.getShipEnergy();
-debug('UTILITY', 'Energy updated:', oldEnergy, '->', newEnergy);
     
     // Test 5: Ship systems
 debug('UTILITY', '\nTest 5: Ship Systems');

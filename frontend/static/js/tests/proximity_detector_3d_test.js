@@ -98,7 +98,6 @@ debug('UTILITY', '  • Grid rotates with ship orientation');
 debug('UTILITY', '  • Vertical altitude lines for objects');
 debug('UTILITY', '  • Color-coded blips (Red=Enemy, Green=Friendly, Yellow=Neutral)');
 debug('UTILITY', '  • Elite (1984) retro holographic aesthetic');
-debug('UTILITY', '  • Lower center screen position');
     
     return true;
 }

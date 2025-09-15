@@ -74,7 +74,6 @@ debug('UTILITY', '  • Proximity detector should appear in bottom center of scr
     
 debug('UI', '✅ Proximity Detector HUD test completed successfully!');
 debug('UI', '💡 Use "window.starfieldManager.radarHUD.toggle()" to manually toggle proximity detector');
-debug('UI', '💡 Use "window.starfieldManager.radarHUD.forceUpdate()" to force proximity detector update');
     
     return true;
 }

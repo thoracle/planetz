@@ -25,7 +25,6 @@ debug('UTILITY', 'Enabling proximity detector...');
     }
     
     // Test the new scaling logic
-debug('UTILITY', 'Testing new object positioning logic...');
     
     // Get trackable objects
     const objects = detector.getAllTrackableObjects();
@@ -38,13 +37,10 @@ debug('UTILITY', `Found ${objects.length} trackable objects`);
     let playerPosition;
     if (ship?.mesh) {
         playerPosition = ship.mesh.position;
-debug('UTILITY', '✅ Using ship mesh position');
     } else if (viewManager?.ship?.mesh) {
         playerPosition = viewManager.ship.mesh.position;
-debug('UTILITY', '✅ Using viewManager ship mesh position');
     } else {
         playerPosition = starfield.camera.position;
-debug('UTILITY', 'Using camera position fallback');
     }
     
 debug('UTILITY', `📍 Player position: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
@@ -81,22 +77,19 @@ debug('UTILITY', `   Altitude: ${altitude.toFixed(3)}km`);
 debug('UTILITY', `   In grid range: ${inGridRange ? '✅' : '❌'}`);
 debug('UTILITY', `   In detection range: ${inDetectionRange ? '✅' : '❌'}`);
 debug('UTILITY', `   Should be visible: ${inGridRange && inDetectionRange ? '✅' : '❌'}`);
-        console.log('');
+
     });
     
     // Force update to apply new logic
-debug('UTILITY', '🔄 Forcing detector update with new scaling...');
     detector.forceUpdate?.();
     
     // Check scene objects after update
     setTimeout(() => {
-debug('UTILITY', '📊 Scene analysis after update:');
 debug('UTILITY', `   Total scene objects: ${detector.scene?.children?.length || 0}`);
 debug('UTILITY', `   Object blips: ${detector.objectBlips?.size || 0}`);
 debug('UTILITY', `   Altitude lines: ${detector.altitudeLines?.size || 0}`);
         
         if (detector.scene) {
-debug('UTILITY', '📋 Scene objects positions:');
             detector.scene.children.forEach((child, index) => {
                 const pos = child.position;
                 const inView = Math.abs(pos.x) <= 1.5 && Math.abs(pos.z) <= 1.5 && Math.abs(pos.y) <= 2;
@@ -120,5 +113,3 @@ debug('UTILITY', '💡 Objects should now be visible in the 3D proximity detecto
 
 // Make globally available
 window.testObjectVisibilityFix = testObjectVisibilityFix;
-
-debug('UTILITY', '💡 Use testObjectVisibilityFix() to verify object positioning fixes');

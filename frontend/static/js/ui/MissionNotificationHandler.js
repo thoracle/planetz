@@ -620,6 +620,5 @@ debug('AI', '📢 Failure test notifications scheduled');
      */
     updateNotificationSettings(settings) {
         this.notificationSettings = { ...this.notificationSettings, ...settings };
-debug('UTILITY', '📢 Notification settings updated');
     }
 }

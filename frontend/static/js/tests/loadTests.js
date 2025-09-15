@@ -59,7 +59,7 @@ debug('UTILITY', 'All proximity detector tests loaded successfully!');
 debug('AI', '💡 Available test functions:');
 debug('UTILITY', '  • testProximityDetector()');
 debug('UI', '  • testProximityDetectorCardIntegration()');
-        console.log('');
+
 debug('UTILITY', '🎮 Example usage:');
 debug('UTILITY', '  testProximityDetector();');
         

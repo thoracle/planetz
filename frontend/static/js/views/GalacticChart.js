@@ -628,7 +628,6 @@ debug('UTILITY', 'Grid not initialized, initializing now');
             const cells = this.gridContainer.querySelectorAll('.grid-cell');
             if (cells[systemIndex]) {
                 cells[systemIndex].classList.add('ship-location');
-debug('UTILITY', 'Updated ship location to index:', systemIndex);
             } else {
                 console.warn('Grid cell not found for index:', systemIndex);
             }

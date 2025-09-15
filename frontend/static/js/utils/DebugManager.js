@@ -41,7 +41,7 @@ export class SmartDebugManager {
 
         // Load config asynchronously
         this.loadConfig().then(() => {
-            console.log('🔧 DebugManager: Configuration loaded successfully');
+
         }).catch(error => {
             console.error('🔧 DebugManager: Failed to load configuration:', error);
         });
@@ -65,7 +65,7 @@ export class SmartDebugManager {
                 const configText = localStorage.getItem('debug_config');
                 if (configText) {
                     this.config = JSON.parse(configText);
-                    console.log('🔧 DebugManager: Loaded configuration from localStorage');
+
                     configLoaded = true;
                 }
             }
@@ -74,7 +74,7 @@ export class SmartDebugManager {
             if (!configLoaded) {
                 this.config = this.getDefaultConfig();
                 this.saveConfig();
-                console.log('🔧 DebugManager: Created default configuration');
+
             }
 
             this.updateChannelStates();
@@ -93,14 +93,14 @@ export class SmartDebugManager {
             if (response.ok) {
                 const fileConfig = await response.json();
                 this.config = fileConfig;
-                console.log('🔧 DebugManager: Loaded configuration from file');
+
                 return true;
             } else {
-                console.log('🔧 DebugManager: Debug config file not found, will use localStorage');
+
                 return false;
             }
         } catch (error) {
-            console.log('🔧 DebugManager: Could not load file config, will use localStorage');
+
             return false;
         }
     }
@@ -140,12 +140,12 @@ export class SmartDebugManager {
             });
 
             if (response.ok) {
-                console.log('🔧 DebugManager: Configuration saved to file successfully');
+
             } else {
-                console.log('🔧 DebugManager: File saving failed (server API not available), config saved to localStorage only');
+
             }
         } catch (error) {
-            console.log('🔧 DebugManager: File saving failed (server API not available), config saved to localStorage only');
+
         }
     }
 
@@ -268,7 +268,7 @@ export class SmartDebugManager {
 
         // Format and output
         const formattedMessage = this.formatMessage(channel, message);
-        console.log(formattedMessage);
+
     }
 
     /**
@@ -303,7 +303,6 @@ export class SmartDebugManager {
         this.config.channels[channel].enabled = newState;
         this.saveConfig();
 
-        console.log(`🔧 DebugManager: ${channel} ${newState ? 'ENABLED' : 'DISABLED'}`);
         return true;
     }
 
@@ -360,7 +359,7 @@ export class SmartDebugManager {
         this.config = this.getDefaultConfig();
         this.updateChannelStates();
         this.saveConfig();
-        console.log('🔧 DebugManager: Configuration reset to defaults');
+
     }
 
     /**
@@ -388,58 +387,46 @@ export class SmartDebugManager {
         window.debugStates = () => this.getChannelStates();
         window.debugReset = () => this.resetConfig();
         window.debugList = () => {
-            console.log('🔧 Available Debug Channels:');
+
             Object.entries(this.config.channels).forEach(([channel, config]) => {
                 const status = this.channels[channel]?.enabled ? '✅' : '❌';
-                console.log(`  ${status} ${channel} - ${config.description}`);
+
             });
         };
 
         // File-based configuration commands
         window.debugLoadFile = () => {
-            console.log('🔄 Loading configuration from file...');
+
             return this.loadConfigFromFile().then(success => {
                 if (success) {
-                    console.log('✅ File configuration loaded successfully');
+
                     this.updateChannelStates();
                 } else {
-                    console.log('❌ Failed to load file configuration');
+
                 }
             });
         };
 
         window.debugSaveFile = () => {
-            console.log('💾 File saving requires server API - config saved to localStorage');
-            console.log('To persist changes, edit: /static/js/debug-config.json');
+
         };
 
         window.debugConfigFile = () => {
-            console.log('📁 Debug Configuration File:');
-            console.log('Location: /static/js/debug-config.json');
-            console.log('URL: http://127.0.0.1:5001/static/js/debug-config.json');
-            console.log('Edit this file to persist debug settings between browser sessions');
-            console.log('');
-            console.log('Current file config:');
-            console.log(JSON.stringify(this.config, null, 2));
+
         };
 
         window.debugSyncFile = () => {
-            console.log('🔄 Syncing with file configuration...');
+
             return this.loadConfigFromFile().then(success => {
                 if (success) {
-                    console.log('✅ Synced with file configuration');
+
                     this.updateChannelStates();
                 } else {
-                    console.log('❌ Failed to sync with file');
+
                 }
             });
         };
 
-        console.log('🔧 DebugManager: File-based commands available:');
-        console.log('  debugLoadFile()   - Load from /data/debug-config.json');
-        console.log('  debugSaveFile()   - Save to file (localStorage for now)');
-        console.log('  debugConfigFile() - Show file location and current config');
-        console.log('  debugSyncFile()   - Sync browser config with file');
     }
 
     /**
@@ -459,7 +446,7 @@ export class SmartDebugManager {
                 this.config = newConfig;
                 this.updateChannelStates();
                 this.saveConfig();
-                console.log('🔧 DebugManager: Configuration imported successfully');
+
                 return true;
             } else {
                 console.error('🔧 DebugManager: Invalid configuration format');

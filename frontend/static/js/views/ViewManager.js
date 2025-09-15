@@ -133,8 +133,7 @@ debug('UTILITY', 'SolarSystemManager set in ViewManager');
     initializeNavigationSystemIfReady() {
         // Initialize NavigationSystemManager once both managers are available
         if (this.starfieldManager && this.solarSystemManager && !this.navigationSystemManager) {
-            // debug('NAVIGATION', 'ViewManager: Initializing NavigationSystemManager with all dependencies');
-            
+
             this.navigationSystemManager = new NavigationSystemManager(
                 this,
                 this.scene,
@@ -155,7 +154,6 @@ debug('UTILITY', 'SolarSystemManager set in ViewManager');
                 debug('UTILITY', '🔧 StarChartsManager exposed globally for debugging');
             }
 
-            // debug('NAVIGATION', '✅ NavigationSystemManager initialized and exposed globally');
         }
     }
 
@@ -814,7 +812,6 @@ debug('UTILITY', 'Already in requested view, returning');
         
         // Update the current view BEFORE notifying StarfieldManager
         this.currentView = viewType;
-debug('UTILITY', 'Updated current view to:', this.currentView);
         
         // Notify StarfieldManager of view change
         if (this.starfieldManager) {
@@ -954,7 +951,6 @@ debug('UTILITY', 'Restoring to view:', viewToRestore);
         
         // Update the current view and notify StarfieldManager
         this.currentView = viewToRestore;
-debug('UTILITY', 'Updated current view to:', this.currentView);
         
         if (this.starfieldManager) {
             // Convert view type to uppercase before passing to starfieldManager

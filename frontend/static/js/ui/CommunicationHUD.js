@@ -331,7 +331,6 @@ debug('AI', 'CommunicationHUD: Container created');
         return (hue - 39 + 360) % 360;
     }
 
-    
     /**
      * Create main content area with avatar and bottom info panel
      */
@@ -688,9 +687,7 @@ debug('UI', '🔊 CommunicationHUD: playDeliveryAudio called');
         this.textArea.appendChild(this.dialogueText);
         this.contentArea.appendChild(this.textArea);
     }
-    
 
-    
     /**
      * Setup event listeners
      */
@@ -903,7 +900,6 @@ debug('UI', 'CommunicationHUD: Enhanced effects DISABLED (raw video, no scan lin
         }
     }
 
-    
     /**
      * Toggle communication HUD visibility
      */

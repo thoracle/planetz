@@ -1320,8 +1320,7 @@ debug('UTILITY', `🎯 THREE.js raycast HIT: ${metadata?.name || 'unknown'} at $
                 const projectile1 = body1?.projectileOwner;
                 
                 if (projectile0 || projectile1) {
-                    
-                    
+
                     const numContacts = contactManifold.getNumContacts();
                     
                     for (let j = 0; j < numContacts; j++) {
@@ -1330,9 +1329,7 @@ debug('UTILITY', `🎯 THREE.js raycast HIT: ${metadata?.name || 'unknown'} at $
                         // Check if projectile is close enough to target for collision
                         const distance = contactPoint.get_m_distance ? contactPoint.get_m_distance() : 
                                         (contactPoint.getDistance ? contactPoint.getDistance() : 0.1);
-                        
-        
-                        
+
                         // More permissive collision processing - allow wider range of distances
                         // Negative distances = penetration, positive = close proximity
                         if (distance <= 10.0) { // Increased to 10.0 units for very permissive collision detection
@@ -1381,8 +1378,6 @@ debug('UTILITY', `✅ Enhanced CCD: collision=${collisionRadius.toFixed(2)}m, sw
             console.warn('⚠️ CCD configuration failed:', error.message);
         }
     }
-
-
 
     /**
      * Native Ammo.js collision detection using collision manifolds
@@ -1671,8 +1666,6 @@ debug('P1', 'Error removing projectile after raycast collision:', error);
         return result;
     }
 
-
-    
     /**
      * Handle individual projectile collision
      * @param {Object} projectile The projectile object
@@ -1681,8 +1674,7 @@ debug('P1', 'Error removing projectile after raycast collision:', error);
      */
     handleProjectileCollision(projectile, contactPoint, otherBody) {
         try {
-    
-            
+
             // Find the Three.js object associated with the other body
             let otherObject = null;
             for (const [threeObj, rigidBody] of this.rigidBodies.entries()) {
@@ -3176,9 +3168,7 @@ debug('INSPECTION', `   • Position: (${this.debugGroup.position.x}, ${this.deb
 debug('INSPECTION', '❌ Debug mode not active');
             return;
         }
-        
-debug('PERFORMANCE', `🔍 Testing wireframe visibility - making them extremely obvious...`);
-        
+
         // First, force update all wireframe positions
 debug('PERFORMANCE', `🔍 Force updating wireframe positions first...`);
         this.updateDebugVisualization();
@@ -3207,8 +3197,7 @@ debug('PERFORMANCE', `🔍 Force updating wireframe positions first...`);
                 count++;
                 
                 const metadata = this.entityMetadata.get(rigidBody);
-debug('PERFORMANCE', `🔍 Enhanced wireframe ${count}: ${metadata?.type || 'unknown'}`);
-debug('UTILITY', `   • Three.js position: (${threePos.x.toFixed(2)}, ${threePos.y.toFixed(2)}, ${threePos.z.toFixed(2)})`);
+
 debug('PERFORMANCE', `   • Wireframe position: (${wireframe.position.x.toFixed(2)}, ${wireframe.position.y.toFixed(2)}, ${wireframe.position.z.toFixed(2)})`);
 debug('PERFORMANCE', `   • Scale: (${wireframe.scale.x}, ${wireframe.scale.y}, ${wireframe.scale.z})`);
 debug('PERFORMANCE', `   • Visible: ${wireframe.visible}`);
@@ -3435,7 +3424,7 @@ debug('UTILITY', `   • ⚠️  MISSING: ${issues.join(', ')}`);
             } else {
 debug('UTILITY', `   • ✅ Shape metadata complete`);
             }
-            console.log('');
+
         }
 
 debug('UTILITY', "=== SUMMARY ===");

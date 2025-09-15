@@ -1334,9 +1334,7 @@ debug('UI', `🔄 Top-down grid created with flat orientation`);
                 // }
             }
         }
-        
 
-        
         // Only log when object count changes significantly
         if (objectsInRange !== this.sessionStats.lastObjectCount) {
             this.logControlled('log', `Tracking ${objectsInRange} objects within ${detectionRangeKm.toFixed(0)}km range`, null, true);
@@ -1497,32 +1495,12 @@ debug('UI', `🚫 NO DUMMY SHIPS: dummyShipMeshes is ${this.starfieldManager.dum
         }
         
         // DEBUG: Log coordinate mapping for targets near edge of detection range (24-26km)
-        if (this.viewMode === 'topDown' && (obj.isTargetDummy || obj.type === 'enemy_ship') && distance >= 24 && distance <= 26) {
-debug('INSPECTION', `🎯 EDGE DETECTION DEBUG for ${obj.name || obj.type}:`);
-debug('TARGETING', `  Type: ${obj.type}, isTargetDummy: ${obj.isTargetDummy}, isEnemyShip: ${obj.isEnemyShip}`);
-debug('UI', `  World distance: ${distance.toFixed(1)}km`);
-debug('UI', `  Player pos: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
-debug('TARGETING', `  Target pos: (${obj.mesh.position.x.toFixed(1)}, ${obj.mesh.position.y.toFixed(1)}, ${obj.mesh.position.z.toFixed(1)})`);
-debug('UI', `  Relative pos: (${relativePos.x.toFixed(1)}, ${relativePos.y.toFixed(1)}, ${relativePos.z.toFixed(1)})`);
-debug('UI', `  Detection range: ${(detectionRangeM/1000).toFixed(1)}km`);
-debug('UI', `  Scale factor: ${worldToGridScaleFactor.toFixed(6)}`);
-debug('UI', `  Grid pos: (${gridX.toFixed(3)}, ${gridZ.toFixed(3)})`);
-debug('UI', `  Grid distance from center: ${Math.sqrt(gridX*gridX + gridZ*gridZ).toFixed(3)} units`);
+        // Edge detection debug (simplified to reduce spam)
+        if (this.viewMode === 'topDown' && (obj.isTargetDummy || obj.type === 'enemy_ship') && distance >= 24 && distance <= 26 && Math.random() < 0.01) {
+            debug('TARGETING', `🎯 Edge detection: ${obj.name || obj.type} at ${distance.toFixed(1)}km`);
         }
         
-        // Debug ALL detected objects to see what we're working with (DISABLED to reduce console spam)
-        // console.log(`🎯 DETECTED OBJECT: ${obj.name || 'unnamed'}`);
-        // console.log(`  Type: ${obj.type}, isTargetDummy: ${obj.isTargetDummy}, isEnemyShip: ${obj.isEnemyShip}`);
-        // console.log(`  View mode: ${this.viewMode}`);
-        // console.log(`  World distance: ${distance.toFixed(1)}m (${(distance/1000).toFixed(2)}km)`);
-        // console.log(`  Player pos: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
-        // console.log(`  Target pos: (${obj.mesh.position.x.toFixed(1)}, ${obj.mesh.position.y.toFixed(1)}, ${obj.mesh.position.z.toFixed(1)})`);
-        // console.log(`  Relative pos: (${relativePos.x.toFixed(1)}, ${relativePos.y.toFixed(1)}, ${relativePos.z.toFixed(1)})`);
-        // console.log(`  Grid half range: ${worldHalfRangeM.toFixed(1)}m (${(worldHalfRangeM/1000).toFixed(1)}km)`);
-        // console.log(`  Detection range: ${currentZoom.range}m (${currentZoom.label})`);
-        // console.log(`  Grid pos: (${gridX.toFixed(3)}, ${gridZ.toFixed(3)})`);
-        // console.log(`  Grid distance from center: ${Math.sqrt(gridX*gridX + gridZ*gridZ).toFixed(3)} units`);
-        
+        // Detailed object debug disabled to reduce spam
         // Apply minimum visual separation for very close objects
         const minVisualSeparation = 0.1; // Minimum separation in grid units
         const gridDistance = Math.sqrt(gridX * gridX + gridZ * gridZ);
@@ -1913,9 +1891,7 @@ debug('UI', `  Grid distance from center: ${Math.sqrt(gridX*gridX + gridZ*gridZ)
 debug('AI', 'GRID ROTATION: No ship mesh or camera available for grid rotation');
             return;
         }
-        
 
-        
         // SPEC: Grid rotates with ship orientation (Y-axis only for fore view)
         // Hold grid plane stable - only rotate around Y-axis to match player heading
         // Preserve the original tilt (X-axis) and keep Z-axis stable (no roll)
