@@ -148,31 +148,39 @@ classDiagram
     WaypointChain --> Waypoint: references
     WaypointState --> Waypoint: tracks
 
-    <<enumeration>> WaypointType
-    WaypointType : NAVIGATION
-    WaypointType : COMBAT
-    WaypointType : INTERACTION
-    WaypointType : CHECKPOINT
-    WaypointType : OBJECTIVE
+    class WaypointType {
+        <<enumeration>>
+        NAVIGATION
+        COMBAT
+        INTERACTION
+        CHECKPOINT
+        OBJECTIVE
+    }
 
-    <<enumeration>> WaypointStatus
-    WaypointStatus : PENDING
-    WaypointStatus : ACTIVE
-    WaypointStatus : TRIGGERED
-    WaypointStatus : COMPLETED
-    WaypointStatus : CANCELLED
+    class WaypointStatus {
+        <<enumeration>>
+        PENDING
+        ACTIVE
+        TRIGGERED
+        COMPLETED
+        CANCELLED
+    }
 
-    <<enumeration>> TriggerType
-    TriggerType : PROXIMITY
-    TriggerType : MANUAL
-    TriggerType : CONDITIONAL
-    TriggerType : TIMED
+    class TriggerType {
+        <<enumeration>>
+        PROXIMITY
+        MANUAL
+        CONDITIONAL
+        TIMED
+    }
 
-    <<enumeration>> ChainStatus
-    ChainStatus : INACTIVE
-    ChainStatus : ACTIVE
-    ChainStatus : PAUSED
-    ChainStatus : COMPLETED
+    class ChainStatus {
+        <<enumeration>>
+        INACTIVE
+        ACTIVE
+        PAUSED
+        COMPLETED
+    }
 ```
 
 ## 🎯 **User Interaction Patterns**
@@ -1095,6 +1103,602 @@ describe('Waypoint System', () => {
 });
 ```
 
+## 🔄 **Waypoint Interruption & Re-targeting System**
+
+### **Problem Statement**
+
+During missions, players frequently need to abandon their current waypoint target to handle immediate threats or opportunities:
+- **Combat Interruptions**: Enemy ships require immediate targeting
+- **Resource Management**: Low fuel/shields require targeting refueling stations
+- **Opportunity Targeting**: Valuable cargo or rare objects need investigation
+- **Emergency Situations**: Distress calls or critical events demand attention
+
+After handling these interruptions, players must be able to **seamlessly return** to their mission waypoint without losing progress or context.
+
+### **Interruption Use Cases**
+
+```mermaid
+journey
+    title Waypoint Interruption Scenarios
+    section Normal Mission Flow
+      Target Mission Waypoint: 5: Player
+      Navigate Toward Waypoint: 4: Player
+      Interruption Occurs: 2: Environment
+    section Interruption Handling
+      Target Threat/Opportunity: 4: Player
+      Handle Situation: 3: Player
+      Need to Resume Mission: 4: Player
+    section Re-targeting
+      Re-target Waypoint: 5: Player
+      Continue Mission: 5: Player
+      Reach Waypoint: 5: Player
+```
+
+#### **Scenario 1: Combat Interruption**
+```mermaid
+sequenceDiagram
+    participant Player
+    participant TargetComputer as Target Computer
+    participant WaypointManager as Waypoint Manager
+    participant EnemyShip as Enemy Ship
+
+    Player->>TargetComputer: Target mission waypoint
+    Note over Player: Navigating toward waypoint
+    
+    EnemyShip->>Player: Attacks player
+    Player->>TargetComputer: Target enemy ship (TAB/Click)
+    TargetComputer->>WaypointManager: notifyWaypointInterrupted(waypointId)
+    
+    Note over Player: Combat engagement
+    Player->>EnemyShip: Destroy enemy
+    
+    Player->>TargetComputer: Re-target waypoint (W key)
+    TargetComputer->>WaypointManager: resumeWaypoint(waypointId)
+    WaypointManager-->>Player: Waypoint re-targeted successfully
+```
+
+#### **Scenario 2: Resource Management Interruption**
+```mermaid
+sequenceDiagram
+    participant Player
+    participant TargetComputer as Target Computer
+    participant WaypointManager as Waypoint Manager
+    participant Station as Refuel Station
+
+    Player->>TargetComputer: Target mission waypoint
+    Note over Player: Low fuel warning appears
+    
+    Player->>TargetComputer: Target refuel station
+    TargetComputer->>WaypointManager: notifyWaypointInterrupted(waypointId)
+    
+    Player->>Station: Dock and refuel
+    Station-->>Player: Refueling complete
+    
+    Player->>TargetComputer: Re-target waypoint (W key)
+    TargetComputer->>WaypointManager: resumeWaypoint(waypointId)
+    Note over Player: Mission continues seamlessly
+```
+
+### **Re-targeting Mechanisms**
+
+#### **1. Dedicated Waypoint Key (W Key)**
+```javascript
+// Keyboard shortcut for quick waypoint re-targeting
+class WaypointReTargeting {
+    constructor() {
+        this.lastActiveWaypoint = null;
+        this.interruptionTime = null;
+    }
+
+    handleWaypointKey() {
+        if (this.lastActiveWaypoint && this.lastActiveWaypoint.status === 'INTERRUPTED') {
+            // Re-target the interrupted waypoint
+            this.resumeWaypoint(this.lastActiveWaypoint.id);
+            
+            debug('WAYPOINTS', `Re-targeting waypoint: ${this.lastActiveWaypoint.name}`);
+            
+            // Show confirmation feedback
+            this.showReTargetingFeedback(this.lastActiveWaypoint);
+        } else {
+            // No interrupted waypoint - target next active waypoint
+            const nextWaypoint = this.getNextActiveWaypoint();
+            if (nextWaypoint) {
+                this.targetWaypoint(nextWaypoint.id);
+            }
+        }
+    }
+
+    showReTargetingFeedback(waypoint) {
+        // Visual feedback for waypoint re-targeting
+        this.showNotification(`Resuming: ${waypoint.name}`, 'waypoint_resume');
+        this.highlightWaypointInHUD(waypoint.id);
+    }
+}
+```
+
+#### **2. Target Computer Integration**
+```javascript
+// Enhanced Target Computer with waypoint interruption tracking
+class TargetComputerManager {
+    constructor() {
+        // Existing properties...
+        this.interruptedWaypoint = null;
+        this.waypointInterruptionTime = null;
+    }
+
+    setTarget(newTarget) {
+        // Check if current target is a waypoint
+        if (this.isCurrentTargetWaypoint() && newTarget.type !== 'waypoint') {
+            // Store interrupted waypoint for later resumption
+            this.interruptedWaypoint = {
+                ...this.currentTarget,
+                status: 'INTERRUPTED',
+                interruptedAt: new Date(),
+                interruptedBy: newTarget.type
+            };
+            
+            debug('WAYPOINTS', `Waypoint interrupted: ${this.currentTarget.name} by ${newTarget.type}`);
+            
+            // Notify waypoint manager
+            if (window.waypointManager) {
+                window.waypointManager.notifyWaypointInterrupted(this.currentTarget.id);
+            }
+        }
+
+        // Set new target normally
+        this.currentTarget = newTarget;
+        this.updateTargetDisplay();
+    }
+
+    resumeInterruptedWaypoint() {
+        if (this.interruptedWaypoint) {
+            const waypoint = this.interruptedWaypoint;
+            
+            // Clear interruption state
+            this.interruptedWaypoint = null;
+            this.waypointInterruptionTime = null;
+            
+            // Re-target the waypoint
+            this.setVirtualTarget(waypoint.id);
+            
+            // Update waypoint status
+            if (window.waypointManager) {
+                window.waypointManager.resumeWaypoint(waypoint.id);
+            }
+            
+            return true;
+        }
+        return false;
+    }
+
+    hasInterruptedWaypoint() {
+        return this.interruptedWaypoint !== null;
+    }
+}
+```
+
+#### **3. Star Charts Quick Re-targeting**
+```javascript
+// Star Charts integration for waypoint re-targeting
+class StarChartsUI {
+    // Existing methods...
+
+    renderWaypointMarkers() {
+        const activeWaypoints = window.waypointManager?.getActiveWaypoints() || [];
+        const interruptedWaypoint = window.targetComputerManager?.interruptedWaypoint;
+
+        for (const waypoint of activeWaypoints) {
+            this.renderWaypointMarker(waypoint);
+        }
+
+        // Highlight interrupted waypoint with special styling
+        if (interruptedWaypoint) {
+            this.renderInterruptedWaypointMarker(interruptedWaypoint);
+        }
+    }
+
+    renderInterruptedWaypointMarker(waypoint) {
+        const marker = this.createWaypointMarker(waypoint);
+        
+        // Add interrupted waypoint styling
+        marker.classList.add('waypoint-interrupted');
+        marker.setAttribute('stroke-dasharray', '5,5'); // Dashed border
+        marker.setAttribute('stroke', '#FFD700'); // Gold color for interrupted
+        
+        // Add pulsing animation
+        const pulseAnimation = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+        pulseAnimation.setAttribute('attributeName', 'opacity');
+        pulseAnimation.setAttribute('values', '0.5;1;0.5');
+        pulseAnimation.setAttribute('dur', '2s');
+        pulseAnimation.setAttribute('repeatCount', 'indefinite');
+        marker.appendChild(pulseAnimation);
+
+        // Double-click to resume
+        marker.addEventListener('dblclick', () => {
+            this.resumeInterruptedWaypoint(waypoint.id);
+        });
+    }
+
+    resumeInterruptedWaypoint(waypointId) {
+        if (window.targetComputerManager) {
+            window.targetComputerManager.resumeInterruptedWaypoint();
+        }
+    }
+}
+```
+
+### **Waypoint State Management**
+
+#### **Enhanced Waypoint Status System**
+```javascript
+// Extended waypoint status to handle interruptions
+const WaypointStatus = {
+    PENDING: 'pending',           // Created but not yet active
+    ACTIVE: 'active',             // Currently active and targetable
+    TARGETED: 'targeted',         // Currently targeted by player
+    INTERRUPTED: 'interrupted',   // Was targeted but player switched to other target
+    TRIGGERED: 'triggered',       // Player reached trigger radius
+    COMPLETED: 'completed',       // Actions executed successfully
+    CANCELLED: 'cancelled'        // Waypoint cancelled or mission aborted
+};
+```
+
+#### **Interruption Tracking**
+```javascript
+class WaypointManager {
+    // Existing methods...
+
+    notifyWaypointInterrupted(waypointId) {
+        const waypoint = this.activeWaypoints.get(waypointId);
+        if (!waypoint) return;
+
+        waypoint.status = WaypointStatus.INTERRUPTED;
+        waypoint.interruptedAt = new Date();
+        
+        // Track interruption metrics
+        this.trackInterruption(waypoint);
+        
+        debug('WAYPOINTS', `Waypoint interrupted: ${waypoint.name}`);
+    }
+
+    resumeWaypoint(waypointId) {
+        const waypoint = this.activeWaypoints.get(waypointId);
+        if (!waypoint || waypoint.status !== WaypointStatus.INTERRUPTED) {
+            return false;
+        }
+
+        waypoint.status = WaypointStatus.TARGETED;
+        waypoint.resumedAt = new Date();
+        
+        // Calculate interruption duration for metrics
+        const interruptionDuration = waypoint.resumedAt - waypoint.interruptedAt;
+        waypoint.interruptionDuration = interruptionDuration;
+        
+        debug('WAYPOINTS', `Waypoint resumed: ${waypoint.name} (interrupted for ${interruptionDuration}ms)`);
+        
+        return true;
+    }
+
+    getInterruptedWaypoint() {
+        for (const [id, waypoint] of this.activeWaypoints) {
+            if (waypoint.status === WaypointStatus.INTERRUPTED) {
+                return waypoint;
+            }
+        }
+        return null;
+    }
+
+    trackInterruption(waypoint) {
+        // Track interruption analytics
+        this.interruptionMetrics = this.interruptionMetrics || [];
+        this.interruptionMetrics.push({
+            waypointId: waypoint.id,
+            missionId: waypoint.missionId,
+            interruptedAt: waypoint.interruptedAt,
+            waypointType: waypoint.type
+        });
+    }
+}
+```
+
+### **User Interface Enhancements**
+
+#### **HUD Interruption Indicators**
+```javascript
+// Enhanced HUD to show waypoint interruption state
+class WaypointHUD {
+    updateWaypointDisplay() {
+        const currentTarget = window.targetComputerManager?.currentTarget;
+        const interruptedWaypoint = window.targetComputerManager?.interruptedWaypoint;
+
+        // Show current target normally
+        if (currentTarget) {
+            this.displayCurrentTarget(currentTarget);
+        }
+
+        // Show interrupted waypoint indicator
+        if (interruptedWaypoint) {
+            this.displayInterruptedWaypointIndicator(interruptedWaypoint);
+        }
+    }
+
+    displayInterruptedWaypointIndicator(waypoint) {
+        // Create small indicator for interrupted waypoint
+        const indicator = document.createElement('div');
+        indicator.className = 'interrupted-waypoint-indicator';
+        indicator.innerHTML = `
+            <div class="indicator-icon">⏸</div>
+            <div class="indicator-text">${waypoint.name}</div>
+            <div class="indicator-hint">Press W to resume</div>
+        `;
+        
+        // Position in corner of HUD
+        indicator.style.position = 'absolute';
+        indicator.style.top = '10px';
+        indicator.style.right = '10px';
+        indicator.style.background = 'rgba(255, 215, 0, 0.8)';
+        indicator.style.padding = '5px';
+        indicator.style.borderRadius = '3px';
+        indicator.style.fontSize = '12px';
+        
+        // Add click handler for quick resume
+        indicator.addEventListener('click', () => {
+            window.targetComputerManager?.resumeInterruptedWaypoint();
+        });
+
+        document.getElementById('hud-container').appendChild(indicator);
+    }
+}
+```
+
+#### **Keyboard Shortcuts**
+```javascript
+// Enhanced keyboard handling for waypoint operations
+class WaypointKeyboardHandler {
+    constructor() {
+        this.setupKeyboardListeners();
+    }
+
+    setupKeyboardListeners() {
+        document.addEventListener('keydown', (event) => {
+            switch (event.key.toLowerCase()) {
+                case 'w':
+                    this.handleWaypointKey(event);
+                    break;
+                case 'shift+w':
+                    this.handleNextWaypointKey(event);
+                    break;
+            }
+        });
+    }
+
+    handleWaypointKey(event) {
+        event.preventDefault();
+        
+        // Try to resume interrupted waypoint first
+        if (window.targetComputerManager?.hasInterruptedWaypoint()) {
+            const resumed = window.targetComputerManager.resumeInterruptedWaypoint();
+            if (resumed) {
+                this.showFeedback('Waypoint resumed', 'success');
+                return;
+            }
+        }
+
+        // Otherwise target next active waypoint
+        const nextWaypoint = window.waypointManager?.getNextActiveWaypoint();
+        if (nextWaypoint) {
+            window.targetComputerManager?.setVirtualTarget(nextWaypoint.id);
+            this.showFeedback(`Targeting: ${nextWaypoint.name}`, 'info');
+        } else {
+            this.showFeedback('No active waypoints', 'warning');
+        }
+    }
+
+    handleNextWaypointKey(event) {
+        event.preventDefault();
+        
+        // Cycle through all active waypoints
+        const activeWaypoints = window.waypointManager?.getActiveWaypoints() || [];
+        if (activeWaypoints.length === 0) {
+            this.showFeedback('No active waypoints', 'warning');
+            return;
+        }
+
+        const currentTarget = window.targetComputerManager?.currentTarget;
+        let nextIndex = 0;
+
+        if (currentTarget && currentTarget.type === 'waypoint') {
+            const currentIndex = activeWaypoints.findIndex(w => w.id === currentTarget.id);
+            nextIndex = (currentIndex + 1) % activeWaypoints.length;
+        }
+
+        const nextWaypoint = activeWaypoints[nextIndex];
+        window.targetComputerManager?.setVirtualTarget(nextWaypoint.id);
+        this.showFeedback(`Targeting: ${nextWaypoint.name}`, 'info');
+    }
+
+    showFeedback(message, type) {
+        // Show temporary feedback message
+        const feedback = document.createElement('div');
+        feedback.className = `waypoint-feedback waypoint-feedback-${type}`;
+        feedback.textContent = message;
+        feedback.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 9999;
+            font-size: 14px;
+        `;
+
+        document.body.appendChild(feedback);
+
+        // Remove after 2 seconds
+        setTimeout(() => {
+            document.body.removeChild(feedback);
+        }, 2000);
+    }
+}
+```
+
+### **Mission Flow Integration**
+
+#### **Interruption-Aware Mission Design**
+```javascript
+// Mission templates that account for likely interruptions
+const missionTemplates = {
+    escort_mission: {
+        waypoints: [
+            {
+                name: "Rendezvous Point",
+                position: [100, 0, 0],
+                type: 'CHECKPOINT',
+                interruptionTolerant: true, // Can be safely interrupted
+                actions: [
+                    { type: 'spawn_convoy', parameters: { ships: 3 } }
+                ]
+            },
+            {
+                name: "Escort Route Alpha",
+                position: [200, 50, 25],
+                type: 'NAVIGATION',
+                interruptionExpected: true, // Interruptions likely (combat)
+                actions: [
+                    { type: 'monitor_convoy_health' },
+                    { type: 'spawn_pirates_conditional', parameters: { probability: 0.7 } }
+                ]
+            },
+            {
+                name: "Safe Harbor Station",
+                position: [300, 0, 0],
+                type: 'OBJECTIVE',
+                interruptionTolerant: false, // Should not be interrupted near completion
+                actions: [
+                    { type: 'complete_escort_mission' },
+                    { type: 'reward_player', parameters: { credits: 5000 } }
+                ]
+            }
+        ]
+    }
+};
+```
+
+### **Analytics & Optimization**
+
+#### **Interruption Metrics**
+```javascript
+const INTERRUPTION_METRICS = {
+    interruptionFrequency: 'Average interruptions per waypoint',
+    interruptionDuration: 'Average time between interruption and resumption',
+    resumptionRate: 'Percentage of interrupted waypoints that are resumed',
+    interruptionCauses: 'Most common reasons for waypoint interruption',
+    missionCompletionImpact: 'Effect of interruptions on mission completion rate'
+};
+
+class WaypointAnalytics {
+    trackInterruption(waypoint, interruptionCause) {
+        this.metrics.interruptions.push({
+            waypointId: waypoint.id,
+            missionId: waypoint.missionId,
+            cause: interruptionCause,
+            timestamp: new Date(),
+            waypointType: waypoint.type
+        });
+    }
+
+    trackResumption(waypoint, resumptionMethod) {
+        const interruption = this.metrics.interruptions.find(
+            i => i.waypointId === waypoint.id && !i.resumed
+        );
+        
+        if (interruption) {
+            interruption.resumed = true;
+            interruption.resumptionMethod = resumptionMethod; // 'W_key', 'star_charts', 'manual'
+            interruption.resumptionTime = new Date();
+            interruption.interruptionDuration = interruption.resumptionTime - interruption.timestamp;
+        }
+    }
+
+    generateInterruptionReport() {
+        return {
+            totalInterruptions: this.metrics.interruptions.length,
+            averageInterruptionDuration: this.calculateAverageInterruptionDuration(),
+            resumptionRate: this.calculateResumptionRate(),
+            commonCauses: this.getCommonInterruptionCauses(),
+            recommendedImprovements: this.generateRecommendations()
+        };
+    }
+}
+```
+
+### **Testing Scenarios**
+
+#### **Interruption Test Cases**
+```javascript
+describe('Waypoint Interruption System', () => {
+    describe('Combat Interruption', () => {
+        it('should preserve waypoint when targeting enemy', () => {
+            const waypointId = createTestWaypoint('Combat Zone', [100, 0, 0]);
+            targetComputer.setVirtualTarget(waypointId);
+            
+            // Simulate enemy attack
+            const enemy = createTestEnemy([90, 0, 0]);
+            targetComputer.setTarget(enemy);
+            
+            // Verify waypoint is preserved as interrupted
+            expect(targetComputer.interruptedWaypoint).toBeTruthy();
+            expect(targetComputer.interruptedWaypoint.id).toBe(waypointId);
+        });
+
+        it('should resume waypoint after combat', () => {
+            // Setup interrupted waypoint scenario
+            setupInterruptedWaypoint();
+            
+            // Simulate W key press
+            simulateKeyPress('w');
+            
+            // Verify waypoint is resumed
+            expect(targetComputer.currentTarget.type).toBe('waypoint');
+            expect(targetComputer.interruptedWaypoint).toBeNull();
+        });
+    });
+
+    describe('Resource Management Interruption', () => {
+        it('should handle refueling station targeting', () => {
+            const waypointId = createTestWaypoint('Mission Objective', [200, 0, 0]);
+            targetComputer.setVirtualTarget(waypointId);
+            
+            // Simulate low fuel and station targeting
+            const station = createTestStation([150, 0, 0], 'refuel');
+            targetComputer.setTarget(station);
+            
+            // Verify interruption tracking
+            expect(targetComputer.interruptedWaypoint.interruptedBy).toBe('station');
+        });
+    });
+
+    describe('Multiple Waypoint Management', () => {
+        it('should cycle through waypoints with Shift+W', () => {
+            const waypoint1 = createTestWaypoint('Waypoint 1', [100, 0, 0]);
+            const waypoint2 = createTestWaypoint('Waypoint 2', [200, 0, 0]);
+            
+            // Target first waypoint
+            targetComputer.setVirtualTarget(waypoint1);
+            
+            // Simulate Shift+W to cycle
+            simulateKeyPress('w', { shiftKey: true });
+            
+            // Verify second waypoint is targeted
+            expect(targetComputer.currentTarget.id).toBe(waypoint2);
+        });
+    });
+});
+```
+
 ## 🎯 **Success Metrics**
 
 ### **User Experience Metrics**
@@ -1105,7 +1709,14 @@ const UX_METRICS = {
     navigationEfficiency: 'Direct path vs actual path taken to waypoint',
     triggerAccuracy: 'Percentage of intended waypoint triggers',
     missionCompletion: 'Mission completion rate with waypoint guidance',
-    userSatisfaction: 'Player feedback on waypoint usefulness'
+    userSatisfaction: 'Player feedback on waypoint usefulness',
+    
+    // Interruption-specific metrics
+    interruptionRecovery: 'Time from interruption to waypoint resumption',
+    resumptionSuccess: 'Percentage of interrupted waypoints successfully resumed',
+    interruptionFrustration: 'Player difficulty in re-targeting waypoints',
+    waypointRetention: 'How often players remember to resume interrupted waypoints',
+    keyboardShortcutUsage: 'Adoption rate of W key for waypoint re-targeting'
 };
 ```
 
