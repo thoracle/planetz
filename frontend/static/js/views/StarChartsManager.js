@@ -1067,14 +1067,14 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     isDiscovered(objectId) {
         //Check if object has been discovered
         // Normalize ID to handle case sensitivity (a0_ vs A0_)
-        const normalizedId = objectId.replace(/^a0_/i, 'A0_');
+        const normalizedId = typeof objectId === 'string' ? objectId.replace(/^a0_/i, 'A0_') : objectId;
         return this.discoveredObjects.has(normalizedId);
     }
 
     getDiscoveryMetadata(objectId) {
         //Get metadata for a discovered object
         // Normalize ID to handle case sensitivity (a0_ vs A0_)
-        const normalizedId = objectId.replace(/^a0_/i, 'A0_');
+        const normalizedId = typeof objectId === 'string' ? objectId.replace(/^a0_/i, 'A0_') : objectId;
         return this.discoveryMetadata.get(normalizedId) || null;
     }
 
@@ -1090,7 +1090,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         //Add object to discovered list with metadata and save state
         
         // Normalize ID to handle case sensitivity (a0_ vs A0_)
-        const normalizedId = objectId.replace(/^a0_/i, 'A0_');
+        const normalizedId = typeof objectId === 'string' ? objectId.replace(/^a0_/i, 'A0_') : objectId;
         const wasAlreadyDiscovered = this.discoveredObjects.has(normalizedId);
 
         debug('STAR_CHARTS', `🔍 DISCOVERY ATTEMPT: ${normalizedId} (method: ${discoveryMethod}, already discovered: ${wasAlreadyDiscovered})`);
@@ -1361,7 +1361,7 @@ debug('UTILITY', `❓ Unknown waypoint action: ${action.type}`);
      */
     normalizeObjectId(objectId) {
         if (!objectId) return objectId;
-        return objectId.replace(/^a0_/i, 'A0_');
+        return typeof objectId === 'string' ? objectId.replace(/^a0_/i, 'A0_') : objectId;
     }
 
     // Target Computer integration

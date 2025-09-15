@@ -657,6 +657,100 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
         debug('STAR_CHARTS', `🔍 Zoomed to location (${x.toFixed(1)}, ${y.toFixed(1)}) at zoom level ${this.currentZoomLevel}`);
     }
 
+    centerOnTarget(targetObject) {
+        // Center the Star Charts view on a target object (used for TAB targeting)
+        if (!targetObject) {
+            debug('STAR_CHARTS', `🎯 centerOnTarget: No target object provided`);
+            return;
+        }
+
+        // Get the display position of the target
+        const pos = this.getDisplayPosition(targetObject);
+        if (pos && !isNaN(pos.x) && !isNaN(pos.y)) {
+            this.currentCenter = { 
+                x: pos.x,
+                y: pos.y
+            };
+            this.lastClickedObject = targetObject; // Remember this as the last selected object
+            
+            // Re-render with new center
+            this.render();
+            
+            debug('STAR_CHARTS', `🎯 Centered on target: ${targetObject.name} at (${this.currentCenter.x.toFixed(1)}, ${this.currentCenter.y.toFixed(1)})`);
+        } else {
+            debug('STAR_CHARTS', `🎯 centerOnTarget: Could not get valid position for ${targetObject.name}`);
+        }
+    }
+
+    createTargetIndicator(x, y, size = 30) {
+        // Create the spinning green rectangle indicator (like Galactic Chart)
+        const indicator = document.createElement('div');
+        indicator.className = 'star-charts-target-indicator';
+        
+        // Position and size the indicator
+        indicator.style.left = (x - size/2) + 'px';
+        indicator.style.top = (y - size/2) + 'px';
+        indicator.style.width = size + 'px';
+        indicator.style.height = size + 'px';
+        
+        return indicator;
+    }
+
+    updateTargetIndicator() {
+        // Update or create the spinning green rectangle for current target
+        
+        // Remove existing indicator
+        this.removeTargetIndicator();
+        
+        // Get current target from Target Computer
+        const targetComputerManager = this.viewManager?.starfieldManager?.targetComputerManager;
+        const currentTarget = targetComputerManager?.currentTarget;
+        
+        if (!currentTarget || !currentTarget.name) {
+            debug('STAR_CHARTS', `🎯 No current target for indicator`);
+            return;
+        }
+        
+        // Try to find the target object for positioning
+        let targetObject = null;
+        
+        // First try to get it from Star Charts database
+        if (currentTarget.id) {
+            targetObject = this.starChartsManager.getObjectData(currentTarget.id);
+        }
+        
+        // If not found, try to find by name
+        if (!targetObject && currentTarget.name) {
+            targetObject = this.findObjectByName(currentTarget.name);
+        }
+        
+        if (!targetObject) {
+            debug('STAR_CHARTS', `🎯 Target ${currentTarget.name} not found in Star Charts for indicator`);
+            return;
+        }
+        
+        // Get screen position of the target
+        const screenPos = this.worldToScreen(targetObject);
+        if (!screenPos || isNaN(screenPos.x) || isNaN(screenPos.y)) {
+            debug('STAR_CHARTS', `🎯 Could not get screen position for target indicator`);
+            return;
+        }
+        
+        // Create and add the indicator
+        const indicator = this.createTargetIndicator(screenPos.x, screenPos.y, 40);
+        this.mapContainer.appendChild(indicator);
+        
+        debug('STAR_CHARTS', `🎯 Target indicator created for ${currentTarget.name} at (${screenPos.x.toFixed(1)}, ${screenPos.y.toFixed(1)})`);
+    }
+
+    removeTargetIndicator() {
+        // Remove any existing target indicator
+        const existingIndicator = this.mapContainer.querySelector('.star-charts-target-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
+    }
+
     screenToWorld(screenX, screenY) {
         // Convert screen coordinates to world coordinates
         
@@ -1081,24 +1175,81 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
             this._isVisible = true;
             this.container.classList.add('visible');
             
-            // Open at zoom level 0.8 to ensure all beacons at radius 350 are visible
-            this.currentZoomLevel = 0.8;
+            // Open at zoom level 3.0 for detailed view
+            this.currentZoomLevel = 3.0;
             
-            // Find and center on the star of the current solar system
-            const star = this.findCurrentSystemStar();
-            if (star) {
-                const starPos = this.getDisplayPosition(star);
-                this.currentCenter = { 
-                    x: isNaN(starPos.x) ? 0 : starPos.x, 
-                    y: isNaN(starPos.y) ? 0 : starPos.y 
-                };
-                this.lastClickedObject = star; // Remember star as the initially selected object
-                // console.log(`🔍 Star Charts: Opening at zoom level ${this.currentZoomLevel}, centered on star ${star.name} at (${this.currentCenter.x}, ${this.currentCenter.y})`);
-            } else {
-                // Fallback if no star found
-                this.currentCenter = { x: 0, y: 0 };
-                this.lastClickedObject = null;
-                // console.log(`🔍 Star Charts: Opening at zoom level ${this.currentZoomLevel}, no star found - centered at origin`);
+            // Priority 1: Center on current CPU target if one exists
+            const targetComputerManager = this.viewManager?.starfieldManager?.targetComputerManager;
+            const currentTarget = targetComputerManager?.currentTarget;
+            let centeringCompleted = false;
+            
+            if (currentTarget && currentTarget.name) {
+                // Try to find the target object in our database for positioning
+                let targetObject = null;
+                
+                // First try to get it from Star Charts database
+                if (currentTarget.id) {
+                    targetObject = this.starChartsManager.getObjectData(currentTarget.id);
+                }
+                
+                // If not found, try to find by name
+                if (!targetObject && currentTarget.name) {
+                    targetObject = this.findObjectByName(currentTarget.name);
+                }
+                
+                // If we found the target object, center on it
+                if (targetObject) {
+                    const targetPos = this.getDisplayPosition(targetObject);
+                    this.currentCenter = { 
+                        x: isNaN(targetPos.x) ? 0 : targetPos.x, 
+                        y: isNaN(targetPos.y) ? 0 : targetPos.y 
+                    };
+                    this.lastClickedObject = targetObject;
+                    centeringCompleted = true;
+                    debug('STAR_CHARTS', `🔍 Star Charts: Opening at zoom level ${this.currentZoomLevel}, centered on current target: ${currentTarget.name} at (${this.currentCenter.x.toFixed(1)}, ${this.currentCenter.y.toFixed(1)})`);
+                } else {
+                    debug('STAR_CHARTS', `🔍 Star Charts: Current target ${currentTarget.name} not found in Star Charts database, falling back to ship`);
+                    // Fall through to ship centering
+                }
+            }
+            
+            // Priority 2: Center on the player ship position (if no target or target not found)
+            if (!centeringCompleted) {
+                const playerPos = this.starChartsManager.getPlayerPosition();
+                if (playerPos && Array.isArray(playerPos) && playerPos.length >= 3) {
+                    // Create a temporary ship object to use getDisplayPosition()
+                    const shipObject = {
+                        id: 'player_ship',
+                        name: 'Your Ship',
+                        type: 'ship',
+                        position: playerPos
+                    };
+                    
+                    const shipPos = this.getDisplayPosition(shipObject);
+                    this.currentCenter = { 
+                        x: isNaN(shipPos.x) ? 0 : shipPos.x, 
+                        y: isNaN(shipPos.y) ? 0 : shipPos.y 
+                    };
+                    this.lastClickedObject = shipObject; // Remember ship as the initially selected object
+                    debug('STAR_CHARTS', `🔍 Star Charts: Opening at zoom level ${this.currentZoomLevel}, centered on ship at (${this.currentCenter.x.toFixed(1)}, ${this.currentCenter.y.toFixed(1)})`);
+                } else {
+                    // Priority 3: Fallback to star if ship position not available
+                    const star = this.findCurrentSystemStar();
+                    if (star) {
+                        const starPos = this.getDisplayPosition(star);
+                        this.currentCenter = { 
+                            x: isNaN(starPos.x) ? 0 : starPos.x, 
+                            y: isNaN(starPos.y) ? 0 : starPos.y 
+                        };
+                        this.lastClickedObject = star; // Remember star as the initially selected object
+                        debug('STAR_CHARTS', `🔍 Star Charts: Ship position unavailable, opening at zoom level ${this.currentZoomLevel}, centered on star ${star.name} at (${this.currentCenter.x.toFixed(1)}, ${this.currentCenter.y.toFixed(1)})`);
+                    } else {
+                        // Fallback if no star found
+                        this.currentCenter = { x: 0, y: 0 };
+                        this.lastClickedObject = null;
+                        // console.log(`🔍 Star Charts: Opening at zoom level ${this.currentZoomLevel}, no star found - centered at origin`);
+                    }
+                }
             }
             
             // Clear details panel
@@ -1146,6 +1297,9 @@ debug('UI', 'Star Charts: Interface shown');
             this.container.classList.remove('targeting-active');
             this.tooltip.style.display = 'none';
             
+            // Remove target indicator when hiding
+            this.removeTargetIndicator();
+            
 debug('UI', 'Star Charts: Interface hidden');
         }
     }
@@ -1190,6 +1344,9 @@ debug('UI', 'Star Charts: Interface hidden');
         
         // Add diagnostic display for click-first bug analysis
         this.updateDiagnosticDisplay();
+        
+        // Update the spinning green rectangle target indicator
+        this.updateTargetIndicator();
         
         debug('TARGETING', `🎯 RENDER: Star Charts render completed`);
     }

@@ -975,6 +975,48 @@ body.warp-control-mode .crosshair {
     line-height: 1.2;
 }
 
+/* Star Charts Target Indicator - Spinning Green Rectangle */
+.star-charts-target-indicator {
+    position: absolute;
+    pointer-events: none;
+    border: 2px solid #00ff41;
+    background: rgba(0, 255, 65, 0.1);
+    animation: starChartsTargetPulse 2s infinite, starChartsTargetRotate 4s linear infinite;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+    z-index: 10;
+}
+
+.star-charts-target-indicator::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border: 1px solid #00ff41;
+    animation: starChartsTargetRotate 4s linear infinite;
+}
+
+@keyframes starChartsTargetPulse {
+    0% { 
+        box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        background: rgba(0, 255, 65, 0.1);
+    }
+    50% { 
+        box-shadow: 0 0 20px rgba(0, 255, 65, 0.8);
+        background: rgba(0, 255, 65, 0.2);
+    }
+    100% { 
+        box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        background: rgba(0, 255, 65, 0.1);
+    }
+}
+
+@keyframes starChartsTargetRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 /* Scanner Map Tooltip */
 .scanner-tooltip {
     position: fixed;

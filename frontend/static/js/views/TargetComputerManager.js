@@ -1820,8 +1820,36 @@ export class TargetComputerManager {
             // Use requestAnimationFrame to ensure render happens on next frame
             requestAnimationFrame(() => {
                 debug('TARGETING', `🎯 FRAME render - current target: ${this.currentTarget?.name || 'none'} (ID: ${this.currentTarget?.id || 'none'})`);
-                // Force a re-render of Star Charts to update blinking targets
-                starChartsUI.render();
+                
+                // Center on the new target (like clicking on it would do)
+                if (this.currentTarget && this.currentTarget.name) {
+                    // Try to find the target object for centering
+                    let targetObject = null;
+                    
+                    // First try to get it from Star Charts database
+                    if (this.currentTarget.id) {
+                        targetObject = starChartsUI.starChartsManager.getObjectData(this.currentTarget.id);
+                    }
+                    
+                    // If not found, try to find by name
+                    if (!targetObject && this.currentTarget.name) {
+                        targetObject = starChartsUI.findObjectByName(this.currentTarget.name);
+                    }
+                    
+                    // If we found the target object, center on it
+                    if (targetObject) {
+                        starChartsUI.centerOnTarget(targetObject);
+                        debug('TARGETING', `🎯 TAB: Centered Star Charts on new target: ${this.currentTarget.name}`);
+                    } else {
+                        // Just render without centering if target not found in Star Charts
+                        starChartsUI.render();
+                        debug('TARGETING', `🎯 TAB: Target ${this.currentTarget.name} not found in Star Charts, rendered without centering`);
+                    }
+                } else {
+                    // No target, just render
+                    starChartsUI.render();
+                }
+                
                 debug('TARGETING', `🎯 AFTER frame Star Charts render - notified of target change`);
             });
         } else {
@@ -1854,7 +1882,7 @@ export class TargetComputerManager {
                     const ssm = this.solarSystemManager || vm?.solarSystemManager || window.solarSystemManager;
                     const sfm = vm?.starfieldManager || window.starfieldManager;
                     const currentData = this.targetObjects?.[this.targetIndex];
-                    const normalizedId = (currentData?.id || '').replace(/^a0_/i, 'A0_');
+                    const normalizedId = typeof (currentData?.id || '') === 'string' ? (currentData?.id || '').replace(/^a0_/i, 'A0_') : (currentData?.id || '');
                     let resolved = null;
                     if (currentData?.type === 'navigation_beacon' && sfm?.navigationBeacons) {
                         resolved = sfm.navigationBeacons.find(b => b?.userData?.id === normalizedId) ||
@@ -2711,7 +2739,7 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
         
         // Prevent double A0_ prefixes
         if (normalizedName.startsWith('a0_')) {
-            return normalizedName.replace(/^a0_/i, 'A0_');
+            return typeof normalizedName === 'string' ? normalizedName.replace(/^a0_/i, 'A0_') : normalizedName;
         } else {
             return `A0_${normalizedName}`;
         }
@@ -4552,7 +4580,7 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
             const ssm = this.solarSystemManager || vm?.solarSystemManager || window.solarSystemManager;
             const sfm = vm?.starfieldManager || window.starfieldManager;
 
-            const id = (target.id || target?.object?.userData?.id || '').replace(/^a0_/i, 'A0_');
+            const id = typeof (target.id || target?.object?.userData?.id || '') === 'string' ? (target.id || target?.object?.userData?.id || '').replace(/^a0_/i, 'A0_') : (target.id || target?.object?.userData?.id || '');
             const name = target.name || target?.object?.name || target?.object?.userData?.name;
 
             let resolved = null;

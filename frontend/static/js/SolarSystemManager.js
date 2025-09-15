@@ -1026,7 +1026,7 @@ debug('UTILITY', `📡 Beacon ${i + 1} created at position (${scaledX.toFixed(1)
                 // Register as first-class object in celestialBodies for unified lookups
                 try {
                     if (!this.celestialBodies) this.celestialBodies = new Map();
-                    const normalizedId = (beaconInfo.id || '').replace(/^a0_/i, 'A0_');
+                    const normalizedId = typeof (beaconInfo.id || '') === 'string' ? (beaconInfo.id || '').replace(/^a0_/i, 'A0_') : (beaconInfo.id || '');
                     const nameSlug = (beaconInfo.name || '').toLowerCase().replace(/\s+/g, '_');
                     // Multiple keys to improve retrieval paths
                     if (normalizedId) this.celestialBodies.set(normalizedId, beacon);
