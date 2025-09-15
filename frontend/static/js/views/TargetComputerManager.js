@@ -44,6 +44,10 @@ export class TargetComputerManager {
         this.lastFullScanTime = 0;
         this.fullScanInterval = 30000; // 30 seconds between full scans
         
+        // Waypoint interruption tracking
+        this.interruptedWaypoint = null;
+        this.waypointInterruptionTime = null;
+        
         // UI elements
         this.targetHUD = null;
         this.wireframeContainer = null;
@@ -4852,4 +4856,191 @@ debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
     /**
      * (Removed duplicate getCurrentTargetData implementation)
      */
+
+    // ========== WAYPOINT SYSTEM INTEGRATION ==========
+
+    /**
+     * Set virtual waypoint as target
+     * @param {string} waypointId - Waypoint ID
+     * @returns {boolean} - Success status
+     */
+    setVirtualTarget(waypointId) {
+        debug('TARGETING', `🎯 setVirtualTarget called with: ${waypointId}`);
+        
+        const waypoint = window.waypointManager?.getWaypoint(waypointId);
+        if (!waypoint) {
+            console.warn(`🎯 Waypoint not found: ${waypointId}`);
+            return false;
+        }
+
+        // Create virtual target object
+        const virtualTarget = {
+            id: waypointId,
+            name: waypoint.name,
+            type: 'waypoint',
+            position: waypoint.position,
+            isVirtual: true,
+            missionId: waypoint.missionId,
+            userData: {
+                waypointType: waypoint.type,
+                triggerRadius: waypoint.triggerRadius,
+                waypointStatus: waypoint.status
+            }
+        };
+
+        // Clear any interruption state when setting new target
+        if (this.interruptedWaypoint && this.interruptedWaypoint.id === waypointId) {
+            this.interruptedWaypoint = null;
+            this.waypointInterruptionTime = null;
+        }
+
+        this.currentTarget = virtualTarget;
+        this.targetIndex = -1; // Virtual targets don't have indices in target list
+        
+        // Update waypoint status
+        if (window.waypointManager) {
+            window.waypointManager.updateWaypoint(waypointId, { 
+                status: 'targeted' 
+            });
+        }
+        
+        // Update display
+        this.updateTargetDisplay();
+        
+        debug('TARGETING', `🎯 Virtual target set: ${waypoint.name}`);
+        return true;
+    }
+
+    /**
+     * Check if current target is a waypoint
+     * @returns {boolean} - Whether current target is a waypoint
+     */
+    isCurrentTargetWaypoint() {
+        return this.currentTarget && 
+               this.currentTarget.type === 'waypoint' && 
+               this.currentTarget.isVirtual;
+    }
+
+    /**
+     * Enhanced setTarget with waypoint interruption tracking
+     * @param {Object} newTarget - New target object
+     */
+    setTarget(newTarget) {
+        // Check if current target is a waypoint and we're switching to non-waypoint
+        if (this.isCurrentTargetWaypoint() && newTarget && newTarget.type !== 'waypoint') {
+            // Store interrupted waypoint for later resumption
+            this.interruptedWaypoint = {
+                ...this.currentTarget,
+                status: 'INTERRUPTED',
+                interruptedAt: new Date(),
+                interruptedBy: newTarget.type
+            };
+            
+            debug('WAYPOINTS', `🎯 Waypoint interrupted: ${this.currentTarget.name} by ${newTarget.type}`);
+            
+            // Notify waypoint manager
+            if (window.waypointManager) {
+                window.waypointManager.notifyWaypointInterrupted(this.currentTarget.id);
+            }
+        }
+
+        // Set new target normally
+        this.currentTarget = newTarget;
+        this.updateTargetDisplay();
+    }
+
+    /**
+     * Resume interrupted waypoint
+     * @returns {boolean} - Success status
+     */
+    resumeInterruptedWaypoint() {
+        if (this.interruptedWaypoint) {
+            const waypoint = this.interruptedWaypoint;
+            
+            // Clear interruption state
+            this.interruptedWaypoint = null;
+            this.waypointInterruptionTime = null;
+            
+            // Re-target the waypoint
+            const success = this.setVirtualTarget(waypoint.id);
+            
+            // Update waypoint status
+            if (success && window.waypointManager) {
+                window.waypointManager.resumeWaypoint(waypoint.id);
+            }
+            
+            debug('WAYPOINTS', `🎯 Resumed interrupted waypoint: ${waypoint.name}`);
+            return success;
+        }
+        return false;
+    }
+
+    /**
+     * Check if there's an interrupted waypoint
+     * @returns {boolean} - Whether there's an interrupted waypoint
+     */
+    hasInterruptedWaypoint() {
+        return this.interruptedWaypoint !== null;
+    }
+
+    /**
+     * Get interrupted waypoint
+     * @returns {Object|null} - Interrupted waypoint or null
+     */
+    getInterruptedWaypoint() {
+        return this.interruptedWaypoint;
+    }
+
+    /**
+     * Clear interrupted waypoint state
+     */
+    clearInterruptedWaypoint() {
+        this.interruptedWaypoint = null;
+        this.waypointInterruptionTime = null;
+        debug('WAYPOINTS', '🎯 Cleared interrupted waypoint state');
+    }
+
+    /**
+     * Enhanced cycleTarget with waypoint notification
+     */
+    cycleTarget() {
+        // Store original method behavior
+        const originalTarget = this.currentTarget;
+        
+        // Call original cycle logic (this would need to be the existing cycleTarget method)
+        // For now, we'll implement basic cycling
+        if (this.targetObjects && this.targetObjects.length > 0) {
+            this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
+            this.currentTarget = this.targetObjects[this.targetIndex];
+            this.updateTargetDisplay();
+        }
+        
+        // Notify Star Charts of target change if available
+        this.notifyStarChartsOfTargetChange();
+        
+        debug('TARGETING', `🎯 Target cycled to: ${this.currentTarget?.name || 'none'}`);
+    }
+
+    /**
+     * Notify Star Charts of target change for real-time updates
+     */
+    notifyStarChartsOfTargetChange() {
+        // Use requestAnimationFrame for smooth UI updates
+        requestAnimationFrame(() => {
+            debug('TARGETING', '🎯 notifyStarChartsOfTargetChange() ENTRY');
+            
+            // Access Star Charts UI directly
+            const starChartsUI = this.viewManager?.navigationSystemManager?.starChartsUI;
+            
+            debug('TARGETING', `🎯 starChartsUI exists: ${starChartsUI ? 'true' : 'false'}`);
+            debug('TARGETING', `🎯 starChartsUI.isVisible: ${starChartsUI?.isVisible}`);
+            
+            if (starChartsUI && starChartsUI.isVisible) {
+                debug('TARGETING', '🎯 Calling Star Charts render for target change');
+                starChartsUI.render();
+                debug('TARGETING', '🎯 AFTER frame Star Charts render');
+            }
+        });
+    }
+
 } 
