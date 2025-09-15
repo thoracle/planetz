@@ -451,6 +451,18 @@ class WaypointManager {
                 await this.updateMissionStatus(action.parameters);
                 break;
             
+            case 'give_item':
+                await this.giveItemToPlayer(action.parameters);
+                break;
+            
+            case 'give_reward':
+                await this.giveRewardPackage(action.parameters);
+                break;
+            
+            case 'show_message':
+                await this.showMessage(action.parameters);
+                break;
+            
             case 'custom_event':
                 await this.triggerCustomEvent(action.parameters);
                 break;
@@ -458,6 +470,129 @@ class WaypointManager {
             default:
                 console.warn(`Unknown waypoint action type: ${action.type}`);
         }
+    }
+
+    /**
+     * Spawn ships with randomized count
+     */
+    async spawnShips(parameters) {
+        const {
+            shipType = 'enemy_fighter',
+            minCount = 1,
+            maxCount = 1,
+            formation = 'random',
+            faction = 'pirates',
+            spawnRadius = 20.0,
+            behavior = 'aggressive',
+            position = null // Optional override position
+        } = parameters;
+
+        // Calculate spawn count
+        let spawnCount;
+        if (minCount === maxCount) {
+            spawnCount = maxCount; // Exact count
+        } else {
+            spawnCount = Math.floor(Math.random() * (maxCount - minCount + 1)) + minCount;
+        }
+
+        debug('WAYPOINTS', `Spawning ${spawnCount} ships of type ${shipType} (range: ${minCount}-${maxCount})`);
+
+        // Spawn the ships
+        const spawnedShips = [];
+        for (let i = 0; i < spawnCount; i++) {
+            const ship = await this.createShip({
+                type: shipType,
+                faction: faction,
+                behavior: behavior,
+                position: position || this.calculateSpawnPosition(spawnRadius, formation, i, spawnCount)
+            });
+            spawnedShips.push(ship);
+        }
+
+        return spawnedShips;
+    }
+
+    /**
+     * Give item to player
+     */
+    async giveItemToPlayer(parameters) {
+        const {
+            itemType,
+            itemId,
+            quantity = 1,
+            message = null
+        } = parameters;
+
+        debug('WAYPOINTS', `Giving item to player: ${itemType} (${itemId}) x${quantity}`);
+
+        // Integrate with game's inventory system
+        if (window.playerInventory) {
+            window.playerInventory.addItem(itemType, itemId, quantity);
+        }
+
+        // Show notification if message provided
+        if (message) {
+            this.showNotification(message, 'item_received');
+        }
+    }
+
+    /**
+     * Give reward package to player using existing mission reward system
+     */
+    async giveRewardPackage(parameters) {
+        const {
+            rewardPackageId,
+            bonusMultiplier = 1.0,
+            message = null
+        } = parameters;
+
+        debug('WAYPOINTS', `Awarding reward package: ${rewardPackageId} (multiplier: ${bonusMultiplier})`);
+
+        // Use existing mission reward system
+        if (window.missionEventHandler) {
+            await window.missionEventHandler.awardRewards({
+                reward_package_id: rewardPackageId,
+                bonus_multiplier: bonusMultiplier
+            });
+        }
+
+        // Show notification if message provided
+        if (message) {
+            this.showNotification(message, 'reward_received');
+        } else {
+            this.showNotification(`Reward package ${rewardPackageId} awarded!`, 'reward_received');
+        }
+    }
+
+    /**
+     * Show message to player with optional audio
+     */
+    async showMessage(parameters) {
+        const {
+            title = "Message",
+            message,
+            duration = 5000,
+            priority = 'normal',
+            audioFileId = null,
+            audioVolume = 0.7
+        } = parameters;
+
+        debug('WAYPOINTS', `Showing message: ${title} - ${message}`);
+
+        // Play audio if specified
+        if (audioFileId && window.audioManager) {
+            try {
+                await window.audioManager.playAudio(audioFileId, audioVolume);
+            } catch (error) {
+                console.warn(`Failed to play audio ${audioFileId}:`, error);
+            }
+        }
+
+        // Show the message notification
+        this.showNotification(message, priority, {
+            title: title,
+            duration: duration
+        });
     }
 
     /**
@@ -695,8 +830,10 @@ graph TD
 
     subgraph "Player Actions"
         PA1[give_item]
-        PA2[update_reputation]
-        PA3[unlock_ability]
+        PA2[give_reward]
+        PA3[show_message]
+        PA4[update_reputation]
+        PA5[unlock_ability]
     end
 
     style NA1 fill:#4CAF50
@@ -721,7 +858,8 @@ const combatWaypoint = {
             type: 'spawn_ships',
             parameters: {
                 shipType: 'enemy_fighter',
-                count: 3,
+                minCount: 2,        // Minimum ships to spawn
+                maxCount: 4,        // Maximum ships to spawn
                 formation: 'triangle',
                 faction: 'pirates',
                 spawnRadius: 20.0,
@@ -761,6 +899,14 @@ const checkpointWaypoint = {
             }
         },
         {
+            type: 'give_reward',
+            parameters: {
+                rewardPackageId: '2', // Exploration reward package
+                bonusMultiplier: 1.2,
+                message: "Checkpoint bonus rewards awarded!"
+            }
+        },
+        {
             type: 'give_item',
             parameters: {
                 itemType: 'upgrade_module',
@@ -793,7 +939,58 @@ const commWaypoint = {
                 title: "Mission Update",
                 message: "New intelligence received. Updating mission parameters.",
                 duration: 5000,
-                priority: 'high'
+                priority: 'high',
+                audioFileId: 'mission_update_alert.mp3',
+                audioVolume: 0.8
+            }
+        }
+    ]
+};
+
+// Enhanced waypoint with all new action types
+const enhancedWaypoint = {
+    name: "Supply Cache Discovery",
+    position: [125, 75, 50],
+    triggerRadius: 8.0,
+    type: 'INTERACTION',
+    actions: [
+        {
+            type: 'spawn_ships',
+            parameters: {
+                shipType: 'guardian_drone',
+                minCount: 1,        // Spawn exactly 1 if minCount == maxCount
+                maxCount: 1,        // Guaranteed single guardian
+                faction: 'automated_defense',
+                spawnRadius: 15.0,
+                behavior: 'defensive'
+            }
+        },
+        {
+            type: 'show_message',
+            parameters: {
+                title: "Supply Cache Located",
+                message: "Automated defenses detected. Proceed with caution.",
+                duration: 4000,
+                priority: 'warning',
+                audioFileId: 'cache_warning.mp3',
+                audioVolume: 0.9
+            }
+        },
+        {
+            type: 'give_reward',
+            parameters: {
+                rewardPackageId: '3', // Supply cache reward package
+                bonusMultiplier: 1.5,
+                message: "Supply cache contents transferred to cargo hold."
+            }
+        },
+        {
+            type: 'give_item',
+            parameters: {
+                itemType: 'rare_material',
+                itemId: 'quantum_crystal',
+                quantity: 2,
+                message: "Rare quantum crystals acquired!"
             }
         }
     ]
