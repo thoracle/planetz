@@ -555,6 +555,7 @@ unknown: '#44ffff'   // Cyan for unknown
 - **Discovery System Security Fixes**: Comprehensive fixes to prevent information leakage for undiscovered objects
 - **Target Loss & Position Validation Fixes**: Fixed race conditions causing discovered objects to show "Unknown" colors and resolved position lookup issues for celestial bodies
 - **⭐ TAB Targeting Real-Time Updates**: Fixed TAB key target cycling to update Star Charts blinking targets in real-time - resolved navigation path issue where StarChartsUI was accessed incorrectly
+- **🎯 Star Charts Enhanced Targeting & Visual Indicators**: Complete overhaul of Star Charts targeting system with intelligent centering, real-time TAB synchronization, and professional visual indicators including spinning green rectangle target indicator matching Galactic Chart style
 
 **Next Steps**: Content creation, advanced gameplay mechanics, multiplayer foundation.
 
@@ -843,6 +844,149 @@ try {
 5. **Celestial bodies** → Found by name when ID lookup fails
 
 This comprehensive fix ensures that the targeting system is robust, consistent, and error-free while maintaining all discovery system functionality.
+
+---
+
+## 🎯 Star Charts Enhanced Targeting & Visual Indicators ✅ **COMPLETED**
+
+**Status**: ✅ **FULLY IMPLEMENTED** - Complete overhaul of Star Charts targeting system with professional visual indicators
+
+### **🚀 Major Features Implemented**
+
+#### **1. Smart Opening & Centering** ✅ **COMPLETED**
+**Problem**: Star Charts always opened centered on the star with 1.0x zoom, requiring manual navigation to find relevant objects
+**Solution**: Intelligent priority-based centering with enhanced zoom for better detail view
+
+**Implementation**:
+- **3.0x Default Zoom**: Enhanced detail view for better object visibility
+- **Priority-Based Centering**:
+  1. **Current CPU Target** (if any) - Centers on whatever you're currently targeting
+  2. **Ship Position** (fallback) - Centers on your ship location
+  3. **Star Position** (final fallback) - Centers on system star
+- **Robust Fallback Logic**: Handles edge cases with explicit completion tracking
+
+#### **2. Real-Time TAB Targeting** ✅ **COMPLETED**
+**Problem**: TAB key target cycling didn't update Star Charts blinking indicators in real-time
+**Solution**: Seamless integration with existing blinking system plus automatic recentering
+
+**Implementation**:
+- **Real-Time Synchronization**: TAB targeting immediately updates Star Charts blinking
+- **Automatic Recentering**: TAB targeting also recenters Star Charts on new target (like clicking)
+- **requestAnimationFrame Integration**: Smooth UI updates without timing issues
+- **Consistent Behavior**: TAB and click targeting now work identically
+
+#### **3. Spinning Green Rectangle Target Indicator** ✅ **COMPLETED**
+**Problem**: Star Charts lacked the professional visual polish of the Galactic Chart's spinning target indicator
+**Solution**: Brought the cool spinning green rectangle from Galactic Chart to Star Charts
+
+**Implementation**:
+- **Dual Animations**: Pulsing glow effect + rotating border for maximum visibility
+- **Galactic Chart Style**: Matches existing visual language with green (#00ff41) theme
+- **Real-Time Updates**: Automatically follows current CPU target changes
+- **Lifecycle Management**: Clean creation/removal when Star Charts opens/closes
+- **Performance Optimized**: Efficient CSS animations with proper z-index layering
+
+### **🔧 Critical Bug Fixes**
+
+#### **1. TypeError Prevention** ✅ **FIXED**
+**Problem**: `TypeError: objectId.replace is not a function` when mixing string/numeric object IDs
+**Solution**: Comprehensive type safety checks across entire codebase
+
+**Files Fixed**:
+- `StarChartsManager.js` - Added `typeof objectId === 'string'` checks
+- `StarChartsTargetComputerIntegration.js` - Protected all `.replace()` calls
+- `TargetComputerManager.js` - Enhanced ID normalization with type checking
+- `SolarSystemManager.js` - Added beacon ID type validation
+
+#### **2. Syntax & Logic Fixes** ✅ **FIXED**
+**Problem**: Missing closing braces in `StarChartsUI.show()` method causing syntax errors
+**Solution**: Fixed nested brace structure and improved fallback logic
+
+**Technical Details**:
+- **Syntax Error**: Added missing closing braces for nested if/else blocks
+- **Completion Tracking**: Added explicit `centeringCompleted` flag for robust fallback logic
+- **Error Handling**: Enhanced validation and error recovery throughout
+
+### **📊 Technical Implementation**
+
+#### **New Methods Added**:
+- **`StarChartsUI.centerOnTarget(targetObject)`**: Programmatic centering on specific targets
+- **`StarChartsUI.createTargetIndicator(x, y, size)`**: Creates spinning rectangle elements
+- **`StarChartsUI.updateTargetIndicator()`**: Updates indicator position for current target
+- **`StarChartsUI.removeTargetIndicator()`**: Cleans up existing indicators
+- **`TargetComputerManager.notifyStarChartsOfTargetChange()`**: Real-time notification system
+
+#### **Enhanced Methods**:
+- **`StarChartsUI.show()`**: Intelligent centering with 3.0x zoom and priority-based targeting
+- **`StarChartsUI.render()`**: Integrated target indicator updates
+- **`StarChartsUI.hide()`**: Proper indicator cleanup
+- **`TargetComputerManager.cycleTarget()`**: Added Star Charts notification calls
+- **`TargetComputerManager.updateTargetDisplay()`**: Enhanced with recentering support
+
+#### **CSS Enhancements**:
+```css
+/* Star Charts Target Indicator - Spinning Green Rectangle */
+.star-charts-target-indicator {
+    position: absolute;
+    pointer-events: none;
+    border: 2px solid #00ff41;
+    background: rgba(0, 255, 65, 0.1);
+    animation: starChartsTargetPulse 2s infinite, starChartsTargetRotate 4s linear infinite;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+    z-index: 10;
+}
+
+@keyframes starChartsTargetPulse { /* Pulsing glow effect */ }
+@keyframes starChartsTargetRotate { /* Spinning rectangle */ }
+```
+
+### **🎯 Result: Professional Star Charts Experience**
+
+**Before Enhancements**:
+- ❌ Always opened centered on star with 1.0x zoom
+- ❌ TAB targeting ignored by Star Charts
+- ❌ Manual navigation required to find relevant objects
+- ❌ No visual target indicator like Galactic Chart
+- ❌ Type errors from mixed ID formats
+
+**After Enhancements**:
+- ✅ **Smart Opening**: Automatically centers on current target or ship at 3.0x zoom
+- ✅ **Real-Time Updates**: TAB targeting immediately updates and recenters Star Charts
+- ✅ **Professional Visuals**: Spinning green rectangle indicator matches Galactic Chart style
+- ✅ **Type Safety**: Robust handling of mixed string/numeric object IDs
+- ✅ **Seamless UX**: Consistent behavior across all targeting methods
+
+### **🧪 Validation & Testing**
+
+**Test Cases Verified**:
+- ✅ **Opening Behavior**: Star Charts opens centered on current target at 3.0x zoom
+- ✅ **TAB Targeting**: Press TAB → Star Charts immediately updates and recenters
+- ✅ **Visual Indicators**: Spinning rectangle follows current target in real-time
+- ✅ **Mixed Targeting**: Combine TAB and click targeting → Always synchronized
+- ✅ **Edge Cases**: No target, invalid positions, unknown objects → Graceful fallbacks
+- ✅ **Performance**: Smooth animations with no frame drops or memory leaks
+
+**Integration Verified**:
+- ✅ **Target Computer**: Perfect synchronization with CPU targeting system
+- ✅ **Galactic Chart**: Visual consistency with existing spinning indicator
+- ✅ **Discovery System**: Works seamlessly with object discovery mechanics
+- ✅ **Zoom/Pan**: Indicator follows target through all zoom and pan operations
+
+### **🏆 Impact: Enhanced User Experience**
+
+**Gameplay Benefits**:
+- **Intuitive Navigation**: Star Charts now opens exactly where you need it
+- **Seamless Targeting**: TAB and click targeting work identically across all systems
+- **Professional Polish**: Visual indicators provide clear target awareness
+- **Reduced Cognitive Load**: No manual navigation required to find relevant objects
+
+**Technical Benefits**:
+- **Robust Architecture**: Type-safe ID handling prevents runtime errors
+- **Maintainable Code**: Well-documented interaction patterns for future development
+- **Performance Optimized**: Efficient real-time updates without unnecessary overhead
+- **Visual Consistency**: Unified design language across navigation systems
+
+This comprehensive enhancement transforms the Star Charts from a basic navigation tool into a professional, intelligent targeting system that seamlessly integrates with all game mechanics while providing the visual polish users expect from a modern space navigation interface.
 
 ---
 
