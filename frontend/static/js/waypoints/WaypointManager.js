@@ -545,34 +545,139 @@ export class WaypointManager {
         };
     }
 
-    // ========== ACTION EXECUTION METHODS (Stubs for Phase 2) ==========
+    // ========== ACTION EXECUTION METHODS ==========
 
     async executeSpawnShipsAction(parameters) {
-        debug('WAYPOINTS', '🚢 Spawn ships action - TODO: Implement in Phase 2');
+        debug('WAYPOINTS', '🚢 Executing spawn ships action');
+        
+        try {
+            const { ActionFactory } = await import('./WaypointAction.js');
+            const action = ActionFactory.create('spawn_ships', parameters);
+            const result = await action.execute({ waypoint: this.currentWaypoint });
+            
+            debug('WAYPOINTS', `🚢 Spawn ships completed: ${result.result?.spawnedCount || 0} ships`);
+            return result;
+            
+        } catch (error) {
+            console.error('Failed to execute spawn ships action:', error);
+            throw error;
+        }
     }
 
     async executePlayCommAction(parameters) {
-        debug('WAYPOINTS', '📻 Play comm action - TODO: Implement in Phase 2');
+        debug('WAYPOINTS', '📻 Executing play comm action');
+        
+        try {
+            const { ActionFactory } = await import('./WaypointAction.js');
+            const action = ActionFactory.create('play_comm', parameters);
+            const result = await action.execute({ waypoint: this.currentWaypoint });
+            
+            debug('WAYPOINTS', `📻 Play comm completed: ${parameters.audioFile}`);
+            return result;
+            
+        } catch (error) {
+            console.error('Failed to execute play comm action:', error);
+            throw error;
+        }
     }
 
     async executeShowMessageAction(parameters) {
-        debug('WAYPOINTS', '💬 Show message action - TODO: Implement in Phase 2');
+        debug('WAYPOINTS', '💬 Executing show message action');
+        
+        try {
+            const { ActionFactory } = await import('./WaypointAction.js');
+            const action = ActionFactory.create('show_message', parameters);
+            const result = await action.execute({ waypoint: this.currentWaypoint });
+            
+            debug('WAYPOINTS', `💬 Show message completed: ${parameters.title || 'Message'}`);
+            return result;
+            
+        } catch (error) {
+            console.error('Failed to execute show message action:', error);
+            throw error;
+        }
     }
 
     async executeGiveItemAction(parameters) {
-        debug('WAYPOINTS', '🎁 Give item action - TODO: Implement in Phase 2');
+        debug('WAYPOINTS', '🎁 Executing give item action');
+        
+        try {
+            const { ActionFactory } = await import('./WaypointAction.js');
+            const action = ActionFactory.create('give_item', parameters);
+            const result = await action.execute({ waypoint: this.currentWaypoint });
+            
+            debug('WAYPOINTS', `🎁 Give item completed: ${parameters.itemId} x${parameters.quantity || 1}`);
+            return result;
+            
+        } catch (error) {
+            console.error('Failed to execute give item action:', error);
+            throw error;
+        }
     }
 
     async executeGiveRewardAction(parameters) {
-        debug('WAYPOINTS', '💰 Give reward action - TODO: Implement in Phase 2');
+        debug('WAYPOINTS', '💰 Executing give reward action');
+        
+        try {
+            const { ActionFactory } = await import('./WaypointAction.js');
+            const action = ActionFactory.create('give_reward', parameters);
+            const result = await action.execute({ waypoint: this.currentWaypoint });
+            
+            debug('WAYPOINTS', `💰 Give reward completed: ${parameters.rewardPackageId}`);
+            return result;
+            
+        } catch (error) {
+            console.error('Failed to execute give reward action:', error);
+            throw error;
+        }
     }
 
     async executeMissionUpdateAction(parameters) {
-        debug('WAYPOINTS', '📋 Mission update action - TODO: Implement in Phase 2');
+        debug('WAYPOINTS', '📋 Executing mission update action');
+        
+        try {
+            // Mission update logic
+            if (window.missionEventHandler && parameters.missionId) {
+                await window.missionEventHandler.updateMissionStatus(
+                    parameters.missionId,
+                    parameters.status || 'updated',
+                    parameters.data || {}
+                );
+            }
+            
+            debug('WAYPOINTS', `📋 Mission update completed: ${parameters.missionId}`);
+            return { success: true, missionId: parameters.missionId };
+            
+        } catch (error) {
+            console.error('Failed to execute mission update action:', error);
+            throw error;
+        }
     }
 
     async executeCustomEventAction(parameters) {
-        debug('WAYPOINTS', '⚡ Custom event action - TODO: Implement in Phase 2');
+        debug('WAYPOINTS', '⚡ Executing custom event action');
+        
+        try {
+            const { eventType, eventData } = parameters;
+            
+            // Dispatch custom event
+            const customEvent = new CustomEvent(`waypoint_${eventType}`, {
+                detail: {
+                    waypoint: this.currentWaypoint,
+                    eventData: eventData,
+                    timestamp: new Date()
+                }
+            });
+            
+            document.dispatchEvent(customEvent);
+            
+            debug('WAYPOINTS', `⚡ Custom event dispatched: waypoint_${eventType}`);
+            return { success: true, eventType: eventType };
+            
+        } catch (error) {
+            console.error('Failed to execute custom event action:', error);
+            throw error;
+        }
     }
 
     /**
