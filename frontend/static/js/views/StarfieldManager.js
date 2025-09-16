@@ -12,6 +12,7 @@ import { MissionNotificationHandler } from '../ui/MissionNotificationHandler.js'
 import { MissionAPIService } from '../services/MissionAPIService.js';
 import { MissionEventService } from '../services/MissionEventService.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
+import { WaypointHUD } from '../ui/WaypointHUD.js';
 import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 
@@ -142,6 +143,12 @@ export class StarfieldManager {
             this.scene, this.camera, this.viewManager, this.THREE, this.solarSystemManager
         );
         this.targetComputerManager.initialize();
+        
+        // Expose target computer manager globally for waypoints integration
+        window.targetComputerManager = this.targetComputerManager;
+        
+        // Initialize Waypoint HUD
+        this.initializeWaypointHUD();
         
         // Create radar HUD
         this.proximityDetector3D = new ProximityDetector3D(this, document.body);
@@ -7248,6 +7255,77 @@ debug('UI', 'Testing mission completion UI...');
         }, 20000);
         
 debug('UI', 'Mission UI test sequence started');
+    }
+    
+    /**
+     * Initialize Waypoint HUD system
+     */
+    initializeWaypointHUD() {
+        try {
+            // Create waypoint HUD
+            this.waypointHUD = new WaypointHUD(document.body);
+            
+            // Expose globally for waypoint system integration
+            window.waypointHUD = this.waypointHUD;
+            
+            // Set up waypoint targeting integration
+            this.setupWaypointIntegration();
+            
+            debug('WAYPOINTS', '✅ WaypointHUD initialized successfully');
+            
+        } catch (error) {
+            console.error('❌ Failed to initialize WaypointHUD:', error);
+        }
+    }
+    
+    /**
+     * Set up integration between waypoints and targeting system
+     */
+    setupWaypointIntegration() {
+        if (!this.targetComputerManager || !this.waypointHUD) return;
+        
+        // Listen for target changes to show/hide waypoint HUD
+        const originalSetTarget = this.targetComputerManager.setTarget.bind(this.targetComputerManager);
+        const originalSetVirtualTarget = this.targetComputerManager.setVirtualTarget.bind(this.targetComputerManager);
+        
+        // Override setTarget to handle waypoint HUD visibility and interruption
+        this.targetComputerManager.setTarget = (target) => {
+            // Check if we're interrupting a waypoint before calling original setTarget
+            const currentTarget = this.targetComputerManager.currentTarget;
+            const isInterruptingWaypoint = currentTarget && currentTarget.isVirtual && target && !target.isVirtual;
+            
+            // Store interrupted waypoint before changing target
+            if (isInterruptingWaypoint) {
+                this.targetComputerManager.interruptedWaypoint = currentTarget;
+                this.targetComputerManager.waypointInterruptionTime = Date.now();
+            }
+            
+            const result = originalSetTarget(target);
+            
+            // Hide waypoint HUD when targeting non-waypoint objects
+            if (target && !target.isVirtual && this.waypointHUD.visible) {
+                this.waypointHUD.hide();
+            }
+            
+            return result;
+        };
+        
+        // Override setVirtualTarget to show waypoint HUD
+        this.targetComputerManager.setVirtualTarget = (waypointData) => {
+            const result = originalSetVirtualTarget(waypointData);
+            
+            // Show waypoint HUD when targeting waypoints
+            if (result && waypointData && window.waypointManager) {
+                const waypoint = window.waypointManager.getWaypoint(waypointData.id || waypointData);
+                if (waypoint) {
+                    this.waypointHUD.show(waypoint);
+                }
+            }
+            
+            return result;
+        };
+        
+        debug('WAYPOINTS', '✅ Waypoint-targeting integration configured');
     }
     
     /**

@@ -2749,10 +2749,25 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
     }
 
     renderVirtualWaypoints() {
-        // Render mission waypoints
+        // Render mission waypoints from the waypoint system
         
-        // TODO: Get waypoints from StarChartsManager
-        // For now, this is a placeholder
+        if (!window.waypointManager) return;
+        
+        const activeWaypoints = window.waypointManager.activeWaypoints;
+        if (!activeWaypoints || activeWaypoints.size === 0) return;
+        
+        // Render each active waypoint
+        activeWaypoints.forEach((waypoint, waypointId) => {
+            this.renderWaypointMarker(waypoint);
+        });
+        
+        // Render interrupted waypoint with special styling
+        if (window.targetComputerManager?.hasInterruptedWaypoint()) {
+            const interruptedWaypoint = window.targetComputerManager.getInterruptedWaypoint();
+            if (interruptedWaypoint && window.waypointManager.getWaypoint(interruptedWaypoint.id)) {
+                this.renderInterruptedWaypointMarker(interruptedWaypoint);
+            }
+        }
     }
     
     updateStatusBar() {
@@ -2766,6 +2781,171 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             <div>Sector: ${currentSector} | Discovered: ${discoveredCount} objects</div>
             <div>${zoomText} | Click objects to target | Click to zoom in | Shift+click to zoom out</div>
         `;
+    }
+    
+    /**
+     * Convert 3D world coordinates to 2D screen coordinates for waypoint display
+     * @param {number} worldX - World X coordinate
+     * @param {number} worldZ - World Z coordinate (used as Y in 2D display)
+     * @returns {Object|null} - Screen coordinates {x, y} or null if invalid
+     */
+    convertToScreenCoordinates(worldX, worldZ) {
+        try {
+            // Create a mock object with the world position
+            const mockObject = {
+                position: { x: worldX, y: 0, z: worldZ }
+            };
+            
+            // Use existing worldToScreen method
+            return this.worldToScreen(mockObject);
+        } catch (error) {
+            console.warn('Failed to convert coordinates:', error);
+            return null;
+        }
+    }
+    
+    /**
+     * Render a single waypoint marker on the Star Charts
+     * @param {Object} waypoint - Waypoint object to render
+     */
+    renderWaypointMarker(waypoint) {
+        if (!waypoint.position || waypoint.position.length < 3) return;
+        
+        const [x, y, z] = waypoint.position;
+        
+        // Convert 3D position to 2D screen coordinates
+        const screenPos = this.convertToScreenCoordinates(x, z);
+        if (!screenPos) return;
+        
+        // Create waypoint marker group
+        const waypointGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        waypointGroup.setAttribute('class', 'waypoint-marker');
+        waypointGroup.setAttribute('data-waypoint-id', waypoint.id);
+        
+        // Determine waypoint color based on type and status
+        const color = this.getWaypointColor(waypoint);
+        const isTargeted = this.isWaypointTargeted(waypoint);
+        
+        // Create main waypoint circle
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', screenPos.x);
+        circle.setAttribute('cy', screenPos.y);
+        circle.setAttribute('r', isTargeted ? '8' : '6');
+        circle.setAttribute('fill', 'none');
+        circle.setAttribute('stroke', color);
+        circle.setAttribute('stroke-width', isTargeted ? '3' : '2');
+        circle.setAttribute('opacity', '0.9');
+        
+        // Add pulsing animation for active waypoints
+        if (waypoint.status === 'active' || waypoint.status === 'targeted') {
+            circle.innerHTML = `
+                <animate attributeName="r" values="${isTargeted ? '8;12;8' : '6;9;6'}" 
+                         dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.9;0.6;0.9" 
+                         dur="2s" repeatCount="indefinite"/>
+            `;
+        }
+        
+        // Create waypoint crosshair
+        const crosshairSize = isTargeted ? 12 : 8;
+        const crosshair1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        crosshair1.setAttribute('x1', screenPos.x - crosshairSize);
+        crosshair1.setAttribute('y1', screenPos.y);
+        crosshair1.setAttribute('x2', screenPos.x + crosshairSize);
+        crosshair1.setAttribute('y2', screenPos.y);
+        crosshair1.setAttribute('stroke', color);
+        crosshair1.setAttribute('stroke-width', '1');
+        crosshair1.setAttribute('opacity', '0.8');
+        
+        const crosshair2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        crosshair2.setAttribute('x1', screenPos.x);
+        crosshair2.setAttribute('y1', screenPos.y - crosshairSize);
+        crosshair2.setAttribute('x2', screenPos.x);
+        crosshair2.setAttribute('y2', screenPos.y + crosshairSize);
+        crosshair2.setAttribute('stroke', color);
+        crosshair2.setAttribute('stroke-width', '1');
+        crosshair2.setAttribute('opacity', '0.8');
+        
+        // Create waypoint label
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', screenPos.x);
+        label.setAttribute('y', screenPos.y - (isTargeted ? 15 : 12));
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('font-family', 'VT323, monospace');
+        label.setAttribute('font-size', isTargeted ? '12' : '10');
+        label.setAttribute('fill', color);
+        label.setAttribute('opacity', '0.9');
+        label.textContent = waypoint.name || 'Waypoint';
+        
+        // Add elements to group
+        waypointGroup.appendChild(circle);
+        waypointGroup.appendChild(crosshair1);
+        waypointGroup.appendChild(crosshair2);
+        waypointGroup.appendChild(label);
+        
+        // Add click handler for waypoint targeting
+        waypointGroup.style.cursor = 'pointer';
+        waypointGroup.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.handleWaypointClick(waypoint);
+        });
+        
+        this.svg.appendChild(waypointGroup);
+    }
+    
+    /**
+     * Get waypoint color based on type and status
+     * @param {Object} waypoint - Waypoint object
+     * @returns {string} - CSS color string
+     */
+    getWaypointColor(waypoint) {
+        const type = waypoint.type?.toLowerCase() || 'navigation';
+        const status = waypoint.status?.toLowerCase() || 'active';
+        
+        // Status-based colors take precedence
+        if (status === 'completed') return '#00aa00';
+        if (status === 'interrupted') return '#ff6600';
+        if (status === 'triggered') return '#ffaa00';
+        
+        // Type-based colors
+        switch (type) {
+            case 'navigation': return '#00ffff';
+            case 'objective': return '#ffff00';
+            case 'checkpoint': return '#00ff00';
+            case 'discovery': return '#ff00ff';
+            case 'combat': return '#ff4444';
+            case 'resource': return '#44ff44';
+            default: return '#ffffff';
+        }
+    }
+    
+    /**
+     * Check if waypoint is currently targeted
+     * @param {Object} waypoint - Waypoint object
+     * @returns {boolean} - True if waypoint is targeted
+     */
+    isWaypointTargeted(waypoint) {
+        if (!window.targetComputerManager) return false;
+        
+        const currentTarget = window.targetComputerManager.currentTarget;
+        return currentTarget && 
+               currentTarget.isVirtual && 
+               currentTarget.id === waypoint.id;
+    }
+    
+    /**
+     * Handle waypoint click for targeting
+     * @param {Object} waypoint - Clicked waypoint
+     */
+    handleWaypointClick(waypoint) {
+        if (!window.targetComputerManager) return;
+        
+        // Target the waypoint
+        const success = window.targetComputerManager.setVirtualTarget(waypoint);
+        
+        if (success) {
+            debug('WAYPOINTS', `🎯 Star Charts: Waypoint ${waypoint.name} targeted via click`);
+        }
     }
     
     // Helper methods

@@ -482,6 +482,17 @@ export class WaypointKeyboardHandler {
             }, index * 1000);
         });
     }
+    
+    /**
+     * Alias methods for backward compatibility with tests
+     */
+    handleWaypointKey(event) {
+        return this.handleWaypointResume(event);
+    }
+    
+    handleNextWaypointKey(event) {
+        return this.handleWaypointCycle(event);
+    }
 }
 
 // Global keyboard handler instance

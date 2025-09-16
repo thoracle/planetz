@@ -6,6 +6,8 @@
  */
 
 import { debug } from '../debug.js';
+import { ActionRegistry } from './ActionRegistry.js';
+import { WaypointPersistence } from './WaypointPersistence.js';
 
 // Waypoint status enumeration
 export const WaypointStatus = {
@@ -36,6 +38,12 @@ export class WaypointManager {
         this.nextWaypointId = 1;
         this.interruptionMetrics = [];
         
+        // Initialize ActionRegistry
+        this.actionRegistry = new ActionRegistry();
+        
+        // Initialize WaypointPersistence
+        this.persistence = new WaypointPersistence();
+        
         // Performance monitoring
         this.performanceMetrics = {
             proximityCheckTimes: [],
@@ -43,7 +51,7 @@ export class WaypointManager {
             memoryUsage: []
         };
 
-        debug('WAYPOINTS', '🎯 WaypointManager initialized');
+        debug('WAYPOINTS', '🎯 WaypointManager initialized with ActionRegistry');
         
         // Start proximity checking
         this.startProximityChecking();
@@ -56,7 +64,7 @@ export class WaypointManager {
      */
     createWaypoint(config) {
         const waypoint = {
-            id: this.generateWaypointId(),
+            id: config.id || this.generateWaypointId(),
             name: config.name || `Mission Waypoint #${this.getNextWaypointNumber()}`,
             missionId: config.missionId,
             position: config.position || [0, 0, 0],
@@ -413,10 +421,15 @@ export class WaypointManager {
             return false;
         }
         
-        if (!Object.values(WaypointType).includes(waypoint.type)) {
-            console.error(`Invalid waypoint type: ${waypoint.type}`);
+        // Normalize waypoint type to lowercase for validation
+        const normalizedType = waypoint.type?.toLowerCase();
+        if (!Object.values(WaypointType).includes(normalizedType)) {
+            console.error(`Invalid waypoint type: ${waypoint.type}. Valid types: ${Object.values(WaypointType).join(', ')}`);
             return false;
         }
+        
+        // Update waypoint type to normalized lowercase value
+        waypoint.type = normalizedType;
         
         return true;
     }

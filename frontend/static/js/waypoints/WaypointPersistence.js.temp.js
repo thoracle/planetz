@@ -5,9 +5,6 @@
  * file-based backup. Ensures waypoint state survives browser refresh.
  */
 
-import { debug } from '../debug.js';
-import { WaypointStatus } from './WaypointManager.js';
-
 // Storage keys
 const STORAGE_KEYS = {
     WAYPOINTS: 'planetz_waypoints',
@@ -110,77 +107,6 @@ export class WaypointPersistence {
             
         } finally {
             this.saveInProgress = false;
-        }
-    }
-
-    /**
-     * Save individual waypoint state
-     * @param {string} waypointId - Waypoint ID to save
-     * @param {Object} waypointData - Optional waypoint data (will fetch if not provided)
-     * @returns {Promise<boolean>} - Success status
-     */
-    async saveWaypointState(waypointId, waypointData = null) {
-        try {
-            debug('WAYPOINTS', `💾 Saving waypoint state: ${waypointId}`);
-            
-            // Get waypoint data if not provided
-            if (!waypointData && window.waypointManager) {
-                waypointData = window.waypointManager.getWaypoint(waypointId);
-            }
-            
-            if (!waypointData) {
-                debug('WAYPOINTS', `⚠️ No waypoint data found for ${waypointId}`);
-                return false;
-            }
-            
-            // Get existing waypoint states
-            const existingStates = JSON.parse(localStorage.getItem('waypoint_states') || '{}');
-            
-            // Update the specific waypoint
-            existingStates[waypointId] = {
-                ...waypointData,
-                savedAt: new Date().toISOString()
-            };
-            
-            // Save back to localStorage
-            localStorage.setItem('waypoint_states', JSON.stringify(existingStates));
-            
-            debug('WAYPOINTS', `✅ Waypoint state saved: ${waypointId}`);
-            return true;
-            
-        } catch (error) {
-            debug('WAYPOINTS', `❌ Failed to save waypoint state ${waypointId}: ${error.message}`);
-            return false;
-        }
-    }
-
-    /**
-     * Load individual waypoint state
-     * @param {string} waypointId - Waypoint ID to load
-     * @returns {Promise<Object|null>} - Loaded waypoint data or null
-     */
-    async loadWaypointState(waypointId) {
-        try {
-            debug('WAYPOINTS', `📂 Loading waypoint state: ${waypointId}`);
-            
-            // Get waypoint states from localStorage
-            const waypointStates = JSON.parse(localStorage.getItem('waypoint_states') || '{}');
-            
-            const waypointData = waypointStates[waypointId];
-            
-            if (waypointData && window.waypointManager) {
-                // Restore waypoint to active waypoints
-                window.waypointManager.activeWaypoints.set(waypointId, waypointData);
-                debug('WAYPOINTS', `✅ Waypoint state loaded: ${waypointId}`);
-                return waypointData;
-            }
-            
-            debug('WAYPOINTS', `⚠️ No saved state found for waypoint: ${waypointId}`);
-            return null;
-            
-        } catch (error) {
-            debug('WAYPOINTS', `❌ Failed to load waypoint state ${waypointId}: ${error.message}`);
-            return null;
         }
     }
 
@@ -637,4 +563,4 @@ export function getWaypointPersistence() {
     return persistenceInstance;
 }
 
-export default WaypointPersistence;
+module.exports = WaypointPersistence;

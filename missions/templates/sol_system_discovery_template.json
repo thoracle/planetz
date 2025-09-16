@@ -1,0 +1,495 @@
+{
+  "template_id": "sol_system_discovery",
+  "title": "Sol System Discovery Survey",
+  "description": "Conduct a comprehensive survey of the Sol system, discovering key celestial objects and space stations. This mission will familiarize you with navigation systems and the diverse infrastructure of humanity's home system.",
+  "mission_type": "exploration",
+  "faction": "terran_republic_alliance",
+  "reward_package_id": 6,
+  "difficulty": "beginner",
+  "estimated_duration": "45-60 minutes",
+  "objectives": [
+    {
+      "id": "1",
+      "description": "Visit Terra Prime and scan the planet",
+      "is_optional": false,
+      "is_ordered": true,
+      "waypoint_id": "sol_discovery_terra_prime"
+    },
+    {
+      "id": "2", 
+      "description": "Discover and scan Luna (Terra Prime's moon)",
+      "is_optional": false,
+      "is_ordered": true,
+      "waypoint_id": "sol_discovery_luna"
+    },
+    {
+      "id": "3",
+      "description": "Locate Helios Solar Array research station",
+      "is_optional": false,
+      "is_ordered": true,
+      "waypoint_id": "sol_discovery_helios"
+    },
+    {
+      "id": "4",
+      "description": "Visit Hermes Refinery trading post",
+      "is_optional": false,
+      "is_ordered": true,
+      "waypoint_id": "sol_discovery_hermes"
+    },
+    {
+      "id": "5",
+      "description": "Investigate Mars Base colony",
+      "is_optional": false,
+      "is_ordered": true,
+      "waypoint_id": "sol_discovery_mars_base"
+    },
+    {
+      "id": "6",
+      "description": "Survey Ceres Outpost in the asteroid belt",
+      "is_optional": true,
+      "is_ordered": false,
+      "waypoint_id": "sol_discovery_ceres"
+    },
+    {
+      "id": "7",
+      "description": "Examine Deimos Research Facility",
+      "is_optional": true,
+      "is_ordered": false,
+      "waypoint_id": "sol_discovery_deimos"
+    }
+  ],
+  "waypoints": [
+    {
+      "id": "sol_discovery_terra_prime",
+      "name": "Terra Prime Survey Point",
+      "type": "objective",
+      "position": [149.6, 0, 0],
+      "description": "Approach Terra Prime for planetary scan",
+      "triggers": [
+        {
+          "type": "proximity",
+          "parameters": {
+            "distance": 5.0,
+            "target_object": "A0_terra_prime"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "type": "show_message",
+          "parameters": {
+            "title": "Terra Prime Discovered",
+            "message": "Beautiful Earth-like world detected. Beginning planetary scan...",
+            "duration": 4000,
+            "audioFileId": "static/video/discovery_chime",
+            "audioVolume": 0.8
+          }
+        },
+        {
+          "type": "give_reward",
+          "parameters": {
+            "rewardPackageId": "discovery_bonus_small",
+            "bonusMultiplier": 1.0,
+            "message": "Planetary scan complete! Discovery bonus awarded."
+          }
+        },
+        {
+          "type": "next_waypoint",
+          "parameters": {
+            "nextWaypointId": "sol_discovery_luna"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sol_discovery_luna",
+      "name": "Luna Survey Point", 
+      "type": "objective",
+      "position": [151.096, 0, 0],
+      "description": "Investigate Luna's mineral composition",
+      "triggers": [
+        {
+          "type": "proximity",
+          "parameters": {
+            "distance": 3.0,
+            "target_object": "A0_luna"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "type": "show_message",
+          "parameters": {
+            "title": "Luna Mining Survey",
+            "message": "Mineral-rich moon confirmed. Excellent mining potential detected.",
+            "duration": 3500,
+            "audioFileId": "static/video/scan_complete",
+            "audioVolume": 0.7
+          }
+        },
+        {
+          "type": "give_reward",
+          "parameters": {
+            "rewardPackageId": "discovery_bonus_small",
+            "bonusMultiplier": 1.2,
+            "message": "Lunar survey complete! Enhanced discovery bonus."
+          }
+        },
+        {
+          "type": "next_waypoint",
+          "parameters": {
+            "nextWaypointId": "sol_discovery_helios"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sol_discovery_helios",
+      "name": "Helios Solar Array",
+      "type": "navigation",
+      "position": [-24.53, 1.17, 31.85],
+      "description": "Approach the solar research facility",
+      "triggers": [
+        {
+          "type": "proximity", 
+          "parameters": {
+            "distance": 2.5
+          }
+        }
+      ],
+      "actions": [
+        {
+          "type": "show_message",
+          "parameters": {
+            "title": "Helios Solar Array Contact",
+            "message": "Alliance research facility responding. Solar energy research data transmitted.",
+            "duration": 4000,
+            "audioFileId": "static/video/station_hail",
+            "audioVolume": 0.8
+          }
+        },
+        {
+          "type": "spawn_ships",
+          "parameters": {
+            "shipType": "alliance_patrol",
+            "minCount": 1,
+            "maxCount": 2,
+            "formation": "escort",
+            "faction": "terran_republic_alliance",
+            "behavior": "friendly_patrol"
+          }
+        },
+        {
+          "type": "give_reward",
+          "parameters": {
+            "rewardPackageId": "research_data_bonus",
+            "bonusMultiplier": 1.0,
+            "message": "Research data acquired! Alliance standing improved."
+          }
+        },
+        {
+          "type": "next_waypoint",
+          "parameters": {
+            "nextWaypointId": "sol_discovery_hermes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sol_discovery_hermes",
+      "name": "Hermes Refinery",
+      "type": "navigation",
+      "position": [-32.31, 1.17, 28.31],
+      "description": "Visit the Free Trader refinery",
+      "triggers": [
+        {
+          "type": "proximity",
+          "parameters": {
+            "distance": 2.0
+          }
+        }
+      ],
+      "actions": [
+        {
+          "type": "show_message",
+          "parameters": {
+            "title": "Hermes Refinery Welcome",
+            "message": "Free Trader Consortium facility. Rare metals processing active. Trade opportunities available.",
+            "duration": 4500,
+            "audioFileId": "static/video/trader_greeting",
+            "audioVolume": 0.7
+          }
+        },
+        {
+          "type": "give_item",
+          "parameters": {
+            "itemId": "rare_metals_sample",
+            "quantity": 5,
+            "quality": "standard",
+            "message": "Rare metals sample provided by Hermes Refinery!"
+          }
+        },
+        {
+          "type": "give_reward",
+          "parameters": {
+            "rewardPackageId": "trading_bonus",
+            "bonusMultiplier": 1.1,
+            "message": "Trading relationship established!"
+          }
+        },
+        {
+          "type": "next_waypoint",
+          "parameters": {
+            "nextWaypointId": "sol_discovery_mars_base"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sol_discovery_mars_base",
+      "name": "Mars Base Colony",
+      "type": "objective",
+      "position": [-30.19, 1.17, 33.19],
+      "description": "Survey the main Mars colony",
+      "triggers": [
+        {
+          "type": "proximity",
+          "parameters": {
+            "distance": 3.0
+          }
+        }
+      ],
+      "actions": [
+        {
+          "type": "show_message",
+          "parameters": {
+            "title": "Mars Base Operations",
+            "message": "Terran Republic Alliance main colony. Full facilities operational. Colonial expansion data recorded.",
+            "duration": 5000,
+            "audioFileId": "static/video/colony_report",
+            "audioVolume": 0.8
+          }
+        },
+        {
+          "type": "spawn_ships",
+          "parameters": {
+            "shipType": "colony_transport",
+            "minCount": 2,
+            "maxCount": 3,
+            "formation": "convoy",
+            "faction": "terran_republic_alliance",
+            "behavior": "supply_run"
+          }
+        },
+        {
+          "type": "give_reward",
+          "parameters": {
+            "rewardPackageId": "colonial_survey_bonus",
+            "bonusMultiplier": 1.3,
+            "message": "Colonial survey complete! Major discovery bonus awarded."
+          }
+        },
+        {
+          "type": "show_message",
+          "parameters": {
+            "title": "Optional Objectives Available",
+            "message": "Additional survey points detected: Ceres Outpost and Deimos Research Facility. Continue exploration?",
+            "duration": 6000
+          }
+        }
+      ]
+    },
+    {
+      "id": "sol_discovery_ceres",
+      "name": "Ceres Outpost Survey",
+      "type": "discovery",
+      "position": [-35.42, 1.17, 25.89],
+      "description": "Optional: Survey the asteroid belt outpost",
+      "triggers": [
+        {
+          "type": "proximity",
+          "parameters": {
+            "distance": 2.5
+          }
+        }
+      ],
+      "actions": [
+        {
+          "type": "show_message",
+          "parameters": {
+            "title": "Ceres Outpost Discovery",
+            "message": "Asteroid belt mining outpost located! Rich asteroid field survey data acquired.",
+            "duration": 4000,
+            "audioFileId": "static/video/mining_report",
+            "audioVolume": 0.7
+          }
+        },
+        {
+          "type": "spawn_ships",
+          "parameters": {
+            "shipType": "mining_vessel",
+            "minCount": 1,
+            "maxCount": 2,
+            "formation": "mining_ops",
+            "faction": "free_trader_consortium",
+            "behavior": "asteroid_mining"
+          }
+        },
+        {
+          "type": "give_item",
+          "parameters": {
+            "itemId": "asteroid_survey_data",
+            "quantity": 1,
+            "quality": "rare",
+            "message": "Valuable asteroid survey data obtained!"
+          }
+        },
+        {
+          "type": "give_reward",
+          "parameters": {
+            "rewardPackageId": "exploration_bonus_large",
+            "bonusMultiplier": 1.5,
+            "message": "Optional objective complete! Exploration bonus!"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sol_discovery_deimos",
+      "name": "Deimos Research Facility",
+      "type": "discovery",
+      "position": [-18.99, 1.17, 34.59],
+      "description": "Optional: Investigate advanced research facility",
+      "triggers": [
+        {
+          "type": "proximity",
+          "parameters": {
+            "distance": 2.0
+          }
+        }
+      ],
+      "actions": [
+        {
+          "type": "show_message",
+          "parameters": {
+            "title": "Deimos Research Contact",
+            "message": "Scientists Consortium facility. Cutting-edge research in progress. Advanced technology detected.",
+            "duration": 5000,
+            "audioFileId": "static/video/science_report",
+            "audioVolume": 0.8
+          }
+        },
+        {
+          "type": "give_item",
+          "parameters": {
+            "itemId": "advanced_research_data",
+            "quantity": 1,
+            "quality": "legendary",
+            "message": "Rare scientific data acquired from Deimos!"
+          }
+        },
+        {
+          "type": "give_reward",
+          "parameters": {
+            "rewardPackageId": "science_discovery_bonus",
+            "bonusMultiplier": 2.0,
+            "message": "Scientific discovery! Major research bonus awarded!"
+          }
+        },
+        {
+          "type": "show_message",
+          "parameters": {
+            "title": "Sol System Survey Complete",
+            "message": "Comprehensive system survey finished! All major facilities catalogued. Excellent work, Commander!",
+            "duration": 6000,
+            "audioFileId": "static/video/mission_success",
+            "audioVolume": 1.0
+          }
+        }
+      ]
+    }
+  ],
+  "custom_fields": {
+    "survey_type": "comprehensive_discovery",
+    "system_name": "Sol System (A0)",
+    "total_objectives": 7,
+    "required_objectives": 5,
+    "optional_objectives": 2,
+    "discovery_bonus_multiplier": 1.2,
+    "completion_time_bonus": 2000,
+    "perfect_completion_bonus": 5000,
+    "navigation_training": true,
+    "discovery_training": true,
+    "faction_relations": {
+      "terran_republic_alliance": 15,
+      "free_trader_consortium": 10,
+      "scientists_consortium": 8
+    }
+  },
+  "triggers": {
+    "on_accept": "initialize_sol_discovery_waypoints",
+    "on_waypoint_reached": "update_discovery_progress",
+    "on_optional_complete": "award_exploration_bonus",
+    "on_complete": "finalize_sol_system_survey"
+  },
+  "completion_conditions": {
+    "required_waypoints": [
+      "sol_discovery_terra_prime",
+      "sol_discovery_luna", 
+      "sol_discovery_helios",
+      "sol_discovery_hermes",
+      "sol_discovery_mars_base"
+    ],
+    "optional_waypoints": [
+      "sol_discovery_ceres",
+      "sol_discovery_deimos"
+    ],
+    "minimum_required": 5,
+    "perfect_completion": 7
+  },
+  "reward_scaling": {
+    "base_credits": 2500,
+    "discovery_bonus": 500,
+    "optional_bonus": 750,
+    "time_bonus_threshold": 3600,
+    "perfect_completion_multiplier": 2.0
+  },
+  "failure_conditions": {
+    "ship_destroyed": {
+      "allow_retry": true,
+      "penalty": "minor_credits"
+    },
+    "time_limit_exceeded": {
+      "time_limit": 7200,
+      "allow_completion": true,
+      "penalty": "no_time_bonus"
+    }
+  },
+  "mission_briefing": {
+    "intro": "Welcome to the Sol System Discovery Survey, Commander. This comprehensive mission will familiarize you with our home system's key locations and infrastructure.",
+    "objectives_summary": "You'll visit Terra Prime, Luna, and several major space stations. Each location offers unique insights into humanity's expansion throughout the system.",
+    "navigation_notes": "Use your waypoint navigation system (W key) to efficiently travel between objectives. The Star Charts (C key) will help you visualize your progress.",
+    "optional_content": "Two optional objectives offer additional rewards for thorough explorers willing to venture into the asteroid belt and advanced research facilities.",
+    "completion_rewards": "Successful completion provides substantial credits, faction standing improvements, and valuable resources for future missions."
+  },
+  "location_variants": {
+    "beginner_pilot": {
+      "title": "Sol System Orientation",
+      "description": "Comprehensive introduction to Sol system navigation and discovery mechanics",
+      "custom_fields": {
+        "navigation_assistance": true,
+        "extended_waypoint_guidance": true,
+        "discovery_bonus_multiplier": 1.5
+      }
+    },
+    "experienced_pilot": {
+      "title": "Sol System Survey Contract",
+      "description": "Efficient survey mission for experienced navigators",
+      "custom_fields": {
+        "navigation_assistance": false,
+        "time_bonus_threshold": 2400,
+        "discovery_bonus_multiplier": 1.0
+      }
+    }
+  }
+}

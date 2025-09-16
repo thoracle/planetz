@@ -1,11 +1,10 @@
 /**
- * ActionRegistry - Register all waypoint action classes
+ * ActionRegistry - Centralized registry for all waypoint action types
  * 
- * Centralizes registration of all waypoint action types with the ActionFactory.
- * This ensures all action classes are available for waypoint execution.
+ * Provides a factory pattern for creating waypoint actions dynamically.
+ * All action classes are registered here for easy access and creation.
  */
 
-import { ActionFactory, ActionType } from './WaypointAction.js';
 import { debug } from '../debug.js';
 
 // Import all action classes
@@ -16,346 +15,235 @@ import GiveRewardAction from './actions/GiveRewardAction.js';
 import GiveItemAction from './actions/GiveItemAction.js';
 
 /**
- * Register all waypoint action classes with the ActionFactory
+ * Base WaypointAction class for all actions
  */
-export function registerAllActions() {
-    debug('WAYPOINTS', '📝 Registering waypoint action classes...');
+export class WaypointAction {
+    constructor(parameters = {}) {
+        this.parameters = parameters;
+        this.executionTime = null;
+        this.success = false;
+        this.error = null;
+    }
 
-    try {
-        // Register each action type
-        ActionFactory.register(ActionType.SPAWN_SHIPS, SpawnShipsAction);
-        ActionFactory.register(ActionType.PLAY_COMM, PlayCommAction);
-        ActionFactory.register(ActionType.SHOW_MESSAGE, ShowMessageAction);
-        ActionFactory.register(ActionType.GIVE_REWARD, GiveRewardAction);
-        ActionFactory.register(ActionType.GIVE_ITEM, GiveItemAction);
+    /**
+     * Execute the action with the given parameters
+     * @returns {Promise<Object>} Execution result
+     */
+    async execute() {
+        const startTime = Date.now();
+        
+        try {
+            debug('WAYPOINTS', `🎬 Executing ${this.constructor.name}...`);
+            
+            const result = await this.performAction();
+            
+            this.executionTime = Date.now() - startTime;
+            this.success = true;
+            
+            debug('WAYPOINTS', `✅ ${this.constructor.name} completed in ${this.executionTime}ms`);
+            
+            return {
+                success: true,
+                executionTime: this.executionTime,
+                result: result
+            };
+            
+        } catch (error) {
+            this.executionTime = Date.now() - startTime;
+            this.success = false;
+            this.error = error;
+            
+            debug('WAYPOINTS', `❌ ${this.constructor.name} failed: ${error.message}`);
+            
+            return {
+                success: false,
+                executionTime: this.executionTime,
+                error: error.message
+            };
+        }
+    }
 
-        // Register additional action types with basic implementations
-        ActionFactory.register(ActionType.NEXT_WAYPOINT, createNextWaypointAction());
-        ActionFactory.register(ActionType.MISSION_UPDATE, createMissionUpdateAction());
-        ActionFactory.register(ActionType.CUSTOM_EVENT, createCustomEventAction());
-
-        const registeredTypes = ActionFactory.getRegisteredTypes();
-        debug('WAYPOINTS', `✅ Registered ${registeredTypes.length} action types: ${registeredTypes.join(', ')}`);
-
-        return true;
-
-    } catch (error) {
-        console.error('Failed to register waypoint actions:', error);
-        return false;
+    /**
+     * Perform the specific action logic
+     * Override this method in subclasses
+     * @returns {Promise<any>} Action result
+     */
+    async performAction() {
+        throw new Error('performAction must be implemented by subclass');
     }
 }
 
 /**
- * Create NextWaypointAction class
- * @returns {Class} - NextWaypointAction class
+ * Simple action classes for actions that don't need separate files
  */
-function createNextWaypointAction() {
-    return class NextWaypointAction extends (await import('./WaypointAction.js')).WaypointAction {
-        async performAction(context) {
-            debug('WAYPOINTS', '🔗 Activating next waypoint');
-            
-            const { missionId, chainId } = this.parameters;
-            
-            if (window.waypointManager) {
-                window.waypointManager.activateNextWaypoint(missionId || chainId);
+
+class NextWaypointAction extends WaypointAction {
+    constructor(type, parameters) {
+        super(parameters);
+        this.type = type;
+    }
+    
+    async performAction() {
+        debug('WAYPOINTS', '🔗 Activating next waypoint');
+        
+        const { nextWaypointId, chainId } = this.parameters;
+        
+        if (window.waypointManager && nextWaypointId) {
+            try {
+                await window.waypointManager.activateWaypoint(nextWaypointId);
+                return { nextWaypointId, activated: true };
+            } catch (error) {
+                debug('WAYPOINTS', `Failed to activate next waypoint ${nextWaypointId}: ${error.message}`);
+                throw error;
             }
-            
-            return {
-                success: true,
-                missionId: missionId,
-                chainId: chainId
-            };
         }
-
-        getRequiredParameters() {
-            return []; // missionId is optional
-        }
-
-        getParameterTypes() {
-            return {
-                missionId: 'string',
-                chainId: 'string'
-            };
-        }
-    };
+        
+        return { activated: false, reason: 'No waypoint manager or next waypoint ID' };
+    }
 }
 
-/**
- * Create MissionUpdateAction class
- * @returns {Class} - MissionUpdateAction class
- */
-function createMissionUpdateAction() {
-    return class MissionUpdateAction extends (await import('./WaypointAction.js')).WaypointAction {
-        async performAction(context) {
-            debug('WAYPOINTS', '📋 Updating mission status');
-            
-            const { missionId, status, data } = this.parameters;
-            
-            if (window.missionEventHandler && missionId) {
-                await window.missionEventHandler.updateMissionStatus(
-                    missionId,
-                    status || 'updated',
-                    data || {}
-                );
+class MissionUpdateAction extends WaypointAction {
+    constructor(type, parameters) {
+        super(parameters);
+        this.type = type;
+    }
+    
+    async performAction() {
+        debug('WAYPOINTS', '📋 Updating mission status');
+        
+        const { missionId, status, progress } = this.parameters;
+        
+        if (window.missionEventHandler && missionId) {
+            try {
+                const result = await window.missionEventHandler.updateMissionStatus({
+                    mission_id: missionId,
+                    status: status,
+                    progress: progress
+                });
+                return result;
+            } catch (error) {
+                debug('WAYPOINTS', `Failed to update mission ${missionId}: ${error.message}`);
+                throw error;
             }
-            
-            return {
-                success: true,
-                missionId: missionId,
-                status: status
-            };
         }
-
-        getRequiredParameters() {
-            return ['missionId'];
-        }
-
-        getParameterTypes() {
-            return {
-                missionId: 'string',
-                status: 'string',
-                data: 'object'
-            };
-        }
-    };
+        
+        return { updated: false, reason: 'No mission event handler or mission ID' };
+    }
 }
 
-/**
- * Create CustomEventAction class
- * @returns {Class} - CustomEventAction class
- */
-function createCustomEventAction() {
-    return class CustomEventAction extends (await import('./WaypointAction.js')).WaypointAction {
-        async performAction(context) {
-            debug('WAYPOINTS', '⚡ Dispatching custom event');
-            
-            const { eventType, eventData } = this.parameters;
-            
-            // Dispatch custom event
-            const customEvent = new CustomEvent(`waypoint_${eventType}`, {
-                detail: {
-                    waypoint: context.waypoint,
-                    eventData: eventData,
-                    timestamp: new Date()
-                }
+class CustomEventAction extends WaypointAction {
+    constructor(type, parameters) {
+        super(parameters);
+        this.type = type;
+    }
+    
+    async performAction() {
+        debug('WAYPOINTS', '🎪 Dispatching custom event');
+        
+        const { eventType, eventData } = this.parameters;
+        
+        if (eventType) {
+            const customEvent = new CustomEvent(eventType, {
+                detail: eventData || {}
             });
             
             document.dispatchEvent(customEvent);
             
-            return {
-                success: true,
-                eventType: eventType,
-                eventData: eventData
-            };
+            return { eventType, dispatched: true };
         }
-
-        getRequiredParameters() {
-            return ['eventType'];
-        }
-
-        getParameterTypes() {
-            return {
-                eventType: 'string',
-                eventData: 'object'
-            };
-        }
-    };
+        
+        return { dispatched: false, reason: 'No event type specified' };
+    }
 }
 
 /**
- * Get all available action types with descriptions
- * @returns {Array} - Action type information
+ * ActionRegistry class - Factory for creating waypoint actions
  */
-export function getActionTypeInfo() {
-    return [
-        {
-            type: ActionType.SPAWN_SHIPS,
-            name: 'Spawn Ships',
-            description: 'Spawn enemy or friendly ships with formation patterns',
-            category: 'Combat',
-            parameters: ['shipType', 'minCount', 'maxCount', 'formation', 'faction']
-        },
-        {
-            type: ActionType.PLAY_COMM,
-            name: 'Play Communication',
-            description: 'Play audio communication with optional subtitles',
-            category: 'Audio',
-            parameters: ['audioFile', 'subtitle', 'volume', 'speaker']
-        },
-        {
-            type: ActionType.SHOW_MESSAGE,
-            name: 'Show Message',
-            description: 'Display text message to player with optional audio',
-            category: 'UI',
-            parameters: ['title', 'message', 'duration', 'audioFileId']
-        },
-        {
-            type: ActionType.GIVE_REWARD,
-            name: 'Give Reward',
-            description: 'Award rewards using reward package system',
-            category: 'Rewards',
-            parameters: ['rewardPackageId', 'bonusMultiplier', 'message']
-        },
-        {
-            type: ActionType.GIVE_ITEM,
-            name: 'Give Item',
-            description: 'Add items to player inventory',
-            category: 'Items',
-            parameters: ['itemId', 'quantity', 'quality', 'level']
-        },
-        {
-            type: ActionType.NEXT_WAYPOINT,
-            name: 'Next Waypoint',
-            description: 'Activate next waypoint in mission chain',
-            category: 'Navigation',
-            parameters: ['missionId', 'chainId']
-        },
-        {
-            type: ActionType.MISSION_UPDATE,
-            name: 'Mission Update',
-            description: 'Update mission status and data',
-            category: 'Missions',
-            parameters: ['missionId', 'status', 'data']
-        },
-        {
-            type: ActionType.CUSTOM_EVENT,
-            name: 'Custom Event',
-            description: 'Dispatch custom game event',
-            category: 'Events',
-            parameters: ['eventType', 'eventData']
+export class ActionRegistry {
+    constructor() {
+        this.actions = {};
+        
+        // Register all action types
+        this.registerAllActions();
+        
+        debug('WAYPOINTS', `📝 ActionRegistry initialized with ${Object.keys(this.actions).length} action types`);
+    }
+
+    /**
+     * Register all available action types
+     */
+    registerAllActions() {
+        // Register imported action classes
+        this.register('spawn_ships', SpawnShipsAction);
+        this.register('play_comm', PlayCommAction);
+        this.register('show_message', ShowMessageAction);
+        this.register('give_reward', GiveRewardAction);
+        this.register('give_item', GiveItemAction);
+        
+        // Register inline action classes
+        this.register('next_waypoint', NextWaypointAction);
+        this.register('mission_update', MissionUpdateAction);
+        this.register('custom_event', CustomEventAction);
+    }
+
+    /**
+     * Register an action class with a type name
+     * @param {string} actionType - The action type identifier
+     * @param {Class} actionClass - The action class constructor
+     */
+    register(actionType, actionClass) {
+        if (typeof actionType !== 'string') {
+            throw new Error('Action type must be a string');
         }
-    ];
+        
+        if (typeof actionClass !== 'function') {
+            throw new Error('Action class must be a constructor function');
+        }
+        
+        this.actions[actionType] = actionClass;
+        debug('WAYPOINTS', `✅ Registered action type: ${actionType}`);
+    }
+
+    /**
+     * Create an action instance of the specified type
+     * @param {string} actionType - The action type to create
+     * @param {Object} parameters - Parameters for the action
+     * @returns {WaypointAction} Action instance
+     */
+    create(actionType, parameters = {}) {
+        const ActionClass = this.actions[actionType];
+        
+        if (!ActionClass) {
+            const availableTypes = Object.keys(this.actions).join(', ');
+            throw new Error(`Unknown action type: ${actionType}. Available types: ${availableTypes}`);
+        }
+        
+        try {
+            const action = new ActionClass(actionType, parameters);
+            debug('WAYPOINTS', `🏭 Created ${actionType} action`);
+            return action;
+        } catch (error) {
+            debug('WAYPOINTS', `❌ Failed to create ${actionType} action: ${error.message}`);
+            throw new Error(`Failed to create ${actionType} action: ${error.message}`);
+        }
+    }
+
+    /**
+     * Get all registered action types
+     * @returns {string[]} Array of action type names
+     */
+    getActionTypes() {
+        return Object.keys(this.actions);
+    }
+
+    /**
+     * Check if an action type is registered
+     * @param {string} actionType - The action type to check
+     * @returns {boolean} True if registered
+     */
+    hasActionType(actionType) {
+        return actionType in this.actions;
+    }
 }
 
-/**
- * Validate action configuration
- * @param {Object} actionConfig - Action configuration
- * @returns {Object} - Validation result
- */
-export function validateActionConfig(actionConfig) {
-    const errors = [];
-    
-    if (!actionConfig.type) {
-        errors.push('Action type is required');
-    } else if (!Object.values(ActionType).includes(actionConfig.type)) {
-        errors.push(`Unknown action type: ${actionConfig.type}`);
-    }
-    
-    if (!actionConfig.parameters || typeof actionConfig.parameters !== 'object') {
-        errors.push('Action parameters must be an object');
-    }
-    
-    // Type-specific validation
-    try {
-        if (actionConfig.type && ActionFactory.registeredActions.has(actionConfig.type)) {
-            const ActionClass = ActionFactory.registeredActions.get(actionConfig.type);
-            const tempAction = new ActionClass(actionConfig.type, actionConfig.parameters);
-            const validation = tempAction.validate();
-            
-            if (!validation.valid) {
-                errors.push(...validation.errors);
-            }
-        }
-    } catch (error) {
-        errors.push(`Action validation failed: ${error.message}`);
-    }
-    
-    return {
-        valid: errors.length === 0,
-        errors: errors
-    };
-}
-
-/**
- * Create action example configurations for testing
- * @returns {Object} - Example configurations by action type
- */
-export function getActionExamples() {
-    return {
-        [ActionType.SPAWN_SHIPS]: {
-            type: ActionType.SPAWN_SHIPS,
-            parameters: {
-                shipType: 'enemy_fighter',
-                minCount: 2,
-                maxCount: 4,
-                formation: 'triangle',
-                faction: 'pirates',
-                behavior: 'aggressive'
-            }
-        },
-        
-        [ActionType.PLAY_COMM]: {
-            type: ActionType.PLAY_COMM,
-            parameters: {
-                audioFile: 'mission_briefing_01.mp3',
-                subtitle: 'Commander, you have a new mission assignment.',
-                speaker: 'Command',
-                volume: 0.8
-            }
-        },
-        
-        [ActionType.SHOW_MESSAGE]: {
-            type: ActionType.SHOW_MESSAGE,
-            parameters: {
-                title: 'Mission Update',
-                message: 'Proceed to the next waypoint to continue your mission.',
-                duration: 5000,
-                messageType: 'mission',
-                audioFileId: 'notification_chime.mp3'
-            }
-        },
-        
-        [ActionType.GIVE_REWARD]: {
-            type: ActionType.GIVE_REWARD,
-            parameters: {
-                rewardPackageId: 'mission_complete',
-                bonusMultiplier: 1.2,
-                message: 'Mission completed successfully!'
-            }
-        },
-        
-        [ActionType.GIVE_ITEM]: {
-            type: ActionType.GIVE_ITEM,
-            parameters: {
-                itemId: 'star_chart_fragment',
-                quantity: 1,
-                quality: 'rare',
-                level: 3
-            }
-        },
-        
-        [ActionType.NEXT_WAYPOINT]: {
-            type: ActionType.NEXT_WAYPOINT,
-            parameters: {
-                missionId: 'tutorial_mission_01'
-            }
-        },
-        
-        [ActionType.MISSION_UPDATE]: {
-            type: ActionType.MISSION_UPDATE,
-            parameters: {
-                missionId: 'tutorial_mission_01',
-                status: 'objective_completed',
-                data: { objectiveId: 'reach_waypoint_1' }
-            }
-        },
-        
-        [ActionType.CUSTOM_EVENT]: {
-            type: ActionType.CUSTOM_EVENT,
-            parameters: {
-                eventType: 'discovery_made',
-                eventData: { discoveryType: 'ancient_artifact', location: 'asteroid_field' }
-            }
-        }
-    };
-}
-
-// Auto-register actions when module is loaded
-registerAllActions();
-
-export default {
-    registerAllActions,
-    getActionTypeInfo,
-    validateActionConfig,
-    getActionExamples
-};
+export default ActionRegistry;

@@ -18,6 +18,10 @@ import './utils/ErrorReporter.js'; // Error reporting system for debugging
 import { SmartDebugManager } from './utils/DebugManager.js'; // Smart debug logging system
 import { debug } from './debug.js';
 
+// Waypoints System Imports
+import { WaypointManager } from './waypoints/WaypointManager.js';
+import { WaypointKeyboardHandler } from './waypoints/WaypointKeyboardHandler.js';
+
 // Global variables for warp control mode
 let warpControlMode = false;
 let warpGui = null;
@@ -34,6 +38,8 @@ let smartDebugManager = null;
 let spatialManager = null;
 let collisionManager = null;
 let dockingManager = null;
+let waypointManager = null;
+let waypointKeyboardHandler = null;
 
 /**
  * Initialize Three.js-based spatial and collision systems
@@ -380,6 +386,20 @@ debug('UTILITY', '✅ Three.js spatial and collision systems ready');
     solarSystemManager = new SolarSystemManager(scene, camera);
     starfieldManager.setSolarSystemManager(solarSystemManager);
     viewManager.setSolarSystemManager(solarSystemManager);
+
+    // Initialize Waypoints System
+    debug('WAYPOINTS', '🎯 Initializing Waypoints System...');
+    try {
+        waypointManager = new WaypointManager();
+        window.waypointManager = waypointManager;
+        
+        waypointKeyboardHandler = new WaypointKeyboardHandler(waypointManager);
+        window.waypointKeyboardHandler = waypointKeyboardHandler;
+        
+        debug('WAYPOINTS', '✅ Waypoints System initialized successfully');
+    } catch (error) {
+        console.error('❌ Failed to initialize Waypoints System:', error);
+    }
 
     // Verify managers are properly connected
     if (!viewManager.areManagersReady()) {

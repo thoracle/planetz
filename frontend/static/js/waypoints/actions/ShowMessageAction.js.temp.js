@@ -5,9 +5,6 @@
  * optional audio playback, priority levels, and various display styles.
  */
 
-import { WaypointAction, ActionType } from '../WaypointAction.js';
-import { debug } from '../../debug.js';
-
 // Message types
 export const MessageType = {
     INFO: 'info',
@@ -135,13 +132,8 @@ export class ShowMessageAction extends WaypointAction {
                 return { success: true, audioFile: audioFileId, result };
                 
             } else {
-                // Fallback audio playback - check video directory first
-                let audioPath = audioFileId;
-                if (!audioFileId.startsWith('/') && !audioFileId.startsWith('static/')) {
-                    // Try video directory first, then audio directory
-                    audioPath = `/static/video/${audioFileId}`;
-                }
-                const audio = new Audio(audioPath);
+                // Fallback audio playback
+                const audio = new Audio(`/static/audio/${audioFileId}`);
                 audio.volume = volume;
                 
                 return new Promise((resolve, reject) => {
@@ -716,4 +708,4 @@ export class ShowMessageAction extends WaypointAction {
     }
 }
 
-export default ShowMessageAction;
+module.exports = ShowMessageAction;

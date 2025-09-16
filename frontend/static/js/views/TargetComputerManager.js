@@ -3996,38 +3996,7 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
         return false;
     }
 
-    /**
-     * Set a virtual target (for mission waypoints)
-     * @param {string} waypointId - The ID of the waypoint
-     */
-    setVirtualTarget(waypointId) {
-debug('TARGETING', `🎯 Setting virtual target: ${waypointId}`);
-
-        // Create a virtual target object
-        const virtualTarget = {
-            id: waypointId,
-            name: `Mission Waypoint #${waypointId}`,
-            type: 'waypoint',
-            isVirtual: true,
-            position: [0, 0, 0], // Position should be provided by Star Charts or mission system
-            virtual: true
-        };
-
-        // Add to target list if not already there
-        const existingIndex = this.targetObjects.findIndex(target => target.id === waypointId);
-        if (existingIndex === -1) {
-            this.targetObjects.push(virtualTarget);
-            this.targetIndex = this.targetObjects.length - 1;
-        } else {
-            this.targetIndex = existingIndex;
-            this.targetObjects[existingIndex] = virtualTarget;
-        }
-
-        this.currentTarget = virtualTarget;
-        this.updateTargetDisplay();
-debug('TARGETING', `🎯 Virtual target set: ${waypointId}`);
-        return true;
-    }
+    // Removed duplicate setVirtualTarget method - using the enhanced version below
 
     setTargetHUDBorderColor(color) {
         if (this.targetHUD) {
@@ -4705,27 +4674,40 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
     /**
      * Set virtual target (Mission waypoint integration)
      * Creates a virtual target object for mission waypoints
-     * @param {Object} waypointData - Waypoint data with id, name, position, etc.
+     * @param {Object|string} waypointData - Waypoint data object or waypoint ID string
      * @returns {boolean} - True if virtual target was created and set
      */
     setVirtualTarget(waypointData) {
-        if (!waypointData || !waypointData.position) {
+        // Handle both waypoint object and waypoint ID string
+        let waypoint;
+        
+        if (typeof waypointData === 'string') {
+            // If it's a string, treat it as waypoint ID
+            waypoint = window.waypointManager?.getWaypoint(waypointData);
+            if (!waypoint) {
+                console.warn(`🎯 Waypoint not found: ${waypointData}`);
+                return false;
+            }
+        } else if (waypointData && waypointData.position) {
+            // If it's an object with position, use it directly
+            waypoint = waypointData;
+        } else {
             console.warn('🎯 setVirtualTarget: Invalid waypoint data');
             return false;
         }
 
         // Create virtual target object
         const virtualTarget = {
-            id: waypointData.id,
-            name: waypointData.name || 'Mission Waypoint',
+            id: waypoint.id,
+            name: waypoint.name || 'Mission Waypoint',
             type: 'virtual_waypoint',
             position: {
-                x: waypointData.position[0],
-                y: waypointData.position[1],
-                z: waypointData.position[2]
+                x: waypoint.position[0],
+                y: waypoint.position[1],
+                z: waypoint.position[2]
             },
             isVirtual: true,
-            waypointData: waypointData
+            waypointData: waypoint
         };
 
         // Add to target list if not already present
@@ -4859,57 +4841,6 @@ debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
 
     // ========== WAYPOINT SYSTEM INTEGRATION ==========
 
-    /**
-     * Set virtual waypoint as target
-     * @param {string} waypointId - Waypoint ID
-     * @returns {boolean} - Success status
-     */
-    setVirtualTarget(waypointId) {
-        debug('TARGETING', `🎯 setVirtualTarget called with: ${waypointId}`);
-        
-        const waypoint = window.waypointManager?.getWaypoint(waypointId);
-        if (!waypoint) {
-            console.warn(`🎯 Waypoint not found: ${waypointId}`);
-            return false;
-        }
-
-        // Create virtual target object
-        const virtualTarget = {
-            id: waypointId,
-            name: waypoint.name,
-            type: 'waypoint',
-            position: waypoint.position,
-            isVirtual: true,
-            missionId: waypoint.missionId,
-            userData: {
-                waypointType: waypoint.type,
-                triggerRadius: waypoint.triggerRadius,
-                waypointStatus: waypoint.status
-            }
-        };
-
-        // Clear any interruption state when setting new target
-        if (this.interruptedWaypoint && this.interruptedWaypoint.id === waypointId) {
-            this.interruptedWaypoint = null;
-            this.waypointInterruptionTime = null;
-        }
-
-        this.currentTarget = virtualTarget;
-        this.targetIndex = -1; // Virtual targets don't have indices in target list
-        
-        // Update waypoint status
-        if (window.waypointManager) {
-            window.waypointManager.updateWaypoint(waypointId, { 
-                status: 'targeted' 
-            });
-        }
-        
-        // Update display
-        this.updateTargetDisplay();
-        
-        debug('TARGETING', `🎯 Virtual target set: ${waypoint.name}`);
-        return true;
-    }
 
     /**
      * Check if current target is a waypoint
