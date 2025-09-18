@@ -12,7 +12,6 @@ import { MissionNotificationHandler } from '../ui/MissionNotificationHandler.js'
 import { MissionAPIService } from '../services/MissionAPIService.js';
 import { MissionEventService } from '../services/MissionEventService.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
-import { WaypointHUD } from '../ui/WaypointHUD.js';
 import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 
@@ -148,7 +147,6 @@ export class StarfieldManager {
         window.targetComputerManager = this.targetComputerManager;
         
         // Initialize Waypoint HUD
-        this.initializeWaypointHUD();
         
         // Create radar HUD
         this.proximityDetector3D = new ProximityDetector3D(this, document.body);
@@ -193,6 +191,9 @@ export class StarfieldManager {
         
         // Create mission API service
         this.missionAPI = new MissionAPIService();
+        
+        // Expose mission API globally for waypoint system
+        window.missionAPI = this.missionAPI;
         
         // Create mission event service for tracking game events
         this.missionEventService = new MissionEventService();
@@ -2295,6 +2296,12 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                 }
             }
 
+            // Waypoint Test Mission Creation (W key)
+            if (commandKey === 'w') {
+                // Allow waypoint test mission creation anytime (even when docked for testing)
+                this.createWaypointTestMission();
+            }
+
             // Toggle 3D target outlines (O key)
             if (commandKey === 'o') {
                 if (!this.isDocked) {
@@ -2433,17 +2440,21 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
     }
 
     cycleTarget(forward = true) {
-        console.log(`🎯 StarfieldManager.cycleTarget called (forward=${forward})`);
         debug('TARGETING', `🎯 StarfieldManager.cycleTarget called (forward=${forward})`);
         
-        console.log('🎯 StarfieldManager: About to delegate to targetComputerManager', {
-            hasTargetComputerManager: !!this.targetComputerManager,
-            hasCycleTargetMethod: !!this.targetComputerManager?.cycleTarget
-        });
+        if (!this.targetComputerManager) {
+            debug('TARGETING', '🎯 ERROR: targetComputerManager is null/undefined');
+            return;
+        }
+        if (!this.targetComputerManager.cycleTarget) {
+            debug('TARGETING', '🎯 ERROR: targetComputerManager.cycleTarget method does not exist');
+            return;
+        }
         
         // Delegate to target computer manager
+        debug('TARGETING', '🎯 StarfieldManager: Delegating to targetComputerManager.cycleTarget');
         this.targetComputerManager.cycleTarget(forward);
-        console.log('🎯 StarfieldManager: Delegated to targetComputerManager.cycleTarget');
+        debug('TARGETING', '🎯 StarfieldManager: Delegation complete');
 
         // Update local state to match
         this.currentTarget = this.targetComputerManager.currentTarget?.object || this.targetComputerManager.currentTarget;
@@ -4866,6 +4877,79 @@ debug('TARGETING', `✅ Target dummy ships created successfully - target preserv
     }
 
     /**
+     * Create a waypoint test mission for development/testing
+     */
+    createWaypointTestMission() {
+        console.log('🎯 W key pressed - Creating waypoint test mission...');
+        debug('WAYPOINTS', '🎯 W key pressed - Creating waypoint test mission...');
+        
+        // Check if waypoint manager is available
+        console.log('🎯 Checking waypoint manager availability:', !!window.waypointManager);
+        if (!window.waypointManager) {
+            console.log('❌ Waypoint manager not available');
+            this.playCommandFailedSound();
+            this.showHUDEphemeral(
+                'WAYPOINT SYSTEM UNAVAILABLE',
+                'Waypoint manager not initialized'
+            );
+            return;
+        }
+        console.log('✅ Waypoint manager is available');
+        
+        try {
+            // Create the test mission
+            console.log('🎯 Calling waypointManager.createTestMission()...');
+            const result = window.waypointManager.createTestMission();
+            console.log('🎯 createTestMission result:', result);
+            
+            if (result) {
+                console.log('✅ Test mission created successfully');
+                this.playCommandSound();
+                this.showHUDEphemeral(
+                    'TEST MISSION CREATED',
+                    `${result.mission.title} - ${result.waypoints.length} waypoints added`
+                );
+                
+                debug('WAYPOINTS', `✅ Test mission created: ${result.mission.title}`);
+                
+                // Show mission notification if available
+                if (window.missionNotificationHandler && 
+                    typeof window.missionNotificationHandler.showNotification === 'function') {
+                    window.missionNotificationHandler.showNotification(
+                        `Mission Available: ${result.mission.title}`,
+                        'info'
+                    );
+                } else {
+                    // Fallback notification using HUD
+                    setTimeout(() => {
+                        this.showHUDEphemeral(
+                            'MISSION AVAILABLE',
+                            `${result.mission.title} - Navigate to waypoints`
+                        );
+                    }, 2000);
+                }
+                
+            } else {
+                console.log('❌ Test mission creation returned null/false');
+                this.playCommandFailedSound();
+                this.showHUDEphemeral(
+                    'MISSION CREATION FAILED',
+                    'Unable to create waypoint test mission'
+                );
+            }
+            
+        } catch (error) {
+            console.error('❌ Failed to create waypoint test mission:', error);
+            console.error('❌ Error details:', error.stack);
+            this.playCommandFailedSound();
+            this.showHUDEphemeral(
+                'MISSION CREATION ERROR',
+                'System error during mission creation'
+            );
+        }
+    }
+
+    /**
      * Create a visual mesh for a target dummy ship - simple wireframe cube
      * 
      * Visual Size: 1.0m base geometry × 1.5 scale = 1.5m × 1.5m × 1.5m final size
@@ -5004,22 +5088,23 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
                 top: 80px;
                 left: 50%;
                 transform: translateX(-50%);
-                background: linear-gradient(135deg, rgba(40, 40, 40, 0.95), rgba(20, 20, 20, 0.95));
-                color: #ffffff;
-                padding: 16px 24px;
-                border: 2px solid #ff6600;
-                border-radius: 12px;
+                background: rgba(0, 0, 0, 0.9);
+                color: #00ff00;
+                padding: 12px 20px;
+                border: 2px solid #00ff00;
+                border-radius: 0;
                 font-family: "Courier New", monospace;
                 font-size: 14px;
                 font-weight: bold;
                 text-align: center;
                 z-index: 10000;
-                box-shadow: 0 4px 20px rgba(255, 102, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-                backdrop-filter: blur(8px);
+                box-shadow: 0 0 10px #00ff00, inset 0 0 10px rgba(0, 255, 0, 0.1);
+                text-shadow: 0 0 5px #00ff00;
                 min-width: 300px;
                 max-width: 500px;
                 display: none;
                 animation: slideInFromTop 0.3s ease-out;
+                letter-spacing: 1px;
             `;
             
             // Add animation keyframes
@@ -5055,20 +5140,23 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
             document.body.appendChild(this.hudEphemeralElement);
         }
         
-        // Set ephemeral message content with improved styling
+        // Set ephemeral message content with greenscreen terminal styling
         this.hudEphemeralElement.innerHTML = `
             <div style="
                 font-size: 16px; 
-                margin-bottom: 8px; 
-                color: #ffaa00;
-                text-shadow: 0 0 4px rgba(255, 170, 0, 0.5);
-                letter-spacing: 1px;
-            ">⚠ ${title}</div>
+                margin-bottom: 6px; 
+                color: #00ff00;
+                text-shadow: 0 0 8px #00ff00;
+                letter-spacing: 2px;
+                font-weight: bold;
+            ">${title}</div>
             <div style="
-                color: #e0e0e0;
-                font-size: 13px;
-                line-height: 1.4;
-                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+                color: #00ff00;
+                font-size: 12px;
+                line-height: 1.3;
+                text-shadow: 0 0 5px #00ff00;
+                letter-spacing: 1px;
+                opacity: 0.9;
             ">${message}</div>
         `;
         
@@ -5090,6 +5178,17 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
         
         // Play error sound
         this.playCommandFailedSound();
+    }
+
+    /**
+     * Show HUD error message (alias for showHUDEphemeral for backward compatibility)
+     * @param {string} title - Error title
+     * @param {string} message - Error message
+     * @param {number} duration - Duration in milliseconds (default 3000)
+     */
+    showHUDError(title, message, duration = 3000) {
+        // Delegate to showHUDEphemeral for consistent styling
+        this.showHUDEphemeral(title, message, duration);
     }
 
     sortTargetsByDistance() {
@@ -7257,76 +7356,6 @@ debug('UI', 'Testing mission completion UI...');
 debug('UI', 'Mission UI test sequence started');
     }
     
-    /**
-     * Initialize Waypoint HUD system
-     */
-    initializeWaypointHUD() {
-        try {
-            // Create waypoint HUD
-            this.waypointHUD = new WaypointHUD(document.body);
-            
-            // Expose globally for waypoint system integration
-            window.waypointHUD = this.waypointHUD;
-            
-            // Set up waypoint targeting integration
-            this.setupWaypointIntegration();
-            
-            debug('WAYPOINTS', '✅ WaypointHUD initialized successfully');
-            
-        } catch (error) {
-            console.error('❌ Failed to initialize WaypointHUD:', error);
-        }
-    }
-    
-    /**
-     * Set up integration between waypoints and targeting system
-     */
-    setupWaypointIntegration() {
-        if (!this.targetComputerManager || !this.waypointHUD) return;
-        
-        // Listen for target changes to show/hide waypoint HUD
-        const originalSetTarget = this.targetComputerManager.setTarget.bind(this.targetComputerManager);
-        const originalSetVirtualTarget = this.targetComputerManager.setVirtualTarget.bind(this.targetComputerManager);
-        
-        // Override setTarget to handle waypoint HUD visibility and interruption
-        this.targetComputerManager.setTarget = (target) => {
-            // Check if we're interrupting a waypoint before calling original setTarget
-            const currentTarget = this.targetComputerManager.currentTarget;
-            const isInterruptingWaypoint = currentTarget && currentTarget.isVirtual && target && !target.isVirtual;
-            
-            // Store interrupted waypoint before changing target
-            if (isInterruptingWaypoint) {
-                this.targetComputerManager.interruptedWaypoint = currentTarget;
-                this.targetComputerManager.waypointInterruptionTime = Date.now();
-            }
-            
-            const result = originalSetTarget(target);
-            
-            // Hide waypoint HUD when targeting non-waypoint objects
-            if (target && !target.isVirtual && this.waypointHUD.visible) {
-                this.waypointHUD.hide();
-            }
-            
-            return result;
-        };
-        
-        // Override setVirtualTarget to show waypoint HUD
-        this.targetComputerManager.setVirtualTarget = (waypointData) => {
-            const result = originalSetVirtualTarget(waypointData);
-            
-            // Show waypoint HUD when targeting waypoints
-            if (result && waypointData && window.waypointManager) {
-                const waypoint = window.waypointManager.getWaypoint(waypointData.id || waypointData);
-                if (waypoint) {
-                    this.waypointHUD.show(waypoint);
-                }
-            }
-            
-            return result;
-        };
-        
-        debug('WAYPOINTS', '✅ Waypoint-targeting integration configured');
-    }
     
     /**
      * Send enemy destroyed event to mission system

@@ -89,9 +89,11 @@ font-family: 'VT323', monospace;
 --status-info: #0099ff;      /* Information, neutral */
 
 /* Faction Colors */
---faction-friendly: #00ff41;   /* Allied factions */
---faction-neutral: #888888;    /* Neutral/unknown */
+--faction-friendly: #44ff44;   /* Allied factions (corrected) */
+--faction-neutral: #ffff44;    /* Neutral factions (corrected) */
 --faction-hostile: #ff3333;    /* Enemy factions */
+--faction-unknown: #44ffff;    /* Unknown factions */
+--faction-waypoint: #ff00ff;   /* Waypoints */
 ```
 
 ### **Service Colors**

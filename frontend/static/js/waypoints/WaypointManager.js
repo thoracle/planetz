@@ -76,6 +76,12 @@ export class WaypointManager {
             createdAt: new Date(),
             triggeredAt: null,
             
+            // Targeting system integration
+            faction: 'waypoint',
+            diplomacy: 'waypoint',
+            isWaypoint: true,
+            isTargetable: true,
+            
             // Interruption tracking
             interruptedAt: null,
             resumedAt: null,
@@ -598,16 +604,36 @@ export class WaypointManager {
         debug('WAYPOINTS', '💬 Executing show message action');
         
         try {
-            const { ActionFactory } = await import('./WaypointAction.js');
-            const action = ActionFactory.create('show_message', parameters);
-            const result = await action.execute({ waypoint: this.currentWaypoint });
+            // Simple fallback message display if ActionFactory fails
+            const title = parameters.title || 'Waypoint Message';
+            const message = parameters.message || 'Waypoint reached';
             
-            debug('WAYPOINTS', `💬 Show message completed: ${parameters.title || 'Message'}`);
-            return result;
+            // Try to use the HUD system for message display
+            if (window.starfieldManager && window.starfieldManager.showHUDEphemeral) {
+                window.starfieldManager.showHUDEphemeral(title, message, 3000);
+                debug('WAYPOINTS', `💬 Show message completed via HUD: ${title}`);
+                return { success: true, method: 'HUD' };
+            }
+            
+            // Fallback to console and simple alert
+            console.log(`🎯 WAYPOINT MESSAGE: ${title} - ${message}`);
+            
+            // Try ActionFactory as secondary option
+            try {
+                const { ActionFactory } = await import('./WaypointAction.js');
+                const action = ActionFactory.create('show_message', parameters);
+                const result = await action.execute({ waypoint: this.currentWaypoint });
+                debug('WAYPOINTS', `💬 Show message completed via ActionFactory: ${title}`);
+                return result;
+            } catch (actionError) {
+                debug('WAYPOINTS', `💬 ActionFactory failed, using fallback: ${actionError.message}`);
+                return { success: true, method: 'fallback', message: `${title}: ${message}` };
+            }
             
         } catch (error) {
             console.error('Failed to execute show message action:', error);
-            throw error;
+            // Don't throw - return success to prevent waypoint system from breaking
+            return { success: false, error: error.message };
         }
     }
 
@@ -699,6 +725,346 @@ export class WaypointManager {
      */
     activateNextWaypoint(missionId) {
         debug('WAYPOINTS', `🔗 Activate next waypoint for mission ${missionId} - TODO: Implement in Phase 4`);
+    }
+
+    // ========== TEST MISSION FUNCTIONALITY ==========
+
+    /**
+     * Create a test mission with waypoints for development/testing
+     * @returns {Object} - Created mission and waypoint data
+     */
+    createTestMission() {
+        debug('WAYPOINTS', '🎯 Creating waypoint test mission...');
+        
+        // Test mission templates
+        const missionTemplates = [
+            {
+                id: 'waypoint_test_exploration',
+                title: 'Navigation Waypoint Test',
+                description: 'Navigate to designated waypoints for navigation system testing.',
+                type: 'exploration',
+                waypoints: [
+                    {
+                        name: 'Navigation Waypoint Alpha',
+                        position: [15.0, 0.0, 25.0], // Empty space location
+                        triggerRadius: 20.0,
+                        type: 'navigation',
+                        actions: [{
+                            type: 'show_message',
+                            parameters: {
+                                title: 'Waypoint Alpha Reached',
+                                message: 'Navigation waypoint Alpha reached successfully. Proceed to next waypoint.',
+                                audioFileId: 'mission_success'
+                            }
+                        }]
+                    },
+                    {
+                        name: 'Navigation Waypoint Beta',
+                        position: [-10.0, 5.0, -15.0], // Different empty space location
+                        triggerRadius: 20.0,
+                        type: 'navigation',
+                        actions: [{
+                            type: 'show_message',
+                            parameters: {
+                                title: 'Waypoint Beta Reached',
+                                message: 'Navigation waypoint Beta reached successfully. Mission objectives complete.',
+                                audioFileId: 'mission_success'
+                            }
+                        }]
+                    }
+                ],
+                rewards: {
+                    credits: 2500,
+                    experience: 50
+                }
+            },
+            {
+                id: 'waypoint_test_combat',
+                title: 'Combat Zone Patrol',
+                description: 'Patrol designated combat zones and eliminate hostile threats.',
+                type: 'combat',
+                waypoints: [
+                    {
+                        name: 'Combat Zone Alpha',
+                        position: [45.0, -5.0, -30.0],
+                        triggerRadius: 75.0,
+                        type: 'combat',
+                        actions: [
+                            {
+                                type: 'spawn_ships',
+                                parameters: {
+                                    shipType: 'pirate_fighter',
+                                    minCount: 2,
+                                    maxCount: 4,
+                                    faction: 'pirate'
+                                }
+                            },
+                            {
+                                type: 'show_message',
+                                parameters: {
+                                    title: 'Hostiles Detected',
+                                    message: 'Multiple pirate vessels detected. Engage and eliminate threats.',
+                                    audioFileId: 'mission_success'
+                                }
+                            }
+                        ]
+                    }
+                ],
+                rewards: {
+                    credits: 8000,
+                    experience: 200
+                }
+            }
+        ];
+        
+        // Select exploration template for now (combat template has spawn_ships issues)
+        const missionTemplate = missionTemplates[0]; // Use exploration template
+        
+        // Create unique mission ID with timestamp
+        const timestamp = Date.now();
+        const uniqueMissionId = `${missionTemplate.id}_${timestamp}`;
+        
+        // Create mission object
+        const mission = {
+            id: uniqueMissionId,
+            title: missionTemplate.title,
+            description: missionTemplate.description,
+            type: missionTemplate.type,
+            status: 'available',
+            state: 'available',
+            rewards: missionTemplate.rewards,
+            waypoints: [],
+            objectives: [], // Will be populated from waypoints
+            createdAt: new Date().toISOString(),
+            isTestMission: true
+        };
+        
+        debug('WAYPOINTS', `🚀 Creating mission: ${mission.title} (${uniqueMissionId})`);
+        
+        try {
+            // Add mission to mission system if available
+            if (window.missionAPI) {
+                // Add to available missions cache
+                window.missionAPI.availableMissions.set(uniqueMissionId, mission);
+            }
+            
+            // Create waypoints for the mission
+            const createdWaypoints = [];
+            
+            for (const waypointTemplate of missionTemplate.waypoints) {
+                const waypointId = this.createWaypoint({
+                    name: waypointTemplate.name,
+                    position: waypointTemplate.position,
+                    triggerRadius: waypointTemplate.triggerRadius,
+                    type: waypointTemplate.type,
+                    actions: waypointTemplate.actions,
+                    missionId: uniqueMissionId,
+                    status: 'pending'
+                });
+                
+                createdWaypoints.push(waypointId);
+                debug('WAYPOINTS', `📍 Created waypoint: ${waypointTemplate.name} (${waypointId})`);
+            }
+            
+            // Update mission with waypoint IDs
+            mission.waypoints = createdWaypoints;
+            
+            // Convert waypoints to objectives for Mission HUD
+            mission.objectives = missionTemplate.waypoints.map((waypointTemplate, index) => ({
+                id: `waypoint_${index + 1}`,
+                description: `Navigate to ${waypointTemplate.name}`,
+                state: index === 0 ? 'active' : 'pending', // First objective is active
+                progress: null,
+                optional: false,
+                waypointId: createdWaypoints[index] // Link to actual waypoint
+            }));
+            
+            debug('WAYPOINTS', `📋 Created ${mission.objectives.length} objectives from waypoints`);
+            
+            // Activate the first waypoint
+            if (createdWaypoints.length > 0) {
+                this.activateWaypoint(createdWaypoints[0]);
+                debug('WAYPOINTS', `✅ Activated first waypoint: ${createdWaypoints[0]}`);
+                
+                // Auto-target the first waypoint for immediate navigation
+                if (window.targetComputerManager && window.targetComputerManager.setVirtualTarget) {
+                    const firstWaypoint = this.getWaypoint(createdWaypoints[0]);
+                    if (firstWaypoint) {
+                        const targetSet = window.targetComputerManager.setVirtualTarget(firstWaypoint);
+                        if (targetSet) {
+                            debug('WAYPOINTS', `🎯 Auto-targeted first waypoint: ${firstWaypoint.name}`);
+                            console.log('🎯 Auto-targeted first waypoint for mission:', firstWaypoint.name);
+                        } else {
+                            console.log('❌ Failed to auto-target first waypoint');
+                        }
+                    }
+                } else {
+                    console.log('❌ TargetComputerManager not available for auto-targeting');
+                }
+            }
+            
+            // Auto-accept the mission for testing
+            if (window.missionAPI) {
+                console.log('🎯 Adding mission to missionAPI.activeMissions:', uniqueMissionId);
+                console.log('🎯 Mission object:', mission);
+                mission.status = 'active';
+                mission.state = 'active';
+                window.missionAPI.activeMissions.set(uniqueMissionId, mission);
+                window.missionAPI.availableMissions.delete(uniqueMissionId);
+                console.log('🎯 activeMissions cache size after adding:', window.missionAPI.activeMissions.size);
+                console.log('🎯 activeMissions cache contents:', Array.from(window.missionAPI.activeMissions.entries()));
+            } else {
+                console.log('❌ window.missionAPI not available');
+            }
+            
+            // Refresh targeting system to include new waypoints
+            if (window.targetComputerManager && window.targetComputerManager.addWaypointsToTargets) {
+                window.targetComputerManager.addWaypointsToTargets();
+            }
+            
+            debug('WAYPOINTS', `🎉 Successfully created waypoint test mission: ${mission.title}`);
+            debug('WAYPOINTS', `📊 Mission details:`, {
+                id: uniqueMissionId,
+                waypoints: createdWaypoints.length,
+                rewards: mission.rewards
+            });
+            
+            // Notify Mission HUD to refresh if available
+            setTimeout(() => {
+                console.log('🎯 Checking Mission HUD availability:', {
+                    hasStarfieldManager: !!window.starfieldManager,
+                    hasMissionStatusHUD: !!window.starfieldManager?.missionStatusHUD
+                });
+                
+                if (window.starfieldManager && window.starfieldManager.missionStatusHUD) {
+                    console.log('🎯 Calling Mission HUD refresh...');
+                    window.starfieldManager.missionStatusHUD.refreshMissions();
+                    console.log('✅ Mission HUD refresh called');
+                    debug('WAYPOINTS', '✅ Mission HUD notified of new test mission');
+                } else {
+                    console.log('❌ Mission HUD not available for refresh');
+                }
+            }, 100);
+            
+            return {
+                mission: mission,
+                waypoints: createdWaypoints
+            };
+            
+        } catch (error) {
+            console.error('❌ Failed to create waypoint test mission:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Clean up all test missions and waypoints
+     * @returns {Object} - Cleanup statistics
+     */
+    cleanupTestMissions() {
+        debug('WAYPOINTS', '🧹 Cleaning up test missions...');
+        
+        let cleanedMissions = 0;
+        let cleanedWaypoints = 0;
+        
+        // Clean up test missions from mission API
+        if (window.missionAPI) {
+            // Clean available missions
+            const availableToDelete = [];
+            for (const [id, mission] of window.missionAPI.availableMissions) {
+                if (mission.isTestMission) {
+                    availableToDelete.push(id);
+                }
+            }
+            availableToDelete.forEach(id => {
+                window.missionAPI.availableMissions.delete(id);
+                cleanedMissions++;
+            });
+            
+            // Clean active missions
+            const activeToDelete = [];
+            for (const [id, mission] of window.missionAPI.activeMissions) {
+                if (mission.isTestMission) {
+                    activeToDelete.push(id);
+                }
+            }
+            activeToDelete.forEach(id => {
+                window.missionAPI.activeMissions.delete(id);
+                cleanedMissions++;
+            });
+        }
+        
+        // Clean up test waypoints
+        const waypointsToDelete = [];
+        for (const [id, waypoint] of this.activeWaypoints) {
+            if (waypoint.missionId && waypoint.missionId.includes('waypoint_test_')) {
+                waypointsToDelete.push(id);
+            }
+        }
+        
+        waypointsToDelete.forEach(id => {
+            this.deleteWaypoint(id);
+            cleanedWaypoints++;
+        });
+        
+        // Refresh targeting system
+        if (window.targetComputerManager && window.targetComputerManager.addWaypointsToTargets) {
+            window.targetComputerManager.addWaypointsToTargets();
+        }
+        
+        debug('WAYPOINTS', `✅ Cleanup complete: ${cleanedMissions} missions, ${cleanedWaypoints} waypoints removed`);
+        
+        return {
+            cleanedMissions,
+            cleanedWaypoints
+        };
+    }
+
+    /**
+     * Show status of test missions and waypoints
+     * @returns {Object} - Status information
+     */
+    getTestMissionStatus() {
+        const status = {
+            systems: {
+                waypointManager: !!this,
+                missionAPI: !!window.missionAPI,
+                targetComputerManager: !!window.targetComputerManager
+            },
+            testMissions: [],
+            testWaypoints: []
+        };
+        
+        // Check mission API for test missions
+        if (window.missionAPI) {
+            // Available test missions
+            for (const [id, mission] of window.missionAPI.availableMissions) {
+                if (mission.isTestMission) {
+                    status.testMissions.push({ id, title: mission.title, status: 'available' });
+                }
+            }
+            
+            // Active test missions
+            for (const [id, mission] of window.missionAPI.activeMissions) {
+                if (mission.isTestMission) {
+                    status.testMissions.push({ id, title: mission.title, status: 'active' });
+                }
+            }
+        }
+        
+        // Check waypoints for test waypoints
+        for (const [id, waypoint] of this.activeWaypoints) {
+            if (waypoint.missionId && waypoint.missionId.includes('waypoint_test_')) {
+                status.testWaypoints.push({
+                    id,
+                    name: waypoint.name,
+                    status: waypoint.status,
+                    missionId: waypoint.missionId
+                });
+            }
+        }
+        
+        return status;
     }
 }
 

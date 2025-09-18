@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waypoints System Manual Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #00ff00;
+            padding-bottom: 20px;
+        }
+        .test-section {
+            background: #111;
+            border: 1px solid #333;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            color: #00ffff;
+            margin-top: 0;
+        }
+        .test-button {
+            background: #003300;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-family: inherit;
+        }
+        .test-button:hover {
+            background: #004400;
+        }
+        .test-button:active {
+            background: #002200;
+        }
+        .result {
+            background: #001100;
+            border-left: 3px solid #00ff00;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        .error {
+            border-left-color: #ff0000;
+            color: #ff6666;
+        }
+        .success {
+            border-left-color: #00ff00;
+            color: #66ff66;
+        }
+        .warning {
+            border-left-color: #ffff00;
+            color: #ffff66;
+        }
+        .code {
+            background: #000;
+            border: 1px solid #333;
+            padding: 10px;
+            margin: 10px 0;
+            overflow-x: auto;
+            font-size: 11px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .status-loading { background: #ffff00; }
+        .status-success { background: #00ff00; }
+        .status-error { background: #ff0000; }
+        .status-inactive { background: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Waypoints System Manual Test Suite</h1>
+            <p>Testing the complete waypoints implementation - Phase 2 Action System</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 System Initialization</h3>
+            <button class="test-button" onclick="testSystemInit()">Test System Initialization</button>
+            <div id="init-results" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📍 Waypoint Creation & Management</h3>
+            <button class="test-button" onclick="testWaypointCreation()">Create Test Waypoint</button>
+            <button class="test-button" onclick="testWaypointRetrieval()">Test Waypoint Retrieval</button>
+            <button class="test-button" onclick="testWaypointUpdate()">Test Waypoint Update</button>
+            <div id="creation-results" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎬 Action System Testing</h3>
+            <button class="test-button" onclick="testActionRegistry()">Test Action Registry</button>
+            <button class="test-button" onclick="testSpawnShipsAction()">Test Spawn Ships Action</button>
+            <button class="test-button" onclick="testShowMessageAction()">Test Show Message Action</button>
+            <button class="test-button" onclick="testGiveRewardAction()">Test Give Reward Action</button>
+            <div id="action-results" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Targeting & Interruption</h3>
+            <button class="test-button" onclick="testWaypointTargeting()">Test Waypoint Targeting</button>
+            <button class="test-button" onclick="testInterruptionHandling()">Test Interruption Handling</button>
+            <button class="test-button" onclick="testKeyboardShortcuts()">Test Keyboard Shortcuts (W Key)</button>
+            <div id="targeting-results" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>💾 Persistence Testing</h3>
+            <button class="test-button" onclick="testPersistence()">Test Waypoint Persistence</button>
+            <div id="persistence-results" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔗 Integration Testing</h3>
+            <button class="test-button" onclick="testFullWorkflow()">Test Complete Workflow</button>
+            <button class="test-button" onclick="clearAllTests()">Clear All Test Data</button>
+            <div id="integration-results" class="result"></div>
+        </div>
+    </div>
+
+    <!-- Load the waypoints system -->
+    <script src="frontend/static/js/waypoints/WaypointManager.js"></script>
+    <script src="frontend/static/js/waypoints/WaypointAction.js"></script>
+    <script src="frontend/static/js/waypoints/WaypointTrigger.js"></script>
+    <script src="frontend/static/js/waypoints/WaypointPersistence.js"></script>
+    <script src="frontend/static/js/waypoints/WaypointKeyboardHandler.js"></script>
+    <script src="frontend/static/js/waypoints/ActionRegistry.js"></script>
+    
+    <!-- Load action classes -->
+    <script src="frontend/static/js/waypoints/actions/SpawnShipsAction.js"></script>
+    <script src="frontend/static/js/waypoints/actions/PlayCommAction.js"></script>
+    <script src="frontend/static/js/waypoints/actions/ShowMessageAction.js"></script>
+    <script src="frontend/static/js/waypoints/actions/GiveRewardAction.js"></script>
+    <script src="frontend/static/js/waypoints/actions/GiveItemAction.js"></script>
+
+    <!-- Mock dependencies for testing -->
+    <script>
+        // Mock target computer manager for testing
+        window.targetComputerManager = {
+            currentTarget: null,
+            interruptedWaypoint: null,
+            waypointInterruptionTime: null,
+            
+            setTarget(target) {
+                if (this.currentTarget && this.currentTarget.startsWith('waypoint_')) {
+                    this.interruptedWaypoint = this.currentTarget;
+                    this.waypointInterruptionTime = Date.now();
+                }
+                this.currentTarget = target;
+                console.log(`Target set to: ${target}`);
+            },
+            
+            setVirtualTarget(waypointId) {
+                this.currentTarget = waypointId;
+                console.log(`Virtual target set to waypoint: ${waypointId}`);
+            },
+            
+            isCurrentTargetWaypoint() {
+                return this.currentTarget && this.currentTarget.startsWith('waypoint_');
+            },
+            
+            resumeInterruptedWaypoint() {
+                if (this.interruptedWaypoint) {
+                    this.currentTarget = this.interruptedWaypoint;
+                    this.interruptedWaypoint = null;
+                    this.waypointInterruptionTime = null;
+                    return true;
+                }
+                return false;
+            },
+            
+            hasInterruptedWaypoint() {
+                return !!this.interruptedWaypoint;
+            },
+            
+            getInterruptedWaypoint() {
+                return this.interruptedWaypoint;
+            },
+            
+            clearInterruptedWaypoint() {
+                this.interruptedWaypoint = null;
+                this.waypointInterruptionTime = null;
+            }
+        };
+
+        // Mock mission event handler
+        window.missionEventHandler = {
+            awardRewards(params) {
+                console.log('Mock reward awarded:', params);
+                return Promise.resolve({ success: true });
+            }
+        };
+
+        // Mock audio manager
+        window.audioManager = {
+            playAudio(audioId, volume = 1.0) {
+                console.log(`Mock audio played: ${audioId} at volume ${volume}`);
+                return Promise.resolve();
+            }
+        };
+
+        // Mock notification system
+        window.showNotification = function(title, message, duration = 5000, type = 'info') {
+            console.log(`Mock notification: [${type}] ${title}: ${message} (${duration}ms)`);
+        };
+
+        // Initialize waypoint system
+        let waypointManager;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                waypointManager = new WaypointManager();
+                window.waypointManager = waypointManager;
+                console.log('✅ Waypoint system initialized for testing');
+            } catch (error) {
+                console.error('❌ Failed to initialize waypoint system:', error);
+            }
+        });
+    </script>
+
+    <script>
+        function logResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const timestamp = new Date().toLocaleTimeString();
+            const statusClass = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            container.innerHTML += `<div class="${statusClass}">[${timestamp}] ${message}</div>`;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        async function testSystemInit() {
+            clearResults('init-results');
+            
+            try {
+                // Test WaypointManager existence
+                if (!window.waypointManager) {
+                    throw new Error('WaypointManager not initialized');
+                }
+                logResult('init-results', '✅ WaypointManager initialized', 'success');
+
+                // Test ActionRegistry
+                if (!window.waypointManager.actionRegistry) {
+                    throw new Error('ActionRegistry not available');
+                }
+                logResult('init-results', '✅ ActionRegistry available', 'success');
+
+                // Test registered actions
+                const registeredActions = Object.keys(window.waypointManager.actionRegistry.actions);
+                logResult('init-results', `✅ Registered actions: ${registeredActions.join(', ')}`, 'success');
+
+                // Test mock systems
+                const mockSystems = ['targetComputerManager', 'missionEventHandler', 'audioManager'];
+                for (const system of mockSystems) {
+                    if (window[system]) {
+                        logResult('init-results', `✅ Mock ${system} available`, 'success');
+                    } else {
+                        logResult('init-results', `⚠️ Mock ${system} missing`, 'warning');
+                    }
+                }
+
+            } catch (error) {
+                logResult('init-results', `❌ Initialization test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testWaypointCreation() {
+            clearResults('creation-results');
+            
+            try {
+                const testWaypoint = {
+                    id: 'test_waypoint_creation',
+                    name: 'Test Creation Waypoint',
+                    type: 'NAVIGATION',
+                    position: [100, 0, 100],
+                    description: 'A waypoint created during testing',
+                    status: 'ACTIVE'
+                };
+
+                const result = await window.waypointManager.createWaypoint(testWaypoint);
+                logResult('creation-results', `✅ Waypoint created: ${JSON.stringify(result)}`, 'success');
+
+                // Verify creation
+                const retrieved = window.waypointManager.getWaypoint('test_waypoint_creation');
+                if (retrieved) {
+                    logResult('creation-results', '✅ Waypoint successfully retrieved after creation', 'success');
+                } else {
+                    throw new Error('Created waypoint could not be retrieved');
+                }
+
+            } catch (error) {
+                logResult('creation-results', `❌ Waypoint creation failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testWaypointRetrieval() {
+            try {
+                const waypoint = window.waypointManager.getWaypoint('test_waypoint_creation');
+                if (waypoint) {
+                    logResult('creation-results', `✅ Waypoint retrieved: ${waypoint.name}`, 'success');
+                } else {
+                    logResult('creation-results', '⚠️ No waypoint found (create one first)', 'warning');
+                }
+            } catch (error) {
+                logResult('creation-results', `❌ Retrieval failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testWaypointUpdate() {
+            try {
+                const updateData = {
+                    name: 'Updated Test Waypoint',
+                    description: 'This waypoint has been updated during testing'
+                };
+
+                const result = await window.waypointManager.updateWaypoint('test_waypoint_creation', updateData);
+                logResult('creation-results', `✅ Waypoint updated: ${JSON.stringify(result)}`, 'success');
+
+            } catch (error) {
+                logResult('creation-results', `❌ Update failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testActionRegistry() {
+            clearResults('action-results');
+            
+            try {
+                const actionTypes = ['spawn_ships', 'show_message', 'give_reward', 'give_item', 'play_comm'];
+                
+                for (const actionType of actionTypes) {
+                    try {
+                        const action = window.waypointManager.actionRegistry.create(actionType, {});
+                        if (action && typeof action.execute === 'function') {
+                            logResult('action-results', `✅ ${actionType} action created successfully`, 'success');
+                        } else {
+                            throw new Error(`Invalid action instance for ${actionType}`);
+                        }
+                    } catch (error) {
+                        logResult('action-results', `❌ Failed to create ${actionType}: ${error.message}`, 'error');
+                    }
+                }
+
+            } catch (error) {
+                logResult('action-results', `❌ Action registry test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSpawnShipsAction() {
+            try {
+                const params = {
+                    shipType: 'enemy_fighter',
+                    minCount: 2,
+                    maxCount: 5,
+                    formation: 'triangle',
+                    faction: 'hostile'
+                };
+
+                const action = window.waypointManager.actionRegistry.create('spawn_ships', params);
+                const result = await action.execute();
+                
+                logResult('action-results', `✅ SpawnShipsAction executed: ${JSON.stringify(result)}`, 'success');
+
+            } catch (error) {
+                logResult('action-results', `❌ SpawnShipsAction failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testShowMessageAction() {
+            try {
+                const params = {
+                    title: 'Test Message',
+                    message: 'This is a test message from the waypoints system!',
+                    duration: 3000,
+                    audioFileId: 'test_audio',
+                    audioVolume: 0.7
+                };
+
+                const action = window.waypointManager.actionRegistry.create('show_message', params);
+                const result = await action.execute();
+                
+                logResult('action-results', `✅ ShowMessageAction executed: ${JSON.stringify(result)}`, 'success');
+
+            } catch (error) {
+                logResult('action-results', `❌ ShowMessageAction failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGiveRewardAction() {
+            try {
+                const params = {
+                    rewardPackageId: 'test_reward_package',
+                    bonusMultiplier: 1.5,
+                    message: 'Congratulations! You earned a test reward!'
+                };
+
+                const action = window.waypointManager.actionRegistry.create('give_reward', params);
+                const result = await action.execute();
+                
+                logResult('action-results', `✅ GiveRewardAction executed: ${JSON.stringify(result)}`, 'success');
+
+            } catch (error) {
+                logResult('action-results', `❌ GiveRewardAction failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testWaypointTargeting() {
+            clearResults('targeting-results');
+            
+            try {
+                // Create a waypoint for targeting
+                await window.waypointManager.createWaypoint({
+                    id: 'test_targeting_waypoint',
+                    name: 'Targeting Test Waypoint',
+                    type: 'NAVIGATION',
+                    position: [200, 0, 200]
+                });
+
+                // Target the waypoint
+                window.targetComputerManager.setVirtualTarget('test_targeting_waypoint');
+                
+                if (window.targetComputerManager.isCurrentTargetWaypoint()) {
+                    logResult('targeting-results', '✅ Waypoint successfully targeted', 'success');
+                } else {
+                    throw new Error('Waypoint targeting failed');
+                }
+
+                logResult('targeting-results', `Current target: ${window.targetComputerManager.currentTarget}`, 'info');
+
+            } catch (error) {
+                logResult('targeting-results', `❌ Targeting test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testInterruptionHandling() {
+            try {
+                // First target a waypoint
+                window.targetComputerManager.setVirtualTarget('test_targeting_waypoint');
+                
+                // Then interrupt with another target
+                window.targetComputerManager.setTarget('enemy_ship_123');
+                
+                if (window.targetComputerManager.hasInterruptedWaypoint()) {
+                    logResult('targeting-results', '✅ Waypoint interruption detected', 'success');
+                    logResult('targeting-results', `Interrupted waypoint: ${window.targetComputerManager.getInterruptedWaypoint()}`, 'info');
+                    
+                    // Test resumption
+                    const resumed = window.targetComputerManager.resumeInterruptedWaypoint();
+                    if (resumed) {
+                        logResult('targeting-results', '✅ Interrupted waypoint resumed successfully', 'success');
+                    } else {
+                        throw new Error('Failed to resume interrupted waypoint');
+                    }
+                } else {
+                    throw new Error('Waypoint interruption not detected');
+                }
+
+            } catch (error) {
+                logResult('targeting-results', `❌ Interruption test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testKeyboardShortcuts() {
+            try {
+                // Set up interruption scenario
+                window.targetComputerManager.setVirtualTarget('test_targeting_waypoint');
+                window.targetComputerManager.setTarget('other_object');
+                
+                // Simulate W key press
+                const keyEvent = new KeyboardEvent('keydown', {
+                    key: 'w',
+                    code: 'KeyW',
+                    keyCode: 87
+                });
+                
+                document.dispatchEvent(keyEvent);
+                
+                // Check if waypoint was resumed
+                setTimeout(() => {
+                    if (window.targetComputerManager.currentTarget === 'test_targeting_waypoint') {
+                        logResult('targeting-results', '✅ W key successfully resumed waypoint', 'success');
+                    } else {
+                        logResult('targeting-results', '⚠️ W key handler may not be active (requires full game context)', 'warning');
+                    }
+                }, 100);
+
+            } catch (error) {
+                logResult('targeting-results', `❌ Keyboard shortcut test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPersistence() {
+            clearResults('persistence-results');
+            
+            try {
+                // Create a waypoint
+                const testWaypoint = {
+                    id: 'test_persistence_waypoint',
+                    name: 'Persistence Test Waypoint',
+                    type: 'CHECKPOINT',
+                    position: [300, 0, 300],
+                    status: 'COMPLETED'
+                };
+
+                await window.waypointManager.createWaypoint(testWaypoint);
+                
+                // Save to persistence
+                await window.waypointManager.persistence.saveWaypointState('test_persistence_waypoint');
+                logResult('persistence-results', '✅ Waypoint state saved to persistence', 'success');
+
+                // Remove from active waypoints
+                delete window.waypointManager.activeWaypoints['test_persistence_waypoint'];
+                
+                // Load from persistence
+                await window.waypointManager.persistence.loadWaypointState('test_persistence_waypoint');
+                
+                // Verify restoration
+                const restored = window.waypointManager.getWaypoint('test_persistence_waypoint');
+                if (restored) {
+                    logResult('persistence-results', '✅ Waypoint successfully restored from persistence', 'success');
+                    logResult('persistence-results', `Restored waypoint: ${restored.name} (${restored.status})`, 'info');
+                } else {
+                    throw new Error('Waypoint not restored from persistence');
+                }
+
+            } catch (error) {
+                logResult('persistence-results', `❌ Persistence test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testFullWorkflow() {
+            clearResults('integration-results');
+            
+            try {
+                logResult('integration-results', '🚀 Starting full workflow test...', 'info');
+
+                // 1. Create a waypoint with multiple actions
+                const complexWaypoint = {
+                    id: 'test_workflow_waypoint',
+                    name: 'Complex Workflow Waypoint',
+                    type: 'OBJECTIVE',
+                    position: [500, 0, 500],
+                    description: 'A waypoint with multiple actions for workflow testing',
+                    triggers: [{
+                        type: 'proximity',
+                        parameters: { distance: 100 }
+                    }],
+                    actions: [
+                        {
+                            type: 'show_message',
+                            parameters: {
+                                title: 'Waypoint Reached',
+                                message: 'You have reached the complex waypoint!',
+                                duration: 2000
+                            }
+                        },
+                        {
+                            type: 'spawn_ships',
+                            parameters: {
+                                shipType: 'ally_escort',
+                                minCount: 1,
+                                maxCount: 2,
+                                formation: 'line'
+                            }
+                        },
+                        {
+                            type: 'give_reward',
+                            parameters: {
+                                rewardPackageId: 'workflow_test_reward',
+                                bonusMultiplier: 1.2
+                            }
+                        }
+                    ]
+                };
+
+                await window.waypointManager.createWaypoint(complexWaypoint);
+                logResult('integration-results', '✅ Complex waypoint created', 'success');
+
+                // 2. Target the waypoint
+                window.targetComputerManager.setVirtualTarget('test_workflow_waypoint');
+                logResult('integration-results', '✅ Waypoint targeted', 'success');
+
+                // 3. Test interruption and resumption
+                window.targetComputerManager.setTarget('interrupt_object');
+                logResult('integration-results', '✅ Waypoint interrupted', 'success');
+
+                window.targetComputerManager.resumeInterruptedWaypoint();
+                logResult('integration-results', '✅ Waypoint resumed', 'success');
+
+                // 4. Execute all actions
+                const waypoint = window.waypointManager.getWaypoint('test_workflow_waypoint');
+                for (let i = 0; i < waypoint.actions.length; i++) {
+                    const actionConfig = waypoint.actions[i];
+                    const action = window.waypointManager.actionRegistry.create(actionConfig.type, actionConfig.parameters);
+                    await action.execute();
+                    logResult('integration-results', `✅ Action ${i + 1}/${waypoint.actions.length} executed: ${actionConfig.type}`, 'success');
+                }
+
+                // 5. Save state
+                await window.waypointManager.persistence.saveWaypointState('test_workflow_waypoint');
+                logResult('integration-results', '✅ Waypoint state persisted', 'success');
+
+                logResult('integration-results', '🎉 Full workflow test completed successfully!', 'success');
+
+            } catch (error) {
+                logResult('integration-results', `❌ Workflow test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function clearAllTests() {
+            clearResults('integration-results');
+            
+            try {
+                // Clear all test waypoints
+                const testWaypointIds = [
+                    'test_waypoint_creation',
+                    'test_targeting_waypoint', 
+                    'test_persistence_waypoint',
+                    'test_workflow_waypoint'
+                ];
+
+                for (const id of testWaypointIds) {
+                    try {
+                        await window.waypointManager.deleteWaypoint(id);
+                        logResult('integration-results', `✅ Cleared waypoint: ${id}`, 'success');
+                    } catch (error) {
+                        logResult('integration-results', `⚠️ Could not clear waypoint ${id}: ${error.message}`, 'warning');
+                    }
+                }
+
+                // Clear target computer state
+                window.targetComputerManager.clearInterruptedWaypoint();
+                window.targetComputerManager.currentTarget = null;
+
+                // Clear localStorage
+                localStorage.removeItem('waypoint_states');
+
+                logResult('integration-results', '🧹 All test data cleared', 'success');
+
+            } catch (error) {
+                logResult('integration-results', `❌ Clear test data failed: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -58,9 +58,11 @@ sequenceDiagram
                 alt diplomacy = 'enemy'
                     TargetComputerManager->>TargetComputerManager: diplomacyColor = '#ff3333' (red)
                 else diplomacy = 'neutral'
-                    TargetComputerManager->>TargetComputerManager: diplomacyColor = '#ffff00' (yellow)
+                    TargetComputerManager->>TargetComputerManager: diplomacyColor = '#ffff44' (yellow)
                 else diplomacy = 'friendly'
-                    TargetComputerManager->>TargetComputerManager: diplomacyColor = '#00ff41' (green)
+                    TargetComputerManager->>TargetComputerManager: diplomacyColor = '#44ff44' (green)
+                else diplomacy = 'waypoint'
+                    TargetComputerManager->>TargetComputerManager: diplomacyColor = '#ff00ff' (magenta)
                 else diplomacy = null/undefined
                     TargetComputerManager->>TargetComputerManager: Fallback to 'neutral' + yellow
                     TargetComputerManager->>TargetComputerManager: Log null diplomacy warning
@@ -84,8 +86,10 @@ sequenceDiagram
         else Other target
             TargetComputerManager->>TargetComputerManager: Convert diplomacy to wireframe color
             alt enemy: 0xff3333 (red)
-            else neutral: 0xffff00 (yellow)
-            else friendly: 0x00ff41 (green)
+            else neutral: 0xffff44 (yellow)
+            else friendly: 0x44ff44 (green)
+            else unknown: 0x44ffff (cyan)
+            else waypoint: 0xff00ff (magenta)
             end
         end
 

@@ -16,8 +16,8 @@ export class MissionStatusHUD {
         this.activeMissions = [];
         this.updateInterval = null;
         
-        // Initialize Mission API Service
-        this.missionAPI = new MissionAPIService();
+        // Use global Mission API Service (shared with waypoint system)
+        this.missionAPI = window.missionAPI || new MissionAPIService();
         
         // UI components
         this.hudContainer = null;
@@ -249,14 +249,18 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
      * Refresh missions from mission API
      */
     async refreshMissions() {
+        console.log('🎯 MissionStatusHUD.refreshMissions() called');
         try {
             // Get active missions from API
+            console.log('🎯 Calling missionAPI.getActiveMissions()...');
             this.activeMissions = await this.missionAPI.getActiveMissions();
+            console.log('🎯 Got active missions:', this.activeMissions.length, this.activeMissions);
             
             // Process missions for UI display
             this.activeMissions = this.activeMissions.map(mission => this.processMissionForUI(mission));
             
             this.renderMissions();
+            console.log('✅ MissionStatusHUD: Refreshed and rendered missions');
 debug('UI', `🎯 MissionStatusHUD: Refreshed ${this.activeMissions.length} active missions`);
         } catch (error) {
             console.error('🎯 MissionStatusHUD: Error refreshing missions:', error);

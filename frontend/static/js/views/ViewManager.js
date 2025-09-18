@@ -65,6 +65,11 @@ export class ViewManager {
         this.controls.enablePan = false;
         this.controls.enableZoom = true;
         
+        // Disable auto-rotate to prevent camera spinning near waypoints
+        if (this.controls.autoRotate !== undefined) {
+            this.controls.autoRotate = false;
+        }
+        
         // Initialize feedback systems
         this.warpFeedback = new WarpFeedback();
         
@@ -855,6 +860,11 @@ debug('UTILITY', 'Already in requested view, returning');
             this.controls.enableRotate = true;
             this.controls.enablePan = true;
             this.controls.enableZoom = true;
+            
+            // Disable auto-rotate even in edit mode to prevent spinning
+            if (this.controls.autoRotate !== undefined) {
+                this.controls.autoRotate = false;
+            }
             
             // Set target to origin for planet editing
             this.controls.target.set(0, 0, 0);

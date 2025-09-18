@@ -16,7 +16,7 @@
             "description": "General debug messages including ship position"
         },
         "WIREFRAME": {
-            "enabled": false,
+            "enabled": true,
             "description": "Wireframe rendering and management"
         },
         "HITBOX": {
@@ -48,8 +48,12 @@
             "description": "Touch and mouse interactions"
         },
         "MISSIONS": {
-            "enabled": false,
+            "enabled": true,
             "description": "Mission system operations"
+        },
+        "WAYPOINTS": {
+            "enabled": true,
+            "description": "Waypoint system operations"
         },
         "COMBAT": {
             "enabled": false,

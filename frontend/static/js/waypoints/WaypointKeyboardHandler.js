@@ -152,14 +152,19 @@ export class WaypointKeyboardHandler {
         if (nextWaypoint) {
             if (window.targetComputerManager?.setVirtualTarget) {
                 window.targetComputerManager.setVirtualTarget(nextWaypoint.id);
-                this.showFeedback(`Targeting: ${nextWaypoint.name}`, FeedbackType.INFO);
                 
                 debug('WAYPOINTS', `🎯 Targeting next waypoint: ${nextWaypoint.name}`);
             } else {
-                this.showFeedback('Target Computer not available', FeedbackType.WARNING);
+                // Use ephemeral HUD for waypoint messages
+                if (window.starfieldManager?.showHUDEphemeral) {
+                    window.starfieldManager.showHUDEphemeral('SYSTEM ERROR', 'Target Computer not available');
+                }
             }
         } else {
-            this.showFeedback('No active waypoints', FeedbackType.WARNING);
+            // Use ephemeral HUD for waypoint messages
+            if (window.starfieldManager?.showHUDEphemeral) {
+                window.starfieldManager.showHUDEphemeral('NO WAYPOINTS', 'No active waypoints available');
+            }
             debug('WAYPOINTS', '⚠️ No active waypoints to target');
         }
     }
@@ -176,7 +181,10 @@ export class WaypointKeyboardHandler {
         // Get all active waypoints
         const activeWaypoints = window.waypointManager?.getActiveWaypoints() || [];
         if (activeWaypoints.length === 0) {
-            this.showFeedback('No active waypoints', FeedbackType.WARNING);
+            // Use ephemeral HUD for waypoint messages
+            if (window.starfieldManager?.showHUDEphemeral) {
+                window.starfieldManager.showHUDEphemeral('NO WAYPOINTS', 'No active waypoints to cycle');
+            }
             return;
         }
 
@@ -198,11 +206,13 @@ export class WaypointKeyboardHandler {
             this.metrics.waypointCycles++;
             
             const cycleInfo = `${nextIndex + 1}/${activeWaypoints.length}`;
-            this.showFeedback(`Targeting: ${nextWaypoint.name} (${cycleInfo})`, FeedbackType.INFO);
             
             debug('WAYPOINTS', `🔄 Cycled to waypoint: ${nextWaypoint.name} (${cycleInfo})`);
         } else {
-            this.showFeedback('Target Computer not available', FeedbackType.WARNING);
+            // Use ephemeral HUD for waypoint messages
+            if (window.starfieldManager?.showHUDEphemeral) {
+                window.starfieldManager.showHUDEphemeral('SYSTEM ERROR', 'Target Computer not available');
+            }
         }
     }
 
@@ -218,9 +228,11 @@ export class WaypointKeyboardHandler {
         const nextWaypoint = window.waypointManager?.getNextActiveWaypoint();
         if (nextWaypoint && window.targetComputerManager?.setVirtualTarget) {
             window.targetComputerManager.setVirtualTarget(nextWaypoint.id);
-            this.showFeedback(`Next waypoint: ${nextWaypoint.name}`, FeedbackType.INFO);
         } else {
-            this.showFeedback('No waypoints available', FeedbackType.WARNING);
+            // Use ephemeral HUD for waypoint messages
+            if (window.starfieldManager?.showHUDEphemeral) {
+                window.starfieldManager.showHUDEphemeral('NO WAYPOINTS', 'No waypoints available');
+            }
         }
     }
 
@@ -236,7 +248,6 @@ export class WaypointKeyboardHandler {
             
             if (window.targetComputerManager.clearCurrentTarget) {
                 window.targetComputerManager.clearCurrentTarget();
-                this.showFeedback('Waypoint target cleared', FeedbackType.INFO);
                 
                 debug('WAYPOINTS', '🎯 Waypoint target cleared');
             }

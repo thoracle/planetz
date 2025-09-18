@@ -70,8 +70,10 @@ getTargetDiplomacy(targetData) {
 const diplomacy = this.getTargetDiplomacy(currentTargetData);
 let diplomacyColor = '#D0D0D0';
 if (diplomacy === 'enemy') diplomacyColor = '#ff3333';
-else if (diplomacy === 'neutral') diplomacyColor = '#ffff00';
-else if (diplomacy === 'friendly') diplomacyColor = '#00ff41';
+else if (diplomacy === 'neutral') diplomacyColor = '#ffff44';
+else if (diplomacy === 'friendly') diplomacyColor = '#44ff44';
+else if (diplomacy === 'unknown') diplomacyColor = '#44ffff';
+else if (diplomacy === 'waypoint') diplomacyColor = '#ff00ff';
 ```
 
 ### **3. Fixed Directional Arrow Color Determination**
@@ -84,8 +86,10 @@ else if (diplomacy === 'friendly') diplomacyColor = '#00ff41';
 // After: Uses full consolidated logic
 const diplomacy = this.getTargetDiplomacy(currentTargetData);
 if (diplomacy === 'enemy') arrowColor = '#ff3333';
-else if (diplomacy === 'friendly') arrowColor = '#00ff41';
-else if (diplomacy === 'neutral') arrowColor = '#ffff00';
+else if (diplomacy === 'friendly') arrowColor = '#44ff44';
+else if (diplomacy === 'neutral') arrowColor = '#ffff44';
+else if (diplomacy === 'unknown') arrowColor = '#44ffff';
+else if (diplomacy === 'waypoint') arrowColor = '#ff00ff';
 ```
 
 ### **4. Fixed Sub-System Targeting UI Logic**
@@ -114,8 +118,10 @@ isEnemyShip = diplomacy === 'enemy';
 // After: Single consolidated call
 const diplomacy = this.getTargetDiplomacy(currentTargetData);
 if (diplomacy === 'enemy') wireframeColor = 0xff3333;
-else if (diplomacy === 'neutral') wireframeColor = 0xffff00;
-else if (diplomacy === 'friendly') wireframeColor = 0x00ff41;
+else if (diplomacy === 'neutral') wireframeColor = 0xffff44;
+else if (diplomacy === 'friendly') wireframeColor = 0x44ff44;
+else if (diplomacy === 'unknown') wireframeColor = 0x44ffff;
+else if (diplomacy === 'waypoint') wireframeColor = 0xff00ff;
 ```
 
 ---

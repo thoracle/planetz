@@ -79,27 +79,39 @@ debug('AI', `🎯 MissionAPIService: Loaded ${data.missions.length} available mi
      * Get active/accepted missions
      */
     async getActiveMissions() {
+        console.log('🎯 MissionAPIService.getActiveMissions() called');
+        console.log('🎯 Current activeMissions cache size:', this.activeMissions.size);
+        console.log('🎯 Current activeMissions cache:', Array.from(this.activeMissions.entries()));
+        
         try {
             const response = await fetch(`${this.baseURL}/active`);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            if (response.ok) {
+                const data = await response.json();
+                console.log('🎯 Backend response:', data);
+                
+                // Update local cache with backend missions (preserve test missions)
+                data.missions.forEach(mission => {
+                    if (!mission.isTestMission) { // Don't overwrite test missions
+                        this.activeMissions.set(mission.id, mission);
+                    }
+                });
+                
+                console.log('🎯 After backend merge, cache size:', this.activeMissions.size);
+debug('MISSIONS', `🎯 MissionAPIService: Loaded ${data.missions.length} backend missions`);
+            } else {
+                console.log('🎯 MissionAPIService: Backend unavailable, using local cache only');
             }
-            
-            const data = await response.json();
-            
-            // Update local cache
-            this.activeMissions.clear();
-            data.missions.forEach(mission => {
-                this.activeMissions.set(mission.id, mission);
-            });
-            
-debug('MISSIONS', `🎯 MissionAPIService: Loaded ${data.missions.length} active missions`);
-            return data.missions;
-            
         } catch (error) {
-            console.error('🎯 MissionAPIService: Failed to get active missions:', error);
-            return [];
+            console.log('🎯 MissionAPIService: Backend unavailable, using local cache only');
+            console.log('🎯 Backend error:', error.message);
         }
+        
+        // Always return combined local cache (includes test missions + backend missions)
+        const allMissions = Array.from(this.activeMissions.values());
+        console.log('🎯 Final missions to return:', allMissions.length, allMissions);
+debug('MISSIONS', `🎯 MissionAPIService: Returning ${allMissions.length} total active missions (including test missions)`);
+        
+        return allMissions;
     }
     
     /**

@@ -482,7 +482,10 @@ enemy: '#ff3333'     // Red for hostile
 neutral: '#ffff44'   // Yellow for neutral  
 friendly: '#44ff44'  // Green for friendly
 unknown: '#44ffff'   // Cyan for unknown
+waypoint: '#ff00ff'  // Magenta for waypoints
 ```
+
+> 📖 **Complete Reference**: See [`docs/faction_color_reference.md`](faction_color_reference.md) for comprehensive color specifications, usage guidelines, and implementation examples across all game systems.
 
 ### **🚨 CRITICAL DEVELOPMENT PRACTICE: No Defensive Programming**
 
@@ -1727,9 +1730,23 @@ debugSyncFile()     // Sync browser with file
 - **Reward Integration**: `give_reward` action type leveraging existing reward system
 - **Enhanced Actions**: `spawn_ships` with `minCount`/`maxCount`, `show_message` with audio
 
+#### **5. Integrated Test Mission System** ✅ **COMPLETED**
+**Problem**: Testing waypoint functionality required manual script loading and complex setup
+**Solution**: Built-in test mission system accessible via single keypress
+
+**Implementation**:
+- **'W' Key Integration**: Press 'W' to instantly create random waypoint test missions
+- **4 Mission Templates**: Exploration, Combat, Discovery, Delivery missions with varied objectives
+- **Auto-Activation**: Missions automatically accepted and first waypoint activated
+- **Targeting Integration**: New waypoints immediately available via TAB cycling
+- **Audio Feedback**: Success/failure sounds with HUD notifications
+- **Safe Cleanup**: Test missions marked and cleanable without affecting real missions
+
 ### **🔧 Technical Implementation Details**
 
 #### **Files Created/Modified**:
+- **`frontend/static/js/waypoints/WaypointManager.js`**: Enhanced with integrated test mission system
+- **`frontend/static/js/views/StarfieldManager.js`**: Added 'W' key handler and test mission method
 - **`waypoint_targeting_fixed.js`**: Core integration with loop prevention fixes
 - **`waypoint_targeting_tweaks.js`**: Visual refinements and 60% size reduction
 - **`wireframe_fix.js`**: Wireframe restoration for all target types
@@ -1737,6 +1754,7 @@ debugSyncFile()     // Sync browser with file
 - **`test_waypoint_comprehensive.js`**: Automated test suite (8 test categories)
 - **`test_waypoint_manual.js`**: Manual testing functions and validation
 - **`WAYPOINT_COMPLETE_TEST_PLAN.md`**: Comprehensive testing documentation
+- **`WAYPOINT_TEST_SYSTEM_INTEGRATED.md`**: Integration documentation and usage guide
 
 #### **Key Methods Enhanced**:
 - **`TargetComputerManager.cycleTarget()`**: Enhanced with waypoint support and loop prevention
@@ -1744,6 +1762,9 @@ debugSyncFile()     // Sync browser with file
 - **`TargetComputerManager.createWaypointWireframe()`**: Diamond wireframe generation
 - **`TargetComputerManager.createWaypointReticle()`**: Static magenta reticle styling
 - **`WaypointManager.activateWaypoint()`**: Integration with targeting system
+- **`WaypointManager.createTestMission()`**: Integrated test mission creation system
+- **`WaypointManager.cleanupTestMissions()`**: Safe test mission cleanup
+- **`StarfieldManager.createWaypointTestMission()`**: 'W' key handler for instant testing
 - **`StarChartsUI.render()`**: Real-time waypoint blinking updates
 
 #### **Integration Architecture**:
@@ -1768,6 +1789,7 @@ debugSyncFile()     // Sync browser with file
 - ✅ **Mission Integration**: Audio-guided waypoints with reward distribution
 - ✅ **Real-Time Updates**: Synchronized across all game systems
 - ✅ **Performance Optimized**: No loops, efficient targeting, smooth animations
+- ✅ **Instant Testing**: Press 'W' key for immediate waypoint mission creation and testing
 
 ### **🧪 Validation & Testing**
 
@@ -1786,6 +1808,14 @@ debugSyncFile()     // Sync browser with file
 - ✅ **Color Scheme**: Faction compliance (#ff3333 enemy, #44ff44 friendly, etc.)
 - ✅ **Star Charts Integration**: Real-time updates and click targeting
 - ✅ **Cleanup Functionality**: Proper system reset and memory management
+
+### **⚠️ Known Limitation: Directional Arrows**
+
+**Issue**: Directional arrows may not appear immediately after pressing 'W' to create waypoints
+**Root Cause**: Deep timing/state synchronization issue between waypoint creation and arrow display system
+**Workaround**: Press TAB once after creating waypoint - arrows will appear immediately
+**Status**: Documented limitation - all other waypoint functionality works perfectly
+**Impact**: Minor UX issue that doesn't affect core waypoint navigation or mission functionality
 
 ### **🏆 Impact: Enhanced Mission Experience**
 

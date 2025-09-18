@@ -48,6 +48,10 @@ export class TargetComputerManager {
         this.interruptedWaypoint = null;
         this.waypointInterruptionTime = null;
         
+        // Waypoint integration state
+        this._waypointsAdded = false;
+        this._waypointStyleApplied = false;
+        
         // UI elements
         this.targetHUD = null;
         this.wireframeContainer = null;
@@ -1623,40 +1627,42 @@ export class TargetComputerManager {
      * @param {boolean} forward - Whether to cycle forward (true) or backward (false). Default: true
      */
     cycleTarget(forward = true) {
-        console.log(`🎯 TargetComputerManager.cycleTarget called (forward=${forward})`);
-        debug('TARGETING', `🎯 TAB: cycleTarget called (forward=${forward})`);
+        try {
+            debug('TARGETING', `🎯 TargetComputerManager.cycleTarget called (forward=${forward})`);
+        
+        // Add waypoints to targeting system before cycling (only if not already added)
+        if (!this._waypointsAdded) {
+            this.addWaypointsToTargets();
+        }
+        
+        // Debug: Log all conditions that might prevent cycling
+        debug('TARGETING', `🎯 TAB: Checking conditions - isDocked: ${this.viewManager?.starfieldManager?.isDocked}, undockCooldown: ${this.viewManager?.starfieldManager?.undockCooldown ? (Date.now() < this.viewManager.starfieldManager.undockCooldown) : false}, preventTargetChanges: ${this.preventTargetChanges}, targetComputerEnabled: ${this.targetComputerEnabled}, targetObjectsLength: ${this.targetObjects?.length || 0}`);
         
         // Prevent cycling targets while docked
         if (this.viewManager?.starfieldManager?.isDocked) {
-            console.log('🎯 TargetComputerManager: Blocked - ship is docked');
             debug('TARGETING', `🎯 TAB: Blocked - ship is docked`);
             return;
         }
 
         // Prevent cycling during undock cooldown
         if (this.viewManager?.starfieldManager?.undockCooldown && Date.now() < this.viewManager.starfieldManager.undockCooldown) {
-            console.log('🎯 TargetComputerManager: Blocked - undock cooldown active');
             debug('TARGETING', `🎯 TAB: Blocked - undock cooldown active`);
             return;
         }
 
         // Prevent target changes during dummy creation
         if (this.preventTargetChanges) {
-            console.log('🎯 TargetComputerManager: Blocked - preventTargetChanges flag');
-            // console.log(`🎯 Target change prevented during dummy creation`);
+            debug('TARGETING', `🎯 TAB: Blocked - preventTargetChanges flag`);
             return;
         }
 
         if (!this.targetComputerEnabled || this.targetObjects.length === 0) {
-            console.log('🎯 TargetComputerManager: Blocked - not enabled or no targets', {
-                targetComputerEnabled: this.targetComputerEnabled,
-                targetObjectsLength: this.targetObjects.length
-            });
+            debug('TARGETING', `🎯 TAB: Blocked - not enabled or no targets (enabled: ${this.targetComputerEnabled}, targets: ${this.targetObjects.length})`);
             // console.log(`🎯 Cannot cycle targets - enabled: ${this.targetComputerEnabled}, targets: ${this.targetObjects.length}`);
             return;
         }
         
-        console.log('🎯 TargetComputerManager: All checks passed, proceeding with target cycling');
+        debug('TARGETING', '🎯 TAB: All checks passed, proceeding with target cycling');
 
         // Additional debugging for target cycling issues
         if (this.preventTargetChanges) {
@@ -1693,7 +1699,14 @@ export class TargetComputerManager {
 
         // Get the target data directly from our target list
         const targetData = this.targetObjects[this.targetIndex];
-        this.currentTarget = targetData.object || targetData; // Store the original object, not the processed target data
+        
+        // For waypoints, use the targetData itself (which has isWaypoint flag)
+        // For other objects, use the object property if it exists
+        if (targetData && targetData.isWaypoint) {
+            this.currentTarget = targetData; // Use waypoint target data directly
+        } else {
+            this.currentTarget = targetData.object || targetData; // Store the original object, not the processed target data
+        }
         
         // Handle scanner flag management more robustly
         if (previousTarget && targetData) {
@@ -1788,21 +1801,34 @@ export class TargetComputerManager {
         }
 
         // Create new wireframe and refresh HUD
-        this.createTargetWireframe();
+        debug('TARGETING', `🎯 TAB: About to create wireframe for target: ${this.currentTarget?.name}`);
+        
+        // Handle waypoint-specific targeting
+        if (this.currentTarget && this.currentTarget.isWaypoint) {
+            debug('WAYPOINTS', `🎯 Waypoint targeted: ${this.currentTarget.name}`);
+            this.createWaypointWireframe();
+        } else {
+            this.createTargetWireframe();
+        }
+        
+        debug('TARGETING', `🎯 TAB: Wireframe creation completed, wireframe exists: ${!!this.targetWireframe}`);
         this.updateTargetDisplay();
         
         // Start monitoring the selected target's range (for both manual and automatic cycles)
         this.startRangeMonitoring();
         
-        console.log(`🎯 TargetComputerManager: cycleTarget completed - new target: ${this.currentTarget?.name || 'none'} (ID: ${this.currentTarget?.id || 'none'})`);
         debug('TARGETING', `🎯 TAB: cycleTarget completed - new target: ${this.currentTarget?.name || 'none'} (ID: ${this.currentTarget?.id || 'none'})`);
         
         // Notify Star Charts to update blinking target if it's open
-        console.log('🎯 TargetComputerManager: About to call notifyStarChartsOfTargetChange()');
         debug('TARGETING', `🎯 TAB: About to call notifyStarChartsOfTargetChange()`);
         this.notifyStarChartsOfTargetChange();
-        console.log('🎯 TargetComputerManager: Called notifyStarChartsOfTargetChange()');
         debug('TARGETING', `🎯 TAB: Called notifyStarChartsOfTargetChange()`);
+        debug('TARGETING', `🎯 TAB: Called notifyStarChartsOfTargetChange()`);
+        
+        } catch (error) {
+            console.error('🎯 ERROR in TargetComputerManager.cycleTarget:', error);
+            debug('TARGETING', `🎯 ERROR in cycleTarget: ${error.message}`);
+        }
     }
 
     /**
@@ -1865,9 +1891,22 @@ export class TargetComputerManager {
      * Create wireframe for current target
      */
     createTargetWireframe() {
-        if (!this.currentTarget) return;
+        debug('TARGETING', `🖼️ createTargetWireframe() called for target: ${this.currentTarget?.name || 'none'}`);
+        
+        if (!this.currentTarget) {
+            debug('TARGETING', '🖼️ No current target - aborting wireframe creation');
+            return;
+        }
+
+        // SPECIAL CASE: If this is a waypoint, delegate to waypoint wireframe creation
+        if (this.currentTarget && this.currentTarget.isWaypoint) {
+            debug('WAYPOINTS', `🎯 Delegating to createWaypointWireframe for: ${this.currentTarget.name}`);
+            this.createWaypointWireframe();
+            return;
+        }
 
         const childrenBefore = this.wireframeScene.children.length;
+        debug('TARGETING', `🖼️ Wireframe scene children before: ${childrenBefore}`);
 
         // Clear any existing wireframe first to prevent duplicates
         this.clearTargetWireframe();
@@ -1962,24 +2001,34 @@ export class TargetComputerManager {
            isEnemyShip = diplomacy === 'enemy' && currentTargetData?.isShip;
            debug('TARGETING', `🎯 TARGET_SWITCH: Final isEnemyShip determination: ${isEnemyShip} (diplomacy: ${diplomacy}, isShip: ${currentTargetData?.isShip})`);
 
-           if (diplomacy === 'enemy') {
-               wireframeColor = 0xff3333; // Enemy red
+           // Handle waypoints first (magenta)
+           if (currentTargetData?.type === 'waypoint' || currentTargetData?.isVirtual) {
+               wireframeColor = 0xff00ff; // Magenta for waypoints
+               
+           } else if (diplomacy === 'enemy') {
+               wireframeColor = 0xff3333; // Red for hostile (docs/restart.md)
 
            } else if (diplomacy === 'neutral') {
-               wireframeColor = 0xffff00; // Neutral yellow
+               wireframeColor = 0xffff44; // Yellow for neutral (docs/restart.md)
 
            } else if (diplomacy === 'friendly') {
-               wireframeColor = 0x00ff41; // Friendly green
+               wireframeColor = 0x44ff44; // Green for friendly (docs/restart.md)
 
            } else if (info?.type === 'star') {
-               wireframeColor = 0xffff00; // Stars are yellow
+               wireframeColor = 0xffff44; // Stars are neutral yellow
 
            } else if (diplomacy === 'unknown') {
-               wireframeColor = 0x44ffff; // Unknown faction cyan
+               wireframeColor = 0x44ffff; // Cyan for unknown (docs/restart.md)
 
            } else {
-
+               wireframeColor = 0x44ffff; // Default to cyan for unknown (docs/restart.md)
            }
+       }
+
+       // Override color for waypoints
+       if (this.currentTarget && this.currentTarget.isWaypoint) {
+           wireframeColor = 0xff00ff; // Magenta for waypoints
+           debug('WAYPOINTS', '🎨 Using magenta color for waypoint wireframe');
        }
 
             const wireframeMaterial = new this.THREE.LineBasicMaterial({
@@ -2061,9 +2110,11 @@ export class TargetComputerManager {
 
             this.wireframeCamera.position.z = Math.max(radius * 3, 3);
             this.targetWireframe.rotation.set(0.5, 0, 0.3);
+            
+            debug('TARGETING', `🖼️ Wireframe creation SUCCESS: target=${this.currentTarget?.name}, wireframeExists=${!!this.targetWireframe}, wireframeType=${this.targetWireframe?.constructor?.name}, sceneChildren=${this.wireframeScene.children.length}`);
 
         } catch (error) {
-            debug('TARGETING', `🎯 TARGET_SWITCH: Error creating target wireframe: ${error.message}`);
+            debug('TARGETING', `🖼️ Wireframe creation ERROR: ${error.message}`);
             console.error('Error creating target wireframe:', error);
         }
     }
@@ -2274,23 +2325,31 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: About to get target info 
 if (window?.DEBUG_TCM) debug('INSPECTION', `🎯 DEBUG: Final info object:`, info);
         
         // Update HUD border color based on diplomacy using consolidated logic
-        // Check discovery status first - undiscovered objects should always show as unknown
-        // Also check if object has valid position - objects without positions should show as unknown
-        const hasValidPosition = this.getTargetPosition(currentTargetData) !== null;
-        const isObjectDiscoveredForDiplomacy = currentTargetData?.isShip || (this.isObjectDiscovered(currentTargetData) && hasValidPosition);
-        const diplomacy = isObjectDiscoveredForDiplomacy ? this.getTargetDiplomacy(currentTargetData) : 'unknown';
+        // SPECIAL CASE: Handle waypoints first (always magenta)
+        const isWaypointForColors = currentTargetData?.type === 'waypoint' || currentTargetData?.isWaypoint || currentTargetData?.isVirtual;
         let diplomacyColor = '#44ffff'; // Default teal for unknown
+        
+        if (isWaypointForColors) {
+            diplomacyColor = '#ff00ff'; // Magenta for waypoints
+            debug('WAYPOINTS', `🎨 Using magenta HUD color for waypoint: ${currentTargetData?.name}`);
+        } else {
+            // Check discovery status first - undiscovered objects should always show as unknown
+            // Also check if object has valid position - objects without positions should show as unknown
+            const hasValidPosition = this.getTargetPosition(currentTargetData) !== null;
+            const isObjectDiscoveredForDiplomacy = currentTargetData?.isShip || (this.isObjectDiscovered(currentTargetData) && hasValidPosition);
+            const diplomacy = isObjectDiscoveredForDiplomacy ? this.getTargetDiplomacy(currentTargetData) : 'unknown';
 
-        if (diplomacy === 'enemy') {
-            diplomacyColor = '#ff3333'; // Enemy red
-        } else if (diplomacy === 'neutral') {
-            diplomacyColor = '#ffff00'; // Neutral yellow
-        } else if (diplomacy === 'friendly') {
-            diplomacyColor = '#00ff41'; // Friendly green
-        } else if (diplomacy === 'unknown') {
-            diplomacyColor = '#44ffff'; // Unknown teal
-        } else if (info?.type === 'star') {
-            diplomacyColor = '#ffff00'; // Stars are neutral yellow
+            if (diplomacy === 'enemy') {
+                diplomacyColor = '#ff3333'; // Enemy red
+            } else if (diplomacy === 'neutral') {
+                diplomacyColor = '#ffff00'; // Neutral yellow
+            } else if (diplomacy === 'friendly') {
+                diplomacyColor = '#00ff41'; // Friendly green
+            } else if (diplomacy === 'unknown') {
+                diplomacyColor = '#44ffff'; // Unknown teal
+            } else if (info?.type === 'star') {
+                diplomacyColor = '#ffff00'; // Stars are neutral yellow
+            }
         }
         
         this.targetHUD.style.borderColor = diplomacyColor;
@@ -2515,7 +2574,10 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 Sub-targeting check: isEnemyShip
         // Prefer currentTargetData for display name/type to avoid mismatches
         // Check discovery status to determine if we should show real name or "Unknown"
         // Use the same logic as diplomacy - require both discovery and valid position
-        const isObjectDiscovered = currentTargetData?.isShip || (this.isObjectDiscovered(currentTargetData) && hasValidPosition);
+        // SPECIAL CASE: Waypoints are always considered "discovered" since they're mission targets
+        const isWaypoint = currentTargetData?.isVirtual || currentTargetData?.type === 'waypoint' || currentTargetData?.isWaypoint;
+        const hasValidPositionForDisplay = this.getTargetPosition(currentTargetData) !== null;
+        const isObjectDiscovered = currentTargetData?.isShip || isWaypoint || (this.isObjectDiscovered(currentTargetData) && hasValidPositionForDisplay);
         let displayName;
         
         if (!isObjectDiscovered && !currentTargetData?.isShip) {
@@ -2679,6 +2741,12 @@ debug('TARGETING', `⚠️ Current target not found in target list - may have be
         // For manual selections (including Star Charts), try to use the current target directly
         if (this.isManualSelection && this.currentTarget && this.currentTarget.name) {
 debug('TARGETING', `🎯 Using manual selection target data directly: ${this.currentTarget.name}`, this.currentTarget);
+            return this.processTargetData(this.currentTarget);
+        }
+        
+        // SPECIAL CASE: Handle virtual waypoints that may not be in targetObjects yet
+        if (this.currentTarget && (this.currentTarget.isWaypoint || this.currentTarget.isVirtual || this.currentTarget.type === 'waypoint')) {
+            debug('WAYPOINTS', `🎯 Using virtual waypoint target data directly: ${this.currentTarget.name}`);
             return this.processTargetData(this.currentTarget);
         }
         
@@ -2887,6 +2955,24 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
                     console.warn('🎯 Error setting star properties:', e);
                 }
             }
+        }
+
+        // SPECIAL CASE: Handle waypoints first (before ship check)
+        if (targetData.type === 'waypoint' || targetData.isWaypoint || targetData.isVirtual) {
+            debug('WAYPOINTS', `🎯 Processing waypoint in processTargetData: ${targetData.name}`);
+            return {
+                object: this.currentTarget,
+                name: targetData.name || 'Mission Waypoint',
+                type: 'waypoint',
+                isShip: false,
+                isWaypoint: true,
+                isVirtual: targetData.isVirtual || true,
+                distance: targetData.distance || 0,
+                faction: 'waypoint',
+                diplomacy: 'waypoint',
+                isDiscovered: true, // Waypoints are always "discovered" since they're mission targets
+                ...targetData // Include all original properties
+            };
         }
 
         // Check if this is a ship (either 'ship' or 'enemy_ship' type, or has isShip flag)
@@ -3144,22 +3230,32 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         }
         
         // Check if object is discovered BEFORE setting colors and final name
-        const isDiscovered = currentTargetData?.isShip || this.isObjectDiscovered(currentTargetData);
+        // SPECIAL CASE: Waypoints are always considered "discovered" since they're mission targets
+        const isWaypointForName = currentTargetData?.type === 'waypoint' || currentTargetData?.isWaypoint || currentTargetData?.isVirtual;
+        const isDiscovered = currentTargetData?.isShip || isWaypointForName || this.isObjectDiscovered(currentTargetData);
         
-        // Override target name for undiscovered objects
-        if (!isDiscovered && !currentTargetData.isShip) {
+        // Override target name for undiscovered objects (but not waypoints)
+        if (!isDiscovered && !currentTargetData.isShip && !isWaypointForName) {
             targetName = 'Unknown';
             // Only log once per target when showing as unknown
             if (this._lastUnknownTarget !== this.currentTarget?.name) {
                 debug('TARGETING', `🎯 RETICLE: Undiscovered object "${this.currentTarget?.name}" showing as "Unknown"`);
                 this._lastUnknownTarget = this.currentTarget?.name;
             }
+        } else if (isWaypointForName) {
+            // Ensure waypoints show their proper name
+            targetName = currentTargetData?.name || 'Mission Waypoint';
+            debug('WAYPOINTS', `🎨 Using waypoint name for reticle: ${targetName}`);
         }
         
         // Determine reticle color based on discovery status and diplomacy
         let reticleColor = '#44ffff'; // Default teal for unknown
         
-        if (!isDiscovered) {
+        // SPECIAL CASE: Handle waypoints first (always magenta)
+        if (currentTargetData?.type === 'waypoint' || currentTargetData?.isWaypoint || currentTargetData?.isVirtual) {
+            reticleColor = '#ff00ff'; // Magenta for waypoints
+            debug('WAYPOINTS', `🎨 Using magenta reticle color for waypoint: ${currentTargetData?.name}`);
+        } else if (!isDiscovered) {
             // Undiscovered objects use unknown faction color (cyan)
             reticleColor = '#44ffff'; // Cyan for unknown/undiscovered
         } else {
@@ -3290,15 +3386,23 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
 
             // Get target info for color using consolidated diplomacy logic
             const currentTargetData = this.getCurrentTargetData();
-            const diplomacy = this.getTargetDiplomacy(currentTargetData);
-            let arrowColor = '#44ffff';
-
-            if (diplomacy === 'enemy') {
-                arrowColor = '#ff3333';
-            } else if (diplomacy === 'friendly') {
-                arrowColor = '#00ff41';
-            } else if (diplomacy === 'neutral') {
-                arrowColor = '#ffff00';
+            let arrowColor = '#44ffff'; // Default teal
+            
+            // SPECIAL CASE: Handle waypoints first (check both target data and current target)
+            const isWaypointFromData = currentTargetData?.type === 'waypoint' || currentTargetData?.isWaypoint || currentTargetData?.isVirtual;
+            const isWaypointFromTarget = this.currentTarget?.type === 'waypoint' || this.currentTarget?.isWaypoint || this.currentTarget?.isVirtual;
+            
+            if (isWaypointFromData || isWaypointFromTarget) {
+                arrowColor = '#ff00ff'; // Magenta for waypoints
+            } else if (currentTargetData) {
+                const diplomacy = this.getTargetDiplomacy(currentTargetData);
+                if (diplomacy === 'enemy') {
+                    arrowColor = '#ff3333';
+                } else if (diplomacy === 'friendly') {
+                    arrowColor = '#00ff41';
+                } else if (diplomacy === 'neutral') {
+                    arrowColor = '#ffff00';
+                }
             }
 
             // Determine which arrow to show based on the strongest component
@@ -3999,6 +4103,22 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
     // Removed duplicate setVirtualTarget method - using the enhanced version below
 
     setTargetHUDBorderColor(color) {
+        // Check if current target is a waypoint - preserve magenta color
+        if (this.currentTarget && this.currentTarget.isWaypoint) {
+            const waypointColor = '#ff00ff'; // Magenta
+            debug('WAYPOINTS', `🎨 Preserving waypoint color ${waypointColor} instead of ${color}`);
+            
+            if (this.targetHUD) {
+                this.targetHUD.style.borderColor = waypointColor;
+                this.targetHUD.style.color = waypointColor;
+            }
+            
+            // Update scan line color to match waypoint
+            this.updateScanLineColor(waypointColor);
+            return;
+        }
+        
+        // Normal target color handling
         if (this.targetHUD) {
             this.targetHUD.style.borderColor = color;
             this.targetHUD.style.color = color;
@@ -4096,7 +4216,8 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
             const isEnemy = (info?.diplomacy || '').toLowerCase() === 'enemy';
             const isStar = info?.type === 'star' || (this.getStarSystem && this.getStarSystem() && info?.name === this.getStarSystem().star_name);
             const isPlanet = info?.type === 'planet';
-            const canUse = !isEnemy && isObjectDiscovered; // Only show services for discovered, non-enemy objects
+            const isWaypoint = this.currentTarget?.isWaypoint || this.currentTarget?.isVirtual || info?.type === 'waypoint';
+            const canUse = !isEnemy && isObjectDiscovered && !isWaypoint; // Exclude waypoints from showing services
 
             const availability = isStar ? {
                 repairRefuel: false,
@@ -4513,6 +4634,16 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
     getTargetPosition(target) {
         if (!target) return null;
         
+        // SPECIAL CASE: Handle virtual waypoints first
+        if (target.isVirtual || target.isWaypoint || target.type === 'waypoint') {
+            if (target.position && typeof target.position === 'object' && 
+                typeof target.position.x === 'number' && 
+                typeof target.position.y === 'number' && 
+                typeof target.position.z === 'number') {
+                return new this.THREE.Vector3(target.position.x, target.position.y, target.position.z);
+            }
+        }
+        
         // Check for Three.js Vector3 object first
         if (target.position && typeof target.position.clone === 'function') {
             return target.position;
@@ -4700,18 +4831,24 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
         const virtualTarget = {
             id: waypoint.id,
             name: waypoint.name || 'Mission Waypoint',
-            type: 'virtual_waypoint',
+            type: 'waypoint', // Set as waypoint type for proper color coding
             position: {
                 x: waypoint.position[0],
                 y: waypoint.position[1],
                 z: waypoint.position[2]
             },
             isVirtual: true,
+            isWaypoint: true, // Additional flag for clarity
             waypointData: waypoint
         };
 
-        // Add to target list if not already present
-        const existingIndex = this.targetObjects.findIndex(t => t.id === virtualTarget.id);
+        // Enhanced duplicate check - check multiple criteria to prevent duplicates
+        const existingIndex = this.targetObjects.findIndex(t => 
+            t.id === virtualTarget.id ||
+            (t.isWaypoint && t.name === virtualTarget.name) ||
+            (t.isVirtual && t.name === virtualTarget.name) ||
+            (t.type === 'waypoint' && t.name === virtualTarget.name)
+        );
         
         if (existingIndex >= 0) {
             // Update existing virtual target
@@ -4724,9 +4861,24 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
         }
 
         this.currentTarget = virtualTarget;
+        
+        // Enable target computer for waypoint targeting
+        if (!this.targetComputerEnabled) {
+            this.targetComputerEnabled = true;
+            debug('WAYPOINTS', '🎯 Auto-enabled target computer for waypoint targeting');
+        }
+        
+        // Create wireframe for the waypoint target
+        this.createTargetWireframe(); // This will delegate to createWaypointWireframe() for waypoints
+        
         this.updateTargetDisplay();
+        
+        // Note: Directional arrows may not appear immediately after W key press
+        // This is a known timing issue. Use TAB to cycle targets if arrows don't appear.
 
-debug('TARGETING', `🎯 Star Charts: Virtual target set to ${virtualTarget.name}`);
+        console.log('🎯 Virtual target created:', virtualTarget);
+        console.log('🎯 Virtual target position:', virtualTarget.position);
+        debug('TARGETING', `🎯 Star Charts: Virtual target set to ${virtualTarget.name}`);
         return true;
     }
 
@@ -4931,26 +5083,6 @@ debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
         debug('WAYPOINTS', '🎯 Cleared interrupted waypoint state');
     }
 
-    /**
-     * Enhanced cycleTarget with waypoint notification
-     */
-    cycleTarget() {
-        // Store original method behavior
-        const originalTarget = this.currentTarget;
-        
-        // Call original cycle logic (this would need to be the existing cycleTarget method)
-        // For now, we'll implement basic cycling
-        if (this.targetObjects && this.targetObjects.length > 0) {
-            this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
-            this.currentTarget = this.targetObjects[this.targetIndex];
-            this.updateTargetDisplay();
-        }
-        
-        // Notify Star Charts of target change if available
-        this.notifyStarChartsOfTargetChange();
-        
-        debug('TARGETING', `🎯 Target cycled to: ${this.currentTarget?.name || 'none'}`);
-    }
 
     /**
      * Notify Star Charts of target change for real-time updates
@@ -4972,6 +5104,299 @@ debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
                 debug('TARGETING', '🎯 AFTER frame Star Charts render');
             }
         });
+    }
+
+    // ========== WAYPOINT INTEGRATION METHODS ==========
+    
+    /**
+     * Get faction color based on diplomacy status
+     * @param {Object} target - Target object
+     * @returns {string} Hex color code
+     */
+    getFactionColor(target) {
+        // Faction colors from docs/restart.md
+        const FACTION_COLORS = {
+            hostile: '#ff3333',    // Red
+            neutral: '#ffff44',    // Yellow  
+            friendly: '#44ff44',   // Green
+            unknown: '#44ffff',    // Cyan
+            waypoint: '#ff00ff'    // Magenta - special case for waypoints
+        };
+        
+        // Special handling for waypoints
+        if (target && (target.isWaypoint || target.faction === 'waypoint' || target.diplomacy === 'waypoint')) {
+            return FACTION_COLORS.waypoint;
+        }
+        
+        // Standard faction color resolution
+        const diplomacy = target?.diplomacy || target?.faction || 'unknown';
+        return FACTION_COLORS[diplomacy] || FACTION_COLORS.unknown;
+    }
+
+    /**
+     * Add waypoints to the targeting system
+     * @returns {number} Number of waypoints added
+     */
+    addWaypointsToTargets() {
+        if (!window.waypointManager) {
+            debug('WAYPOINTS', '❌ WaypointManager not available');
+            return 0;
+        }
+        
+        // Prevent duplicate additions
+        if (this._waypointsAdded) {
+            debug('WAYPOINTS', '⏭️ Waypoints already added, skipping');
+            return 0;
+        }
+        
+        const activeWaypoints = window.waypointManager.getActiveWaypoints();
+        let addedCount = 0;
+        
+        debug('WAYPOINTS', `🎯 Processing ${activeWaypoints.length} active waypoints`);
+        
+        for (const waypoint of activeWaypoints) {
+            // Enhanced duplicate check - check ID, name, and isVirtual flag
+            const existingIndex = this.targetObjects.findIndex(t => 
+                t.id === waypoint.id || 
+                (t.isWaypoint && t.name === waypoint.name) ||
+                (t.isVirtual && t.name === waypoint.name) ||
+                (t.type === 'waypoint' && t.name === waypoint.name)
+            );
+            if (existingIndex !== -1) {
+                debug('WAYPOINTS', `⏭️ Waypoint ${waypoint.name} already exists at index ${existingIndex}, skipping`);
+                continue;
+            }
+            
+            // Create waypoint target with explicit faction assignment
+            const waypointTarget = {
+                id: waypoint.id,
+                name: waypoint.name,
+                displayName: waypoint.name,
+                type: 'waypoint',
+                isWaypoint: true
+            };
+            
+            // Explicitly set faction and diplomacy (force assignment)
+            waypointTarget.faction = 'waypoint';
+            waypointTarget.diplomacy = 'waypoint';
+            
+            // DEBUG: Verify faction assignment immediately
+            console.log(`🔧 IMMEDIATE CHECK - Waypoint ${waypoint.name}:`);
+            console.log(`   faction: ${waypointTarget.faction}`);
+            console.log(`   diplomacy: ${waypointTarget.diplomacy}`);
+            console.log(`   isWaypoint: ${waypointTarget.isWaypoint}`);
+            
+            // Add remaining properties (carefully to avoid overwriting faction)
+            waypointTarget.position = {
+                x: waypoint.position[0],
+                y: waypoint.position[1], 
+                z: waypoint.position[2]
+            };
+            waypointTarget.waypointData = waypoint;
+            waypointTarget.distance = 0;
+            waypointTarget.color = '#ff00ff'; // Magenta
+            waypointTarget.isTargetable = true;
+            
+            // Re-assign faction and diplomacy to ensure they stick
+            waypointTarget.faction = 'waypoint';
+            waypointTarget.diplomacy = 'waypoint';
+            
+            // DEBUG: Check if property assignment worked
+            console.log(`🔧 AFTER PROPERTY ASSIGNMENT - Waypoint ${waypoint.name}:`);
+            console.log(`   faction: ${waypointTarget.faction}`);
+            console.log(`   diplomacy: ${waypointTarget.diplomacy}`);
+            console.log(`   faction === 'waypoint': ${waypointTarget.faction === 'waypoint'}`);
+            console.log(`   Object.hasOwnProperty('faction'): ${waypointTarget.hasOwnProperty('faction')}`);
+            console.log(`   Object.getOwnPropertyDescriptor:`, Object.getOwnPropertyDescriptor(waypointTarget, 'faction'));
+            
+            // Create object property with waypoint properties
+            waypointTarget.object = {
+                position: {
+                    x: waypoint.position[0],
+                    y: waypoint.position[1],
+                    z: waypoint.position[2]
+                },
+                id: waypoint.id,
+                name: waypoint.name,
+                displayName: waypoint.name,
+                type: 'waypoint',
+                isWaypoint: true,
+                faction: 'waypoint',
+                diplomacy: 'waypoint',
+                userData: {
+                    type: 'waypoint',
+                    faction: 'waypoint',
+                    diplomacy: 'waypoint',
+                    isWaypoint: true
+                }
+            };
+            
+            // Calculate distance if camera is available
+            if (this.camera && this.camera.position) {
+                const dx = waypointTarget.position.x - this.camera.position.x;
+                const dy = waypointTarget.position.y - this.camera.position.y;
+                const dz = waypointTarget.position.z - this.camera.position.z;
+                waypointTarget.distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            } else {
+                debug('WAYPOINTS', '⚠️ Camera not available for distance calculation');
+            }
+            
+            this.targetObjects.push(waypointTarget);
+            addedCount++;
+            
+            // DEBUG: Check faction after adding to targetObjects
+            console.log(`🔧 AFTER PUSH TO TARGETOBJECTS - Waypoint ${waypoint.name}:`);
+            console.log(`   faction: ${waypointTarget.faction}`);
+            console.log(`   diplomacy: ${waypointTarget.diplomacy}`);
+            
+            // Also check the object in targetObjects
+            const addedObject = this.targetObjects[this.targetObjects.length - 1];
+            console.log(`🔧 OBJECT IN TARGETOBJECTS:`);
+            console.log(`   faction: ${addedObject.faction}`);
+            console.log(`   diplomacy: ${addedObject.diplomacy}`);
+            
+            debug('WAYPOINTS', `✅ Added waypoint: ${waypoint.name} (faction: ${waypointTarget.faction}, distance: ${waypointTarget.distance?.toFixed(2) || 'unknown'})`);
+        }
+        
+        // Sort by distance
+        this.targetObjects.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+        
+        this._waypointsAdded = true;
+        debug('WAYPOINTS', `✅ Added ${addedCount} waypoints to targeting system`);
+        return addedCount;
+    }
+
+    /**
+     * Apply waypoint-specific HUD colors (magenta)
+     */
+    setWaypointHUDColors() {
+        if (!this.currentTarget || !this.currentTarget.isWaypoint) {
+            debug('WAYPOINTS', '⏭️ Current target is not a waypoint, skipping HUD colors');
+            return;
+        }
+        
+        const WAYPOINT_COLOR = '#ff00ff'; // Magenta
+        debug('WAYPOINTS', `🎨 Applying waypoint colors for: ${this.currentTarget.name}`);
+        
+        // Find and style HUD elements (including inner frames)
+        const hudSelectors = [
+            '#target-hud', '.target-hud', '.targeting-hud', '.target-computer',
+            '[class*="target"]', '[id*="target"]', '.reticle', '.crosshair',
+            '.target-name', '.current-target', '.target-display'
+        ];
+        
+        let styledCount = 0;
+        hudSelectors.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(element => {
+                // Apply magenta colors
+                element.style.setProperty('color', WAYPOINT_COLOR, 'important');
+                element.style.setProperty('border-color', WAYPOINT_COLOR, 'important');
+                element.style.setProperty('box-shadow', `0 0 15px ${WAYPOINT_COLOR}`, 'important');
+                
+                // Also style child elements (inner frames)
+                const children = element.querySelectorAll('*');
+                children.forEach(child => {
+                    if (child.style.borderColor || child.style.border || 
+                        getComputedStyle(child).borderColor !== 'rgba(0, 0, 0, 0)') {
+                        child.style.setProperty('border-color', WAYPOINT_COLOR, 'important');
+                    }
+                    if (child.style.color || getComputedStyle(child).color !== 'rgba(0, 0, 0, 0)') {
+                        child.style.setProperty('color', WAYPOINT_COLOR, 'important');
+                    }
+                });
+                
+                // Update text content for name displays
+                if (element.classList.contains('target-name') || 
+                    element.classList.contains('current-target') ||
+                    element.classList.contains('target-display')) {
+                    element.innerHTML = `📍 ${this.currentTarget.name}`;
+                }
+                
+                styledCount++;
+            });
+        });
+        
+        debug('WAYPOINTS', `🎨 Applied magenta colors to ${styledCount} HUD elements`);
+    }
+
+    /**
+     * Create waypoint-specific wireframe (diamond shape)
+     */
+    createWaypointWireframe() {
+        if (!this.currentTarget || !this.currentTarget.isWaypoint) {
+            debug('WAYPOINTS', '⏭️ Current target is not a waypoint, skipping wireframe');
+            return;
+        }
+        
+        if (!this.wireframeScene) {
+            debug('WAYPOINTS', '❌ Wireframe scene not available for waypoint wireframe creation');
+            return;
+        }
+        
+        // Remove existing wireframe
+        if (this.targetWireframe) {
+            this.wireframeScene.remove(this.targetWireframe);
+            if (this.targetWireframe.geometry) {
+                this.targetWireframe.geometry.dispose();
+            }
+            if (this.targetWireframe.material) {
+                if (Array.isArray(this.targetWireframe.material)) {
+                    this.targetWireframe.material.forEach(material => material.dispose());
+                } else {
+                    this.targetWireframe.material.dispose();
+                }
+            }
+            this.targetWireframe = null;
+        }
+        
+        // Create diamond wireframe geometry
+        const geometry = new this.THREE.BufferGeometry();
+        const size = 0.6; // 60% smaller
+        
+        // Diamond vertices (distinct shape for waypoints)
+        const vertices = new Float32Array([
+            // Top pyramid
+            0, size, 0,     size, 0, 0,     // Top to Right
+            0, size, 0,     0, 0, size,     // Top to Front  
+            0, size, 0,     -size, 0, 0,    // Top to Left
+            0, size, 0,     0, 0, -size,    // Top to Back
+            
+            // Bottom pyramid
+            0, -size, 0,    size, 0, 0,     // Bottom to Right
+            0, -size, 0,    0, 0, size,     // Bottom to Front
+            0, -size, 0,    -size, 0, 0,    // Bottom to Left
+            0, -size, 0,    0, 0, -size,    // Bottom to Back
+            
+            // Middle ring
+            size, 0, 0,     0, 0, size,     // Right to Front
+            0, 0, size,     -size, 0, 0,    // Front to Left
+            -size, 0, 0,    0, 0, -size,    // Left to Back
+            0, 0, -size,    size, 0, 0      // Back to Right
+        ]);
+        
+        geometry.setAttribute('position', new this.THREE.BufferAttribute(vertices, 3));
+        
+        // Magenta material
+        const material = new this.THREE.LineBasicMaterial({ 
+            color: 0xff00ff, // Magenta
+            transparent: true,
+            opacity: 0.9
+        });
+        
+        this.targetWireframe = new this.THREE.LineSegments(geometry, material);
+        // Position at origin for HUD display (not at world coordinates)
+        this.targetWireframe.position.set(0, 0, 0);
+        
+        // Animation and render settings
+        this.targetWireframe.userData.rotationSpeed = 0.02;
+        this.targetWireframe.layers.enable(0);
+        this.targetWireframe.renderOrder = 1000;
+        this.targetWireframe.frustumCulled = false;
+        
+        this.wireframeScene.add(this.targetWireframe);
+        
+        debug('WAYPOINTS', `💎 Created magenta diamond wireframe for: ${this.currentTarget.name}`);
     }
 
 } 
