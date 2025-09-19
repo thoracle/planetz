@@ -887,15 +887,21 @@ export class WaypointManager {
                 debug('WAYPOINTS', `✅ Activated first waypoint: ${createdWaypoints[0]}`);
                 
                 // Auto-target the first waypoint for immediate navigation
-                if (window.targetComputerManager && window.targetComputerManager.setVirtualTarget) {
+                if (window.targetComputerManager && window.targetComputerManager.targetWaypointViaCycle) {
+                    const firstWaypoint = this.getWaypoint(createdWaypoints[0]);
+                    if (firstWaypoint) {
+                        const targetSet = window.targetComputerManager.targetWaypointViaCycle(firstWaypoint);
+                        if (targetSet) {
+                            debug('WAYPOINTS', `🎯 Auto-targeted first waypoint: ${firstWaypoint.name}`);
+                        }
+                    }
+                } else if (window.targetComputerManager && window.targetComputerManager.setVirtualTarget) {
+                    // Fallback to old method for backward compatibility
                     const firstWaypoint = this.getWaypoint(createdWaypoints[0]);
                     if (firstWaypoint) {
                         const targetSet = window.targetComputerManager.setVirtualTarget(firstWaypoint);
                         if (targetSet) {
-                            debug('WAYPOINTS', `🎯 Auto-targeted first waypoint: ${firstWaypoint.name}`);
-                            console.log('🎯 Auto-targeted first waypoint for mission:', firstWaypoint.name);
-                        } else {
-                            console.log('❌ Failed to auto-target first waypoint');
+                            debug('WAYPOINTS', `🎯 Auto-targeted first waypoint (fallback): ${firstWaypoint.name}`);
                         }
                     }
                 } else {

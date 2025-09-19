@@ -2940,8 +2940,14 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
     handleWaypointClick(waypoint) {
         if (!window.targetComputerManager) return;
         
-        // Target the waypoint
-        const success = window.targetComputerManager.setVirtualTarget(waypoint);
+        // Target the waypoint using the same code path as TAB targeting
+        let success = false;
+        if (window.targetComputerManager.targetWaypointViaCycle) {
+            success = window.targetComputerManager.targetWaypointViaCycle(waypoint);
+        } else if (window.targetComputerManager.setVirtualTarget) {
+            // Fallback for backward compatibility
+            success = window.targetComputerManager.setVirtualTarget(waypoint);
+        }
         
         if (success) {
             debug('WAYPOINTS', `🎯 Star Charts: Waypoint ${waypoint.name} targeted via click`);

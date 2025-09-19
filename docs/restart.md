@@ -1809,13 +1809,13 @@ debugSyncFile()     // Sync browser with file
 - ✅ **Star Charts Integration**: Real-time updates and click targeting
 - ✅ **Cleanup Functionality**: Proper system reset and memory management
 
-### **⚠️ Known Limitation: Directional Arrows**
+### **✅ Directional Arrows Fixed**
 
-**Issue**: Directional arrows may not appear immediately after pressing 'W' to create waypoints
-**Root Cause**: Deep timing/state synchronization issue between waypoint creation and arrow display system
-**Workaround**: Press TAB once after creating waypoint - arrows will appear immediately
-**Status**: Documented limitation - all other waypoint functionality works perfectly
-**Impact**: Minor UX issue that doesn't affect core waypoint navigation or mission functionality
+**Issue**: Directional arrows were not appearing immediately after pressing 'W' to create waypoints
+**Root Cause**: Waypoint creation used separate code path (`setVirtualTarget`) from TAB targeting (`cycleTarget`)
+**Solution**: Refactored waypoint creation to use the same proven code path as TAB targeting
+**Status**: ✅ **RESOLVED** - Directional arrows now appear immediately upon waypoint creation
+**Impact**: Seamless waypoint navigation experience with instant visual feedback
 
 ### **🏆 Impact: Enhanced Mission Experience**
 

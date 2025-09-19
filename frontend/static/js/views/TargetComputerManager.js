@@ -383,34 +383,58 @@ export class TargetComputerManager {
             bottom: document.createElement('div')
         };
 
-        // Style each arrow - match original styling with proper borders
+        // Style each arrow - simplified approach with proper dimensions
         Object.entries(this.directionArrows).forEach(([position, arrow]) => {
-            arrow.style.cssText = `
-                position: absolute;
-                width: 0;
-                height: 0;
-                display: none;
-                pointer-events: none;
-                z-index: 1001;
-            `;
-            
-            // Set specific border styles for each direction
+            // Set specific dimensions and styles for each direction
             if (position === 'top') {
-                arrow.style.borderLeft = '10px solid transparent';
-                arrow.style.borderRight = '10px solid transparent';
-                arrow.style.borderBottom = '15px solid #D0D0D0';
+                arrow.style.cssText = `
+                    position: fixed;
+                    width: 20px;
+                    height: 15px;
+                    pointer-events: none;
+                    z-index: 9999;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+                // Create triangle directly with proper centering
+                arrow.innerHTML = '<div style="width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 15px solid #D0D0D0;"></div>';
             } else if (position === 'bottom') {
-                arrow.style.borderLeft = '10px solid transparent';
-                arrow.style.borderRight = '10px solid transparent';
-                arrow.style.borderTop = '15px solid #D0D0D0';
+                arrow.style.cssText = `
+                    position: fixed;
+                    width: 20px;
+                    height: 15px;
+                    pointer-events: none;
+                    z-index: 9999;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+                arrow.innerHTML = '<div style="width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 15px solid #D0D0D0;"></div>';
             } else if (position === 'left') {
-                arrow.style.borderTop = '10px solid transparent';
-                arrow.style.borderBottom = '10px solid transparent';
-                arrow.style.borderRight = '15px solid #D0D0D0';
+                arrow.style.cssText = `
+                    position: fixed;
+                    width: 15px;
+                    height: 20px;
+                    pointer-events: none;
+                    z-index: 9999;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+                arrow.innerHTML = '<div style="width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent; border-right: 15px solid #D0D0D0;"></div>';
             } else if (position === 'right') {
-                arrow.style.borderTop = '10px solid transparent';
-                arrow.style.borderBottom = '10px solid transparent';
-                arrow.style.borderLeft = '15px solid #D0D0D0';
+                arrow.style.cssText = `
+                    position: fixed;
+                    width: 15px;
+                    height: 20px;
+                    pointer-events: none;
+                    z-index: 9999;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+                arrow.innerHTML = '<div style="width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent; border-left: 15px solid #D0D0D0;"></div>';
             }
             
             document.body.appendChild(arrow); // Append to body, not HUD
@@ -1813,6 +1837,9 @@ export class TargetComputerManager {
         
         debug('TARGETING', `🎯 TAB: Wireframe creation completed, wireframe exists: ${!!this.targetWireframe}`);
         this.updateTargetDisplay();
+        
+        // Force direction arrow update after target cycling
+        this.updateDirectionArrow();
         
         // Start monitoring the selected target's range (for both manual and automatic cycles)
         this.startRangeMonitoring();
@@ -3328,7 +3355,6 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         // Get target position using helper function
         const targetPos = this.getTargetPosition(this.currentTarget);
         if (!targetPos) {
-            // console.warn('🎯 TargetComputerManager: Cannot update direction arrow - invalid target position');
             this.hideAllDirectionArrows();
             return;
         }
@@ -3371,7 +3397,6 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         }
 
         if (shouldShowArrow) {
-            // console.log(`🎯 ARROW: Showing direction arrow for ${this.currentTarget?.name}`); // Reduce spam
             // Get camera's view direction and relative position
             const cameraDirection = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
             const relativePosition = targetPosition.clone().sub(this.camera.position);
@@ -3428,32 +3453,33 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                     arrow.style.transform = 'translateX(-50%)';
                 } else if (primaryDirection === 'bottom') {
                     arrow.style.left = '50%';
-                    arrow.style.bottom = '20px';
+                    arrow.style.top = (window.innerHeight - 20 - 19) + 'px'; // viewport height - margin - arrow height
                     arrow.style.transform = 'translateX(-50%)';
                 } else if (primaryDirection === 'left') {
                     arrow.style.left = '20px';
                     arrow.style.top = '50%';
                     arrow.style.transform = 'translateY(-50%)';
                 } else if (primaryDirection === 'right') {
-                    arrow.style.right = '20px';
+                    arrow.style.left = (window.innerWidth - 20 - 19) + 'px'; // viewport width - margin - arrow width
                     arrow.style.top = '50%';
                     arrow.style.transform = 'translateY(-50%)';
                 }
 
-                // Update arrow color for the visible border
-                if (primaryDirection === 'top') {
-                    arrow.style.borderBottomColor = arrowColor;
-                } else if (primaryDirection === 'bottom') {
-                    arrow.style.borderTopColor = arrowColor;
-                } else if (primaryDirection === 'left') {
-                    arrow.style.borderRightColor = arrowColor;
-                } else if (primaryDirection === 'right') {
-                    arrow.style.borderLeftColor = arrowColor;
+                // Update arrow color for the visible border - need to update the child element
+                const childTriangle = arrow.firstElementChild;
+                if (childTriangle) {
+                    if (primaryDirection === 'top') {
+                        childTriangle.style.borderBottomColor = arrowColor;
+                    } else if (primaryDirection === 'bottom') {
+                        childTriangle.style.borderTopColor = arrowColor;
+                    } else if (primaryDirection === 'left') {
+                        childTriangle.style.borderRightColor = arrowColor;
+                    } else if (primaryDirection === 'right') {
+                        childTriangle.style.borderLeftColor = arrowColor;
+                    }
                 }
                 
                 arrow.style.display = 'block';
-                // console.log(`🎯 ARROW POSITIONED: ${primaryDirection} arrow shown for ${this.currentTarget?.name}`); // Reduce spam
-                // console.log(`🎯 ARROW STYLE: display=${arrow.style.display}, left=${arrow.style.left}, top=${arrow.style.top}`); // Reduce spam
                 
                 // Hide other arrows
                 Object.keys(this.directionArrows).forEach(dir => {
@@ -4388,6 +4414,8 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
         if (this.targetObjects && this.targetObjects.length > 0) {
             this.targetIndex = 0;
             this.updateTargetDisplay();
+            // Force direction arrow update when target computer is activated
+            this.updateDirectionArrow();
         }
         
         // console.log('🎯 Target Computer activated and display updated');
@@ -4803,7 +4831,110 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
      */
 
     /**
+     * Target waypoint using the same code path as TAB targeting
+     * This ensures consistent behavior between waypoint creation and TAB cycling
+     * @param {Object|string} waypointData - Waypoint data object or waypoint ID string
+     * @returns {boolean} - True if waypoint was targeted successfully
+     */
+    targetWaypointViaCycle(waypointData) {
+        // Handle both waypoint object and waypoint ID string
+        let waypoint;
+        
+        if (typeof waypointData === 'string') {
+            // If it's a string, treat it as waypoint ID
+            waypoint = window.waypointManager?.getWaypoint(waypointData);
+            if (!waypoint) {
+                console.warn(`🎯 Waypoint not found: ${waypointData}`);
+                return false;
+            }
+        } else if (waypointData && waypointData.position) {
+            // If it's an object with position, use it directly
+            waypoint = waypointData;
+        } else {
+            console.warn('🎯 targetWaypointViaCycle: Invalid waypoint data');
+            return false;
+        }
+
+        // Enable target computer if not already enabled
+        if (!this.targetComputerEnabled) {
+            this.targetComputerEnabled = true;
+            debug('WAYPOINTS', '🎯 Auto-enabled target computer for waypoint targeting');
+        }
+
+        // First, add any existing active waypoints to target list
+        this.addWaypointsToTargets();
+        
+        // Check if our specific waypoint is already in the target list
+        let waypointIndex = this.targetObjects.findIndex(t => 
+            t.id === waypoint.id || 
+            (t.isWaypoint && t.name === waypoint.name) ||
+            (t.type === 'waypoint' && t.name === waypoint.name)
+        );
+        
+        // If waypoint not found, add it directly (handles newly created waypoints)
+        if (waypointIndex === -1) {
+            // Create waypoint target object (same format as addWaypointsToTargets)
+            const waypointTarget = {
+                id: waypoint.id,
+                name: waypoint.name,
+                displayName: waypoint.name,
+                type: 'waypoint',
+                isWaypoint: true,
+                faction: 'waypoint',
+                diplomacy: 'waypoint',
+                position: {
+                    x: waypoint.position[0],
+                    y: waypoint.position[1], 
+                    z: waypoint.position[2]
+                },
+                waypointData: waypoint
+            };
+            
+            // Add to target list
+            this.targetObjects.push(waypointTarget);
+            waypointIndex = this.targetObjects.length - 1;
+        }
+        
+        // Set the target index to the waypoint and use the proven cycleTarget logic
+        this.targetIndex = waypointIndex;
+        
+        // Use the same logic as cycleTarget for consistent behavior
+        const targetData = this.targetObjects[this.targetIndex];
+        
+        // For waypoints, use the targetData itself (which has isWaypoint flag)
+        if (targetData.isWaypoint || targetData.type === 'waypoint') {
+            this.currentTarget = targetData;
+        } else {
+            console.warn('🎯 Target at index is not a waypoint');
+            return false;
+        }
+        
+        // Handle waypoint-specific targeting (same as cycleTarget)
+        if (this.currentTarget && this.currentTarget.isWaypoint) {
+            this.createWaypointWireframe();
+        } else {
+            this.createTargetWireframe();
+        }
+        
+        this.updateTargetDisplay();
+        
+        // Force direction arrow update after waypoint targeting (same as cycleTarget)
+        this.updateDirectionArrow();
+        
+        // Start monitoring the selected target's range
+        this.startRangeMonitoring();
+        
+        // Sync with StarfieldManager (same as cycleTarget)
+        if (this.viewManager?.starfieldManager) {
+            this.viewManager.starfieldManager.currentTarget = this.currentTarget?.object || this.currentTarget;
+            this.viewManager.starfieldManager.targetIndex = this.targetIndex;
+        }
+        return true;
+    }
+
+    /**
      * Set virtual target (Mission waypoint integration)
+     * @deprecated Use targetWaypointViaCycle() instead for consistent behavior
      * Creates a virtual target object for mission waypoints
      * @param {Object|string} waypointData - Waypoint data object or waypoint ID string
      * @returns {boolean} - True if virtual target was created and set
@@ -4873,8 +5004,13 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
         
         this.updateTargetDisplay();
         
-        // Note: Directional arrows may not appear immediately after W key press
-        // This is a known timing issue. Use TAB to cycle targets if arrows don't appear.
+        // Force direction arrow update after waypoint targeting setup
+        try {
+            // Call immediately, just like in cycleTarget - no delay needed
+            this.updateDirectionArrow();
+        } catch (error) {
+            console.error('Error calling updateDirectionArrow():', error);
+        }
 
         console.log('🎯 Virtual target created:', virtualTarget);
         console.log('🎯 Virtual target position:', virtualTarget.position);
@@ -5044,8 +5180,8 @@ debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
             this.interruptedWaypoint = null;
             this.waypointInterruptionTime = null;
             
-            // Re-target the waypoint
-            const success = this.setVirtualTarget(waypoint.id);
+            // Re-target the waypoint using the cycle approach
+            const success = this.targetWaypointViaCycle(waypoint.id);
             
             // Update waypoint status
             if (success && window.waypointManager) {
@@ -5180,11 +5316,7 @@ debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
             waypointTarget.faction = 'waypoint';
             waypointTarget.diplomacy = 'waypoint';
             
-            // DEBUG: Verify faction assignment immediately
-            console.log(`🔧 IMMEDIATE CHECK - Waypoint ${waypoint.name}:`);
-            console.log(`   faction: ${waypointTarget.faction}`);
-            console.log(`   diplomacy: ${waypointTarget.diplomacy}`);
-            console.log(`   isWaypoint: ${waypointTarget.isWaypoint}`);
+            // Waypoint faction assignment verified
             
             // Add remaining properties (carefully to avoid overwriting faction)
             waypointTarget.position = {

@@ -150,7 +150,10 @@ export class WaypointKeyboardHandler {
         // Otherwise target next active waypoint
         const nextWaypoint = window.waypointManager?.getNextActiveWaypoint();
         if (nextWaypoint) {
-            if (window.targetComputerManager?.setVirtualTarget) {
+            if (window.targetComputerManager?.targetWaypointViaCycle) {
+                window.targetComputerManager.targetWaypointViaCycle(nextWaypoint.id);
+            } else if (window.targetComputerManager?.setVirtualTarget) {
+                // Fallback for backward compatibility
                 window.targetComputerManager.setVirtualTarget(nextWaypoint.id);
                 
                 debug('WAYPOINTS', `🎯 Targeting next waypoint: ${nextWaypoint.name}`);
@@ -201,7 +204,10 @@ export class WaypointKeyboardHandler {
 
         // Target next waypoint in cycle
         const nextWaypoint = activeWaypoints[nextIndex];
-        if (window.targetComputerManager?.setVirtualTarget) {
+        if (window.targetComputerManager?.targetWaypointViaCycle) {
+            window.targetComputerManager.targetWaypointViaCycle(nextWaypoint.id);
+        } else if (window.targetComputerManager?.setVirtualTarget) {
+            // Fallback for backward compatibility
             window.targetComputerManager.setVirtualTarget(nextWaypoint.id);
             this.metrics.waypointCycles++;
             
@@ -226,7 +232,10 @@ export class WaypointKeyboardHandler {
         debug('WAYPOINTS', '⌨️ N key pressed - targeting next waypoint');
 
         const nextWaypoint = window.waypointManager?.getNextActiveWaypoint();
-        if (nextWaypoint && window.targetComputerManager?.setVirtualTarget) {
+        if (nextWaypoint && window.targetComputerManager?.targetWaypointViaCycle) {
+            window.targetComputerManager.targetWaypointViaCycle(nextWaypoint.id);
+        } else if (nextWaypoint && window.targetComputerManager?.setVirtualTarget) {
+            // Fallback for backward compatibility
             window.targetComputerManager.setVirtualTarget(nextWaypoint.id);
         } else {
             // Use ephemeral HUD for waypoint messages
