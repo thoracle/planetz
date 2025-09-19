@@ -745,7 +745,7 @@ export class WaypointManager {
                 type: 'exploration',
                 waypoints: [
                     {
-                        name: 'Navigation Waypoint Alpha',
+                        name: 'Waypoint Alpha',
                         position: [15.0, 0.0, 25.0], // Empty space location
                         triggerRadius: 20.0,
                         type: 'navigation',
@@ -759,7 +759,7 @@ export class WaypointManager {
                         }]
                     },
                     {
-                        name: 'Navigation Waypoint Beta',
+                        name: 'Waypoint Beta',
                         position: [-10.0, 5.0, -15.0], // Different empty space location
                         triggerRadius: 20.0,
                         type: 'navigation',

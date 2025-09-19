@@ -4360,30 +4360,6 @@ debug('UI', 'Mission Status HUD: No active missions to display after launch');
         return this.undock();
     }
 
-    /**
-     * Safely get position from target object (handles different target structures)
-     */
-    getTargetPosition(target) {
-        if (!target) return null;
-        
-        if (target.position && typeof target.position.clone === 'function') {
-            // Three.js Vector3 object
-            return target.position;
-        } else if (target.object && target.object.position) {
-            // Target has a nested object with position
-            return target.object.position;
-        } else if (target.position && Array.isArray(target.position)) {
-            // Position is stored as array [x, y, z]
-            return new this.THREE.Vector3(...target.position);
-        } else if (target.position && typeof target.position === 'object' && 
-                   typeof target.position.x === 'number') {
-            // Position is a plain object with x, y, z properties
-            return new this.THREE.Vector3(target.position.x, target.position.y, target.position.z);
-        }
-        
-        console.warn('🎯 StarfieldManager: Could not extract position from target:', target);
-        return null;
-    }
 
     updateOrbit(deltaTime) {
         if (!this.isDocked || !this.dockedTo) return;
@@ -5399,6 +5375,13 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
         const targetPosition = this.getTargetPosition(this.currentTarget);
         if (!targetPosition) {
             console.warn('🎯 Cannot update reticle - invalid target position');
+            return;
+        }
+
+        // Ensure targetPosition is a Three.js Vector3 object
+        if (typeof targetPosition.clone !== 'function') {
+            console.error('🎯 targetPosition is not a Vector3 object:', targetPosition);
+            console.error('🎯 currentTarget:', this.currentTarget);
             return;
         }
 

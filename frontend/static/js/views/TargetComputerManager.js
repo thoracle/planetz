@@ -4858,6 +4858,10 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
         // Enable target computer if not already enabled
         if (!this.targetComputerEnabled) {
             this.targetComputerEnabled = true;
+            // Also update StarfieldManager's flag to keep them synchronized
+            if (this.viewManager?.starfieldManager) {
+                this.viewManager.starfieldManager.targetComputerEnabled = true;
+            }
             debug('WAYPOINTS', '🎯 Auto-enabled target computer for waypoint targeting');
         }
 
@@ -4996,6 +5000,10 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
         // Enable target computer for waypoint targeting
         if (!this.targetComputerEnabled) {
             this.targetComputerEnabled = true;
+            // Also update StarfieldManager's flag to keep them synchronized
+            if (this.viewManager?.starfieldManager) {
+                this.viewManager.starfieldManager.targetComputerEnabled = true;
+            }
             debug('WAYPOINTS', '🎯 Auto-enabled target computer for waypoint targeting');
         }
         
