@@ -3805,19 +3805,50 @@ debug('TARGETING', 'Showing docking interface for', target.name);
     getTargetPosition(target) {
         if (!target) return null;
         
+        console.log('🎯 DEBUG getTargetPosition - target:', target);
+        console.log('🎯 DEBUG getTargetPosition - target.position:', target.position);
+        console.log('🎯 DEBUG getTargetPosition - target.position type:', typeof target.position);
+        console.log('🎯 DEBUG getTargetPosition - target.position isArray:', Array.isArray(target.position));
+        
         if (target.position && typeof target.position.clone === 'function') {
             // Three.js Vector3 object
+            console.log('🎯 DEBUG getTargetPosition - returning Vector3 object');
             return target.position;
         } else if (target.object && target.object.position) {
             // Target has a nested object with position
+            console.log('🎯 DEBUG getTargetPosition - returning nested object position');
             return target.object.position;
         } else if (target.position && Array.isArray(target.position)) {
             // Position is stored as array [x, y, z]
-            return new this.THREE.Vector3(...target.position);
+            console.log('🎯 DEBUG getTargetPosition - creating Vector3 from array:', target.position);
+            console.log('🎯 DEBUG getTargetPosition - this.THREE available:', !!this.THREE);
+            console.log('🎯 DEBUG getTargetPosition - this.THREE.Vector3 available:', !!this.THREE?.Vector3);
+            
+            if (!this.THREE || !this.THREE.Vector3) {
+                console.error('🎯 THREE.js not available in StarfieldManager');
+                return null;
+            }
+            
+            const vector = new this.THREE.Vector3(...target.position);
+            console.log('🎯 DEBUG getTargetPosition - created Vector3:', vector);
+            console.log('🎯 DEBUG getTargetPosition - Vector3 has clone:', typeof vector.clone);
+            return vector;
         } else if (target.position && typeof target.position === 'object' && 
                    typeof target.position.x === 'number') {
             // Position is a plain object with x, y, z properties
-            return new this.THREE.Vector3(target.position.x, target.position.y, target.position.z);
+            console.log('🎯 DEBUG getTargetPosition - creating Vector3 from object:', target.position);
+            console.log('🎯 DEBUG getTargetPosition - this.THREE available:', !!this.THREE);
+            console.log('🎯 DEBUG getTargetPosition - this.THREE.Vector3 available:', !!this.THREE?.Vector3);
+            
+            if (!this.THREE || !this.THREE.Vector3) {
+                console.error('🎯 THREE.js not available in StarfieldManager');
+                return null;
+            }
+            
+            const vector = new this.THREE.Vector3(target.position.x, target.position.y, target.position.z);
+            console.log('🎯 DEBUG getTargetPosition - created Vector3:', vector);
+            console.log('🎯 DEBUG getTargetPosition - Vector3 has clone:', typeof vector.clone);
+            return vector;
         }
         
         console.warn('🎯 Could not extract position from target:', target);
@@ -5382,6 +5413,9 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
         if (typeof targetPosition.clone !== 'function') {
             console.error('🎯 targetPosition is not a Vector3 object:', targetPosition);
             console.error('🎯 currentTarget:', this.currentTarget);
+            console.error('🎯 currentTarget.position:', this.currentTarget?.position);
+            console.error('🎯 targetPosition type:', typeof targetPosition);
+            console.error('🎯 targetPosition constructor:', targetPosition?.constructor?.name);
             return;
         }
 
