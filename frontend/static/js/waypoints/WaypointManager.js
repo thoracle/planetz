@@ -612,6 +612,9 @@ export class WaypointManager {
             window.targetComputerManager.clearCurrentTarget();
         }
         
+        // Play objective completion audio
+        this.playObjectiveCompletionAudio();
+        
         // Update mission objectives in HUD
         if (waypoint.missionId) {
             this.updateMissionObjectives(waypoint.missionId, waypoint.id);
@@ -624,6 +627,9 @@ export class WaypointManager {
                 debug('WAYPOINTS', `🔄 Mission progression: ${waypoint.name} → ${nextWaypoint.name}`);
             } else {
                 debug('WAYPOINTS', `🏁 Mission ${waypoint.missionId} completed - no more waypoints`);
+                
+                // Play mission completion audio
+                this.playMissionCompletionAudio();
                 
                 // Clear target when mission is complete (no more waypoints)
                 if (window.targetComputerManager && window.targetComputerManager.clearCurrentTarget) {
@@ -1261,6 +1267,52 @@ export class WaypointManager {
         }
         
         return status;
+    }
+
+    /**
+     * Play audio when an objective is completed
+     */
+    playObjectiveCompletionAudio() {
+        try {
+            // Use TargetComputerManager's audio system if available
+            if (window.targetComputerManager && window.targetComputerManager.playAudio) {
+                window.targetComputerManager.playAudio('frontend/static/audio/blurb.mp3');
+                debug('WAYPOINTS', '🔊 Played objective completion audio: blurb.mp3');
+            } else {
+                // Fallback: HTML5 Audio
+                const audio = new Audio('static/audio/blurb.mp3');
+                audio.volume = 0.7;
+                audio.play().catch(() => {
+                    debug('WAYPOINTS', '⚠️ Could not play objective completion audio');
+                });
+                debug('WAYPOINTS', '🔊 Played objective completion audio (fallback): blurb.mp3');
+            }
+        } catch (error) {
+            debug('WAYPOINTS', `⚠️ Error playing objective completion audio: ${error.message}`);
+        }
+    }
+
+    /**
+     * Play audio when a mission is completed
+     */
+    playMissionCompletionAudio() {
+        try {
+            // Use TargetComputerManager's audio system if available
+            if (window.targetComputerManager && window.targetComputerManager.playAudio) {
+                window.targetComputerManager.playAudio('frontend/static/audio/success.wav');
+                debug('WAYPOINTS', '🔊 Played mission completion audio: success.wav');
+            } else {
+                // Fallback: HTML5 Audio
+                const audio = new Audio('static/audio/success.wav');
+                audio.volume = 0.8;
+                audio.play().catch(() => {
+                    debug('WAYPOINTS', '⚠️ Could not play mission completion audio');
+                });
+                debug('WAYPOINTS', '🔊 Played mission completion audio (fallback): success.wav');
+            }
+        } catch (error) {
+            debug('WAYPOINTS', `⚠️ Error playing mission completion audio: ${error.message}`);
+        }
     }
 }
 
