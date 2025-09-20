@@ -27,6 +27,9 @@ export class MissionStatusHUD {
         // Track expanded state of missions to preserve user preferences
         this.expandedStates = new Map(); // mission_id -> boolean
         
+        // Track missions showing completion to prevent refresh interference
+        this.missionsShowingCompletion = new Set(); // mission_id set
+        
         // Update frequency (2Hz = every 500ms)
         this.updateFrequency = 500;
         
@@ -253,6 +256,14 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
      */
     async refreshMissions() {
         console.log('🎯 MissionStatusHUD.refreshMissions() called');
+        
+        // Skip refresh if any missions are showing completion rewards
+        if (this.missionsShowingCompletion.size > 0) {
+            console.log('⏸️ REFRESH BLOCKED: Missions showing completion:', Array.from(this.missionsShowingCompletion));
+            console.log('⏸️ REFRESH BLOCKED: Skipping refresh to preserve rewards sections');
+            return;
+        }
+        
         try {
             // Get active missions from API
             console.log('🎯 Calling missionAPI.getActiveMissions()...');
@@ -700,8 +711,11 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         debug('UI', `🎉 Showing mission completion in HUD: ${missionId}`);
         console.log('✅ MISSION COMPLETION: Panel found, proceeding with rewards display');
 
-        // FIRST: Mark the mission as completed in our local array to preserve it during refreshes
+        // FIRST: Block refreshes and mark the mission as completed
         // This must happen BEFORE any DOM manipulation to prevent race conditions
+        this.missionsShowingCompletion.add(missionId);
+        console.log('🔒 MISSION COMPLETION: Added mission to completion tracking, blocking refreshes');
+        
         const mission = this.activeMissions.find(m => m.id === missionId);
         if (mission) {
             mission.status = 'completed';
@@ -918,6 +932,10 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
     removeMission(missionId) {
         debug('UI', `🗑️ Removing completed mission from HUD: ${missionId}`);
         
+        // Remove from completion tracking to allow refreshes again
+        this.missionsShowingCompletion.delete(missionId);
+        console.log('🔓 MISSION REMOVAL: Removed mission from completion tracking, allowing refreshes');
+        
         const panel = this.missionPanels.get(missionId);
         if (panel) {
             // Fade out animation
@@ -945,6 +963,9 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
                 if (this.activeMissions.length === 0) {
                     this.showNoMissionsMessage();
                 }
+                
+                // Allow refreshes to resume now that mission is fully removed
+                console.log('🔄 MISSION REMOVAL: Mission fully removed, refreshes can resume');
             }, 300);
         }
     }
