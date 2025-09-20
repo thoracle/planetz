@@ -488,6 +488,9 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                 
                 debug('MISSIONS', `🏁 Mission ${waypoint.missionId} FULLY completed - removing from active missions`);
                 
+                // Award mission completion rewards
+                await this.awardMissionCompletionRewards(waypoint.missionId);
+                
                 // Clear waypoint targets when mission completes
                 const tcm = window.targetComputerManager;
                 if (tcm && tcm.currentTarget) {
@@ -528,5 +531,74 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
             }
         }, 200); // Increased delay to 200ms
         
+    }
+
+    /**
+     * Award mission completion rewards
+     * @param {string} missionId - Mission ID
+     */
+    async awardMissionCompletionRewards(missionId) {
+        debug('MISSIONS', `🎁 Awarding mission completion rewards for: ${missionId}`);
+
+        try {
+            // Check if this is the exploration test mission
+            if (missionId.includes('waypoint_test_exploration')) {
+                // Award exploration mission rewards
+                const rewards = {
+                    credits: 3500,
+                    experience: 300,
+                    items: [
+                        {
+                            itemType: 'survey_data',
+                            itemId: 'mineral_survey_alpha',
+                            quantity: 1,
+                            name: 'Mineral Survey Data (Alpha)'
+                        },
+                        {
+                            itemType: 'survey_data', 
+                            itemId: 'archaeological_survey_beta',
+                            quantity: 1,
+                            name: 'Archaeological Survey Data (Beta)'
+                        },
+                        {
+                            itemType: 'mission_data',
+                            itemId: 'deep_space_survey_complete',
+                            quantity: 1,
+                            name: 'Deep Space Survey Report'
+                        }
+                    ]
+                };
+
+                // Show mission completion notification
+                if (window.starfieldManager && window.starfieldManager.showHUDEphemeral) {
+                    window.starfieldManager.showHUDEphemeral(
+                        'MISSION COMPLETE',
+                        `Deep Space Survey Mission completed! Rewards: ${rewards.credits} credits, ${rewards.experience} XP, ${rewards.items.length} items`,
+                        8000
+                    );
+                }
+
+                // Log rewards for debugging
+                debug('MISSIONS', `🎁 Mission rewards awarded:`, rewards);
+                
+                return { success: true, rewards };
+            } else {
+                debug('MISSIONS', `⚠️ No specific rewards defined for mission: ${missionId}`);
+                
+                // Generic mission completion notification
+                if (window.starfieldManager && window.starfieldManager.showHUDEphemeral) {
+                    window.starfieldManager.showHUDEphemeral(
+                        'MISSION COMPLETE',
+                        'Mission objectives completed successfully!',
+                        5000
+                    );
+                }
+                
+                return { success: true, rewards: null };
+            }
+        } catch (error) {
+            console.error('Failed to award mission completion rewards:', error);
+            return { success: false, error: error.message };
+        }
     }
 }
