@@ -5296,7 +5296,10 @@ debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
         const activeWaypoints = window.waypointManager.getActiveWaypoints();
         let addedCount = 0;
         
-        debug('WAYPOINTS', `🎯 Processing ${activeWaypoints.length} active waypoints`);
+        debug('WAYPOINTS', `🎯 addWaypointsToTargets() - Processing ${activeWaypoints.length} active waypoints`);
+        activeWaypoints.forEach((wp, i) => {
+            debug('WAYPOINTS', `  📍 ${i + 1}. ${wp.name}: status=${wp.status} (will be added to targets)`);
+        });
         
         for (const waypoint of activeWaypoints) {
             // Enhanced duplicate check - check ID, name, and isVirtual flag

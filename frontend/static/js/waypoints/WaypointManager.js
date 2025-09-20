@@ -166,8 +166,12 @@ export class WaypointManager {
      */
     async activateWaypoint(waypointId) {
         const waypoint = this.activeWaypoints.get(waypointId);
-        if (!waypoint) return;
+        if (!waypoint) {
+            debug('WAYPOINTS', `❌ activateWaypoint: Waypoint ${waypointId} not found`);
+            return;
+        }
 
+        debug('WAYPOINTS', `🔄 Activating waypoint: ${waypoint.name} (${waypointId}) - changing status from '${waypoint.status}' to 'active'`);
         waypoint.status = WaypointStatus.ACTIVE;
         
         // Register with Target Computer
@@ -176,7 +180,7 @@ export class WaypointManager {
         // Update HUD display (create 3D object)
         await this.updateHUDDisplay(waypoint);
         
-        debug('WAYPOINTS', `🎯 Activated waypoint: ${waypoint.name}`);
+        debug('WAYPOINTS', `✅ Activated waypoint: ${waypoint.name} - status is now '${waypoint.status}'`);
     }
 
     /**
@@ -1053,10 +1057,7 @@ export class WaypointManager {
                 console.log('❌ window.missionAPI not available');
             }
             
-            // Refresh targeting system to include new waypoints
-            if (window.targetComputerManager && window.targetComputerManager.addWaypointsToTargets) {
-                window.targetComputerManager.addWaypointsToTargets();
-            }
+            // Note: No need to call addWaypointsToTargets() here since targetWaypointViaCycle() already calls it
             
             debug('WAYPOINTS', `🎉 Successfully created waypoint test mission: ${mission.title}`);
             debug('WAYPOINTS', `📊 Mission details:`, {
