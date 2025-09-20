@@ -30,6 +30,26 @@ export class MissionStatusHUD {
         // Track missions showing completion to prevent refresh interference
         this.missionsShowingCompletion = new Set(); // mission_id set
         
+        // Hook Set methods to track when items are added/removed
+        const originalAdd = this.missionsShowingCompletion.add.bind(this.missionsShowingCompletion);
+        const originalDelete = this.missionsShowingCompletion.delete.bind(this.missionsShowingCompletion);
+        const originalClear = this.missionsShowingCompletion.clear.bind(this.missionsShowingCompletion);
+        
+        this.missionsShowingCompletion.add = (value) => {
+            console.log('🔒 SET DEBUG: Adding to missionsShowingCompletion:', value, 'Stack:', new Error().stack.split('\n')[1]);
+            return originalAdd(value);
+        };
+        
+        this.missionsShowingCompletion.delete = (value) => {
+            console.log('🗑️ SET DEBUG: Deleting from missionsShowingCompletion:', value, 'Stack:', new Error().stack.split('\n')[1]);
+            return originalDelete(value);
+        };
+        
+        this.missionsShowingCompletion.clear = () => {
+            console.log('🧹 SET DEBUG: Clearing missionsShowingCompletion', 'Stack:', new Error().stack.split('\n')[1]);
+            return originalClear();
+        };
+        
         // Add unique instance ID for debugging
         this.instanceId = Math.random().toString(36).substr(2, 9);
         console.log('🏗️ MissionStatusHUD instance created with ID:', this.instanceId);
@@ -260,6 +280,7 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
      */
     async refreshMissions() {
         console.log('🎯 MissionStatusHUD.refreshMissions() called on instance:', this.instanceId);
+        console.log('🎯 REFRESH STACK TRACE:', new Error().stack);
         console.log('🎯 REFRESH CHECK: this object:', this);
         console.log('🎯 REFRESH CHECK: missionsShowingCompletion exists:', !!this.missionsShowingCompletion);
         console.log('🎯 REFRESH CHECK: missionsShowingCompletion type:', typeof this.missionsShowingCompletion);
