@@ -606,10 +606,19 @@ export class WaypointManager {
             this.waypointIndicator.removeWaypointObject(waypoint.id);
         }
         
-        // Remove from Target Computer if currently targeted
-        if (window.targetComputerManager && 
-            window.targetComputerManager.currentTarget?.id === waypoint.id) {
-            window.targetComputerManager.clearCurrentTarget();
+        // Remove from Target Computer target list
+        if (window.targetComputerManager) {
+            // Remove from target objects list
+            if (window.targetComputerManager.removeVirtualTarget) {
+                const removed = window.targetComputerManager.removeVirtualTarget(waypoint.id);
+                debug('WAYPOINTS', `🎯 Removed waypoint from target list: ${removed ? '✅ SUCCESS' : '❌ NOT FOUND'}`);
+            }
+            
+            // Clear current target if this waypoint was targeted
+            if (window.targetComputerManager.currentTarget?.id === waypoint.id) {
+                window.targetComputerManager.clearCurrentTarget();
+                debug('WAYPOINTS', '🎯 Cleared current target (was completed waypoint)');
+            }
         }
         
         // Play objective completion audio

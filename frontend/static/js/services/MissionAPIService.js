@@ -90,11 +90,13 @@ debug('AI', `🎯 MissionAPIService: Loaded ${data.missions.length} available mi
                 console.log('🎯 Backend response:', data);
                 
                 // Update local cache with backend missions (preserve test missions)
+                // Only add backend missions, don't remove existing test missions
                 data.missions.forEach(mission => {
-                    if (!mission.isTestMission) { // Don't overwrite test missions
-                        this.activeMissions.set(mission.id, mission);
-                    }
+                    this.activeMissions.set(mission.id, mission);
                 });
+                
+                // Note: Test missions are preserved because they're already in the cache
+                // and backend doesn't know about them, so they won't be overwritten
                 
                 console.log('🎯 After backend merge, cache size:', this.activeMissions.size);
 debug('MISSIONS', `🎯 MissionAPIService: Loaded ${data.missions.length} backend missions`);
