@@ -5032,11 +5032,17 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
      * @returns {boolean} - True if target was found and removed
      */
     removeVirtualTarget(waypointId) {
+        debug('TARGETING', `🎯 removeVirtualTarget called for: ${waypointId}`);
+        debug('TARGETING', `🎯 Current target: ${this.currentTarget?.name || 'None'} (id: ${this.currentTarget?.id || 'None'})`);
+        debug('TARGETING', `🎯 Target objects count: ${this.targetObjects.length}`);
+        
         const targetIndex = this.targetObjects.findIndex(t => 
             t.isVirtual && t.id === waypointId
         );
 
         if (targetIndex >= 0) {
+            debug('TARGETING', `🎯 Found waypoint at index ${targetIndex}, removing...`);
+            
             // Remove from target list
             this.targetObjects.splice(targetIndex, 1);
 
@@ -5045,20 +5051,28 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
                 this.targetIndex = Math.max(0, this.targetIndex - 1);
             }
 
+            debug('TARGETING', `🎯 After removal: targetObjects.length=${this.targetObjects.length}, targetIndex=${this.targetIndex}`);
+
             // Update current target if we removed the active target
             if (this.currentTarget && this.currentTarget.id === waypointId) {
+                debug('TARGETING', `🎯 Removed waypoint was current target, updating...`);
                 if (this.targetObjects.length > 0) {
                     this.currentTarget = this.targetObjects[this.targetIndex];
+                    debug('TARGETING', `🎯 Switched to new target: ${this.currentTarget.name}`);
                     this.updateTargetDisplay();
                 } else {
+                    debug('TARGETING', `🎯 No more targets, clearing current target`);
                     this.clearCurrentTarget();
                 }
+            } else {
+                debug('TARGETING', `🎯 Removed waypoint was not current target, no target update needed`);
             }
 
 debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
             return true;
         }
 
+        debug('TARGETING', `🎯 Waypoint ${waypointId} not found in target list`);
         return false;
     }
 

@@ -607,18 +607,21 @@ export class WaypointManager {
         }
         
         // Remove from Target Computer target list
-        if (window.targetComputerManager) {
-            // Remove from target objects list
-            if (window.targetComputerManager.removeVirtualTarget) {
-                const removed = window.targetComputerManager.removeVirtualTarget(waypoint.id);
-                debug('WAYPOINTS', `🎯 Removed waypoint from target list: ${removed ? '✅ SUCCESS' : '❌ NOT FOUND'}`);
-            }
+        if (window.targetComputerManager && window.targetComputerManager.removeVirtualTarget) {
+            const currentTargetBefore = window.targetComputerManager.currentTarget;
+            const targetObjectsCountBefore = window.targetComputerManager.targetObjects?.length || 0;
             
-            // Clear current target if this waypoint was targeted
-            if (window.targetComputerManager.currentTarget?.id === waypoint.id) {
-                window.targetComputerManager.clearCurrentTarget();
-                debug('WAYPOINTS', '🎯 Cleared current target (was completed waypoint)');
-            }
+            debug('WAYPOINTS', `🎯 Before removeVirtualTarget: currentTarget=${currentTargetBefore?.name || 'None'}, targetObjects=${targetObjectsCountBefore}`);
+            
+            const removed = window.targetComputerManager.removeVirtualTarget(waypoint.id);
+            
+            const currentTargetAfter = window.targetComputerManager.currentTarget;
+            const targetObjectsCountAfter = window.targetComputerManager.targetObjects?.length || 0;
+            
+            debug('WAYPOINTS', `🎯 After removeVirtualTarget: removed=${removed ? '✅ SUCCESS' : '❌ NOT FOUND'}, currentTarget=${currentTargetAfter?.name || 'None'}, targetObjects=${targetObjectsCountAfter}`);
+            
+            // removeVirtualTarget() already handles clearing/switching the current target
+            // No need to call clearCurrentTarget() separately
         }
         
         // Play objective completion audio
