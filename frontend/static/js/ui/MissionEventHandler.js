@@ -1,4 +1,5 @@
 import { debug } from '../debug.js';
+import { MissionCompletionScreen } from './MissionCompletionScreen.js';
 
 /**
  * Mission Event Handler
@@ -12,10 +13,13 @@ export class MissionEventHandler {
         this.activeMissions = new Map(); // mission_id -> mission data
         this.missionAPI = null; // Will be set when needed
         
+        // Initialize mission completion screen
+        this.completionScreen = window.missionCompletionScreen || new MissionCompletionScreen();
+        
         // Initialize event listeners
         this.bindGameEvents();
         
-debug('MISSIONS', 'Mission Event Handler initialized');
+        debug('MISSIONS', 'Mission Event Handler initialized');
     }
     
     bindGameEvents() {
@@ -488,8 +492,11 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                 
                 debug('MISSIONS', `🏁 Mission ${waypoint.missionId} FULLY completed - removing from active missions`);
                 
+                // Get mission data to check for completion screen suppression
+                const missionData = await this.getMissionData(waypoint.missionId);
+                
                 // Award mission completion rewards
-                await this.awardMissionCompletionRewards(waypoint.missionId);
+                await this.awardMissionCompletionRewards(waypoint.missionId, missionData);
                 
                 // Clear waypoint targets when mission completes
                 const tcm = window.targetComputerManager;
@@ -534,10 +541,37 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
     }
 
     /**
+     * Get mission data from waypoint manager or mission API
+     * @param {string} missionId - Mission ID
+     * @returns {Object|null} - Mission data
+     */
+    async getMissionData(missionId) {
+        try {
+            // Try to get from waypoint manager first (for test missions)
+            if (window.waypointManager && window.waypointManager.getTestMissionData) {
+                const testMissionData = window.waypointManager.getTestMissionData(missionId);
+                if (testMissionData) return testMissionData;
+            }
+            
+            // Try to get from mission API
+            if (window.missionAPI && window.missionAPI.activeMissions) {
+                const missionData = window.missionAPI.activeMissions.get(missionId);
+                if (missionData) return missionData;
+            }
+            
+            return null;
+        } catch (error) {
+            debug('MISSIONS', `⚠️ Failed to get mission data for ${missionId}:`, error);
+            return null;
+        }
+    }
+
+    /**
      * Award mission completion rewards
      * @param {string} missionId - Mission ID
+     * @param {Object} missionData - Mission data (optional)
      */
-    async awardMissionCompletionRewards(missionId) {
+    async awardMissionCompletionRewards(missionId, missionData = null) {
         debug('MISSIONS', `🎁 Awarding mission completion rewards for: ${missionId}`);
 
         try {
@@ -558,14 +592,20 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                     }
                 };
 
-                // Show mission completion notification
-                if (window.starfieldManager && window.starfieldManager.showHUDEphemeral) {
-                    window.starfieldManager.showHUDEphemeral(
-                        'MISSION COMPLETE',
-                        `Deep Space Survey Mission completed! Rewards: ${rewards.credits} credits, +${rewards.factionBonuses.terran_republic_alliance} TRA reputation, ${rewards.cards.count} NFT cards`,
-                        8000
-                    );
-                }
+                // Show mission completion screen
+                const displayMissionData = missionData || {
+                    title: 'Deep Space Survey Mission',
+                    description: 'Conduct exploration survey of designated sectors. Investigate anomalous readings and report discoveries.',
+                    faction: 'terran_republic_alliance'
+                };
+
+                // Show completion screen (can be suppressed with mission flag)
+                this.completionScreen.show(displayMissionData, rewards, {
+                    suppressScreen: missionData?.suppressCompletionScreen || false,
+                    duration: 12000,
+                    showBackground: true,
+                    playSound: true
+                });
 
                 // Log rewards for debugging
                 debug('MISSIONS', `🎁 Mission rewards awarded:`, rewards);

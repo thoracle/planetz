@@ -966,6 +966,7 @@ export class WaypointManager {
                 description: 'Conduct exploration survey of designated sectors. Investigate anomalous readings and report discoveries.',
                 type: 'exploration',
                 faction: 'terran_republic_alliance',
+                suppressCompletionScreen: false, // Optional flag to suppress completion screen
                 waypoints: [
                     {
                         name: 'Survey Point Alpha',
