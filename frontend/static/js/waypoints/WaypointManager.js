@@ -983,25 +983,16 @@ export class WaypointManager {
                                     channelId: 'mission_control'
                                 }
                             },
-                            {
-                                type: 'show_message',
-                                parameters: {
-                                    title: 'Discovery: Mineral Deposits',
-                                    message: 'Long-range sensors detect rich mineral deposits in nearby asteroids. Marking location for mining operations.',
-                                    audioFileId: 'discovery_chime',
-                                    duration: 5000,
-                                    priority: 'discovery'
+                                {
+                                    type: 'show_message',
+                                    parameters: {
+                                        title: 'Discovery: Mineral Deposits',
+                                        message: 'Long-range sensors detect rich mineral deposits in nearby asteroids. Marking location for mining operations.',
+                                        audioFileId: 'discovery_chime',
+                                        duration: 5000,
+                                        priority: 'discovery'
+                                    }
                                 }
-                            },
-                            {
-                                type: 'give_item',
-                                parameters: {
-                                    itemType: 'survey_data',
-                                    itemId: 'mineral_survey_alpha',
-                                    quantity: 1,
-                                    message: 'Survey data logged: Mineral deposits detected in sector Alpha'
-                                }
-                            }
                         ]
                     },
                     {
@@ -1021,33 +1012,16 @@ export class WaypointManager {
                                     channelId: 'science_division'
                                 }
                             },
-                            {
-                                type: 'show_message',
-                                parameters: {
-                                    title: 'Discovery: Archaeological Site',
-                                    message: 'Ancient ruins detected! Preliminary scans indicate advanced technology. This could be a significant find.',
-                                    audioFileId: 'scan_complete',
-                                    duration: 6000,
-                                    priority: 'major_discovery'
+                                {
+                                    type: 'show_message',
+                                    parameters: {
+                                        title: 'Discovery: Archaeological Site',
+                                        message: 'Ancient ruins detected! Preliminary scans indicate advanced technology. This could be a significant find.',
+                                        audioFileId: 'scan_complete',
+                                        duration: 6000,
+                                        priority: 'major_discovery'
+                                    }
                                 }
-                            },
-                            {
-                                type: 'give_reward',
-                                parameters: {
-                                    rewardPackageId: '2', // Exploration reward package
-                                    bonusMultiplier: 1.5,
-                                    message: 'Exploration bonus awarded for archaeological discovery!'
-                                }
-                            },
-                            {
-                                type: 'give_item',
-                                parameters: {
-                                    itemType: 'survey_data',
-                                    itemId: 'archaeological_survey_beta',
-                                    quantity: 1,
-                                    message: 'Archaeological survey data recorded'
-                                }
-                            }
                         ]
                     },
                     {
@@ -1067,24 +1041,16 @@ export class WaypointManager {
                                     channelId: 'mission_control'
                                 }
                             },
-                            {
-                                type: 'show_message',
-                                parameters: {
-                                    title: 'Mission Complete',
-                                    message: 'Deep space survey mission completed successfully. All survey data has been transmitted to Command.',
-                                    audioFileId: 'mission_success',
-                                    duration: 4000,
-                                    priority: 'mission_complete'
+                                {
+                                    type: 'show_message',
+                                    parameters: {
+                                        title: 'Mission Complete',
+                                        message: 'Deep space survey mission completed successfully. All survey data has been transmitted to Command.',
+                                        audioFileId: 'mission_success',
+                                        duration: 4000,
+                                        priority: 'mission_complete'
+                                    }
                                 }
-                            },
-                            {
-                                type: 'give_reward',
-                                parameters: {
-                                    rewardPackageId: '3', // Mission completion reward
-                                    bonusMultiplier: 2.0,
-                                    message: 'Mission completion bonus awarded!'
-                                }
-                            }
                         ]
                     }
                 ],
