@@ -760,7 +760,7 @@ export class WaypointManager {
         debug('WAYPOINTS', '🚢 Executing spawn ships action');
         
         try {
-            const action = this.actionRegistry.createAction('spawn_ships', parameters);
+            const action = this.actionRegistry.create('spawn_ships', parameters);
             const result = await action.execute({ waypoint: this.currentWaypoint });
             
             debug('WAYPOINTS', `🚢 Spawn ships completed: ${result.result?.spawnedCount || 0} ships`);
@@ -776,7 +776,7 @@ export class WaypointManager {
         debug('WAYPOINTS', '📻 Executing play comm action');
         
         try {
-            const action = this.actionRegistry.createAction('play_comm', parameters);
+            const action = this.actionRegistry.create('play_comm', parameters);
             const result = await action.execute({ waypoint: this.currentWaypoint });
             
             debug('WAYPOINTS', `📻 Play comm completed: ${parameters.audioFile || parameters.videoFile}`);
@@ -808,7 +808,7 @@ export class WaypointManager {
             
             // Try ActionRegistry as secondary option
             try {
-                const action = this.actionRegistry.createAction('show_message', parameters);
+                const action = this.actionRegistry.create('show_message', parameters);
                 const result = await action.execute({ waypoint: this.currentWaypoint });
                 debug('WAYPOINTS', `💬 Show message completed via ActionRegistry: ${title}`);
                 return result;
@@ -828,7 +828,7 @@ export class WaypointManager {
         debug('WAYPOINTS', '🎁 Executing give item action');
         
         try {
-            const action = this.actionRegistry.createAction('give_item', parameters);
+            const action = this.actionRegistry.create('give_item', parameters);
             const result = await action.execute({ waypoint: this.currentWaypoint });
             
             debug('WAYPOINTS', `🎁 Give item completed: ${parameters.itemId} x${parameters.quantity || 1}`);
@@ -844,7 +844,7 @@ export class WaypointManager {
         debug('WAYPOINTS', '💰 Executing give reward action');
         
         try {
-            const action = this.actionRegistry.createAction('give_reward', parameters);
+            const action = this.actionRegistry.create('give_reward', parameters);
             const result = await action.execute({ waypoint: this.currentWaypoint });
             
             debug('WAYPOINTS', `💰 Give reward completed: ${parameters.rewardPackageId}`);
