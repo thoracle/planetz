@@ -1817,6 +1817,19 @@ debugSyncFile()     // Sync browser with file
 **Status**: ✅ **RESOLVED** - Directional arrows now appear immediately upon waypoint creation
 **Impact**: Seamless waypoint navigation experience with instant visual feedback
 
+### **✅ W Key Target Computer Requirement Fixed**
+
+**Issue**: W key behavior was inconsistent with T key regarding target computer requirements
+**Root Cause**: W key allowed waypoint creation without target computer, while T key properly failed
+**Solution**: Made W key require target computer exactly like T key - both now fail identically when no target computer is available
+**Status**: ✅ **RESOLVED** - W and T keys now have identical system requirements and error handling
+**Technical Details**:
+- Both keys check for target computer card installation
+- Both keys validate energy reactor availability
+- Both keys show identical error messages and play command failed sounds
+- Both keys fail completely when target computer unavailable (no waypoint creation)
+**Impact**: Consistent game mechanics - waypoints require target computer systems, no exceptions
+
 ### **🏆 Impact: Enhanced Mission Experience**
 
 **Gameplay Benefits**:
