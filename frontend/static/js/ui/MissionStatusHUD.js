@@ -659,116 +659,170 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
             debug('UI', `✅ Marked mission as completed in HUD: ${missionId}`);
         }
 
-        // Create completion content
-        const completionContent = this.createCompletionContent(missionData, rewards, missionId);
+        // Find the mission details section (where objectives are)
+        const detailsSection = panel.querySelector('.mission-details');
+        if (!detailsSection) {
+            debug('UI', `⚠️ Mission details section not found in panel: ${missionId}`);
+            return;
+        }
+
+        // Check if rewards section already exists (avoid duplicates)
+        if (detailsSection.querySelector('.mission-rewards-section')) {
+            debug('UI', `⚠️ Rewards section already exists for mission: ${missionId}`);
+            return;
+        }
+
+        // Create rewards section
+        const rewardsSection = this.createRewardsSection(rewards, missionId);
         
-        // Replace panel content with completion display
-        panel.innerHTML = '';
-        panel.appendChild(completionContent);
+        // Add rewards section to the details (after objectives)
+        detailsSection.appendChild(rewardsSection);
         
         // Update panel styling for completion
         panel.style.background = 'rgba(0, 60, 0, 0.4)';
         panel.style.border = '2px solid #00ff41';
         panel.style.boxShadow = '0 0 10px rgba(0, 255, 65, 0.3)';
+        
+        debug('UI', `✅ Added rewards section to mission panel: ${missionId}`);
     }
 
     /**
-     * Create mission completion content
-     * @param {Object} missionData - Mission data
+     * Create rewards section to append under objectives
      * @param {Object} rewards - Rewards earned
      * @param {string} missionId - Mission ID
-     * @returns {HTMLElement} - Completion content element
+     * @returns {HTMLElement} - Rewards section element
      */
-    createCompletionContent(missionData, rewards, missionId) {
-        const container = document.createElement('div');
-        container.className = 'mission-completion-content';
-        
-        const factionName = this.getFactionDisplayName(missionData.faction);
-        const factionRep = rewards.factionBonuses ? Object.values(rewards.factionBonuses)[0] || 0 : 0;
-        
-        container.innerHTML = `
-            <div class="completion-header" style="
-                text-align: center;
-                margin-bottom: 15px;
-                padding-bottom: 10px;
-                border-bottom: 1px solid #00ff41;
-            ">
-                <div style="
-                    color: #00ff41;
-                    font-size: 16px;
-                    font-weight: bold;
-                    text-shadow: 0 0 5px #00ff41;
-                    margin-bottom: 5px;
-                ">🎉 MISSION COMPLETE</div>
-                <div style="
-                    color: #ffffff;
-                    font-size: 12px;
-                ">${missionData.title}</div>
-            </div>
-            
-            <div class="rewards-summary" style="
-                margin-bottom: 15px;
-            ">
-                <div style="
-                    color: #00ff41;
-                    font-size: 14px;
-                    font-weight: bold;
-                    margin-bottom: 8px;
-                ">REWARDS EARNED:</div>
-                
-                <div class="rewards-list" style="
-                    display: flex;
-                    flex-direction: column;
-                    gap: 5px;
-                ">
-                    ${this.buildRewardItem('💰', `${rewards.credits} Credits`)}
-                    ${factionRep > 0 ? this.buildRewardItem('🎖️', `+${factionRep} ${factionName} Rep`) : ''}
-                    ${rewards.cards?.count > 0 ? this.buildRewardItem('🃏', `${rewards.cards.count} NFT Cards`) : ''}
-                </div>
-            </div>
-            
-            <div class="completion-actions" style="
-                text-align: center;
-            ">
-                <button class="mission-ok-btn" onclick="window.missionStatusHUD.removeMission('${missionId}')" style="
-                    background: linear-gradient(135deg, #00ff41, #00cc33);
-                    border: none;
-                    color: #000000;
-                    padding: 8px 20px;
-                    font-family: 'VT323', monospace;
-                    font-size: 14px;
-                    font-weight: bold;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    text-transform: uppercase;
-                ">OK</button>
-            </div>
+    createRewardsSection(rewards, missionId) {
+        const rewardsSection = document.createElement('div');
+        rewardsSection.className = 'mission-rewards-section';
+        rewardsSection.style.cssText = `
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #00ff41;
         `;
-        
-        return container;
+
+        // Check if there are any rewards to display
+        const hasCredits = rewards.credits && rewards.credits > 0;
+        const hasFactionRep = rewards.factionBonuses && Object.keys(rewards.factionBonuses).length > 0;
+        const hasCards = rewards.cards && rewards.cards.count > 0;
+        const hasRewards = hasCredits || hasFactionRep || hasCards;
+
+        if (hasRewards) {
+            // Rewards header
+            const rewardsHeader = document.createElement('div');
+            rewardsHeader.style.cssText = `
+                color: #00ff41;
+                font-size: 14px;
+                font-weight: bold;
+                margin-bottom: 10px;
+                text-shadow: 0 0 5px #00ff41;
+            `;
+            rewardsHeader.textContent = 'REWARDS:';
+            rewardsSection.appendChild(rewardsHeader);
+
+            // Rewards list
+            const rewardsList = document.createElement('div');
+            rewardsList.className = 'rewards-list';
+            rewardsList.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+                margin-bottom: 15px;
+            `;
+
+            // Add individual rewards
+            if (hasCredits) {
+                rewardsList.appendChild(this.createRewardItem('💰', `${rewards.credits.toLocaleString()} Credits`));
+            }
+
+            if (hasFactionRep) {
+                Object.entries(rewards.factionBonuses).forEach(([faction, amount]) => {
+                    const factionName = this.getFactionDisplayName(faction);
+                    rewardsList.appendChild(this.createRewardItem('🎖️', `+${amount} ${factionName} Rep`));
+                });
+            }
+
+            if (hasCards) {
+                const cardText = `${rewards.cards.count} NFT Card${rewards.cards.count > 1 ? 's' : ''}`;
+                rewardsList.appendChild(this.createRewardItem('🃏', cardText));
+            }
+
+            rewardsSection.appendChild(rewardsList);
+        }
+
+        // OK button (always shown for completed missions)
+        const okButton = document.createElement('button');
+        okButton.className = 'mission-ok-button';
+        okButton.textContent = 'OK';
+        okButton.style.cssText = `
+            background: linear-gradient(135deg, #00ff41, #00cc33);
+            border: none;
+            color: #000000;
+            padding: 8px 20px;
+            font-family: 'VT323', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            width: 100%;
+            margin-top: 10px;
+        `;
+
+        // Add hover effect
+        okButton.addEventListener('mouseenter', () => {
+            okButton.style.background = 'linear-gradient(135deg, #00cc33, #009922)';
+            okButton.style.color = '#ffffff';
+            okButton.style.boxShadow = '0 0 15px rgba(0, 255, 65, 0.6)';
+        });
+
+        okButton.addEventListener('mouseleave', () => {
+            okButton.style.background = 'linear-gradient(135deg, #00ff41, #00cc33)';
+            okButton.style.color = '#000000';
+            okButton.style.boxShadow = 'none';
+        });
+
+        // Add click handler
+        okButton.addEventListener('click', () => {
+            this.removeMission(missionId);
+        });
+
+        rewardsSection.appendChild(okButton);
+
+        return rewardsSection;
     }
 
     /**
-     * Build individual reward item HTML
+     * Create individual reward item element
      * @param {string} icon - Reward icon
      * @param {string} text - Reward text
-     * @returns {string} - HTML for reward item
+     * @returns {HTMLElement} - Reward item element
      */
-    buildRewardItem(icon, text) {
-        return `
-            <div style="
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                color: #ffffff;
-                font-size: 12px;
-            ">
-                <span style="font-size: 14px;">${icon}</span>
-                <span>${text}</span>
-            </div>
+    createRewardItem(icon, text) {
+        const item = document.createElement('div');
+        item.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ffffff;
+            font-size: 12px;
         `;
+
+        const iconSpan = document.createElement('span');
+        iconSpan.style.fontSize = '14px';
+        iconSpan.textContent = icon;
+
+        const textSpan = document.createElement('span');
+        textSpan.textContent = text;
+
+        item.appendChild(iconSpan);
+        item.appendChild(textSpan);
+
+        return item;
     }
+
+
 
     /**
      * Remove mission from HUD (called by OK button)
