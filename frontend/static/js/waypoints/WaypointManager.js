@@ -627,8 +627,9 @@ export class WaypointManager {
                 
                 // Clear target when mission is complete (no more waypoints)
                 if (window.targetComputerManager && window.targetComputerManager.clearCurrentTarget) {
+                    debug('WAYPOINTS', '🎯 Clearing target and wireframe - mission complete');
                     window.targetComputerManager.clearCurrentTarget();
-                    debug('WAYPOINTS', '🎯 Cleared target - mission complete');
+                    debug('WAYPOINTS', '✅ Target and wireframe cleared - mission complete');
                 }
             }
         }
