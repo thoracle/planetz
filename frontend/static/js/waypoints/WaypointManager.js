@@ -143,6 +143,11 @@ export class WaypointManager {
             return false;
         }
 
+        // Remove 3D waypoint object from world space
+        if (this.waypointIndicator) {
+            this.waypointIndicator.removeWaypointObject(waypointId);
+        }
+
         // Remove from target computer if currently targeted
         if (window.targetComputerManager && 
             window.targetComputerManager.currentTarget?.id === waypointId) {
@@ -497,8 +502,66 @@ export class WaypointManager {
      * @param {Object} waypoint - Waypoint object
      */
     updateHUDDisplay(waypoint) {
-        // This will be implemented in Phase 3 (UI Integration)
+        // Create 3D waypoint object in world space
+        this.create3DWaypointObject(waypoint);
+        
         debug('WAYPOINTS', `🎯 Updated HUD display for waypoint: ${waypoint.name}`);
+    }
+
+    /**
+     * Create 3D waypoint object in world space
+     * @param {Object} waypoint - Waypoint object
+     */
+    create3DWaypointObject(waypoint) {
+        // Get the waypoint indicator system
+        if (!this.waypointIndicator) {
+            this.initializeWaypointIndicator();
+        }
+        
+        if (this.waypointIndicator) {
+            this.waypointIndicator.createWaypointObject(waypoint);
+        } else {
+            debug('WAYPOINTS', '⚠️ WaypointIndicator not available - 3D object not created');
+        }
+    }
+
+    /**
+     * Initialize waypoint indicator system
+     */
+    initializeWaypointIndicator() {
+        // Try to get scene and THREE from various sources
+        let scene = null;
+        let THREE = null;
+        
+        // Try StarfieldManager first
+        if (window.starfieldManager) {
+            scene = window.starfieldManager.scene;
+            THREE = window.starfieldManager.THREE;
+        }
+        
+        // Try TargetComputerManager as fallback
+        if (!scene && window.targetComputerManager) {
+            scene = window.targetComputerManager.scene;
+            THREE = window.targetComputerManager.THREE;
+        }
+        
+        // Try global THREE as last resort
+        if (!THREE && window.THREE) {
+            THREE = window.THREE;
+        }
+        
+        if (scene && THREE) {
+            // Import and create WaypointIndicator
+            import('./ui/WaypointIndicator.js').then(module => {
+                const { WaypointIndicator } = module;
+                this.waypointIndicator = new WaypointIndicator(scene, THREE);
+                debug('WAYPOINTS', '✅ WaypointIndicator initialized successfully');
+            }).catch(error => {
+                console.error('Failed to load WaypointIndicator:', error);
+            });
+        } else {
+            debug('WAYPOINTS', '⚠️ Could not initialize WaypointIndicator - scene or THREE not available');
+        }
     }
 
     /**
@@ -507,6 +570,11 @@ export class WaypointManager {
      */
     onWaypointCompleted(waypoint) {
         debug('WAYPOINTS', `🎯 Waypoint completed: ${waypoint.name}`);
+        
+        // Remove 3D waypoint object from world space
+        if (this.waypointIndicator) {
+            this.waypointIndicator.removeWaypointObject(waypoint.id);
+        }
         
         // Remove from Target Computer if currently targeted
         if (window.targetComputerManager && 
