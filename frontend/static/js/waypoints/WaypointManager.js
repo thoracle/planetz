@@ -975,7 +975,7 @@ export class WaypointManager {
                         name: 'Survey Point Alpha',
                         position: [15.0, 0.0, 25.0], // Empty space location
                         triggerRadius: 20.0,
-                        type: 'exploration',
+                        type: 'objective',
                         actions: [
                             {
                                 type: 'play_comm',
@@ -1013,7 +1013,7 @@ export class WaypointManager {
                         name: 'Survey Point Beta',
                         position: [-10.0, 5.0, -15.0], // Different empty space location
                         triggerRadius: 20.0,
-                        type: 'exploration',
+                        type: 'objective',
                         actions: [
                             {
                                 type: 'play_comm',
@@ -1059,7 +1059,7 @@ export class WaypointManager {
                         name: 'Survey Point Gamma',
                         position: [30.0, 15.0, 40.0], // Third survey location
                         triggerRadius: 18.0,
-                        type: 'exploration',
+                        type: 'objective',
                         actions: [
                             {
                                 type: 'play_comm',

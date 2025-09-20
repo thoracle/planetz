@@ -1080,7 +1080,7 @@ sequenceDiagram
     name: 'Survey Point Alpha',
     position: [15.0, 0.0, 25.0],
     triggerRadius: 20.0,
-    type: 'exploration',
+    type: 'objective',
     actions: [
         {
             type: 'play_comm',
