@@ -4782,24 +4782,31 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
      * Clear current target and reset target state
      */
     clearCurrentTarget() {
+        debug('TARGETING', `🎯 clearCurrentTarget() called - current target: ${this.currentTarget?.name || 'None'}`);
+        
         this.currentTarget = null;
         this.targetIndex = -1;
         
         // Hide target display elements
         if (this.targetHUD) {
             this.targetHUD.style.display = 'none';
+            debug('TARGETING', `🎯 Hidden target HUD`);
         }
         if (this.targetReticle) {
             this.targetReticle.style.display = 'none';
+            debug('TARGETING', `🎯 Hidden target reticle`);
         }
         
         // Clear wireframe
+        debug('TARGETING', `🎯 About to clear wireframe...`);
         this.clearTargetWireframe();
+        debug('TARGETING', `🎯 Wireframe cleared`);
         
         // Hide direction arrows
         this.hideAllDirectionArrows();
+        debug('TARGETING', `🎯 Direction arrows hidden`);
         
-        // console.log('🎯 Current target cleared due to invalid state');
+        debug('TARGETING', `✅ clearCurrentTarget() completed`);
     }
 
     /**
