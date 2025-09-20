@@ -224,7 +224,7 @@ export class PlayCommAction extends WaypointAction {
     playAudioFallback(config) {
         return new Promise((resolve, reject) => {
             try {
-                const audio = new Audio(`/static/audio/${config.file}`);
+                const audio = new Audio(`/static/video/${config.file}`);
                 audio.volume = config.volume;
                 audio.loop = config.loop;
 
