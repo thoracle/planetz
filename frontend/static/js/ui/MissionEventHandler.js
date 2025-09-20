@@ -1,5 +1,4 @@
 import { debug } from '../debug.js';
-import { MissionCompletionScreen } from './MissionCompletionScreen.js';
 
 /**
  * Mission Event Handler
@@ -13,8 +12,6 @@ export class MissionEventHandler {
         this.activeMissions = new Map(); // mission_id -> mission data
         this.missionAPI = null; // Will be set when needed
         
-        // Initialize mission completion screen
-        this.completionScreen = window.missionCompletionScreen || new MissionCompletionScreen();
         
         // Initialize event listeners
         this.bindGameEvents();
@@ -592,20 +589,29 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                     }
                 };
 
-                // Show mission completion screen
+                // Show mission completion in HUD instead of separate screen
                 const displayMissionData = missionData || {
                     title: 'Deep Space Survey Mission',
                     description: 'Conduct exploration survey of designated sectors. Investigate anomalous readings and report discoveries.',
                     faction: 'terran_republic_alliance'
                 };
 
-                // Show completion screen (can be suppressed with mission flag)
-                this.completionScreen.show(displayMissionData, rewards, {
-                    suppressScreen: missionData?.suppressCompletionScreen || false,
-                    duration: 12000,
-                    showBackground: true,
-                    playSound: true
-                });
+                // Check if completion screen should be suppressed
+                if (missionData?.suppressCompletionScreen) {
+                    debug('MISSIONS', '🎉 Mission completion display suppressed by flag');
+                } else {
+                    // Show completion in mission HUD
+                    if (window.starfieldManager?.missionStatusHUD) {
+                        window.starfieldManager.missionStatusHUD.showMissionCompletion(
+                            waypoint.missionId,
+                            displayMissionData,
+                            rewards
+                        );
+                        debug('MISSIONS', '🎉 Mission completion shown in HUD');
+                    } else {
+                        debug('MISSIONS', '⚠️ Mission HUD not available for completion display');
+                    }
+                }
 
                 // Log rewards for debugging
                 debug('MISSIONS', `🎁 Mission rewards awarded:`, rewards);

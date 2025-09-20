@@ -614,6 +614,182 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
     }
     
     /**
+     * Show mission completion rewards in the mission panel
+     * @param {string} missionId - Mission ID
+     * @param {Object} missionData - Mission data
+     * @param {Object} rewards - Rewards earned
+     */
+    showMissionCompletion(missionId, missionData, rewards) {
+        const panel = this.missionPanels.get(missionId);
+        if (!panel) {
+            debug('UI', `⚠️ Mission panel not found for completion: ${missionId}`);
+            return;
+        }
+
+        debug('UI', `🎉 Showing mission completion in HUD: ${missionId}`);
+
+        // Create completion content
+        const completionContent = this.createCompletionContent(missionData, rewards, missionId);
+        
+        // Replace panel content with completion display
+        panel.innerHTML = '';
+        panel.appendChild(completionContent);
+        
+        // Update panel styling for completion
+        panel.style.background = 'rgba(0, 60, 0, 0.4)';
+        panel.style.border = '2px solid #00ff41';
+        panel.style.boxShadow = '0 0 10px rgba(0, 255, 65, 0.3)';
+    }
+
+    /**
+     * Create mission completion content
+     * @param {Object} missionData - Mission data
+     * @param {Object} rewards - Rewards earned
+     * @param {string} missionId - Mission ID
+     * @returns {HTMLElement} - Completion content element
+     */
+    createCompletionContent(missionData, rewards, missionId) {
+        const container = document.createElement('div');
+        container.className = 'mission-completion-content';
+        
+        const factionName = this.getFactionDisplayName(missionData.faction);
+        const factionRep = rewards.factionBonuses ? Object.values(rewards.factionBonuses)[0] || 0 : 0;
+        
+        container.innerHTML = `
+            <div class="completion-header" style="
+                text-align: center;
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid #00ff41;
+            ">
+                <div style="
+                    color: #00ff41;
+                    font-size: 16px;
+                    font-weight: bold;
+                    text-shadow: 0 0 5px #00ff41;
+                    margin-bottom: 5px;
+                ">🎉 MISSION COMPLETE</div>
+                <div style="
+                    color: #ffffff;
+                    font-size: 12px;
+                ">${missionData.title}</div>
+            </div>
+            
+            <div class="rewards-summary" style="
+                margin-bottom: 15px;
+            ">
+                <div style="
+                    color: #00ff41;
+                    font-size: 14px;
+                    font-weight: bold;
+                    margin-bottom: 8px;
+                ">REWARDS EARNED:</div>
+                
+                <div class="rewards-list" style="
+                    display: flex;
+                    flex-direction: column;
+                    gap: 5px;
+                ">
+                    ${this.buildRewardItem('💰', `${rewards.credits} Credits`)}
+                    ${factionRep > 0 ? this.buildRewardItem('🎖️', `+${factionRep} ${factionName} Rep`) : ''}
+                    ${rewards.cards?.count > 0 ? this.buildRewardItem('🃏', `${rewards.cards.count} NFT Cards`) : ''}
+                </div>
+            </div>
+            
+            <div class="completion-actions" style="
+                text-align: center;
+            ">
+                <button class="mission-ok-btn" onclick="window.missionStatusHUD.removeMission('${missionId}')" style="
+                    background: linear-gradient(135deg, #00ff41, #00cc33);
+                    border: none;
+                    color: #000000;
+                    padding: 8px 20px;
+                    font-family: 'VT323', monospace;
+                    font-size: 14px;
+                    font-weight: bold;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    text-transform: uppercase;
+                ">OK</button>
+            </div>
+        `;
+        
+        return container;
+    }
+
+    /**
+     * Build individual reward item HTML
+     * @param {string} icon - Reward icon
+     * @param {string} text - Reward text
+     * @returns {string} - HTML for reward item
+     */
+    buildRewardItem(icon, text) {
+        return `
+            <div style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: #ffffff;
+                font-size: 12px;
+            ">
+                <span style="font-size: 14px;">${icon}</span>
+                <span>${text}</span>
+            </div>
+        `;
+    }
+
+    /**
+     * Remove mission from HUD (called by OK button)
+     * @param {string} missionId - Mission ID to remove
+     */
+    removeMission(missionId) {
+        debug('UI', `🗑️ Removing completed mission from HUD: ${missionId}`);
+        
+        const panel = this.missionPanels.get(missionId);
+        if (panel) {
+            // Fade out animation
+            panel.style.transition = 'all 0.3s ease';
+            panel.style.opacity = '0';
+            panel.style.transform = 'translateX(100%)';
+            
+            // Remove after animation
+            setTimeout(() => {
+                if (panel.parentNode) {
+                    panel.parentNode.removeChild(panel);
+                }
+                this.missionPanels.delete(missionId);
+                
+                // Remove from active missions list
+                this.activeMissions = this.activeMissions.filter(m => m.id !== missionId);
+                
+                // Show no missions message if empty
+                if (this.activeMissions.length === 0) {
+                    this.showNoMissionsMessage();
+                }
+            }, 300);
+        }
+    }
+
+    /**
+     * Get display name for faction
+     * @param {string} factionId - Faction identifier
+     * @returns {string} - Display name
+     */
+    getFactionDisplayName(factionId) {
+        const factionNames = {
+            'terran_republic_alliance': 'TRA',
+            'explorers_guild': 'Explorers Guild',
+            'traders_guild': 'Traders Guild',
+            'friendly': 'Allied Forces',
+            'neutral': 'Independent',
+            'enemy': 'Hostile Forces'
+        };
+        
+        return factionNames[factionId] || factionId || 'Unknown';
+    }
+
+    /**
      * Show error message
      */
     showErrorMessage(message) {
