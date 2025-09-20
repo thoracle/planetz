@@ -256,15 +256,27 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
         try {
             // Get active missions from API
             console.log('🎯 Calling missionAPI.getActiveMissions()...');
-            this.activeMissions = await this.missionAPI.getActiveMissions();
-            console.log('🎯 Got active missions:', this.activeMissions.length, this.activeMissions);
+            const apiMissions = await this.missionAPI.getActiveMissions();
+            console.log('🎯 Got active missions from API:', apiMissions.length, apiMissions);
             
-            // Process missions for UI display
-            this.activeMissions = this.activeMissions.map(mission => this.processMissionForUI(mission));
+            // Preserve completed missions that are showing completion screens
+            const completedMissionsShowingRewards = this.activeMissions.filter(mission => 
+                mission.status === 'completed' && this.missionPanels.has(mission.id)
+            );
+            
+            console.log('🎯 Preserving completed missions showing rewards:', completedMissionsShowingRewards.length);
+            
+            // Process API missions for UI display
+            const processedApiMissions = apiMissions.map(mission => this.processMissionForUI(mission));
+            
+            // Combine API missions with completed missions showing rewards
+            this.activeMissions = [...processedApiMissions, ...completedMissionsShowingRewards];
+            
+            console.log('🎯 Final missions to display:', this.activeMissions.length);
             
             this.renderMissions();
             console.log('✅ MissionStatusHUD: Refreshed and rendered missions');
-debug('UI', `🎯 MissionStatusHUD: Refreshed ${this.activeMissions.length} active missions`);
+debug('UI', `🎯 MissionStatusHUD: Refreshed ${this.activeMissions.length} active missions (${processedApiMissions.length} active + ${completedMissionsShowingRewards.length} completed)`);
         } catch (error) {
             console.error('🎯 MissionStatusHUD: Error refreshing missions:', error);
             this.showErrorMessage('Failed to load missions');
@@ -637,6 +649,16 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
 
         debug('UI', `🎉 Showing mission completion in HUD: ${missionId}`);
 
+        // Mark the mission as completed in our local array to preserve it during refreshes
+        const mission = this.activeMissions.find(m => m.id === missionId);
+        if (mission) {
+            mission.status = 'completed';
+            mission.completedAt = Date.now();
+            mission.rewards = rewards;
+            mission.completionData = missionData;
+            debug('UI', `✅ Marked mission as completed in HUD: ${missionId}`);
+        }
+
         // Create completion content
         const completionContent = this.createCompletionContent(missionData, rewards, missionId);
         
@@ -775,12 +797,37 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
                 // Remove from active missions list
                 this.activeMissions = this.activeMissions.filter(m => m.id !== missionId);
                 
+                // Now actually delete the mission from caches (user has dismissed it)
+                this.deleteMissionFromCaches(missionId);
+                
                 // Show no missions message if empty
                 if (this.activeMissions.length === 0) {
                     this.showNoMissionsMessage();
                 }
             }, 300);
         }
+    }
+
+    /**
+     * Delete mission from all caches (called after user dismisses completion)
+     * @param {string} missionId - Mission ID to delete
+     */
+    deleteMissionFromCaches(missionId) {
+        debug('UI', `🗑️ Deleting mission from caches: ${missionId}`);
+        
+        // Remove from MissionAPI cache
+        if (window.missionAPI && window.missionAPI.activeMissions) {
+            const removed = window.missionAPI.activeMissions.delete(missionId);
+            debug('UI', `🗑️ Removed from MissionAPI cache: ${removed ? 'SUCCESS' : 'NOT FOUND'}`);
+        }
+        
+        // Remove from MissionEventHandler cache
+        if (window.missionEventHandler && window.missionEventHandler.activeMissions) {
+            const localRemoved = window.missionEventHandler.activeMissions.delete(missionId);
+            debug('UI', `🗑️ Removed from local cache: ${localRemoved ? 'SUCCESS' : 'NOT FOUND'}`);
+        }
+        
+        debug('UI', `✅ Mission ${missionId} fully deleted from all caches`);
     }
 
     /**

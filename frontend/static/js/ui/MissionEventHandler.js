@@ -509,25 +509,26 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                     }
                 }
                 
-                // Remove from MissionAPI cache
+                // Mark mission as completed but don't delete yet - let user dismiss it
                 if (window.missionAPI && window.missionAPI.activeMissions) {
-                    const removed = window.missionAPI.activeMissions.delete(waypoint.missionId);
-                    debug('MISSIONS', `🗑️ Removed mission from MissionAPI cache: ${removed ? 'SUCCESS' : 'NOT FOUND'}`);
-                }
-                
-                // Remove from local cache
-                const localRemoved = this.activeMissions.delete(waypoint.missionId);
-                debug('MISSIONS', `🗑️ Removed mission from local cache: ${localRemoved ? 'SUCCESS' : 'NOT FOUND'}`);
-                
-                // Refresh mission HUD to remove completed mission
-                if (window.starfieldManager?.missionStatusHUD) {
-                    try {
-                        await window.starfieldManager.missionStatusHUD.refreshMissions();
-                        debug('MISSIONS', '✅ Mission HUD refreshed after mission completion');
-                    } catch (error) {
-                        debug('MISSIONS', `❌ Error refreshing mission HUD: ${error.message}`);
+                    const mission = window.missionAPI.activeMissions.get(waypoint.missionId);
+                    if (mission) {
+                        mission.status = 'completed';
+                        mission.completedAt = Date.now();
+                        debug('MISSIONS', `✅ Marked mission as completed: ${waypoint.missionId}`);
                     }
                 }
+                
+                // Mark in local cache as completed too
+                const localMission = this.activeMissions.get(waypoint.missionId);
+                if (localMission) {
+                    localMission.status = 'completed';
+                    localMission.completedAt = Date.now();
+                    debug('MISSIONS', `✅ Marked local mission as completed: ${waypoint.missionId}`);
+                }
+                
+                // Don't refresh HUD yet - let the completion screen show first
+                debug('MISSIONS', '🎉 Mission completion ready - will show rewards in HUD');
                 
                 debug('MISSIONS', `✅ Mission ${waypoint.missionId} completion handled successfully`);
             } else {
