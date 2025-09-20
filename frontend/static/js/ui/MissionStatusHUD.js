@@ -30,30 +30,6 @@ export class MissionStatusHUD {
         // Track missions showing completion to prevent refresh interference
         this.missionsShowingCompletion = new Set(); // mission_id set
         
-        // Hook Set methods to track when items are added/removed
-        const originalAdd = this.missionsShowingCompletion.add.bind(this.missionsShowingCompletion);
-        const originalDelete = this.missionsShowingCompletion.delete.bind(this.missionsShowingCompletion);
-        const originalClear = this.missionsShowingCompletion.clear.bind(this.missionsShowingCompletion);
-        
-        this.missionsShowingCompletion.add = (value) => {
-            console.log('🔒 SET DEBUG: Adding to missionsShowingCompletion:', value, 'Stack:', new Error().stack.split('\n')[1]);
-            return originalAdd(value);
-        };
-        
-        this.missionsShowingCompletion.delete = (value) => {
-            console.log('🗑️ SET DEBUG: Deleting from missionsShowingCompletion:', value, 'Stack:', new Error().stack.split('\n')[1]);
-            return originalDelete(value);
-        };
-        
-        this.missionsShowingCompletion.clear = () => {
-            console.log('🧹 SET DEBUG: Clearing missionsShowingCompletion', 'Stack:', new Error().stack.split('\n')[1]);
-            return originalClear();
-        };
-        
-        // Add unique instance ID for debugging
-        this.instanceId = Math.random().toString(36).substr(2, 9);
-        console.log('🏗️ MissionStatusHUD instance created with ID:', this.instanceId);
-        
         // Update frequency (2Hz = every 500ms)
         this.updateFrequency = 500;
         
@@ -279,28 +255,15 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
      * Refresh missions from mission API
      */
     async refreshMissions() {
-        console.log('🎯 MissionStatusHUD.refreshMissions() called on instance:', this.instanceId);
-        console.log('🎯 REFRESH STACK TRACE:', new Error().stack);
-        console.log('🎯 REFRESH CHECK: this object:', this);
-        console.log('🎯 REFRESH CHECK: missionsShowingCompletion exists:', !!this.missionsShowingCompletion);
-        console.log('🎯 REFRESH CHECK: missionsShowingCompletion type:', typeof this.missionsShowingCompletion);
-        console.log('🎯 REFRESH CHECK: missionsShowingCompletion size:', this.missionsShowingCompletion?.size);
-        console.log('🎯 REFRESH CHECK: missionsShowingCompletion contents:', Array.from(this.missionsShowingCompletion || []));
-        
         // Skip refresh if any missions are showing completion rewards
         if (this.missionsShowingCompletion && this.missionsShowingCompletion.size > 0) {
-            console.log('⏸️ REFRESH BLOCKED: Missions showing completion:', Array.from(this.missionsShowingCompletion));
-            console.log('⏸️ REFRESH BLOCKED: Skipping refresh to preserve rewards sections');
+            debug('UI', '⏸️ MissionStatusHUD: Refresh blocked - missions showing completion rewards');
             return;
         }
         
-        console.log('🎯 REFRESH PROCEEDING: No missions showing completion, continuing with refresh');
-        
         try {
             // Get active missions from API
-            console.log('🎯 Calling missionAPI.getActiveMissions()...');
             const apiMissions = await this.missionAPI.getActiveMissions();
-            console.log('🎯 Got active missions from API:', apiMissions.length, apiMissions);
             
             // Preserve completed missions that are showing completion screens
             // Look for missions that have rewards sections (indicating completion)
@@ -315,37 +278,14 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
                 return (isMarkedCompleted || hasRewardsSection || hasFlaggedRewardsSection || isInCompletionSet) && this.missionPanels.has(mission.id);
             });
             
-            console.log('🎯 Preserving completed missions showing rewards:', completedMissionsShowingRewards.length);
-            
-            // Debug: log details about preserved missions
-            console.log('🔍 PRESERVATION: Checking all active missions for preservation:');
-            this.activeMissions.forEach(mission => {
-                const panel = this.missionPanels.get(mission.id);
-                const hasRewardsSection = panel && panel.querySelector('.mission-rewards-section');
-                const isMarkedCompleted = mission.status === 'completed';
-                const hasFlaggedRewardsSection = mission.hasRewardsSection === true;
-                const isInCompletionSet = this.missionsShowingCompletion.has(mission.id);
-                const shouldPreserve = (isMarkedCompleted || hasRewardsSection || hasFlaggedRewardsSection || isInCompletionSet) && this.missionPanels.has(mission.id);
-                console.log(`🔍 PRESERVATION: Mission ${mission.id}: status=${mission.status}, hasRewardsSection=${!!hasRewardsSection}, flagged=${hasFlaggedRewardsSection}, inCompletionSet=${isInCompletionSet}, shouldPreserve=${shouldPreserve}`);
-            });
-            
-            completedMissionsShowingRewards.forEach(mission => {
-                const panel = this.missionPanels.get(mission.id);
-                const hasRewardsSection = panel && panel.querySelector('.mission-rewards-section');
-                console.log(`🎯 PRESERVATION: Preserving mission ${mission.id}: status=${mission.status}, hasRewardsSection=${!!hasRewardsSection}`);
-            });
-            
             // Process API missions for UI display
             const processedApiMissions = apiMissions.map(mission => this.processMissionForUI(mission));
             
             // Combine API missions with completed missions showing rewards
             this.activeMissions = [...processedApiMissions, ...completedMissionsShowingRewards];
             
-            console.log('🎯 Final missions to display:', this.activeMissions.length);
-            
             this.renderMissions();
-            console.log('✅ MissionStatusHUD: Refreshed and rendered missions');
-debug('UI', `🎯 MissionStatusHUD: Refreshed ${this.activeMissions.length} active missions (${processedApiMissions.length} active + ${completedMissionsShowingRewards.length} completed)`);
+            debug('UI', `🎯 MissionStatusHUD: Refreshed ${this.activeMissions.length} active missions (${processedApiMissions.length} active + ${completedMissionsShowingRewards.length} completed)`);
         } catch (error) {
             console.error('🎯 MissionStatusHUD: Error refreshing missions:', error);
             this.showErrorMessage('Failed to load missions');
@@ -393,9 +333,6 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * Render all active missions
      */
     renderMissions() {
-        console.log('🔄 RENDER: renderMissions() called');
-        console.log('🔄 RENDER: Current missionsShowingCompletion:', Array.from(this.missionsShowingCompletion));
-        
         // Preserve existing panels that have rewards sections (completed missions)
         const panelsToPreserve = new Map();
         this.missionPanels.forEach((panel, missionId) => {
@@ -404,50 +341,33 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
             
             if (hasRewardsSection || isInCompletionSet) {
                 panelsToPreserve.set(missionId, panel);
-                console.log('🔄 RENDER: Preserving panel with rewards section:', missionId, 'hasRewards:', !!hasRewardsSection, 'inCompletionSet:', isInCompletionSet);
                 debug('UI', `🎯 Preserving panel with rewards section: ${missionId}`);
             }
         });
         
-        console.log('🔄 RENDER: Panels to preserve:', panelsToPreserve.size);
-        console.log('🔄 RENDER: Current missionsShowingCompletion for preservation:', Array.from(this.missionsShowingCompletion));
-        
         // Clear content but preserve panels with rewards
-        console.log('🔄 RENDER: Clearing contentArea.innerHTML');
         this.contentArea.innerHTML = '';
-        console.log('🔄 RENDER: Clearing missionPanels Map');
         this.missionPanels.clear();
         
         if (this.activeMissions.length === 0) {
-            console.log('🔄 RENDER: No active missions, showing no missions message');
             this.showNoMissionsMessage();
             return;
         }
         
-        console.log('🔄 RENDER: Processing', this.activeMissions.length, 'active missions');
         this.activeMissions.forEach((mission, index) => {
             let panel;
             
             // Use preserved panel if it exists, otherwise create new one
             if (panelsToPreserve.has(mission.id)) {
                 panel = panelsToPreserve.get(mission.id);
-                console.log('🔄 RENDER: Reusing preserved panel for mission:', mission.id);
                 debug('UI', `🎯 Reusing preserved panel for mission: ${mission.id}`);
-                
-                // Verify the preserved panel still has rewards section
-                const stillHasRewards = panel.querySelector('.mission-rewards-section');
-                console.log('🔄 RENDER: Preserved panel still has rewards section:', !!stillHasRewards);
             } else {
-                console.log('🔄 RENDER: Creating new panel for mission:', mission.id);
                 panel = this.createMissionPanel(mission, index);
             }
             
-            console.log('🔄 RENDER: Appending panel to contentArea for mission:', mission.id);
             this.contentArea.appendChild(panel);
             this.missionPanels.set(mission.id, panel);
         });
-        
-        console.log('🔄 RENDER: renderMissions() completed');
     }
     
     /**
@@ -752,36 +672,16 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * @param {Object} rewards - Rewards earned
      */
     async showMissionCompletion(missionId, missionData, rewards) {
-        console.log('🎉 MISSION COMPLETION: showMissionCompletion called for:', missionId);
-        console.log('🎉 MISSION COMPLETION: Mission data:', missionData);
-        console.log('🎉 MISSION COMPLETION: Rewards:', rewards);
-        
         const panel = this.missionPanels.get(missionId);
         if (!panel) {
             debug('UI', `⚠️ Mission panel not found for completion: ${missionId}`);
-            console.log('❌ MISSION COMPLETION: Panel not found for mission:', missionId);
-            console.log('❌ MISSION COMPLETION: Available panels:', Array.from(this.missionPanels.keys()));
             return;
         }
 
         debug('UI', `🎉 Showing mission completion in HUD: ${missionId}`);
-        console.log('✅ MISSION COMPLETION: Panel found, proceeding with rewards display');
 
-        // FIRST: Block refreshes and mark the mission as completed
-        // This must happen BEFORE any DOM manipulation to prevent race conditions
-        console.log('🔒 MISSION COMPLETION: About to add mission to completion tracking on instance:', this.instanceId);
-        console.log('🔒 MISSION COMPLETION: this object:', this);
-        console.log('🔒 MISSION COMPLETION: missionsShowingCompletion type:', typeof this.missionsShowingCompletion);
-        console.log('🔒 MISSION COMPLETION: Current missionsShowingCompletion before add:', Array.from(this.missionsShowingCompletion));
+        // Block refreshes and mark the mission as completed
         this.missionsShowingCompletion.add(missionId);
-        console.log('🔒 MISSION COMPLETION: Added mission to completion tracking, blocking refreshes');
-        console.log('🔒 MISSION COMPLETION: Current missionsShowingCompletion after add:', Array.from(this.missionsShowingCompletion));
-        console.log('🔒 MISSION COMPLETION: Set size:', this.missionsShowingCompletion.size);
-        
-        // Add a small delay to ensure the blocking takes effect before any pending refreshes
-        await new Promise(resolve => setTimeout(resolve, 50));
-        console.log('🔒 MISSION COMPLETION: After delay - Set size:', this.missionsShowingCompletion.size);
-        console.log('🔒 MISSION COMPLETION: After delay - Set contents:', Array.from(this.missionsShowingCompletion));
         
         const mission = this.activeMissions.find(m => m.id === missionId);
         if (mission) {
@@ -790,63 +690,33 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
             mission.rewards = rewards;
             mission.completionData = missionData;
             mission.hasRewardsSection = true; // Flag for preservation
-            console.log('🔧 MISSION COMPLETION: Pre-marked mission as completed in activeMissions array');
             debug('UI', `✅ Marked mission as completed in HUD: ${missionId}`);
-        } else {
-            console.log('❌ MISSION COMPLETION: Mission not found in activeMissions array!');
-            console.log('❌ MISSION COMPLETION: Available missions:', this.activeMissions.map(m => m.id));
         }
 
         // Find the mission details section (where objectives are)
         const detailsSection = panel.querySelector('.mission-details');
-        console.log('🔍 MISSION COMPLETION: Looking for .mission-details section');
-        console.log('🔍 MISSION COMPLETION: Details section found:', !!detailsSection);
         if (!detailsSection) {
             debug('UI', `⚠️ Mission details section not found in panel: ${missionId}`);
-            console.log('❌ MISSION COMPLETION: .mission-details section not found in panel');
-            console.log('❌ MISSION COMPLETION: Panel HTML:', panel.innerHTML);
             return;
         }
 
         // Check if rewards section already exists (avoid duplicates)
         const existingRewardsSection = detailsSection.querySelector('.mission-rewards-section');
-        console.log('🔍 MISSION COMPLETION: Checking for existing rewards section:', !!existingRewardsSection);
         if (existingRewardsSection) {
             debug('UI', `⚠️ Rewards section already exists for mission: ${missionId}`);
-            console.log('⚠️ MISSION COMPLETION: Rewards section already exists, skipping');
             return;
         }
 
-        // Create rewards section
-        console.log('🔧 MISSION COMPLETION: Creating rewards section');
+        // Create and add rewards section
         const rewardsSection = this.createRewardsSection(rewards, missionId);
-        console.log('🔧 MISSION COMPLETION: Rewards section created:', !!rewardsSection);
-        
-        // Add rewards section to the details (after objectives)
-        console.log('🔧 MISSION COMPLETION: Appending rewards section to details');
         detailsSection.appendChild(rewardsSection);
-        console.log('✅ MISSION COMPLETION: Rewards section appended successfully');
-        
-        // Verify the rewards section is actually in the DOM
-        const verifyRewardsSection = detailsSection.querySelector('.mission-rewards-section');
-        console.log('🔍 VERIFICATION: Rewards section still in DOM after append:', !!verifyRewardsSection);
-        if (verifyRewardsSection) {
-            console.log('🔍 VERIFICATION: Rewards section HTML:', verifyRewardsSection.outerHTML.substring(0, 200) + '...');
-        }
         
         // Update panel styling for completion
-        console.log('🎨 MISSION COMPLETION: Updating panel styling for completion');
         panel.style.background = 'rgba(0, 60, 0, 0.4)';
         panel.style.border = '2px solid #00ff41';
         panel.style.boxShadow = '0 0 10px rgba(0, 255, 65, 0.3)';
-        console.log('🎨 MISSION COMPLETION: Panel styling updated');
-        
-        // Final verification
-        const finalVerifyRewardsSection = detailsSection.querySelector('.mission-rewards-section');
-        console.log('🔍 FINAL VERIFICATION: Rewards section still in DOM after styling:', !!finalVerifyRewardsSection);
         
         debug('UI', `✅ Added rewards section to mission panel: ${missionId}`);
-        console.log('🏁 MISSION COMPLETION: showMissionCompletion method completed successfully');
     }
 
     /**
@@ -856,8 +726,6 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * @returns {HTMLElement} - Rewards section element
      */
     createRewardsSection(rewards, missionId) {
-        console.log('🔧 REWARDS: createRewardsSection called with rewards:', rewards);
-        
         const rewardsSection = document.createElement('div');
         rewardsSection.className = 'mission-rewards-section';
         rewardsSection.style.cssText = `
@@ -871,8 +739,6 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         const hasFactionRep = rewards.factionBonuses && Object.keys(rewards.factionBonuses).length > 0;
         const hasCards = rewards.cards && rewards.cards.count > 0;
         const hasRewards = hasCredits || hasFactionRep || hasCards;
-        
-        console.log('🔧 REWARDS: Reward checks - Credits:', hasCredits, 'Faction:', hasFactionRep, 'Cards:', hasCards, 'HasAny:', hasRewards);
 
         if (hasRewards) {
             // Rewards header
