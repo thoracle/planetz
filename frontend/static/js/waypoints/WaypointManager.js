@@ -512,14 +512,16 @@ export class WaypointManager {
      * Create 3D waypoint object in world space
      * @param {Object} waypoint - Waypoint object
      */
-    create3DWaypointObject(waypoint) {
+    async create3DWaypointObject(waypoint) {
         // Get the waypoint indicator system
         if (!this.waypointIndicator) {
-            this.initializeWaypointIndicator();
+            debug('WAYPOINTS', '🔄 WaypointIndicator not ready, initializing...');
+            await this.initializeWaypointIndicator();
         }
         
         if (this.waypointIndicator) {
             this.waypointIndicator.createWaypointObject(waypoint);
+            debug('WAYPOINTS', `💎 Created 3D object for waypoint: ${waypoint.name}`);
         } else {
             debug('WAYPOINTS', '⚠️ WaypointIndicator not available - 3D object not created');
         }
@@ -528,7 +530,7 @@ export class WaypointManager {
     /**
      * Initialize waypoint indicator system
      */
-    initializeWaypointIndicator() {
+    async initializeWaypointIndicator() {
         // Try to get scene and THREE from various sources
         let scene = null;
         let THREE = null;
@@ -551,16 +553,27 @@ export class WaypointManager {
         }
         
         if (scene && THREE) {
-            // Import and create WaypointIndicator
-            import('./ui/WaypointIndicator.js').then(module => {
+            try {
+                // Import and create WaypointIndicator
+                const module = await import('./ui/WaypointIndicator.js');
                 const { WaypointIndicator } = module;
                 this.waypointIndicator = new WaypointIndicator(scene, THREE);
                 debug('WAYPOINTS', '✅ WaypointIndicator initialized successfully');
-            }).catch(error => {
+                
+                // Create 3D objects for any existing active waypoints
+                this.activeWaypoints.forEach(waypoint => {
+                    if (waypoint.status === 'active') {
+                        this.waypointIndicator.createWaypointObject(waypoint);
+                        debug('WAYPOINTS', `💎 Created 3D object for existing waypoint: ${waypoint.name}`);
+                    }
+                });
+                
+            } catch (error) {
                 console.error('Failed to load WaypointIndicator:', error);
-            });
+            }
         } else {
             debug('WAYPOINTS', '⚠️ Could not initialize WaypointIndicator - scene or THREE not available');
+            debug('WAYPOINTS', `Scene: ${!!scene}, THREE: ${!!THREE}`);
         }
     }
 
