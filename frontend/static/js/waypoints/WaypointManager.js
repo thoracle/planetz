@@ -760,8 +760,7 @@ export class WaypointManager {
         debug('WAYPOINTS', '🚢 Executing spawn ships action');
         
         try {
-            const { ActionFactory } = await import('./WaypointAction.js');
-            const action = ActionFactory.create('spawn_ships', parameters);
+            const action = this.actionRegistry.createAction('spawn_ships', parameters);
             const result = await action.execute({ waypoint: this.currentWaypoint });
             
             debug('WAYPOINTS', `🚢 Spawn ships completed: ${result.result?.spawnedCount || 0} ships`);
@@ -777,11 +776,10 @@ export class WaypointManager {
         debug('WAYPOINTS', '📻 Executing play comm action');
         
         try {
-            const { ActionFactory } = await import('./WaypointAction.js');
-            const action = ActionFactory.create('play_comm', parameters);
+            const action = this.actionRegistry.createAction('play_comm', parameters);
             const result = await action.execute({ waypoint: this.currentWaypoint });
             
-            debug('WAYPOINTS', `📻 Play comm completed: ${parameters.audioFile}`);
+            debug('WAYPOINTS', `📻 Play comm completed: ${parameters.audioFile || parameters.videoFile}`);
             return result;
             
         } catch (error) {
@@ -808,15 +806,14 @@ export class WaypointManager {
             // Fallback to console and simple alert
             console.log(`🎯 WAYPOINT MESSAGE: ${title} - ${message}`);
             
-            // Try ActionFactory as secondary option
+            // Try ActionRegistry as secondary option
             try {
-                const { ActionFactory } = await import('./WaypointAction.js');
-                const action = ActionFactory.create('show_message', parameters);
+                const action = this.actionRegistry.createAction('show_message', parameters);
                 const result = await action.execute({ waypoint: this.currentWaypoint });
-                debug('WAYPOINTS', `💬 Show message completed via ActionFactory: ${title}`);
+                debug('WAYPOINTS', `💬 Show message completed via ActionRegistry: ${title}`);
                 return result;
             } catch (actionError) {
-                debug('WAYPOINTS', `💬 ActionFactory failed, using fallback: ${actionError.message}`);
+                debug('WAYPOINTS', `💬 ActionRegistry failed, using fallback: ${actionError.message}`);
                 return { success: true, method: 'fallback', message: `${title}: ${message}` };
             }
             
@@ -831,8 +828,7 @@ export class WaypointManager {
         debug('WAYPOINTS', '🎁 Executing give item action');
         
         try {
-            const { ActionFactory } = await import('./WaypointAction.js');
-            const action = ActionFactory.create('give_item', parameters);
+            const action = this.actionRegistry.createAction('give_item', parameters);
             const result = await action.execute({ waypoint: this.currentWaypoint });
             
             debug('WAYPOINTS', `🎁 Give item completed: ${parameters.itemId} x${parameters.quantity || 1}`);
@@ -848,8 +844,7 @@ export class WaypointManager {
         debug('WAYPOINTS', '💰 Executing give reward action');
         
         try {
-            const { ActionFactory } = await import('./WaypointAction.js');
-            const action = ActionFactory.create('give_reward', parameters);
+            const action = this.actionRegistry.createAction('give_reward', parameters);
             const result = await action.execute({ waypoint: this.currentWaypoint });
             
             debug('WAYPOINTS', `💰 Give reward completed: ${parameters.rewardPackageId}`);
