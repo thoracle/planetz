@@ -808,6 +808,9 @@ debug('UI', 'MissionStatusHUD: Mission accepted', data.mission);
 debug('UI', 'MissionStatusHUD: Mission completed', data.mission);
             this.refreshMissions();
             
+            // Play mission completion audio
+            this.playMissionCompletionAudio();
+            
             // Show mission completion UI
             if (this.starfieldManager && this.starfieldManager.showMissionComplete) {
                 this.starfieldManager.showMissionComplete(data.mission.id, this.createCompletionData(data.mission));
@@ -816,6 +819,10 @@ debug('UI', 'MissionStatusHUD: Mission completed', data.mission);
         
         this.missionAPI.addEventListener('objectiveCompleted', (data) => {
 debug('UI', 'MissionStatusHUD: Objective completed', data);
+            
+            // Play objective completion audio
+            this.playObjectiveCompletionAudio();
+            
             // Use direct update if we have mission data, otherwise refresh from API
             if (data.mission && Array.isArray([data.mission])) {
                 this.updateMissionsData([data.mission]);
@@ -849,6 +856,52 @@ debug('UI', 'MissionStatusHUD: Event listeners ready');
     show() {
         if (!this.isVisible) {
             this.toggle();
+        }
+    }
+
+    /**
+     * Play audio when an objective is completed
+     */
+    playObjectiveCompletionAudio() {
+        try {
+            // Use TargetComputerManager's audio system if available
+            if (window.targetComputerManager && window.targetComputerManager.playAudio) {
+                window.targetComputerManager.playAudio('frontend/static/audio/blurb.mp3');
+                debug('MISSIONS', '🔊 Played objective completion audio: blurb.mp3');
+            } else {
+                // Fallback: HTML5 Audio
+                const audio = new Audio('static/audio/blurb.mp3');
+                audio.volume = 0.7;
+                audio.play().catch(() => {
+                    debug('MISSIONS', '⚠️ Could not play objective completion audio');
+                });
+                debug('MISSIONS', '🔊 Played objective completion audio (fallback): blurb.mp3');
+            }
+        } catch (error) {
+            debug('MISSIONS', `⚠️ Error playing objective completion audio: ${error.message}`);
+        }
+    }
+
+    /**
+     * Play audio when a mission is completed
+     */
+    playMissionCompletionAudio() {
+        try {
+            // Use TargetComputerManager's audio system if available
+            if (window.targetComputerManager && window.targetComputerManager.playAudio) {
+                window.targetComputerManager.playAudio('frontend/static/audio/success.wav');
+                debug('MISSIONS', '🔊 Played mission completion audio: success.wav');
+            } else {
+                // Fallback: HTML5 Audio
+                const audio = new Audio('static/audio/success.wav');
+                audio.volume = 0.8;
+                audio.play().catch(() => {
+                    debug('MISSIONS', '⚠️ Could not play mission completion audio');
+                });
+                debug('MISSIONS', '🔊 Played mission completion audio (fallback): success.wav');
+            }
+        } catch (error) {
+            debug('MISSIONS', `⚠️ Error playing mission completion audio: ${error.message}`);
         }
     }
 }
