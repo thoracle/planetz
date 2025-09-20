@@ -181,38 +181,32 @@ export class ShowMessageAction extends WaypointAction {
             waypoint
         } = config;
 
-        // Create message element
-        const messageElement = this.createMessageElement(config);
-        
-        // Add to DOM
-        document.body.appendChild(messageElement);
+        debug('WAYPOINTS', `📋 Showing message via ephemeral UI: "${title}" - "${message}"`);
 
-        // Handle dismissible messages
-        if (dismissible) {
-            this.addDismissHandler(messageElement);
+        try {
+            // Use the standard ephemeral message system
+            if (window.starfieldManager && window.starfieldManager.showHUDEphemeral) {
+                const displayTitle = title || 'WAYPOINT MESSAGE';
+                const displayMessage = message || 'Mission update received';
+                
+                window.starfieldManager.showHUDEphemeral(displayTitle, displayMessage, duration);
+                
+                return {
+                    success: true,
+                    title: displayTitle,
+                    message: displayMessage,
+                    duration: duration,
+                    method: 'ephemeralHUD'
+                };
+            } else {
+                throw new Error('StarfieldManager ephemeral UI not available');
+            }
+        } catch (error) {
+            console.error('Message display failed:', error);
+            // Fallback: log to console
+            console.log(`🎯 WAYPOINT MESSAGE: ${title || 'MESSAGE'} - ${message}`);
+            return { success: false, error: error.message };
         }
-
-        // Handle action buttons
-        if (actions && actions.length > 0) {
-            this.addActionHandlers(messageElement, actions);
-        }
-
-        // Auto-remove after duration (unless it has actions)
-        if (!actions || actions.length === 0) {
-            setTimeout(() => {
-                this.removeMessage(messageElement);
-            }, duration);
-        }
-
-        // Track active messages for management
-        this.trackActiveMessage(messageElement, config);
-
-        return {
-            success: true,
-            element: messageElement,
-            duration: duration,
-            messageId: messageElement.id
-        };
     }
 
     /**
