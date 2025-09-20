@@ -707,6 +707,15 @@ export class WaypointManager {
         // Refresh the Mission HUD to show updated objectives
         if (window.missionStatusHUD && window.missionStatusHUD.refreshMissions) {
             setTimeout(() => {
+                // Check if any missions are showing completion rewards before refreshing
+                if (window.missionStatusHUD.missionsShowingCompletion && 
+                    window.missionStatusHUD.missionsShowingCompletion.size > 0) {
+                    debug('WAYPOINTS', '⏸️ Skipping Mission HUD refresh - missions showing completion rewards');
+                    console.log('⏸️ WAYPOINT REFRESH BLOCKED: Missions showing completion, skipping refresh');
+                    return;
+                }
+                
+                console.log('🔄 WAYPOINT REFRESH: Proceeding with Mission HUD refresh');
                 window.missionStatusHUD.refreshMissions();
                 debug('WAYPOINTS', '🔄 Refreshed Mission HUD with updated objectives');
             }, 100); // Small delay to ensure waypoint changes are processed
