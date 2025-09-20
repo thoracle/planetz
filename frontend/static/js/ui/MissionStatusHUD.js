@@ -30,6 +30,10 @@ export class MissionStatusHUD {
         // Track missions showing completion to prevent refresh interference
         this.missionsShowingCompletion = new Set(); // mission_id set
         
+        // Add unique instance ID for debugging
+        this.instanceId = Math.random().toString(36).substr(2, 9);
+        console.log('🏗️ MissionStatusHUD instance created with ID:', this.instanceId);
+        
         // Update frequency (2Hz = every 500ms)
         this.updateFrequency = 500;
         
@@ -255,9 +259,11 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
      * Refresh missions from mission API
      */
     async refreshMissions() {
-        console.log('🎯 MissionStatusHUD.refreshMissions() called');
+        console.log('🎯 MissionStatusHUD.refreshMissions() called on instance:', this.instanceId);
+        console.log('🎯 REFRESH CHECK: this object:', this);
         console.log('🎯 REFRESH CHECK: missionsShowingCompletion exists:', !!this.missionsShowingCompletion);
-        console.log('🎯 REFRESH CHECK: missionsShowingCompletion size:', this.missionsShowingCompletion?.size || 'undefined');
+        console.log('🎯 REFRESH CHECK: missionsShowingCompletion type:', typeof this.missionsShowingCompletion);
+        console.log('🎯 REFRESH CHECK: missionsShowingCompletion size:', this.missionsShowingCompletion?.size);
         console.log('🎯 REFRESH CHECK: missionsShowingCompletion contents:', Array.from(this.missionsShowingCompletion || []));
         
         // Skip refresh if any missions are showing completion rewards
@@ -737,7 +743,9 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
 
         // FIRST: Block refreshes and mark the mission as completed
         // This must happen BEFORE any DOM manipulation to prevent race conditions
-        console.log('🔒 MISSION COMPLETION: About to add mission to completion tracking');
+        console.log('🔒 MISSION COMPLETION: About to add mission to completion tracking on instance:', this.instanceId);
+        console.log('🔒 MISSION COMPLETION: this object:', this);
+        console.log('🔒 MISSION COMPLETION: missionsShowingCompletion type:', typeof this.missionsShowingCompletion);
         console.log('🔒 MISSION COMPLETION: Current missionsShowingCompletion before add:', Array.from(this.missionsShowingCompletion));
         this.missionsShowingCompletion.add(missionId);
         console.log('🔒 MISSION COMPLETION: Added mission to completion tracking, blocking refreshes');
