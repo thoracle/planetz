@@ -249,90 +249,46 @@ export class PlayCommAction extends WaypointAction {
     }
 
     /**
-     * Play video communication
+     * Play video communication using standard communication system
      * @param {Object} config - Video configuration
      * @returns {Promise<Object>} - Video playback result
      */
     async playVideo(config) {
-        const { file, npcId, channelId, duration } = config;
-        
-        debug('WAYPOINTS', `🎬 Playing video: ${file} (NPC: ${npcId}, Channel: ${channelId})`);
-        
+        const { file, npcId, channelId, duration, subtitle } = config;
+
+        debug('WAYPOINTS', `🎬 Playing video via CommunicationHUD: ${file} (NPC: ${npcId})`);
+
         try {
-            // Check if comm system is available
-            if (window.commSystem && window.commSystem.playVideo) {
-                // Use dedicated comm system
-                const result = await window.commSystem.playVideo({
-                    videoFile: file,
-                    npcId: npcId,
-                    channelId: channelId,
-                    duration: duration
+            // Use the standard communication system
+            if (window.starfieldManager && window.starfieldManager.showCommunication) {
+                const npcName = npcId ? npcId.toUpperCase() : 'MISSION CONTROL';
+                const message = subtitle || 'Communication in progress...';
+                
+                const result = window.starfieldManager.showCommunication(npcName, message, {
+                    channel: channelId || 'MISSION.1',
+                    signalStrength: '████████░',
+                    status: '■ LIVE',
+                    duration: duration || 5000,
+                    faction: 'mission'
                 });
-                return result;
+
+                if (result) {
+                    return {
+                        success: true,
+                        duration: duration || 5000,
+                        method: 'CommunicationHUD'
+                    };
+                } else {
+                    throw new Error('Communication system not available');
+                }
             } else {
-                // Fallback: Create video element
-                return this.playVideoFallback(config);
+                throw new Error('StarfieldManager not available');
             }
         } catch (error) {
-            console.error('Video playback failed:', error);
-            // Continue without video - don't fail the entire action
+            console.error('Video communication failed:', error);
+            // Fallback: just return success to not break the action
             return { success: false, error: error.message };
         }
-    }
-
-    /**
-     * Fallback video playback using HTML5 video
-     * @param {Object} config - Video configuration
-     * @returns {Promise<Object>} - Playback result
-     */
-    playVideoFallback(config) {
-        return new Promise((resolve) => {
-            try {
-                const { file, duration = 5000 } = config;
-                
-                // Create video element
-                const video = document.createElement('video');
-                video.src = `/static/video/${file}`;
-                video.style.cssText = `
-                    position: fixed;
-                    top: 50px;
-                    left: 10px;
-                    width: 320px;
-                    height: 120px;
-                    z-index: 9999;
-                    border: 2px solid #00ff41;
-                    border-radius: 5px;
-                    background: rgba(0, 0, 0, 0.85);
-                    font-family: 'VT323', monospace;
-                `;
-                
-                // Add to DOM
-                document.body.appendChild(video);
-                
-                // Play video
-                video.play().catch(error => {
-                    console.warn('Video autoplay failed:', error);
-                });
-                
-                // Remove after duration
-                setTimeout(() => {
-                    if (video.parentNode) {
-                        video.pause();
-                        document.body.removeChild(video);
-                    }
-                }, duration);
-                
-                resolve({
-                    success: true,
-                    duration: duration,
-                    videoElement: video
-                });
-                
-            } catch (error) {
-                console.error('Video fallback failed:', error);
-                resolve({ success: false, error: error.message });
-            }
-        });
     }
 
     /**
@@ -343,81 +299,37 @@ export class PlayCommAction extends WaypointAction {
     async showSubtitle(config) {
         const {
             text,
-            duration,
+            duration = 5000,
             speaker,
             commType,
             priority
         } = config;
 
-        debug('WAYPOINTS', `💬 Showing subtitle: "${text}" (${duration}ms)`);
+        debug('WAYPOINTS', `💬 Showing subtitle via ephemeral UI: "${text}" (${duration}ms)`);
 
-        // Create subtitle element
-        const subtitle = this.createSubtitleElement(text, speaker, commType, priority);
-        
-        // Add to DOM
-        document.body.appendChild(subtitle);
-
-        // Auto-remove after duration
-        setTimeout(() => {
-            if (subtitle.parentNode) {
-                document.body.removeChild(subtitle);
+        try {
+            // Use the standard ephemeral message system
+            if (window.starfieldManager && window.starfieldManager.showHUDEphemeral) {
+                const title = speaker ? speaker.toUpperCase() : 'COMMUNICATION';
+                window.starfieldManager.showHUDEphemeral(title, text, duration);
+                
+                return {
+                    success: true,
+                    text: text,
+                    duration: duration,
+                    method: 'ephemeralHUD'
+                };
+            } else {
+                throw new Error('StarfieldManager ephemeral UI not available');
             }
-        }, duration);
-
-        return {
-            success: true,
-            text: text,
-            duration: duration,
-            element: subtitle
-        };
-    }
-
-    /**
-     * Create subtitle DOM element
-     * @param {string} text - Subtitle text
-     * @param {string} speaker - Speaker name
-     * @param {string} commType - Communication type
-     * @param {number} priority - Priority level
-     * @returns {HTMLElement} - Subtitle element
-     */
-    createSubtitleElement(text, speaker, commType, priority) {
-        const subtitle = document.createElement('div');
-        subtitle.className = `waypoint-subtitle comm-${commType} priority-${priority}`;
-        
-        // Create speaker label if provided
-        let content = '';
-        if (speaker) {
-            content += `<span class="subtitle-speaker">${speaker}:</span> `;
+        } catch (error) {
+            console.error('Subtitle display failed:', error);
+            // Fallback: log to console
+            console.log(`🎯 WAYPOINT MESSAGE: ${speaker ? speaker + ': ' : ''}${text}`);
+            return { success: false, error: error.message };
         }
-        content += `<span class="subtitle-text">${text}</span>`;
-        
-        subtitle.innerHTML = content;
-        
-        // Apply styling
-        subtitle.style.cssText = `
-            position: fixed;
-            bottom: 20%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: ${this.getCommTypeColor(commType)};
-            padding: 15px 25px;
-            border-radius: 8px;
-            z-index: 10000;
-            font-size: 16px;
-            font-weight: bold;
-            text-align: center;
-            max-width: 80%;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-            border: 2px solid ${this.getCommTypeColor(commType)};
-            animation: subtitleFadeIn 0.5s ease-out;
-        `;
-
-        // Add CSS animation if not already present
-        this.ensureSubtitleStyles();
-
-        return subtitle;
     }
+
 
     /**
      * Get color for communication type
