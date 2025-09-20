@@ -135,7 +135,7 @@ export class WaypointKeyboardHandler {
         
         debug('WAYPOINTS', '⌨️ W key pressed - enabling target computer and attempting waypoint resume');
 
-        // Try to enable target computer if available (like T key does), but don't block waypoint operations if unavailable
+        // First, ensure target computer is enabled (like T key does) - waypoints require target computer
         if (window.starfieldManager && !window.starfieldManager.isDocked) {
             const ship = window.starfieldManager.viewManager?.getShip();
             if (ship) {
@@ -151,14 +151,15 @@ export class WaypointKeyboardHandler {
                             // Sync with StarfieldManager
                             window.starfieldManager.targetComputerEnabled = true;
                         } else {
-                            // Failed to activate - show warning but continue with waypoint operations
+                            // Failed to activate - show error and return
                             if (window.starfieldManager?.showHUDEphemeral) {
-                                window.starfieldManager.showHUDEphemeral('TARGET COMPUTER FAILED', 'Insufficient energy - manual navigation mode');
+                                window.starfieldManager.showHUDEphemeral('TARGET COMPUTER FAILED', 'Insufficient energy or system damaged');
                             }
+                            return;
                         }
                     }
                 } else {
-                    // Target computer not available - show same error as T key but continue with waypoint operations
+                    // Target computer not available - show same error as T key and return
                     if (window.starfieldManager?.showHUDEphemeral) {
                         if (!targetComputer) {
                             window.starfieldManager.showHUDEphemeral(
@@ -195,7 +196,7 @@ export class WaypointKeyboardHandler {
                             );
                         }
                     }
-                    // Continue with waypoint operations for manual navigation
+                    return;
                 }
             }
         }

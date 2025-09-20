@@ -2298,7 +2298,7 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
 
             // Waypoint Test Mission Creation (W key)
             if (commandKey === 'w') {
-                // Try to enable target computer if available (like T key does), but don't block waypoint creation if unavailable
+                // First, ensure target computer is enabled (like T key does) - waypoints require target computer
                 if (!this.isDocked) {
                     const ship = this.viewManager?.getShip();
                     if (ship) {
@@ -2317,13 +2317,14 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                                     }
                                     this.playCommandSound();
                                 } else {
-                                    // Failed to activate - show warning but continue with waypoint creation
+                                    // Failed to activate - show error and return
                                     this.playCommandFailedSound();
-                                    this.showHUDEphemeral('TARGET COMPUTER FAILED', 'Insufficient energy - waypoint created for manual navigation');
+                                    this.showHUDEphemeral('TARGET COMPUTER FAILED', 'Insufficient energy or system damaged');
+                                    return;
                                 }
                             }
                         } else {
-                            // Target computer not available - show same error as T key but continue with waypoint creation
+                            // Target computer not available - show same error as T key and return
                             this.playCommandFailedSound();
                             if (!targetComputer) {
                                 this.showHUDEphemeral(
@@ -2359,7 +2360,7 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                                     'Insufficient energy for targeting systems'
                                 );
                             }
-                            // Continue with waypoint creation for manual navigation
+                            return;
                         }
                     }
                 }
