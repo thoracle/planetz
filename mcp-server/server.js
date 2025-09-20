@@ -181,12 +181,17 @@ class PlanetZPlaywrightServer {
       testResults.lastOutput = "";
 
       const pythonCmd = process.platform === "win32" ? "python" : "python3";
-      const testProcess = spawn(pythonCmd, [
+      const args = [
         path.join(PROJECT_ROOT, "scripts", "run_playwright_tests.py"),
         "--tooltips",
-        headless ? "--headed=false" : "--headed=true",
         `--slow=${slowMo}`
-      ], {
+      ];
+      
+      if (!headless) {
+        args.push("--headed");
+      }
+      
+      const testProcess = spawn(pythonCmd, args, {
         cwd: PROJECT_ROOT,
         stdio: ["ignore", "pipe", "pipe"]
       });
@@ -255,12 +260,17 @@ class PlanetZPlaywrightServer {
       testResults.lastOutput = "";
 
       const pythonCmd = process.platform === "win32" ? "python" : "python3";
-      const testProcess = spawn(pythonCmd, [
+      const args = [
         path.join(PROJECT_ROOT, "scripts", "run_playwright_tests.py"),
         "--hitboxes",
-        headless ? "--headed=false" : "--headed=true",
         `--slow=${slowMo}`
-      ], {
+      ];
+      
+      if (!headless) {
+        args.push("--headed");
+      }
+      
+      const testProcess = spawn(pythonCmd, args, {
         cwd: PROJECT_ROOT,
         stdio: ["ignore", "pipe", "pipe"]
       });

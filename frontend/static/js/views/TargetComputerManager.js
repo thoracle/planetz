@@ -4787,11 +4787,41 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
         this.currentTarget = null;
         this.targetIndex = -1;
         
-        // Hide target display elements
+        // Keep HUD visible but show "No Target" state
         if (this.targetHUD) {
-            this.targetHUD.style.display = 'none';
-            debug('TARGETING', `🎯 Hidden target HUD`);
+            this.targetHUD.style.display = 'block';
+            this.targetHUD.style.visibility = 'visible';
+            this.targetHUD.style.opacity = '1';
+            debug('TARGETING', `🎯 Keeping target HUD visible for "No Target" state`);
+            
+            // Update display to show "No Target"
+            this.updateTargetDisplay();
+            
+            // Ensure frame elements stay visible
+            setTimeout(() => {
+                if (this.targetHUD) {
+                    this.targetHUD.style.display = 'block';
+                    this.targetHUD.style.visibility = 'visible';
+                    
+                    // Make sure any frame elements with styling are visible
+                    const styledElements = this.targetHUD.querySelectorAll('*');
+                    styledElements.forEach(el => {
+                        const style = window.getComputedStyle(el);
+                        if (style.borderWidth !== '0px' || 
+                            style.backgroundColor !== 'rgba(0, 0, 0, 0)' ||
+                            style.backgroundImage !== 'none') {
+                            if (el.style.display === 'none') {
+                                el.style.display = 'block';
+                            }
+                            if (el.style.visibility === 'hidden') {
+                                el.style.visibility = 'visible';
+                            }
+                        }
+                    });
+                }
+            }, 10);
         }
+        
         if (this.targetReticle) {
             this.targetReticle.style.display = 'none';
             debug('TARGETING', `🎯 Hidden target reticle`);
@@ -4800,13 +4830,24 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
         // Clear wireframe
         debug('TARGETING', `🎯 About to clear wireframe...`);
         this.clearTargetWireframe();
+        
+        // Clear HUD wireframe
+        if (this.wireframeRenderer) {
+            this.wireframeRenderer.clear();
+            this.wireframeRenderer.render(new this.THREE.Scene(), new this.THREE.Camera());
+        }
+        
+        if (this.wireframeContainer) {
+            this.wireframeContainer.style.display = 'none';
+        }
+        
         debug('TARGETING', `🎯 Wireframe cleared`);
         
         // Hide direction arrows
         this.hideAllDirectionArrows();
         debug('TARGETING', `🎯 Direction arrows hidden`);
         
-        debug('TARGETING', `✅ clearCurrentTarget() completed`);
+        debug('TARGETING', `✅ clearCurrentTarget() completed - HUD showing "No Target" state`);
     }
 
     /**

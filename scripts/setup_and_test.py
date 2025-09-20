@@ -33,12 +33,12 @@ def main():
     success = True
 
     # 1. Install Python dependencies
-    if not run_command("pip install -r requirements.txt",
+    if not run_command("pip3 install -r requirements.txt",
                       "Installing Python dependencies"):
         success = False
 
     # 2. Install Playwright browsers
-    if not run_command("python -m playwright install chromium",
+    if not run_command("python3 -m playwright install chromium",
                       "Installing Playwright browsers"):
         success = False
 
@@ -47,7 +47,7 @@ def main():
         success = False
 
     # 4. Run a quick syntax check on Python files
-    if not run_command("python -m py_compile scripts/run_playwright_tests.py",
+    if not run_command("python3 -m py_compile scripts/run_playwright_tests.py",
                       "Checking Python syntax"):
         success = False
 
@@ -60,8 +60,8 @@ def main():
         print("\n🎉 Setup completed successfully!")
         print("\n📋 Next steps:")
         print("1. Start the game server: python main.py")
-        print("2. Run tests: npm run test:e2e:tooltips")
-        print("3. Or run tests with visible browser: npm run test:e2e:headed")
+        print("2. Run tests: python3 scripts/run_playwright_tests.py --tooltips")
+        print("3. Or run tests with visible browser: python3 scripts/run_playwright_tests.py --tooltips --headed=true")
         print("\n📖 See tests/playwright/README.md for detailed usage")
         return 0
     else:

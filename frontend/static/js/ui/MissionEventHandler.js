@@ -442,4 +442,91 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
     getMission(missionId) {
         return this.activeMissions.get(missionId);
     }
+    
+    /**
+     * Handle waypoint completion - check if mission should be completed
+     * @param {Object} waypoint - Completed waypoint
+     */
+    async handleWaypointCompleted(waypoint) {
+        debug('MISSIONS', `🎯 MissionEventHandler: Waypoint completed: ${waypoint.name} (mission: ${waypoint.missionId})`);
+        
+        if (!waypoint.missionId) {
+            debug('MISSIONS', '⚠️ Waypoint has no mission ID, skipping mission completion check');
+            return;
+        }
+        
+        // Check if this was the last waypoint in the mission
+        const waypointManager = window.waypointManager;
+        if (!waypointManager) {
+            debug('MISSIONS', '❌ WaypointManager not available for mission completion check');
+            return;
+        }
+        
+        // Find all waypoints for this mission
+        const missionWaypoints = Array.from(waypointManager.activeWaypoints.values())
+            .filter(wp => wp.missionId === waypoint.missionId);
+        
+        // Check if all waypoints are completed
+        const pendingWaypoints = missionWaypoints.filter(wp => wp.status === 'pending');
+        const completedWaypoints = missionWaypoints.filter(wp => wp.status === 'completed');
+        
+        debug('MISSIONS', `🎯 Mission ${waypoint.missionId} status: ${completedWaypoints.length} completed, ${pendingWaypoints.length} pending`);
+        
+        // Wait a bit longer to ensure waypoint manager has processed next waypoint activation
+        setTimeout(async () => {
+            // Re-check waypoint status after delay
+            const updatedMissionWaypoints = Array.from(waypointManager.activeWaypoints.values())
+                .filter(wp => wp.missionId === waypoint.missionId);
+            const updatedPendingWaypoints = updatedMissionWaypoints.filter(wp => wp.status === 'pending');
+            const updatedCompletedWaypoints = updatedMissionWaypoints.filter(wp => wp.status === 'completed');
+            
+            debug('MISSIONS', `🎯 Mission ${waypoint.missionId} DELAYED status check: ${updatedCompletedWaypoints.length} completed, ${updatedPendingWaypoints.length} pending`);
+            
+            // Only complete mission if ALL waypoints are completed AND no pending ones remain
+            if (updatedPendingWaypoints.length === 0 && updatedCompletedWaypoints.length > 0 && 
+                updatedCompletedWaypoints.length === updatedMissionWaypoints.length) {
+                
+                debug('MISSIONS', `🏁 Mission ${waypoint.missionId} FULLY completed - removing from active missions`);
+                
+                // Clear waypoint targets when mission completes
+                const tcm = window.targetComputerManager;
+                if (tcm && tcm.currentTarget) {
+                    const currentTarget = tcm.currentTarget;
+                    if (currentTarget && (
+                        currentTarget.name?.includes('Waypoint') ||
+                        currentTarget.isVirtual ||
+                        updatedMissionWaypoints.some(wp => wp.name === currentTarget.name)
+                    )) {
+                        debug('MISSIONS', `🎯 Clearing waypoint target after mission completion: ${currentTarget.name}`);
+                        tcm.clearCurrentTarget();
+                    }
+                }
+                
+                // Remove from MissionAPI cache
+                if (window.missionAPI && window.missionAPI.activeMissions) {
+                    const removed = window.missionAPI.activeMissions.delete(waypoint.missionId);
+                    debug('MISSIONS', `🗑️ Removed mission from MissionAPI cache: ${removed ? 'SUCCESS' : 'NOT FOUND'}`);
+                }
+                
+                // Remove from local cache
+                const localRemoved = this.activeMissions.delete(waypoint.missionId);
+                debug('MISSIONS', `🗑️ Removed mission from local cache: ${localRemoved ? 'SUCCESS' : 'NOT FOUND'}`);
+                
+                // Refresh mission HUD to remove completed mission
+                if (window.starfieldManager?.missionStatusHUD) {
+                    try {
+                        await window.starfieldManager.missionStatusHUD.refreshMissions();
+                        debug('MISSIONS', '✅ Mission HUD refreshed after mission completion');
+                    } catch (error) {
+                        debug('MISSIONS', `❌ Error refreshing mission HUD: ${error.message}`);
+                    }
+                }
+                
+                debug('MISSIONS', `✅ Mission ${waypoint.missionId} completion handled successfully`);
+            } else {
+                debug('MISSIONS', `🔄 Mission ${waypoint.missionId} still in progress - ${updatedPendingWaypoints.length} waypoints remaining`);
+            }
+        }, 200); // Increased delay to 200ms
+        
+    }
 }

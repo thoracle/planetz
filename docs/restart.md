@@ -1830,18 +1830,33 @@ debugSyncFile()     // Sync browser with file
 - Both keys fail completely when target computer unavailable (no waypoint creation)
 **Impact**: Consistent game mechanics - waypoints require target computer systems, no exceptions
 
-### **✅ Waypoint Target Clearing System Fixed**
+### **✅ Waypoint Target Clearing System Fixed (Updated 2025-09-20)**
 
-**Issue**: After completing waypoint missions, the target CPU HUD would still show wireframes even when reporting "no target"
-**Root Cause**: Multiple issues in target clearing flow - mission HUD disappearing, targets not being removed from CPU lists, and wireframe visual artifacts
-**Solution**: Comprehensive fix of the entire waypoint completion and target clearing system
+**Issue**: After completing waypoint missions, the target CPU HUD would either:
+1. Hide completely instead of showing "No Target" state
+2. Clear target prematurely after first waypoint instead of waiting for mission completion
+3. Show lingering wireframes even when target was cleared
+
+**Root Cause**: Multiple issues in target clearing flow:
+- `TargetComputerManager.clearCurrentTarget()` was hiding HUD entirely (`display: 'none'`) instead of showing "No Target" state
+- `MissionEventHandler.handleWaypointCompleted()` was checking mission completion immediately without waiting for waypoint manager to activate next waypoint
+- Race conditions between waypoint completion and mission status updates
+
+**Solution**: Comprehensive fix integrated into main codebase
 **Status**: ✅ **RESOLVED** - Complete end-to-end waypoint system now working perfectly
+
 **Technical Details**:
-- **Mission HUD Fix**: Fixed `MissionAPIService.getActiveMissions()` filtering bug that removed test missions
-- **Target Removal Fix**: Enhanced `removeVirtualTarget()` to properly handle waypoint cleanup from target lists
-- **Wireframe Clearing Fix**: Verified `clearCurrentTarget()` → `clearTargetWireframe()` call chain works correctly
-- **Debug Tools**: Created comprehensive debug scripts for manual testing and verification
-**Validation**: Complete mission flow tested - Alpha waypoint → Beta waypoint → target cleared, wireframe removed
+- **TargetComputerManager.js**: Modified `clearCurrentTarget()` to keep HUD visible with "No Target" state instead of hiding
+- **MissionEventHandler.js**: Added 200ms delay and enhanced mission completion detection to ensure all waypoints are completed
+- **Enhanced Wireframe Clearing**: Improved clearing of both 3D wireframes and HUD wireframe displays
+- **Frame Visibility**: Added logic to ensure HUD frame elements with borders/backgrounds stay visible
+
+**Key Changes**:
+- `clearCurrentTarget()`: Now calls `updateTargetDisplay()` and keeps `targetHUD.style.display = 'block'`
+- Mission completion now requires: no pending waypoints + all waypoints completed + proper delay for state updates
+- Comprehensive wireframe clearing including HUD renderer and container cleanup
+
+**Validation**: Complete mission flow tested - Alpha waypoint → Beta waypoint → mission complete → target cleared with "No Target" HUD visible
 **Impact**: Professional waypoint mission experience with proper cleanup and no visual artifacts
 
 ### **🏆 Impact: Enhanced Mission Experience**

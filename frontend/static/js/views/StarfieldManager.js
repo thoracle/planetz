@@ -9,6 +9,7 @@ import { CommunicationHUD } from '../ui/CommunicationHUD.js';
 import { MissionStatusHUD } from '../ui/MissionStatusHUD.js';
 import { MissionCompletionUI } from '../ui/MissionCompletionUI.js';
 import { MissionNotificationHandler } from '../ui/MissionNotificationHandler.js';
+import { MissionEventHandler } from '../ui/MissionEventHandler.js';
 import { MissionAPIService } from '../services/MissionAPIService.js';
 import { MissionEventService } from '../services/MissionEventService.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
@@ -202,6 +203,10 @@ export class StarfieldManager {
         this.missionStatusHUD = new MissionStatusHUD(this, null); // Mission manager to be integrated later
         this.missionCompletionUI = new MissionCompletionUI(this, null); // Mission manager to be integrated later
         this.missionNotificationHandler = new MissionNotificationHandler(this.communicationHUD, this);
+        this.missionEventHandler = new MissionEventHandler(this);
+        
+        // Make MissionEventHandler globally available for waypoint system
+        window.missionEventHandler = this.missionEventHandler;
         
         // Create enemy AI manager
         this.enemyAIManager = new EnemyAIManager(this.scene, this.camera, this);
