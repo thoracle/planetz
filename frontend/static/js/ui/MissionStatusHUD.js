@@ -256,13 +256,18 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
      */
     async refreshMissions() {
         console.log('🎯 MissionStatusHUD.refreshMissions() called');
+        console.log('🎯 REFRESH CHECK: missionsShowingCompletion exists:', !!this.missionsShowingCompletion);
+        console.log('🎯 REFRESH CHECK: missionsShowingCompletion size:', this.missionsShowingCompletion?.size || 'undefined');
+        console.log('🎯 REFRESH CHECK: missionsShowingCompletion contents:', Array.from(this.missionsShowingCompletion || []));
         
         // Skip refresh if any missions are showing completion rewards
-        if (this.missionsShowingCompletion.size > 0) {
+        if (this.missionsShowingCompletion && this.missionsShowingCompletion.size > 0) {
             console.log('⏸️ REFRESH BLOCKED: Missions showing completion:', Array.from(this.missionsShowingCompletion));
             console.log('⏸️ REFRESH BLOCKED: Skipping refresh to preserve rewards sections');
             return;
         }
+        
+        console.log('🎯 REFRESH PROCEEDING: No missions showing completion, continuing with refresh');
         
         try {
             // Get active missions from API
@@ -732,8 +737,12 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
 
         // FIRST: Block refreshes and mark the mission as completed
         // This must happen BEFORE any DOM manipulation to prevent race conditions
+        console.log('🔒 MISSION COMPLETION: About to add mission to completion tracking');
+        console.log('🔒 MISSION COMPLETION: Current missionsShowingCompletion before add:', Array.from(this.missionsShowingCompletion));
         this.missionsShowingCompletion.add(missionId);
         console.log('🔒 MISSION COMPLETION: Added mission to completion tracking, blocking refreshes');
+        console.log('🔒 MISSION COMPLETION: Current missionsShowingCompletion after add:', Array.from(this.missionsShowingCompletion));
+        console.log('🔒 MISSION COMPLETION: Set size:', this.missionsShowingCompletion.size);
         
         const mission = this.activeMissions.find(m => m.id === missionId);
         if (mission) {
