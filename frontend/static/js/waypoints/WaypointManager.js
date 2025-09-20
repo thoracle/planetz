@@ -171,6 +171,7 @@ export class WaypointManager {
             return;
         }
 
+        console.log(`🔄 ACTIVATING WAYPOINT: ${waypoint.name} (${waypointId}) - changing status from '${waypoint.status}' to 'active'`);
         debug('WAYPOINTS', `🔄 Activating waypoint: ${waypoint.name} (${waypointId}) - changing status from '${waypoint.status}' to 'active'`);
         waypoint.status = WaypointStatus.ACTIVE;
         
@@ -180,6 +181,7 @@ export class WaypointManager {
         // Update HUD display (create 3D object)
         await this.updateHUDDisplay(waypoint);
         
+        console.log(`✅ ACTIVATED WAYPOINT: ${waypoint.name} - status is now '${waypoint.status}'`);
         debug('WAYPOINTS', `✅ Activated waypoint: ${waypoint.name} - status is now '${waypoint.status}'`);
     }
 
@@ -382,6 +384,10 @@ export class WaypointManager {
             waypoint.status === WaypointStatus.ACTIVE || waypoint.status === WaypointStatus.TARGETED
         );
         
+        console.log(`🎯 getActiveWaypoints() RETURNING ${activeWaypoints.length} active/targeted waypoints:`);
+        activeWaypoints.forEach((wp, i) => {
+            console.log(`  ${i + 1}. ${wp.name}: status=${wp.status}`);
+        });
         debug('WAYPOINTS', `🎯 Returning ${activeWaypoints.length} active/targeted waypoints`);
         return activeWaypoints;
     }
