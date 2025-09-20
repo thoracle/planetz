@@ -746,7 +746,7 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * @param {Object} missionData - Mission data
      * @param {Object} rewards - Rewards earned
      */
-    showMissionCompletion(missionId, missionData, rewards) {
+    async showMissionCompletion(missionId, missionData, rewards) {
         console.log('🎉 MISSION COMPLETION: showMissionCompletion called for:', missionId);
         console.log('🎉 MISSION COMPLETION: Mission data:', missionData);
         console.log('🎉 MISSION COMPLETION: Rewards:', rewards);

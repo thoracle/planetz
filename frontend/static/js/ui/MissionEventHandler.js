@@ -615,7 +615,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                 } else {
                     // Show completion in mission HUD
                     if (window.starfieldManager?.missionStatusHUD) {
-                        window.starfieldManager.missionStatusHUD.showMissionCompletion(
+                        await window.starfieldManager.missionStatusHUD.showMissionCompletion(
                             missionId,
                             displayMissionData,
                             rewards
