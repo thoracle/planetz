@@ -2366,7 +2366,7 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                 }
                 
                 // Allow waypoint test mission creation anytime (even when docked for testing)
-                this.createWaypointTestMission();
+                this.handleWaypointCreationAsync();
             }
 
             // Toggle 3D target outlines (O key)
@@ -4941,9 +4941,20 @@ debug('TARGETING', `✅ Target dummy ships created successfully - target preserv
     }
 
     /**
+     * Handle waypoint creation asynchronously (called from keydown handler)
+     */
+    async handleWaypointCreationAsync() {
+        try {
+            await this.createWaypointTestMission();
+        } catch (error) {
+            console.error('❌ Error in handleWaypointCreationAsync:', error);
+        }
+    }
+
+    /**
      * Create a waypoint test mission for development/testing
      */
-    createWaypointTestMission() {
+    async createWaypointTestMission() {
         console.log('🎯 W key pressed - Creating waypoint test mission...');
         debug('WAYPOINTS', '🎯 W key pressed - Creating waypoint test mission...');
         
@@ -4963,7 +4974,7 @@ debug('TARGETING', `✅ Target dummy ships created successfully - target preserv
         try {
             // Create the test mission
             console.log('🎯 Calling waypointManager.createTestMission()...');
-            const result = window.waypointManager.createTestMission();
+            const result = await window.waypointManager.createTestMission();
             console.log('🎯 createTestMission result:', result);
             
             if (result) {

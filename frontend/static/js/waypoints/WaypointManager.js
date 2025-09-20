@@ -367,8 +367,19 @@ export class WaypointManager {
      * @returns {Array} - Array of active waypoints
      */
     getActiveWaypoints() {
-        return Array.from(this.activeWaypoints.values())
-            .filter(waypoint => waypoint.status === WaypointStatus.ACTIVE || waypoint.status === WaypointStatus.TARGETED);
+        const allWaypoints = Array.from(this.activeWaypoints.values());
+        debug('WAYPOINTS', `🔍 getActiveWaypoints() - Total waypoints: ${allWaypoints.length}`);
+        
+        allWaypoints.forEach((wp, i) => {
+            debug('WAYPOINTS', `  ${i + 1}. ${wp.name}: status=${wp.status}`);
+        });
+        
+        const activeWaypoints = allWaypoints.filter(waypoint => 
+            waypoint.status === WaypointStatus.ACTIVE || waypoint.status === WaypointStatus.TARGETED
+        );
+        
+        debug('WAYPOINTS', `🎯 Returning ${activeWaypoints.length} active/targeted waypoints`);
+        return activeWaypoints;
     }
 
     /**
