@@ -743,8 +743,22 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
             }
 
             if (hasCards) {
-                const cardText = `${rewards.cards.count} NFT Card${rewards.cards.count > 1 ? 's' : ''}`;
-                rewardsList.appendChild(this.createRewardItem('🃏', cardText));
+                // Show individual card names if available, otherwise show count
+                if (rewards.cards.names && rewards.cards.names.length > 0) {
+                    rewards.cards.names.forEach(cardName => {
+                        rewardsList.appendChild(this.createRewardItem('🃏', cardName));
+                    });
+                } else if (rewards.cards.types && rewards.cards.types.length > 0) {
+                    // Fallback: show card types if names not available
+                    rewards.cards.types.forEach(cardType => {
+                        const formattedType = this.formatCardTypeName(cardType);
+                        rewardsList.appendChild(this.createRewardItem('🃏', formattedType));
+                    });
+                } else {
+                    // Final fallback: show count
+                    const cardText = `${rewards.cards.count} NFT Card${rewards.cards.count > 1 ? 's' : ''}`;
+                    rewardsList.appendChild(this.createRewardItem('🃏', cardText));
+                }
             }
 
             rewardsSection.appendChild(rewardsList);
@@ -900,6 +914,37 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         };
         
         return factionNames[factionId] || factionId || 'Unknown';
+    }
+
+    /**
+     * Format card type name for display
+     * @param {string} cardType - Card type identifier
+     * @returns {string} - Formatted display name
+     */
+    formatCardTypeName(cardType) {
+        const cardTypeNames = {
+            'scanner': 'Scanner Module Card',
+            'long_range_sensor': 'Long Range Sensor Card',
+            'shield_generator': 'Shield Generator Card',
+            'weapon_system': 'Weapon System Card',
+            'engine_upgrade': 'Engine Upgrade Card',
+            'cargo_expansion': 'Cargo Expansion Card',
+            'navigation_computer': 'Navigation Computer Card',
+            'communication_array': 'Communication Array Card'
+        };
+        
+        return cardTypeNames[cardType] || this.capitalizeWords(cardType.replace(/_/g, ' ')) + ' Card';
+    }
+
+    /**
+     * Capitalize words in a string
+     * @param {string} str - String to capitalize
+     * @returns {string} - Capitalized string
+     */
+    capitalizeWords(str) {
+        return str.split(' ').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        ).join(' ');
     }
 
     /**

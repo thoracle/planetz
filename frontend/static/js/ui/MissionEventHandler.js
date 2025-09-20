@@ -586,7 +586,12 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                         count: 2, // Mid-range (1-3)
                         minTier: 2,
                         maxTier: 4,
-                        preferredTypes: ['scanner', 'long_range_sensor']
+                        preferredTypes: ['scanner', 'long_range_sensor'],
+                        names: [
+                            'Deep Space Scanner Mk-II',
+                            'Long Range Sensor Array'
+                        ],
+                        types: ['scanner', 'long_range_sensor']
                     }
                 };
 
