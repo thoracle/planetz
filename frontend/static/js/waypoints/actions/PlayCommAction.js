@@ -295,14 +295,15 @@ export class PlayCommAction extends WaypointAction {
                 video.src = `/static/video/${file}`;
                 video.style.cssText = `
                     position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    width: 300px;
-                    height: 200px;
+                    top: 50px;
+                    left: 10px;
+                    width: 320px;
+                    height: 120px;
                     z-index: 9999;
-                    border: 2px solid #00ffff;
+                    border: 2px solid #00ff41;
                     border-radius: 5px;
-                    background: rgba(0, 0, 0, 0.8);
+                    background: rgba(0, 0, 0, 0.85);
+                    font-family: 'VT323', monospace;
                 `;
                 
                 // Add to DOM
