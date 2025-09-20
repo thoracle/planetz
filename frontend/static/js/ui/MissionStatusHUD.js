@@ -1003,10 +1003,12 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         // Preserve expanded state if it exists, otherwise default to false
         const wasExpanded = this.expandedStates.get(mission.id) || false;
         
+        const clientName = mission.client || mission.issuer || 'Unknown Client';
+        
         return {
             id: mission.id,
             title: mission.title,
-            client: mission.client || mission.issuer || 'Unknown Client',
+            client: clientName,
             location: mission.location,
             timeRemaining: this.calculateTimeRemaining(mission),
             expanded: wasExpanded, // Preserve user's expand/collapse preference
