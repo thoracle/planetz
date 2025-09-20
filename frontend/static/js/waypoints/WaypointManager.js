@@ -95,10 +95,10 @@ export class WaypointManager {
 
         this.activeWaypoints.set(waypoint.id, waypoint);
         
-        // Automatically activate the waypoint
-        this.activateWaypoint(waypoint.id);
+        // Note: Waypoints are created with 'pending' status and must be manually activated
+        // This allows for sequential waypoint progression in missions
         
-        debug('WAYPOINTS', `🎯 Created waypoint: ${waypoint.name} (${waypoint.id})`);
+        debug('WAYPOINTS', `🎯 Created waypoint: ${waypoint.name} (${waypoint.id}) with status: ${waypoint.status}`);
         
         return waypoint.id;
     }
@@ -172,6 +172,7 @@ export class WaypointManager {
         }
 
         console.log(`🔄 ACTIVATING WAYPOINT: ${waypoint.name} (${waypointId}) - changing status from '${waypoint.status}' to 'active'`);
+        console.trace('🔍 activateWaypoint call stack:');
         debug('WAYPOINTS', `🔄 Activating waypoint: ${waypoint.name} (${waypointId}) - changing status from '${waypoint.status}' to 'active'`);
         waypoint.status = WaypointStatus.ACTIVE;
         
