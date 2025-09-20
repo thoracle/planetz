@@ -543,37 +543,26 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
         try {
             // Check if this is the exploration test mission
             if (missionId.includes('waypoint_test_exploration')) {
-                // Award exploration mission rewards
+                // Award exploration mission rewards (Reward Package 2)
                 const rewards = {
-                    credits: 3500,
-                    experience: 300,
-                    items: [
-                        {
-                            itemType: 'survey_data',
-                            itemId: 'mineral_survey_alpha',
-                            quantity: 1,
-                            name: 'Mineral Survey Data (Alpha)'
-                        },
-                        {
-                            itemType: 'survey_data', 
-                            itemId: 'archaeological_survey_beta',
-                            quantity: 1,
-                            name: 'Archaeological Survey Data (Beta)'
-                        },
-                        {
-                            itemType: 'mission_data',
-                            itemId: 'deep_space_survey_complete',
-                            quantity: 1,
-                            name: 'Deep Space Survey Report'
-                        }
-                    ]
+                    rewardPackageId: 2,
+                    credits: 250, // Mid-range for exploration (100-300)
+                    factionBonuses: {
+                        explorers_guild: 3 // Mid-range (2-5)
+                    },
+                    cards: {
+                        count: 2, // Mid-range (1-3)
+                        minTier: 2,
+                        maxTier: 4,
+                        preferredTypes: ['scanner', 'long_range_sensor']
+                    }
                 };
 
                 // Show mission completion notification
                 if (window.starfieldManager && window.starfieldManager.showHUDEphemeral) {
                     window.starfieldManager.showHUDEphemeral(
                         'MISSION COMPLETE',
-                        `Deep Space Survey Mission completed! Rewards: ${rewards.credits} credits, ${rewards.experience} XP, ${rewards.items.length} items`,
+                        `Deep Space Survey Mission completed! Rewards: ${rewards.credits} credits, +${rewards.factionBonuses.explorers_guild} Explorers Guild rep, ${rewards.cards.count} NFT cards`,
                         8000
                     );
                 }

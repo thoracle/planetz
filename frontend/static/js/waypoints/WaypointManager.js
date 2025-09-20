@@ -1054,10 +1054,16 @@ export class WaypointManager {
                         ]
                     }
                 ],
+                rewardPackageId: 2, // Exploration Reward Package
                 rewards: {
-                    credits: 3500,
-                    experience: 300,
-                    reputation: { faction: 'science_division', amount: 25 }
+                    credits: 250, // Will be determined by reward package
+                    factionBonuses: {
+                        explorers_guild: 3
+                    },
+                    cards: {
+                        count: 2,
+                        preferredTypes: ['scanner', 'long_range_sensor']
+                    }
                 }
             },
             {
