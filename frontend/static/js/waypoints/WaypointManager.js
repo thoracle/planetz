@@ -622,9 +622,11 @@ export class WaypointManager {
         
         // Automatically activate next waypoint in the mission
         if (waypoint.missionId) {
+            debug('WAYPOINTS', `🔄 Checking for next waypoint in mission ${waypoint.missionId} after completing ${waypoint.name}`);
             const nextWaypoint = await this.activateNextWaypoint(waypoint.missionId);
             if (nextWaypoint) {
                 debug('WAYPOINTS', `🔄 Mission progression: ${waypoint.name} → ${nextWaypoint.name}`);
+                debug('WAYPOINTS', `🎯 Target should now be: ${nextWaypoint.name}`);
             } else {
                 debug('WAYPOINTS', `🏁 Mission ${waypoint.missionId} completed - no more waypoints`);
                 
@@ -632,10 +634,13 @@ export class WaypointManager {
                 this.playMissionCompletionAudio();
                 
                 // Clear target when mission is complete (no more waypoints)
+                debug('WAYPOINTS', `🎯 About to clear target - current target: ${window.targetComputerManager?.currentTarget?.name || 'None'}`);
                 if (window.targetComputerManager && window.targetComputerManager.clearCurrentTarget) {
                     debug('WAYPOINTS', '🎯 Clearing target and wireframe - mission complete');
                     window.targetComputerManager.clearCurrentTarget();
-                    debug('WAYPOINTS', '✅ Target and wireframe cleared - mission complete');
+                    debug('WAYPOINTS', `✅ Target cleared - new target: ${window.targetComputerManager?.currentTarget?.name || 'None'}`);
+                } else {
+                    debug('WAYPOINTS', '❌ Could not clear target - targetComputerManager or clearCurrentTarget not available');
                 }
             }
         }
@@ -904,8 +909,19 @@ export class WaypointManager {
             .filter(wp => wp.missionId === missionId)
             .sort((a, b) => a.createdAt - b.createdAt); // Sort by creation order
         
+        debug('WAYPOINTS', `🔍 Found ${missionWaypoints.length} waypoints for mission ${missionId}:`);
+        missionWaypoints.forEach((wp, i) => {
+            debug('WAYPOINTS', `  ${i + 1}. ${wp.name}: status=${wp.status}`);
+        });
+        
         // Find the next pending waypoint
         const nextWaypoint = missionWaypoints.find(wp => wp.status === 'pending');
+        
+        if (nextWaypoint) {
+            debug('WAYPOINTS', `✅ Found next pending waypoint: ${nextWaypoint.name}`);
+        } else {
+            debug('WAYPOINTS', `🏁 No pending waypoints found - mission ${missionId} should be complete`);
+        }
         
         if (nextWaypoint) {
             await this.activateWaypoint(nextWaypoint.id);
