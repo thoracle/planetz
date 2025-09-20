@@ -257,9 +257,12 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
     async refreshMissions() {
         // Skip refresh if any missions are showing completion rewards
         if (this.missionsShowingCompletion && this.missionsShowingCompletion.size > 0) {
+            console.log('⏸️ MISSION COMPLETION: Refresh BLOCKED - missions showing completion rewards, size:', this.missionsShowingCompletion.size);
             debug('UI', '⏸️ MissionStatusHUD: Refresh blocked - missions showing completion rewards');
             return;
         }
+        
+        console.log('🔄 MISSION COMPLETION: Refresh PROCEEDING - no missions showing completion rewards');
         
         try {
             // Get active missions from API
@@ -733,6 +736,17 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
             console.log('🎨 MISSION COMPLETION: Panel styling updated');
             debug('UI', `✅ Added rewards section to mission panel: ${missionId}`);
             console.log('🏁 MISSION COMPLETION: showMissionCompletion completed successfully');
+            
+            // Verify the rewards section is still there after a short delay
+            setTimeout(() => {
+                const stillExists = detailsSection.querySelector('.mission-rewards-section');
+                console.log('🔍 MISSION COMPLETION: Rewards section still exists after 1s:', !!stillExists);
+                if (!stillExists) {
+                    console.log('❌ MISSION COMPLETION: Rewards section was removed! Checking panel state...');
+                    console.log('❌ MISSION COMPLETION: Panel still in missionPanels:', this.missionPanels.has(missionId));
+                    console.log('❌ MISSION COMPLETION: Panel still in DOM:', document.contains(panel));
+                }
+            }, 1000);
             
         } catch (error) {
             console.error('❌ MISSION COMPLETION: Error in showMissionCompletion:', error);
