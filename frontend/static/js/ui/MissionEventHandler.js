@@ -450,6 +450,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
      */
     async handleWaypointCompleted(waypoint) {
         debug('MISSIONS', `🎯 MissionEventHandler: Waypoint completed: ${waypoint.name} (mission: ${waypoint.missionId})`);
+        console.log('🎯 MISSION COMPLETION: handleWaypointCompleted called for waypoint:', waypoint.name, 'mission:', waypoint.missionId);
         
         if (!waypoint.missionId) {
             debug('MISSIONS', '⚠️ Waypoint has no mission ID, skipping mission completion check');
@@ -482,12 +483,17 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
             const updatedCompletedWaypoints = updatedMissionWaypoints.filter(wp => wp.status === 'completed');
             
             debug('MISSIONS', `🎯 Mission ${waypoint.missionId} DELAYED status check: ${updatedCompletedWaypoints.length} completed, ${updatedPendingWaypoints.length} pending`);
+            console.log('🎯 MISSION COMPLETION: Delayed status check for mission:', waypoint.missionId);
+            console.log('🎯 MISSION COMPLETION: Total waypoints:', updatedMissionWaypoints.length);
+            console.log('🎯 MISSION COMPLETION: Completed waypoints:', updatedCompletedWaypoints.length);
+            console.log('🎯 MISSION COMPLETION: Pending waypoints:', updatedPendingWaypoints.length);
             
             // Only complete mission if ALL waypoints are completed AND no pending ones remain
             if (updatedPendingWaypoints.length === 0 && updatedCompletedWaypoints.length > 0 && 
                 updatedCompletedWaypoints.length === updatedMissionWaypoints.length) {
                 
                 debug('MISSIONS', `🏁 Mission ${waypoint.missionId} FULLY completed - removing from active missions`);
+                console.log('🏁 MISSION COMPLETION: Mission FULLY completed!', waypoint.missionId);
                 
                 // Get mission data to check for completion screen suppression
                 const missionData = await this.getMissionData(waypoint.missionId);
@@ -571,6 +577,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
      */
     async awardMissionCompletionRewards(missionId, missionData = null) {
         debug('MISSIONS', `🎁 Awarding mission completion rewards for: ${missionId}`);
+        console.log('🎁 MISSION COMPLETION: awardMissionCompletionRewards called for:', missionId);
 
         try {
             // Check if this is the exploration test mission

@@ -674,13 +674,20 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * @param {Object} rewards - Rewards earned
      */
     showMissionCompletion(missionId, missionData, rewards) {
+        console.log('🎉 MISSION COMPLETION: showMissionCompletion called for:', missionId);
+        console.log('🎉 MISSION COMPLETION: Mission data:', missionData);
+        console.log('🎉 MISSION COMPLETION: Rewards:', rewards);
+        
         const panel = this.missionPanels.get(missionId);
         if (!panel) {
             debug('UI', `⚠️ Mission panel not found for completion: ${missionId}`);
+            console.log('❌ MISSION COMPLETION: Panel not found for mission:', missionId);
+            console.log('❌ MISSION COMPLETION: Available panels:', Array.from(this.missionPanels.keys()));
             return;
         }
 
         debug('UI', `🎉 Showing mission completion in HUD: ${missionId}`);
+        console.log('✅ MISSION COMPLETION: Panel found, proceeding with rewards display');
 
         // Mark the mission as completed in our local array to preserve it during refreshes
         const mission = this.activeMissions.find(m => m.id === missionId);

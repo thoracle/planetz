@@ -659,7 +659,10 @@ export class WaypointManager {
         
         // Notify mission system if applicable
         if (waypoint.missionId && window.missionEventHandler) {
+            console.log('🎯 MISSION COMPLETION: Calling missionEventHandler.handleWaypointCompleted for:', waypoint.name, 'mission:', waypoint.missionId);
             window.missionEventHandler.handleWaypointCompleted(waypoint);
+        } else {
+            console.log('❌ MISSION COMPLETION: Cannot call handleWaypointCompleted - missionId:', waypoint.missionId, 'missionEventHandler available:', !!window.missionEventHandler);
         }
     }
 
