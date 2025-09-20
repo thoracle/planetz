@@ -359,39 +359,58 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * Render all active missions
      */
     renderMissions() {
+        console.log('🔄 RENDER: renderMissions() called');
+        console.log('🔄 RENDER: Current missionsShowingCompletion:', Array.from(this.missionsShowingCompletion));
+        
         // Preserve existing panels that have rewards sections (completed missions)
         const panelsToPreserve = new Map();
         this.missionPanels.forEach((panel, missionId) => {
             const hasRewardsSection = panel.querySelector('.mission-rewards-section');
             if (hasRewardsSection) {
                 panelsToPreserve.set(missionId, panel);
+                console.log('🔄 RENDER: Preserving panel with rewards section:', missionId);
                 debug('UI', `🎯 Preserving panel with rewards section: ${missionId}`);
             }
         });
         
+        console.log('🔄 RENDER: Panels to preserve:', panelsToPreserve.size);
+        
         // Clear content but preserve panels with rewards
+        console.log('🔄 RENDER: Clearing contentArea.innerHTML');
         this.contentArea.innerHTML = '';
+        console.log('🔄 RENDER: Clearing missionPanels Map');
         this.missionPanels.clear();
         
         if (this.activeMissions.length === 0) {
+            console.log('🔄 RENDER: No active missions, showing no missions message');
             this.showNoMissionsMessage();
             return;
         }
         
+        console.log('🔄 RENDER: Processing', this.activeMissions.length, 'active missions');
         this.activeMissions.forEach((mission, index) => {
             let panel;
             
             // Use preserved panel if it exists, otherwise create new one
             if (panelsToPreserve.has(mission.id)) {
                 panel = panelsToPreserve.get(mission.id);
+                console.log('🔄 RENDER: Reusing preserved panel for mission:', mission.id);
                 debug('UI', `🎯 Reusing preserved panel for mission: ${mission.id}`);
+                
+                // Verify the preserved panel still has rewards section
+                const stillHasRewards = panel.querySelector('.mission-rewards-section');
+                console.log('🔄 RENDER: Preserved panel still has rewards section:', !!stillHasRewards);
             } else {
+                console.log('🔄 RENDER: Creating new panel for mission:', mission.id);
                 panel = this.createMissionPanel(mission, index);
             }
             
+            console.log('🔄 RENDER: Appending panel to contentArea for mission:', mission.id);
             this.contentArea.appendChild(panel);
             this.missionPanels.set(mission.id, panel);
         });
+        
+        console.log('🔄 RENDER: renderMissions() completed');
     }
     
     /**
@@ -760,13 +779,26 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         detailsSection.appendChild(rewardsSection);
         console.log('✅ MISSION COMPLETION: Rewards section appended successfully');
         
+        // Verify the rewards section is actually in the DOM
+        const verifyRewardsSection = detailsSection.querySelector('.mission-rewards-section');
+        console.log('🔍 VERIFICATION: Rewards section still in DOM after append:', !!verifyRewardsSection);
+        if (verifyRewardsSection) {
+            console.log('🔍 VERIFICATION: Rewards section HTML:', verifyRewardsSection.outerHTML.substring(0, 200) + '...');
+        }
+        
         // Update panel styling for completion
+        console.log('🎨 MISSION COMPLETION: Updating panel styling for completion');
         panel.style.background = 'rgba(0, 60, 0, 0.4)';
         panel.style.border = '2px solid #00ff41';
         panel.style.boxShadow = '0 0 10px rgba(0, 255, 65, 0.3)';
+        console.log('🎨 MISSION COMPLETION: Panel styling updated');
         
+        // Final verification
+        const finalVerifyRewardsSection = detailsSection.querySelector('.mission-rewards-section');
+        console.log('🔍 FINAL VERIFICATION: Rewards section still in DOM after styling:', !!finalVerifyRewardsSection);
         
         debug('UI', `✅ Added rewards section to mission panel: ${missionId}`);
+        console.log('🏁 MISSION COMPLETION: showMissionCompletion method completed successfully');
     }
 
     /**
