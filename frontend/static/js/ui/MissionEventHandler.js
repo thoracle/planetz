@@ -548,7 +548,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                     rewardPackageId: 2,
                     credits: 250, // Mid-range for exploration (100-300)
                     factionBonuses: {
-                        explorers_guild: 3 // Mid-range (2-5)
+                        terran_republic_alliance: 3 // Mid-range (2-5)
                     },
                     cards: {
                         count: 2, // Mid-range (1-3)
@@ -562,7 +562,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                 if (window.starfieldManager && window.starfieldManager.showHUDEphemeral) {
                     window.starfieldManager.showHUDEphemeral(
                         'MISSION COMPLETE',
-                        `Deep Space Survey Mission completed! Rewards: ${rewards.credits} credits, +${rewards.factionBonuses.explorers_guild} Explorers Guild rep, ${rewards.cards.count} NFT cards`,
+                        `Deep Space Survey Mission completed! Rewards: ${rewards.credits} credits, +${rewards.factionBonuses.terran_republic_alliance} TRA reputation, ${rewards.cards.count} NFT cards`,
                         8000
                     );
                 }

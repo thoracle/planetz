@@ -965,6 +965,7 @@ export class WaypointManager {
                 title: 'Deep Space Survey Mission',
                 description: 'Conduct exploration survey of designated sectors. Investigate anomalous readings and report discoveries.',
                 type: 'exploration',
+                faction: 'terran_republic_alliance',
                 waypoints: [
                     {
                         name: 'Survey Point Alpha',
@@ -1058,7 +1059,7 @@ export class WaypointManager {
                 rewards: {
                     credits: 250, // Will be determined by reward package
                     factionBonuses: {
-                        explorers_guild: 3
+                        terran_republic_alliance: 3
                     },
                     cards: {
                         count: 2,
