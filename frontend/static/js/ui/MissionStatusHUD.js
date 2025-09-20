@@ -672,51 +672,72 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * @param {Object} rewards - Rewards earned
      */
     async showMissionCompletion(missionId, missionData, rewards) {
-        const panel = this.missionPanels.get(missionId);
-        if (!panel) {
-            debug('UI', `⚠️ Mission panel not found for completion: ${missionId}`);
-            return;
+        try {
+            console.log('🎉 MISSION COMPLETION: showMissionCompletion called for:', missionId);
+            
+            const panel = this.missionPanels.get(missionId);
+            if (!panel) {
+                console.log('❌ MISSION COMPLETION: Panel not found for mission:', missionId);
+                console.log('❌ MISSION COMPLETION: Available panels:', Array.from(this.missionPanels.keys()));
+                debug('UI', `⚠️ Mission panel not found for completion: ${missionId}`);
+                return;
+            }
+
+            console.log('✅ MISSION COMPLETION: Panel found, proceeding with rewards display');
+            debug('UI', `🎉 Showing mission completion in HUD: ${missionId}`);
+
+            // Block refreshes and mark the mission as completed
+            this.missionsShowingCompletion.add(missionId);
+            console.log('🔒 MISSION COMPLETION: Added to completion tracking, size:', this.missionsShowingCompletion.size);
+            
+            const mission = this.activeMissions.find(m => m.id === missionId);
+            if (mission) {
+                mission.status = 'completed';
+                mission.completedAt = Date.now();
+                mission.rewards = rewards;
+                mission.completionData = missionData;
+                mission.hasRewardsSection = true; // Flag for preservation
+                console.log('🔧 MISSION COMPLETION: Marked mission as completed in activeMissions');
+                debug('UI', `✅ Marked mission as completed in HUD: ${missionId}`);
+            } else {
+                console.log('❌ MISSION COMPLETION: Mission not found in activeMissions array');
+            }
+
+            // Find the mission details section (where objectives are)
+            const detailsSection = panel.querySelector('.mission-details');
+            if (!detailsSection) {
+                console.log('❌ MISSION COMPLETION: .mission-details section not found');
+                debug('UI', `⚠️ Mission details section not found in panel: ${missionId}`);
+                return;
+            }
+
+            // Check if rewards section already exists (avoid duplicates)
+            const existingRewardsSection = detailsSection.querySelector('.mission-rewards-section');
+            if (existingRewardsSection) {
+                console.log('⚠️ MISSION COMPLETION: Rewards section already exists');
+                debug('UI', `⚠️ Rewards section already exists for mission: ${missionId}`);
+                return;
+            }
+
+            // Create and add rewards section
+            console.log('🔧 MISSION COMPLETION: Creating rewards section');
+            const rewardsSection = this.createRewardsSection(rewards, missionId);
+            detailsSection.appendChild(rewardsSection);
+            console.log('✅ MISSION COMPLETION: Rewards section appended');
+            
+            // Update panel styling for completion
+            panel.style.background = 'rgba(0, 60, 0, 0.4)';
+            panel.style.border = '2px solid #00ff41';
+            panel.style.boxShadow = '0 0 10px rgba(0, 255, 65, 0.3)';
+            
+            console.log('🎨 MISSION COMPLETION: Panel styling updated');
+            debug('UI', `✅ Added rewards section to mission panel: ${missionId}`);
+            console.log('🏁 MISSION COMPLETION: showMissionCompletion completed successfully');
+            
+        } catch (error) {
+            console.error('❌ MISSION COMPLETION: Error in showMissionCompletion:', error);
+            console.error('❌ MISSION COMPLETION: Stack trace:', error.stack);
         }
-
-        debug('UI', `🎉 Showing mission completion in HUD: ${missionId}`);
-
-        // Block refreshes and mark the mission as completed
-        this.missionsShowingCompletion.add(missionId);
-        
-        const mission = this.activeMissions.find(m => m.id === missionId);
-        if (mission) {
-            mission.status = 'completed';
-            mission.completedAt = Date.now();
-            mission.rewards = rewards;
-            mission.completionData = missionData;
-            mission.hasRewardsSection = true; // Flag for preservation
-            debug('UI', `✅ Marked mission as completed in HUD: ${missionId}`);
-        }
-
-        // Find the mission details section (where objectives are)
-        const detailsSection = panel.querySelector('.mission-details');
-        if (!detailsSection) {
-            debug('UI', `⚠️ Mission details section not found in panel: ${missionId}`);
-            return;
-        }
-
-        // Check if rewards section already exists (avoid duplicates)
-        const existingRewardsSection = detailsSection.querySelector('.mission-rewards-section');
-        if (existingRewardsSection) {
-            debug('UI', `⚠️ Rewards section already exists for mission: ${missionId}`);
-            return;
-        }
-
-        // Create and add rewards section
-        const rewardsSection = this.createRewardsSection(rewards, missionId);
-        detailsSection.appendChild(rewardsSection);
-        
-        // Update panel styling for completion
-        panel.style.background = 'rgba(0, 60, 0, 0.4)';
-        panel.style.border = '2px solid #00ff41';
-        panel.style.boxShadow = '0 0 10px rgba(0, 255, 65, 0.3)';
-        
-        debug('UI', `✅ Added rewards section to mission panel: ${missionId}`);
     }
 
     /**
