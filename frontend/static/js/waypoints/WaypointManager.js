@@ -164,7 +164,7 @@ export class WaypointManager {
      * Activate waypoint (make it available for targeting)
      * @param {string} waypointId - Waypoint ID
      */
-    activateWaypoint(waypointId) {
+    async activateWaypoint(waypointId) {
         const waypoint = this.activeWaypoints.get(waypointId);
         if (!waypoint) return;
 
@@ -173,8 +173,8 @@ export class WaypointManager {
         // Register with Target Computer
         this.registerWithTargetComputer(waypoint);
         
-        // Update HUD display
-        this.updateHUDDisplay(waypoint);
+        // Update HUD display (create 3D object)
+        await this.updateHUDDisplay(waypoint);
         
         debug('WAYPOINTS', `🎯 Activated waypoint: ${waypoint.name}`);
     }
@@ -259,7 +259,7 @@ export class WaypointManager {
             }
 
             waypoint.status = WaypointStatus.COMPLETED;
-            this.onWaypointCompleted(waypoint);
+            await this.onWaypointCompleted(waypoint);
             
         } catch (error) {
             console.error(`Failed to execute waypoint actions for ${waypoint.name}:`, error);
@@ -501,9 +501,9 @@ export class WaypointManager {
      * Update HUD display for waypoint
      * @param {Object} waypoint - Waypoint object
      */
-    updateHUDDisplay(waypoint) {
+    async updateHUDDisplay(waypoint) {
         // Create 3D waypoint object in world space
-        this.create3DWaypointObject(waypoint);
+        await this.create3DWaypointObject(waypoint);
         
         debug('WAYPOINTS', `🎯 Updated HUD display for waypoint: ${waypoint.name}`);
     }
@@ -560,11 +560,13 @@ export class WaypointManager {
                 this.waypointIndicator = new WaypointIndicator(scene, THREE);
                 debug('WAYPOINTS', '✅ WaypointIndicator initialized successfully');
                 
-                // Create 3D objects for any existing active waypoints
+                // Create 3D objects for any existing active waypoints (only ACTIVE status)
                 this.activeWaypoints.forEach(waypoint => {
                     if (waypoint.status === 'active') {
                         this.waypointIndicator.createWaypointObject(waypoint);
-                        debug('WAYPOINTS', `💎 Created 3D object for existing waypoint: ${waypoint.name}`);
+                        debug('WAYPOINTS', `💎 Created 3D object for existing ACTIVE waypoint: ${waypoint.name}`);
+                    } else {
+                        debug('WAYPOINTS', `⏸️ Skipping 3D object for ${waypoint.status} waypoint: ${waypoint.name}`);
                     }
                 });
                 
@@ -581,7 +583,7 @@ export class WaypointManager {
      * Handle waypoint completion
      * @param {Object} waypoint - Completed waypoint
      */
-    onWaypointCompleted(waypoint) {
+    async onWaypointCompleted(waypoint) {
         debug('WAYPOINTS', `🎯 Waypoint completed: ${waypoint.name}`);
         
         // Remove 3D waypoint object from world space
@@ -593,6 +595,16 @@ export class WaypointManager {
         if (window.targetComputerManager && 
             window.targetComputerManager.currentTarget?.id === waypoint.id) {
             window.targetComputerManager.clearCurrentTarget();
+        }
+        
+        // Automatically activate next waypoint in the mission
+        if (waypoint.missionId) {
+            const nextWaypoint = await this.activateNextWaypoint(waypoint.missionId);
+            if (nextWaypoint) {
+                debug('WAYPOINTS', `🔄 Mission progression: ${waypoint.name} → ${nextWaypoint.name}`);
+            } else {
+                debug('WAYPOINTS', `🏁 Mission ${waypoint.missionId} completed - no more waypoints`);
+            }
         }
         
         // Notify mission system if applicable
@@ -801,11 +813,37 @@ export class WaypointManager {
     }
 
     /**
-     * Activate next waypoint in chain (stub for Phase 4)
+     * Activate next waypoint in chain
      * @param {string} missionId - Mission ID
      */
-    activateNextWaypoint(missionId) {
-        debug('WAYPOINTS', `🔗 Activate next waypoint for mission ${missionId} - TODO: Implement in Phase 4`);
+    async activateNextWaypoint(missionId) {
+        debug('WAYPOINTS', `🔗 Activating next waypoint for mission ${missionId}`);
+        
+        // Find all waypoints for this mission
+        const missionWaypoints = Array.from(this.activeWaypoints.values())
+            .filter(wp => wp.missionId === missionId)
+            .sort((a, b) => a.createdAt - b.createdAt); // Sort by creation order
+        
+        // Find the next pending waypoint
+        const nextWaypoint = missionWaypoints.find(wp => wp.status === 'pending');
+        
+        if (nextWaypoint) {
+            await this.activateWaypoint(nextWaypoint.id);
+            debug('WAYPOINTS', `✅ Activated next waypoint: ${nextWaypoint.name}`);
+            
+            // Auto-target the next waypoint
+            if (window.targetComputerManager && window.targetComputerManager.targetWaypointViaCycle) {
+                const targetSet = window.targetComputerManager.targetWaypointViaCycle(nextWaypoint);
+                if (targetSet) {
+                    debug('WAYPOINTS', `🎯 Auto-targeted next waypoint: ${nextWaypoint.name}`);
+                }
+            }
+            
+            return nextWaypoint;
+        } else {
+            debug('WAYPOINTS', `🏁 No more waypoints for mission ${missionId} - mission may be complete`);
+            return null;
+        }
     }
 
     // ========== TEST MISSION FUNCTIONALITY ==========
@@ -814,7 +852,7 @@ export class WaypointManager {
      * Create a test mission with waypoints for development/testing
      * @returns {Object} - Created mission and waypoint data
      */
-    createTestMission() {
+    async createTestMission() {
         debug('WAYPOINTS', '🎯 Creating waypoint test mission...');
         
         // Test mission templates
@@ -964,7 +1002,7 @@ export class WaypointManager {
             
             // Activate the first waypoint
             if (createdWaypoints.length > 0) {
-                this.activateWaypoint(createdWaypoints[0]);
+                await this.activateWaypoint(createdWaypoints[0]);
                 debug('WAYPOINTS', `✅ Activated first waypoint: ${createdWaypoints[0]}`);
                 
                 // Auto-target the first waypoint for immediate navigation

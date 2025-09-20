@@ -32,8 +32,8 @@ export class WaypointIndicator {
         // Create diamond geometry (same as wireframe but filled)
         const geometry = new this.THREE.BufferGeometry();
         
-        // Diamond vertices for a 3D diamond shape (75% smaller)
-        const size = Math.max(0.5, (waypoint.triggerRadius || 10) * 0.05); // 75% smaller - reduced from 0.2 to 0.05
+        // Diamond vertices for a 3D diamond shape (87.5% smaller total)
+        const size = Math.max(0.25, (waypoint.triggerRadius || 10) * 0.025); // 87.5% smaller - reduced from 0.05 to 0.025
         
         const vertices = new Float32Array([
             // Top pyramid faces
