@@ -773,6 +773,11 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         console.log('🔒 MISSION COMPLETION: Current missionsShowingCompletion after add:', Array.from(this.missionsShowingCompletion));
         console.log('🔒 MISSION COMPLETION: Set size:', this.missionsShowingCompletion.size);
         
+        // Add a small delay to ensure the blocking takes effect before any pending refreshes
+        await new Promise(resolve => setTimeout(resolve, 50));
+        console.log('🔒 MISSION COMPLETION: After delay - Set size:', this.missionsShowingCompletion.size);
+        console.log('🔒 MISSION COMPLETION: After delay - Set contents:', Array.from(this.missionsShowingCompletion));
+        
         const mission = this.activeMissions.find(m => m.id === missionId);
         if (mission) {
             mission.status = 'completed';
