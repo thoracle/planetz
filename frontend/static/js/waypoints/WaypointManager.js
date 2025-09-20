@@ -967,42 +967,136 @@ export class WaypointManager {
         const missionTemplates = [
             {
                 id: 'waypoint_test_exploration',
-                title: 'Navigation Waypoint Test',
-                description: 'Navigate to designated waypoints for navigation system testing.',
+                title: 'Deep Space Survey Mission',
+                description: 'Conduct exploration survey of designated sectors. Investigate anomalous readings and report discoveries.',
                 type: 'exploration',
                 waypoints: [
                     {
-                        name: 'Waypoint Alpha',
+                        name: 'Survey Point Alpha',
                         position: [15.0, 0.0, 25.0], // Empty space location
                         triggerRadius: 20.0,
-                        type: 'navigation',
-                        actions: [{
-                            type: 'show_message',
-                            parameters: {
-                                title: 'Waypoint Alpha Reached',
-                                message: 'Navigation waypoint Alpha reached successfully. Proceed to next waypoint.',
-                                audioFileId: 'mission_success'
+                        type: 'exploration',
+                        actions: [
+                            {
+                                type: 'play_comm',
+                                parameters: {
+                                    videoFile: 'cooper_comms_talking_001.mov',
+                                    audioFile: 'cooper_docking_scan_init_001.wav',
+                                    subtitle: 'Cooper: Beginning deep space scan of sector Alpha. Sensors are picking up some interesting readings...',
+                                    duration: 4000,
+                                    npcId: 'cooper',
+                                    channelId: 'mission_control'
+                                }
+                            },
+                            {
+                                type: 'show_message',
+                                parameters: {
+                                    title: 'Discovery: Mineral Deposits',
+                                    message: 'Long-range sensors detect rich mineral deposits in nearby asteroids. Marking location for mining operations.',
+                                    audioFileId: 'discovery_chime',
+                                    duration: 5000,
+                                    priority: 'discovery'
+                                }
+                            },
+                            {
+                                type: 'give_item',
+                                parameters: {
+                                    itemType: 'survey_data',
+                                    itemId: 'mineral_survey_alpha',
+                                    quantity: 1,
+                                    message: 'Survey data logged: Mineral deposits detected in sector Alpha'
+                                }
                             }
-                        }]
+                        ]
                     },
                     {
-                        name: 'Waypoint Beta',
+                        name: 'Survey Point Beta',
                         position: [-10.0, 5.0, -15.0], // Different empty space location
                         triggerRadius: 20.0,
-                        type: 'navigation',
-                        actions: [{
-                            type: 'show_message',
-                            parameters: {
-                                title: 'Waypoint Beta Reached',
-                                message: 'Navigation waypoint Beta reached successfully. Mission objectives complete.',
-                                audioFileId: 'mission_success'
+                        type: 'exploration',
+                        actions: [
+                            {
+                                type: 'play_comm',
+                                parameters: {
+                                    videoFile: 'cooper_comms_talking_001.mov',
+                                    audioFile: 'science_report.wav',
+                                    subtitle: 'Cooper: Fascinating! This sector shows signs of ancient civilization. Uploading archaeological data to the database.',
+                                    duration: 5000,
+                                    npcId: 'cooper',
+                                    channelId: 'science_division'
+                                }
+                            },
+                            {
+                                type: 'show_message',
+                                parameters: {
+                                    title: 'Discovery: Archaeological Site',
+                                    message: 'Ancient ruins detected! Preliminary scans indicate advanced technology. This could be a significant find.',
+                                    audioFileId: 'scan_complete',
+                                    duration: 6000,
+                                    priority: 'major_discovery'
+                                }
+                            },
+                            {
+                                type: 'give_reward',
+                                parameters: {
+                                    rewardPackageId: '2', // Exploration reward package
+                                    bonusMultiplier: 1.5,
+                                    message: 'Exploration bonus awarded for archaeological discovery!'
+                                }
+                            },
+                            {
+                                type: 'give_item',
+                                parameters: {
+                                    itemType: 'survey_data',
+                                    itemId: 'archaeological_survey_beta',
+                                    quantity: 1,
+                                    message: 'Archaeological survey data recorded'
+                                }
                             }
-                        }]
+                        ]
+                    },
+                    {
+                        name: 'Survey Point Gamma',
+                        position: [30.0, 15.0, 40.0], // Third survey location
+                        triggerRadius: 18.0,
+                        type: 'exploration',
+                        actions: [
+                            {
+                                type: 'play_comm',
+                                parameters: {
+                                    videoFile: 'cooper_comms_talking_001.mov',
+                                    audioFile: 'cooper_mission_complete_001.wav',
+                                    subtitle: 'Cooper: Outstanding work! Survey mission complete. The data you\'ve gathered will be invaluable for future operations.',
+                                    duration: 4500,
+                                    npcId: 'cooper',
+                                    channelId: 'mission_control'
+                                }
+                            },
+                            {
+                                type: 'show_message',
+                                parameters: {
+                                    title: 'Mission Complete',
+                                    message: 'Deep space survey mission completed successfully. All survey data has been transmitted to Command.',
+                                    audioFileId: 'mission_success',
+                                    duration: 4000,
+                                    priority: 'mission_complete'
+                                }
+                            },
+                            {
+                                type: 'give_reward',
+                                parameters: {
+                                    rewardPackageId: '3', // Mission completion reward
+                                    bonusMultiplier: 2.0,
+                                    message: 'Mission completion bonus awarded!'
+                                }
+                            }
+                        ]
                     }
                 ],
                 rewards: {
-                    credits: 2500,
-                    experience: 50
+                    credits: 3500,
+                    experience: 300,
+                    reputation: { faction: 'science_division', amount: 25 }
                 }
             },
             {

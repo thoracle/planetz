@@ -43,48 +43,69 @@ export class PlayCommAction extends WaypointAction {
     async performAction(context) {
         const {
             audioFile,
+            videoFile = null,
             subtitle = null,
             duration = null,
             volume = 0.7,
             commType = CommType.SYSTEM,
             priority = CommPriority.NORMAL,
             speaker = null,
+            npcId = null,
+            channelId = 'default',
             channel = 'default',
             loop = false,
             fadeIn = false,
             fadeOut = false
         } = this.parameters;
 
-        debug('WAYPOINTS', `📻 Playing communication: ${audioFile} (${commType}, priority: ${priority})`);
+        debug('WAYPOINTS', `📻 Playing communication: ${audioFile}${videoFile ? ` + video: ${videoFile}` : ''} (${commType}, priority: ${priority})`);
 
         try {
-            // Check if audio system is available
-            const audioSystem = this.getAudioSystem();
-            if (!audioSystem) {
-                throw new Error('Audio system not available');
+            let audioResult = null;
+            let videoResult = null;
+
+            // Play video if provided
+            if (videoFile) {
+                debug('WAYPOINTS', `🎬 Playing video communication: ${videoFile}`);
+                videoResult = await this.playVideo({
+                    file: videoFile,
+                    npcId: npcId,
+                    channelId: channelId,
+                    duration: duration
+                });
             }
 
-            // Prepare audio configuration
-            const audioConfig = {
-                file: audioFile,
-                volume: volume,
-                loop: loop,
-                channel: channel,
-                priority: priority,
-                fadeIn: fadeIn,
-                fadeOut: fadeOut
-            };
+            // Play audio if provided
+            if (audioFile) {
+                // Check if audio system is available
+                const audioSystem = this.getAudioSystem();
+                if (!audioSystem) {
+                    throw new Error('Audio system not available');
+                }
 
-            // Play the audio
-            const audioResult = await this.playAudio(audioConfig);
+                // Prepare audio configuration
+                const audioConfig = {
+                    file: audioFile,
+                    volume: volume,
+                    loop: loop,
+                    channel: channel,
+                    priority: priority,
+                    fadeIn: fadeIn,
+                    fadeOut: fadeOut
+                };
+
+                // Play the audio
+                audioResult = await this.playAudio(audioConfig);
+            }
 
             // Show subtitle if provided
             let subtitleResult = null;
             if (subtitle) {
+                const effectiveDuration = duration || audioResult?.duration || videoResult?.duration || 5000;
                 subtitleResult = await this.showSubtitle({
                     text: subtitle,
-                    duration: duration || audioResult.duration || 5000,
-                    speaker: speaker,
+                    duration: effectiveDuration,
+                    speaker: speaker || npcId,
                     commType: commType,
                     priority: priority
                 });
@@ -93,8 +114,11 @@ export class PlayCommAction extends WaypointAction {
             // Create communication log entry
             this.logCommunication({
                 audioFile: audioFile,
+                videoFile: videoFile,
                 subtitle: subtitle,
-                speaker: speaker,
+                speaker: speaker || npcId,
+                npcId: npcId,
+                channelId: channelId,
                 commType: commType,
                 timestamp: new Date(),
                 waypoint: context.waypoint
@@ -102,15 +126,19 @@ export class PlayCommAction extends WaypointAction {
 
             const result = {
                 audioFile: audioFile,
+                videoFile: videoFile,
                 audioResult: audioResult,
+                videoResult: videoResult,
                 subtitleResult: subtitleResult,
-                duration: audioResult.duration,
+                duration: audioResult?.duration || videoResult?.duration || duration || 5000,
                 commType: commType,
-                speaker: speaker,
+                speaker: speaker || npcId,
+                npcId: npcId,
+                channelId: channelId,
                 success: true
             };
 
-            debug('WAYPOINTS', `✅ Communication played successfully: ${audioFile}`);
+            debug('WAYPOINTS', `✅ Communication played successfully: ${audioFile || 'no audio'}${videoFile ? ` + ${videoFile}` : ''}`);
             return result;
 
         } catch (error) {
@@ -216,6 +244,92 @@ export class PlayCommAction extends WaypointAction {
                 
             } catch (error) {
                 reject(error);
+            }
+        });
+    }
+
+    /**
+     * Play video communication
+     * @param {Object} config - Video configuration
+     * @returns {Promise<Object>} - Video playback result
+     */
+    async playVideo(config) {
+        const { file, npcId, channelId, duration } = config;
+        
+        debug('WAYPOINTS', `🎬 Playing video: ${file} (NPC: ${npcId}, Channel: ${channelId})`);
+        
+        try {
+            // Check if comm system is available
+            if (window.commSystem && window.commSystem.playVideo) {
+                // Use dedicated comm system
+                const result = await window.commSystem.playVideo({
+                    videoFile: file,
+                    npcId: npcId,
+                    channelId: channelId,
+                    duration: duration
+                });
+                return result;
+            } else {
+                // Fallback: Create video element
+                return this.playVideoFallback(config);
+            }
+        } catch (error) {
+            console.error('Video playback failed:', error);
+            // Continue without video - don't fail the entire action
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Fallback video playback using HTML5 video
+     * @param {Object} config - Video configuration
+     * @returns {Promise<Object>} - Playback result
+     */
+    playVideoFallback(config) {
+        return new Promise((resolve) => {
+            try {
+                const { file, duration = 5000 } = config;
+                
+                // Create video element
+                const video = document.createElement('video');
+                video.src = `/static/video/${file}`;
+                video.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    width: 300px;
+                    height: 200px;
+                    z-index: 9999;
+                    border: 2px solid #00ffff;
+                    border-radius: 5px;
+                    background: rgba(0, 0, 0, 0.8);
+                `;
+                
+                // Add to DOM
+                document.body.appendChild(video);
+                
+                // Play video
+                video.play().catch(error => {
+                    console.warn('Video autoplay failed:', error);
+                });
+                
+                // Remove after duration
+                setTimeout(() => {
+                    if (video.parentNode) {
+                        video.pause();
+                        document.body.removeChild(video);
+                    }
+                }, duration);
+                
+                resolve({
+                    success: true,
+                    duration: duration,
+                    videoElement: video
+                });
+                
+            } catch (error) {
+                console.error('Video fallback failed:', error);
+                resolve({ success: false, error: error.message });
             }
         });
     }

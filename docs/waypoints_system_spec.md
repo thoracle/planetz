@@ -1026,31 +1026,96 @@ journey
 
 ### **Scenario 2: Exploration Mission with Discovery Waypoints**
 
+**Enhanced Implementation**: The W key waypoint test now implements this scenario with Cooper communications and discovery rewards.
+
 ```mermaid
 sequenceDiagram
     participant Player
     participant Mission as Mission System
     participant Waypoints as Waypoint Manager
+    participant CommSystem as Comm System
     participant Discovery as Discovery System
 
-    Player->>Mission: Accept exploration mission
-    Mission->>Waypoints: Create survey waypoints
-    Waypoints->>Player: Show first survey point
+    Player->>Mission: Accept "Deep Space Survey Mission"
+    Mission->>Waypoints: Create 3 survey waypoints
+    Waypoints->>Player: Show Survey Point Alpha
     
-    Player->>Waypoints: Navigate to waypoint 1
-    Waypoints->>Discovery: Trigger area scan
-    Discovery->>Player: Discover hidden station
+    Player->>Waypoints: Navigate to Alpha
+    Waypoints->>CommSystem: Play Cooper video + audio
+    CommSystem->>Player: "Beginning deep space scan..."
+    Waypoints->>Discovery: Trigger mineral scan
+    Discovery->>Player: Discover mineral deposits
+    Waypoints->>Player: Award survey data item
     
     Waypoints->>Mission: Update mission progress
-    Mission->>Waypoints: Activate waypoint 2
+    Mission->>Waypoints: Activate Survey Point Beta
     Waypoints->>Player: Show next survey point
     
-    Player->>Waypoints: Navigate to waypoint 2
-    Waypoints->>Discovery: Trigger deep scan
-    Discovery->>Player: Discover mineral deposits
+    Player->>Waypoints: Navigate to Beta
+    Waypoints->>CommSystem: Play Cooper archaeological report
+    CommSystem->>Player: "Signs of ancient civilization..."
+    Waypoints->>Discovery: Trigger archaeological scan
+    Discovery->>Player: Discover ancient ruins
+    Waypoints->>Player: Award exploration bonus + survey data
     
-    Mission->>Player: Mission objectives updated
+    Waypoints->>Mission: Activate Survey Point Gamma
+    Player->>Waypoints: Navigate to Gamma
+    Waypoints->>CommSystem: Play Cooper mission complete
+    CommSystem->>Player: "Outstanding work! Mission complete."
+    Waypoints->>Player: Award mission completion bonus
+    
+    Mission->>Player: Mission objectives completed
 ```
+
+**Key Features Implemented**:
+- **Video Communications**: Cooper appears on screen via `cooper_comms_talking_001.mov`
+- **Audio Narration**: Different audio tracks for each discovery type
+- **Progressive Rewards**: Items and credits awarded at each waypoint
+- **Discovery Types**: Mineral deposits, archaeological sites, mission completion
+- **Professional Presentation**: Subtitles, proper timing, and visual feedback
+
+**Example Waypoint Configuration**:
+```javascript
+{
+    name: 'Survey Point Alpha',
+    position: [15.0, 0.0, 25.0],
+    triggerRadius: 20.0,
+    type: 'exploration',
+    actions: [
+        {
+            type: 'play_comm',
+            parameters: {
+                videoFile: 'cooper_comms_talking_001.mov',
+                audioFile: 'cooper_docking_scan_init_001.wav',
+                subtitle: 'Cooper: Beginning deep space scan of sector Alpha. Sensors are picking up some interesting readings...',
+                duration: 4000,
+                npcId: 'cooper',
+                channelId: 'mission_control'
+            }
+        },
+        {
+            type: 'show_message',
+            parameters: {
+                title: 'Discovery: Mineral Deposits',
+                message: 'Long-range sensors detect rich mineral deposits in nearby asteroids.',
+                audioFileId: 'discovery_chime',
+                priority: 'discovery'
+            }
+        },
+        {
+            type: 'give_item',
+            parameters: {
+                itemType: 'survey_data',
+                itemId: 'mineral_survey_alpha',
+                quantity: 1,
+                message: 'Survey data logged: Mineral deposits detected'
+            }
+        }
+    ]
+}
+```
+
+**Testing**: Press `W` in-game to experience the enhanced exploration mission with Cooper communications.
 
 ### **Scenario 3: Combat Mission with Dynamic Waypoints**
 
