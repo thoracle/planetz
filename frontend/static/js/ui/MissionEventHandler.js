@@ -603,7 +603,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                     // Show completion in mission HUD
                     if (window.starfieldManager?.missionStatusHUD) {
                         window.starfieldManager.missionStatusHUD.showMissionCompletion(
-                            waypoint.missionId,
+                            missionId,
                             displayMissionData,
                             rewards
                         );

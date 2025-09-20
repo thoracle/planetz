@@ -24,6 +24,9 @@ export class MissionStatusHUD {
         this.missionPanels = new Map();
         this.lastUpdateTime = 0;
         
+        // Track expanded state of missions to preserve user preferences
+        this.expandedStates = new Map(); // mission_id -> boolean
+        
         // Update frequency (2Hz = every 500ms)
         this.updateFrequency = 500;
         
@@ -414,9 +417,15 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         // Toggle expand/collapse on click
         header.addEventListener('click', () => {
             mission.expanded = !mission.expanded;
+            
+            // Save the expanded state to preserve user preference
+            this.expandedStates.set(mission.id, mission.expanded);
+            
             expandIcon.textContent = mission.expanded ? '▼' : '▲';
             const details = header.nextElementSibling;
             details.style.display = mission.expanded ? 'block' : 'none';
+            
+            debug('UI', `🎯 Mission ${mission.id} ${mission.expanded ? 'expanded' : 'collapsed'} by user`);
         });
         
         return header;
@@ -760,6 +769,9 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
                 }
                 this.missionPanels.delete(missionId);
                 
+                // Clean up expanded state tracking
+                this.expandedStates.delete(missionId);
+                
                 // Remove from active missions list
                 this.activeMissions = this.activeMissions.filter(m => m.id !== missionId);
                 
@@ -809,13 +821,16 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * Process mission data from API for UI display
      */
     processMissionForUI(mission) {
+        // Preserve expanded state if it exists, otherwise default to false
+        const wasExpanded = this.expandedStates.get(mission.id) || false;
+        
         return {
             id: mission.id,
             title: mission.title,
             client: mission.client || mission.issuer || 'Unknown Client',
             location: mission.location,
             timeRemaining: this.calculateTimeRemaining(mission),
-            expanded: false, // UI state
+            expanded: wasExpanded, // Preserve user's expand/collapse preference
             objectives: mission.objectives?.map(obj => ({
                 id: obj.id,
                 description: obj.description,
