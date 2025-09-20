@@ -5152,9 +5152,9 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
      * Show a temporary ephemeral message in the HUD (errors, notifications, etc.)
      * @param {string} title - Message title
      * @param {string} message - Message content
-     * @param {number} duration - Duration in milliseconds (default 3000)
+     * @param {number} duration - Duration in milliseconds (default 5000)
      */
-    showHUDEphemeral(title, message, duration = 3000) {
+    showHUDEphemeral(title, message, duration = 5000) {
         // Create ephemeral message element if it doesn't exist
         if (!this.hudEphemeralElement) {
             this.hudEphemeralElement = document.createElement('div');

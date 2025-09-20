@@ -612,6 +612,11 @@ export class WaypointManager {
             window.targetComputerManager.clearCurrentTarget();
         }
         
+        // Update mission objectives in HUD
+        if (waypoint.missionId) {
+            this.updateMissionObjectives(waypoint.missionId, waypoint.id);
+        }
+        
         // Automatically activate next waypoint in the mission
         if (waypoint.missionId) {
             const nextWaypoint = await this.activateNextWaypoint(waypoint.missionId);
@@ -625,6 +630,53 @@ export class WaypointManager {
         // Notify mission system if applicable
         if (waypoint.missionId && window.missionEventHandler) {
             window.missionEventHandler.handleWaypointCompleted(waypoint);
+        }
+    }
+
+    /**
+     * Update mission objectives when waypoint is completed
+     * @param {string} missionId - Mission ID
+     * @param {string} completedWaypointId - ID of completed waypoint
+     */
+    updateMissionObjectives(missionId, completedWaypointId) {
+        // Find the mission in missionAPI
+        if (!window.missionAPI) {
+            debug('WAYPOINTS', '⚠️ missionAPI not available for objective updates');
+            return;
+        }
+        
+        const mission = window.missionAPI.activeMissions.get(missionId);
+        if (!mission || !mission.objectives) {
+            debug('WAYPOINTS', `⚠️ Mission ${missionId} not found or has no objectives`);
+            return;
+        }
+        
+        // Find and update the completed objective
+        let completedObjectiveIndex = -1;
+        for (let i = 0; i < mission.objectives.length; i++) {
+            const objective = mission.objectives[i];
+            if (objective.waypointId === completedWaypointId) {
+                objective.state = 'completed';
+                objective.progress = 100;
+                completedObjectiveIndex = i;
+                debug('WAYPOINTS', `✅ Marked objective ${i + 1} as completed: ${objective.description}`);
+                break;
+            }
+        }
+        
+        // Activate the next objective if there is one
+        if (completedObjectiveIndex !== -1 && completedObjectiveIndex + 1 < mission.objectives.length) {
+            const nextObjective = mission.objectives[completedObjectiveIndex + 1];
+            nextObjective.state = 'active';
+            debug('WAYPOINTS', `🎯 Activated next objective ${completedObjectiveIndex + 2}: ${nextObjective.description}`);
+        }
+        
+        // Refresh the Mission HUD to show updated objectives
+        if (window.missionStatusHUD && window.missionStatusHUD.refreshMissions) {
+            setTimeout(() => {
+                window.missionStatusHUD.refreshMissions();
+                debug('WAYPOINTS', '🔄 Refreshed Mission HUD with updated objectives');
+            }, 100); // Small delay to ensure waypoint changes are processed
         }
     }
 
