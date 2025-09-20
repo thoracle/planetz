@@ -3817,7 +3817,22 @@ debug('TARGETING', 'Showing docking interface for', target.name);
         } else if (target.object && target.object.position) {
             // Target has a nested object with position
             console.log('🎯 DEBUG getTargetPosition - returning nested object position');
-            return target.object.position;
+            if (typeof target.object.position.clone === 'function') {
+                // Already a Vector3
+                return target.object.position;
+            } else if (Array.isArray(target.object.position)) {
+                // Position is stored as array [x, y, z]
+                console.log('🎯 DEBUG getTargetPosition - converting nested array to Vector3:', target.object.position);
+                return new this.THREE.Vector3(...target.object.position);
+            } else if (typeof target.object.position === 'object' && 
+                       typeof target.object.position.x === 'number') {
+                // Position is a plain object with x, y, z properties
+                console.log('🎯 DEBUG getTargetPosition - converting nested object to Vector3:', target.object.position);
+                return new this.THREE.Vector3(target.object.position.x, target.object.position.y, target.object.position.z);
+            } else {
+                console.warn('🎯 Could not convert nested object position to Vector3:', target.object.position);
+                return null;
+            }
         } else if (target.position && Array.isArray(target.position)) {
             // Position is stored as array [x, y, z]
             console.log('🎯 DEBUG getTargetPosition - creating Vector3 from array:', target.position);
