@@ -1099,8 +1099,7 @@ export class WaypointManager {
                     }
                 ],
                 rewards: {
-                    credits: 8000,
-                    experience: 200
+                    credits: 8000
                 }
             }
         ];
