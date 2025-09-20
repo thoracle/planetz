@@ -701,22 +701,33 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
 
         // Find the mission details section (where objectives are)
         const detailsSection = panel.querySelector('.mission-details');
+        console.log('🔍 MISSION COMPLETION: Looking for .mission-details section');
+        console.log('🔍 MISSION COMPLETION: Details section found:', !!detailsSection);
         if (!detailsSection) {
             debug('UI', `⚠️ Mission details section not found in panel: ${missionId}`);
+            console.log('❌ MISSION COMPLETION: .mission-details section not found in panel');
+            console.log('❌ MISSION COMPLETION: Panel HTML:', panel.innerHTML);
             return;
         }
 
         // Check if rewards section already exists (avoid duplicates)
-        if (detailsSection.querySelector('.mission-rewards-section')) {
+        const existingRewardsSection = detailsSection.querySelector('.mission-rewards-section');
+        console.log('🔍 MISSION COMPLETION: Checking for existing rewards section:', !!existingRewardsSection);
+        if (existingRewardsSection) {
             debug('UI', `⚠️ Rewards section already exists for mission: ${missionId}`);
+            console.log('⚠️ MISSION COMPLETION: Rewards section already exists, skipping');
             return;
         }
 
         // Create rewards section
+        console.log('🔧 MISSION COMPLETION: Creating rewards section');
         const rewardsSection = this.createRewardsSection(rewards, missionId);
+        console.log('🔧 MISSION COMPLETION: Rewards section created:', !!rewardsSection);
         
         // Add rewards section to the details (after objectives)
+        console.log('🔧 MISSION COMPLETION: Appending rewards section to details');
         detailsSection.appendChild(rewardsSection);
+        console.log('✅ MISSION COMPLETION: Rewards section appended successfully');
         
         // Update panel styling for completion
         panel.style.background = 'rgba(0, 60, 0, 0.4)';
@@ -733,6 +744,8 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * @returns {HTMLElement} - Rewards section element
      */
     createRewardsSection(rewards, missionId) {
+        console.log('🔧 REWARDS: createRewardsSection called with rewards:', rewards);
+        
         const rewardsSection = document.createElement('div');
         rewardsSection.className = 'mission-rewards-section';
         rewardsSection.style.cssText = `
@@ -746,6 +759,8 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         const hasFactionRep = rewards.factionBonuses && Object.keys(rewards.factionBonuses).length > 0;
         const hasCards = rewards.cards && rewards.cards.count > 0;
         const hasRewards = hasCredits || hasFactionRep || hasCards;
+        
+        console.log('🔧 REWARDS: Reward checks - Credits:', hasCredits, 'Faction:', hasFactionRep, 'Cards:', hasCards, 'HasAny:', hasRewards);
 
         if (hasRewards) {
             // Rewards header
