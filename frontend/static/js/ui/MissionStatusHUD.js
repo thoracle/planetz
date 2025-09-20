@@ -265,18 +265,29 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
                 const panel = this.missionPanels.get(mission.id);
                 const hasRewardsSection = panel && panel.querySelector('.mission-rewards-section');
                 const isMarkedCompleted = mission.status === 'completed';
+                const hasFlaggedRewardsSection = mission.hasRewardsSection === true;
                 
-                // Preserve if either marked as completed OR has rewards section
-                return (isMarkedCompleted || hasRewardsSection) && this.missionPanels.has(mission.id);
+                // Preserve if marked as completed OR has rewards section OR flagged as having rewards
+                return (isMarkedCompleted || hasRewardsSection || hasFlaggedRewardsSection) && this.missionPanels.has(mission.id);
             });
             
             console.log('🎯 Preserving completed missions showing rewards:', completedMissionsShowingRewards.length);
             
             // Debug: log details about preserved missions
+            console.log('🔍 PRESERVATION: Checking all active missions for preservation:');
+            this.activeMissions.forEach(mission => {
+                const panel = this.missionPanels.get(mission.id);
+                const hasRewardsSection = panel && panel.querySelector('.mission-rewards-section');
+                const isMarkedCompleted = mission.status === 'completed';
+                const hasFlaggedRewardsSection = mission.hasRewardsSection === true;
+                const shouldPreserve = (isMarkedCompleted || hasRewardsSection || hasFlaggedRewardsSection) && this.missionPanels.has(mission.id);
+                console.log(`🔍 PRESERVATION: Mission ${mission.id}: status=${mission.status}, hasRewardsSection=${!!hasRewardsSection}, flagged=${hasFlaggedRewardsSection}, shouldPreserve=${shouldPreserve}`);
+            });
+            
             completedMissionsShowingRewards.forEach(mission => {
                 const panel = this.missionPanels.get(mission.id);
                 const hasRewardsSection = panel && panel.querySelector('.mission-rewards-section');
-                console.log(`🎯 Preserving mission ${mission.id}: status=${mission.status}, hasRewardsSection=${!!hasRewardsSection}`);
+                console.log(`🎯 PRESERVATION: Preserving mission ${mission.id}: status=${mission.status}, hasRewardsSection=${!!hasRewardsSection}`);
             });
             
             // Process API missions for UI display
@@ -733,6 +744,15 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         panel.style.background = 'rgba(0, 60, 0, 0.4)';
         panel.style.border = '2px solid #00ff41';
         panel.style.boxShadow = '0 0 10px rgba(0, 255, 65, 0.3)';
+        
+        // Force the mission to be marked as completed in our local array immediately
+        // This ensures it gets preserved during any immediate refreshes
+        const missionInArray = this.activeMissions.find(m => m.id === missionId);
+        if (missionInArray) {
+            missionInArray.status = 'completed';
+            missionInArray.hasRewardsSection = true; // Flag for preservation
+            console.log('🔧 MISSION COMPLETION: Force-marked mission as completed in activeMissions array');
+        }
         
         debug('UI', `✅ Added rewards section to mission panel: ${missionId}`);
     }
