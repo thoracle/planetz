@@ -700,14 +700,20 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         debug('UI', `🎉 Showing mission completion in HUD: ${missionId}`);
         console.log('✅ MISSION COMPLETION: Panel found, proceeding with rewards display');
 
-        // Mark the mission as completed in our local array to preserve it during refreshes
+        // FIRST: Mark the mission as completed in our local array to preserve it during refreshes
+        // This must happen BEFORE any DOM manipulation to prevent race conditions
         const mission = this.activeMissions.find(m => m.id === missionId);
         if (mission) {
             mission.status = 'completed';
             mission.completedAt = Date.now();
             mission.rewards = rewards;
             mission.completionData = missionData;
+            mission.hasRewardsSection = true; // Flag for preservation
+            console.log('🔧 MISSION COMPLETION: Pre-marked mission as completed in activeMissions array');
             debug('UI', `✅ Marked mission as completed in HUD: ${missionId}`);
+        } else {
+            console.log('❌ MISSION COMPLETION: Mission not found in activeMissions array!');
+            console.log('❌ MISSION COMPLETION: Available missions:', this.activeMissions.map(m => m.id));
         }
 
         // Find the mission details section (where objectives are)
@@ -745,14 +751,6 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         panel.style.border = '2px solid #00ff41';
         panel.style.boxShadow = '0 0 10px rgba(0, 255, 65, 0.3)';
         
-        // Force the mission to be marked as completed in our local array immediately
-        // This ensures it gets preserved during any immediate refreshes
-        const missionInArray = this.activeMissions.find(m => m.id === missionId);
-        if (missionInArray) {
-            missionInArray.status = 'completed';
-            missionInArray.hasRewardsSection = true; // Flag for preservation
-            console.log('🔧 MISSION COMPLETION: Force-marked mission as completed in activeMissions array');
-        }
         
         debug('UI', `✅ Added rewards section to mission panel: ${missionId}`);
     }
@@ -1045,15 +1043,22 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         // Preserve expanded state if it exists, otherwise default to false
         const wasExpanded = this.expandedStates.get(mission.id) || false;
         
+        // Check if we already have this mission in our local array with completion status
+        const existingMission = this.activeMissions.find(m => m.id === mission.id);
+        const preservedStatus = existingMission?.status;
+        const preservedRewardsFlag = existingMission?.hasRewardsSection;
+        
         const clientName = mission.client || mission.issuer || 'Unknown Client';
         
-        return {
+        const processedMission = {
             id: mission.id,
             title: mission.title,
             client: clientName,
             location: mission.location,
             timeRemaining: this.calculateTimeRemaining(mission),
             expanded: wasExpanded, // Preserve user's expand/collapse preference
+            status: preservedStatus || mission.status, // Preserve completion status
+            hasRewardsSection: preservedRewardsFlag, // Preserve rewards flag
             objectives: mission.objectives?.map(obj => ({
                 id: obj.id,
                 description: obj.description,
@@ -1062,6 +1067,15 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
                 isOptional: obj.optional || false
             })) || []
         };
+        
+        // Copy other preserved fields if they exist
+        if (existingMission) {
+            if (existingMission.completedAt) processedMission.completedAt = existingMission.completedAt;
+            if (existingMission.rewards) processedMission.rewards = existingMission.rewards;
+            if (existingMission.completionData) processedMission.completionData = existingMission.completionData;
+        }
+        
+        return processedMission;
     }
     
     /**
