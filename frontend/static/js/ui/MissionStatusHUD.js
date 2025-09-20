@@ -309,9 +309,10 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
                 const hasRewardsSection = panel && panel.querySelector('.mission-rewards-section');
                 const isMarkedCompleted = mission.status === 'completed';
                 const hasFlaggedRewardsSection = mission.hasRewardsSection === true;
+                const isInCompletionSet = this.missionsShowingCompletion.has(mission.id);
                 
-                // Preserve if marked as completed OR has rewards section OR flagged as having rewards
-                return (isMarkedCompleted || hasRewardsSection || hasFlaggedRewardsSection) && this.missionPanels.has(mission.id);
+                // Preserve if marked as completed OR has rewards section OR flagged as having rewards OR in completion set
+                return (isMarkedCompleted || hasRewardsSection || hasFlaggedRewardsSection || isInCompletionSet) && this.missionPanels.has(mission.id);
             });
             
             console.log('🎯 Preserving completed missions showing rewards:', completedMissionsShowingRewards.length);
@@ -323,8 +324,9 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
                 const hasRewardsSection = panel && panel.querySelector('.mission-rewards-section');
                 const isMarkedCompleted = mission.status === 'completed';
                 const hasFlaggedRewardsSection = mission.hasRewardsSection === true;
-                const shouldPreserve = (isMarkedCompleted || hasRewardsSection || hasFlaggedRewardsSection) && this.missionPanels.has(mission.id);
-                console.log(`🔍 PRESERVATION: Mission ${mission.id}: status=${mission.status}, hasRewardsSection=${!!hasRewardsSection}, flagged=${hasFlaggedRewardsSection}, shouldPreserve=${shouldPreserve}`);
+                const isInCompletionSet = this.missionsShowingCompletion.has(mission.id);
+                const shouldPreserve = (isMarkedCompleted || hasRewardsSection || hasFlaggedRewardsSection || isInCompletionSet) && this.missionPanels.has(mission.id);
+                console.log(`🔍 PRESERVATION: Mission ${mission.id}: status=${mission.status}, hasRewardsSection=${!!hasRewardsSection}, flagged=${hasFlaggedRewardsSection}, inCompletionSet=${isInCompletionSet}, shouldPreserve=${shouldPreserve}`);
             });
             
             completedMissionsShowingRewards.forEach(mission => {
@@ -398,14 +400,17 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         const panelsToPreserve = new Map();
         this.missionPanels.forEach((panel, missionId) => {
             const hasRewardsSection = panel.querySelector('.mission-rewards-section');
-            if (hasRewardsSection) {
+            const isInCompletionSet = this.missionsShowingCompletion.has(missionId);
+            
+            if (hasRewardsSection || isInCompletionSet) {
                 panelsToPreserve.set(missionId, panel);
-                console.log('🔄 RENDER: Preserving panel with rewards section:', missionId);
+                console.log('🔄 RENDER: Preserving panel with rewards section:', missionId, 'hasRewards:', !!hasRewardsSection, 'inCompletionSet:', isInCompletionSet);
                 debug('UI', `🎯 Preserving panel with rewards section: ${missionId}`);
             }
         });
         
         console.log('🔄 RENDER: Panels to preserve:', panelsToPreserve.size);
+        console.log('🔄 RENDER: Current missionsShowingCompletion for preservation:', Array.from(this.missionsShowingCompletion));
         
         // Clear content but preserve panels with rewards
         console.log('🔄 RENDER: Clearing contentArea.innerHTML');
