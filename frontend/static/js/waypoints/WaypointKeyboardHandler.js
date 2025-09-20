@@ -135,11 +135,12 @@ export class WaypointKeyboardHandler {
         
         debug('WAYPOINTS', '⌨️ W key pressed - enabling target computer and attempting waypoint resume');
 
-        // First, ensure target computer is enabled (like T key does)
+        // Try to enable target computer if available (like T key does), but don't block waypoint operations if unavailable
         if (window.starfieldManager && !window.starfieldManager.isDocked) {
             const ship = window.starfieldManager.viewManager?.getShip();
             if (ship) {
                 const targetComputer = ship.getSystem('target_computer');
+                const energyReactor = ship.getSystem('energy_reactor');
                 
                 if (targetComputer && targetComputer.canActivate(ship)) {
                     // Enable target computer if it's not already enabled
@@ -150,23 +151,51 @@ export class WaypointKeyboardHandler {
                             // Sync with StarfieldManager
                             window.starfieldManager.targetComputerEnabled = true;
                         } else {
-                            // Failed to activate - show error and return
+                            // Failed to activate - show warning but continue with waypoint operations
                             if (window.starfieldManager?.showHUDEphemeral) {
-                                window.starfieldManager.showHUDEphemeral('TARGET COMPUTER FAILED', 'Insufficient energy or system damaged');
+                                window.starfieldManager.showHUDEphemeral('TARGET COMPUTER FAILED', 'Insufficient energy - manual navigation mode');
                             }
-                            return;
                         }
                     }
                 } else {
-                    // Target computer not available - show error and return
+                    // Target computer not available - show same error as T key but continue with waypoint operations
                     if (window.starfieldManager?.showHUDEphemeral) {
                         if (!targetComputer) {
-                            window.starfieldManager.showHUDEphemeral('TARGET COMPUTER UNAVAILABLE', 'No Target Computer installed');
+                            window.starfieldManager.showHUDEphemeral(
+                                'TARGET COMPUTER UNAVAILABLE',
+                                'No Target Computer card installed in ship slots'
+                            );
+                        } else if (!targetComputer.isOperational()) {
+                            window.starfieldManager.showHUDEphemeral(
+                                'TARGET COMPUTER OFFLINE',
+                                `System damaged (${Math.round(targetComputer.healthPercentage * 100)}% health) - repair required`
+                            );
+                        } else if (!ship.hasSystemCardsSync('target_computer')) {
+                            window.starfieldManager.showHUDEphemeral(
+                                'TARGET COMPUTER UNAVAILABLE',
+                                'No Target Computer card installed in ship slots'
+                            );
+                        } else if (!energyReactor || !energyReactor.isOperational()) {
+                            // Energy reactor is the problem
+                            if (!energyReactor) {
+                                window.starfieldManager.showHUDEphemeral(
+                                    'POWER FAILURE',
+                                    'No Energy Reactor installed - cannot power systems'
+                                );
+                            } else {
+                                window.starfieldManager.showHUDEphemeral(
+                                    'POWER FAILURE',
+                                    `Energy Reactor damaged (${Math.round(energyReactor.healthPercentage * 100)}% health) - repair required`
+                                );
+                            }
                         } else {
-                            window.starfieldManager.showHUDEphemeral('TARGET COMPUTER OFFLINE', 'System damaged or insufficient energy');
+                            window.starfieldManager.showHUDEphemeral(
+                                'TARGET COMPUTER FAILED',
+                                'Insufficient energy for targeting systems'
+                            );
                         }
                     }
-                    return;
+                    // Continue with waypoint operations for manual navigation
                 }
             }
         }

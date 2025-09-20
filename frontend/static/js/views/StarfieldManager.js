@@ -2298,11 +2298,12 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
 
             // Waypoint Test Mission Creation (W key)
             if (commandKey === 'w') {
-                // First, ensure target computer is enabled (like T key does)
+                // Try to enable target computer if available (like T key does), but don't block waypoint creation if unavailable
                 if (!this.isDocked) {
                     const ship = this.viewManager?.getShip();
                     if (ship) {
                         const targetComputer = ship.getSystem('target_computer');
+                        const energyReactor = ship.getSystem('energy_reactor');
                         
                         if (targetComputer && targetComputer.canActivate(ship)) {
                             // Enable target computer if it's not already enabled
@@ -2314,22 +2315,51 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                                     if (this.targetComputerManager) {
                                         this.targetComputerManager.targetComputerEnabled = true;
                                     }
+                                    this.playCommandSound();
                                 } else {
-                                    // Failed to activate - show error and return
+                                    // Failed to activate - show warning but continue with waypoint creation
                                     this.playCommandFailedSound();
-                                    this.showHUDEphemeral('TARGET COMPUTER FAILED', 'Insufficient energy or system damaged');
-                                    return;
+                                    this.showHUDEphemeral('TARGET COMPUTER FAILED', 'Insufficient energy - waypoint created for manual navigation');
                                 }
                             }
                         } else {
-                            // Target computer not available - show error and return
+                            // Target computer not available - show same error as T key but continue with waypoint creation
                             this.playCommandFailedSound();
                             if (!targetComputer) {
-                                this.showHUDEphemeral('TARGET COMPUTER UNAVAILABLE', 'No Target Computer installed');
+                                this.showHUDEphemeral(
+                                    'TARGET COMPUTER UNAVAILABLE',
+                                    'No Target Computer card installed in ship slots'
+                                );
+                            } else if (!targetComputer.isOperational()) {
+                                this.showHUDEphemeral(
+                                    'TARGET COMPUTER OFFLINE',
+                                    `System damaged (${Math.round(targetComputer.healthPercentage * 100)}% health) - repair required`
+                                );
+                            } else if (!ship.hasSystemCardsSync('target_computer')) {
+                                this.showHUDEphemeral(
+                                    'TARGET COMPUTER UNAVAILABLE',
+                                    'No Target Computer card installed in ship slots'
+                                );
+                            } else if (!energyReactor || !energyReactor.isOperational()) {
+                                // Energy reactor is the problem
+                                if (!energyReactor) {
+                                    this.showHUDEphemeral(
+                                        'POWER FAILURE',
+                                        'No Energy Reactor installed - cannot power systems'
+                                    );
+                                } else {
+                                    this.showHUDEphemeral(
+                                        'POWER FAILURE',
+                                        `Energy Reactor damaged (${Math.round(energyReactor.healthPercentage * 100)}% health) - repair required`
+                                    );
+                                }
                             } else {
-                                this.showHUDEphemeral('TARGET COMPUTER OFFLINE', 'System damaged or insufficient energy');
+                                this.showHUDEphemeral(
+                                    'TARGET COMPUTER FAILED',
+                                    'Insufficient energy for targeting systems'
+                                );
                             }
-                            return;
+                            // Continue with waypoint creation for manual navigation
                         }
                     }
                 }
