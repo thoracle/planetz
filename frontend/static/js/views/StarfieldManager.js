@@ -2298,6 +2298,42 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
 
             // Waypoint Test Mission Creation (W key)
             if (commandKey === 'w') {
+                // First, ensure target computer is enabled (like T key does)
+                if (!this.isDocked) {
+                    const ship = this.viewManager?.getShip();
+                    if (ship) {
+                        const targetComputer = ship.getSystem('target_computer');
+                        
+                        if (targetComputer && targetComputer.canActivate(ship)) {
+                            // Enable target computer if it's not already enabled
+                            if (!targetComputer.isActive) {
+                                debug('WAYPOINTS', '🎯 W key: Enabling target computer for waypoint creation');
+                                if (targetComputer.activate(ship)) {
+                                    this.targetComputerEnabled = true;
+                                    // Sync with TargetComputerManager
+                                    if (this.targetComputerManager) {
+                                        this.targetComputerManager.targetComputerEnabled = true;
+                                    }
+                                } else {
+                                    // Failed to activate - show error and return
+                                    this.playCommandFailedSound();
+                                    this.showHUDEphemeral('TARGET COMPUTER FAILED', 'Insufficient energy or system damaged');
+                                    return;
+                                }
+                            }
+                        } else {
+                            // Target computer not available - show error and return
+                            this.playCommandFailedSound();
+                            if (!targetComputer) {
+                                this.showHUDEphemeral('TARGET COMPUTER UNAVAILABLE', 'No Target Computer installed');
+                            } else {
+                                this.showHUDEphemeral('TARGET COMPUTER OFFLINE', 'System damaged or insufficient energy');
+                            }
+                            return;
+                        }
+                    }
+                }
+                
                 // Allow waypoint test mission creation anytime (even when docked for testing)
                 this.createWaypointTestMission();
             }
@@ -3805,29 +3841,20 @@ debug('TARGETING', 'Showing docking interface for', target.name);
     getTargetPosition(target) {
         if (!target) return null;
         
-        console.log('🎯 DEBUG getTargetPosition - target:', target);
-        console.log('🎯 DEBUG getTargetPosition - target.position:', target.position);
-        console.log('🎯 DEBUG getTargetPosition - target.position type:', typeof target.position);
-        console.log('🎯 DEBUG getTargetPosition - target.position isArray:', Array.isArray(target.position));
-        
         if (target.position && typeof target.position.clone === 'function') {
             // Three.js Vector3 object
-            console.log('🎯 DEBUG getTargetPosition - returning Vector3 object');
             return target.position;
         } else if (target.object && target.object.position) {
             // Target has a nested object with position
-            console.log('🎯 DEBUG getTargetPosition - returning nested object position');
             if (typeof target.object.position.clone === 'function') {
                 // Already a Vector3
                 return target.object.position;
             } else if (Array.isArray(target.object.position)) {
                 // Position is stored as array [x, y, z]
-                console.log('🎯 DEBUG getTargetPosition - converting nested array to Vector3:', target.object.position);
                 return new this.THREE.Vector3(...target.object.position);
             } else if (typeof target.object.position === 'object' && 
                        typeof target.object.position.x === 'number') {
                 // Position is a plain object with x, y, z properties
-                console.log('🎯 DEBUG getTargetPosition - converting nested object to Vector3:', target.object.position);
                 return new this.THREE.Vector3(target.object.position.x, target.object.position.y, target.object.position.z);
             } else {
                 console.warn('🎯 Could not convert nested object position to Vector3:', target.object.position);
@@ -3835,35 +3862,19 @@ debug('TARGETING', 'Showing docking interface for', target.name);
             }
         } else if (target.position && Array.isArray(target.position)) {
             // Position is stored as array [x, y, z]
-            console.log('🎯 DEBUG getTargetPosition - creating Vector3 from array:', target.position);
-            console.log('🎯 DEBUG getTargetPosition - this.THREE available:', !!this.THREE);
-            console.log('🎯 DEBUG getTargetPosition - this.THREE.Vector3 available:', !!this.THREE?.Vector3);
-            
             if (!this.THREE || !this.THREE.Vector3) {
                 console.error('🎯 THREE.js not available in StarfieldManager');
                 return null;
             }
-            
-            const vector = new this.THREE.Vector3(...target.position);
-            console.log('🎯 DEBUG getTargetPosition - created Vector3:', vector);
-            console.log('🎯 DEBUG getTargetPosition - Vector3 has clone:', typeof vector.clone);
-            return vector;
+            return new this.THREE.Vector3(...target.position);
         } else if (target.position && typeof target.position === 'object' && 
                    typeof target.position.x === 'number') {
             // Position is a plain object with x, y, z properties
-            console.log('🎯 DEBUG getTargetPosition - creating Vector3 from object:', target.position);
-            console.log('🎯 DEBUG getTargetPosition - this.THREE available:', !!this.THREE);
-            console.log('🎯 DEBUG getTargetPosition - this.THREE.Vector3 available:', !!this.THREE?.Vector3);
-            
             if (!this.THREE || !this.THREE.Vector3) {
                 console.error('🎯 THREE.js not available in StarfieldManager');
                 return null;
             }
-            
-            const vector = new this.THREE.Vector3(target.position.x, target.position.y, target.position.z);
-            console.log('🎯 DEBUG getTargetPosition - created Vector3:', vector);
-            console.log('🎯 DEBUG getTargetPosition - Vector3 has clone:', typeof vector.clone);
-            return vector;
+            return new this.THREE.Vector3(target.position.x, target.position.y, target.position.z);
         }
         
         console.warn('🎯 Could not extract position from target:', target);

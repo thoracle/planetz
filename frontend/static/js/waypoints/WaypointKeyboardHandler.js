@@ -127,13 +127,49 @@ export class WaypointKeyboardHandler {
     }
 
     /**
-     * Handle W key - Resume interrupted waypoint or target next active waypoint
+     * Handle W key - Enable target computer (like T key) then resume interrupted waypoint or target next active waypoint
      * @param {KeyboardEvent} event - Keyboard event
      */
     handleWaypointResume(event) {
         event.preventDefault();
         
-        debug('WAYPOINTS', '⌨️ W key pressed - attempting waypoint resume');
+        debug('WAYPOINTS', '⌨️ W key pressed - enabling target computer and attempting waypoint resume');
+
+        // First, ensure target computer is enabled (like T key does)
+        if (window.starfieldManager && !window.starfieldManager.isDocked) {
+            const ship = window.starfieldManager.viewManager?.getShip();
+            if (ship) {
+                const targetComputer = ship.getSystem('target_computer');
+                
+                if (targetComputer && targetComputer.canActivate(ship)) {
+                    // Enable target computer if it's not already enabled
+                    if (!targetComputer.isActive) {
+                        debug('WAYPOINTS', '🎯 W key: Enabling target computer for waypoint operations');
+                        if (targetComputer.activate(ship)) {
+                            window.targetComputerManager.targetComputerEnabled = true;
+                            // Sync with StarfieldManager
+                            window.starfieldManager.targetComputerEnabled = true;
+                        } else {
+                            // Failed to activate - show error and return
+                            if (window.starfieldManager?.showHUDEphemeral) {
+                                window.starfieldManager.showHUDEphemeral('TARGET COMPUTER FAILED', 'Insufficient energy or system damaged');
+                            }
+                            return;
+                        }
+                    }
+                } else {
+                    // Target computer not available - show error and return
+                    if (window.starfieldManager?.showHUDEphemeral) {
+                        if (!targetComputer) {
+                            window.starfieldManager.showHUDEphemeral('TARGET COMPUTER UNAVAILABLE', 'No Target Computer installed');
+                        } else {
+                            window.starfieldManager.showHUDEphemeral('TARGET COMPUTER OFFLINE', 'System damaged or insufficient energy');
+                        }
+                    }
+                    return;
+                }
+            }
+        }
 
         // Try to resume interrupted waypoint first
         if (window.targetComputerManager?.hasInterruptedWaypoint()) {
