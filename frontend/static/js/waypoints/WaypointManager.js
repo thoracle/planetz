@@ -624,6 +624,12 @@ export class WaypointManager {
                 debug('WAYPOINTS', `🔄 Mission progression: ${waypoint.name} → ${nextWaypoint.name}`);
             } else {
                 debug('WAYPOINTS', `🏁 Mission ${waypoint.missionId} completed - no more waypoints`);
+                
+                // Clear target when mission is complete (no more waypoints)
+                if (window.targetComputerManager && window.targetComputerManager.clearCurrentTarget) {
+                    window.targetComputerManager.clearCurrentTarget();
+                    debug('WAYPOINTS', '🎯 Cleared target - mission complete');
+                }
             }
         }
         
