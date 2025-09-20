@@ -260,11 +260,24 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
             console.log('🎯 Got active missions from API:', apiMissions.length, apiMissions);
             
             // Preserve completed missions that are showing completion screens
-            const completedMissionsShowingRewards = this.activeMissions.filter(mission => 
-                mission.status === 'completed' && this.missionPanels.has(mission.id)
-            );
+            // Look for missions that have rewards sections (indicating completion)
+            const completedMissionsShowingRewards = this.activeMissions.filter(mission => {
+                const panel = this.missionPanels.get(mission.id);
+                const hasRewardsSection = panel && panel.querySelector('.mission-rewards-section');
+                const isMarkedCompleted = mission.status === 'completed';
+                
+                // Preserve if either marked as completed OR has rewards section
+                return (isMarkedCompleted || hasRewardsSection) && this.missionPanels.has(mission.id);
+            });
             
             console.log('🎯 Preserving completed missions showing rewards:', completedMissionsShowingRewards.length);
+            
+            // Debug: log details about preserved missions
+            completedMissionsShowingRewards.forEach(mission => {
+                const panel = this.missionPanels.get(mission.id);
+                const hasRewardsSection = panel && panel.querySelector('.mission-rewards-section');
+                console.log(`🎯 Preserving mission ${mission.id}: status=${mission.status}, hasRewardsSection=${!!hasRewardsSection}`);
+            });
             
             // Process API missions for UI display
             const processedApiMissions = apiMissions.map(mission => this.processMissionForUI(mission));
@@ -324,6 +337,17 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * Render all active missions
      */
     renderMissions() {
+        // Preserve existing panels that have rewards sections (completed missions)
+        const panelsToPreserve = new Map();
+        this.missionPanels.forEach((panel, missionId) => {
+            const hasRewardsSection = panel.querySelector('.mission-rewards-section');
+            if (hasRewardsSection) {
+                panelsToPreserve.set(missionId, panel);
+                debug('UI', `🎯 Preserving panel with rewards section: ${missionId}`);
+            }
+        });
+        
+        // Clear content but preserve panels with rewards
         this.contentArea.innerHTML = '';
         this.missionPanels.clear();
         
@@ -333,7 +357,16 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         }
         
         this.activeMissions.forEach((mission, index) => {
-            const panel = this.createMissionPanel(mission, index);
+            let panel;
+            
+            // Use preserved panel if it exists, otherwise create new one
+            if (panelsToPreserve.has(mission.id)) {
+                panel = panelsToPreserve.get(mission.id);
+                debug('UI', `🎯 Reusing preserved panel for mission: ${mission.id}`);
+            } else {
+                panel = this.createMissionPanel(mission, index);
+            }
+            
             this.contentArea.appendChild(panel);
             this.missionPanels.set(mission.id, panel);
         });

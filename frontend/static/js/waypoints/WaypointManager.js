@@ -965,6 +965,8 @@ export class WaypointManager {
                 title: 'Deep Space Survey Mission',
                 description: 'Conduct exploration survey of designated sectors. Investigate anomalous readings and report discoveries.',
                 type: 'exploration',
+                client: 'Terran Republic Alliance',
+                issuer: 'TRA Deep Space Command',
                 faction: 'terran_republic_alliance',
                 suppressCompletionScreen: false, // Optional flag to suppress completion screen
                 waypoints: [
