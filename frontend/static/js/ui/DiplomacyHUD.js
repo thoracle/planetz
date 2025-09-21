@@ -165,9 +165,10 @@ export default class DiplomacyHUD {
                     <span style="
                         font-size: 16px;
                         margin-right: 4px;
+                        color: ${repLevel.text === 'HOSTILE' || repLevel.text === 'AT WAR' ? '#ff4444' : factionInfo.color};
                     ">${factionInfo.icon}</span>
                     <span style="
-                        color: ${factionInfo.color};
+                        color: ${repLevel.text === 'HOSTILE' || repLevel.text === 'AT WAR' ? '#ff4444' : factionInfo.color};
                         font-weight: bold;
                         font-size: 16px;
                     ">${factionInfo.shortName}</span>
