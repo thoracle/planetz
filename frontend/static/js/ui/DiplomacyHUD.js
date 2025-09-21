@@ -147,6 +147,9 @@ export default class DiplomacyHUD {
             transition: all 0.3s ease;
         `;
 
+        // Clamp standing to -100 to +100 range
+        const clampedStanding = Math.max(-100, Math.min(100, standing));
+
         // Calculate reputation level and color
         const repLevel = this.getReputationLevel(standing);
 
@@ -187,16 +190,74 @@ export default class DiplomacyHUD {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+                margin-bottom: 8px;
             ">
                 <div style="
                     color: #cccccc;
                     font-size: 11px;
                 ">${factionInfo.description}</div>
                 <div style="
-                    color: ${standing >= 0 ? '#44ff44' : '#ff4444'};
+                    color: ${clampedStanding >= 0 ? '#44ff44' : '#ff4444'};
                     font-weight: bold;
                     font-size: 14px;
-                ">${standing > 0 ? '+' : ''}${standing}</div>
+                ">${clampedStanding > 0 ? '+' : ''}${clampedStanding}%</div>
+            </div>
+            <!-- Reputation Progress Bar -->
+            <div style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 5px;
+            ">
+                <div style="
+                    font-size: 10px;
+                    color: #888888;
+                    width: 20px;
+                    text-align: right;
+                ">-100</div>
+                <div style="
+                    position: relative;
+                    width: 200px;
+                    height: 8px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 2px;
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                ">
+                    <div style="
+                        position: absolute;
+                        left: 50%;
+                        top: 50%;
+                        transform: translate(-50%, -50%);
+                        width: 1px;
+                        height: 100%;
+                        background: rgba(255, 255, 255, 0.3);
+                    "></div>
+                    <div style="
+                        position: absolute;
+                        left: ${50 + (clampedStanding / 100) * 50}%;
+                        top: 50%;
+                        transform: translate(-50%, -50%);
+                        width: 3px;
+                        height: 14px;
+                        background: ${clampedStanding >= 0 ? '#44ff44' : '#ff4444'};
+                        border-radius: 1px;
+                    "></div>
+                    <div style="
+                        position: absolute;
+                        left: 50%;
+                        top: 50%;
+                        transform: translate(-50%, -50%);
+                        width: 2px;
+                        height: 100%;
+                        background: rgba(255, 255, 255, 0.4);
+                    "></div>
+                </div>
+                <div style="
+                    font-size: 10px;
+                    color: #888888;
+                    width: 20px;
+                    text-align: left;
+                ">+100</div>
             </div>
         `;
 
@@ -204,13 +265,16 @@ export default class DiplomacyHUD {
     }
 
     getReputationLevel(standing) {
-        if (standing >= 50) {
+        // Clamp standing to -100 to +100 range
+        const clampedStanding = Math.max(-100, Math.min(100, standing));
+
+        if (clampedStanding >= 80) {
             return { text: 'ALLIED', color: '#00ff41' };
-        } else if (standing >= 25) {
+        } else if (clampedStanding >= 60) {
             return { text: 'FRIENDLY', color: '#44ff44' };
-        } else if (standing >= -10) {
+        } else if (clampedStanding >= -20) {
             return { text: 'NEUTRAL', color: '#ffff44' };
-        } else if (standing >= -25) {
+        } else if (clampedStanding >= -60) {
             return { text: 'HOSTILE', color: '#ff4444' };
         } else {
             return { text: 'AT WAR', color: '#ff3333' };
@@ -239,7 +303,6 @@ export default class DiplomacyHUD {
             .rep-allied { color: #00ff41; font-weight: bold; }
             .rep-friendly { color: #44ff44; font-weight: bold; }
             .rep-neutral { color: #ffff44; font-weight: bold; }
-            .rep-cautious { color: #ffaa44; font-weight: bold; }
             .rep-hostile { color: #ff4444; font-weight: bold; }
             .rep-at-war { color: #ff3333; font-weight: bold; }
         `;
