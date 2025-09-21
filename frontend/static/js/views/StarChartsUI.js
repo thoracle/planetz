@@ -2756,13 +2756,43 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         const activeWaypoints = window.waypointManager.activeWaypoints;
         if (!activeWaypoints || activeWaypoints.size === 0) return;
         
-        // Only show the currently active waypoint (not all waypoints)
-        activeWaypoints.forEach((waypoint, waypointId) => {
-            // Only render waypoints that are currently active or targeted
-            if (waypoint.status === 'active' || waypoint.status === 'targeted') {
+        // Initialize Star Charts center if undefined (needed for coordinate conversion)
+        if (this.centerX === undefined) this.centerX = 0;
+        if (this.centerY === undefined) this.centerY = 0;
+        if (this.currentZoomLevel === undefined) this.currentZoomLevel = 1;
+        
+        // Get active missions to find currently active waypoint
+        let currentActiveWaypointId = null;
+        if (window.missionAPI && window.missionAPI.activeMissions) {
+            for (const [missionId, mission] of window.missionAPI.activeMissions) {
+                if (mission.objectives) {
+                    const activeObjective = mission.objectives.find(obj => 
+                        (obj.state === 'active' || obj.status === 'ACTIVE') && obj.waypointId
+                    );
+                    if (activeObjective) {
+                        currentActiveWaypointId = activeObjective.waypointId;
+                        break; // Only show one active waypoint at a time
+                    }
+                }
+            }
+        }
+        
+        // Only render the currently active waypoint
+        if (currentActiveWaypointId) {
+            const waypoint = activeWaypoints.get(currentActiveWaypointId);
+            if (waypoint) {
+                // Auto-center on the active waypoint if Star Charts center is at origin (0,0)
+                if (waypoint.position && waypoint.position.length >= 3) {
+                    if (this.centerX === 0 && this.centerY === 0) {
+                        debug('WAYPOINTS', `🎯 Auto-centering Star Charts on active waypoint: ${waypoint.name}`);
+                        this.centerX = waypoint.position[0];
+                        this.centerY = waypoint.position[2]; // Use Z as Y for 2D display
+                        this.currentZoomLevel = 2.0; // Good zoom level for waypoint visibility
+                    }
+                }
                 this.renderWaypointMarker(waypoint);
             }
-        });
+        }
         
         // Render interrupted waypoint with special styling
         if (window.targetComputerManager?.hasInterruptedWaypoint()) {
@@ -2943,20 +2973,24 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
     handleWaypointClick(waypoint) {
         if (!window.targetComputerManager) return;
         
-        // Target the waypoint using the same code path as TAB targeting
+        debug('WAYPOINTS', `🎯 Star Charts: Waypoint clicked: ${waypoint.name}`);
+        
+        // Target the waypoint using waypoint ID (same as Mission HUD)
         let success = false;
         if (window.targetComputerManager.targetWaypointViaCycle) {
-            success = window.targetComputerManager.targetWaypointViaCycle(waypoint);
+            success = window.targetComputerManager.targetWaypointViaCycle(waypoint.id);
         } else if (window.targetComputerManager.setVirtualTarget) {
             // Fallback for backward compatibility
             success = window.targetComputerManager.setVirtualTarget(waypoint);
         }
         
         if (success) {
-            debug('WAYPOINTS', `🎯 Star Charts: Waypoint ${waypoint.name} targeted via click`);
+            debug('WAYPOINTS', `✅ Star Charts: Waypoint targeted successfully: ${waypoint.name}`);
             
             // Center and zoom on the waypoint
             this.centerOnWaypoint(waypoint);
+        } else {
+            console.error('❌ Star Charts: Failed to target waypoint:', waypoint.name);
         }
     }
 
@@ -2965,9 +2999,17 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
      * @param {Object} waypoint - Waypoint to center on
      */
     centerOnWaypoint(waypoint) {
-        if (!waypoint.position || waypoint.position.length < 3) return;
+        if (!waypoint.position || waypoint.position.length < 3) {
+            console.error('❌ Star Charts: Invalid waypoint position for centering:', waypoint.position);
+            return;
+        }
         
         const [x, y, z] = waypoint.position;
+        
+        // Initialize center if undefined
+        if (this.centerX === undefined) this.centerX = 0;
+        if (this.centerY === undefined) this.centerY = 0;
+        if (this.currentZoomLevel === undefined) this.currentZoomLevel = 1;
         
         // Set center position to waypoint location
         this.centerX = x;
@@ -2979,7 +3021,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Re-render with new center and zoom
         this.render();
         
-        console.log(`🎯 Star Charts: Centered on waypoint ${waypoint.name} at [${x}, ${z}] with zoom ${this.currentZoomLevel}x`);
+        debug('WAYPOINTS', `🎯 Star Charts: Centered on waypoint ${waypoint.name} at [${x}, ${z}] with zoom ${this.currentZoomLevel}x`);
     }
     
     // Helper methods
