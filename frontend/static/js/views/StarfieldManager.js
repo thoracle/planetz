@@ -7,6 +7,7 @@ import { getSystemDisplayName } from '../ship/System.js';
 import DamageControlHUD from '../ui/DamageControlHUD.js';
 import { CommunicationHUD } from '../ui/CommunicationHUD.js';
 import { MissionStatusHUD } from '../ui/MissionStatusHUD.js';
+import { SimpleMissionRewards } from '../ui/SimpleMissionRewards.js';
 import { MissionCompletionUI } from '../ui/MissionCompletionUI.js';
 import { MissionNotificationHandler } from '../ui/MissionNotificationHandler.js';
 import { MissionEventHandler } from '../ui/MissionEventHandler.js';

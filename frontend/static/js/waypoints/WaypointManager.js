@@ -1175,14 +1175,17 @@ export class WaypointManager {
             mission.waypoints = createdWaypoints;
             
             // Convert waypoints to objectives for Mission HUD
-            mission.objectives = missionTemplate.waypoints.map((waypointTemplate, index) => ({
-                id: `waypoint_${index + 1}`,
-                description: `Navigate to ${waypointTemplate.name}`,
-                state: index === 0 ? 'active' : 'pending', // First objective is active
-                progress: null,
-                optional: false,
-                waypointId: createdWaypoints[index] // Link to actual waypoint
-            }));
+            mission.objectives = missionTemplate.waypoints.map((waypointTemplate, index) => {
+                const objective = {
+                    id: `waypoint_${index + 1}`,
+                    description: `Navigate to ${waypointTemplate.name}`,
+                    state: index === 0 ? 'active' : 'pending', // First objective is active
+                    progress: null,
+                    optional: false,
+                    waypointId: createdWaypoints[index] // Link to actual waypoint
+                };
+                return objective;
+            });
             
             debug('WAYPOINTS', `📋 Created ${mission.objectives.length} objectives from waypoints`);
             
@@ -1216,8 +1219,8 @@ export class WaypointManager {
             
             // Auto-accept the mission for testing
             if (window.missionAPI) {
-                console.log('🎯 Adding mission to missionAPI.activeMissions:', uniqueMissionId);
-                console.log('🎯 Mission object:', mission);
+                debug('WAYPOINTS', `🎯 Adding mission to missionAPI.activeMissions: ${uniqueMissionId}`);
+                debug('WAYPOINTS', `🎯 Mission has ${mission.objectives.length} objectives with waypoint links`);
                 mission.status = 'active';
                 mission.state = 'active';
                 window.missionAPI.activeMissions.set(uniqueMissionId, mission);

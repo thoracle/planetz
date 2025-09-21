@@ -1864,6 +1864,23 @@ debugSyncFile()     // Sync browser with file
 - **Discovery Messages**: Ephemeral HUD messages for mineral deposits and archaeological discoveries
 - **Mission Progression**: Three-waypoint exploration mission with progressive rewards
 - **Professional Polish**: Proper timing, audio integration, and visual feedback
+- **Waypoint Hyperlinks**: Clickable waypoint objectives in Mission HUD for direct targeting
+
+#### **4. Waypoint Hyperlinks in Mission HUD** ✅ **COMPLETED**
+**Implementation**: Interactive waypoint targeting directly from Mission HUD objectives
+
+**Key Features**:
+- **Active Waypoint Links**: Only the currently active waypoint objective displays as a clickable hyperlink
+- **Direct Targeting**: Click waypoint hyperlink to immediately target that waypoint in the targeting computer
+- **Visual Distinction**: Active waypoint objectives appear as green underlined links (#00ff88)
+- **Seamless Integration**: Uses same targeting system as Star Charts and TAB cycling
+- **Status Preservation**: Colored status dots remain visible for all objectives
+
+**Technical Implementation**:
+- **MissionStatusHUD.js**: Enhanced `createObjectiveElement()` to detect waypoint objectives with `waypointId`
+- **Conditional Hyperlinks**: Only creates links when `normalizedObjective.state === 'active'` and `waypointId` exists
+- **Targeting Method**: `targetWaypoint()` uses `targetComputerManager.targetWaypointViaCycle()` for consistent behavior
+- **Data Flow**: Fixed mission processing pipeline to preserve `waypointId` from creation through display
 
 **Mission Flow**:
 1. **Press 'W'**: Creates "Deep Space Survey Mission" with 3 waypoints

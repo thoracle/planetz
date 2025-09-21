@@ -2756,9 +2756,12 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         const activeWaypoints = window.waypointManager.activeWaypoints;
         if (!activeWaypoints || activeWaypoints.size === 0) return;
         
-        // Render each active waypoint
+        // Only show the currently active waypoint (not all waypoints)
         activeWaypoints.forEach((waypoint, waypointId) => {
-            this.renderWaypointMarker(waypoint);
+            // Only render waypoints that are currently active or targeted
+            if (waypoint.status === 'active' || waypoint.status === 'targeted') {
+                this.renderWaypointMarker(waypoint);
+            }
         });
         
         // Render interrupted waypoint with special styling
@@ -2951,7 +2954,32 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         
         if (success) {
             debug('WAYPOINTS', `🎯 Star Charts: Waypoint ${waypoint.name} targeted via click`);
+            
+            // Center and zoom on the waypoint
+            this.centerOnWaypoint(waypoint);
         }
+    }
+
+    /**
+     * Center Star Charts on a waypoint and zoom appropriately
+     * @param {Object} waypoint - Waypoint to center on
+     */
+    centerOnWaypoint(waypoint) {
+        if (!waypoint.position || waypoint.position.length < 3) return;
+        
+        const [x, y, z] = waypoint.position;
+        
+        // Set center position to waypoint location
+        this.centerX = x;
+        this.centerY = z; // Use Z as Y for 2D display
+        
+        // Set appropriate zoom level for waypoint viewing
+        this.currentZoomLevel = 3.0; // Good detail level for waypoints
+        
+        // Re-render with new center and zoom
+        this.render();
+        
+        console.log(`🎯 Star Charts: Centered on waypoint ${waypoint.name} at [${x}, ${z}] with zoom ${this.currentZoomLevel}x`);
     }
     
     // Helper methods

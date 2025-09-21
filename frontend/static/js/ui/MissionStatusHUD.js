@@ -282,7 +282,7 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
             });
             
             // Process API missions for UI display
-            const processedApiMissions = apiMissions.map(mission => this.processMissionForUI(mission));
+            const processedApiMissions = apiMissions;
             
             // Combine API missions with completed missions showing rewards
             this.activeMissions = [...processedApiMissions, ...completedMissionsShowingRewards];
@@ -336,6 +336,7 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * Render all active missions
      */
     renderMissions() {
+        
         // Preserve existing panels that have rewards sections (completed missions)
         const panelsToPreserve = new Map();
         this.missionPanels.forEach((panel, missionId) => {
@@ -536,6 +537,7 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         // Normalize objective data from backend format
         const normalizedObjective = this.normalizeObjective(objective);
         
+        
         const objElement = document.createElement('div');
         objElement.style.cssText = `
             display: flex;
@@ -559,12 +561,34 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         iconSpan.textContent = icon.symbol;
         iconSpan.style.color = icon.color;
         
-        const descText = document.createElement('span');
-        descText.textContent = normalizedObjective.description;
-        descText.style.color = normalizedObjective.isOptional ? '#00aaff' : '#ffffff';
-        
-        description.appendChild(iconSpan);
-        description.appendChild(descText);
+        // Check if this is a waypoint objective AND it's active
+        const isActive = normalizedObjective.state === 'active' || normalizedObjective.status === 'ACTIVE';
+        if (normalizedObjective.waypointId && isActive) {
+            // Create clickable waypoint link for ACTIVE waypoints only
+            const waypointLink = document.createElement('a');
+            waypointLink.textContent = normalizedObjective.description;
+            waypointLink.style.cssText = `
+                color: #00ff88;
+                text-decoration: underline;
+                cursor: pointer;
+            `;
+            
+            waypointLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.targetWaypoint(normalizedObjective.waypointId);
+            });
+            
+            description.appendChild(iconSpan);
+            description.appendChild(waypointLink);
+        } else {
+            // Regular non-waypoint objective or inactive waypoint
+            const descText = document.createElement('span');
+            descText.textContent = normalizedObjective.description;
+            descText.style.color = normalizedObjective.isOptional ? '#00aaff' : '#ffffff';
+            
+            description.appendChild(iconSpan);
+            description.appendChild(descText);
+        }
         
         // Status
         const status = document.createElement('div');
@@ -581,6 +605,28 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         return objElement;
     }
     
+    /**
+     * Target a waypoint from Mission HUD objective click
+     */
+    targetWaypoint(waypointId) {
+        console.log('🎯 MISSION HUD: Targeting waypoint:', waypointId);
+        
+        // Get the waypoint from WaypointManager
+        if (window.waypointManager && window.waypointManager.activeWaypoints.has(waypointId)) {
+            const waypoint = window.waypointManager.activeWaypoints.get(waypointId);
+            
+            // Set CPU target to this waypoint
+            if (window.starfieldManager?.targetComputerManager) {
+                window.starfieldManager.targetComputerManager.setWaypointTarget(waypoint);
+                console.log('✅ MISSION HUD: Waypoint targeted successfully');
+            } else {
+                console.error('❌ MISSION HUD: Target Computer Manager not available');
+            }
+        } else {
+            console.error('❌ MISSION HUD: Waypoint not found:', waypointId);
+        }
+    }
+
     /**
      * Get objective icon and color based on status
      */
@@ -616,6 +662,35 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         };
     }
     
+    /**
+     * Target a waypoint by ID
+     */
+    targetWaypoint(waypointId) {
+        console.log('🎯 MISSION HUD: Targeting waypoint:', waypointId);
+        
+        // Use targetWaypointViaCycle with waypoint ID directly (like other parts of the codebase)
+        if (!window.targetComputerManager) {
+            console.error('❌ MISSION HUD: targetComputerManager not available');
+            return false;
+        }
+        
+        if (!window.targetComputerManager.targetWaypointViaCycle) {
+            console.error('❌ MISSION HUD: targetWaypointViaCycle method not available');
+            return false;
+        }
+        
+        // Target the waypoint by ID - targetWaypointViaCycle handles finding the waypoint
+        const success = window.targetComputerManager.targetWaypointViaCycle(waypointId);
+        
+        if (success) {
+            console.log('✅ MISSION HUD: Waypoint targeted successfully:', waypointId);
+        } else {
+            console.error('❌ MISSION HUD: Failed to target waypoint:', waypointId);
+        }
+        
+        return success;
+    }
+
     /**
      * Get objective status text
      */
@@ -678,6 +753,27 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
         try {
             console.log('🎉 MISSION COMPLETION: showMissionCompletion called for:', missionId);
             
+            // CRITICAL FIX: Force Mission HUD to be visible for rewards
+            console.log('📺 MISSION COMPLETION: Current HUD visibility state:', {
+                isVisible: this.isVisible,
+                hudContainerDisplay: this.hudContainer?.style.display,
+                hudContainerInDOM: this.hudContainer ? document.body.contains(this.hudContainer) : false
+            });
+            
+            if (!this.isVisible) {
+                console.log('📺 MISSION COMPLETION: Mission HUD not visible - auto-opening for rewards display');
+                this.show();
+                debug('UI', '📺 Auto-opened Mission HUD for completion rewards display');
+            } else {
+                console.log('📺 MISSION COMPLETION: Mission HUD already visible - ensuring it\'s properly displayed');
+                // Force display even if already "visible" - call show() anyway
+                this.show();
+                console.log('📺 MISSION COMPLETION: Force-called show() method to ensure visibility');
+            }
+            
+            // Small delay to ensure HUD is fully rendered
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             const panel = this.missionPanels.get(missionId);
             if (!panel) {
                 console.log('❌ MISSION COMPLETION: Panel not found for mission:', missionId);
@@ -687,6 +783,20 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
             }
 
             console.log('✅ MISSION COMPLETION: Panel found, proceeding with rewards display');
+            console.log('🔍 MISSION COMPLETION: Panel visibility check:');
+            console.log('  - panelExists:', !!panel);
+            console.log('  - panelInDOM:', document.body.contains(panel));
+            console.log('  - panelDisplay:', panel.style.display);
+            console.log('  - panelVisible:', panel.offsetParent !== null);
+            console.log('  - hudContainerVisible:', this.hudContainer.style.display);
+            console.log('  - hudInDOM:', document.body.contains(this.hudContainer));
+            console.log('🔍 MISSION COMPLETION: Mission data check:', {
+                missionInActiveMissions: this.activeMissions.some(m => m.id === missionId),
+                activeMissionsCount: this.activeMissions.length,
+                activeMissionIds: this.activeMissions.map(m => m.id),
+                completionTrackingSize: this.missionsShowingCompletion.size,
+                completionTrackingIds: Array.from(this.missionsShowingCompletion)
+            });
             debug('UI', `🎉 Showing mission completion in HUD: ${missionId}`);
 
             // Block refreshes and mark the mission as completed
@@ -728,10 +838,30 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
             detailsSection.appendChild(rewardsSection);
             console.log('✅ MISSION COMPLETION: Rewards section appended');
             
+            // DEBUG: Check if rewards section is actually visible
+            console.log('🔍 MISSION COMPLETION: Rewards section visibility check:');
+            console.log('  - rewardsExists:', !!rewardsSection);
+            console.log('  - rewardsInDOM:', document.body.contains(rewardsSection));
+            console.log('  - rewardsDisplay:', rewardsSection.style.display);
+            console.log('  - rewardsVisible:', rewardsSection.offsetParent !== null);
+            console.log('  - rewardsHeight:', rewardsSection.offsetHeight);
+            console.log('  - rewardsWidth:', rewardsSection.offsetWidth);
+            console.log('  - detailsSectionVisible:', detailsSection.offsetParent !== null);
+            console.log('  - panelScrollTop:', panel.scrollTop);
+            console.log('  - panelScrollHeight:', panel.scrollHeight);
+            console.log('  - panelClientHeight:', panel.clientHeight);
+            
             // Update panel styling for completion
             panel.style.background = 'rgba(0, 60, 0, 0.4)';
             panel.style.border = '2px solid #00ff41';
             panel.style.boxShadow = '0 0 10px rgba(0, 255, 65, 0.3)';
+            
+            // Make rewards section VERY obvious for debugging
+            rewardsSection.style.background = 'rgba(255, 0, 0, 0.5)'; // Red background
+            rewardsSection.style.border = '3px solid #ff0000'; // Red border
+            rewardsSection.style.padding = '20px';
+            rewardsSection.style.margin = '10px';
+            console.log('🔴 MISSION COMPLETION: Added RED BACKGROUND to rewards section for visibility');
             
             console.log('🎨 MISSION COMPLETION: Panel styling updated');
             debug('UI', `✅ Added rewards section to mission panel: ${missionId}`);

@@ -613,16 +613,20 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                 if (missionData?.suppressCompletionScreen) {
                     debug('MISSIONS', '🎉 Mission completion display suppressed by flag');
                 } else {
-                    // Show completion in mission HUD
-                    if (window.starfieldManager?.missionStatusHUD) {
-                        await window.starfieldManager.missionStatusHUD.showMissionCompletion(
+                    // Use simple overlay instead of complex Mission HUD integration
+                    if (window.SimpleMissionRewards) {
+                        window.SimpleMissionRewards.showCompletion(
                             missionId,
                             displayMissionData,
                             rewards
                         );
-                        debug('MISSIONS', '🎉 Mission completion shown in HUD');
+                        debug('MISSIONS', '🎉 Simple mission completion overlay shown');
                     } else {
-                        debug('MISSIONS', '⚠️ Mission HUD not available for completion display');
+                        console.error('❌ SimpleMissionRewards not available - loading it now');
+                        // Fallback: load the simple rewards system
+                        import('../ui/SimpleMissionRewards.js').then(module => {
+                            module.SimpleMissionRewards.showCompletion(missionId, displayMissionData, rewards);
+                        });
                     }
                 }
 
