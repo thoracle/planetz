@@ -208,10 +208,8 @@ export default class DiplomacyHUD {
             return { text: 'ALLIED', color: '#00ff41' };
         } else if (standing >= 25) {
             return { text: 'FRIENDLY', color: '#44ff44' };
-        } else if (standing >= 10) {
-            return { text: 'NEUTRAL', color: '#ffff44' };
         } else if (standing >= -10) {
-            return { text: 'CAUTIOUS', color: '#ffaa44' };
+            return { text: 'NEUTRAL', color: '#ffff44' };
         } else if (standing >= -25) {
             return { text: 'HOSTILE', color: '#ff4444' };
         } else {
