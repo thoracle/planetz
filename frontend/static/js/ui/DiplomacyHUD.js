@@ -603,13 +603,19 @@ export default class DiplomacyHUD {
     updateFactionStandings() {
         if (!this.isVisible) return;
 
-        // Clear existing faction list
-        if (this.elements.factionList) {
-            this.elements.factionList.innerHTML = '';
-        }
+        // Update content based on active tab
+        if (this.activeTab === 'player') {
+            // Clear existing faction list
+            if (this.elements.factionList) {
+                this.elements.factionList.innerHTML = '';
+            }
 
-        // Recreate faction list with updated standings
-        this.createFactionList();
+            // Recreate faction list with updated standings
+            this.createFactionList();
+        } else if (this.activeTab === 'matrix') {
+            // Matrix doesn't need updates since relationships are static
+            // Only update if needed (e.g., if matrix content changes)
+        }
     }
 
     /**
