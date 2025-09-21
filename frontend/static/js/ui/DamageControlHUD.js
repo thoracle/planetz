@@ -428,7 +428,15 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
 
         // Get the system and its current state
         const system = this.ship.getSystem(systemName);
-        const isActive = system?.isActive || false;
+
+        // Special handling for target computer system state
+        let isActive = false;
+        if (systemName === 'target_computer') {
+            // Target computer state is managed by StarfieldManager
+            isActive = this.starfieldManager?.targetComputerEnabled || false;
+        } else {
+            isActive = system?.isActive || false;
+        }
 
         // Determine button state and appearance
         let buttonText = 'OFF';
@@ -516,21 +524,34 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                 return;
             }
 
-            // Check if system can be activated
-            if (!system.canActivate(ship)) {
-                console.log(`Cannot activate system ${systemName}`);
-                return;
-            }
-
-            // Toggle the system state
-            if (system.isActive) {
-                // Deactivate the system
-                system.deactivate();
-                console.log(`Deactivated system: ${systemName}`);
+            // Special handling for target computer system
+            if (systemName === 'target_computer') {
+                // Target computer requires StarfieldManager's toggle method
+                if (this.starfieldManager && this.starfieldManager.toggleTargetComputer) {
+                    this.starfieldManager.toggleTargetComputer();
+                    console.log(`Toggled target computer via StarfieldManager`);
+                } else {
+                    console.error('StarfieldManager or toggleTargetComputer method not available');
+                    return;
+                }
             } else {
-                // Activate the system
-                system.activate(ship);
-                console.log(`Activated system: ${systemName}`);
+                // Standard system toggle for other systems
+                // Check if system can be activated
+                if (!system.canActivate(ship)) {
+                    console.log(`Cannot activate system ${systemName}`);
+                    return;
+                }
+
+                // Toggle the system state
+                if (system.isActive) {
+                    // Deactivate the system
+                    system.deactivate();
+                    console.log(`Deactivated system: ${systemName}`);
+                } else {
+                    // Activate the system
+                    system.activate(ship);
+                    console.log(`Activated system: ${systemName}`);
+                }
             }
 
             // Refresh the display to update button states
