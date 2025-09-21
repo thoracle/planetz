@@ -389,8 +389,12 @@ debug('UI', 'Ship Tech Manual closed');
             if (context.hasSubTargeting) {
                 combatHTML += `
                     <div class="control-entry">
-                        <span class="key-binding">Z X</span>
-                        <span class="control-desc">Sub-System Targeting</span>
+                        <span class="key-binding">Z</span>
+                        <span class="control-desc">Target Sub-System (Prev)</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Y</span>
+                        <span class="control-desc">Target Sub-System (Next)</span>
                     </div>
                 `;
             }
