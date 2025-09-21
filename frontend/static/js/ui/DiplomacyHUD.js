@@ -235,10 +235,10 @@ export default class DiplomacyHUD {
             th.textContent = faction.info.shortName;
             th.style.cssText = `
                 padding: 10px 8px;
-                color: ${faction.info.color};
+                color: #000000;
                 font-weight: bold;
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                background: rgba(0, 40, 0, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                background: ${faction.info.color};
             `;
             headerRow.appendChild(th);
         });
@@ -253,10 +253,10 @@ export default class DiplomacyHUD {
             rowHeader.textContent = rowFaction.info.shortName;
             rowHeader.style.cssText = `
                 padding: 10px 8px;
-                color: ${rowFaction.info.color};
+                color: #000000;
                 font-weight: bold;
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                background: rgba(0, 40, 0, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                background: ${rowFaction.info.color};
             `;
             row.appendChild(rowHeader);
 
@@ -269,9 +269,10 @@ export default class DiplomacyHUD {
                     td.textContent = '—';
                     td.style.cssText = `
                         padding: 10px 8px;
-                        color: #888888;
-                        border: 1px solid rgba(255, 255, 255, 0.2);
-                        background: rgba(0, 20, 0, 0.3);
+                        color: #000000;
+                        font-weight: bold;
+                        border: 1px solid rgba(255, 255, 255, 0.4);
+                        background: #666666;
                     `;
                 } else {
                     // Get faction-to-faction relationship (symmetric)
@@ -283,12 +284,10 @@ export default class DiplomacyHUD {
                     td.textContent = status;
                     td.style.cssText = `
                         padding: 10px 8px;
-                        color: ${color};
+                        color: #000000;
                         font-weight: bold;
-                        border: 1px solid rgba(255, 255, 255, 0.2);
-                        background: rgba(${color === '#00ff41' ? '0, 40, 0' :
-                                           color === '#ffff44' ? '40, 40, 0' :
-                                           '40, 0, 0'}, 0.3);
+                        border: 1px solid rgba(255, 255, 255, 0.4);
+                        background: ${color};
                     `;
                 }
 
@@ -415,10 +414,10 @@ export default class DiplomacyHUD {
                     <span style="
                         font-size: 16px;
                         margin-right: 4px;
-                        color: ${repLevel.text === 'HOSTILE' || repLevel.text === 'AT WAR' ? '#ff4444' : factionInfo.color};
+                        color: ${repLevel.color};
                     ">${factionInfo.icon}</span>
                     <span style="
-                        color: ${repLevel.text === 'HOSTILE' || repLevel.text === 'AT WAR' ? '#ff4444' : factionInfo.color};
+                        color: ${repLevel.color};
                         font-weight: bold;
                         font-size: 16px;
                     ">${factionInfo.shortName}</span>
