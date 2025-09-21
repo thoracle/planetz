@@ -42,6 +42,29 @@ export default class DiplomacyHUD {
 
         // Add CSS for faction colors and styling
         this.addStyles();
+
+        // Initialize tab state
+        this.activeTab = 'player';
+    }
+
+    switchTab(tabName) {
+        this.activeTab = tabName;
+        this.updateDisplay();
+    }
+
+    updateDisplay() {
+        // Clear existing content
+        this.container.innerHTML = '';
+
+        // Recreate header
+        this.createHeader();
+
+        // Create content based on active tab
+        if (this.activeTab === 'player') {
+            this.createFactionList();
+        } else if (this.activeTab === 'matrix') {
+            this.createFactionMatrix();
+        }
     }
 
     createHeader() {
@@ -56,22 +79,54 @@ export default class DiplomacyHUD {
         const title = document.createElement('h2');
         title.textContent = '🏛️ DIPLOMACY REPORT';
         title.style.cssText = `
-            margin: 0 0 10px 0;
+            margin: 0 0 15px 0;
             font-size: 18px;
             color: #00ff41;
             text-shadow: 0 0 10px #00ff41;
         `;
 
-        const subtitle = document.createElement('div');
-        subtitle.textContent = 'Current Faction Standings';
-        subtitle.style.cssText = `
-            font-size: 12px;
-            color: #cccccc;
-            opacity: 0.8;
+        // Create tabs
+        const tabsContainer = document.createElement('div');
+        tabsContainer.style.cssText = `
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
         `;
 
+        const tab1 = document.createElement('button');
+        tab1.textContent = 'Player Standings';
+        tab1.style.cssText = `
+            background: ${this.activeTab === 'player' ? '#00ff41' : 'rgba(0, 255, 65, 0.2)'};
+            color: ${this.activeTab === 'player' ? '#000000' : '#00ff41'};
+            border: 1px solid #00ff41;
+            padding: 5px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        `;
+        tab1.onclick = () => this.switchTab('player');
+
+        const tab2 = document.createElement('button');
+        tab2.textContent = 'Faction Matrix';
+        tab2.style.cssText = `
+            background: ${this.activeTab === 'matrix' ? '#00ff41' : 'rgba(0, 255, 65, 0.2)'};
+            color: ${this.activeTab === 'matrix' ? '#000000' : '#00ff41'};
+            border: 1px solid #00ff41;
+            padding: 5px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        `;
+        tab2.onclick = () => this.switchTab('matrix');
+
+        tabsContainer.appendChild(tab1);
+        tabsContainer.appendChild(tab2);
+
         header.appendChild(title);
-        header.appendChild(subtitle);
+        header.appendChild(tabsContainer);
         this.container.appendChild(header);
     }
 
@@ -137,11 +192,131 @@ export default class DiplomacyHUD {
         this.elements.factionList = factionList;
     }
 
+    createFactionMatrix() {
+        const matrixContainer = document.createElement('div');
+        matrixContainer.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        `;
+
+        const title = document.createElement('h3');
+        title.textContent = 'Faction-to-Faction Relations';
+        title.style.cssText = `
+            margin: 0 0 15px 0;
+            font-size: 14px;
+            color: #00ff41;
+            text-align: center;
+        `;
+
+        matrixContainer.appendChild(title);
+
+        // Define factions in order
+        const factions = [
+            { key: 'terran_republic_alliance', info: this.factionInfo['terran_republic_alliance'] },
+            { key: 'traders_guild', info: this.factionInfo['traders_guild'] },
+            { key: 'scientists_consortium', info: this.factionInfo['scientists_consortium'] },
+            { key: 'explorers_guild', info: this.factionInfo['explorers_guild'] },
+            { key: 'mercenary_fleet', info: this.factionInfo['mercenary_fleet'] }
+        ];
+
+        // Create matrix table
+        const table = document.createElement('table');
+        table.style.cssText = `
+            border-collapse: collapse;
+            font-size: 11px;
+            text-align: center;
+        `;
+
+        // Create header row
+        const headerRow = document.createElement('tr');
+        headerRow.appendChild(document.createElement('th')); // Empty corner cell
+
+        factions.forEach(faction => {
+            const th = document.createElement('th');
+            th.textContent = faction.info.shortName;
+            th.style.cssText = `
+                padding: 8px 6px;
+                color: ${faction.info.color};
+                font-weight: bold;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                background: rgba(0, 40, 0, 0.5);
+            `;
+            headerRow.appendChild(th);
+        });
+        table.appendChild(headerRow);
+
+        // Create data rows
+        factions.forEach(rowFaction => {
+            const row = document.createElement('tr');
+
+            // Row header
+            const rowHeader = document.createElement('th');
+            rowHeader.textContent = rowFaction.info.shortName;
+            rowHeader.style.cssText = `
+                padding: 8px 6px;
+                color: ${rowFaction.info.color};
+                font-weight: bold;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                background: rgba(0, 40, 0, 0.5);
+            `;
+            row.appendChild(rowHeader);
+
+            // Data cells
+            factions.forEach(colFaction => {
+                const td = document.createElement('td');
+                let relationship = 'NEUTRAL';
+
+                if (rowFaction.key === colFaction.key) {
+                    relationship = 'SELF';
+                    td.textContent = '—';
+                    td.style.cssText = `
+                        padding: 8px 6px;
+                        color: #888888;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        background: rgba(0, 20, 0, 0.3);
+                    `;
+                } else {
+                    // For now, use a simple relationship model
+                    // In a full implementation, factions would have relationships with each other
+                    relationship = 'NEUTRAL';
+                    td.textContent = 'N/A';
+                    td.style.cssText = `
+                        padding: 8px 6px;
+                        color: #666666;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        background: rgba(0, 20, 0, 0.2);
+                    `;
+                }
+
+                row.appendChild(td);
+            });
+
+            table.appendChild(row);
+        });
+
+        matrixContainer.appendChild(table);
+
+        const note = document.createElement('div');
+        note.textContent = 'Note: Faction-to-faction relationships not yet implemented';
+        note.style.cssText = `
+            margin-top: 10px;
+            font-size: 10px;
+            color: #888888;
+            font-style: italic;
+            text-align: center;
+        `;
+
+        matrixContainer.appendChild(note);
+        this.container.appendChild(matrixContainer);
+    }
+
     createFactionEntry(factionKey, factionInfo, standing) {
         const entry = document.createElement('div');
         entry.style.cssText = `
             background: rgba(0, 40, 0, 0.3);
-            border: 1px solid ${factionInfo.color};
+            border: 2px solid ${repLevel.color};
             padding: 10px;
             border-radius: 4px;
             transition: all 0.3s ease;
@@ -218,11 +393,26 @@ export default class DiplomacyHUD {
                 <div style="
                     position: relative;
                     width: 200px;
-                    height: 8px;
+                    height: 12px;
                     background: rgba(255, 255, 255, 0.1);
-                    border-radius: 2px;
+                    border-radius: 3px;
                     border: 1px solid rgba(255, 255, 255, 0.2);
+                    overflow: hidden;
                 ">
+                    <!-- Filled background -->
+                    <div style="
+                        position: absolute;
+                        left: 50%;
+                        top: 0;
+                        width: ${Math.abs(clampedStanding) * 0.5}%;
+                        height: 100%;
+                        background: ${clampedStanding >= 0 ?
+                            'linear-gradient(90deg, rgba(68, 255, 68, 0.3) 0%, rgba(68, 255, 68, 0.6) 100%)' :
+                            'linear-gradient(90deg, rgba(255, 68, 68, 0.3) 0%, rgba(255, 68, 68, 0.6) 100%)'};
+                        border-radius: ${clampedStanding >= 0 ? '3px 0 0 3px' : '0 3px 3px 0'};
+                        transition: all 0.3s ease;
+                    "></div>
+                    <!-- Center line -->
                     <div style="
                         position: absolute;
                         left: 50%;
@@ -230,26 +420,20 @@ export default class DiplomacyHUD {
                         transform: translate(-50%, -50%);
                         width: 1px;
                         height: 100%;
-                        background: rgba(255, 255, 255, 0.3);
+                        background: rgba(255, 255, 255, 0.4);
                     "></div>
+                    <!-- Position marker -->
                     <div style="
                         position: absolute;
                         left: ${50 + (clampedStanding / 100) * 50}%;
                         top: 50%;
                         transform: translate(-50%, -50%);
-                        width: 3px;
-                        height: 14px;
+                        width: 4px;
+                        height: 16px;
                         background: ${clampedStanding >= 0 ? '#44ff44' : '#ff4444'};
-                        border-radius: 1px;
-                    "></div>
-                    <div style="
-                        position: absolute;
-                        left: 50%;
-                        top: 50%;
-                        transform: translate(-50%, -50%);
-                        width: 2px;
-                        height: 100%;
-                        background: rgba(255, 255, 255, 0.4);
+                        border: 1px solid rgba(255, 255, 255, 0.8);
+                        border-radius: 2px;
+                        box-shadow: 0 0 4px ${clampedStanding >= 0 ? '#44ff44' : '#ff4444'};
                     "></div>
                 </div>
                 <div style="
@@ -312,6 +496,7 @@ export default class DiplomacyHUD {
     show() {
         this.isVisible = true;
         this.container.style.display = 'block';
+        this.updateDisplay();
 
         // Start updating faction standings
         this.startUpdates();
