@@ -31,7 +31,7 @@ export default class DiplomacyHUD {
             'scientists_consortium': {
                 name: 'Scientists Consortium',
                 shortName: 'SCI',
-                color: '#44ff44',
+                color: '#ffff44',
                 description: 'Research organization',
                 icon: '▲'  // Triangle (research/science)
             },
