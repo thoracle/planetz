@@ -314,6 +314,13 @@ export default class DiplomacyHUD {
 
     createFactionEntry(factionKey, factionInfo, standing) {
         const entry = document.createElement('div');
+
+        // Clamp standing to -100 to +100 range
+        const clampedStanding = Math.max(-100, Math.min(100, standing));
+
+        // Calculate reputation level and color
+        const repLevel = this.getReputationLevel(standing);
+
         entry.style.cssText = `
             background: rgba(0, 40, 0, 0.3);
             border: 2px solid ${repLevel.color};
@@ -321,12 +328,6 @@ export default class DiplomacyHUD {
             border-radius: 4px;
             transition: all 0.3s ease;
         `;
-
-        // Clamp standing to -100 to +100 range
-        const clampedStanding = Math.max(-100, Math.min(100, standing));
-
-        // Calculate reputation level and color
-        const repLevel = this.getReputationLevel(standing);
 
         entry.innerHTML = `
             <div style="
