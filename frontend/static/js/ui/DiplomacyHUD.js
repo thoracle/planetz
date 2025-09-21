@@ -12,6 +12,45 @@ export default class DiplomacyHUD {
         this.elements = {};
         this.updateInterval = null;
 
+        // Define faction information - shared between methods
+        this.factionInfo = {
+            'terran_republic_alliance': {
+                name: 'Terran Republic Alliance',
+                shortName: 'TRA',
+                color: '#00ff41',
+                description: 'Human space federation',
+                icon: '◈'  // Diamond (government/authority)
+            },
+            'traders_guild': {
+                name: 'Traders Guild',
+                shortName: 'TRG',
+                color: '#ffff44',
+                description: 'Commercial organization',
+                icon: '◊'  // Lozenge (commerce/trade)
+            },
+            'scientists_consortium': {
+                name: 'Scientists Consortium',
+                shortName: 'SCI',
+                color: '#44ff44',
+                description: 'Research organization',
+                icon: '▲'  // Triangle (research/science)
+            },
+            'explorers_guild': {
+                name: 'Explorers Guild',
+                shortName: 'EXP',
+                color: '#00ff41',
+                description: 'Exploration organization',
+                icon: '★'  // Star (exploration/navigation)
+            },
+            'mercenary_fleet': {
+                name: 'Mercenary Fleet',
+                shortName: 'MFC',
+                color: '#ff4444',
+                description: 'Independent contractors',
+                icon: '▴'  // Small triangle (combat/military)
+            }
+        };
+
         this.init();
     }
 
@@ -142,45 +181,6 @@ export default class DiplomacyHUD {
         const ship = this.starfieldManager?.ship;
         const factionStandings = ship?.factionStandings || {};
 
-        // Define faction information with simple vector icons
-        const factionInfo = {
-            'terran_republic_alliance': {
-                name: 'Terran Republic Alliance',
-                shortName: 'TRA',
-                color: '#00ff41',
-                description: 'Human space federation',
-                icon: '◈'  // Diamond (government/authority)
-            },
-            'traders_guild': {
-                name: 'Traders Guild',
-                shortName: 'TRG',
-                color: '#ffff44',
-                description: 'Commercial organization',
-                icon: '◊'  // Lozenge (commerce/trade)
-            },
-            'scientists_consortium': {
-                name: 'Scientists Consortium',
-                shortName: 'SCI',
-                color: '#44ff44',
-                description: 'Research organization',
-                icon: '▲'  // Triangle (research/science)
-            },
-            'explorers_guild': {
-                name: 'Explorers Guild',
-                shortName: 'EXP',
-                color: '#00ff41',
-                description: 'Exploration organization',
-                icon: '★'  // Star (exploration/navigation)
-            },
-            'mercenary_fleet': {
-                name: 'Mercenary Fleet',
-                shortName: 'MFC',
-                color: '#ff4444',
-                description: 'Independent contractors',
-                icon: '▴'  // Small triangle (combat/military)
-            }
-        };
-
         // Create faction entries
         Object.entries(factionInfo).forEach(([key, info]) => {
             const standing = factionStandings[key] || 0;
@@ -214,11 +214,11 @@ export default class DiplomacyHUD {
 
         // Define factions in order
         const factions = [
-            { key: 'terran_republic_alliance', info: this.factionInfo['terran_republic_alliance'] },
-            { key: 'traders_guild', info: this.factionInfo['traders_guild'] },
-            { key: 'scientists_consortium', info: this.factionInfo['scientists_consortium'] },
-            { key: 'explorers_guild', info: this.factionInfo['explorers_guild'] },
-            { key: 'mercenary_fleet', info: this.factionInfo['mercenary_fleet'] }
+            { key: 'terran_republic_alliance', info: this.factionInfo.terran_republic_alliance },
+            { key: 'traders_guild', info: this.factionInfo.traders_guild },
+            { key: 'scientists_consortium', info: this.factionInfo.scientists_consortium },
+            { key: 'explorers_guild', info: this.factionInfo.explorers_guild },
+            { key: 'mercenary_fleet', info: this.factionInfo.mercenary_fleet }
         ];
 
         // Create matrix table
