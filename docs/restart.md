@@ -1893,6 +1893,37 @@ debugSyncFile()     // Sync browser with file
 **Validation**: Complete mission flow tested - waypoint navigation → communications → discoveries → completion → rewards display → user dismissal
 **Impact**: Professional mission experience with guided exploration, immersive communications, and satisfying completion rewards
 
+#### **5. Star Charts Info Panel Discovery System** ✅ **COMPLETED**
+**Implementation**: Enhanced Star Charts info panel with discovery-based information display
+
+**Key Features**:
+- **Discovery-Based Display**: Shows rich object information only for discovered objects
+- **Undiscovered Object Protection**: Displays "Undiscovered Object" message for undiscovered targets
+- **Rich Object Data**: Full database information including faction, services, description, intel briefs
+- **Seamless Integration**: Uses existing Star Charts discovery system for consistent behavior
+- **Real-Time Updates**: Info panel updates immediately when targeting objects
+
+**Technical Implementation**:
+- **StarChartsUI.js**: Enhanced `updateCurrentTargetDisplay()` with discovery system integration
+- **Discovery Detection**: Uses `starChartsManager.getDiscoveredObjects()` for authoritative discovery status
+- **ID Matching**: Robust matching between target computer IDs and database object IDs
+- **Rich Data Retrieval**: `starChartsManager.getObjectData()` provides full database object properties
+- **Conditional Display**: Shows detailed info for discovered objects, minimal info for undiscovered
+
+**Information Display**:
+- **Discovered Objects**: Name, type, class, position, faction, services, description, intel briefs, orbital data
+- **Undiscovered Objects**: "Undiscovered Object" with instruction to move closer for discovery
+- **Consistent Styling**: Matches original Star Charts object details format and styling
+
+**Discovery Flow**:
+1. **Target Selection**: Click object in Star Charts or use TAB cycling
+2. **Discovery Check**: System verifies if object is in discovered objects list
+3. **Info Display**: Shows rich data for discovered objects, minimal info for undiscovered
+4. **Real-Time Updates**: Info panel refreshes when discovery status changes
+
+**Validation**: Tested with both discovered objects (showing full details) and undiscovered objects (showing protection message)
+**Impact**: Maintains discovery system integrity while providing rich information for explored objects
+
 ### **🏆 Impact: Enhanced Mission Experience**
 
 **Gameplay Benefits**:

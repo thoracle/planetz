@@ -1252,16 +1252,8 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
                 }
             }
             
-            // Clear details panel
-            this.detailsPanel.innerHTML = `
-                <div style="text-align: center; color: #666; margin-top: 50px;">
-                    <div>Click on discovered objects</div>
-                    <div>to view details and target</div>
-                    <br>
-                    <div>Click to zoom in | Shift+click to zoom out</div>
-                    <div>Double-click for beacon ring view</div>
-                </div>
-            `;
+            // Show current target information instead of generic message
+            this.updateCurrentTargetDisplay();
             
             // Update targeting-active class
             if (this.viewManager.starfieldManager?.targetComputerEnabled) {
@@ -1342,8 +1334,8 @@ debug('UI', 'Star Charts: Interface hidden');
         // Update status bar
         this.updateStatusBar();
         
-        // Add diagnostic display for click-first bug analysis
-        this.updateDiagnosticDisplay();
+        // Update current target display in info panel
+        this.updateCurrentTargetDisplay();
         
         // Update the spinning green rectangle target indicator
         this.updateTargetIndicator();
@@ -2823,18 +2815,12 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
      * @returns {Object|null} - Screen coordinates {x, y} or null if invalid
      */
     convertToScreenCoordinates(worldX, worldZ) {
-        try {
-            // Create a mock object with the world position
-            const mockObject = {
-                position: { x: worldX, y: 0, z: worldZ }
-            };
-            
-            // Use existing worldToScreen method
-            return this.worldToScreen(mockObject);
-        } catch (error) {
-            console.warn('Failed to convert coordinates:', error);
-            return null;
-        }
+        // In Star Charts, world coordinates map directly to SVG coordinates
+        // The viewBox handles the transformation based on center and zoom
+        return {
+            x: worldX,
+            y: worldZ  // Use Z as Y for 2D display
+        };
     }
     
     /**
@@ -2849,6 +2835,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Convert 3D position to 2D screen coordinates
         const screenPos = this.convertToScreenCoordinates(x, z);
         if (!screenPos) return;
+        
         
         // Create waypoint marker group
         const waypointGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -2932,7 +2919,6 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
      * @returns {string} - CSS color string
      */
     getWaypointColor(waypoint) {
-        const type = waypoint.type?.toLowerCase() || 'navigation';
         const status = waypoint.status?.toLowerCase() || 'active';
         
         // Status-based colors take precedence
@@ -2940,16 +2926,8 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         if (status === 'interrupted') return '#ff6600';
         if (status === 'triggered') return '#ffaa00';
         
-        // Type-based colors
-        switch (type) {
-            case 'navigation': return '#00ffff';
-            case 'objective': return '#ffff00';
-            case 'checkpoint': return '#00ff00';
-            case 'discovery': return '#ff00ff';
-            case 'combat': return '#ff4444';
-            case 'resource': return '#44ff44';
-            default: return '#ffffff';
-        }
+        // All active waypoints use consistent magenta color (matches system-wide waypoint color)
+        return '#ff44ff'; // Bright magenta - matches TargetComputerManager and WaypointIndicator
     }
     
     /**
@@ -2989,6 +2967,9 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             
             // Center and zoom on the waypoint
             this.centerOnWaypoint(waypoint);
+            
+            // Update target display to show new target
+            setTimeout(() => this.updateCurrentTargetDisplay(), 100);
         } else {
             console.error('❌ Star Charts: Failed to target waypoint:', waypoint.name);
         }
@@ -3085,70 +3066,230 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         }
     }
     
-    updateDiagnosticDisplay() {
-        // Show diagnostic data for all objects in the details panel for click-first bug analysis
+    updateCurrentTargetDisplay() {
+        // Show current target information in the details panel
         if (!this.detailsPanel) return;
         
-        const allObjects = this.getDiscoveredObjectsForRender();
-        if (allObjects.length === 0) return;
+        // Get current target from target computer
+        const currentTarget = window.targetComputerManager?.currentTarget;
         
-        let diagnosticHTML = `
-            <div class="diagnostic-display" style="font-family: monospace; font-size: 11px; line-height: 1.3;">
-                <h3 style="color: #ffff00; margin: 0 0 10px 0; font-size: 14px;">🔍 OBJECT DIAGNOSTIC DATA</h3>
-                <div style="color: #888; margin-bottom: 10px;">Total objects: ${allObjects.length}</div>
-        `;
         
-        allObjects.forEach((obj, index) => {
-            const num = index + 1;
-            
-            // Get complete object data
-            const completeObject = this.ensureObjectHasName(obj);
-            const dbData = this.starChartsManager.getObjectData(obj.id);
-            
-            // Generate tooltip text using actual logic
-            let tooltipText;
-            if (completeObject._isShip) {
-                tooltipText = 'You are here';
-            } else if (completeObject._isUndiscovered) {
-                tooltipText = 'Unknown';
-            } else {
-                tooltipText = completeObject.name || 'Unknown Object';
-            }
-            
-            // Determine status
-            const hasValidName = completeObject.name && completeObject.name !== 'Unknown' && completeObject.name.trim() !== '';
-            const shouldShowName = hasValidName && !completeObject._isUndiscovered;
-            const actuallyShowsName = tooltipText !== 'Unknown';
-            const isWorking = shouldShowName === actuallyShowsName;
-            
-            const statusColor = isWorking ? '#00ff00' : '#ff4444';
-            const statusText = isWorking ? 'OK' : 'BUG';
-            
-            diagnosticHTML += `
-                <div style="margin-bottom: 8px; padding: 4px; border-left: 3px solid ${statusColor}; background: rgba(0,0,0,0.3);">
-                    <div style="color: ${statusColor}; font-weight: bold;">${num}. "${tooltipText}" - ${obj.id} [${statusText}]</div>
-                    <div style="margin-left: 10px; color: #ccc;">
-                        <div>Object Name: "${completeObject.name || 'null'}"</div>
-                        <div>Type: ${obj.type}</div>
-                        <div>Undiscovered: ${completeObject._isUndiscovered ? 'YES' : 'NO'}</div>
-                        <div>DB Lookup: ${dbData ? `"${dbData.name}"` : 'null'}</div>
-                        <div style="color: ${statusColor};">Expected: ${shouldShowName ? 'SHOW NAME' : 'SHOW UNKNOWN'}</div>
-                        <div style="color: ${statusColor};">Actual: ${actuallyShowsName ? 'SHOWS NAME' : 'SHOWS UNKNOWN'}</div>
+        if (!currentTarget) {
+            this.detailsPanel.innerHTML = `
+                <div class="target-info" style="font-family: 'VT323', monospace; font-size: 14px; line-height: 1.4; color: #ccc;">
+                    <h3 style="color: #ffff00; margin: 0 0 15px 0; font-size: 16px;">🎯 CURRENT TARGET</h3>
+                    <div style="color: #888; font-style: italic;">
+                        No target selected
+                    </div>
+                    <div style="margin-top: 15px; color: #666; font-size: 12px;">
+                        • Click objects to target them<br>
+                        • Use TAB to cycle targets<br>
+                        • Click waypoint hyperlinks to target waypoints
                     </div>
                 </div>
             `;
-        });
+            return;
+        }
         
-        diagnosticHTML += `
-                <div style="margin-top: 15px; color: #888; font-size: 10px;">
-                    🐛 BUG = Object should show name but shows "Unknown"<br>
-                    ✅ OK = Object behavior matches expected<br>
-                    Hover over objects to see tooltip behavior
+        // DEBUG: Check target object properties
+        console.log('🔍 TARGET DEBUG:');
+        console.log('  Name:', currentTarget.name);
+        console.log('  Type:', currentTarget.type);
+        console.log('  _isUndiscovered:', currentTarget._isUndiscovered);
+        console.log('  ID:', currentTarget.id);
+        console.log('  All keys:', Object.keys(currentTarget));
+        console.log('  Full object:', currentTarget);
+        
+        // Apply the same discovery logic as Star Charts tooltips
+        // Process the target through the same system that determines tooltip text
+        const processedTarget = this.ensureObjectHasName(currentTarget);
+        
+        // Check if this object should be treated as undiscovered
+        // Use the same logic as Star Charts tooltip system
+        let isUndiscovered = false;
+        let displayName = processedTarget?.name || 'Unknown';
+        
+        // Check if object is undiscovered using discovery system
+        let matchingDiscoveredId = null; // Declare in outer scope
+        if (processedTarget && !processedTarget._isShip && currentTarget.type !== 'waypoint') {
+            // Use the Star Charts discovery system to determine if object should be hidden
+            // Check if this object is in the discovered objects list
+            const discoveredObjects = this.starChartsManager?.getDiscoveredObjects() || [];
+            
+            // Discovered objects are string identifiers, check multiple possible matches
+            const isDiscovered = discoveredObjects.some(discoveredId => {
+                // Direct string match
+                if (discoveredId === currentTarget.id) {
+                    matchingDiscoveredId = discoveredId;
+                    return true;
+                }
+                
+                // Check if target has a string identifier that matches
+                if (currentTarget.userData?.originalId === discoveredId) {
+                    matchingDiscoveredId = discoveredId;
+                    return true;
+                }
+                if (currentTarget.name === discoveredId) {
+                    matchingDiscoveredId = discoveredId;
+                    return true;
+                }
+                
+                // Check if discovered ID contains target name (case insensitive)
+                const targetName = currentTarget.name?.toLowerCase().replace(/\s+/g, '_');
+                if (targetName && discoveredId.toLowerCase().includes(targetName)) {
+                    matchingDiscoveredId = discoveredId;
+                    return true;
+                }
+                
+                return false;
+            });
+            
+            
+            // If not in discovered list, treat as undiscovered
+            if (!isDiscovered) {
+                isUndiscovered = true;
+                displayName = 'Unknown';
+            }
+        }
+        
+        // Get rich object data from Star Charts manager using the correct discovered ID
+        let richObject = currentTarget;
+        let matchingId = matchingDiscoveredId || currentTarget.id;
+        if (this.starChartsManager?.getObjectData) {
+            const dbObject = this.starChartsManager.getObjectData(matchingId);
+            if (dbObject) {
+                richObject = dbObject;
+            }
+        }
+        
+        
+        if (isUndiscovered) {
+            // Show minimal info for undiscovered objects
+            const targetHTML = `
+                <div class="target-info" style="font-family: 'VT323', monospace; font-size: 14px; line-height: 1.4;">
+                    <h3 style="color: #ffff00; margin: 0 0 15px 0; font-size: 16px;">🎯 CURRENT TARGET</h3>
+                    
+                    <div style="margin-bottom: 15px; padding: 8px; border-left: 3px solid #666; background: rgba(0,0,0,0.3);">
+                        <div style="color: #666; font-weight: bold; font-size: 16px;">Undiscovered Object</div>
+                        <div style="color: #888; margin-top: 5px; font-style: italic;">
+                            Move closer to discover more information
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px; color: #666; font-size: 12px;">
+                        • Approach objects to discover them<br>
+                        • Use TAB to cycle to next target<br>
+                        • Target waypoints from Mission HUD
+                    </div>
                 </div>
-            </div>
+            `;
+            this.detailsPanel.innerHTML = targetHTML;
+            return;
+        }
+        
+        
+        // Use the rich object details format from the original showObjectDetails method
+        let detailsHTML = `
+            <div class="object-details">
+                <h3 style="color: #00ff00; margin-top: 0;">${richObject.name || currentTarget.name}</h3>
+                <div><strong>Type:</strong> ${richObject.type || currentTarget.type}</div>
+                <div><strong>Class:</strong> ${richObject.class || 'Unknown'}</div>
         `;
         
-        this.detailsPanel.innerHTML = diagnosticHTML;
+        // Add position info (robust for DB cartesian, polar, or normalized positions)
+        try {
+            let posBlock = '';
+            if (Array.isArray(currentTarget.position) && currentTarget.position.length >= 3 &&
+                typeof currentTarget.position[0] === 'number') {
+                posBlock = `
+                    X: ${currentTarget.position[0].toFixed(1)}<br>
+                    Y: ${currentTarget.position[1].toFixed(1)}<br>
+                    Z: ${currentTarget.position[2].toFixed(1)}
+                `;
+            } else if (Array.isArray(currentTarget.position) && currentTarget.position.length === 2 &&
+                       typeof currentTarget.position[0] === 'number') {
+                const radiusAU = currentTarget.position[0];
+                const angleDeg = currentTarget.position[1];
+                posBlock = `
+                    Radius (AU): ${radiusAU.toFixed(3)}<br>
+                    Angle: ${angleDeg.toFixed(1)}°
+                `;
+            } else if (currentTarget.position && typeof currentTarget.position === 'object') {
+                // Handle Three.js Vector3 or object with x,y,z properties
+                posBlock = `
+                    X: ${(currentTarget.position.x || 0).toFixed(1)}<br>
+                    Y: ${(currentTarget.position.y || 0).toFixed(1)}<br>
+                    Z: ${(currentTarget.position.z || 0).toFixed(1)}
+                `;
+            } else {
+                // Use normalized display position (top-down X/Z)
+                const p = this.getDisplayPosition(currentTarget);
+                if (p) {
+                    posBlock = `
+                        X: ${p.x.toFixed(1)}<br>
+                        Z: ${p.y.toFixed(1)}
+                    `;
+                }
+            }
+            if (posBlock) {
+                detailsHTML += `
+                    <div><strong>Position:</strong></div>
+                    <div style="margin-left: 10px;">${posBlock}</div>
+                `;
+            }
+        } catch (e) {}
+        
+        // Add orbit info for celestial bodies
+        if (richObject.orbit) {
+            detailsHTML += `
+                <div><strong>Orbital Data:</strong></div>
+                <div style="margin-left: 10px;">
+                    Parent: ${richObject.orbit.parent}<br>
+                    Radius: ${richObject.orbit.radius.toFixed(1)} km<br>
+                    Period: ${richObject.orbit.period.toFixed(1)} days
+                </div>
+            `;
+        }
+        
+        // Add station-specific info
+        if (richObject.faction) {
+            detailsHTML += `<div><strong>Faction:</strong> ${richObject.faction}</div>`;
+        }
+        
+        if (richObject.services && richObject.services.length > 0) {
+            detailsHTML += `
+                <div><strong>Services:</strong></div>
+                <div style="margin-left: 10px;">
+                    ${richObject.services.join('<br>')}
+                </div>
+            `;
+        }
+        
+        // Add description
+        if (richObject.description) {
+            detailsHTML += `
+                <div style="margin-top: 10px;">
+                    <strong>Description:</strong><br>
+                    <em>${richObject.description}</em>
+                </div>
+            `;
+        }
+        
+        // Add intel brief for stations
+        if (richObject.intel_brief) {
+            detailsHTML += `
+                <div style="margin-top: 10px; color: #ffff00;">
+                    <strong>Intel Brief:</strong><br>
+                    <em>${richObject.intel_brief}</em>
+                </div>
+            `;
+        }
+        
+        detailsHTML += '</div>';
+        
+        const targetHTML = detailsHTML;
+        
+        this.detailsPanel.innerHTML = targetHTML;
     }
     
 }
