@@ -393,7 +393,7 @@ debug('UI', 'Ship Tech Manual closed');
                         <span class="control-desc">Target Sub-System (Prev)</span>
                     </div>
                     <div class="control-entry">
-                        <span class="key-binding">Y</span>
+                        <span class="key-binding">X</span>
                         <span class="control-desc">Target Sub-System (Next)</span>
                     </div>
                 `;
