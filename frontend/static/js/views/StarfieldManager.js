@@ -7,6 +7,7 @@ import { getSystemDisplayName } from '../ship/System.js';
 import DamageControlHUD from '../ui/DamageControlHUD.js';
 import { CommunicationHUD } from '../ui/CommunicationHUD.js';
 import { MissionStatusHUD } from '../ui/MissionStatusHUD.js';
+import DiplomacyHUD from '../ui/DiplomacyHUD.js';
 import { SimpleMissionRewards } from '../ui/SimpleMissionRewards.js';
 import { MissionCompletionUI } from '../ui/MissionCompletionUI.js';
 import { MissionNotificationHandler } from '../ui/MissionNotificationHandler.js';
@@ -221,6 +222,11 @@ export class StarfieldManager {
         this.damageControlContainer = document.createElement('div');
         document.body.appendChild(this.damageControlContainer);
         this.damageControlHUD = new DamageControlHUD(this.ship, this.damageControlContainer);
+
+        // Create diplomacy HUD container
+        this.diplomacyContainer = document.createElement('div');
+        document.body.appendChild(this.diplomacyContainer);
+        this.diplomacyHUD = new DiplomacyHUD(this, this.diplomacyContainer);
         
         // Bind keyboard events
         this.bindKeyEvents();
@@ -2264,16 +2270,22 @@ debug('COMBAT', 'SHIELD DEBUG: Insufficient energy');
                 }
             }
 
-            // Damage control key (D) - toggle damage control view
+            // Diplomacy Report key (D) - toggle diplomacy HUD
             if (commandKey === 'd') {
                 // CRITICAL: Dismiss Mission Status HUD if open to prevent overlap
                 if (this.missionStatusHUD && this.missionStatusHUD.visible) {
                     this.missionStatusHUD.hide();
-debug('COMBAT', 'Mission Status HUD dismissed for Damage Control');
+                    debug('COMBAT', 'Mission Status HUD dismissed for Diplomacy');
                 }
-                
+
+                // Dismiss other HUDs that might conflict
+                if (this.damageControlHUD && this.damageControlHUD.isVisible) {
+                    this.damageControlHUD.hide();
+                    debug('COMBAT', 'Damage Control HUD dismissed for Diplomacy');
+                }
+
                 this.playCommandSound();
-                this.toggleDamageControl();
+                this.diplomacyHUD.toggle();
             }
 
             // Help key (H) - toggle help interface
@@ -2375,18 +2387,22 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                 this.handleWaypointCreationAsync();
             }
 
-            // Toggle 3D target outlines (O key)
+            // Operations Report key (O) - toggle operations/damage control view
             if (commandKey === 'o') {
-                if (!this.isDocked) {
-                    this.playCommandSound();
-                    this.toggleTargetOutline();
-                } else {
-                    this.playCommandFailedSound();
-                    this.showHUDEphemeral(
-                        'OUTLINE TOGGLE UNAVAILABLE',
-                        'Outline controls disabled while docked'
-                    );
+                // CRITICAL: Dismiss Mission Status HUD if open to prevent overlap
+                if (this.missionStatusHUD && this.missionStatusHUD.visible) {
+                    this.missionStatusHUD.hide();
+                    debug('COMBAT', 'Mission Status HUD dismissed for Operations Report');
                 }
+
+                // Dismiss other HUDs that might conflict
+                if (this.diplomacyHUD && this.diplomacyHUD.visible) {
+                    this.diplomacyHUD.hide();
+                    debug('COMBAT', 'Diplomacy HUD dismissed for Operations Report');
+                }
+
+                this.playCommandSound();
+                this.toggleDamageControl();
             }
         });
 
@@ -2419,40 +2435,40 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
 
     toggleDamageControl() {
         this.damageControlVisible = !this.damageControlVisible;
-        
+
         if (this.damageControlVisible) {
-            // Store the previous view before switching to damage control
+            // Store the previous view before switching to operations report
             this.previousView = this.view;
-            this.view = 'DAMAGE';
+            this.view = 'OPERATIONS';
             this.isDamageControlOpen = true; // Set the state flag
             
-            // CRITICAL: Force refresh ship systems before showing damage control
+            // CRITICAL: Force refresh ship systems before showing operations report
             const ship = this.viewManager?.getShip();
             if (ship && ship.cardSystemIntegration) {
-debug('COMBAT', 'Refreshing ship systems before showing damage control...');
+debug('COMBAT', 'Refreshing ship systems before showing operations report...');
                 // Force reload cards and refresh systems
                 ship.cardSystemIntegration.loadCards().then(() => {
                     // Check if systems already exist to prevent duplicates
                     const existingSystemCount = ship.systems ? ship.systems.size : 0;
-                    debug('SYSTEM_FLOW', `🔍 StarfieldManager damage control check: existing systems = ${existingSystemCount}`);
+                    debug('SYSTEM_FLOW', `🔍 StarfieldManager operations report check: existing systems = ${existingSystemCount}`);
 
                     if (existingSystemCount === 0) {
-                        debug('SYSTEM_FLOW', '🚀 StarfieldManager creating systems for damage control');
+                        debug('SYSTEM_FLOW', '🚀 StarfieldManager creating systems for operations report');
                         ship.cardSystemIntegration.createSystemsFromCards().then(() => {
                             // Re-initialize cargo holds from updated cards
                             if (ship.cargoHoldManager) {
                                 ship.cargoHoldManager.initializeFromCards();
                             }
 
-                            // Show the damage control HUD after systems are refreshed
+                            // Show the operations report HUD after systems are refreshed
                             this.damageControlHUD.show();
-                            debug('COMBAT', 'Damage control HUD shown with refreshed systems');
+                            debug('COMBAT', 'Operations report HUD shown with refreshed systems');
                         });
                     } else {
-                        debug('SYSTEM_FLOW', '⏭️ StarfieldManager skipping system creation for damage control - systems already exist');
-                        // Still show damage control even if we didn't recreate systems
+                        debug('SYSTEM_FLOW', '⏭️ StarfieldManager skipping system creation for operations report - systems already exist');
+                        // Still show operations report even if we didn't recreate systems
                         this.damageControlHUD.show();
-                        debug('COMBAT', 'Damage control HUD shown (systems not recreated)');
+                        debug('COMBAT', 'Operations report HUD shown (systems not recreated)');
                     }
                 });
             } else {
@@ -2462,14 +2478,14 @@ debug('COMBAT', 'Refreshing ship systems before showing damage control...');
             
             this.updateSpeedIndicator(); // Update the view indicator
         } else {
-            // Restore the previous view when closing damage control
+            // Restore the previous view when closing operations report
             this.view = this.previousView || 'FORE';
             this.isDamageControlOpen = false; // Clear the state flag
             
-            // Clean up all debug hit spheres when damage control is turned off
+            // Clean up all debug hit spheres when operations report is turned off
             WeaponSlot.cleanupAllDebugSpheres(this);
             
-            // Hide the damage control HUD
+            // Hide the operations report HUD
             this.damageControlHUD.hide();
             
             this.updateSpeedIndicator(); // Update the view indicator

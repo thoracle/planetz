@@ -206,7 +206,11 @@ debug('UI', 'Ship Tech Manual closed');
                     </div>
                     <div class="control-entry">
                         <span class="key-binding">D</span>
-                        <span class="control-desc">Damage Control Interface</span>
+                        <span class="control-desc">Diplomacy Report</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">O</span>
+                        <span class="control-desc">Operations Report</span>
                     </div>
                 </div>
             </div>
