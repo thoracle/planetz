@@ -474,13 +474,13 @@ export default class DiplomacyHUD {
                     <!-- Filled background -->
                     <div style="
                         position: absolute;
-                        ${clampedStanding >= 0 ? 'right: 50%;' : 'left: 50%;'}
+                        left: ${clampedStanding >= 0 ? '50%' : (50 - Math.abs(clampedStanding) * 0.5) + '%'};
                         top: 0;
                         width: ${Math.abs(clampedStanding) * 0.5}%;
                         height: 100%;
                         background: ${clampedStanding >= 0 ?
                             'linear-gradient(90deg, rgba(68, 255, 68, 0.3) 0%, rgba(68, 255, 68, 0.6) 100%)' :
-                            'linear-gradient(270deg, rgba(255, 68, 68, 0.3) 0%, rgba(255, 68, 68, 0.6) 100%)'};
+                            'linear-gradient(90deg, rgba(255, 68, 68, 0.3) 0%, rgba(255, 68, 68, 0.6) 100%)'};
                         border-radius: ${clampedStanding >= 0 ? '3px 0 0 3px' : '0 3px 3px 0'};
                         transition: all 0.3s ease;
                     "></div>
