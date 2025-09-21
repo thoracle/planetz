@@ -685,9 +685,11 @@ debug('MISSIONS', 'Mission Board requested');
                     credits: this.starfieldManager.ship.credits || 50000,
                     ship_type: this.starfieldManager.ship.shipType || 'starter_ship',
                     faction_standings: this.starfieldManager.ship.factionStandings || {
-                        'terran_republic_alliance': 0,
-                        'traders_guild': 0,
-                        'scientists_consortium': 0
+                        'terran_republic_alliance': 65,
+                        'traders_guild': 45,
+                        'scientists_consortium': 25,
+                        'explorers_guild': 70,
+                        'mercenary_fleet': -35
                     }
                 };
                 this.missionBoard.updatePlayerData(playerData);
