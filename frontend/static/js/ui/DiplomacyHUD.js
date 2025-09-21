@@ -235,10 +235,10 @@ export default class DiplomacyHUD {
             th.textContent = faction.info.shortName;
             th.style.cssText = `
                 padding: 10px 8px;
-                color: #000000;
+                color: ${faction.info.color};
                 font-weight: bold;
-                border: 1px solid rgba(255, 255, 255, 0.4);
-                background: ${faction.info.color};
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                background: rgba(0, 40, 0, 0.5);
             `;
             headerRow.appendChild(th);
         });
@@ -253,10 +253,10 @@ export default class DiplomacyHUD {
             rowHeader.textContent = rowFaction.info.shortName;
             rowHeader.style.cssText = `
                 padding: 10px 8px;
-                color: #000000;
+                color: ${rowFaction.info.color};
                 font-weight: bold;
-                border: 1px solid rgba(255, 255, 255, 0.4);
-                background: ${rowFaction.info.color};
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                background: rgba(0, 40, 0, 0.5);
             `;
             row.appendChild(rowHeader);
 
