@@ -225,7 +225,7 @@ export default class DiplomacyHUD {
         const table = document.createElement('table');
         table.style.cssText = `
             border-collapse: collapse;
-            font-size: 11px;
+            font-size: 10px;
             text-align: center;
         `;
 
@@ -237,7 +237,7 @@ export default class DiplomacyHUD {
             const th = document.createElement('th');
             th.textContent = faction.info.shortName;
             th.style.cssText = `
-                padding: 8px 6px;
+                padding: 10px 8px;
                 color: ${faction.info.color};
                 font-weight: bold;
                 border: 1px solid rgba(255, 255, 255, 0.2);
@@ -255,7 +255,7 @@ export default class DiplomacyHUD {
             const rowHeader = document.createElement('th');
             rowHeader.textContent = rowFaction.info.shortName;
             rowHeader.style.cssText = `
-                padding: 8px 6px;
+                padding: 10px 8px;
                 color: ${rowFaction.info.color};
                 font-weight: bold;
                 border: 1px solid rgba(255, 255, 255, 0.2);
@@ -263,30 +263,35 @@ export default class DiplomacyHUD {
             `;
             row.appendChild(rowHeader);
 
-            // Data cells
+            // Data cells - faction-to-faction relationships
             factions.forEach(colFaction => {
                 const td = document.createElement('td');
-                let relationship = 'NEUTRAL';
 
                 if (rowFaction.key === colFaction.key) {
-                    relationship = 'SELF';
+                    // Self relationship
                     td.textContent = '—';
                     td.style.cssText = `
-                        padding: 8px 6px;
+                        padding: 10px 8px;
                         color: #888888;
                         border: 1px solid rgba(255, 255, 255, 0.2);
                         background: rgba(0, 20, 0, 0.3);
                     `;
                 } else {
-                    // For now, use a simple relationship model
-                    // In a full implementation, factions would have relationships with each other
-                    relationship = 'NEUTRAL';
-                    td.textContent = 'N/A';
+                    // Get faction-to-faction relationship (symmetric)
+                    const relationship = this.getFactionRelationship(rowFaction.key, colFaction.key);
+                    const standing = relationship.standing;
+                    const status = relationship.status;
+                    const color = relationship.color;
+
+                    td.textContent = status;
                     td.style.cssText = `
-                        padding: 8px 6px;
-                        color: #666666;
+                        padding: 10px 8px;
+                        color: ${color};
+                        font-weight: bold;
                         border: 1px solid rgba(255, 255, 255, 0.2);
-                        background: rgba(0, 20, 0, 0.2);
+                        background: rgba(${color === '#00ff41' ? '0, 40, 0' :
+                                           color === '#ffff44' ? '40, 40, 0' :
+                                           '40, 0, 0'}, 0.3);
                     `;
                 }
 
@@ -298,18 +303,87 @@ export default class DiplomacyHUD {
 
         matrixContainer.appendChild(table);
 
-        const note = document.createElement('div');
-        note.textContent = 'Note: Faction-to-faction relationships not yet implemented';
-        note.style.cssText = `
-            margin-top: 10px;
+        // Add legend
+        const legend = document.createElement('div');
+        legend.style.cssText = `
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
             font-size: 10px;
-            color: #888888;
-            font-style: italic;
-            text-align: center;
+            color: #cccccc;
         `;
 
-        matrixContainer.appendChild(note);
+        legend.innerHTML = `
+            <div><span style="color: #00ff41;">🟢 ALLIED</span></div>
+            <div><span style="color: #ffff44;">🟡 NEUTRAL</span></div>
+            <div><span style="color: #ff4444;">🔴 HOSTILE</span></div>
+        `;
+
+        matrixContainer.appendChild(legend);
         this.container.appendChild(matrixContainer);
+    }
+
+    getFactionRelationship(factionA, factionB) {
+        // Define symmetric faction-to-faction relationships
+        const relationships = {
+            'terran_republic_alliance': {
+                'traders_guild': { standing: 50, status: 'ALLIED' },
+                'scientists_consortium': { standing: 70, status: 'ALLIED' },
+                'explorers_guild': { standing: 60, status: 'ALLIED' },
+                'mercenary_fleet': { standing: -80, status: 'AT WAR' }
+            },
+            'traders_guild': {
+                'terran_republic_alliance': { standing: 50, status: 'ALLIED' },
+                'scientists_consortium': { standing: 30, status: 'NEUTRAL' },
+                'explorers_guild': { standing: 20, status: 'NEUTRAL' },
+                'mercenary_fleet': { standing: -60, status: 'HOSTILE' }
+            },
+            'scientists_consortium': {
+                'terran_republic_alliance': { standing: 70, status: 'ALLIED' },
+                'traders_guild': { standing: 30, status: 'NEUTRAL' },
+                'explorers_guild': { standing: 55, status: 'FRIENDLY' },
+                'mercenary_fleet': { standing: -70, status: 'HOSTILE' }
+            },
+            'explorers_guild': {
+                'terran_republic_alliance': { standing: 60, status: 'ALLIED' },
+                'traders_guild': { standing: 20, status: 'NEUTRAL' },
+                'scientists_consortium': { standing: 55, status: 'FRIENDLY' },
+                'mercenary_fleet': { standing: -90, status: 'AT WAR' }
+            },
+            'mercenary_fleet': {
+                'terran_republic_alliance': { standing: -80, status: 'AT WAR' },
+                'traders_guild': { standing: -60, status: 'HOSTILE' },
+                'scientists_consortium': { standing: -70, status: 'HOSTILE' },
+                'explorers_guild': { standing: -90, status: 'AT WAR' }
+            }
+        };
+
+        const rel = relationships[factionA]?.[factionB];
+        if (rel) {
+            return {
+                standing: rel.standing,
+                status: rel.status,
+                color: this.getStatusColor(rel.status)
+            };
+        }
+
+        return {
+            standing: 0,
+            status: 'NEUTRAL',
+            color: this.getStatusColor('NEUTRAL')
+        };
+    }
+
+    getStatusColor(status) {
+        switch (status) {
+            case 'ALLIED': return '#00ff41';
+            case 'FRIENDLY': return '#44ff44';
+            case 'NEUTRAL': return '#ffff44';
+            case 'HOSTILE': return '#ff4444';
+            case 'AT WAR': return '#ff3333';
+            default: return '#ffff44';
+        }
     }
 
     createFactionEntry(factionKey, factionInfo, standing) {
