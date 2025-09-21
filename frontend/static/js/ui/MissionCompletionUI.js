@@ -299,7 +299,7 @@ debug('UI', `🎉 MissionCompletionUI: Showing completion for mission ${missionI
             ${completionData.bonusObjectives ? `
             <div style="
                 font-size: 16px;
-                color: #00aaff;
+                color: #ffff44;
             ">
                 Bonus Objectives: ${completionData.bonusObjectives.completed}/${completionData.bonusObjectives.total} completed
             </div>` : ''}
@@ -395,15 +395,15 @@ debug('UI', `🎉 MissionCompletionUI: Showing completion for mission ${missionI
         container.style.cssText = `
             margin-bottom: 20px;
             padding: 15px;
-            background: rgba(0, 0, 255, 0.1);
-            border: 1px solid #00aaff;
+            background: rgba(255, 255, 68, 0.1);
+            border: 1px solid #ffff44;
             border-radius: 6px;
         `;
         
         container.innerHTML = `
             <div style="
                 font-size: 20px;
-                color: #00aaff;
+                color: #ffff44;
                 margin-bottom: 15px;
             ">
                 🎴 CARDS AWARDED:
@@ -668,7 +668,7 @@ debug('UI', `🎉 MissionCompletionUI: Showing completion for mission ${missionI
             uncommon: '#00ff41',
             rare: '#0088ff',
             epic: '#8800ff',
-            legendary: '#ffaa00'
+            legendary: '#ffff44'
         };
         return colors[rarity] || colors.common;
     }

@@ -2730,7 +2730,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         
         switch (object.type) {
             case 'star':
-                return '#ffaa00';
+                return '#ffff44';
             case 'planet':
                 return '#00aa00';
             case 'moon':
@@ -2924,7 +2924,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Status-based colors take precedence
         if (status === 'completed') return '#00aa00';
         if (status === 'interrupted') return '#ff6600';
-        if (status === 'triggered') return '#ffaa00';
+        if (status === 'triggered') return '#ffff44';
         
         // All active waypoints use consistent magenta color (matches system-wide waypoint color)
         return '#ff44ff'; // Bright magenta - matches TargetComputerManager and WaypointIndicator

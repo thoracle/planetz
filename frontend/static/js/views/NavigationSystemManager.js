@@ -220,7 +220,7 @@ debug('UTILITY', '🔄 Activating fallback to Long Range Scanner');
         const notification = document.createElement('div');
         notification.className = 'navigation-fallback-notification';
         notification.innerHTML = `
-            <div style="color: #ffaa00; font-weight: bold;">⚠️ Navigation System Notice</div>
+            <div style="color: #ffff44; font-weight: bold;">⚠️ Navigation System Notice</div>
             <div>Star Charts temporarily unavailable</div>
             <div>Using Long Range Scanner</div>
         `;

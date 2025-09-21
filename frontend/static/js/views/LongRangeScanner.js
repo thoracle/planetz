@@ -562,7 +562,7 @@ debug('UTILITY', `🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.roun
                 station.setAttribute('data-name', info.name || body.userData?.name || 'Station');
                 station.setAttribute('data-original-r', String(size));
                 station.setAttribute('transform', `rotate(45 ${x} ${y})`);
-                station.setAttribute('fill', '#00aaff');
+                station.setAttribute('fill', '#ffff44');
                 station.setAttribute('stroke', '#ffffff');
                 station.setAttribute('stroke-width', '1');
                 // Consistent UI affordance: show pointer cursor like other bodies

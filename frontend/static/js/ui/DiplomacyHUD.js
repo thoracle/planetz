@@ -161,14 +161,14 @@ export default class DiplomacyHUD {
             'scientists_consortium': {
                 name: 'Scientists Consortium',
                 shortName: 'SCI',
-                color: '#00aaff',
+                color: '#44ff44',
                 description: 'Research organization',
                 icon: '▲'  // Triangle (research/science)
             },
             'explorers_guild': {
                 name: 'Explorers Guild',
                 shortName: 'EXP',
-                color: '#ffaa00',
+                color: '#00ff41',
                 description: 'Exploration organization',
                 icon: '★'  // Star (exploration/navigation)
             },

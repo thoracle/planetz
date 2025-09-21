@@ -600,8 +600,8 @@ debug('UI', `🎯 UNIFIED DISPLAY: "${text}" (priority: ${priority}, duration: $
                 break;
             case 'lucky-hit':
                 text = weaponName; // weaponName contains the full message
-                color = '#ffaa00';
-                borderColor = '#cc8800';
+                color = '#ffff44';
+                borderColor = '#cccc22';
                 priority = 4; // High priority for lucky hits
                 duration = 5000;
                 break;

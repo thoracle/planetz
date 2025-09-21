@@ -584,7 +584,7 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
             // Regular non-waypoint objective or inactive waypoint
             const descText = document.createElement('span');
             descText.textContent = normalizedObjective.description;
-            descText.style.color = normalizedObjective.isOptional ? '#00aaff' : '#ffffff';
+            descText.style.color = normalizedObjective.isOptional ? '#ffff44' : '#ffffff';
             
             description.appendChild(iconSpan);
             description.appendChild(descText);
@@ -636,7 +636,7 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
             ACTIVE: { symbol: '●', color: '#ffff44' },
             PENDING: { symbol: '○', color: '#888888' },
             FAILED: { symbol: '✗', color: '#ff4444' },
-            OPTIONAL: { symbol: '◇', color: '#00aaff' },
+            OPTIONAL: { symbol: '◇', color: '#ffff44' },
             LOCKED: { symbol: '🔒', color: '#666666' }
         };
         

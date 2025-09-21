@@ -49,7 +49,7 @@ export class CardRewardAnimator {
                 glow: 'intense'
             },
             legendary: {
-                color: '#ffaa00',
+                color: '#ffff44',
                 particles: 100,
                 sound: 'card_reveal_legendary',
                 glow: 'legendary'
@@ -478,7 +478,7 @@ debug('UI', `🎴 Revealing card ${index + 1}: ${cardData.name} (${cardData.rari
     addLegendaryEffects(container) {
         // Golden glow pulse
         container.style.animation = 'cardGlow 0.5s ease-in-out infinite';
-        container.style.filter = 'drop-shadow(0 0 40px #ffaa00)';
+        container.style.filter = 'drop-shadow(0 0 40px #ffff44)';
         
         // Screen flash effect
         const flash = document.createElement('div');

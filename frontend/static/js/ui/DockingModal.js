@@ -887,7 +887,7 @@ debug('TARGETING', '🚫 Modal hidden, all target references cleared');
                 return '#ff4444'; // Red
             case 'cautious':
             case 'wary':
-                return '#ffaa00'; // Orange
+                return '#ffff44'; // Yellow
             default:
                 return '#88ff88'; // Default green
         }
