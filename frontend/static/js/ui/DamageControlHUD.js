@@ -145,13 +145,13 @@ export default class DamageControlHUD {
     }
     
     bindEvents() {
-        // Simple event delegation - one listener for all repair buttons
+        // Simple event delegation - one listener for all toggle buttons
         this.elements.systemsList.addEventListener('click', (event) => {
-            if (event.target.matches('.damage-control-repair-btn')) {
+            if (event.target.matches('.damage-control-toggle-btn')) {
                 const systemName = event.target.dataset.systemName;
                 if (systemName && !event.target.disabled) {
-debug('AI', `🔧 Repair button clicked for: ${systemName}`);
-                    this.startRepair(systemName);
+debug('AI', `🔧 Toggle button clicked for: ${systemName}`);
+                    this.toggleSystem(systemName);
                 }
             }
         });
@@ -414,39 +414,47 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         
         systemCard.appendChild(systemInfo);
         
-        // Right side - repair button
-        const repairButton = this.createRepairButton(systemName, isDamaged, hasValidCard);
-        systemCard.appendChild(repairButton);
+        // Right side - toggle button
+        const toggleButton = this.createToggleButton(systemName, isDamaged, hasValidCard);
+        systemCard.appendChild(toggleButton);
         
         this.elements.systemsList.appendChild(systemCard);
     }
     
-    createRepairButton(systemName, isDamaged, hasValidCard) {
+    createToggleButton(systemName, isDamaged, hasValidCard) {
         const button = document.createElement('button');
-        button.className = 'damage-control-repair-btn';
+        button.className = 'damage-control-toggle-btn';
         button.dataset.systemName = systemName;
-        
+
+        // Get the system and its current state
+        const system = this.ship.getSystem(systemName);
+        const isActive = system?.isActive || false;
+
         // Determine button state and appearance
-        let buttonText = 'OK';
-        let backgroundColor = '#4a4a4a';
-        let textColor = '#bbb';
-        let isDisabled = true;
-        
+        let buttonText = 'OFF';
+        let backgroundColor = '#4a2a2a';
+        let textColor = '#ff4444';
+        let isDisabled = !hasValidCard;
+
         if (!hasValidCard) {
             buttonText = 'NO CARD';
             backgroundColor = '#3a3a3a';
             textColor = '#666';
         } else if (isDamaged) {
-            buttonText = 'REPAIR';
+            buttonText = 'DAMAGED';
+            backgroundColor = '#4a4a2a';
+            textColor = '#ffaa44';
+            isDisabled = true;
+        } else if (isActive) {
+            buttonText = 'ON';
             backgroundColor = '#2a4a2a';
             textColor = '#00ff41';
-            isDisabled = this.manualRepairSystem.isRepairing;
         } else {
-            buttonText = 'OK';
-            backgroundColor = '#4a4a4a';
-            textColor = '#bbb';
+            buttonText = 'OFF';
+            backgroundColor = '#4a2a2a';
+            textColor = '#ff4444';
         }
-        
+
         button.style.cssText = `
             padding: 8px 12px;
             border: 1px solid #555;
@@ -463,28 +471,75 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             align-items: center;
             justify-content: center;
         `;
-        
+
         button.textContent = buttonText;
         button.disabled = isDisabled;
-        
-        // Hover effects for repairable buttons
-        if (!isDisabled && isDamaged && hasValidCard) {
+
+        // Add click handler for toggle functionality
+        if (!isDisabled && !isDamaged) {
+            button.onclick = () => {
+                this.toggleSystem(systemName);
+            };
+
+            // Hover effects
             button.addEventListener('mouseenter', () => {
-                button.style.backgroundColor = '#3a5a3a';
-                button.style.borderColor = '#00ff41';
-                button.style.transform = 'scale(1.05)';
+                if (!isDisabled) {
+                    button.style.transform = 'scale(1.05)';
+                    if (isActive) {
+                        button.style.borderColor = '#00ff41';
+                    } else {
+                        button.style.borderColor = '#ff4444';
+                    }
+                }
             });
-            
+
             button.addEventListener('mouseleave', () => {
-                button.style.backgroundColor = '#2a4a2a';
-                button.style.borderColor = '#555';
                 button.style.transform = 'scale(1)';
+                button.style.borderColor = '#555';
             });
         }
-        
+
         return button;
     }
     
+    toggleSystem(systemName) {
+        try {
+            const ship = this.ship;
+            if (!ship) {
+                console.error('No ship available for system toggle');
+                return;
+            }
+
+            const system = ship.getSystem(systemName);
+            if (!system) {
+                console.error(`System ${systemName} not found`);
+                return;
+            }
+
+            // Check if system can be activated
+            if (!system.canActivate(ship)) {
+                console.log(`Cannot activate system ${systemName}`);
+                return;
+            }
+
+            // Toggle the system state
+            if (system.isActive) {
+                // Deactivate the system
+                system.deactivate();
+                console.log(`Deactivated system: ${systemName}`);
+            } else {
+                // Activate the system
+                system.activate(ship);
+                console.log(`Activated system: ${systemName}`);
+            }
+
+            // Refresh the display to update button states
+            this.refresh();
+        } catch (error) {
+            console.error(`Error toggling system ${systemName}:`, error);
+        }
+    }
+
     getDisplayName(systemName) {
         // Use the standard system display name function
         const baseName = getSystemDisplayName(systemName).toUpperCase();
@@ -587,8 +642,8 @@ debug('AI', `🔧 Starting repair for ${systemName} (${Math.round(system.healthP
         this.elements.repairLabel.textContent = `Repairing ${displayName}...`;
         this.elements.repairBar.style.backgroundColor = '#00aa00';
         
-        // Disable all repair buttons
-        this.disableAllRepairButtons();
+        // Disable all toggle buttons
+        this.disableAllToggleButtons();
     }
     
     updateRepairProgress() {
@@ -635,8 +690,8 @@ debug('AI', `🔧 Repair completed for ${systemName}`);
         this.refresh();
     }
     
-    disableAllRepairButtons() {
-        const buttons = this.elements.systemsList.querySelectorAll('.damage-control-repair-btn');
+    disableAllToggleButtons() {
+        const buttons = this.elements.systemsList.querySelectorAll('.damage-control-toggle-btn');
         buttons.forEach(button => {
             button.disabled = true;
             button.style.opacity = '0.6';
