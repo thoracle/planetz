@@ -412,10 +412,6 @@ debug('UI', 'Ship Tech Manual closed');
                         <span class="control-desc">Fire Active Weapon</span>
                     </div>
                     <div class="control-entry">
-                        <span class="key-binding">, .</span>
-                        <span class="control-desc">Previous Weapon</span>
-                    </div>
-                    <div class="control-entry">
                         <span class="key-binding">&lt; &gt;</span>
                         <span class="control-desc">Next Weapon</span>
                     </div>
