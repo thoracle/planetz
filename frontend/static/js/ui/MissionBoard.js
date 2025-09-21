@@ -34,11 +34,11 @@ export class MissionBoard {
         this.playerData = {
             level: 1,
             faction_standings: {
-                terran_republic_alliance: 65,
-                traders_guild: 45,
-                scientists_consortium: 25,
-                explorers_guild: 70,
-                mercenary_fleet: -35
+                terran_republic_alliance: 0,
+                traders_guild: 0,
+                scientists_consortium: 0,
+                explorers_guild: 0,
+                mercenary_fleet: 0
             },
             credits: playerCredits.getCredits(),
             ship_type: 'starter_ship'
@@ -703,11 +703,11 @@ debug('MISSIONS', `✅ Mission accepted: ${this.selectedMission.title}`);
                 credits: Number(this.playerData.credits) || 50000,
                 ship_type: String(this.playerData.ship_type) || 'starter_ship',
                 faction_standings: {
-                    terran_republic_alliance: Number(this.playerData.faction_standings?.terran_republic_alliance) || 65,
-                    traders_guild: Number(this.playerData.faction_standings?.traders_guild) || 45,
-                    scientists_consortium: Number(this.playerData.faction_standings?.scientists_consortium) || 25,
-                    explorers_guild: Number(this.playerData.faction_standings?.explorers_guild) || 70,
-                    mercenary_fleet: Number(this.playerData.faction_standings?.mercenary_fleet) || -35
+                    terran_republic_alliance: Number(this.playerData.faction_standings?.terran_republic_alliance) || 0,
+                    traders_guild: Number(this.playerData.faction_standings?.traders_guild) || 0,
+                    scientists_consortium: Number(this.playerData.faction_standings?.scientists_consortium) || 0,
+                    explorers_guild: Number(this.playerData.faction_standings?.explorers_guild) || 0,
+                    mercenary_fleet: Number(this.playerData.faction_standings?.mercenary_fleet) || 0
                 }
             };
             
@@ -885,11 +885,11 @@ debug('UI', 'Unhandled hook type:', hook.type, hook.data);
             credits: playerCredits.getCredits(), // Always use unified credits
             ship_type: String(playerData.ship_type) || this.playerData.ship_type || 'starter_ship',
             faction_standings: {
-                terran_republic_alliance: Number(playerData.faction_standings?.terran_republic_alliance) || this.playerData.faction_standings?.terran_republic_alliance || 65,
-                traders_guild: Number(playerData.faction_standings?.traders_guild) || this.playerData.faction_standings?.traders_guild || 45,
-                scientists_consortium: Number(playerData.faction_standings?.scientists_consortium) || this.playerData.faction_standings?.scientists_consortium || 25,
-                explorers_guild: Number(playerData.faction_standings?.explorers_guild) || this.playerData.faction_standings?.explorers_guild || 70,
-                mercenary_fleet: Number(playerData.faction_standings?.mercenary_fleet) || this.playerData.faction_standings?.mercenary_fleet || -35
+                terran_republic_alliance: Number(playerData.faction_standings?.terran_republic_alliance) || this.playerData.faction_standings?.terran_republic_alliance || 0,
+                traders_guild: Number(playerData.faction_standings?.traders_guild) || this.playerData.faction_standings?.traders_guild || 0,
+                scientists_consortium: Number(playerData.faction_standings?.scientists_consortium) || this.playerData.faction_standings?.scientists_consortium || 0,
+                explorers_guild: Number(playerData.faction_standings?.explorers_guild) || this.playerData.faction_standings?.explorers_guild || 0,
+                mercenary_fleet: Number(playerData.faction_standings?.mercenary_fleet) || this.playerData.faction_standings?.mercenary_fleet || 0
             }
         };
         

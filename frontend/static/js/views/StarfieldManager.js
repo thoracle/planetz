@@ -7120,11 +7120,11 @@ debug('MISSIONS', 'Game resumed from mission completion');
             credits: this.ship.credits || 50000,
             ship_type: this.ship.shipType || 'starter_ship',
             faction_standings: this.ship.factionStandings || {
-                'terran_republic_alliance': 65,  // FRIENDLY - government starts friendly
-                'traders_guild': 45,             // NEUTRAL - merchants start neutral
-                'scientists_consortium': 25,     // NEUTRAL - scientists start neutral
-                'explorers_guild': 70,           // FRIENDLY - explorers start friendly
-                'mercenary_fleet': -35           // HOSTILE - mercenaries start hostile
+                'terran_republic_alliance': 0,
+                'traders_guild': 0,
+                'scientists_consortium': 0,
+                'explorers_guild': 0,
+                'mercenary_fleet': 0
             }
         };
         

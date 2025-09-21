@@ -35,6 +35,15 @@ export default class Ship {
         this.currentArmor = 0;
         this.currentFirepower = 0;
         this.currentCargoCapacity = 0;
+
+        // Initialize faction standings with varied starting values
+        this.factionStandings = {
+            'terran_republic_alliance': 65,  // FRIENDLY - government starts friendly
+            'traders_guild': 45,             // NEUTRAL - merchants start neutral
+            'scientists_consortium': 25,     // NEUTRAL - scientists start neutral
+            'explorers_guild': 70,           // FRIENDLY - explorers start friendly
+            'mercenary_fleet': -35           // HOSTILE - mercenaries start hostile
+        };
         
         // System management
         this.systems = new Map();
