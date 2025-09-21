@@ -1,7 +1,8 @@
 import { debug } from '../debug.js';
 
 /**
- * Clean Damage Control HUD Implementation
+ * Operations Report HUD Implementation
+ * Shows ship systems status and repair management
  * No legacy conflicts, simple event handling, clean architecture
  */
 
@@ -62,7 +63,7 @@ export default class DamageControlHUD {
             padding-bottom: 4px;
             text-align: center;
         `;
-        this.elements.header.textContent = 'DAMAGE CONTROL';
+        this.elements.header.textContent = 'OPERATIONS REPORT';
         this.container.appendChild(this.elements.header);
     }
     
@@ -183,7 +184,7 @@ debug('AI', `🔧 Repair button clicked for: ${systemName}`);
     refresh() {
         if (!this.isVisible) return;
         
-debug('COMBAT', 'Refreshing damage control display');
+debug('COMBAT', 'Refreshing operations report display');
         
         // Get ship status with and without filtering for comparison
         const unfilteredStatus = this.ship.getStatus(false);
@@ -202,7 +203,7 @@ debug('UI', `  - ${systemName}: ${system.constructor.name} (Level ${system.level
         }
         
         if (!unfilteredStatus || !unfilteredStatus.systems) {
-            console.warn('No ship status available for damage control');
+            console.warn('No ship status available for operations report');
             return;
         }
         
@@ -668,10 +669,10 @@ debug('AI', `🔧 Repair completed for ${systemName}`);
     }
     
     /**
-     * Force refresh the damage control display (reload systems and update UI)
+     * Force refresh the operations report display (reload systems and update UI)
      */
     async forceRefresh() {
-debug('COMBAT', 'Force refreshing damage control systems...');
+debug('COMBAT', 'Force refreshing operations report systems...');
         
         // Force reload cards from the ship
         if (this.ship && this.ship.cardSystemIntegration) {
