@@ -182,7 +182,7 @@ export default class DiplomacyHUD {
         const factionStandings = ship?.factionStandings || {};
 
         // Create faction entries
-        Object.entries(factionInfo).forEach(([key, info]) => {
+        Object.entries(this.factionInfo).forEach(([key, info]) => {
             const standing = factionStandings[key] || 0;
             const factionEntry = this.createFactionEntry(key, info, standing);
             factionList.appendChild(factionEntry);
