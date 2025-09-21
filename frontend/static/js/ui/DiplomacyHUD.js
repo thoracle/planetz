@@ -87,37 +87,42 @@ export default class DiplomacyHUD {
         const ship = this.starfieldManager?.ship;
         const factionStandings = ship?.factionStandings || {};
 
-        // Define faction information
+        // Define faction information with icons
         const factionInfo = {
             'terran_republic_alliance': {
                 name: 'Terran Republic Alliance',
                 shortName: 'TRA',
                 color: '#00ff41',
-                description: 'Human space federation'
+                description: 'Human space federation',
+                icon: '🏛️'  // Government building
             },
             'traders_guild': {
                 name: 'Traders Guild',
                 shortName: 'TRG',
                 color: '#ffff44',
-                description: 'Commercial organization'
+                description: 'Commercial organization',
+                icon: '💰'  // Money/coin
             },
             'scientists_consortium': {
                 name: 'Scientists Consortium',
                 shortName: 'SCI',
                 color: '#00aaff',
-                description: 'Research organization'
+                description: 'Research organization',
+                icon: '🔬'  // Laboratory/science
             },
             'explorers_guild': {
                 name: 'Explorers Guild',
                 shortName: 'EXP',
                 color: '#ffaa00',
-                description: 'Exploration organization'
+                description: 'Exploration organization',
+                icon: '🧭'  // Compass/navigation
             },
             'mercenary_fleet': {
                 name: 'Mercenary Fleet',
                 shortName: 'MFC',
                 color: '#ff4444',
-                description: 'Independent contractors'
+                description: 'Independent contractors',
+                icon: '⚔️'  // Sword/combat
             }
         };
 
@@ -157,6 +162,10 @@ export default class DiplomacyHUD {
                     align-items: center;
                     gap: 8px;
                 ">
+                    <span style="
+                        font-size: 16px;
+                        margin-right: 4px;
+                    ">${factionInfo.icon}</span>
                     <span style="
                         color: ${factionInfo.color};
                         font-weight: bold;
