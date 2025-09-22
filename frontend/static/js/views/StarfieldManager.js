@@ -221,7 +221,7 @@ export class StarfieldManager {
         // Create clean damage control HUD
         this.damageControlContainer = document.createElement('div');
         document.body.appendChild(this.damageControlContainer);
-        this.damageControlHUD = new DamageControlHUD(this.ship, this.damageControlContainer);
+        this.damageControlHUD = new DamageControlHUD(this.ship, this.damageControlContainer, this);
 
         // Create diplomacy HUD container
         this.diplomacyContainer = document.createElement('div');

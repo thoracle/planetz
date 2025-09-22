@@ -9,9 +9,10 @@ import { debug } from '../debug.js';
 import { getSystemDisplayName } from '../ship/System.js';
 
 export default class DamageControlHUD {
-    constructor(ship, containerElement) {
+    constructor(ship, containerElement, starfieldManager) {
         this.ship = ship;
         this.container = containerElement;
+        this.starfieldManager = starfieldManager;
         this.isVisible = false;
         this.manualRepairSystem = {
             isRepairing: false,
@@ -19,7 +20,7 @@ export default class DamageControlHUD {
             repairStartTime: 0,
             repairDuration: 5000 // 5 seconds
         };
-        
+
         this.elements = {};
         this.updateInterval = null;
         
