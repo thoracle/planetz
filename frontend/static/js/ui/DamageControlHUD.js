@@ -438,7 +438,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             isActive = true;
         } else if (systemName === 'target_computer') {
             // Target computer state is managed by StarfieldManager
-            isActive = this.starfieldManager?.targetComputerEnabled || false;
+            isActive = this.starfieldManager && this.starfieldManager.targetComputerEnabled ? this.starfieldManager.targetComputerEnabled : false;
         } else {
             isActive = system?.isActive || false;
         }
