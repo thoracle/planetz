@@ -1763,11 +1763,11 @@ export class TargetComputerManager {
         // Sync with ship's TargetComputer system for sub-targeting
         const ship = this.viewManager?.getShip();
         const targetComputer = ship?.getSystem('target_computer');
-        if (targetComputer) {
+        if (targetComputer && targetComputer.isActive) {
             // For enemy ships, pass the ship instance (has systems). For others, pass the render object
             const isEnemyShip = !!(targetData?.isShip && targetData?.ship);
             let targetForSubTargeting = isEnemyShip ? targetData.ship : (targetData?.object || targetData);
-            
+
             // Ensure the target object has name and faction information
             if (targetForSubTargeting && !isEnemyShip) {
                 // Copy essential information from targetData to the object
@@ -1780,7 +1780,7 @@ export class TargetComputerManager {
                 if (!targetForSubTargeting.diplomacy && targetData.diplomacy) {
                     targetForSubTargeting.diplomacy = targetData.diplomacy;
                 }
-                
+
                 // For navigation beacons and other objects, also check userData as fallback
                 if (!targetForSubTargeting.name && targetForSubTargeting.userData?.name) {
                     targetForSubTargeting.name = targetForSubTargeting.userData.name;
@@ -1789,7 +1789,7 @@ export class TargetComputerManager {
                     targetForSubTargeting.faction = targetForSubTargeting.userData.faction;
                 }
             }
-            
+
             targetComputer.setTarget(targetForSubTargeting);
         }
         
