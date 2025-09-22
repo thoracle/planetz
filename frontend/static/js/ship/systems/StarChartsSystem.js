@@ -123,24 +123,37 @@ debug('UTILITY', `Star Charts System created (Level ${this.level}) - Discovery R
     canActivate() {
         const now = Date.now();
         const canActivateBase = super.canActivate();
-        const cooldownPassed = (now - this.lastActivationTime) >= this.activationCooldown;
-        
+
+        console.log(`🗺️ Star Charts canActivate called: isActive=${this.isActive}, lastActivationTime=${this.lastActivationTime}, cooldown=${this.activationCooldown}`);
+
         if (!canActivateBase) {
 debug('UTILITY', 'Star Charts: Cannot activate - system not operational');
             return false;
         }
-        
+
+        // If system is already active, allow deactivation (no cooldown check needed)
+        if (this.isActive) {
+            console.log('🗺️ Star Charts: System is active, allowing toggle operation');
+            return true;
+        }
+
+        // Check cooldown only when trying to activate (not deactivate)
+        const cooldownPassed = (now - this.lastActivationTime) >= this.activationCooldown;
+        console.log(`🗺️ Star Charts: Cooldown check - now=${now}, last=${this.lastActivationTime}, diff=${now - this.lastActivationTime}, required=${this.activationCooldown}, passed=${cooldownPassed}`);
+
         if (!cooldownPassed) {
 debug('UTILITY', 'Star Charts: Cannot activate - cooldown active');
             return false;
         }
-        
+
         return true;
     }
 
     // Activate star charts system
     activate() {
+        console.log(`🗺️ Star Charts activate called: isActive=${this.isActive}`);
         if (!this.canActivate()) {
+            console.log('🗺️ Star Charts activate: canActivate returned false');
             return false;
         }
 
@@ -175,15 +188,18 @@ debug('UI', `🗺️ StarCharts: Card check (sync) result:`, hasStarChartsCards)
         this.isChartsActive = true;
         this.isActive = true;
         this.lastActivationTime = Date.now();
-        
+
+        console.log(`🗺️ Star Charts activated successfully: isActive=${this.isActive}, isChartsActive=${this.isChartsActive}, lastActivationTime=${this.lastActivationTime}`);
 debug('UTILITY', `🗺️ Star Charts activated - Discovery Range: ${this.getCurrentDiscoveryRange()}km, Accuracy: ${this.getCurrentAccuracy()}%`);
         return true;
     }
 
     // Deactivate star charts system
     deactivate() {
+        console.log(`🗺️ Star Charts deactivate called: isActive=${this.isActive}, isChartsActive=${this.isChartsActive}`);
         this.isChartsActive = false;
         this.isActive = false;
+        console.log(`🗺️ Star Charts deactivated: isActive=${this.isActive}, isChartsActive=${this.isChartsActive}`);
 debug('UTILITY', 'Star Charts deactivated');
     }
 
