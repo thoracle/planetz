@@ -181,6 +181,14 @@ debug('UI', `${this.displayName} activated`);
     }
 
     /**
+     * Check if the system can be activated
+     * @returns {boolean} True if the system can be activated
+     */
+    canActivate() {
+        return this.isOperational();
+    }
+
+    /**
      * Set ship reference for this system
      * @param {Ship} ship - The ship this system belongs to
      */

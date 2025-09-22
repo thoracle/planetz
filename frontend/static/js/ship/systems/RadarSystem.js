@@ -145,6 +145,14 @@ debug('UTILITY', `Ship reference set on ${this.displayName || this.name}`);
     }
 
     /**
+     * Get energy consumption for this system
+     * @returns {number} Energy consumption rate
+     */
+    getEnergyConsumption() {
+        return this.energyConsumption || 5; // Default to 5 energy per second if not set
+    }
+
+    /**
      * Check if system is operational
      */
     isOperational() {
