@@ -2223,6 +2223,8 @@ export class TargetComputerManager {
      * Update target display information
      */
     updateTargetDisplay() {
+        console.log(`🎯 updateTargetDisplay called: enabled=${this.targetComputerEnabled}, currentTarget=${this.currentTarget?.name || 'none'}, targets=${this.targetObjects?.length || 0}`);
+
         // Only log when target actually changes
         if (this._lastLoggedTarget !== this.currentTarget?.name) {
             debug('TARGETING', `🎯 TARGET_SWITCH: updateTargetDisplay() - target: ${this.currentTarget?.name || 'none'}, type: ${this.currentTarget?.type || 'unknown'}`);
