@@ -565,6 +565,10 @@ export class TargetComputerManager {
         
         // Toggle the target computer system
         if (targetComputer.isActive) {
+            // Clear target BEFORE deactivating the system
+            if (targetComputer.setTarget) {
+                targetComputer.setTarget(null);
+            }
             targetComputer.deactivate();
             this.targetComputerEnabled = false;
             console.log('Target computer deactivated');
@@ -599,14 +603,6 @@ export class TargetComputerManager {
             this.currentTarget = null;
             this.targetIndex = -1;
             
-            // Clear target on ship's TargetComputer system
-            const ship = this.viewManager?.getShip();
-            if (ship) {
-                const targetComputer = ship.getSystem('target_computer');
-                if (targetComputer) {
-                    targetComputer.setTarget(null);
-                }
-            }
             
             // Stop all monitoring when target computer is disabled
             this.stopNoTargetsMonitoring();

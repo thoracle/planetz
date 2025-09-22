@@ -506,10 +506,16 @@ debug('AI', `Repaired ${systemName} by ${(repairAmount * 100).toFixed(1)}%`);
         this.systems.set(systemName, system);
         debug('SYSTEM_FLOW', `✅ SUCCESS [${uniqueId}]: ${systemName} added to ship systems from ${source}`);
 
+        // Set ship reference on the system if it has a setShip method
+        if (typeof system.setShip === 'function') {
+            system.setShip(this);
+            debug('SYSTEM_FLOW', `🔗 Ship reference set on ${systemName}`);
+        }
+
         // Update slot usage
         this.usedSlots += system.slotCost;
         this.availableSlots = this.totalSlots - this.usedSlots;
-        
+
         // Pass StarfieldManager reference if available
         if (this.starfieldManager && typeof system.setStarfieldManager === 'function') {
             system.setStarfieldManager(this.starfieldManager);

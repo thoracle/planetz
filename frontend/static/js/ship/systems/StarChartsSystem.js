@@ -38,7 +38,10 @@ export default class StarChartsSystem extends System {
         
         // Override default active state - charts are only active when HUD is open
         this.isActive = false;
-        
+
+        // Ship reference (set by ship when system is added)
+        this.ship = null;
+
         // Re-initialize levelStats now that all properties are set
         this.levelStats = this.initializeLevelStats();
         
@@ -200,6 +203,15 @@ debug('UTILITY', 'Star Charts deactivated');
     getShip() {
         // This will be set by the ship when the system is added
         return this.ship || null;
+    }
+
+    /**
+     * Set ship reference for this system
+     * @param {Ship} ship - The ship this system belongs to
+     */
+    setShip(ship) {
+        this.ship = ship;
+debug('UI', `Ship reference set on ${this.displayName}`);
     }
 
     // Update method called by ship systems

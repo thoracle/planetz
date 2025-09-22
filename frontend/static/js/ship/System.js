@@ -88,6 +88,9 @@ export default class System {
         this.slotCost = config.slotCost || 1;
         this.energyConsumptionRate = config.energyConsumptionRate || 0; // Energy per second when active
         this.isActive = true; // Track if system is actively consuming energy - default to true for operational systems
+
+        // Ship reference (set by ship when system is added)
+        this.ship = null;
         
         // System state
         this.state = SYSTEM_STATES.OPERATIONAL;
@@ -176,7 +179,16 @@ export default class System {
 debug('UI', `${this.displayName} activated`);
         return true;
     }
-    
+
+    /**
+     * Set ship reference for this system
+     * @param {Ship} ship - The ship this system belongs to
+     */
+    setShip(ship) {
+        this.ship = ship;
+debug('UI', `Ship reference set on ${this.displayName}`);
+    }
+
     /**
      * Deactivate the system (stop consuming energy)
      */

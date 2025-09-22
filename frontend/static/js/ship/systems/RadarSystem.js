@@ -26,7 +26,10 @@ export default class RadarSystem {
 
         // Activation state
         this.isActive = false;
-        
+
+        // Ship reference (set by ship when system is added)
+        this.ship = null;
+
         // Radar specifications based on level
         this.updateSpecifications();
         
@@ -113,24 +116,34 @@ debug('UTILITY', `🎯 ProximityDetector Level ${this.level} specifications upda
             return false;
         }
 
-        // Check if ship is available
-        if (!ship) {
+        // Check if ship is available (use stored reference or parameter)
+        const targetShip = this.ship || ship;
+        if (!targetShip) {
             return false;
         }
 
         // Check if ship has radar cards installed
-        if (!ship.hasSystemCardsSync('radar')) {
+        if (!targetShip.hasSystemCardsSync('radar')) {
             return false;
         }
 
         // Check energy requirements
-        if (ship.currentEnergy < this.energyConsumption) {
+        if (targetShip.currentEnergy < this.energyConsumption) {
             return false;
         }
 
         return true;
     }
-    
+
+    /**
+     * Set ship reference for this system
+     * @param {Ship} ship - The ship this system belongs to
+     */
+    setShip(ship) {
+        this.ship = ship;
+debug('UTILITY', `Ship reference set on ${this.displayName || this.name}`);
+    }
+
     /**
      * Check if system is operational
      */
@@ -282,7 +295,9 @@ debug('AI', `🎯 RadarSystem repaired: ${Math.round(this.healthPercentage * 100
      * Activate the radar system
      */
     activate(ship) {
-        if (!this.canActivate(ship)) {
+        // Use stored ship reference or parameter
+        const targetShip = this.ship || ship;
+        if (!this.canActivate(targetShip)) {
             console.warn('Cannot activate radar: system not operational or insufficient energy');
             return false;
         }
