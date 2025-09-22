@@ -504,7 +504,9 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             button.addEventListener('mouseenter', () => {
                 if (!isDisabled) {
                     button.style.transform = 'scale(1.05)';
-                    if (isActive) {
+                    // Use the current button state for hover effects
+                    const currentIsActive = button.textContent === 'ON';
+                    if (currentIsActive) {
                         button.style.borderColor = '#00ff41';
                     } else {
                         button.style.borderColor = '#ff4444';
