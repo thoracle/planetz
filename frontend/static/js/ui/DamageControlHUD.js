@@ -430,6 +430,19 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         // Get the system and its current state
         const system = this.ship && this.ship.getSystem ? this.ship.getSystem(systemName) : null;
 
+        // Debug logging to see what systems are available
+        if (!system) {
+            console.warn(`System ${systemName} not found on ship`);
+        } else {
+            console.log(`System ${systemName} found:`, {
+                hasActivate: typeof system.activate === 'function',
+                hasDeactivate: typeof system.deactivate === 'function',
+                hasIsActive: typeof system.isActive !== 'undefined',
+                isActive: system.isActive,
+                canActivate: system.canActivate ? 'yes' : 'no'
+            });
+        }
+
         // Special handling for passive systems (always ON)
         const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines'];
         let isActive = false; // Initialize the variable
@@ -529,6 +542,8 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
     
     toggleSystem(systemName) {
         try {
+            console.log(`🔧 Toggling system: ${systemName}`);
+
             // Check if this is a passive system (always ON)
             const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines'];
             if (passiveSystems.includes(systemName)) {
@@ -548,18 +563,27 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                 return;
             }
 
+            console.log(`System ${systemName} current state:`, {
+                isActive: system.isActive,
+                hasActivate: typeof system.activate === 'function',
+                hasDeactivate: typeof system.deactivate === 'function',
+                hasCanActivate: typeof system.canActivate === 'function'
+            });
+
             // Special handling for target computer system
             if (systemName === 'target_computer') {
                 // Target computer requires StarfieldManager's toggle method
                 if (this.starfieldManager && this.starfieldManager.toggleTargetComputer) {
+                    console.log(`Target computer toggle: StarfieldManager.enabled = ${this.starfieldManager.targetComputerEnabled}`);
                     this.starfieldManager.toggleTargetComputer();
-                    console.log(`Toggled target computer via StarfieldManager`);
+                    console.log(`Toggled target computer via StarfieldManager, new state: ${this.starfieldManager.targetComputerEnabled}`);
 
                     // Also ensure the system itself is properly activated/deactivated
                     const ship = this.ship;
                     if (ship && ship.getSystem) {
                         const targetComputer = ship.getSystem('target_computer');
                         if (targetComputer) {
+                            console.log(`Target computer system state before sync: ${targetComputer.isActive}`);
                             const shouldBeActive = this.starfieldManager.targetComputerEnabled;
                             if (shouldBeActive && !targetComputer.isActive) {
                                 // Try to activate the system directly
@@ -580,6 +604,9 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                                 // Sync the StarfieldManager state with the system state
                                 this.starfieldManager.targetComputerEnabled = false;
                             }
+                            console.log(`Target computer system state after sync: ${targetComputer.isActive}`);
+                        } else {
+                            console.warn('Target computer system not found on ship');
                         }
                     }
                 } else {
