@@ -2235,11 +2235,14 @@ export class TargetComputerManager {
             debug('INSPECTION', `🔍 Target display update skipped - target computer disabled`);
             return;
         }
-        
+
         // Don't update display during power-up animation
         if (this.isPoweringUp) {
+            console.log(`🎯 updateTargetDisplay: Skipping due to power-up animation`);
             return;
         }
+
+        console.log(`🎯 updateTargetDisplay: Proceeding with display update`);
 
         // Check if we need to recreate wireframe due to discovery status change
         const targetDataForDiscoveryCheck = this.getCurrentTargetData();
@@ -4424,11 +4427,13 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
      * Activate target computer and select first target if available
      */
     activateTargetComputer() {
+        console.log(`🎯 activateTargetComputer called: targetComputerEnabled=${this.targetComputerEnabled}, isPoweringUp=${this.isPoweringUp}, targets=${this.targetObjects?.length || 0}`);
         this.targetComputerEnabled = true;
         
         // If we have targets, select the first one
         if (this.targetObjects && this.targetObjects.length > 0) {
             this.targetIndex = 0;
+            console.log(`🎯 activateTargetComputer: About to call updateTargetDisplay after activation`);
             this.updateTargetDisplay();
             // Force direction arrow update when target computer is activated
             this.updateDirectionArrow();
