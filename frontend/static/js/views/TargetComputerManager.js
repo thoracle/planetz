@@ -1213,23 +1213,27 @@ export class TargetComputerManager {
         // Get celestial bodies from SolarSystemManager (same as traditional method)
         if (this.solarSystemManager) {
             const bodies = this.solarSystemManager.getCelestialBodies();
-            
+            console.log(`🎯 SolarSystemManager has ${bodies.size} celestial bodies`);
+
             const celestialBodies = Array.from(bodies.entries())
                 .map(([key, body]) => {
                     const info = this.solarSystemManager.getCelestialBodyInfo(body);
-                    
+
                     // Validate body position
-                    if (!body.position || 
-                        isNaN(body.position.x) || 
-                        isNaN(body.position.y) || 
+                    if (!body.position ||
+                        isNaN(body.position.x) ||
+                        isNaN(body.position.y) ||
                         isNaN(body.position.z)) {
+                        console.log(`🎯 Invalid position for body ${key}:`, body.position);
                         return null;
                     }
-                    
+
                     const distance = this.calculateDistance(this.camera.position, body.position);
-                    
+                    console.log(`🎯 Body ${key}: ${info.name} at ${distance.toFixed(1)}km`);
+
                     // Skip bodies beyond target computer range
                     if (distance > maxTargetingRange) {
+                        console.log(`🎯 Body ${key} beyond range (${distance.toFixed(1)}km > ${maxTargetingRange}km)`);
                         return null;
                     }
                     
@@ -1316,7 +1320,10 @@ export class TargetComputerManager {
         
         // Update target list
         this.targetObjects = deduplicatedTargets;
-        
+
+        // Debug logging to see what targets were found
+        console.log(`🎯 TargetComputerManager: Found ${this.targetObjects.length} targets:`, this.targetObjects.map(t => `${t.name} (${t.distance.toFixed(1)}km)`));
+
         // Sort targets by distance
         this.sortTargetsByDistance();
     }
