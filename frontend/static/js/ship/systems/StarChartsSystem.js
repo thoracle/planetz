@@ -145,17 +145,23 @@ debug('UTILITY', 'Star Charts: Cannot activate - cooldown active');
         let hasStarChartsCards = false;
         try {
             const ship = this.getShip();
-            if (ship && ship.hasSystemCards && typeof ship.hasSystemCards === 'function') {
+            if (!ship) {
+                console.warn('Cannot activate Star Charts: No ship reference available');
+                return false;
+            }
+
+            if (ship.hasSystemCards && typeof ship.hasSystemCards === 'function') {
                 hasStarChartsCards = ship.hasSystemCards('star_charts');
 debug('UI', `🗺️ StarCharts: Card check result:`, hasStarChartsCards);
             } else {
-                if (ship && ship.hasSystemCardsSync && typeof ship.hasSystemCardsSync === 'function') {
+                if (ship.hasSystemCardsSync && typeof ship.hasSystemCardsSync === 'function') {
                     hasStarChartsCards = ship.hasSystemCardsSync('star_charts');
 debug('UI', `🗺️ StarCharts: Card check (sync) result:`, hasStarChartsCards);
                 }
             }
         } catch (error) {
             console.error('Error checking Star Charts cards:', error);
+            return false;
         }
 
         if (!hasStarChartsCards) {

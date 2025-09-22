@@ -17,12 +17,15 @@ export default class RadarSystem {
         this.systemType = 'radar';
         this.name = 'Proximity Detector';
         this.description = 'Provides 3D spatial awareness and proximity detection';
-        
+
         // Health and operational status
         this.maxHealth = 100;
         this.currentHealth = this.maxHealth;
         this.healthPercentage = 1.0;
         this.slotCost = 1; // All systems cost 1 slot
+
+        // Activation state
+        this.isActive = false;
         
         // Radar specifications based on level
         this.updateSpecifications();
@@ -109,17 +112,22 @@ debug('UTILITY', `🎯 ProximityDetector Level ${this.level} specifications upda
         if (!this.isOperational()) {
             return false;
         }
-        
+
+        // Check if ship is available
+        if (!ship) {
+            return false;
+        }
+
         // Check if ship has radar cards installed
         if (!ship.hasSystemCardsSync('radar')) {
             return false;
         }
-        
+
         // Check energy requirements
         if (ship.currentEnergy < this.energyConsumption) {
             return false;
         }
-        
+
         return true;
     }
     
@@ -251,5 +259,51 @@ debug('AI', `🎯 RadarSystem repaired: ${Math.round(this.healthPercentage * 100
         const damageFactor = 1 - this.healthPercentage;
         const baseCost = 100; // Base repair cost
         return Math.ceil(baseCost * damageFactor * this.level);
+    }
+
+    /**
+     * Check if radar can be activated
+     */
+    canActivate(ship) {
+        if (!this.isOperational()) {
+            return false;
+        }
+
+        // Radar systems require energy to operate
+        if (ship && ship.hasEnergy) {
+            const energyRequired = this.getEnergyConsumption();
+            return ship.hasEnergy(energyRequired);
+        }
+
+        return true;
+    }
+
+    /**
+     * Activate the radar system
+     */
+    activate(ship) {
+        if (!this.canActivate(ship)) {
+            console.warn('Cannot activate radar: system not operational or insufficient energy');
+            return false;
+        }
+
+        this.isActive = true;
+        debug('UTILITY', '🎯 Radar system activated');
+        return true;
+    }
+
+    /**
+     * Deactivate the radar system
+     */
+    deactivate() {
+        this.isActive = false;
+        debug('UTILITY', '🎯 Radar system deactivated');
+    }
+
+    /**
+     * Check if radar is operational
+     */
+    isOperational() {
+        return this.healthPercentage > 0 && this.isOperational !== false;
     }
 }

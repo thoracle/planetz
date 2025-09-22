@@ -2414,15 +2414,21 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
     }
 
     toggleTargetComputer() {
+        // Store the current state before toggling
+        const wasEnabled = this.targetComputerEnabled;
+
         // Delegate to target computer manager
         this.targetComputerManager.toggleTargetComputer();
-        
+
         // Update local state to match
         this.targetComputerEnabled = this.targetComputerManager.targetComputerEnabled;
         this.currentTarget = this.targetComputerManager.currentTarget;
         this.targetIndex = this.targetComputerManager.targetIndex;
         this.targetObjects = this.targetComputerManager.targetObjects;
-        
+
+        // Log the state change
+        console.log(`StarfieldManager target computer toggle: ${wasEnabled} → ${this.targetComputerEnabled}`);
+
         // Handle intel visibility
         if (!this.targetComputerEnabled) {
             if (this.intelVisible) {
@@ -2430,6 +2436,11 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                 this.intelHUD.style.display = 'none';
             }
             this.updateIntelIconDisplay();
+        }
+
+        // If we were trying to enable but it's still disabled, the activation failed
+        if (wasEnabled === false && this.targetComputerEnabled === false) {
+            console.warn('Target computer activation failed - staying disabled');
         }
     }
 

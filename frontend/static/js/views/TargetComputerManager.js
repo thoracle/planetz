@@ -567,12 +567,23 @@ export class TargetComputerManager {
         if (targetComputer.isActive) {
             targetComputer.deactivate();
             this.targetComputerEnabled = false;
+            console.log('Target computer deactivated');
         } else {
+            console.log('Attempting to activate target computer...');
+            console.log('Target computer canActivate result:', targetComputer.canActivate ? targetComputer.canActivate() : 'canActivate method not available');
+            console.log('Target computer isOperational result:', targetComputer.isOperational ? targetComputer.isOperational() : 'isOperational method not available');
+
             if (targetComputer.activate(ship)) {
                 this.targetComputerEnabled = true;
+                console.log('Target computer activated successfully');
             } else {
                 this.targetComputerEnabled = false;
                 console.warn('Failed to activate target computer - check system status and energy');
+                console.log('Target computer activation failed. Current state:', {
+                    isActive: targetComputer.isActive,
+                    healthPercentage: targetComputer.healthPercentage,
+                    state: targetComputer.state
+                });
                 return;
             }
         }
