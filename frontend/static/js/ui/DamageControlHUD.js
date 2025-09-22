@@ -474,6 +474,9 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             textColor = '#ff4444';
         }
 
+        // Store the system state in the button for later use in event handlers
+        button.dataset.isActive = isActive;
+
         button.style.cssText = `
             padding: 8px 12px;
             border: 1px solid #555;
@@ -504,8 +507,8 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             button.addEventListener('mouseenter', () => {
                 if (!isDisabled) {
                     button.style.transform = 'scale(1.05)';
-                    // Use the current button state for hover effects
-                    const currentIsActive = button.textContent === 'ON';
+                    // Use the stored system state for hover effects
+                    const currentIsActive = button.dataset.isActive === 'true';
                     if (currentIsActive) {
                         button.style.borderColor = '#00ff41';
                     } else {
