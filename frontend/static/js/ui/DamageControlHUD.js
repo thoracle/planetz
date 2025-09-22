@@ -428,10 +428,11 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         button.dataset.systemName = systemName;
 
         // Get the system and its current state
-        const system = this.ship.getSystem(systemName);
+        const system = this.ship && this.ship.getSystem ? this.ship.getSystem(systemName) : null;
 
         // Special handling for passive systems (always ON)
-        const passiveSystems = ['energy_reactor', 'hull_plating'];
+        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines'];
+        let isActive = false; // Initialize the variable
 
         if (passiveSystems.includes(systemName)) {
             // Passive systems are always ON
@@ -440,7 +441,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             // Target computer state is managed by StarfieldManager
             isActive = this.starfieldManager && this.starfieldManager.targetComputerEnabled ? this.starfieldManager.targetComputerEnabled : false;
         } else {
-            isActive = system?.isActive || false;
+            isActive = system && system.isActive !== undefined ? system.isActive : false;
         }
 
         // Determine button state and appearance
@@ -529,15 +530,15 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
     toggleSystem(systemName) {
         try {
             // Check if this is a passive system (always ON)
-            const passiveSystems = ['energy_reactor', 'hull_plating'];
+            const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines'];
             if (passiveSystems.includes(systemName)) {
                 console.log(`System ${systemName} is passive - no toggle action needed`);
                 return;
             }
 
             const ship = this.ship;
-            if (!ship) {
-                console.error('No ship available for system toggle');
+            if (!ship || !ship.getSystem) {
+                console.error('No ship or ship.getSystem method available for system toggle');
                 return;
             }
 
@@ -553,6 +554,34 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                 if (this.starfieldManager && this.starfieldManager.toggleTargetComputer) {
                     this.starfieldManager.toggleTargetComputer();
                     console.log(`Toggled target computer via StarfieldManager`);
+
+                    // Also ensure the system itself is properly activated/deactivated
+                    const ship = this.ship;
+                    if (ship && ship.getSystem) {
+                        const targetComputer = ship.getSystem('target_computer');
+                        if (targetComputer) {
+                            const shouldBeActive = this.starfieldManager.targetComputerEnabled;
+                            if (shouldBeActive && !targetComputer.isActive) {
+                                // Try to activate the system directly
+                                if (targetComputer.canActivate && targetComputer.canActivate()) {
+                                    if (targetComputer.activate(ship)) {
+                                        console.log('Activated target computer system');
+                                        // Sync the StarfieldManager state with the system state
+                                        this.starfieldManager.targetComputerEnabled = true;
+                                    } else {
+                                        console.warn('Failed to activate target computer system - activate() returned false');
+                                    }
+                                } else {
+                                    console.warn('Cannot activate target computer system - canActivate() failed or undefined');
+                                }
+                            } else if (!shouldBeActive && targetComputer.isActive) {
+                                targetComputer.deactivate();
+                                console.log('Deactivated target computer system');
+                                // Sync the StarfieldManager state with the system state
+                                this.starfieldManager.targetComputerEnabled = false;
+                            }
+                        }
+                    }
                 } else {
                     console.error('StarfieldManager or toggleTargetComputer method not available');
                     return;
@@ -560,6 +589,11 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             } else {
                 // Standard system toggle for other systems
                 // Check if system can be activated
+                if (!system.canActivate) {
+                    console.warn(`System ${systemName} does not have canActivate method`);
+                    return;
+                }
+
                 if (!system.canActivate(ship)) {
                     console.log(`Cannot activate system ${systemName}`);
                     return;
@@ -572,8 +606,12 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                     console.log(`Deactivated system: ${systemName}`);
                 } else {
                     // Activate the system
-                    system.activate(ship);
-                    console.log(`Activated system: ${systemName}`);
+                    const result = system.activate(ship);
+                    if (result) {
+                        console.log(`Activated system: ${systemName}`);
+                    } else {
+                        console.warn(`Failed to activate system ${systemName} - activate() returned false`);
+                    }
                 }
             }
 
@@ -581,6 +619,8 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             this.refresh();
         } catch (error) {
             console.error(`Error toggling system ${systemName}:`, error);
+            // If there's an error, also try to refresh the display to show current states
+            this.refresh();
         }
     }
 
