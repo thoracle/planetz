@@ -143,7 +143,7 @@ debug('UTILITY', 'DockingSystemManager initialized');
         // Critical system validation
         for (const systemName of this.dockingRestrictions.systemFailures) {
             const system = ship.getSystem(systemName);
-            if (!system || !system.isOperational()) {
+            if (!system || !(typeof system.isOperational === 'function' ? system.isOperational() : system.isOperational)) {
                 result.canDock = false;
                 result.reasons.push(`${this.formatSystemName(systemName)} offline or damaged`);
             }
@@ -167,7 +167,7 @@ debug('UTILITY', 'DockingSystemManager initialized');
         for (const [systemName, system] of ship.systems) {
             const healthPercent = system.healthPercentage * 100;
             
-            if (healthPercent < 50 && system.isOperational()) {
+            if (healthPercent < 50 && (typeof system.isOperational === 'function' ? system.isOperational() : system.isOperational)) {
                 warnings.push(`${this.formatSystemName(systemName)} damaged (${healthPercent.toFixed(1)}%)`);
             }
             
@@ -260,7 +260,7 @@ debug('UTILITY', 'DockingSystemManager initialized');
         
         // Impulse engines must be operational for launch
         const impulseEngines = ship.getSystem('impulse_engines');
-        if (!impulseEngines || !impulseEngines.isOperational()) {
+        if (!impulseEngines || !(typeof impulseEngines.isOperational === 'function' ? impulseEngines.isOperational() : impulseEngines.isOperational)) {
             result.canLaunch = false;
             result.reasons.push('Impulse engines offline - cannot launch');
         }

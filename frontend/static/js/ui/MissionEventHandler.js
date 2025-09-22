@@ -1,4 +1,6 @@
 import { debug } from '../debug.js';
+import { playerCredits } from '../utils/PlayerCredits.js';
+import { CARD_TYPES } from '../ship/NFTCard.js';
 
 /**
  * Mission Event Handler
@@ -593,14 +595,17 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                         count: 2, // Mid-range (1-3)
                         minTier: 2,
                         maxTier: 4,
-                        preferredTypes: ['scanner', 'long_range_sensor'],
+                        preferredTypes: [CARD_TYPES.BASIC_RADAR, CARD_TYPES.LONG_RANGE_SCANNER],
                         names: [
-                            'Deep Space Scanner Mk-II',
-                            'Long Range Sensor Array'
+                            'Basic Radar Card',
+                            'Long Range Scanner Card'
                         ],
-                        types: ['scanner', 'long_range_sensor']
+                        types: [CARD_TYPES.BASIC_RADAR, CARD_TYPES.LONG_RANGE_SCANNER]
                     }
                 };
+
+                // ACTUALLY GRANT THE REWARDS TO THE PLAYER
+                await this.grantRewards(rewards);
 
                 // Show mission completion in HUD instead of separate screen
                 const displayMissionData = missionData || {
@@ -630,13 +635,11 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                     }
                 }
 
-                // Log rewards for debugging
-                debug('MISSIONS', `🎁 Mission rewards awarded:`, rewards);
-                
+                debug('MISSIONS', `✅ Mission rewards granted and displayed:`, rewards);
                 return { success: true, rewards };
             } else {
                 debug('MISSIONS', `⚠️ No specific rewards defined for mission: ${missionId}`);
-                
+
                 // Generic mission completion notification
                 if (window.starfieldManager && window.starfieldManager.showHUDEphemeral) {
                     window.starfieldManager.showHUDEphemeral(
@@ -645,12 +648,200 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                         5000
                     );
                 }
-                
+
                 return { success: true, rewards: null };
             }
         } catch (error) {
             console.error('Failed to award mission completion rewards:', error);
             return { success: false, error: error.message };
         }
+    }
+
+    /**
+     * Actually grant rewards to the player (credits, cards, faction rep)
+     * @param {Object} rewards - Rewards object with credits, cards, and faction bonuses
+     */
+    async grantRewards(rewards) {
+        try {
+            // Grant credits
+            if (rewards.credits && rewards.credits > 0) {
+                const success = playerCredits.addCredits(rewards.credits, `Mission completion: ${rewards.rewardPackageId}`);
+                if (success) {
+                    console.log('✅ MISSION COMPLETION: Credits granted:', rewards.credits);
+                } else {
+                    console.error('❌ MISSION COMPLETION: Failed to add credits');
+                }
+            }
+
+            // Grant faction reputation
+            if (rewards.factionBonuses) {
+                await this.grantFactionReputation(rewards.factionBonuses);
+            }
+
+            // Grant NFT cards
+            if (rewards.cards && rewards.cards.count > 0) {
+                await this.grantNFTCards(rewards.cards);
+            }
+
+        } catch (error) {
+            console.error('❌ Error granting rewards:', error);
+        }
+    }
+
+    /**
+     * Grant faction reputation to the player
+     * @param {Object} factionBonuses - Faction bonuses object
+     */
+    async grantFactionReputation(factionBonuses) {
+        try {
+            // Get the current ship to update faction standings
+            const ship = this.starfieldManager?.ship;
+            if (ship) {
+                Object.entries(factionBonuses).forEach(([faction, amount]) => {
+                    if (!ship.factionStandings) {
+                        ship.factionStandings = {};
+                    }
+
+                    // Calculate new standing with -100 to +100 cap
+                    const currentStanding = ship.factionStandings[faction] || 0;
+                    const newStanding = Math.max(-100, Math.min(100, currentStanding + amount));
+                    ship.factionStandings[faction] = newStanding;
+                    console.log('✅ MISSION COMPLETION: Faction reputation granted:', faction, '+', amount, '->', newStanding + '%');
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error granting faction reputation:', error);
+        }
+    }
+
+    /**
+     * Grant NFT cards to the player
+     * @param {Object} cardData - Card data with count, types, names, etc.
+     */
+    async grantNFTCards(cardData) {
+        debug('MISSIONS', '🃏 Granting NFT cards:', cardData);
+
+        try {
+            // Get the CardInventoryUI instance - try multiple approaches
+            let cardInventoryUI = window.cardInventoryUI;
+
+            // If not available globally, try to get it from the starfieldManager
+            if (!cardInventoryUI && this.starfieldManager?.viewManager?.dockingInterface) {
+                cardInventoryUI = this.starfieldManager.viewManager.dockingInterface.cardInventoryUI;
+                debug('MISSIONS', '🃏 Got CardInventoryUI from dockingInterface');
+            }
+
+            // If still not available, try to import and create it
+            if (!cardInventoryUI) {
+                debug('MISSIONS', '🃏 CardInventoryUI not available, trying to import...');
+                try {
+                    const module = await import('../ui/CardInventoryUI.js');
+                    const CardInventoryUI = module.default;
+                    cardInventoryUI = new CardInventoryUI(null);
+                    cardInventoryUI.init();
+                    debug('MISSIONS', '🃏 Created new CardInventoryUI instance');
+                } catch (importError) {
+                    console.error('❌ MISSION COMPLETION: Failed to import CardInventoryUI:', importError);
+                    return;
+                }
+            }
+
+            if (!cardInventoryUI || !cardInventoryUI.inventory) {
+                console.error('❌ MISSION COMPLETION: CardInventoryUI not available or has no inventory');
+                return;
+            }
+
+            const cardInventory = cardInventoryUI.inventory;
+            let cardsGranted = 0;
+
+            // Grant specific cards by name if provided
+            if (cardData.names && cardData.names.length > 0) {
+                for (const cardName of cardData.names) {
+                    const cardType = this.mapCardNameToType(cardName);
+                    if (cardType) {
+                        const card = cardInventory.generateSpecificCard(cardType, 'common');
+                        const result = cardInventory.addCard(card);
+                        if (result.success) {
+                            cardsGranted++;
+                            debug('MISSIONS', `✅ Granted card: ${cardName}`);
+                            console.log('✅ MISSION COMPLETION: Card granted:', cardName);
+                        } else {
+                            console.error(`❌ Failed to grant card ${cardName}:`, result.error);
+                        }
+                    } else {
+                        console.warn(`⚠️ Unknown card name: ${cardName}`);
+                    }
+                }
+            } else if (cardData.preferredTypes && cardData.preferredTypes.length > 0) {
+                // Grant cards of preferred types
+                for (let i = 0; i < cardData.count; i++) {
+                    const randomType = cardData.preferredTypes[Math.floor(Math.random() * cardData.preferredTypes.length)];
+                    const card = cardInventory.generateSpecificCard(randomType, 'common');
+                    const result = cardInventory.addCard(card);
+                    if (result.success) {
+                        cardsGranted++;
+                        debug('MISSIONS', `✅ Granted card: ${randomType}`);
+                        console.log('✅ MISSION COMPLETION: Card granted:', randomType);
+                    } else {
+                        console.error(`❌ Failed to grant card ${randomType}:`, result.error);
+                    }
+                }
+            } else {
+                // Fallback: grant generic cards
+                for (let i = 0; i < cardData.count; i++) {
+                    const card = cardInventory.generateRandomCard();
+                    const result = cardInventory.addCard(card);
+                    if (result.success) {
+                        cardsGranted++;
+                        debug('MISSIONS', `✅ Granted random card: ${card.cardType}`);
+                        console.log('✅ MISSION COMPLETION: Random card granted:', card.cardType);
+                    } else {
+                        console.error(`❌ Failed to grant random card:`, result.error);
+                    }
+                }
+            }
+
+            if (cardsGranted > 0) {
+                console.log('✅ MISSION COMPLETION: NFT cards granted successfully:', cardsGranted);
+            } else {
+                console.warn('⚠️ MISSION COMPLETION: No cards were granted');
+            }
+
+        } catch (error) {
+            console.error('❌ Error granting NFT cards:', error);
+            debug('MISSIONS', `❌ Error in grantNFTCards: ${error.message}`);
+            console.log('🐛 MISSION COMPLETION: ErrorReporter captured: "Console Error"');
+        }
+    }
+
+    /**
+     * Map card name to card type using valid CARD_TYPES constants
+     * @param {string} cardName - Card name
+     * @returns {string|null} - Card type or null if unknown
+     */
+    mapCardNameToType(cardName) {
+        const nameToTypeMap = {
+            'Basic Radar Card': CARD_TYPES.BASIC_RADAR,
+            'Long Range Scanner Card': CARD_TYPES.LONG_RANGE_SCANNER,
+            'Scanner Module Card': CARD_TYPES.BASIC_RADAR,
+            'Shield Generator Card': CARD_TYPES.SHIELD_GENERATOR,
+            'Weapon System Card': CARD_TYPES.LASER_CANNON,
+            'Engine Upgrade Card': CARD_TYPES.IMPULSE_ENGINES,
+            'Cargo Expansion Card': CARD_TYPES.CARGO_HOLD,
+            'Navigation Computer Card': CARD_TYPES.TARGET_COMPUTER,
+            'Communication Array Card': CARD_TYPES.COMMUNICATIONS_ARRAY,
+            // Direct card type mappings for convenience
+            'basic_radar': CARD_TYPES.BASIC_RADAR,
+            'long_range_scanner': CARD_TYPES.LONG_RANGE_SCANNER,
+            'target_computer': CARD_TYPES.TARGET_COMPUTER,
+            'laser_cannon': CARD_TYPES.LASER_CANNON,
+            'impulse_engines': CARD_TYPES.IMPULSE_ENGINES,
+            'shield_generator': CARD_TYPES.SHIELD_GENERATOR,
+            'cargo_hold': CARD_TYPES.CARGO_HOLD,
+            'energy_reactor': CARD_TYPES.ENERGY_REACTOR,
+            'hull_plating': CARD_TYPES.HULL_PLATING
+        };
+
+        return nameToTypeMap[cardName] || null;
     }
 }

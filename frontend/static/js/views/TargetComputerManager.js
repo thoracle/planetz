@@ -52,6 +52,9 @@ export class TargetComputerManager {
         this._waypointsAdded = false;
         this._waypointStyleApplied = false;
         
+        // Target change prevention flag (used during dummy creation)
+        this.preventTargetChanges = false;
+        
         // UI elements
         this.targetHUD = null;
         this.wireframeContainer = null;
@@ -2223,7 +2226,7 @@ export class TargetComputerManager {
      * Update target display information
      */
     updateTargetDisplay() {
-        console.log(`🎯 updateTargetDisplay called: enabled=${this.targetComputerEnabled}, currentTarget=${this.currentTarget?.name || 'none'}, targets=${this.targetObjects?.length || 0}`);
+        // console.log(`🎯 updateTargetDisplay called: enabled=${this.targetComputerEnabled}, currentTarget=${this.currentTarget?.name || 'none'}, targets=${this.targetObjects?.length || 0}`);
 
         // Only log when target actually changes
         if (this._lastLoggedTarget !== this.currentTarget?.name) {
@@ -2242,7 +2245,7 @@ export class TargetComputerManager {
             return;
         }
 
-        console.log(`🎯 updateTargetDisplay: Proceeding with display update`);
+        // console.log(`🎯 updateTargetDisplay: Proceeding with display update`);
 
         // Check if we need to recreate wireframe due to discovery status change
         const targetDataForDiscoveryCheck = this.getCurrentTargetData();

@@ -275,7 +275,7 @@ debug('AI', `⏳ Waiting for enemy ship initialization: ${this.shipName} - Hull:
                 level: system.level,
                 health: system.currentHealth / system.maxHealth,
                 isActive: system.isActive || false,
-                isOperational: system.isOperational()
+                isOperational: typeof system.isOperational === 'function' ? system.isOperational() : system.isOperational
             };
         }
         

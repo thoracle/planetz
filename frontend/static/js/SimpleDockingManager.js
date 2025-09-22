@@ -710,21 +710,21 @@ debug('TARGETING', `🚛 DEBUG: - targetMetadata:`, targetMetadata);
 debug('TARGETING', `🚛 DEBUG: - targetMetadata?.type:`, targetMetadata?.type);
 debug('TARGETING', `🚛 DEBUG: - target?.userData?.name:`, target?.userData?.name);
 debug('TARGETING', `🚛 DEBUG: - target.name:`, target.name);
-                
+
                 // Check if this is a station by name pattern or metadata
-                const isStation = (targetMetadata?.type === 'station') || 
-                                (target.name && (target.name.includes('Station') || target.name.includes('Base') || 
-                                target.name.includes('Outpost') || target.name.includes('Platform') || 
-                                target.name.includes('Array') || target.name.includes('Facility') || 
-                                target.name.includes('Complex') || target.name.includes('Shipyard') || 
+                const isStation = (targetMetadata?.type === 'station') ||
+                                (target.name && (target.name.includes('Station') || target.name.includes('Base') ||
+                                target.name.includes('Outpost') || target.name.includes('Platform') ||
+                                target.name.includes('Array') || target.name.includes('Facility') ||
+                                target.name.includes('Complex') || target.name.includes('Shipyard') ||
                                 target.name.includes('Refinery') || target.name.includes('City') ||
                                 target.name.includes('Research') || target.name.includes('Lab') ||
                                 target.name.includes('Trading') || target.name.includes('Post')));
-                
+
                 const stationName = target?.userData?.name || target.name;
 debug('INSPECTION', `🚛 DEBUG: - isStation:`, isStation);
 debug('INSPECTION', `🚛 DEBUG: - stationName:`, stationName);
-                
+
                 if (isStation && stationName) {
                     const originalName = stationName;
                     const stationKey = String(originalName).toLowerCase().replace(/\s+/g, '_');
@@ -918,6 +918,7 @@ debug('UTILITY', 'Docking systems ready');
                 Math.max(0, this.dockingCooldownTime - (Date.now() - this.lastLaunchTime)) : 0
         };
     }
+
 
     /**
      * Cleanup docking manager

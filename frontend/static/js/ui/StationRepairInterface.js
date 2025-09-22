@@ -290,7 +290,7 @@ debug('AI', 'Station Repair Interface hidden');
                         <div class="option-time">Time: ${repairTime} seconds</div>
                     </div>
                     <button class="repair-button" onclick="window.stationRepairInterface?.repairHull(false)" 
-                            ${this.playerCredits < repairCost ? 'disabled' : ''}>
+                            ${playerCredits.getCredits() < repairCost ? 'disabled' : ''}>
                         REPAIR HULL
                     </button>
                 </div>
@@ -302,7 +302,7 @@ debug('AI', 'Station Repair Interface hidden');
                         <div class="option-time">Time: Instant</div>
                     </div>
                     <button class="repair-button emergency" onclick="window.stationRepairInterface?.repairHull(true)" 
-                            ${this.playerCredits < emergencyCost ? 'disabled' : ''}>
+                            ${playerCredits.getCredits() < emergencyCost ? 'disabled' : ''}>
                         EMERGENCY REPAIR
                     </button>
                 </div>
@@ -412,7 +412,7 @@ debug('AI', 'Station Repair Interface hidden');
                             <div class="option-time">Time: ${partialTime}s</div>
                         </div>
                         <button class="repair-button" onclick="window.stationRepairInterface?.rechargeEnergy(${partialRecharge}, false)" 
-                                ${this.playerCredits < partialCost ? 'disabled' : ''}>
+                                ${playerCredits.getCredits() < partialCost ? 'disabled' : ''}>
                             RECHARGE 50%
                         </button>
                     </div>
@@ -425,7 +425,7 @@ debug('AI', 'Station Repair Interface hidden');
                         <div class="option-time">Time: ${fullTime}s</div>
                     </div>
                     <button class="repair-button" onclick="window.stationRepairInterface?.rechargeEnergy(${fullRecharge}, false)" 
-                            ${this.playerCredits < fullCost ? 'disabled' : ''}>
+                            ${playerCredits.getCredits() < fullCost ? 'disabled' : ''}>
                         FULL RECHARGE
                     </button>
                 </div>
@@ -437,7 +437,7 @@ debug('AI', 'Station Repair Interface hidden');
                         <div class="option-time">Time: Instant</div>
                     </div>
                     <button class="repair-button emergency" onclick="window.stationRepairInterface?.rechargeEnergy(${fullRecharge}, true)" 
-                            ${this.playerCredits < emergencyFullCost ? 'disabled' : ''}>
+                            ${playerCredits.getCredits() < emergencyFullCost ? 'disabled' : ''}>
                         EMERGENCY RECHARGE
                     </button>
                 </div>
@@ -528,8 +528,8 @@ debug('AI', 'Station Repair Interface hidden');
                 </div>
                 <div class="summary-line">
                     <span>Credits After Repair:</span>
-                    <span class="${this.playerCredits >= totalCost ? 'status-good' : 'status-critical'}">
-                        ${(this.playerCredits - totalCost).toLocaleString()}
+                    <span class="${playerCredits.getCredits() >= totalCost ? 'status-good' : 'status-critical'}">
+                        ${(playerCredits.getCredits() - totalCost).toLocaleString()}
                     </span>
                 </div>
             `;
@@ -780,13 +780,13 @@ debug('UI', 'Hull is already at full integrity');
         const baseCost = this.calculateHullRepairCost(hullDamage);
         const cost = emergency ? Math.floor(baseCost * this.repairPricing.baseCosts.emergency) : baseCost;
         
-        if (this.playerCredits < cost) {
+        if (playerCredits.getCredits() < cost) {
 debug('AI', 'Insufficient credits for hull repair');
             return;
         }
         
         // Deduct credits
-        this.playerCredits -= cost;
+        playerCredits.spendCredits(cost, 'Hull repair');
         
         // Repair hull
         this.ship.currentHull = this.ship.maxHull;
@@ -816,13 +816,13 @@ debug('AI', 'No systems selected for repair');
         const baseCost = this.calculateTotalRepairCost();
         const cost = emergency ? Math.floor(baseCost * this.repairPricing.baseCosts.emergency) : baseCost;
         
-        if (this.playerCredits < cost) {
+        if (playerCredits.getCredits() < cost) {
 debug('AI', 'Insufficient credits for system repairs');
             return;
         }
         
         // Deduct credits
-        this.playerCredits -= cost;
+        playerCredits.spendCredits(cost, 'System repairs');
         
         // Repair selected systems
         const repairedSystems = [];
@@ -880,13 +880,13 @@ debug('UI', 'Energy is already at full capacity');
         const baseCost = this.calculateEnergyRechargeCost(actualRechargeAmount);
         const cost = emergency ? Math.floor(baseCost * this.repairPricing.baseCosts.emergency) : baseCost;
         
-        if (this.playerCredits < cost) {
+        if (playerCredits.getCredits() < cost) {
 debug('UI', 'Insufficient credits for energy recharge');
             return false;
         }
         
         // Deduct credits
-        this.playerCredits -= cost;
+        playerCredits.spendCredits(cost, 'Energy recharge');
         
         // Recharge energy
         this.ship.currentEnergy = Math.min(currentEnergy + actualRechargeAmount, maxEnergy);

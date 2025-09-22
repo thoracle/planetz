@@ -112,7 +112,7 @@ debug('UTILITY', `🎯 ProximityDetector Level ${this.level} specifications upda
      * Check if radar can be activated
      */
     canActivate(ship) {
-        if (!this.isOperational()) {
+        if (!(typeof this.isOperational === 'function' ? this.isOperational() : this.isOperational)) {
             return false;
         }
 
@@ -223,7 +223,7 @@ debug('UTILITY', `Ship reference set on ${this.displayName || this.name}`);
             name: this.name,
             level: this.level,
             health: Math.round(this.healthPercentage * 100),
-            operational: this.isOperational(),
+            operational: typeof this.isOperational === 'function' ? this.isOperational() : this.isOperational,
             energyConsumption: this.energyConsumption,
             range: `${(this.range / 1000).toFixed(0)}km`,
             updateRate: `${this.updateFrequency}Hz`,
@@ -286,7 +286,7 @@ debug('AI', `🎯 RadarSystem repaired: ${Math.round(this.healthPercentage * 100
      * Check if radar can be activated
      */
     canActivate(ship) {
-        if (!this.isOperational()) {
+        if (!(typeof this.isOperational === 'function' ? this.isOperational() : this.isOperational)) {
             return false;
         }
 
@@ -321,6 +321,25 @@ debug('AI', `🎯 RadarSystem repaired: ${Math.round(this.healthPercentage * 100
     deactivate() {
         this.isActive = false;
         debug('UTILITY', '🎯 Radar system deactivated');
+    }
+
+    /**
+     * Toggle radar system on/off
+     * @returns {boolean} True if radar is now active, false if inactive
+     */
+    toggleRadar() {
+        if (!(typeof this.isOperational === 'function' ? this.isOperational() : this.isOperational)) {
+            console.warn('Cannot toggle radar: system not operational');
+            return false;
+        }
+        
+        if (this.isActive) {
+            this.deactivate();
+        } else {
+            this.activate(this.ship);
+        }
+        
+        return this.isActive;
     }
 
     /**

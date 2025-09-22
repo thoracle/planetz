@@ -89,10 +89,6 @@ debug('UTILITY', `Impulse Engines created (Level ${level}) - Max Speed: Impulse 
      * @returns {number} Maximum impulse speed
      */
     getMaxImpulseSpeed() {
-        if (!this.isOperational()) {
-            return 0;
-        }
-        
         const levelStats = this.levelStats[this.level] || this.levelStats[1];
         const maxForLevel = levelStats.maxSpeed || 6;
         
@@ -100,7 +96,10 @@ debug('UTILITY', `Impulse Engines created (Level ${level}) - Max Speed: Impulse 
         const effectiveness = this.getEffectiveness();
         let speedReduction;
         
-        if (effectiveness < 0.2) {
+        if (effectiveness <= 0) {
+            // Completely destroyed (0% health) - emergency speed only (impulse 2)
+            speedReduction = 2; // Max impulse 2 for emergency movement when destroyed
+        } else if (effectiveness < 0.2) {
             // Severely damaged (below 20%) - emergency speed only (impulse 1)
             speedReduction = 1; // Max impulse 1 for emergency movement
         } else if (effectiveness < 0.5) {
@@ -111,9 +110,10 @@ debug('UTILITY', `Impulse Engines created (Level ${level}) - Max Speed: Impulse 
             speedReduction = maxForLevel;
         }
         
-        // Ensure minimum emergency movement capability (at least impulse 1)
+        // Ensure minimum emergency movement capability (at least impulse 2 for 0% health, impulse 1 otherwise)
+        const minSpeed = effectiveness <= 0 ? 2 : 1;
         const calculatedMax = Math.min(speedReduction, this.maxImpulseSpeed);
-        return Math.max(1, calculatedMax);
+        return Math.max(minSpeed, calculatedMax);
     }
     
     /**
@@ -122,11 +122,6 @@ debug('UTILITY', `Impulse Engines created (Level ${level}) - Max Speed: Impulse 
      * @returns {boolean} True if speed was set successfully
      */
     setImpulseSpeed(speed) {
-        if (!this.isOperational()) {
-            console.warn('Cannot set impulse speed: engines not operational');
-            return false;
-        }
-        
         const maxSpeed = this.getMaxImpulseSpeed();
         const clampedSpeed = Math.max(0, Math.min(speed, maxSpeed));
         
@@ -177,8 +172,8 @@ debug('UTILITY', `Impulse speed set to ${clampedSpeed}`);
      * @returns {number} Energy consumption rate when active
      */
     getEnergyConsumptionRate() {
-        // No energy consumption if not operational or not moving forward
-        if (!this.isOperational() || !this.isMovingForward || this.currentImpulseSpeed === 0) {
+        // No energy consumption if not moving forward
+        if (!this.isMovingForward || this.currentImpulseSpeed === 0) {
             return 0;
         }
         
@@ -201,7 +196,11 @@ debug('UTILITY', `Impulse speed set to ${clampedSpeed}`);
      * @returns {number} Base speed rating provided by engines
      */
     getBaseSpeed() {
-        if (!this.isOperational()) return 0;
+        // Always provide some base speed, even when damaged
+        if (this.getEffectiveness() <= 0) {
+            // At 0% health, provide minimal speed capability
+            return 5; // Reduced base speed for emergency movement
+        }
         
         // Base speed per level
         const speedPerLevel = 15; // Base speed units per level
@@ -215,8 +214,10 @@ debug('UTILITY', `Impulse speed set to ${clampedSpeed}`);
      * @returns {number} Speed multiplier based on impulse speed
      */
     getSpeedBonus() {
-        if (!this.isOperational()) {
-            return 0;
+        // Always provide some speed bonus, even when damaged
+        if (this.getEffectiveness() <= 0) {
+            // At 0% health, provide minimal speed bonus for emergency movement
+            return this.currentImpulseSpeed * 0.1; // Very reduced bonus
         }
         
         // Speed bonus based on current impulse setting and system effectiveness
@@ -252,8 +253,9 @@ debug('AI', `${this.name} has been completely destroyed but can still be repaire
      * @returns {boolean} True if system can function
      */
     isOperational() {
-        // Impulse engines can be completely destroyed (0% health) but are still repairable
-        return this.healthPercentage > 0;
+        // Impulse engines always allow emergency movement, even at 0% health
+        // This prevents players from being completely stranded
+        return true;
     }
 
     /**
@@ -324,7 +326,7 @@ debug('UTILITY', 'Impulse engines destroyed - all stop!');
     calculateTravel(distance, impulseSpeed = null) {
         const speed = impulseSpeed !== null ? impulseSpeed : this.currentImpulseSpeed;
         
-        if (speed === 0 || !this.isOperational()) {
+        if (speed === 0) {
             return {
                 time: Infinity,
                 energyCost: Infinity,
@@ -373,9 +375,7 @@ debug('UTILITY', 'Emergency stop engaged - all stop!');
      * @returns {boolean} - True if impulse engines can be activated
      */
     canActivate(ship) {
-        if (!this.isOperational()) {
-            return false;
-        }
+        // Impulse engines can always be activated for emergency movement
         
         // Check if ship has required cards
         if (ship && ship.hasSystemCardsSync) {

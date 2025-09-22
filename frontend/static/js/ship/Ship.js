@@ -282,7 +282,7 @@ debug('UTILITY', `Initialized ${this.systems.size} default systems for ${this.sh
         
         // Sum stats from all installed systems/gear
         for (let [systemName, system] of this.systems) {
-            if (system.isOperational()) {
+            if (typeof system.isOperational === 'function' ? system.isOperational() : system.isOperational) {
                 // Add base stats provided by each system
                 if (system.getBaseSpeed) {
                     totalSpeed += system.getBaseSpeed();
@@ -604,7 +604,7 @@ debug('UTILITY', `Removed system: ${systemName} (${this.usedSlots}/${this.totalS
             systemsStatus[systemName] = {
                 health: system.healthPercentage,
                 isActive: system.isActive,
-                canBeActivated: system.isOperational(),
+                canBeActivated: typeof system.isOperational === 'function' ? system.isOperational() : system.isOperational,
                 level: system.level,
                 systemType: system.systemType || systemName
             };
@@ -697,7 +697,7 @@ debug('UTILITY', `Removed system: ${systemName} (${this.usedSlots}/${this.totalS
         let totalConsumption = 0;
         
         for (let [systemName, system] of this.systems) {
-            if (system.isOperational() && system.getEnergyConsumptionRate) {
+            if ((typeof system.isOperational === 'function' ? system.isOperational() : system.isOperational) && system.getEnergyConsumptionRate) {
                 totalConsumption += system.getEnergyConsumptionRate();
             }
         }

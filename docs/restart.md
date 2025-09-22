@@ -559,6 +559,10 @@ waypoint: '#ff00ff'  // Magenta for waypoints
 - **Target Loss & Position Validation Fixes**: Fixed race conditions causing discovered objects to show "Unknown" colors and resolved position lookup issues for celestial bodies
 - **⭐ TAB Targeting Real-Time Updates**: Fixed TAB key target cycling to update Star Charts blinking targets in real-time - resolved navigation path issue where StarChartsUI was accessed incorrectly
 - **🎯 Star Charts Enhanced Targeting & Visual Indicators**: Complete overhaul of Star Charts targeting system with intelligent centering, real-time TAB synchronization, and professional visual indicators including spinning green rectangle target indicator matching Galactic Chart style
+- **🎮 Operations HUD System Fixes**: Fixed ops HUD toggle buttons to work like keyboard equivalents, added impulse speed controls, fixed system operational checks, and resolved M->O HUD switching behavior
+- **💰 Ship Repair Credits Fix**: Fixed station repair interface to properly charge credits using unified PlayerCredits system instead of local variables
+- **🔧 Console Spam Cleanup**: Disabled excessive debug logging from TargetComputerManager and MissionAPIService for cleaner console output
+- **🚀 Docking System Fixes**: Resolved `isOperational` type errors across multiple systems (Ship.js, DockingSystemManager.js, HelpInterface.js, etc.) by adding proper function/boolean property checks
 
 **Next Steps**: Content creation, advanced gameplay mechanics, multiplayer foundation.
 

@@ -90,7 +90,7 @@ debug('UI', 'Ship Tech Manual closed');
             if (system && ship.hasSystemCardsSync && ship.hasSystemCardsSync(systemName)) {
                 availableSystems[systemName] = {
                     level: system.level,
-                    isOperational: system.isOperational(),
+                    isOperational: typeof system.isOperational === 'function' ? system.isOperational() : system.isOperational,
                     health: Math.round(system.healthPercentage * 100)
                 };
             }
@@ -458,6 +458,18 @@ debug('UI', 'Ship Tech Manual closed');
                     <div class="control-entry">
                         <span class="key-binding">Ctrl+Shift+B</span>
                         <span class="control-desc">Emergency Repair All</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Ctrl+Shift+V</span>
+                        <span class="control-desc">Simulate Random System Damage</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Ctrl+Shift+M</span>
+                        <span class="control-desc">Simulate Hull Damage</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">Ctrl+Shift+N</span>
+                        <span class="control-desc">Simulate Energy Drain</span>
                     </div>
                 </div>
                 

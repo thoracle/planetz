@@ -329,7 +329,7 @@ debug('COMBAT', 'Damage Control Interface hidden');
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Operational:</span>
-                    <span class="detail-value">${system.isOperational() ? '✅ Yes' : '❌ No'}</span>
+                    <span class="detail-value">${(typeof system.isOperational === 'function' ? system.isOperational() : system.isOperational) ? '✅ Yes' : '❌ No'}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Active:</span>

@@ -68,7 +68,7 @@ debug('COMBAT', `🔫 WeaponSyncManager: Initialized ${unifiedWeapons.length} we
         // Source 1: Ship systems (legacy weapons system)
         if (this.ship.systems) {
             for (const [systemName, system] of this.ship.systems.entries()) {
-                if (this.isWeaponSystem(systemName) && system && system.isOperational()) {
+                if (this.isWeaponSystem(systemName) && system && (typeof system.isOperational === 'function' ? system.isOperational() : system.isOperational)) {
                     // Map legacy "weapons" system to a specific weapon type
                     let weaponType = systemName;
                     if (systemName === 'weapons') {

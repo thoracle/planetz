@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ops HUD Debug Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff41;
+            margin: 20px;
+        }
+        .debug-info {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .test-button {
+            background: #2a4a2a;
+            color: #00ff41;
+            border: 1px solid #555;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .test-button:hover {
+            background: #3a5a3a;
+        }
+        .test-button:disabled {
+            background: #3a3a3a;
+            color: #666;
+            cursor: default;
+        }
+        #console-output {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Ops HUD Debug Test</h1>
+    
+    <div class="debug-info">
+        <h3>Test Instructions:</h3>
+        <p>1. Open browser console (F12)</p>
+        <p>2. Launch the game normally</p>
+        <p>3. Open ops HUD (O key)</p>
+        <p>4. Try clicking different system buttons</p>
+        <p>5. Check console output below and browser console</p>
+    </div>
+    
+    <div class="debug-info">
+        <h3>Expected Systems with Keyboard Shortcuts:</h3>
+        <ul>
+            <li><strong>target_computer</strong> - T key (WORKING)</li>
+            <li><strong>shields</strong> - S key (NOT WORKING?)</li>
+            <li><strong>radar</strong> - P key (NOT WORKING?)</li>
+            <li><strong>long_range_scanner</strong> - L key (NOT WORKING?)</li>
+            <li><strong>star_charts</strong> - C key (NOT WORKING?)</li>
+            <li><strong>galactic_chart</strong> - G key (NOT WORKING?)</li>
+            <li><strong>subspace_radio</strong> - R key (NOT WORKING?)</li>
+        </ul>
+    </div>
+    
+    <div class="debug-info">
+        <h3>Test Buttons (for manual testing):</h3>
+        <button class="test-button" onclick="testKeyboardShortcut('s')">Test S Key (Shields)</button>
+        <button class="test-button" onclick="testKeyboardShortcut('p')">Test P Key (Radar)</button>
+        <button class="test-button" onclick="testKeyboardShortcut('l')">Test L Key (Scanner)</button>
+        <button class="test-button" onclick="testKeyboardShortcut('c')">Test C Key (Star Charts)</button>
+        <button class="test-button" onclick="testKeyboardShortcut('g')">Test G Key (Galactic Chart)</button>
+        <button class="test-button" onclick="testKeyboardShortcut('r')">Test R Key (Radio)</button>
+        <button class="test-button" onclick="testKeyboardShortcut('t')">Test T Key (Target Computer)</button>
+    </div>
+    
+    <div class="debug-info">
+        <h3>Console Output:</h3>
+        <div id="console-output"></div>
+        <button class="test-button" onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <script>
+        // Capture console output
+        const consoleOutput = document.getElementById('console-output');
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        
+        function addToConsole(type, ...args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            
+            consoleOutput.textContent += `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            addToConsole('log', ...args);
+        };
+        
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            addToConsole('error', ...args);
+        };
+        
+        console.warn = function(...args) {
+            originalConsoleWarn.apply(console, args);
+            addToConsole('warn', ...args);
+        };
+        
+        function testKeyboardShortcut(key) {
+            console.log(`🔧 Testing keyboard shortcut: ${key.toUpperCase()} key`);
+            
+            // Simulate keydown event
+            const event = new KeyboardEvent('keydown', {
+                key: key,
+                code: `Key${key.toUpperCase()}`,
+                bubbles: true,
+                cancelable: true
+            });
+            
+            document.dispatchEvent(event);
+            console.log(`🔧 Dispatched keydown event for ${key} key`);
+        }
+        
+        function clearConsole() {
+            consoleOutput.textContent = '';
+        }
+        
+        // Log when page loads
+        console.log('🔧 Ops HUD Debug Test loaded');
+        console.log('🔧 Open the main game, then open ops HUD (O key) and test the buttons');
+        
+        // Check if game objects are available
+        setTimeout(() => {
+            if (window.starfieldManager) {
+                console.log('🔧 StarfieldManager found:', !!window.starfieldManager);
+                console.log('🔧 ViewManager found:', !!window.starfieldManager.viewManager);
+                console.log('🔧 Ship found:', !!window.starfieldManager.viewManager?.getShip());
+                
+                const ship = window.starfieldManager.viewManager?.getShip();
+                if (ship && ship.systems) {
+                    console.log('🔧 Ship systems available:', Array.from(ship.systems.keys()));
+                }
+            } else {
+                console.log('🔧 StarfieldManager not found - make sure game is loaded');
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

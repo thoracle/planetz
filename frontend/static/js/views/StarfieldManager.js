@@ -2389,8 +2389,11 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
 
             // Operations Report key (O) - toggle operations/damage control view
             if (commandKey === 'o') {
+                // Check if Mission Status HUD is open before dismissing
+                const missionHudWasVisible = this.missionStatusHUD && this.missionStatusHUD.visible;
+                
                 // CRITICAL: Dismiss Mission Status HUD if open to prevent overlap
-                if (this.missionStatusHUD && this.missionStatusHUD.visible) {
+                if (missionHudWasVisible) {
                     this.missionStatusHUD.hide();
                     debug('COMBAT', 'Mission Status HUD dismissed for Operations Report');
                 }
@@ -2402,7 +2405,18 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                 }
 
                 this.playCommandSound();
-                this.toggleDamageControl();
+                
+                // Simple logic: If Mission HUD was visible, always show Ops HUD
+                // Otherwise, toggle Ops HUD normally
+                if (missionHudWasVisible) {
+                    // Mission HUD was open, so FORCE show Ops HUD
+                    // Set the state to closed first, then toggle to ensure it opens
+                    this.damageControlVisible = false;
+                    this.toggleDamageControl();
+                } else {
+                    // Normal toggle behavior when Mission HUD wasn't open
+                    this.toggleDamageControl();
+                }
             }
         });
 

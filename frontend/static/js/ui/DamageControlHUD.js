@@ -23,6 +23,7 @@ export default class DamageControlHUD {
 
         this.elements = {};
         this.updateInterval = null;
+        this.buttonStateInterval = null;
         
         this.init();
     }
@@ -63,8 +64,64 @@ export default class DamageControlHUD {
             border-bottom: 2px solid #00ff41;
             padding-bottom: 4px;
             text-align: center;
+            position: relative;
         `;
-        this.elements.header.textContent = 'OPERATIONS REPORT';
+        
+        // Create header content container
+        const headerContent = document.createElement('div');
+        headerContent.textContent = 'OPERATIONS REPORT';
+        
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = '×';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: -8px;
+            right: 0;
+            background: rgba(0, 255, 65, 0.2);
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            font-size: 20px;
+            font-weight: bold;
+            width: 24px;
+            height: 24px;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            transition: all 0.2s ease;
+            text-shadow: 0 0 4px rgba(0, 255, 65, 0.6);
+        `;
+        
+        // Add hover effects
+        closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.backgroundColor = 'rgba(0, 255, 65, 0.4)';
+            closeButton.style.boxShadow = '0 0 12px rgba(0, 255, 65, 0.8)';
+            closeButton.style.textShadow = '0 0 8px rgba(0, 255, 65, 1)';
+        });
+        
+        closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.backgroundColor = 'rgba(0, 255, 65, 0.2)';
+            closeButton.style.boxShadow = 'none';
+            closeButton.style.textShadow = '0 0 4px rgba(0, 255, 65, 0.6)';
+        });
+        
+        // Add click handler to close the ops HUD
+        closeButton.addEventListener('click', () => {
+            // Use the same method as the O key to properly sync state
+            if (this.starfieldManager && this.starfieldManager.toggleDamageControl) {
+                this.starfieldManager.playCommandSound();
+                this.starfieldManager.toggleDamageControl();
+            } else {
+                // Fallback if starfieldManager is not available
+                this.hide();
+            }
+        });
+        
+        this.elements.header.appendChild(headerContent);
+        this.elements.header.appendChild(closeButton);
         this.container.appendChild(this.elements.header);
     }
     
@@ -146,16 +203,105 @@ export default class DamageControlHUD {
     }
     
     bindEvents() {
-        // Simple event delegation - one listener for all toggle buttons
+        // Event delegation for both toggle buttons and speed control buttons
         this.elements.systemsList.addEventListener('click', (event) => {
+            // Handle regular toggle buttons
             if (event.target.matches('.damage-control-toggle-btn')) {
                 const systemName = event.target.dataset.systemName;
+                console.log('🔧 Button clicked:', {
+                    systemName,
+                    disabled: event.target.disabled,
+                    hasSystemName: !!systemName,
+                    buttonText: event.target.textContent
+                });
                 if (systemName && !event.target.disabled) {
 debug('AI', `🔧 Toggle button clicked for: ${systemName}`);
                     this.toggleSystem(systemName);
+                } else {
+                    console.log('🔧 Button click ignored:', {
+                        reason: !systemName ? 'no system name' : 'button disabled',
+                        systemName,
+                        disabled: event.target.disabled
+                    });
+                }
+            }
+            // Handle impulse speed control buttons
+            else if (event.target.matches('.impulse-speed-btn')) {
+                const systemName = event.target.dataset.systemName;
+                const action = event.target.dataset.action;
+                
+                if (systemName && action && !event.target.disabled) {
+                    console.log('🔧 Speed button clicked:', { systemName, action });
+                    this.adjustImpulseSpeed(action);
                 }
             }
         });
+    }
+    
+    adjustImpulseSpeed(action) {
+        const ship = this.ship;
+        const impulseEngines = ship?.getSystem('impulse_engines');
+        
+        if (!impulseEngines) {
+            console.warn('Cannot adjust impulse speed: no impulse engines');
+            return;
+        }
+        
+        const currentSpeed = impulseEngines.getImpulseSpeed();
+        let requestedSpeed = currentSpeed;
+        
+        if (action === 'increase') {
+            requestedSpeed = currentSpeed + 1;
+        } else if (action === 'decrease') {
+            requestedSpeed = currentSpeed - 1;
+        }
+        
+        // Don't allow negative speeds
+        if (requestedSpeed < 0) {
+            requestedSpeed = 0;
+        }
+        
+        if (requestedSpeed !== currentSpeed) {
+            // Use EXACTLY the same logic as 0-9 keys from StarfieldManager
+            
+            // Check if the requested speed exceeds the engine's maximum capability
+            const maxSpeed = impulseEngines.getMaxImpulseSpeed();
+            if (requestedSpeed > maxSpeed) {
+                // Requested speed exceeds engine capability - play command failed sound and abort
+                this.starfieldManager.playCommandFailedSound();
+                return; // Abort without changing speed
+            }
+            
+            impulseEngines.setImpulseSpeed(requestedSpeed);
+            // Get the actual clamped speed from the impulse engines
+            const actualSpeed = impulseEngines.getImpulseSpeed();
+            
+            // Set target speed to the actual clamped speed (same as 0-9 keys)
+            this.starfieldManager.targetSpeed = actualSpeed;
+            
+            // Determine if we need to decelerate (same as 0-9 keys)
+            if (actualSpeed < this.starfieldManager.currentSpeed) {
+                this.starfieldManager.decelerating = true;
+                // Start engine shutdown if going to zero
+                if (actualSpeed === 0 && this.starfieldManager.engineState === 'running') {
+                    this.starfieldManager.playEngineShutdown();
+                }
+            } else {
+                this.starfieldManager.decelerating = false;
+                // Handle engine sounds for acceleration
+                const sounds = this.starfieldManager.audioManager.areSoundsLoaded();
+                if (sounds.engine) {
+                    if (this.starfieldManager.audioManager.getEngineState() === 'stopped') {
+                        this.starfieldManager.audioManager.playEngineStartup();
+                    } else if (this.starfieldManager.audioManager.getEngineState() === 'running') {
+                        this.starfieldManager.audioManager.updateEngineVolume(actualSpeed, this.starfieldManager.maxSpeed);
+                    }
+                }
+            }
+            
+            // Refresh the ops HUD to update the speed display
+            setTimeout(() => this.refresh(), 50);
+        }
     }
     
     show() {
@@ -163,11 +309,18 @@ debug('AI', `🔧 Toggle button clicked for: ${systemName}`);
         this.container.style.display = 'block';
         this.refresh();
         
-        // Start update loop
+        // Start update loops
         if (!this.updateInterval) {
             this.updateInterval = setInterval(() => {
                 this.updateRepairProgress();
             }, 100);
+        }
+        
+        // Start button state monitoring loop
+        if (!this.buttonStateInterval) {
+            this.buttonStateInterval = setInterval(() => {
+                this.updateAllButtonStates();
+            }, 500); // Check button states every 500ms
         }
     }
     
@@ -175,41 +328,33 @@ debug('AI', `🔧 Toggle button clicked for: ${systemName}`);
         this.isVisible = false;
         this.container.style.display = 'none';
         
-        // Stop update loop
+        // Stop update loops
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
+        }
+        
+        if (this.buttonStateInterval) {
+            clearInterval(this.buttonStateInterval);
+            this.buttonStateInterval = null;
         }
     }
     
     refresh() {
         if (!this.isVisible) return;
         
-debug('COMBAT', 'Refreshing operations report display');
         
         // Get ship status with and without filtering for comparison
         const unfilteredStatus = this.ship.getStatus(false);
         const shipStatus = this.ship.getStatus(true); // getCardFilteredStatus()
         
-debug('UI', 'ALL ship systems (unfiltered):', Object.keys(unfilteredStatus.systems));
-debug('UI', 'FILTERED ship systems:', Object.keys(shipStatus.systems));
-        console.log('🔧 Systems filtered OUT:', Object.keys(unfilteredStatus.systems).filter(
-            name => !Object.keys(shipStatus.systems).includes(name)
-        ));
         
-        // Debug: Show raw ship systems Map
-debug('UI', 'Ship.systems Map entries:');
-        for (const [systemName, system] of this.ship.systems) {
-debug('UI', `  - ${systemName}: ${system.constructor.name} (Level ${system.level}, Health: ${Math.round(system.healthPercentage * 100)}%)`);
-        }
         
         if (!unfilteredStatus || !unfilteredStatus.systems) {
             console.warn('No ship status available for operations report');
             return;
         }
         
-        // Debug: Log what systems we're getting
-debug('UI', 'Using unfiltered ship status systems:', Object.keys(unfilteredStatus.systems));
         
         // Clear systems list
         this.elements.systemsList.innerHTML = '';
@@ -221,7 +366,6 @@ debug('UI', 'Using unfiltered ship status systems:', Object.keys(unfilteredStatu
         // Check for radar cards and add virtual radar system if needed
         const hasRadarCards = this.ship && this.ship.hasSystemCardsSync && this.ship.hasSystemCardsSync('radar');
         if (hasRadarCards && !systemsToShow.radar) {
-debug('UI', 'Adding virtual radar system (cards detected but no system object)');
             systemsToShow.radar = {
                 name: 'Proximity Detector',
                 level: 1,
@@ -236,10 +380,9 @@ debug('UI', 'Adding virtual radar system (cards detected but no system object)')
             };
         }
         
-        // Add each system
+        // Add each system (including passive systems for informational purposes)
         let systemsShown = 0;
         for (const [systemName, systemData] of Object.entries(systemsToShow)) {
-debug('UI', `🔧 Processing system: ${systemName}`, systemData);
             this.createSystemCard(systemName, systemData);
             systemsShown++;
         }
@@ -365,6 +508,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         const healthBarContainer = document.createElement('div');
         healthBarContainer.style.cssText = `
             width: 100%;
+            max-width: 200px;
             height: 6px;
             background-color: #333;
             border-radius: 3px;
@@ -415,13 +559,136 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         
         systemCard.appendChild(systemInfo);
         
-        // Right side - toggle button
-        const toggleButton = this.createToggleButton(systemName, isDamaged, hasValidCard);
-        systemCard.appendChild(toggleButton);
+        // Right side - toggle button or speed controls (only for non-passive systems)
+        if (systemName === 'impulse_engines') {
+            // Special handling for impulse engines - create speed control buttons
+            const speedControls = this.createSpeedControls(systemName, isDamaged, hasValidCard);
+            if (speedControls) {
+                systemCard.appendChild(speedControls);
+            }
+        } else {
+            // Regular toggle button for other systems
+            const toggleButton = this.createToggleButton(systemName, isDamaged, hasValidCard);
+            if (toggleButton) {
+                systemCard.appendChild(toggleButton);
+            }
+        }
         
         this.elements.systemsList.appendChild(systemCard);
     }
     
+    createSpeedControls(systemName, isDamaged, hasValidCard) {
+        const ship = this.ship;
+        const impulseEngines = ship?.getSystem('impulse_engines');
+        
+        if (!impulseEngines) {
+            return null; // No impulse engines system
+        }
+        
+        // Get current speed and max speed
+        const currentSpeed = impulseEngines.getImpulseSpeed();
+        const maxSpeed = impulseEngines.getMaxImpulseSpeed();
+        
+        // Create container for speed controls - vertical layout to match other systems
+        const controlsContainer = document.createElement('div');
+        controlsContainer.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        `;
+        
+        // Create speed display (top)
+        const speedDisplay = document.createElement('div');
+        speedDisplay.style.cssText = `
+            text-align: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: #00ff41;
+            padding: 2px 4px;
+            margin-bottom: 2px;
+        `;
+        speedDisplay.textContent = currentSpeed === 0 ? 'STOP' : `IMP ${currentSpeed}`;
+        
+        // Create button stack container (bottom)
+        const buttonStack = document.createElement('div');
+        buttonStack.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        `;
+        
+        // Create increase button (top)
+        const increaseButton = document.createElement('button');
+        increaseButton.innerHTML = '+';
+        increaseButton.className = 'impulse-speed-btn';
+        increaseButton.dataset.action = 'increase';
+        increaseButton.dataset.systemName = systemName;
+        
+        // Create decrease button (bottom)
+        const decreaseButton = document.createElement('button');
+        decreaseButton.innerHTML = '−';
+        decreaseButton.className = 'impulse-speed-btn';
+        decreaseButton.dataset.action = 'decrease';
+        decreaseButton.dataset.systemName = systemName;
+        
+        // Style both buttons
+        [decreaseButton, increaseButton].forEach(button => {
+            // Only disable if no cards - damaged engines can still be used (just with reduced max speed)
+            const isDisabled = !hasValidCard;
+            const canDecrease = currentSpeed > 0;
+            const canIncrease = currentSpeed < maxSpeed;
+            
+            // Disable buttons based on conditions
+            if (button === decreaseButton && (!canDecrease || isDisabled)) {
+                button.disabled = true;
+            } else if (button === increaseButton && (!canIncrease || isDisabled)) {
+                button.disabled = true;
+            }
+            
+            button.style.cssText = `
+                width: 38px;
+                height: 22px;
+                border: 1px solid #00ff41;
+                border-radius: 3px;
+                background: rgba(0, 255, 65, 0.2);
+                color: #00ff41;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: ${button.disabled ? 'not-allowed' : 'pointer'};
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s ease;
+                opacity: ${button.disabled ? 0.5 : 1};
+                line-height: 1;
+            `;
+            
+            // Add hover effects for enabled buttons
+            if (!button.disabled) {
+                button.addEventListener('mouseenter', () => {
+                    button.style.backgroundColor = 'rgba(0, 255, 65, 0.4)';
+                    button.style.boxShadow = '0 0 8px rgba(0, 255, 65, 0.5)';
+                });
+                
+                button.addEventListener('mouseleave', () => {
+                    button.style.backgroundColor = 'rgba(0, 255, 65, 0.2)';
+                    button.style.boxShadow = 'none';
+                });
+            }
+        });
+        
+        // Assemble the button stack (+ on top, - on bottom)
+        buttonStack.appendChild(increaseButton);
+        buttonStack.appendChild(decreaseButton);
+        
+        // Assemble the main container (speed display on top, buttons on bottom)
+        controlsContainer.appendChild(speedDisplay);
+        controlsContainer.appendChild(buttonStack);
+        
+        return controlsContainer;
+    }
+
     createToggleButton(systemName, isDamaged, hasValidCard) {
         const button = document.createElement('button');
         button.className = 'damage-control-toggle-btn';
@@ -430,62 +697,38 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         // Get the system and its current state
         const system = this.ship && this.ship.getSystem ? this.ship.getSystem(systemName) : null;
 
-        // Debug logging to see what systems are available
-        if (!system) {
-            console.warn(`System ${systemName} not found on ship`);
-        } else {
-            console.log(`System ${systemName} found:`, {
-                hasActivate: typeof system.activate === 'function',
-                hasDeactivate: typeof system.deactivate === 'function',
-                hasIsActive: typeof system.isActive !== 'undefined',
-                isActive: system.isActive,
-                canActivate: system.canActivate ? 'yes' : 'no'
-            });
-        }
 
-        // Special handling for passive systems (always ON)
-        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines'];
-        let isActive = false; // Initialize the variable
-
-        if (passiveSystems.includes(systemName)) {
-            // Passive systems are always ON
-            isActive = true;
-        } else if (systemName === 'target_computer') {
-            // Target computer state is managed by StarfieldManager
-            isActive = this.starfieldManager && this.starfieldManager.targetComputerEnabled ? this.starfieldManager.targetComputerEnabled : false;
-        } else {
-            isActive = system && system.isActive !== undefined ? system.isActive : false;
-        }
+        // Get the current system state
+        const isActive = this.getSystemActiveState(systemName, system);
 
         // Determine button state and appearance
         let buttonText = 'OFF';
         let backgroundColor = '#4a2a2a';
         let textColor = '#ff4444';
-        let isDisabled = !hasValidCard;
+        let isDisabled = false;
 
-        if (!hasValidCard) {
-            buttonText = 'NO CARD';
-            backgroundColor = '#3a3a3a';
-            textColor = '#666';
-        } else if (isDamaged) {
-            buttonText = 'DAMAGED';
-            backgroundColor = '#4a4a2a';
-            textColor = '#ffaa44';
-            isDisabled = true;
-        } else if (passiveSystems.includes(systemName)) {
-            // Passive systems are always ON
-            buttonText = 'ON';
-            backgroundColor = '#2a4a2a';
-            textColor = '#00ff41';
-            isDisabled = true; // Passive systems can't be toggled
-        } else if (isActive) {
+        // Check if this is a passive system - don't create buttons for them
+        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines'];
+        if (passiveSystems.includes(systemName)) {
+            return null; // Don't create a button for passive systems
+        }
+
+        if (isActive) {
+            // System is currently active/on
             buttonText = 'ON';
             backgroundColor = '#2a4a2a';
             textColor = '#00ff41';
         } else {
+            // System is currently inactive/off
             buttonText = 'OFF';
             backgroundColor = '#4a2a2a';
             textColor = '#ff4444';
+        }
+
+        // Only disable button if system has no card - damaged systems can still be toggled
+        // (they just might not work properly, like with hotkeys)
+        if (!hasValidCard) {
+            isDisabled = true;
         }
 
         // Store the system state in the button for later use in event handlers
@@ -499,7 +742,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             color: ${textColor};
             font-size: 10px;
             font-weight: bold;
-            cursor: ${isDisabled ? 'default' : 'pointer'};
+            cursor: ${isDisabled ? 'not-allowed' : 'pointer'};
             transition: all 0.2s ease;
             min-width: 55px;
             height: 32px;
@@ -511,13 +754,11 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         button.textContent = buttonText;
         button.disabled = isDisabled;
 
-        // Add click handler for toggle functionality
+        // Click handler is handled by event delegation in bindEvents()
+        // No need for direct onclick handler to avoid double-firing
+        
+        // Hover effects (only if button is enabled)
         if (!isDisabled && !isDamaged) {
-            button.onclick = () => {
-                this.toggleSystem(systemName);
-            };
-
-            // Hover effects
             button.addEventListener('mouseenter', () => {
                 if (!isDisabled) {
                     button.style.transform = 'scale(1.05)';
@@ -540,17 +781,146 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         return button;
     }
     
+    /**
+     * Get the active state for a specific system
+     * @param {string} systemName - Name of the system
+     * @param {Object} system - System object (optional)
+     * @returns {boolean} True if system is active
+     */
+    getSystemActiveState(systemName, system = null) {
+        
+        // Get system if not provided
+        if (!system) {
+            system = this.ship && this.ship.getSystem ? this.ship.getSystem(systemName) : null;
+        }
+        
+        // Passive systems are always considered "active" since they can't be toggled
+        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines'];
+        if (passiveSystems.includes(systemName)) {
+            return true;
+        }
+        
+        // Special handling for different system types
+        switch (systemName) {
+            case 'target_computer':
+                // Target computer state is managed by StarfieldManager
+                return this.starfieldManager && this.starfieldManager.targetComputerEnabled ? this.starfieldManager.targetComputerEnabled : false;
+                
+            case 'radar':
+                // Radar state is managed by ProximityDetector3D
+                return this.starfieldManager && this.starfieldManager.proximityDetector3D ? this.starfieldManager.proximityDetector3D.isVisible : false;
+                
+            case 'shields':
+                // Shields have their own isShieldsUp property
+                return system && system.isShieldsUp !== undefined ? system.isShieldsUp : false;
+                
+            case 'long_range_scanner':
+                // Scanner state is managed by NavigationSystemManager
+                return this.starfieldManager && this.starfieldManager.viewManager && this.starfieldManager.viewManager.navigationSystemManager 
+                    ? this.starfieldManager.viewManager.navigationSystemManager.longRangeScanner?.isVisible() || false : false;
+                
+            case 'star_charts':
+                // Star charts state is managed by NavigationSystemManager
+                return this.starfieldManager && this.starfieldManager.viewManager && this.starfieldManager.viewManager.navigationSystemManager 
+                    ? this.starfieldManager.viewManager.navigationSystemManager.starChartsUI?.isVisible() || false : false;
+                
+            case 'galactic_chart':
+                // Galactic chart state is managed by ViewManager
+                return this.starfieldManager && this.starfieldManager.viewManager 
+                    ? this.starfieldManager.viewManager.galacticChart?.isVisible() || false : false;
+                
+            case 'subspace_radio':
+                // Subspace radio state is managed by SubspaceRadio UI
+                return window.subspaceRadio ? window.subspaceRadio.isVisible : false;
+                
+            default:
+                // Default to system.isActive for other systems
+                return system && system.isActive !== undefined ? system.isActive : false;
+        }
+    }
+    
+    /**
+     * Update the state of a specific button after a system toggle
+     * @param {string} systemName - Name of the system
+     * @param {boolean} logUpdate - Whether to log the update (default: true)
+     */
+    updateButtonState(systemName, logUpdate = true) {
+        const button = this.elements.systemsList.querySelector(`[data-system-name="${systemName}"]`);
+        if (!button) {
+            if (logUpdate) console.warn(`Button not found for system: ${systemName}`);
+            return;
+        }
+        
+        const system = this.ship && this.ship.getSystem ? this.ship.getSystem(systemName) : null;
+        const isActive = this.getSystemActiveState(systemName, system);
+        
+        // Check if state actually changed to avoid unnecessary updates
+        const currentState = button.dataset.isActive === 'true';
+        if (currentState === isActive && !logUpdate) {
+            return; // No change needed
+        }
+        
+        
+        // Check if this is a passive system
+        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines'];
+        const isPassiveSystem = passiveSystems.includes(systemName);
+        
+        // Don't update passive systems - they maintain their distinct styling
+        if (isPassiveSystem) {
+            return;
+        }
+        
+        // Check if button is disabled (no card) - damaged systems can still be updated
+        const isDisabled = button.disabled;
+        if (isDisabled) {
+            return; // Don't update disabled buttons (no card systems)
+        }
+        
+        // Update button appearance based on new state
+        if (isActive) {
+            button.textContent = 'ON';
+            button.style.backgroundColor = '#2a4a2a';
+            button.style.color = '#00ff41';
+        } else {
+            button.textContent = 'OFF';
+            button.style.backgroundColor = '#4a2a2a';
+            button.style.color = '#ff4444';
+        }
+        
+        // Update stored state for hover effects
+        button.dataset.isActive = isActive.toString();
+        
+    }
+    
+    /**
+     * Update all button states to reflect current system states
+     * Called periodically to sync with external state changes
+     */
+    updateAllButtonStates() {
+        if (!this.isVisible || !this.elements.systemsList) {
+            return;
+        }
+        
+        // Get all toggle buttons
+        const buttons = this.elements.systemsList.querySelectorAll('.damage-control-toggle-btn');
+        
+        buttons.forEach(button => {
+            const systemName = button.dataset.systemName;
+            if (systemName) {
+                this.updateButtonState(systemName, false); // Don't log routine updates
+            }
+        });
+    }
+    
     toggleSystem(systemName) {
         try {
-            console.log(`🔧 Toggling system: ${systemName}`);
-
-            // Check if this is a passive system (always ON)
+            // Passive systems cannot be toggled
             const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines'];
             if (passiveSystems.includes(systemName)) {
-                console.log(`System ${systemName} is passive - no toggle action needed`);
+                console.warn(`Cannot toggle passive system: ${systemName}`);
                 return;
             }
-
+            
             const ship = this.ship;
             if (!ship || !ship.getSystem) {
                 console.error('No ship or ship.getSystem method available for system toggle');
@@ -570,48 +940,339 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                 hasCanActivate: typeof system.canActivate === 'function'
             });
 
-            // Special handling for target computer system
+            // Special handling for systems with keyboard shortcuts - do exactly what keys do
             if (systemName === 'target_computer') {
-                // Target computer requires StarfieldManager's toggle method
                 if (this.starfieldManager && this.starfieldManager.toggleTargetComputer) {
-                    console.log(`Target computer toggle: StarfieldManager.enabled = ${this.starfieldManager.targetComputerEnabled}`);
-                    this.starfieldManager.toggleTargetComputer();
-                    console.log(`Toggled target computer via StarfieldManager, new state: ${this.starfieldManager.targetComputerEnabled}`);
-
-                    // Also ensure the system itself is properly activated/deactivated
                     const ship = this.ship;
-                    if (ship && ship.getSystem) {
-                        const targetComputer = ship.getSystem('target_computer');
-                        if (targetComputer) {
-                            console.log(`Target computer system state before sync: ${targetComputer.isActive}`);
-                            const shouldBeActive = this.starfieldManager.targetComputerEnabled;
-                            if (shouldBeActive && !targetComputer.isActive) {
-                                // Try to activate the system directly
-                                if (targetComputer.canActivate && targetComputer.canActivate()) {
-                                    if (targetComputer.activate(ship)) {
-                                        console.log('Activated target computer system');
-                                        // Sync the StarfieldManager state with the system state
-                                        this.starfieldManager.targetComputerEnabled = true;
-                                    } else {
-                                        console.warn('Failed to activate target computer system - activate() returned false');
-                                    }
-                                } else {
-                                    console.warn('Cannot activate target computer system - canActivate() failed or undefined');
-                                }
-                            } else if (!shouldBeActive && targetComputer.isActive) {
-                                targetComputer.deactivate();
-                                console.log('Deactivated target computer system');
-                                // Sync the StarfieldManager state with the system state
-                                this.starfieldManager.targetComputerEnabled = false;
+                    const targetComputer = ship?.getSystem('target_computer');
+                    const energyReactor = ship?.getSystem('energy_reactor');
+                    const isCurrentlyOn = this.starfieldManager.targetComputerEnabled;
+                    
+                    // If target computer is ON, always allow turning it OFF (no energy check needed)
+                    // If target computer is OFF, check if it can be activated
+                    if (isCurrentlyOn || (targetComputer && targetComputer.canActivate(ship))) {
+                        // Same as T key: play command sound and toggle
+                        this.starfieldManager.playCommandSound();
+                        this.starfieldManager.toggleTargetComputer();
+                        
+                        
+                        // Update button state immediately
+                        setTimeout(() => this.updateButtonState(systemName), 50);
+                    } else {
+                        // Same error handling as T key
+                        this.starfieldManager.playCommandFailedSound();
+                        
+                        if (!targetComputer) {
+                            this.starfieldManager.showHUDEphemeral(
+                                'TARGET COMPUTER UNAVAILABLE',
+                                'No Target Computer card installed in ship slots'
+                            );
+                        } else if (!targetComputer.isOperational()) {
+                            this.starfieldManager.showHUDEphemeral(
+                                'TARGET COMPUTER OFFLINE',
+                                `System damaged (${Math.round(targetComputer.healthPercentage * 100)}% health) - repair required`
+                            );
+                        } else if (!ship.hasSystemCardsSync('target_computer')) {
+                            this.starfieldManager.showHUDEphemeral(
+                                'TARGET COMPUTER UNAVAILABLE',
+                                'No Target Computer card installed in ship slots'
+                            );
+                        } else if (!energyReactor || !energyReactor.isOperational()) {
+                            if (!energyReactor) {
+                                this.starfieldManager.showHUDEphemeral(
+                                    'POWER FAILURE',
+                                    'No Energy Reactor installed - cannot power systems'
+                                );
+                            } else {
+                                this.starfieldManager.showHUDEphemeral(
+                                    'POWER FAILURE',
+                                    `Energy Reactor disabled (${Math.round(energyReactor.healthPercentage * 100)}% health) - repair immediately`
+                                );
                             }
-                            console.log(`Target computer system state after sync: ${targetComputer.isActive}`);
                         } else {
-                            console.warn('Target computer system not found on ship');
+                            this.starfieldManager.showHUDEphemeral(
+                                'TARGET COMPUTER UNAVAILABLE',
+                                'System requirements not met'
+                            );
                         }
                     }
                 } else {
                     console.error('StarfieldManager or toggleTargetComputer method not available');
                     return;
+                }
+            } else if (systemName === 'shields') {
+                // Shields system - do exactly what S key does
+                const ship = this.ship;
+                const shields = ship?.getSystem('shields');
+                const isCurrentlyOn = shields?.isShieldsUp || false;
+                
+                // If shields are ON, always allow turning them OFF (no energy check needed)
+                // If shields are OFF, check if they can be activated
+                if (isCurrentlyOn || (shields && shields.canActivate(ship))) {
+                    // Same as S key: play command sound and toggle shields
+                    this.starfieldManager.playCommandSound();
+                    shields.toggleShields();
+                    
+                    // Update button state immediately
+                    setTimeout(() => this.updateButtonState(systemName), 50);
+                } else {
+                    // Same error handling as S key
+                    this.starfieldManager.playCommandFailedSound();
+                    
+                    if (!shields) {
+                        this.starfieldManager.showHUDEphemeral(
+                            'SHIELDS UNAVAILABLE',
+                            'No Shield Generator card installed in ship slots'
+                        );
+                    } else if (!shields.isOperational()) {
+                        this.starfieldManager.showHUDEphemeral(
+                            'SHIELDS OFFLINE',
+                            `Shield system damaged (${Math.round(shields.healthPercentage * 100)}% health) - repair required`
+                        );
+                    } else {
+                        this.starfieldManager.showHUDEphemeral(
+                            'SHIELDS UNAVAILABLE',
+                            'System requirements not met'
+                        );
+                    }
+                }
+                
+                // Update button state immediately
+                setTimeout(() => this.updateButtonState(systemName), 50);
+            } else if (systemName === 'radar') {
+                // Radar system - do exactly what P key does
+                const ship = this.ship;
+                const radarSystem = ship?.getSystem('radar');
+                const isCurrentlyOn = this.starfieldManager?.proximityDetector3D?.isVisible || false;
+                
+                if (!radarSystem) {
+                    // No radar system exists (no cards installed)
+                    this.starfieldManager.playCommandFailedSound();
+                    this.starfieldManager.showHUDEphemeral(
+                        'PROXIMITY DETECTOR UNAVAILABLE',
+                        'No Proximity Detector card installed in ship slots'
+                    );
+                } else if (!isCurrentlyOn && !radarSystem.canActivate(ship)) {
+                    // System exists but can't be activated
+                    this.starfieldManager.playCommandFailedSound();
+                    if (!radarSystem.isOperational()) {
+                        this.starfieldManager.showHUDEphemeral(
+                            'PROXIMITY DETECTOR DAMAGED',
+                            'Proximity Detector system requires repair'
+                        );
+                    } else {
+                        this.starfieldManager.showHUDEphemeral(
+                            'INSUFFICIENT ENERGY',
+                            'Need energy to activate proximity detector'
+                        );
+                    }
+                } else {
+                    // System available and operational - toggle it (same as P key)
+                    this.starfieldManager.playCommandSound();
+                    this.starfieldManager.toggleProximityDetector();
+                    
+                    // Update button state immediately
+                    setTimeout(() => this.updateButtonState(systemName), 50);
+                }
+            } else if (systemName === 'long_range_scanner') {
+                // Long Range Scanner - do exactly what L key does (via ViewManager)
+                if (this.starfieldManager.viewManager) {
+                    const ship = this.starfieldManager.viewManager.getShip();
+                    const scannerSystem = ship?.systems?.get('long_range_scanner');
+                    
+                    // Check if scanner is already visible (toggle behavior like L key)
+                    const isVisible = this.starfieldManager.viewManager.navigationSystemManager?.longRangeScanner?.isVisible();
+                    
+                    if (isVisible) {
+                        // Scanner is visible, hide it (same as L key when scanner is open)
+                        this.starfieldManager.playCommandSound();
+                        if (scannerSystem) {
+                            scannerSystem.stopScan();
+                        }
+                        this.starfieldManager.viewManager.navigationSystemManager?.longRangeScanner.hide();
+                        
+                        // Update button state immediately
+                        setTimeout(() => this.updateButtonState(systemName), 50);
+                    } else if (scannerSystem && scannerSystem.canActivate(ship)) {
+                        // Scanner not visible, show it (same as L key when scanner is closed)
+                        this.starfieldManager.playCommandSound();
+                        
+                        // Start scanning operation
+                        const scanStarted = scannerSystem.startScan(ship);
+                        if (scanStarted) {
+                            // Show the long range scanner interface
+                            this.starfieldManager.viewManager.navigationSystemManager?.longRangeScanner.show();
+                            
+                            // Update button state immediately
+                            setTimeout(() => this.updateButtonState(systemName), 50);
+                        } else {
+                            console.warn('🔧 Failed to start Long Range Scanner');
+                        }
+                    } else {
+                        // Same error handling as L key
+                        this.starfieldManager.playCommandFailedSound();
+                        
+                        if (!scannerSystem) {
+                            this.starfieldManager.showHUDEphemeral(
+                                'LONG RANGE SCANNER UNAVAILABLE',
+                                'No Long Range Scanner card installed in ship slots'
+                            );
+                        } else if (!scannerSystem.isOperational()) {
+                            this.starfieldManager.showHUDEphemeral(
+                                'LONG RANGE SCANNER OFFLINE',
+                                `Scanner system damaged (${Math.round(scannerSystem.healthPercentage * 100)}% health) - repair required`
+                            );
+                        } else {
+                            this.starfieldManager.showHUDEphemeral(
+                                'LONG RANGE SCANNER UNAVAILABLE',
+                                'System requirements not met'
+                            );
+                        }
+                    }
+                } else {
+                    console.error('ViewManager not available for Long Range Scanner');
+                }
+            } else if (systemName === 'star_charts') {
+                // Star Charts - do exactly what C key does (via ViewManager)
+                if (this.starfieldManager.viewManager) {
+                    const ship = this.starfieldManager.viewManager.getShip();
+                    const starCharts = ship?.systems?.get('star_charts');
+                    
+                    // Check if star charts is already visible (toggle behavior like C key)
+                    const isVisible = this.starfieldManager.viewManager.navigationSystemManager?.starChartsUI?.isVisible();
+                    
+                    if (isVisible) {
+                        // Star charts is visible, hide it (same as C key when star charts is open)
+                        this.starfieldManager.playCommandSound();
+                        this.starfieldManager.viewManager.navigationSystemManager?.starChartsUI.hide();
+                        
+                        // Update button state immediately
+                        setTimeout(() => this.updateButtonState(systemName), 50);
+                    } else if (starCharts && starCharts.canActivate(ship)) {
+                        // Star charts not visible, show it (same as C key when star charts is closed)
+                        this.starfieldManager.playCommandSound();
+                        this.starfieldManager.viewManager.navigationSystemManager?.starChartsUI.show();
+                        
+                        // Update button state immediately
+                        setTimeout(() => this.updateButtonState(systemName), 50);
+                    } else {
+                        // Same error handling as C key
+                        this.starfieldManager.playCommandFailedSound();
+                        
+                        if (!starCharts) {
+                            this.starfieldManager.showHUDEphemeral(
+                                'STAR CHARTS UNAVAILABLE',
+                                'No Star Charts card installed in ship slots'
+                            );
+                        } else if (!starCharts.isOperational()) {
+                            this.starfieldManager.showHUDEphemeral(
+                                'STAR CHARTS OFFLINE',
+                                `Star Charts system damaged (${Math.round(starCharts.healthPercentage * 100)}% health) - repair required`
+                            );
+                        } else {
+                            this.starfieldManager.showHUDEphemeral(
+                                'STAR CHARTS UNAVAILABLE',
+                                'System requirements not met'
+                            );
+                        }
+                    }
+                } else {
+                    console.error('ViewManager not available for Star Charts');
+                }
+            } else if (systemName === 'galactic_chart') {
+                // Galactic Chart - do exactly what G key does (via ViewManager)
+                if (this.starfieldManager.viewManager) {
+                    const ship = this.starfieldManager.viewManager.getShip();
+                    const galacticChart = ship?.systems?.get('galactic_chart');
+                    
+                    // Check if galactic chart is already visible (toggle behavior like G key)
+                    const isVisible = this.starfieldManager.viewManager.galacticChart?.isVisible();
+                    
+                    if (isVisible) {
+                        // Galactic chart is visible, hide it (same as G key when chart is open)
+                        this.starfieldManager.playCommandSound();
+                        this.starfieldManager.viewManager.galacticChart.hide(true);
+                        
+                        // Update button state immediately
+                        setTimeout(() => this.updateButtonState(systemName), 50);
+                    } else if (galacticChart && galacticChart.canActivate(ship)) {
+                        // Galactic chart not visible, show it (same as G key when chart is closed)
+                        this.starfieldManager.playCommandSound();
+                        this.starfieldManager.viewManager.setView('galactic');
+                        
+                        // Update button state immediately
+                        setTimeout(() => this.updateButtonState(systemName), 50);
+                    } else {
+                        // Same error handling as G key
+                        this.starfieldManager.playCommandFailedSound();
+                        
+                        if (!galacticChart) {
+                            this.starfieldManager.showHUDEphemeral(
+                                'GALACTIC CHART UNAVAILABLE',
+                                'No Galactic Chart card installed in ship slots'
+                            );
+                        } else if (!galacticChart.isOperational()) {
+                            this.starfieldManager.showHUDEphemeral(
+                                'GALACTIC CHART OFFLINE',
+                                `Chart system damaged (${Math.round(galacticChart.healthPercentage * 100)}% health) - repair required`
+                            );
+                        } else {
+                            this.starfieldManager.showHUDEphemeral(
+                                'GALACTIC CHART UNAVAILABLE',
+                                'System requirements not met'
+                            );
+                        }
+                    }
+                } else {
+                    console.error('ViewManager not available for Galactic Chart');
+                }
+            } else if (systemName === 'subspace_radio') {
+                // Subspace Radio - do exactly what R key does (handled by SubspaceRadio UI class)
+                const ship = this.ship;
+                const radio = ship?.getSystem('subspace_radio');
+                
+                if (!radio) {
+                    // System doesn't exist (starter ship case)
+                    this.starfieldManager.playCommandFailedSound();
+                    this.starfieldManager.showHUDEphemeral(
+                        'SUBSPACE RADIO UNAVAILABLE',
+                        'Install subspace radio card to enable communications'
+                    );
+                } else if (!radio.canActivate(ship)) {
+                    // System exists but can't activate
+                    this.starfieldManager.playCommandFailedSound();
+                    if (!radio.isOperational()) {
+                        this.starfieldManager.showHUDEphemeral(
+                            'SUBSPACE RADIO DAMAGED',
+                            'Repair system to enable communications'
+                        );
+                    } else if (!ship.hasSystemCardsSync('subspace_radio')) {
+                        this.starfieldManager.showHUDEphemeral(
+                            'SUBSPACE RADIO MISSING',
+                            'Install subspace radio card to enable communications'
+                        );
+                    } else if (!ship.hasEnergy(15)) {
+                        this.starfieldManager.showHUDEphemeral(
+                            'INSUFFICIENT ENERGY',
+                            'Need 15 energy units to activate radio'
+                        );
+                    } else {
+                        this.starfieldManager.showHUDEphemeral(
+                            'SUBSPACE RADIO ERROR',
+                            'System cannot be activated'
+                        );
+                    }
+                } else {
+                    // System available - let SubspaceRadio UI handle it (same as R key)
+                    this.starfieldManager.playCommandSound();
+                    if (window.subspaceRadio) {
+                        window.subspaceRadio.toggle();
+                        
+                        // Update button state immediately
+                        setTimeout(() => this.updateButtonState(systemName), 50);
+                    } else {
+                        console.warn('SubspaceRadio UI not available');
+                    }
                 }
             } else {
                 // Standard system toggle for other systems
@@ -629,15 +1290,30 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                 // Toggle the system state
                 if (system.isActive) {
                     // Deactivate the system
-                    system.deactivate();
-                    console.log(`Deactivated system: ${systemName}`);
+                    try {
+                        system.deactivate();
+                        console.log(`Deactivated system: ${systemName}`);
+                    } catch (error) {
+                        console.error(`Error deactivating system ${systemName}:`, error);
+                    }
                 } else {
                     // Activate the system
-                    const result = system.activate(ship);
-                    if (result) {
-                        console.log(`Activated system: ${systemName}`);
-                    } else {
-                        console.warn(`Failed to activate system ${systemName} - activate() returned false`);
+                    try {
+                        const result = system.activate(ship);
+                        if (result) {
+                            console.log(`Activated system: ${systemName}`);
+                        } else {
+                            console.warn(`Failed to activate system ${systemName} - activate() returned false`);
+                        }
+                    } catch (error) {
+                        console.error(`Error activating system ${systemName}:`, error);
+                        // Try to show more details about the system state
+                        console.log(`System ${systemName} state:`, {
+                            isActive: system.isActive,
+                            healthPercentage: system.healthPercentage,
+                            state: system.state,
+                            canActivate: typeof system.canActivate === 'function' ? system.canActivate(ship) : 'N/A'
+                        });
                     }
                 }
             }
