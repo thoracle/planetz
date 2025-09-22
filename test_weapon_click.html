@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weapon Click Test</title>
+    <style>
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            margin: 20px;
+        }
+        .test-info {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #666;
+            background: rgba(0, 255, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-info">
+        <h2>🎯 Weapon HUD Click Test</h2>
+        <p><strong>Instructions:</strong></p>
+        <ul>
+            <li>Start the game normally (backend + frontend)</li>
+            <li>Navigate to a ship with weapons equipped</li>
+            <li>Look at the weapon HUD in the bottom-right corner</li>
+            <li>Try clicking on different weapon slots</li>
+            <li>Verify that clicking switches weapons just like Z/X keys</li>
+        </ul>
+        <p><strong>Expected Behavior:</strong></p>
+        <ul>
+            <li>✅ Equipped weapon slots should be clickable (pointer cursor)</li>
+            <li>✅ Empty weapon slots should not be clickable (default cursor)</li>
+            <li>✅ Clicking a weapon slot should switch to that weapon</li>
+            <li>✅ Active weapon slot should have green border</li>
+            <li>✅ Hover effect should show green tint on non-active slots</li>
+            <li>✅ Command sound should play when switching weapons</li>
+            <li>✅ Weapon feedback should show "Selected weapon X"</li>
+        </ul>
+        <p><strong>Debug:</strong> Open browser console and enable COMBAT debug channel:</p>
+        <code>debugEnable('COMBAT')</code>
+    </div>
+    
+    <script>
+        // This is just a test page - the actual functionality is in the main game
+        console.log('🎯 Weapon Click Test Page Loaded');
+        console.log('Navigate to http://127.0.0.1:5001 to test the weapon clicking functionality');
+    </script>
+</body>
+</html>

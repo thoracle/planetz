@@ -141,7 +141,31 @@ debug('COMBAT', 'WeaponHUD initialized');
             font-family: 'Courier New', monospace;
             font-size: 10px;
             color: #ffffff;
+            cursor: ${slot.isEmpty ? 'default' : 'pointer'};
+            transition: border-color 0.2s, background-color 0.2s;
         `;
+        
+        // Add click functionality for equipped weapons
+        if (!slot.isEmpty) {
+            slotElement.addEventListener('click', () => {
+                this.onWeaponSlotClick(slot.slotIndex);
+            });
+            
+            // Add hover effect for equipped weapons
+            slotElement.addEventListener('mouseenter', () => {
+                if (!isActive) {
+                    slotElement.style.borderColor = '#00aa00';
+                    slotElement.style.backgroundColor = 'rgba(0, 255, 0, 0.1)';
+                }
+            });
+            
+            slotElement.addEventListener('mouseleave', () => {
+                if (!isActive) {
+                    slotElement.style.borderColor = '#666666';
+                    slotElement.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                }
+            });
+        }
         
         // Slot number
         const slotNumber = document.createElement('div');
@@ -681,6 +705,48 @@ debug('COMBAT', `🎯 FEEDBACK: ${weaponName} blastRadius: ${activeWeapon.equipp
         } else {
             this.showWeaponFeedback('hit', weaponName, damage);
         }
+    }
+    
+    /**
+     * Handle weapon slot click
+     * @param {number} slotIndex - Index of the clicked weapon slot
+     */
+    onWeaponSlotClick(slotIndex) {
+        debug('COMBAT', `Weapon slot ${slotIndex + 1} clicked`);
+        
+        // Get the ship and weapon system
+        const ship = this.getShip();
+        if (!ship || !ship.weaponSystem) {
+            debug('COMBAT', 'No ship or weapon system available for slot click');
+            return;
+        }
+        
+        // Attempt to select the weapon slot
+        if (ship.weaponSystem.selectWeaponSlot(slotIndex)) {
+            // Play command sound on successful weapon switch
+            if (ship.starfieldManager && ship.starfieldManager.playCommandSound) {
+                ship.starfieldManager.playCommandSound();
+            }
+            debug('COMBAT', `Successfully selected weapon slot ${slotIndex + 1} via click`);
+        }
+    }
+    
+    /**
+     * Get the current ship instance
+     * @returns {Object|null} Ship instance or null
+     */
+    getShip() {
+        // Try to get ship from various possible sources
+        if (window.starfieldManager && window.starfieldManager.viewManager) {
+            return window.starfieldManager.viewManager.getShip();
+        }
+        
+        // Fallback: try to get from global scope
+        if (window.ship) {
+            return window.ship;
+        }
+        
+        return null;
     }
     
     /**

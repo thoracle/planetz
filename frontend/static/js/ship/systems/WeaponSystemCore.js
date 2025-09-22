@@ -97,6 +97,42 @@ export class WeaponSystemCore {
     }
     
     /**
+     * Select a specific weapon slot directly (for mouse clicks)
+     * @param {number} slotIndex - Index of the weapon slot to select
+     * @returns {boolean} True if weapon was changed
+     */
+    selectWeaponSlot(slotIndex) {
+        // Validate slot index
+        if (slotIndex < 0 || slotIndex >= this.maxWeaponSlots) {
+            debug('COMBAT', `Invalid weapon slot index: ${slotIndex}`);
+            return false;
+        }
+        
+        // Check if slot has a weapon equipped
+        if (this.weaponSlots[slotIndex].isEmpty) {
+            this.showMessage("No weapon equipped in this slot");
+            return false;
+        }
+        
+        // Check if already active
+        if (this.activeSlotIndex === slotIndex) {
+            // Already active, no change needed
+            return false;
+        }
+        
+        // Switch to the selected weapon
+        this.activeSlotIndex = slotIndex;
+        this.updateActiveWeaponHighlight();
+        this.showWeaponSelectFeedback();
+        
+        // Update crosshair display to reflect new active weapon range
+        this.updateCrosshairForActiveWeapon();
+        
+        debug('COMBAT', `Selected weapon slot ${slotIndex + 1} via click`);
+        return true;
+    }
+    
+    /**
      * Fire the active weapon (Enter key binding)
      * @returns {boolean} True if weapon fired successfully
      */

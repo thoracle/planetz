@@ -79,15 +79,15 @@ debug('AI', `🎯 MissionAPIService: Loaded ${data.missions.length} available mi
      * Get active/accepted missions
      */
     async getActiveMissions() {
-        console.log('🎯 MissionAPIService.getActiveMissions() called');
-        console.log('🎯 Current activeMissions cache size:', this.activeMissions.size);
-        console.log('🎯 Current activeMissions cache:', Array.from(this.activeMissions.entries()));
+        debug('MISSIONS', 'MissionAPIService.getActiveMissions() called');
+        debug('MISSIONS', 'Current activeMissions cache size:', this.activeMissions.size);
+        debug('MISSIONS', 'Current activeMissions cache:', Array.from(this.activeMissions.entries()));
         
         try {
             const response = await fetch(`${this.baseURL}/active`);
             if (response.ok) {
                 const data = await response.json();
-                console.log('🎯 Backend response:', data);
+                debug('MISSIONS', 'Backend response:', data);
                 
                 // Update local cache with backend missions (preserve test missions)
                 // Only add backend missions, don't remove existing test missions
@@ -98,10 +98,10 @@ debug('AI', `🎯 MissionAPIService: Loaded ${data.missions.length} available mi
                 // Note: Test missions are preserved because they're already in the cache
                 // and backend doesn't know about them, so they won't be overwritten
                 
-                console.log('🎯 After backend merge, cache size:', this.activeMissions.size);
+                debug('MISSIONS', 'After backend merge, cache size:', this.activeMissions.size);
 debug('MISSIONS', `🎯 MissionAPIService: Loaded ${data.missions.length} backend missions`);
             } else {
-                console.log('🎯 MissionAPIService: Backend unavailable, using local cache only');
+                debug('MISSIONS', 'MissionAPIService: Backend unavailable, using local cache only');
             }
         } catch (error) {
             console.log('🎯 MissionAPIService: Backend unavailable, using local cache only');

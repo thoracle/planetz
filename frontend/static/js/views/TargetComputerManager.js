@@ -1216,7 +1216,7 @@ export class TargetComputerManager {
         // Get celestial bodies from SolarSystemManager (same as traditional method)
         if (this.solarSystemManager) {
             const bodies = this.solarSystemManager.getCelestialBodies();
-            console.log(`🎯 SolarSystemManager has ${bodies.size} celestial bodies`);
+            debug('TARGETING', `SolarSystemManager has ${bodies.size} celestial bodies`);
 
             const celestialBodies = Array.from(bodies.entries())
                 .map(([key, body]) => {
@@ -1232,11 +1232,11 @@ export class TargetComputerManager {
                     }
 
                     const distance = this.calculateDistance(this.camera.position, body.position);
-                    console.log(`🎯 Body ${key}: ${info.name} at ${distance.toFixed(1)}km`);
+                    debug('TARGETING', `Body ${key}: ${info.name} at ${distance.toFixed(1)}km`);
 
                     // Skip bodies beyond target computer range
                     if (distance > maxTargetingRange) {
-                        console.log(`🎯 Body ${key} beyond range (${distance.toFixed(1)}km > ${maxTargetingRange}km)`);
+                        debug('TARGETING', `Body ${key} beyond range (${distance.toFixed(1)}km > ${maxTargetingRange}km)`);
                         return null;
                     }
                     
@@ -1325,7 +1325,7 @@ export class TargetComputerManager {
         this.targetObjects = deduplicatedTargets;
 
         // Debug logging to see what targets were found
-        console.log(`🎯 TargetComputerManager: Found ${this.targetObjects.length} targets:`, this.targetObjects.map(t => `${t.name} (${t.distance.toFixed(1)}km)`));
+        debug('TARGETING', `TargetComputerManager: Found ${this.targetObjects.length} targets:`, this.targetObjects.map(t => `${t.name} (${t.distance.toFixed(1)}km)`));
 
         // Sort targets by distance
         this.sortTargetsByDistance();
