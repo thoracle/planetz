@@ -430,9 +430,13 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         // Get the system and its current state
         const system = this.ship.getSystem(systemName);
 
-        // Special handling for target computer system state
-        let isActive = false;
-        if (systemName === 'target_computer') {
+        // Special handling for passive systems (always ON)
+        const passiveSystems = ['energy_reactor', 'hull_plating'];
+
+        if (passiveSystems.includes(systemName)) {
+            // Passive systems are always ON
+            isActive = true;
+        } else if (systemName === 'target_computer') {
             // Target computer state is managed by StarfieldManager
             isActive = this.starfieldManager?.targetComputerEnabled || false;
         } else {
@@ -454,6 +458,12 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             backgroundColor = '#4a4a2a';
             textColor = '#ffaa44';
             isDisabled = true;
+        } else if (passiveSystems.includes(systemName)) {
+            // Passive systems are always ON
+            buttonText = 'ON';
+            backgroundColor = '#2a4a2a';
+            textColor = '#00ff41';
+            isDisabled = true; // Passive systems can't be toggled
         } else if (isActive) {
             buttonText = 'ON';
             backgroundColor = '#2a4a2a';
@@ -513,6 +523,13 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
     
     toggleSystem(systemName) {
         try {
+            // Check if this is a passive system (always ON)
+            const passiveSystems = ['energy_reactor', 'hull_plating'];
+            if (passiveSystems.includes(systemName)) {
+                console.log(`System ${systemName} is passive - no toggle action needed`);
+                return;
+            }
+
             const ship = this.ship;
             if (!ship) {
                 console.error('No ship available for system toggle');
