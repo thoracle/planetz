@@ -1049,7 +1049,7 @@ debug('UTILITY', 'Test data loaded with high-level upgrade capabilities');
         const header = document.createElement('div');
         header.className = 'card-inventory-header';
         header.innerHTML = `
-            <h2>${this.isShopMode ? 'SHIP UPGRADE SHOP' : 'SHIP INVENTORY'}</h2>
+            <h2>${this.isShopMode ? 'SHIP UPGRADE SHOP' : 'SHIP COLLECTION'}</h2>
             ${this.isShopMode ? 
                 `<button onclick="cardInventoryUI.hideShop()" class="close-shop-btn">← RETURN TO STATION MENU</button>` : 
                 `<button onclick="cardInventoryUI.hideInventory()" class="close-inventory-btn">← RETURN TO STATION MENU</button>`
@@ -1110,9 +1110,9 @@ debug('UTILITY', 'Test data loaded with high-level upgrade capabilities');
         const panel = document.createElement('div');
         panel.className = 'inventory-panel';
         panel.innerHTML = `
-            <h3>INVENTORY</h3>
+            <h3>COLLECTION</h3>
             <div class="inventory-grid" id="inventory-grid">
-                <!-- Inventory cards will be populated by renderInventoryGrid() -->
+                <!-- Collection cards will be populated by renderInventoryGrid() -->
             </div>
         `;
         this.container.querySelector('.inventory-main').appendChild(panel);

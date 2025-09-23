@@ -83,7 +83,7 @@ Each ship class offers distinct roles with balanced slot distributions and weapo
 
 #### Essential Systems (Required for Launch) ✅ IMPLEMENTED
 1. ✅ **Hull Plating** - Provides hull hit points and damage resistance
-2. ✅ **Energy Reactor** - Provides energy capacity and recharge rate
+2. ✅ **Energy Reactor** - Provides energy capacity and recharge rate (45 energy/sec per level, increased 50% from 30)
 3. ✅ **Impulse Engines** - Enables movement and maneuverability
 4. ✅ **Cargo Hold** - Provides cargo storage capacity
 

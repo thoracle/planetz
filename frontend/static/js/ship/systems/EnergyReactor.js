@@ -16,7 +16,7 @@ export default class EnergyReactor extends System {
         
         // Energy reactor provides energy capacity and recharge rate based on level
         this.energyCapacityPerLevel = 1000; // Base energy capacity per level
-        this.energyRechargePerLevel = 30;   // Base energy recharge per second per level (doubled from 15)
+        this.energyRechargePerLevel = 45;   // Base energy recharge per second per level (increased 50% from 30)
         
         // Energy consumption (passive system - no energy cost)
         this.baseEnergyConsumption = 0;

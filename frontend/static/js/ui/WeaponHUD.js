@@ -8,6 +8,7 @@ import { debug } from '../debug.js';
 
 export class WeaponHUD {
     constructor(hudContainer) {
+debug('COMBAT', '🔫 WeaponHUD constructor called with container:', !!hudContainer);
         this.hudContainer = hudContainer;
         this.weaponSlotsDisplay = null;
         this.cooldownBars = [];
@@ -16,16 +17,20 @@ export class WeaponHUD {
         this.unifiedDisplay = null; // Combined message and feedback display
         this.displayTimeout = null; // Track display timeout
         this.currentMessagePriority = 0; // Track message priority (higher = more important)
+        this.lastWeaponConfiguration = null; // Track weapon configuration to avoid unnecessary rebuilds
         
+debug('COMBAT', '🔫 WeaponHUD: About to create HUD elements...');
         this.createHUDElements();
         
-debug('COMBAT', 'WeaponHUD initialized');
+debug('COMBAT', '🔫 WeaponHUD initialized successfully');
+debug('COMBAT', `🔫 WeaponHUD elements: weaponSlotsDisplay=${!!this.weaponSlotsDisplay}, autofireIndicator=${!!this.autofireIndicator}`);
     }
     
     /**
      * Create HUD visual elements
      */
     createHUDElements() {
+debug('COMBAT', '🔫 createHUDElements: Creating weapon slots display...');
         // Create weapon slots display container
         this.weaponSlotsDisplay = document.createElement('div');
         this.weaponSlotsDisplay.className = 'weapon-slots-display';
@@ -37,7 +42,9 @@ debug('COMBAT', 'WeaponHUD initialized');
             gap: 10px;
             z-index: 1000;
         `;
+debug('COMBAT', `🔫 createHUDElements: Appending weaponSlotsDisplay to container: ${!!this.hudContainer}`);
         this.hudContainer.appendChild(this.weaponSlotsDisplay);
+debug('COMBAT', '🔫 createHUDElements: weaponSlotsDisplay added to DOM');
         
         // Create autofire indicator
         this.autofireIndicator = document.createElement('div');
@@ -108,14 +115,44 @@ debug('COMBAT', 'WeaponHUD initialized');
      * @param {number} activeSlotIndex Currently active slot index
      */
     updateWeaponSlotsDisplay(weaponSlots, activeSlotIndex) {
-        // Clear existing display
-        this.weaponSlotsDisplay.innerHTML = '';
-        this.cooldownBars = [];
+        // Check if we need to rebuild the entire display
+        const needsRebuild = this.weaponSlotsDisplay.children.length !== weaponSlots.length ||
+                            this.lastWeaponConfiguration !== this.getWeaponConfigurationHash(weaponSlots);
         
-        weaponSlots.forEach((slot, index) => {
-            const slotElement = this.createWeaponSlotElement(slot, index === activeSlotIndex);
-            this.weaponSlotsDisplay.appendChild(slotElement);
-        });
+        if (needsRebuild) {
+            // Only rebuild when weapon configuration actually changes
+            debug('COMBAT', 'WeaponHUD: Rebuilding weapon slots display');
+            
+            // Clear existing display
+            this.weaponSlotsDisplay.innerHTML = '';
+            this.cooldownBars = [];
+            
+            weaponSlots.forEach((slot, index) => {
+                const slotElement = this.createWeaponSlotElement(slot, index === activeSlotIndex);
+                this.weaponSlotsDisplay.appendChild(slotElement);
+            });
+            
+            // Store current configuration hash
+            this.lastWeaponConfiguration = this.getWeaponConfigurationHash(weaponSlots);
+        } else {
+            // Just update the active weapon highlight without rebuilding
+            this.updateActiveWeaponHighlight(activeSlotIndex);
+        }
+    }
+    
+    /**
+     * Generate a hash of the current weapon configuration to detect changes
+     * @param {Array} weaponSlots Array of weapon slots
+     * @returns {string} Configuration hash
+     */
+    getWeaponConfigurationHash(weaponSlots) {
+        return weaponSlots.map(slot => {
+            if (slot.isEmpty) {
+                return `empty_${slot.slotIndex}`;
+            } else {
+                return `${slot.slotIndex}_${slot.equippedWeapon.name}_${slot.equippedWeapon.level || 1}`;
+            }
+        }).join('|');
     }
     
     /**
@@ -147,10 +184,10 @@ debug('COMBAT', 'WeaponHUD initialized');
         
         // Add click functionality for equipped weapons
         if (!slot.isEmpty) {
-            console.log(`🎯 WEAPON HUD: Adding click listener to slot ${slot.slotIndex + 1}`);
+            debug('COMBAT', `WeaponHUD: Adding click listener to slot ${slot.slotIndex + 1}`);
             
             slotElement.addEventListener('click', (event) => {
-                console.log(`🎯 WEAPON HUD: Click event fired for slot ${slot.slotIndex + 1}`);
+                debug('COMBAT', `WeaponHUD: Click event fired for slot ${slot.slotIndex + 1}`);
                 event.preventDefault();
                 event.stopPropagation();
                 this.onWeaponSlotClick(slot.slotIndex);
@@ -170,8 +207,6 @@ debug('COMBAT', 'WeaponHUD initialized');
                     slotElement.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
                 }
             });
-        } else {
-            console.log(`🎯 WEAPON HUD: Slot ${slot.slotIndex + 1} is empty, no click listener added`);
         }
         
         // Slot number
@@ -209,7 +244,7 @@ debug('COMBAT', 'WeaponHUD initialized');
                 font-weight: bold;
                 text-align: center;
                 color: ${isActive ? '#00ff00' : '#ffffff'};
-                cursor: help;
+                pointer-events: none;
             `;
             slotElement.appendChild(weaponName);
             
@@ -360,6 +395,45 @@ debug('COMBAT', 'WeaponHUD initialized');
             const weaponNameElement = slot.querySelector('.weapon-name-display');
             if (weaponNameElement && weaponNameElement.textContent !== 'EMPTY') {
                 weaponNameElement.style.color = isActive ? '#00ff00' : '#ffffff';
+            }
+            
+            // Handle weapon range display
+            const existingRangeDisplay = slot.querySelector('.weapon-range-display');
+            if (isActive && weaponNameElement && weaponNameElement.textContent !== 'EMPTY') {
+                // This is the active weapon and it's equipped - add/update range display
+                if (!existingRangeDisplay) {
+                    // Create new range display
+                    const rangeDisplay = document.createElement('div');
+                    rangeDisplay.className = 'weapon-range-display';
+                    
+                    // Get weapon data from the weapon system
+                    const ship = this.getShip();
+                    if (ship && ship.weaponSystem && ship.weaponSystem.weaponSlots[i] && !ship.weaponSystem.weaponSlots[i].isEmpty) {
+                        const weapon = ship.weaponSystem.weaponSlots[i].equippedWeapon;
+                        const rangeKm = (weapon.range / 1000).toFixed(1);
+                        rangeDisplay.textContent = `${rangeKm}km`;
+                    } else {
+                        rangeDisplay.textContent = '0.0km';
+                    }
+                    
+                    rangeDisplay.style.cssText = `
+                        position: absolute;
+                        bottom: -16px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        font-size: 12px;
+                        color: #00ff00;
+                        font-weight: bold;
+                        text-align: center;
+                        white-space: nowrap;
+                        text-shadow: 0 0 2px #00ff00;
+                        pointer-events: none;
+                    `;
+                    slot.appendChild(rangeDisplay);
+                }
+            } else if (existingRangeDisplay) {
+                // This is not the active weapon or it's empty - remove range display
+                existingRangeDisplay.remove();
             }
         }
     }
@@ -719,32 +793,28 @@ debug('COMBAT', `🎯 FEEDBACK: ${weaponName} blastRadius: ${activeWeapon.equipp
      * @param {number} slotIndex - Index of the clicked weapon slot
      */
     onWeaponSlotClick(slotIndex) {
-        console.log(`🎯 WEAPON CLICK: Slot ${slotIndex + 1} clicked`);
         debug('COMBAT', `Weapon slot ${slotIndex + 1} clicked`);
         
         // Get the ship and weapon system
         const ship = this.getShip();
-        console.log('🎯 WEAPON CLICK: Ship found:', !!ship);
         
         if (!ship) {
-            console.log('🎯 WEAPON CLICK: No ship found');
             debug('COMBAT', 'No ship available for slot click');
+            this.showMessage('Ship not available', 2000);
             return;
         }
-        
-        console.log('🎯 WEAPON CLICK: Ship.weaponSystem found:', !!ship.weaponSystem);
         
         if (!ship.weaponSystem) {
-            console.log('🎯 WEAPON CLICK: No weapon system found');
             debug('COMBAT', 'No weapon system available for slot click');
+            this.showMessage('Weapon system not available', 2000);
             return;
         }
         
-        console.log('🎯 WEAPON CLICK: Calling selectWeaponSlot()');
+        debug('COMBAT', `Attempting to select weapon slot ${slotIndex + 1}`);
         
         // Attempt to select the weapon slot
         if (ship.weaponSystem.selectWeaponSlot(slotIndex)) {
-            console.log('🎯 WEAPON CLICK: Weapon selection successful');
+            debug('COMBAT', `Successfully selected weapon slot ${slotIndex + 1} via click`);
             
             // Play command sound on successful weapon switch
             if (ship.starfieldManager && ship.starfieldManager.playCommandSound) {
@@ -752,10 +822,9 @@ debug('COMBAT', `🎯 FEEDBACK: ${weaponName} blastRadius: ${activeWeapon.equipp
             } else if (window.starfieldManager && window.starfieldManager.playCommandSound) {
                 window.starfieldManager.playCommandSound();
             }
-            
-            debug('COMBAT', `Successfully selected weapon slot ${slotIndex + 1} via click`);
         } else {
-            console.log('🎯 WEAPON CLICK: Weapon selection failed');
+            debug('COMBAT', `Failed to select weapon slot ${slotIndex + 1}`);
+            // The weapon system will show its own error message
         }
     }
     
@@ -764,30 +833,35 @@ debug('COMBAT', `🎯 FEEDBACK: ${weaponName} blastRadius: ${activeWeapon.equipp
      * @returns {Object|null} Ship instance or null
      */
     getShip() {
-        debug('COMBAT', 'WeaponHUD.getShip() - Attempting to find ship instance');
-        
         // Try method 1: StarfieldManager -> ViewManager -> getShip()
         if (window.starfieldManager && window.starfieldManager.viewManager) {
             const ship = window.starfieldManager.viewManager.getShip();
-            if (ship) {
-                debug('COMBAT', 'Found ship via starfieldManager.viewManager.getShip()');
+            if (ship && ship.weaponSystem) {
                 return ship;
             }
         }
         
         // Try method 2: StarfieldManager -> ViewManager -> ship property
         if (window.starfieldManager && window.starfieldManager.viewManager && window.starfieldManager.viewManager.ship) {
-            debug('COMBAT', 'Found ship via starfieldManager.viewManager.ship');
-            return window.starfieldManager.viewManager.ship;
+            const ship = window.starfieldManager.viewManager.ship;
+            if (ship && ship.weaponSystem) {
+                return ship;
+            }
         }
         
-        // Try method 3: Global ship variable
-        if (window.ship) {
-            debug('COMBAT', 'Found ship via window.ship');
+        // Try method 3: StarfieldManager -> ship property (direct access)
+        if (window.starfieldManager && window.starfieldManager.ship) {
+            const ship = window.starfieldManager.ship;
+            if (ship && ship.weaponSystem) {
+                return ship;
+            }
+        }
+        
+        // Try method 4: Global ship variable
+        if (window.ship && window.ship.weaponSystem) {
             return window.ship;
         }
         
-        debug('COMBAT', 'No ship instance found');
         return null;
     }
     

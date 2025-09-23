@@ -813,6 +813,31 @@ debug('UTILITY', `🚀 Launch completed - storing position: (${launchPosition.x.
             this.starfieldManager.dockedTo = null;
             this.starfieldManager.showHUDMessage?.('LAUNCHED', 'Launch sequence completed');
             
+            // CRITICAL: Restore weapon HUD after launch (was missing!)
+            console.log('🔫 LAUNCH: Restoring weapon HUD after SimpleDockingManager launch...');
+            if (this.starfieldManager.weaponHUD && this.starfieldManager.weaponHUD.weaponSlotsDisplay) {
+                this.starfieldManager.weaponHUD.weaponSlotsDisplay.style.display = 'flex';
+                this.starfieldManager.weaponHUD.autofireIndicator.style.display = 'none'; // Will be shown if autofire is on
+                this.starfieldManager.weaponHUD.targetLockIndicator.style.display = 'none'; // Will be shown if locked
+                this.starfieldManager.weaponHUD.unifiedDisplay.style.display = 'none'; // Will be shown when needed
+                console.log('🔫 LAUNCH: Weapon HUD restored successfully');
+                
+                // Update weapon HUD with current weapon system state
+                const ship = this.starfieldManager.viewManager?.getShip();
+                if (ship && ship.weaponSystem) {
+                    this.starfieldManager.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
+                    // Ensure connection is established
+                    this.starfieldManager.connectWeaponHUDToSystem();
+                    console.log('🔫 LAUNCH: Weapon HUD updated and connected');
+                }
+debug('COMBAT', '🔫 Weapon HUD restored after SimpleDockingManager launch');
+            } else {
+                console.log('🔫 LAUNCH: Cannot restore weapon HUD - missing components:', {
+                    weaponHUD: !!this.starfieldManager.weaponHUD,
+                    weaponSlotsDisplay: !!this.starfieldManager.weaponHUD?.weaponSlotsDisplay
+                });
+            }
+            
             // Set undock cooldown to prevent immediate re-docking
             this.starfieldManager.undockCooldown = Date.now() + 10000; // 10 second cooldown
 debug('UTILITY', `🚀 Undock cooldown set: 10 seconds (until ${new Date(this.starfieldManager.undockCooldown).toLocaleTimeString()})`);

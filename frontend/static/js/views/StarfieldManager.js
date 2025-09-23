@@ -41,6 +41,8 @@ import { EnemyAIManager } from '../ai/EnemyAIManager.js';
 
 export class StarfieldManager {
     constructor(scene, camera, viewManager, threeModule = null) {
+        console.log('🔫 StarfieldManager constructor called - this should always appear');
+        debug('COMBAT', '🔫 StarfieldManager constructor - COMBAT debug test');
         this.scene = scene;
         this.camera = camera;
         this.viewManager = viewManager;
@@ -171,6 +173,7 @@ export class StarfieldManager {
         this.createIntelHUD();
         
         // Create weapon HUD
+debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD...');
         this.createWeaponHUD();
         
         // Weapon HUD connection state
@@ -1126,14 +1129,15 @@ export class StarfieldManager {
 
     createWeaponHUD() {
         // Import and initialize WeaponHUD
-        debug('UTILITY', 'StarfieldManager: Starting WeaponHUD creation...');
+        debug('COMBAT', '🔫 StarfieldManager: Starting WeaponHUD creation...');
         import('../ui/WeaponHUD.js').then(({ WeaponHUD }) => {
-            debug('UTILITY', 'StarfieldManager: WeaponHUD module loaded, creating instance...');
+            debug('COMBAT', '🔫 StarfieldManager: WeaponHUD module loaded, creating instance...');
             this.weaponHUD = new WeaponHUD(document.body);
             
             // Initialize weapon slots display
             this.weaponHUD.initializeWeaponSlots(4);
-            debug('UTILITY', 'StarfieldManager: WeaponHUD created and initialized');
+            debug('COMBAT', '🔫 StarfieldManager: WeaponHUD created and initialized');
+            debug('COMBAT', `🔫 WeaponHUD elements created: weaponSlotsDisplay=${!!this.weaponHUD.weaponSlotsDisplay}`);
             
             // Connect to weapon system if available
             this.connectWeaponHUDToSystem();
@@ -1179,6 +1183,8 @@ export class StarfieldManager {
      */
     connectWeaponHUDToSystem() {
         const ship = this.viewManager?.getShip();
+        
+        debug('COMBAT', `🔫 connectWeaponHUDToSystem: ship=${!!ship}, weaponSystem=${!!ship?.weaponSystem}, weaponHUD=${!!this.weaponHUD}`);
 
         if (ship && ship.weaponSystem && this.weaponHUD) {
             // Set HUD reference in weapon system
@@ -1188,14 +1194,11 @@ export class StarfieldManager {
             this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
             
             this.weaponHUDConnected = true;
-            debug('UTILITY', 'WeaponHUD successfully connected to WeaponSystemCore');
+            debug('COMBAT', '🔫 WeaponHUD successfully connected to WeaponSystemCore');
+            debug('COMBAT', `🔫 Weapon slots: ${ship.weaponSystem.weaponSlots?.length}, active: ${ship.weaponSystem.activeSlotIndex}`);
         } else {
             this.weaponHUDConnected = false;
-            // Use debug logging instead of warnings during startup
-
-            // if (!ship) debug('INSPECTION', 'Ship initializing...');
-            // if (!ship?.weaponSystem) debug('INSPECTION', 'WeaponSystem initializing...');
-            // if (!this.weaponHUD) debug('INSPECTION', 'WeaponHUD initializing...');
+            debug('COMBAT', `🔫 WeaponHUD connection failed: ship=${!!ship}, weaponSystem=${!!ship?.weaponSystem}, weaponHUD=${!!this.weaponHUD}`);
         }
     }
     bindKeyEvents() {
@@ -4095,6 +4098,9 @@ debug('UI', '🚪 Mission Status HUD dismissed during docking - use station Miss
                 this.weaponHUD.targetLockIndicator.style.display = 'none';
                 this.weaponHUD.unifiedDisplay.style.display = 'none';
 debug('COMBAT', '🚪 Weapon HUD hidden during docking');
+debug('COMBAT', `🔫 WeaponHUD state during docking: weaponHUD=${!!this.weaponHUD}, weaponSlotsDisplay=${!!this.weaponHUD?.weaponSlotsDisplay}`);
+            } else {
+debug('COMBAT', `🔫 Could not hide weapon HUD during docking: weaponHUD=${!!this.weaponHUD}, weaponSlotsDisplay=${!!this.weaponHUD?.weaponSlotsDisplay}`);
             }
             
             // Restore view to FORE if in modal view
@@ -4406,24 +4412,57 @@ debug('UTILITY', 'Launch procedures initiated - no energy cost');
             this.viewManager.aftCrosshair.style.display = viewToRestore === 'AFT' ? 'block' : 'none';
             
             // Initialize all ship systems for the current ship (whatever ship we're launching in)
-            this.initializeShipSystems().catch(error => {
-                console.error('Failed to initialize ship systems during launch:', error);
-            });
-            
-            // Restore weapon HUD after systems are initialized
-            if (this.weaponHUD && this.weaponHUD.weaponSlotsDisplay) {
-                this.weaponHUD.weaponSlotsDisplay.style.display = 'flex';
-                this.weaponHUD.autofireIndicator.style.display = 'none'; // Will be shown if autofire is on
-                this.weaponHUD.targetLockIndicator.style.display = 'none'; // Will be shown if locked
-                this.weaponHUD.unifiedDisplay.style.display = 'none'; // Will be shown when needed
-debug('COMBAT', 'Weapon HUD restored after launch');
+            console.log('🚀 LAUNCH: About to initialize ship systems - this should appear during launch');
+debug('COMBAT', '🚀 Starting ship systems initialization during launch...');
+            this.initializeShipSystems().then(() => {
+                console.log('🚀 LAUNCH: Ship systems initialized, about to restore weapon HUD');
+debug('COMBAT', '🚀 Ship systems initialization completed, restoring weapon HUD...');
                 
-                // Update weapon HUD with current weapon system state
-                const ship = this.viewManager?.getShip();
-                if (ship && ship.weaponSystem) {
-                    this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
+                // Restore weapon HUD AFTER systems are fully initialized
+                console.log('🔫 LAUNCH: Checking weapon HUD existence:', {
+                    weaponHUD: !!this.weaponHUD,
+                    weaponSlotsDisplay: !!this.weaponHUD?.weaponSlotsDisplay,
+                    weaponHUDConnected: this.weaponHUDConnected
+                });
+                if (this.weaponHUD && this.weaponHUD.weaponSlotsDisplay) {
+debug('COMBAT', '🔫 Restoring weapon HUD display elements...');
+                    this.weaponHUD.weaponSlotsDisplay.style.display = 'flex';
+                    this.weaponHUD.autofireIndicator.style.display = 'none'; // Will be shown if autofire is on
+                    this.weaponHUD.targetLockIndicator.style.display = 'none'; // Will be shown if locked
+                    this.weaponHUD.unifiedDisplay.style.display = 'none'; // Will be shown when needed
+debug('COMBAT', '🔫 Weapon HUD display set to flex');
+                    
+                    // Update weapon HUD with current weapon system state
+                    const ship = this.viewManager?.getShip();
+debug('COMBAT', `🔫 Getting ship for weapon HUD update: ship=${!!ship}, weaponSystem=${!!ship?.weaponSystem}`);
+                    if (ship && ship.weaponSystem) {
+debug('COMBAT', `🔫 Updating weapon HUD with ${ship.weaponSystem.weaponSlots?.length} weapon slots, active: ${ship.weaponSystem.activeSlotIndex}`);
+                        this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
+                        // Ensure connection is established
+                        this.connectWeaponHUDToSystem();
+debug('COMBAT', '🔫 Weapon HUD updated and connected');
+                    } else {
+debug('COMBAT', '🔫 Cannot update weapon HUD - ship or weapon system not available');
+                    }
+debug('COMBAT', '🔫 Weapon HUD restoration completed');
+                    
+                    // Additional debug: Check if elements are actually in DOM and visible
+                    setTimeout(() => {
+                        const weaponHUDInDOM = document.body.contains(this.weaponHUD.weaponSlotsDisplay);
+                        const computedStyle = this.weaponHUD.weaponSlotsDisplay ? getComputedStyle(this.weaponHUD.weaponSlotsDisplay) : null;
+debug('COMBAT', `🔫 POST-LAUNCH CHECK: weaponHUD in DOM=${weaponHUDInDOM}, display=${computedStyle?.display}, visibility=${computedStyle?.visibility}`);
+                    }, 1000);
+                } else {
+                    console.log('🔫 LAUNCH: Cannot restore weapon HUD - missing components:', {
+                        weaponHUD: !!this.weaponHUD,
+                        weaponSlotsDisplay: !!this.weaponHUD?.weaponSlotsDisplay
+                    });
+debug('COMBAT', `🔫 Cannot restore weapon HUD: weaponHUD=${!!this.weaponHUD}, weaponSlotsDisplay=${!!this.weaponHUD?.weaponSlotsDisplay}`);
                 }
-            }
+            }).catch(error => {
+                console.error('Failed to initialize ship systems during launch:', error);
+debug('COMBAT', '🔫 Ship systems initialization failed - weapon HUD not restored');
+            });
             
             // Restore Mission Status HUD after launch (it was hidden during docking)
             if (this.missionStatusHUD && !this.missionStatusHUD.isVisible) {
@@ -6778,7 +6817,17 @@ debug('COMBAT', '✅ WeaponHUD connected immediately, retry interval cleared');
             if (targetComputer.currentSubTarget) {
                 // Show active sub-targeting with current target
                 const subTarget = targetComputer.currentSubTarget;
-                const healthPercent = Math.round(subTarget.health * 100);
+                // Handle both decimal (0-1) and percentage (0-100) health formats
+                let healthPercent;
+                if (subTarget.health <= 1) {
+                    // Decimal format (0-1), multiply by 100
+                    healthPercent = Math.round(subTarget.health * 100);
+                } else {
+                    // Already percentage format (0-100), use as-is
+                    healthPercent = Math.round(subTarget.health);
+                }
+                // Ensure it's within valid range
+                healthPercent = Math.max(0, Math.min(100, healthPercent));
                 
                 // Get accuracy and damage bonuses
                 const accuracyBonus = Math.round(targetComputer.getSubTargetAccuracyBonus() * 100);

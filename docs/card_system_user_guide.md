@@ -500,7 +500,7 @@ Cards use the **Clash Royale upgrade model** where identical cards stack togethe
 **Each level increases card effectiveness:**
 
 - **Weapons**: +20% damage per level
-- **Reactors**: +100 energy capacity, +1 recharge rate per level  
+- **Reactors**: +1000 energy capacity, +45 recharge rate per level (increased 50% from +30)  
 - **Hull Plating**: +40 hull points per level
 - **Engines**: +3 speed per level
 - **Sensors**: +3km range per level

@@ -771,7 +771,9 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         let isDisabled = false;
 
         // Check if this is a passive system - don't create buttons for them
-        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines', 'warp_drive', 'cargo_hold'];
+        // Note: hull_plating removed from passive systems to allow active/passive mode toggle
+        // Note: weapons removed from passive systems to allow power management
+        const passiveSystems = ['energy_reactor', 'impulse_engines', 'warp_drive', 'cargo_hold'];
         if (passiveSystems.includes(systemName)) {
             return null; // Don't create a button for passive systems
         }
@@ -858,7 +860,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         }
         
         // Passive systems are always considered "active" since they can't be toggled
-        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines', 'warp_drive', 'cargo_hold'];
+        const passiveSystems = ['energy_reactor', 'impulse_engines', 'warp_drive', 'cargo_hold'];
         if (passiveSystems.includes(systemName)) {
             return true;
         }
@@ -927,7 +929,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         
         
         // Check if this is a passive system
-        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines', 'warp_drive', 'cargo_hold'];
+        const passiveSystems = ['energy_reactor', 'impulse_engines', 'warp_drive', 'cargo_hold'];
         const isPassiveSystem = passiveSystems.includes(systemName);
         
         // Don't update passive systems - they maintain their distinct styling

@@ -151,7 +151,7 @@ export class TargetComputerManager {
     }
 
     /**
-     * Create the target computer HUD
+     * Create the target computer HUD with sliding sub-system panel
      */
     createTargetComputerHUD() {
         // Create main target HUD container - match original position and styling
@@ -172,8 +172,79 @@ export class TargetComputerManager {
             pointer-events: auto;
             z-index: 1000;
             transition: border-color 0.3s ease;
+            overflow: visible;
+        `;
+
+        // Create sub-system targeting panel (slides out to the right, flush with bottom, 10% bigger than previous)
+        this.subSystemPanel = document.createElement('div');
+        this.subSystemPanel.style.cssText = `
+            position: absolute;
+            bottom: -2px;
+            left: 220px;
+            width: 165px;
+            height: auto;
+            border: 2px solid #D0D0D0;
+            background: rgba(0, 0, 0, 0.7);
+            color: #D0D0D0;
+            font-family: "Courier New", monospace;
+            font-size: 14px;
+            padding: 10px;
+            pointer-events: auto;
+            z-index: 1000;
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            transform: translateX(-100%);
+            opacity: 0;
             overflow: hidden;
         `;
+
+        // Create sub-system wireframe container (10% bigger than previous)
+        this.subSystemWireframeContainer = document.createElement('div');
+        this.subSystemWireframeContainer.style.cssText = `
+            width: 100%;
+            height: 75px;
+            border: 1px solid #D0D0D0;
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+            background: rgba(0, 20, 0, 0.3);
+        `;
+
+        // Create sub-system wireframe renderer (10% bigger: 149x75 vs previous 135x68)
+        this.subSystemWireframeRenderer = new this.THREE.WebGLRenderer({ alpha: true });
+        this.subSystemWireframeRenderer.setSize(149, 75);
+        this.subSystemWireframeRenderer.setClearColor(0x000000, 0);
+        
+        // Create scene and camera for sub-system wireframe
+        this.subSystemWireframeScene = new this.THREE.Scene();
+        this.subSystemWireframeCamera = new this.THREE.PerspectiveCamera(45, 149/75, 0.1, 1000);
+        this.subSystemWireframeCamera.position.z = 4; // Closer for smaller viewport
+        
+        // Add lights to sub-system wireframe scene
+        const subSystemWireframeLight = new this.THREE.DirectionalLight(0x00ff41, 1);
+        subSystemWireframeLight.position.set(1, 1, 1);
+        this.subSystemWireframeScene.add(subSystemWireframeLight);
+        
+        const subSystemWireframeAmbient = new this.THREE.AmbientLight(0x00ff41, 0.4);
+        this.subSystemWireframeScene.add(subSystemWireframeAmbient);
+        
+        // Center the smaller wireframe renderer in its container
+        this.subSystemWireframeRenderer.domElement.style.cssText = `
+            display: block;
+            margin: 0 auto;
+        `;
+        
+        this.subSystemWireframeContainer.appendChild(this.subSystemWireframeRenderer.domElement);
+
+        // Create sub-system content container
+        this.subSystemContent = document.createElement('div');
+        this.subSystemContent.style.cssText = `
+            width: 100%;
+            height: auto;
+        `;
+        
+        // Assemble sub-system panel
+        this.subSystemPanel.appendChild(this.subSystemWireframeContainer);
+        this.subSystemPanel.appendChild(this.subSystemContent);
 
         // Create wireframe container - match original styling
         this.wireframeContainer = document.createElement('div');
@@ -304,7 +375,417 @@ export class TargetComputerManager {
         this.targetHUD.appendChild(this.statusIconsContainer);
         this.targetHUD.appendChild(this.actionButtonsContainer);
         
+        // Add sub-system panel to main HUD (positioned absolutely to the right)
+        this.targetHUD.appendChild(this.subSystemPanel);
+        
         document.body.appendChild(this.targetHUD);
+    }
+
+    /**
+     * Show the sub-system targeting panel with slide-out animation
+     */
+    showSubSystemPanel() {
+        if (!this.subSystemPanel) return;
+        
+        // Ensure the panel is visible first
+        this.subSystemPanel.style.display = 'block';
+        
+        // Small delay to ensure display change is processed before animation
+        requestAnimationFrame(() => {
+            // Animate the panel sliding out from left to right
+            this.subSystemPanel.style.transform = 'translateX(0)';
+            this.subSystemPanel.style.opacity = '1';
+        });
+        
+        debug('TARGETING', '🎯 Sub-system panel sliding out');
+    }
+
+    /**
+     * Hide the sub-system targeting panel with slide-in animation
+     */
+    hideSubSystemPanel() {
+        if (!this.subSystemPanel) return;
+        
+        // Immediately start the slide-in animation (right to left)
+        this.subSystemPanel.style.transform = 'translateX(-100%)';
+        this.subSystemPanel.style.opacity = '0';
+        
+        // Hide the panel after animation completes
+        setTimeout(() => {
+            if (this.subSystemPanel && this.subSystemPanel.style.opacity === '0') {
+                this.subSystemPanel.style.display = 'none';
+            }
+        }, 300); // Match the CSS transition duration
+        
+        debug('TARGETING', '🎯 Sub-system panel sliding in');
+    }
+
+    /**
+     * Update sub-system panel border color to match main HUD
+     */
+    updateSubSystemPanelColor(color) {
+        if (this.subSystemPanel) {
+            this.subSystemPanel.style.borderColor = color;
+        }
+        if (this.subSystemWireframeContainer) {
+            this.subSystemWireframeContainer.style.borderColor = color;
+        }
+    }
+
+    /**
+     * Create geometric shapes for different sub-systems
+     */
+    createSubSystemGeometry(systemName, baseColor = 0x00ff41) {
+        const geometry = new this.THREE.BufferGeometry();
+        const material = new this.THREE.LineBasicMaterial({ 
+            color: baseColor,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        let vertices = [];
+
+        switch (systemName) {
+            case 'weapons':
+                // Octahedron - aggressive angular shape
+                vertices = [
+                    // Top pyramid
+                    0, 1, 0,   1, 0, 0,
+                    1, 0, 0,   0, 0, 1,
+                    0, 0, 1,   -1, 0, 0,
+                    -1, 0, 0,  0, 1, 0,
+                    // Bottom pyramid
+                    0, -1, 0,  1, 0, 0,
+                    1, 0, 0,   0, 0, 1,
+                    0, 0, 1,   -1, 0, 0,
+                    -1, 0, 0,  0, -1, 0,
+                    // Connect top and bottom
+                    0, 1, 0,   0, -1, 0
+                ];
+                break;
+
+            case 'shields':
+                // Icosphere - protective dome shape
+                const t = (1.0 + Math.sqrt(5.0)) / 2.0; // Golden ratio
+                const icosahedronVertices = [
+                    [-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0],
+                    [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t],
+                    [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]
+                ];
+                // Create edges for wireframe
+                const edges = [
+                    [0,11], [0,5], [0,1], [0,7], [0,10], [1,5], [5,11], [11,10], [10,7], [7,1],
+                    [3,9], [3,4], [3,2], [3,6], [3,8], [4,9], [9,8], [8,6], [6,2], [2,4],
+                    [1,9], [5,4], [11,2], [10,6], [7,8], [0,3], [1,3], [5,3], [11,3], [10,3]
+                ];
+                vertices = [];
+                edges.forEach(edge => {
+                    vertices.push(...icosahedronVertices[edge[0]], ...icosahedronVertices[edge[1]]);
+                });
+                break;
+
+            case 'impulse_engines':
+                // Cylinder - engine thruster shape
+                const radius = 0.8;
+                const height = 1.5;
+                const segments = 8;
+                vertices = [];
+                // Top circle
+                for (let i = 0; i < segments; i++) {
+                    const angle1 = (i / segments) * Math.PI * 2;
+                    const angle2 = ((i + 1) / segments) * Math.PI * 2;
+                    vertices.push(
+                        Math.cos(angle1) * radius, height/2, Math.sin(angle1) * radius,
+                        Math.cos(angle2) * radius, height/2, Math.sin(angle2) * radius
+                    );
+                }
+                // Bottom circle
+                for (let i = 0; i < segments; i++) {
+                    const angle1 = (i / segments) * Math.PI * 2;
+                    const angle2 = ((i + 1) / segments) * Math.PI * 2;
+                    vertices.push(
+                        Math.cos(angle1) * radius, -height/2, Math.sin(angle1) * radius,
+                        Math.cos(angle2) * radius, -height/2, Math.sin(angle2) * radius
+                    );
+                }
+                // Vertical lines connecting circles
+                for (let i = 0; i < segments; i++) {
+                    const angle = (i / segments) * Math.PI * 2;
+                    vertices.push(
+                        Math.cos(angle) * radius, height/2, Math.sin(angle) * radius,
+                        Math.cos(angle) * radius, -height/2, Math.sin(angle) * radius
+                    );
+                }
+                break;
+
+            case 'warp_drive':
+                // Torus - ring drive shape
+                const majorRadius = 1.0;
+                const minorRadius = 0.3;
+                const majorSegments = 12;
+                const minorSegments = 6;
+                vertices = [];
+                // Major circles
+                for (let i = 0; i < majorSegments; i++) {
+                    const angle1 = (i / majorSegments) * Math.PI * 2;
+                    const angle2 = ((i + 1) / majorSegments) * Math.PI * 2;
+                    vertices.push(
+                        Math.cos(angle1) * majorRadius, 0, Math.sin(angle1) * majorRadius,
+                        Math.cos(angle2) * majorRadius, 0, Math.sin(angle2) * majorRadius
+                    );
+                }
+                // Minor circles
+                for (let i = 0; i < majorSegments; i += 3) { // Every 3rd segment
+                    const majorAngle = (i / majorSegments) * Math.PI * 2;
+                    const centerX = Math.cos(majorAngle) * majorRadius;
+                    const centerZ = Math.sin(majorAngle) * majorRadius;
+                    for (let j = 0; j < minorSegments; j++) {
+                        const minorAngle1 = (j / minorSegments) * Math.PI * 2;
+                        const minorAngle2 = ((j + 1) / minorSegments) * Math.PI * 2;
+                        vertices.push(
+                            centerX + Math.cos(minorAngle1) * minorRadius * Math.cos(majorAngle),
+                            Math.sin(minorAngle1) * minorRadius,
+                            centerZ + Math.cos(minorAngle1) * minorRadius * Math.sin(majorAngle),
+                            centerX + Math.cos(minorAngle2) * minorRadius * Math.cos(majorAngle),
+                            Math.sin(minorAngle2) * minorRadius,
+                            centerZ + Math.cos(minorAngle2) * minorRadius * Math.sin(majorAngle)
+                        );
+                    }
+                }
+                break;
+
+            case 'target_computer':
+                // Tetrahedron - precise targeting shape
+                vertices = [
+                    // Base triangle
+                    1, -0.5, -0.5,   -1, -0.5, -0.5,
+                    -1, -0.5, -0.5,  0, -0.5, 1,
+                    0, -0.5, 1,      1, -0.5, -0.5,
+                    // Apex connections
+                    1, -0.5, -0.5,   0, 1, 0,
+                    -1, -0.5, -0.5,  0, 1, 0,
+                    0, -0.5, 1,      0, 1, 0
+                ];
+                break;
+
+            case 'long_range_scanner':
+                // Dish/Parabola - scanning array shape
+                const dishRadius = 1.2;
+                const dishSegments = 12;
+                vertices = [];
+                // Dish rim
+                for (let i = 0; i < dishSegments; i++) {
+                    const angle1 = (i / dishSegments) * Math.PI * 2;
+                    const angle2 = ((i + 1) / dishSegments) * Math.PI * 2;
+                    vertices.push(
+                        Math.cos(angle1) * dishRadius, 0, Math.sin(angle1) * dishRadius,
+                        Math.cos(angle2) * dishRadius, 0, Math.sin(angle2) * dishRadius
+                    );
+                }
+                // Dish spokes to center
+                for (let i = 0; i < dishSegments; i += 2) {
+                    const angle = (i / dishSegments) * Math.PI * 2;
+                    vertices.push(
+                        0, 0, 0,
+                        Math.cos(angle) * dishRadius, 0, Math.sin(angle) * dishRadius
+                    );
+                }
+                // Support structure
+                vertices.push(0, 0, 0, 0, -1, 0);
+                break;
+
+            case 'energy_reactor':
+                // Cube - power core shape
+                vertices = [
+                    // Front face
+                    -1, -1, 1,   1, -1, 1,
+                    1, -1, 1,    1, 1, 1,
+                    1, 1, 1,     -1, 1, 1,
+                    -1, 1, 1,    -1, -1, 1,
+                    // Back face
+                    -1, -1, -1,  1, -1, -1,
+                    1, -1, -1,   1, 1, -1,
+                    1, 1, -1,    -1, 1, -1,
+                    -1, 1, -1,   -1, -1, -1,
+                    // Connecting edges
+                    -1, -1, 1,   -1, -1, -1,
+                    1, -1, 1,    1, -1, -1,
+                    1, 1, 1,     1, 1, -1,
+                    -1, 1, 1,    -1, 1, -1
+                ];
+                break;
+
+            case 'hull_plating':
+                // Hexagonal prism - armor plating shape
+                const hexRadius = 1.0;
+                const hexHeight = 0.8;
+                vertices = [];
+                // Top hexagon
+                for (let i = 0; i < 6; i++) {
+                    const angle1 = (i / 6) * Math.PI * 2;
+                    const angle2 = ((i + 1) / 6) * Math.PI * 2;
+                    vertices.push(
+                        Math.cos(angle1) * hexRadius, hexHeight/2, Math.sin(angle1) * hexRadius,
+                        Math.cos(angle2) * hexRadius, hexHeight/2, Math.sin(angle2) * hexRadius
+                    );
+                }
+                // Bottom hexagon
+                for (let i = 0; i < 6; i++) {
+                    const angle1 = (i / 6) * Math.PI * 2;
+                    const angle2 = ((i + 1) / 6) * Math.PI * 2;
+                    vertices.push(
+                        Math.cos(angle1) * hexRadius, -hexHeight/2, Math.sin(angle1) * hexRadius,
+                        Math.cos(angle2) * hexRadius, -hexHeight/2, Math.sin(angle2) * hexRadius
+                    );
+                }
+                // Vertical edges
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i / 6) * Math.PI * 2;
+                    vertices.push(
+                        Math.cos(angle) * hexRadius, hexHeight/2, Math.sin(angle) * hexRadius,
+                        Math.cos(angle) * hexRadius, -hexHeight/2, Math.sin(angle) * hexRadius
+                    );
+                }
+                break;
+
+            default:
+                // Default: Simple wireframe cube
+                vertices = [
+                    -1, -1, 1,   1, -1, 1,   1, -1, 1,    1, 1, 1,
+                    1, 1, 1,     -1, 1, 1,   -1, 1, 1,    -1, -1, 1,
+                    -1, -1, -1,  1, -1, -1,  1, -1, -1,   1, 1, -1,
+                    1, 1, -1,    -1, 1, -1,  -1, 1, -1,   -1, -1, -1,
+                    -1, -1, 1,   -1, -1, -1, 1, -1, 1,    1, -1, -1,
+                    1, 1, 1,     1, 1, -1,   -1, 1, 1,    -1, 1, -1
+                ];
+        }
+
+        geometry.setAttribute('position', new this.THREE.Float32BufferAttribute(vertices, 3));
+        return new this.THREE.LineSegments(geometry, material);
+    }
+
+    /**
+     * Update sub-system wireframe based on current sub-target
+     */
+    updateSubSystemWireframe(systemName, healthPercentage = 1.0, diplomacyColor = '#00ff41') {
+        if (!this.subSystemWireframeScene || !this.subSystemWireframeRenderer) return;
+
+        // Clear existing wireframe
+        while (this.subSystemWireframeScene.children.length > 2) { // Keep lights
+            this.subSystemWireframeScene.remove(this.subSystemWireframeScene.children[2]);
+        }
+
+        if (!systemName) return;
+
+        // Convert diplomacy color to hex number for Three.js
+        const baseColor = this.convertColorToHex(diplomacyColor);
+        
+        // Create new wireframe for the system with faction color
+        const wireframe = this.createSubSystemGeometry(systemName, baseColor);
+        
+        // Adjust color based on health while maintaining faction hue
+        const finalColor = this.getFactionHealthColor(diplomacyColor, healthPercentage);
+        wireframe.material.color.setHex(finalColor);
+        
+        // Add rotation animation
+        wireframe.rotation.x = Date.now() * 0.0005;
+        wireframe.rotation.y = Date.now() * 0.001;
+        
+        this.subSystemWireframeScene.add(wireframe);
+        
+        // Store reference for animation
+        this.currentSubSystemWireframe = wireframe;
+        
+        // Render the scene
+        this.subSystemWireframeRenderer.render(this.subSystemWireframeScene, this.subSystemWireframeCamera);
+        
+        debug('TARGETING', `🎯 Sub-system wireframe updated: ${systemName} (${Math.round(healthPercentage * 100)}% health, ${diplomacyColor} faction)`);
+    }
+
+    /**
+     * Convert CSS color string to Three.js hex number
+     */
+    convertColorToHex(colorString) {
+        // Remove # if present
+        const hex = colorString.replace('#', '');
+        return parseInt(hex, 16);
+    }
+
+    /**
+     * Get faction-based health color that maintains faction hue but adjusts for damage
+     */
+    getFactionHealthColor(diplomacyColor, healthPercentage) {
+        // For healthy systems (70%+), use full faction color
+        if (healthPercentage > 0.7) {
+            return this.convertColorToHex(diplomacyColor);
+        }
+        
+        // For damaged systems, blend faction color with damage indicators
+        const baseColor = this.convertColorToHex(diplomacyColor);
+        
+        if (healthPercentage > 0.4) {
+            // Slightly damaged - blend with yellow
+            return this.blendColors(baseColor, 0xffff00, 0.3);
+        } else if (healthPercentage > 0.2) {
+            // Heavily damaged - blend with orange
+            return this.blendColors(baseColor, 0xff8800, 0.5);
+        } else {
+            // Critical - blend with red
+            return this.blendColors(baseColor, 0xff0000, 0.7);
+        }
+    }
+
+    /**
+     * Blend two hex colors
+     */
+    blendColors(color1, color2, ratio) {
+        const r1 = (color1 >> 16) & 0xff;
+        const g1 = (color1 >> 8) & 0xff;
+        const b1 = color1 & 0xff;
+        
+        const r2 = (color2 >> 16) & 0xff;
+        const g2 = (color2 >> 8) & 0xff;
+        const b2 = color2 & 0xff;
+        
+        const r = Math.round(r1 * (1 - ratio) + r2 * ratio);
+        const g = Math.round(g1 * (1 - ratio) + g2 * ratio);
+        const b = Math.round(b1 * (1 - ratio) + b2 * ratio);
+        
+        return (r << 16) | (g << 8) | b;
+    }
+
+    /**
+     * Get color based on health percentage (legacy method for compatibility)
+     */
+    getHealthColor(healthPercentage) {
+        if (healthPercentage > 0.7) return 0x00ff41; // Green - healthy
+        if (healthPercentage > 0.4) return 0xffff00; // Yellow - damaged
+        if (healthPercentage > 0.2) return 0xff8800; // Orange - heavily damaged
+        return 0xff0000; // Red - critical
+    }
+
+    /**
+     * Animate sub-system wireframe
+     */
+    animateSubSystemWireframe() {
+        if (this.currentSubSystemWireframe && this.subSystemWireframeRenderer && this.subSystemWireframeScene) {
+            // Rotate the wireframe
+            this.currentSubSystemWireframe.rotation.x += 0.005;
+            this.currentSubSystemWireframe.rotation.y += 0.01;
+            
+            // Render the scene
+            this.subSystemWireframeRenderer.render(this.subSystemWireframeScene, this.subSystemWireframeCamera);
+        }
+    }
+
+    /**
+     * Update method called from StarfieldManager main loop
+     */
+    update(deltaTime) {
+        // Animate sub-system wireframe if visible
+        if (this.subSystemPanel && this.subSystemPanel.style.opacity === '1') {
+            this.animateSubSystemWireframe();
+        }
     }
 
     /**
@@ -2469,7 +2950,17 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 Sub-targeting check: isEnemyShip
                 
                 if (targetComputerForSubTargets.currentSubTarget) {
                     const subTarget = targetComputerForSubTargets.currentSubTarget;
-                    const healthPercent = Math.round(subTarget.health * 100);
+                    // Handle both decimal (0-1) and percentage (0-100) health formats
+                    let healthPercent;
+                    if (subTarget.health <= 1) {
+                        // Decimal format (0-1), multiply by 100
+                        healthPercent = Math.round(subTarget.health * 100);
+                    } else {
+                        // Already percentage format (0-100), use as-is
+                        healthPercent = Math.round(subTarget.health);
+                    }
+                    // Ensure it's within valid range
+                    healthPercent = Math.max(0, Math.min(100, healthPercent));
                     
                     // Get accuracy and damage bonuses
                     const accuracyBonus = Math.round(targetComputerForSubTargets.getSubTargetAccuracyBonus() * 100);
@@ -2650,6 +3141,7 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 Sub-targeting check: isEnemyShip
             }
         }
 if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: Setting targetInfoDisplay.innerHTML with name: "${displayName}", type: "${displayType}", distance: "${formattedDistance}"`);
+        // Update main target info display (without sub-system targeting)
         this.targetInfoDisplay.innerHTML = `
             <div style="background-color: ${backgroundColor}; color: ${textColor}; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
                 <div style="font-weight: bold; font-size: 12px;">${displayName}</div>
@@ -2657,8 +3149,35 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: Setting targetInfoDisplay
                 <div style="font-size: 10px;">${formattedDistance}</div>
                 ${hullHealthSection}
             </div>
-            ${subTargetHTML}
         `;
+
+        // Update sub-system panel content and show/hide based on availability
+        if (subTargetHTML && subTargetHTML.trim()) {
+            // Update sub-system panel content
+            this.subSystemContent.innerHTML = `
+                ${subTargetHTML}
+            `;
+            
+            // Update sub-system wireframe based on current sub-target
+            const playerShip = this.viewManager?.getShip();
+            const targetComputerForWireframe = playerShip?.getSystem('target_computer');
+            if (targetComputerForWireframe && targetComputerForWireframe.currentSubTarget) {
+                const subTarget = targetComputerForWireframe.currentSubTarget;
+                this.updateSubSystemWireframe(subTarget.systemName, subTarget.health, diplomacyColor);
+            }
+            
+            // Show the sub-system panel with animation
+            this.showSubSystemPanel();
+            
+            // Update sub-system panel border color to match main HUD
+            this.updateSubSystemPanelColor(diplomacyColor);
+        } else {
+            // Clear wireframe when no sub-systems available
+            this.updateSubSystemWireframe(null);
+            
+            // Hide the sub-system panel with animation
+            this.hideSubSystemPanel();
+        }
 if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHTML set to:`, this.targetInfoDisplay.innerHTML.substring(0, 200) + '...');
 
         // Update status icons with diplomacy color
@@ -3817,6 +4336,9 @@ debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.ship
         if (this.targetHUD) {
             this.targetHUD.style.display = 'none';
         }
+        
+        // Also hide the sub-system panel
+        this.hideSubSystemPanel();
     }
     
     /**

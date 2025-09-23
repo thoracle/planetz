@@ -248,6 +248,43 @@ The Planetz game engine uses **kilometers (km)** as the fundamental world unit a
 
 **🚨 CRITICAL**: When adding new systems, always use kilometers as the base unit. Any unit conversions should be clearly documented and isolated to specific display/UI functions only.
 
+### **Energy System Enhancement** ⚡ **RECENT UPDATE**
+
+**Status**: ✅ **COMPLETED** - Base energy recharge rates increased by 50% across all ships and configurations
+
+#### **Energy Recharge Rate Improvements**:
+
+**Energy Reactor System**:
+- **Before**: 30 energy/sec per level
+- **After**: **45 energy/sec per level** (+50% increase)
+- **Impact**: All ships with energy reactors benefit from faster energy recovery
+
+**Ship Configuration Updates**:
+
+| **Ship Type** | **Before** | **After** | **Improvement** |
+|---|---|---|---|
+| **Starter Ship** | 20/sec | **30/sec** | +50% |
+| **Light Fighter** | 50/sec | **75/sec** | +50% |
+| **Scout Ship** | 60/sec | **90/sec** | +50% |
+| **Corvette** | 55/sec | **82/sec** | +50% |
+| **Light Freighter** | 45/sec | **67/sec** | +50% |
+| **Heavy Freighter** | 40/sec | **60/sec** | +50% |
+| **Enemy Fighter** | 30/sec | **45/sec** | +50% |
+| **Enemy Interceptor** | 40/sec | **60/sec** | +50% |
+| **Enemy Cruiser** | 25/sec | **37/sec** | +50% |
+
+#### **Gameplay Impact**:
+- ✅ **Faster Combat Recovery**: Less downtime between weapon volleys
+- ✅ **More Active Gameplay**: Energy-consuming systems (shields, scanners) more viable
+- ✅ **Better System Management**: Players can maintain active systems longer
+- ✅ **Balanced Enhancement**: Both player and enemy ships benefit equally
+- ✅ **Scales with Progression**: Higher level reactors provide proportionally more benefit
+
+#### **Technical Implementation**:
+- **Files Updated**: `EnergyReactor.js`, `ShipConfigs.js`
+- **Backward Compatibility**: All existing ships automatically benefit from improved rates
+- **Documentation Updated**: User guides and specifications reflect new rates
+
 ### **Object ID Naming Convention** 🏷️ **CRITICAL REFERENCE**
 
 **STANDARD FORMAT: UPPERCASE A0_ PREFIX** 🔤
@@ -548,6 +585,10 @@ waypoint: '#ff00ff'  // Magenta for waypoints
 - ✅ **Simplified Target System** with persistent targeting and fail-fast error handling
 
 **Recent Major Updates**:
+- **Weapon HUD Launch Fix**: Fixed critical issue where weapon selector HUD wasn't appearing after station launch
+- **Sub-Target HUD Improvements**: Resized sub-targeting panel, fixed health percentage display, removed redundant labels
+- **Energy System Enhancement**: Increased base energy recharge rates by 50% across all ships for improved gameplay flow
+- **UI Terminology Update**: Changed "Inventory" to "Collection" in ship upgrade interface to match game vision
 - **Discovery System Optimization**: Increased discovery radius from 25km to 100km for balanced progression
 - **Target System Simplification**: Removed automatic target clearing, persistent targeting, fail-fast debugging
 - **Wireframe Improvements**: Navigation beacons now use octahedron geometry for better visual distinction
@@ -1820,6 +1861,46 @@ debugSyncFile()     // Sync browser with file
 **Solution**: Refactored waypoint creation to use the same proven code path as TAB targeting
 **Status**: ✅ **RESOLVED** - Directional arrows now appear immediately upon waypoint creation
 **Impact**: Seamless waypoint navigation experience with instant visual feedback
+
+### **✅ Weapon HUD Station Launch Fix**
+
+**Issue**: Weapon selector HUD was not appearing after launching from space stations
+**Root Cause**: `SimpleDockingManager` was hiding the weapon HUD during docking but never restoring it during launch
+**Solution**: Added weapon HUD restoration to `SimpleDockingManager.completeLaunch()` method
+**Status**: ✅ **RESOLVED** - Weapon HUD now appears correctly after every station launch
+
+**Technical Details**:
+- **Problem**: `SimpleDockingManager` hides weapon HUD during docking (line 436-441) but `completeLaunch()` had no restoration code
+- **Launch Flow**: Game uses `SimpleDockingManager.launchFromStation()` instead of StarfieldManager launch sequence
+- **Fix Location**: Added restoration code to `SimpleDockingManager.completeLaunch()` method
+- **Restoration Process**: Sets `weaponSlotsDisplay.style.display = 'flex'`, updates weapon system state, establishes HUD connection
+- **Debug Enhancement**: Added comprehensive console logging and debug channels for weapon HUD tracking
+
+**Files Modified**:
+- `SimpleDockingManager.js`: Added weapon HUD restoration in `completeLaunch()`
+- `StarfieldManager.js`: Enhanced debug logging for weapon HUD lifecycle
+- `WeaponHUD.js`: Added constructor and element creation debug statements
+- `debug-config.json`: Enabled SYSTEM_FLOW debug channel
+
+**Impact**: Players now see weapon selector HUD immediately after launching from any station, with proper weapon slot display and functionality
+
+### **✅ Sub-Target HUD Enhancements**
+
+**Status**: ✅ **COMPLETED** - Multiple improvements to sub-system targeting interface
+
+**Improvements Made**:
+1. **Size Optimization**: Made sub-target HUD 10% bigger (165px width, 149x75 wireframe) for better readability
+2. **Health Display Fix**: Fixed health percentages showing 10000% instead of 100% by handling both decimal and percentage formats
+3. **UI Cleanup**: Removed redundant "SUB-SYSTEMS" header label for cleaner appearance
+4. **Faction Coloring**: Sub-system wireframes follow same faction coloring rules as main wireframes
+
+**Technical Implementation**:
+- **TargetComputerManager.js**: Updated panel dimensions, wireframe renderer size, health calculation logic
+- **Health Format Handling**: Smart detection of decimal (0-1) vs percentage (0-100) health values
+- **Color System**: Sub-system wireframes inherit faction colors with health-based damage blending
+- **Wireframe Geometry**: Unique geometric shapes for different sub-systems (Octahedron, Icosphere, etc.)
+
+**Impact**: More usable and visually appealing sub-system targeting with accurate health display and better screen space utilization
 
 ### **✅ W Key Target Computer Requirement Fixed**
 

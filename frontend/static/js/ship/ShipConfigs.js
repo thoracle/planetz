@@ -18,7 +18,7 @@ export const SHIP_CONFIGS = {
         
         // Energy system - Basic
         maxEnergy: 1000,       // Small energy pool
-        energyRechargeRate: 20, // Slow recharge rate
+        energyRechargeRate: 30, // Recharge rate (increased 50% from 20)
         
         // Hull - Light construction
         maxHull: 300,          // Very low hull hit points
@@ -89,7 +89,7 @@ export const SHIP_CONFIGS = {
         
         // Energy system (simplified - no separate power grid)
         maxEnergy: 5000,       // Energy pool for all systems
-        energyRechargeRate: 50, // Energy per second
+        energyRechargeRate: 75, // Energy per second (increased 50% from 50)
         
         // Hull
         maxHull: 1000,         // Hull hit points
@@ -190,7 +190,7 @@ export const SHIP_CONFIGS = {
         
         // Energy system - Efficient but smaller capacity
         maxEnergy: 3500,       // Smaller energy pool
-        energyRechargeRate: 60, // Fast recharge rate
+        energyRechargeRate: 90, // Fast recharge rate (increased 50% from 60)
         
         // Hull - Light construction
         maxHull: 500,          // Low hull hit points
@@ -285,7 +285,7 @@ export const SHIP_CONFIGS = {
         
         // Energy system - Balanced
         maxEnergy: 4000,       // Medium energy pool
-        energyRechargeRate: 55, // Good recharge rate
+        energyRechargeRate: 82, // Good recharge rate (increased 50% from 55)
         
         // Hull - Medium construction
         maxHull: 700,          // Medium hull hit points
@@ -380,7 +380,7 @@ export const SHIP_CONFIGS = {
         
         // Energy system - Larger capacity for cargo systems
         maxEnergy: 6000,       // Large energy pool
-        energyRechargeRate: 45, // Slower recharge rate
+        energyRechargeRate: 67, // Slower recharge rate (increased 50% from 45)
         
         // Hull - Reinforced for cargo protection
         maxHull: 900,          // High hull hit points
@@ -475,7 +475,7 @@ export const SHIP_CONFIGS = {
         
         // Energy system - Massive capacity for cargo operations
         maxEnergy: 8000,       // Very large energy pool
-        energyRechargeRate: 40, // Slow recharge rate
+        energyRechargeRate: 60, // Slow recharge rate (increased 50% from 40)
         
         // Hull - Heavily reinforced
         maxHull: 1200,         // Very high hull hit points
@@ -573,7 +573,7 @@ export const ENEMY_SHIP_CONFIGS = {
         
         // Energy system
         maxEnergy: 2000,
-        energyRechargeRate: 30,
+        energyRechargeRate: 45, // Increased 50% from 30
         
         // Hull
         maxHull: 600,
@@ -636,7 +636,7 @@ export const ENEMY_SHIP_CONFIGS = {
         
         // Energy system
         maxEnergy: 1500,
-        energyRechargeRate: 40,
+        energyRechargeRate: 60, // Increased 50% from 40
         
         // Hull
         maxHull: 400,
@@ -699,7 +699,7 @@ export const ENEMY_SHIP_CONFIGS = {
         
         // Energy system
         maxEnergy: 3000,
-        energyRechargeRate: 25,
+        energyRechargeRate: 37, // Increased 50% from 25 (rounded from 37.5)
         
         // Hull
         maxHull: 1000,

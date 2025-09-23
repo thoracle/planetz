@@ -437,7 +437,7 @@
   - [X] Increase slot counts to support 8 core systems plus expansion room
   - [X] **NEW**: Implement gear-based stats system
     - [X] Create HullPlating system (provides hull hit points)
-    - [X] Create EnergyReactor system (provides energy capacity and recharge rate)
+    - [X] Create EnergyReactor system (provides energy capacity and recharge rate: 45 energy/sec per level, increased 50%)
     - [X] Create ShieldGenerator system (provides armor rating when active)
     - [X] Create CargoHold system (provides cargo capacity)
     - [X] Modify Ship class to derive all stats from installed gear

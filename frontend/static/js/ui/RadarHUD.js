@@ -21,7 +21,9 @@ export class RadarHUD {
         
         // Proximity Detector configuration
         this.config = {
-            size: 180,                    // Radar display size in pixels
+            width: 180,                   // Radar display width in pixels
+            height: 135,                  // Radar display height in pixels
+            size: 180,                    // Radar display size in pixels (for compatibility)
             range: 50000,                 // Detection range in game units (50km)
             gridSize: 5,                  // 5x5 grid
             verticalRange: 20000,         // Vertical display range (20km up/down)
@@ -78,7 +80,7 @@ debug('UI', 'RadarHUD: Initialization complete');
             left: 50%;
             transform: translateX(-50%);
             width: 200px;
-            height: 240px;
+            height: 180px;
             background: rgba(0, 0, 0, 0.85);
             border: 2px solid #00ff41;
             border-radius: 4px;
@@ -113,7 +115,7 @@ debug('UI', 'RadarHUD: Initialization complete');
         displayArea.className = 'radar-display';
         displayArea.style.cssText = `
             width: 180px;
-            height: 180px;
+            height: 135px;
             margin: 0 auto;
             border: 1px solid #00ff41;
             background: rgba(0, 40, 0, 0.3);
@@ -131,8 +133,8 @@ debug('AI', 'RadarHUD: Container created');
      */
     createRadarCanvas() {
         this.radarCanvas = document.createElement('canvas');
-        this.radarCanvas.width = this.config.size;
-        this.radarCanvas.height = this.config.size;
+        this.radarCanvas.width = this.config.width;
+        this.radarCanvas.height = this.config.height;
         this.radarCanvas.className = 'radar-canvas';
         this.radarCanvas.style.cssText = `
             width: 100%;
