@@ -708,7 +708,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         let isDisabled = false;
 
         // Check if this is a passive system - don't create buttons for them
-        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines'];
+        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines', 'warp_drive', 'cargo_hold'];
         if (passiveSystems.includes(systemName)) {
             return null; // Don't create a button for passive systems
         }
@@ -795,7 +795,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         }
         
         // Passive systems are always considered "active" since they can't be toggled
-        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines'];
+        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines', 'warp_drive', 'cargo_hold'];
         if (passiveSystems.includes(systemName)) {
             return true;
         }
@@ -862,7 +862,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         
         
         // Check if this is a passive system
-        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines'];
+        const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines', 'warp_drive', 'cargo_hold'];
         const isPassiveSystem = passiveSystems.includes(systemName);
         
         // Don't update passive systems - they maintain their distinct styling
@@ -915,7 +915,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
     toggleSystem(systemName) {
         try {
             // Passive systems cannot be toggled
-            const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines'];
+            const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines', 'warp_drive', 'cargo_hold'];
             if (passiveSystems.includes(systemName)) {
                 console.warn(`Cannot toggle passive system: ${systemName}`);
                 return;
@@ -1265,13 +1265,31 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                 } else {
                     // System available - let SubspaceRadio UI handle it (same as R key)
                     this.starfieldManager.playCommandSound();
-                    if (window.subspaceRadio) {
-                        window.subspaceRadio.toggle();
+                    
+                    // Try multiple paths to access SubspaceRadio UI
+                    let subspaceRadioUI = null;
+                    
+                    // Method 1: Via ViewManager (most likely)
+                    if (this.starfieldManager.viewManager && this.starfieldManager.viewManager.subspaceRadio) {
+                        subspaceRadioUI = this.starfieldManager.viewManager.subspaceRadio;
+                    }
+                    // Method 2: Via global window object (fallback)
+                    else if (window.subspaceRadio) {
+                        subspaceRadioUI = window.subspaceRadio;
+                    }
+                    
+                    if (subspaceRadioUI && subspaceRadioUI.toggle) {
+                        subspaceRadioUI.toggle();
                         
                         // Update button state immediately
                         setTimeout(() => this.updateButtonState(systemName), 50);
                     } else {
-                        console.warn('SubspaceRadio UI not available');
+                        console.warn('SubspaceRadio UI not available via any access method');
+                        console.log('Available paths:', {
+                            'starfieldManager.viewManager': !!this.starfieldManager.viewManager,
+                            'starfieldManager.viewManager.subspaceRadio': !!this.starfieldManager.viewManager?.subspaceRadio,
+                            'window.subspaceRadio': !!window.subspaceRadio
+                        });
                     }
                 }
             } else {
