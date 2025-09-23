@@ -147,7 +147,12 @@ debug('COMBAT', 'WeaponHUD initialized');
         
         // Add click functionality for equipped weapons
         if (!slot.isEmpty) {
-            slotElement.addEventListener('click', () => {
+            console.log(`🎯 WEAPON HUD: Adding click listener to slot ${slot.slotIndex + 1}`);
+            
+            slotElement.addEventListener('click', (event) => {
+                console.log(`🎯 WEAPON HUD: Click event fired for slot ${slot.slotIndex + 1}`);
+                event.preventDefault();
+                event.stopPropagation();
                 this.onWeaponSlotClick(slot.slotIndex);
             });
             
@@ -165,6 +170,8 @@ debug('COMBAT', 'WeaponHUD initialized');
                     slotElement.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
                 }
             });
+        } else {
+            console.log(`🎯 WEAPON HUD: Slot ${slot.slotIndex + 1} is empty, no click listener added`);
         }
         
         // Slot number
@@ -712,22 +719,43 @@ debug('COMBAT', `🎯 FEEDBACK: ${weaponName} blastRadius: ${activeWeapon.equipp
      * @param {number} slotIndex - Index of the clicked weapon slot
      */
     onWeaponSlotClick(slotIndex) {
+        console.log(`🎯 WEAPON CLICK: Slot ${slotIndex + 1} clicked`);
         debug('COMBAT', `Weapon slot ${slotIndex + 1} clicked`);
         
         // Get the ship and weapon system
         const ship = this.getShip();
-        if (!ship || !ship.weaponSystem) {
-            debug('COMBAT', 'No ship or weapon system available for slot click');
+        console.log('🎯 WEAPON CLICK: Ship found:', !!ship);
+        
+        if (!ship) {
+            console.log('🎯 WEAPON CLICK: No ship found');
+            debug('COMBAT', 'No ship available for slot click');
             return;
         }
         
+        console.log('🎯 WEAPON CLICK: Ship.weaponSystem found:', !!ship.weaponSystem);
+        
+        if (!ship.weaponSystem) {
+            console.log('🎯 WEAPON CLICK: No weapon system found');
+            debug('COMBAT', 'No weapon system available for slot click');
+            return;
+        }
+        
+        console.log('🎯 WEAPON CLICK: Calling selectWeaponSlot()');
+        
         // Attempt to select the weapon slot
         if (ship.weaponSystem.selectWeaponSlot(slotIndex)) {
+            console.log('🎯 WEAPON CLICK: Weapon selection successful');
+            
             // Play command sound on successful weapon switch
             if (ship.starfieldManager && ship.starfieldManager.playCommandSound) {
                 ship.starfieldManager.playCommandSound();
+            } else if (window.starfieldManager && window.starfieldManager.playCommandSound) {
+                window.starfieldManager.playCommandSound();
             }
+            
             debug('COMBAT', `Successfully selected weapon slot ${slotIndex + 1} via click`);
+        } else {
+            console.log('🎯 WEAPON CLICK: Weapon selection failed');
         }
     }
     
@@ -736,16 +764,30 @@ debug('COMBAT', `🎯 FEEDBACK: ${weaponName} blastRadius: ${activeWeapon.equipp
      * @returns {Object|null} Ship instance or null
      */
     getShip() {
-        // Try to get ship from various possible sources
+        debug('COMBAT', 'WeaponHUD.getShip() - Attempting to find ship instance');
+        
+        // Try method 1: StarfieldManager -> ViewManager -> getShip()
         if (window.starfieldManager && window.starfieldManager.viewManager) {
-            return window.starfieldManager.viewManager.getShip();
+            const ship = window.starfieldManager.viewManager.getShip();
+            if (ship) {
+                debug('COMBAT', 'Found ship via starfieldManager.viewManager.getShip()');
+                return ship;
+            }
         }
         
-        // Fallback: try to get from global scope
+        // Try method 2: StarfieldManager -> ViewManager -> ship property
+        if (window.starfieldManager && window.starfieldManager.viewManager && window.starfieldManager.viewManager.ship) {
+            debug('COMBAT', 'Found ship via starfieldManager.viewManager.ship');
+            return window.starfieldManager.viewManager.ship;
+        }
+        
+        // Try method 3: Global ship variable
         if (window.ship) {
+            debug('COMBAT', 'Found ship via window.ship');
             return window.ship;
         }
         
+        debug('COMBAT', 'No ship instance found');
         return null;
     }
     

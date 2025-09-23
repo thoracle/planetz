@@ -102,23 +102,34 @@ export class WeaponSystemCore {
      * @returns {boolean} True if weapon was changed
      */
     selectWeaponSlot(slotIndex) {
+        console.log(`🎯 WEAPON CORE: selectWeaponSlot(${slotIndex}) called`);
+        
         // Validate slot index
         if (slotIndex < 0 || slotIndex >= this.maxWeaponSlots) {
+            console.log(`🎯 WEAPON CORE: Invalid slot index: ${slotIndex}`);
             debug('COMBAT', `Invalid weapon slot index: ${slotIndex}`);
             return false;
         }
         
+        console.log(`🎯 WEAPON CORE: Slot ${slotIndex} isEmpty:`, this.weaponSlots[slotIndex].isEmpty);
+        
         // Check if slot has a weapon equipped
         if (this.weaponSlots[slotIndex].isEmpty) {
+            console.log(`🎯 WEAPON CORE: Slot ${slotIndex} is empty`);
             this.showMessage("No weapon equipped in this slot");
             return false;
         }
         
+        console.log(`🎯 WEAPON CORE: Current active slot: ${this.activeSlotIndex}, target slot: ${slotIndex}`);
+        
         // Check if already active
         if (this.activeSlotIndex === slotIndex) {
+            console.log(`🎯 WEAPON CORE: Slot ${slotIndex} is already active`);
             // Already active, no change needed
             return false;
         }
+        
+        console.log(`🎯 WEAPON CORE: Switching to weapon slot ${slotIndex}`);
         
         // Switch to the selected weapon
         this.activeSlotIndex = slotIndex;
@@ -128,6 +139,7 @@ export class WeaponSystemCore {
         // Update crosshair display to reflect new active weapon range
         this.updateCrosshairForActiveWeapon();
         
+        console.log(`🎯 WEAPON CORE: Successfully selected weapon slot ${slotIndex + 1}`);
         debug('COMBAT', `Selected weapon slot ${slotIndex + 1} via click`);
         return true;
     }
