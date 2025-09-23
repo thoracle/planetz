@@ -472,7 +472,7 @@ debug('UI', `❌ NO CARDS LOADED for ${this.ship.shipType}`);
 
         try {
             // STEP 0: Refresh card data to ensure we have the latest levels and configuration
-            this.initializeCardData();
+            await this.initializeCardData();
             debug('SYSTEM_FLOW', `📚 [${callId}] Card data initialized, ${this.installedCards?.size || 0} cards found`);
         } catch (error) {
             debug('SYSTEM_FLOW', `❌ [${callId}] Failed to initialize card data: ${error.message}`);

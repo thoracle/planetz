@@ -24,8 +24,8 @@ export class ProximityDetector3D {
         // 3D Configuration
         this.config = {
             // Display properties
-            screenWidth: 0.25,              // 25% of screen width (SQUARE aspect ratio)
-            screenHeight: 0.25,             // 25% of screen height (SQUARE aspect ratio)
+            screenWidth: 0.25,              // 25% of screen width (SAME width)
+            screenHeight: 0.140625,         // 14.0625% of screen height (50% total reduction: 0.25 * 0.75 * 0.75 = 0.140625)
             position: 'bottom-center',       // Lower center position
             
             // 3D Grid properties

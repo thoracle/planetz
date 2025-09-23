@@ -2387,7 +2387,7 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                 this.handleWaypointCreationAsync();
             }
 
-            // Operations Report key (O) - toggle operations/damage control view
+            // Operations Report key (O) - toggle operations/damage control HUD overlay
             if (commandKey === 'o') {
                 // Check if Mission Status HUD is open before dismissing
                 const missionHudWasVisible = this.missionStatusHUD && this.missionStatusHUD.visible;
@@ -2462,49 +2462,19 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
         this.damageControlVisible = !this.damageControlVisible;
 
         if (this.damageControlVisible) {
-            // Store the previous view before switching to operations report
-            this.previousView = this.view;
-            this.view = 'OPERATIONS';
+            // Operations HUD is an overlay, don't change the view
             this.isDamageControlOpen = true; // Set the state flag
             
-            // CRITICAL: Force refresh ship systems before showing operations report
-            const ship = this.viewManager?.getShip();
-            if (ship && ship.cardSystemIntegration) {
-debug('COMBAT', 'Refreshing ship systems before showing operations report...');
-                // Force reload cards and refresh systems
-                ship.cardSystemIntegration.loadCards().then(() => {
-                    // Check if systems already exist to prevent duplicates
-                    const existingSystemCount = ship.systems ? ship.systems.size : 0;
-                    debug('SYSTEM_FLOW', `🔍 StarfieldManager operations report check: existing systems = ${existingSystemCount}`);
-
-                    if (existingSystemCount === 0) {
-                        debug('SYSTEM_FLOW', '🚀 StarfieldManager creating systems for operations report');
-                        ship.cardSystemIntegration.createSystemsFromCards().then(() => {
-                            // Re-initialize cargo holds from updated cards
-                            if (ship.cargoHoldManager) {
-                                ship.cargoHoldManager.initializeFromCards();
-                            }
-
-                            // Show the operations report HUD after systems are refreshed
-                            this.damageControlHUD.show();
-                            debug('COMBAT', 'Operations report HUD shown with refreshed systems');
-                        });
-                    } else {
-                        debug('SYSTEM_FLOW', '⏭️ StarfieldManager skipping system creation for operations report - systems already exist');
-                        // Still show operations report even if we didn't recreate systems
-                        this.damageControlHUD.show();
-                        debug('COMBAT', 'Operations report HUD shown (systems not recreated)');
-                    }
-                });
-            } else {
-                // Fallback: show immediately if no card system integration
-                this.damageControlHUD.show();
-            }
+            debug('COMBAT', 'Showing operations report HUD...');
+            
+            // SIMPLIFIED: Just show the HUD - no card system refresh needed
+            // The ship systems should already be initialized from launch/undocking
+            this.damageControlHUD.show();
+            debug('COMBAT', 'Operations report HUD shown');
             
             this.updateSpeedIndicator(); // Update the view indicator
         } else {
-            // Restore the previous view when closing operations report
-            this.view = this.previousView || 'FORE';
+            // Operations HUD is an overlay, don't change the view when closing
             this.isDamageControlOpen = false; // Clear the state flag
             
             // Clean up all debug hit spheres when operations report is turned off
@@ -3305,18 +3275,12 @@ debug('UTILITY', '⚡ StarfieldManager disposal started...');
 debug('UTILITY', `🎯 StarfieldManager.setView('${viewType}') called`);
         console.trace('🎯 setView call stack');
         
-        // Hide damage control UI when switching to any other view
-        if (this.damageControlVisible && viewType !== 'DAMAGE') {
-            this.damageControlVisible = false;
-            if (this.shipSystemsHUD) {
-                this.shipSystemsHUD.style.display = 'none';
-            }
-        }
+        // Operations HUD is now an overlay and doesn't interfere with view changes
 
         // Store previous view when switching to special views
         if (viewType === 'GALACTIC' || viewType === 'SCANNER') {
             // Only store previous view if it's not a special view
-            if (this.view !== 'GALACTIC' && this.view !== 'LONG RANGE' && this.view !== 'DAMAGE') {
+            if (this.view !== 'GALACTIC' && this.view !== 'LONG RANGE') {
                 this.previousView = this.view;
             }
         }
@@ -4109,11 +4073,12 @@ debug('AI', '🚪 Communication HUD dismissed during docking - station communica
             }
             
             // Hide damage control HUD when docking since systems are powered down
-            if (this.damageControlVisible) {
+            if (this.damageControlVisible || (this.damageControlHUD && this.damageControlHUD.isVisible)) {
                 this.damageControlVisible = false;
-                this.damageControlHUD.hide();
-                // Restore the previous view
-                this.view = this.previousView || 'FORE';
+                if (this.damageControlHUD) {
+                    this.damageControlHUD.hide();
+                }
+                // Don't restore view since Operations HUD doesn't change views anymore
 debug('COMBAT', '🚪 Damage Control HUD dismissed during docking');
             }
             
@@ -4298,10 +4263,13 @@ debug('UTILITY', '🚪 Proximity Detector dismissed during docking completion');
                 this.communicationHUD.hide();
 debug('UI', '🚪 Communication HUD dismissed during docking completion');
             }
-            if (this.damageControlVisible && this.damageControlHUD) {
+            if (this.damageControlVisible || (this.damageControlHUD && this.damageControlHUD.isVisible)) {
                 this.damageControlVisible = false;
-                this.damageControlHUD.hide();
-                this.view = this.previousView || 'FORE';
+                if (this.damageControlHUD) {
+                    this.damageControlHUD.hide();
+                }
+                // Don't restore view since Operations HUD doesn't change views anymore
+debug('COMBAT', '🚪 Damage Control HUD dismissed during docking completion');
             }
             if (this.weaponHUD && this.weaponHUD.weaponSlotsDisplay) {
                 this.weaponHUD.weaponSlotsDisplay.style.display = 'none';
@@ -6440,6 +6408,7 @@ debug('UTILITY', '🛑 All ship systems shutdown complete');
      * This is the unified method that should be used for ALL ship initialization scenarios
      */
     async initializeShipSystems() {
+debug('UI', '🚀 LAUNCH: initializeShipSystems() called');
 debug('UTILITY', 'Initializing ship systems for launch');
         
         const ship = this.viewManager?.getShip();
@@ -6474,6 +6443,16 @@ debug('UI', '🔄 Refreshing ship systems from current card configuration...');
                 }
                 
 debug('UI', '✅ Ship systems refreshed from cards - equipment changes applied');
+                
+                // Force refresh Operations HUD to reflect the updated ship systems
+                // Use forceRefresh to reload systems regardless of visibility
+                if (this.damageControlHUD) {
+debug('UI', '🔄 About to force refresh Operations HUD...');
+                    await this.damageControlHUD.forceRefresh();
+debug('UI', '✅ Operations HUD force refresh completed');
+                } else {
+debug('UI', '❌ No damageControlHUD available for refresh');
+                }
             } catch (error) {
                 console.error('❌ Failed to refresh ship systems from cards:', error);
             }

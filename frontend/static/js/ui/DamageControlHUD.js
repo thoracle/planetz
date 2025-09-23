@@ -307,6 +307,9 @@ debug('AI', `🔧 Toggle button clicked for: ${systemName}`);
     show() {
         this.isVisible = true;
         this.container.style.display = 'block';
+        
+        // SIMPLIFIED: Just refresh the display - card system refresh is handled by toggleDamageControl()
+        debug('COMBAT', '🔄 Operations HUD opening - refreshing display...');
         this.refresh();
         
         // Start update loops
@@ -364,7 +367,16 @@ debug('AI', `🔧 Toggle button clicked for: ${systemName}`);
         const systemsToShow = this.validateAndPrepareSystemsForDisplay(unfilteredStatus.systems);
         
         // Check for radar cards and add virtual radar system if needed
-        const hasRadarCards = this.ship && this.ship.hasSystemCardsSync && this.ship.hasSystemCardsSync('radar');
+        // FIXED: Check installed cards directly to avoid stale data
+        let hasRadarCards = false;
+        if (this.ship && this.ship.cardSystemIntegration && this.ship.cardSystemIntegration.installedCards) {
+            const installedCardTypes = Array.from(this.ship.cardSystemIntegration.installedCards.values()).map(card => card.cardType);
+            hasRadarCards = installedCardTypes.includes('basic_radar') || 
+                           installedCardTypes.includes('advanced_radar') || 
+                           installedCardTypes.includes('tactical_radar');
+        }
+        
+debug('COMBAT', `🔍 Operations HUD radar card check: hasRadarCards=${hasRadarCards}, existing radar system=${!!systemsToShow.radar}`);
         if (hasRadarCards && !systemsToShow.radar) {
             systemsToShow.radar = {
                 name: 'Proximity Detector',
@@ -460,8 +472,59 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             return false;
         }
         
-        // For non-weapon systems, use the existing card system validation
-        return this.ship.hasSystemCardsSync(systemName);
+        // For non-weapon systems, check installed cards directly to avoid stale data
+        if (this.ship && this.ship.cardSystemIntegration && this.ship.cardSystemIntegration.installedCards) {
+            const installedCardTypes = Array.from(this.ship.cardSystemIntegration.installedCards.values()).map(card => card.cardType);
+            
+            // Check for direct card type match first
+            if (installedCardTypes.includes(systemName)) {
+                return true;
+            }
+            
+            // Check for system-specific card variants
+            switch (systemName) {
+                case 'radar':
+                    return installedCardTypes.includes('basic_radar') || 
+                           installedCardTypes.includes('advanced_radar') || 
+                           installedCardTypes.includes('tactical_radar');
+                case 'shields':
+                    return installedCardTypes.includes('shields') || 
+                           installedCardTypes.includes('shield_generator') || 
+                           installedCardTypes.includes('phase_shield') || 
+                           installedCardTypes.includes('quantum_barrier') || 
+                           installedCardTypes.includes('temporal_deflector');
+                case 'target_computer':
+                    return installedCardTypes.includes('target_computer') || 
+                           installedCardTypes.includes('tactical_computer') || 
+                           installedCardTypes.includes('combat_computer') || 
+                           installedCardTypes.includes('strategic_computer');
+                case 'energy_reactor':
+                    return installedCardTypes.includes('energy_reactor') || 
+                           installedCardTypes.includes('quantum_reactor') || 
+                           installedCardTypes.includes('dark_matter_core') || 
+                           installedCardTypes.includes('antimatter_generator') || 
+                           installedCardTypes.includes('crystalline_matrix');
+                case 'impulse_engines':
+                    return installedCardTypes.includes('impulse_engines') || 
+                           installedCardTypes.includes('quantum_drive') || 
+                           installedCardTypes.includes('dimensional_shifter') || 
+                           installedCardTypes.includes('temporal_engine') || 
+                           installedCardTypes.includes('gravity_well_drive');
+                default:
+                    return false;
+            }
+        }
+        
+        // Fallback to starter cards check
+        if (this.ship.shipConfig?.starterCards) {
+            for (const card of Object.values(this.ship.shipConfig.starterCards)) {
+                if (card.cardType === systemName) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
     
     createSystemCard(systemName, systemData) {
@@ -815,23 +878,25 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                 return system && system.isShieldsUp !== undefined ? system.isShieldsUp : false;
                 
             case 'long_range_scanner':
-                // Scanner state is managed by NavigationSystemManager
-                return this.starfieldManager && this.starfieldManager.viewManager && this.starfieldManager.viewManager.navigationSystemManager 
-                    ? this.starfieldManager.viewManager.navigationSystemManager.longRangeScanner?.isVisible() || false : false;
+                // FIXED: Check system active state, not UI visibility
+                // UI can be closed while system is still active (consuming energy)
+                return system && system.isActive !== undefined ? system.isActive : false;
                 
             case 'star_charts':
-                // Star charts state is managed by NavigationSystemManager
-                return this.starfieldManager && this.starfieldManager.viewManager && this.starfieldManager.viewManager.navigationSystemManager 
-                    ? this.starfieldManager.viewManager.navigationSystemManager.starChartsUI?.isVisible() || false : false;
+                // FIXED: Check system active state, not UI visibility  
+                // UI can be closed while system is still active (consuming energy)
+                return system && system.isActive !== undefined ? system.isActive : false;
                 
             case 'galactic_chart':
-                // Galactic chart state is managed by ViewManager
-                return this.starfieldManager && this.starfieldManager.viewManager 
-                    ? this.starfieldManager.viewManager.galacticChart?.isVisible() || false : false;
+                // FIXED: Check system active state, not UI visibility
+                // UI can be closed while system is still active (consuming energy)
+                return system && system.isActive !== undefined ? system.isActive : false;
                 
             case 'subspace_radio':
-                // Subspace radio state is managed by SubspaceRadio UI
-                return window.subspaceRadio ? window.subspaceRadio.isVisible : false;
+                // FIXED: Check the actual system's active state, not UI visibility
+                // The system can be active (consuming energy) even if UI is closed, or
+                // the UI can be visible but system inactive (no energy)
+                return system && system.isActive !== undefined ? system.isActive : false;
                 
             default:
                 // Default to system.isActive for other systems
@@ -1536,11 +1601,18 @@ debug('COMBAT', 'Force refreshing operations report systems...');
         
         // Force reload cards from the ship
         if (this.ship && this.ship.cardSystemIntegration) {
+debug('COMBAT', '🔄 Reloading cards from ship...');
             await this.ship.cardSystemIntegration.loadCards();
+debug('COMBAT', '🔄 Recreating systems from cards...');
             await this.ship.cardSystemIntegration.createSystemsFromCards();
+debug('COMBAT', '✅ Card system refresh completed');
+        } else {
+debug('COMBAT', '❌ No ship or cardSystemIntegration available for refresh');
         }
         
         // Refresh the display
+debug('COMBAT', '🔄 Refreshing Operations HUD display...');
         this.refresh();
+debug('COMBAT', '✅ Operations HUD display refresh completed');
     }
 } 
