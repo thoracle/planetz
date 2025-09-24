@@ -195,7 +195,27 @@ export class TargetComputerManager {
             transform: translateX(-100%);
             opacity: 0;
             overflow: hidden;
+            cursor: pointer;
         `;
+        
+        // Add click handler for left/right half sub-targeting
+        this.subSystemPanel.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            // Use the panel's bounding rect for consistent click detection regardless of child elements
+            const rect = this.subSystemPanel.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const halfWidth = rect.width / 2;
+            
+            if (clickX < halfWidth) {
+                // Left half - same as Z (previous sub-target)
+                this.cycleToPreviousSubTarget();
+            } else {
+                // Right half - same as X (next sub-target)
+                this.cycleToNextSubTarget();
+            }
+        });
 
         // Create sub-system wireframe container (10% bigger than previous)
         this.subSystemWireframeContainer = document.createElement('div');
@@ -231,6 +251,7 @@ export class TargetComputerManager {
         this.subSystemWireframeRenderer.domElement.style.cssText = `
             display: block;
             margin: 0 auto;
+            pointer-events: none;
         `;
         
         this.subSystemWireframeContainer.appendChild(this.subSystemWireframeRenderer.domElement);
@@ -241,6 +262,16 @@ export class TargetComputerManager {
             width: 100%;
             height: auto;
         `;
+        
+        // Ensure all child elements don't block clicks by setting pointer-events: none on children
+        const subSystemStyle = document.createElement('style');
+        subSystemStyle.textContent = `
+            .sub-system-content * {
+                pointer-events: none;
+            }
+        `;
+        document.head.appendChild(subSystemStyle);
+        this.subSystemContent.className = 'sub-system-content';
         
         // Assemble sub-system panel
         this.subSystemPanel.appendChild(this.subSystemWireframeContainer);
@@ -256,7 +287,7 @@ export class TargetComputerManager {
             position: relative;
             overflow: visible;
             pointer-events: none;
-            z-index: 1001;
+            z-index: 9999;
         `;
 
         // Create wireframe renderer - match original size
@@ -277,18 +308,64 @@ export class TargetComputerManager {
         const wireframeAmbient = new this.THREE.AmbientLight(0x00ff41, 0.4);
         this.wireframeScene.add(wireframeAmbient);
         
+        // Ensure wireframe canvas doesn't block clicks
+        this.wireframeRenderer.domElement.style.pointerEvents = 'none';
         this.wireframeContainer.appendChild(this.wireframeRenderer.domElement);
 
-        // Create target info display
+        // Create target info display with click zones for TAB/SHIFT-TAB functionality
         this.targetInfoDisplay = document.createElement('div');
         this.targetInfoDisplay.style.cssText = `
             width: 100%;
             text-align: left;
             margin-bottom: 10px;
-            pointer-events: none;
+            pointer-events: auto;
             position: relative;
-            z-index: 1002;
+            z-index: 10000;
+            cursor: pointer;
         `;
+        
+        // Ensure all child elements don't block clicks by setting pointer-events: none on children
+        const targetInfoStyle = document.createElement('style');
+        targetInfoStyle.textContent = `
+            .target-info-display * {
+                pointer-events: none;
+            }
+        `;
+        document.head.appendChild(targetInfoStyle);
+        this.targetInfoDisplay.className = 'target-info-display';
+        
+        // Add click handler for left/right half targeting
+        
+        // Forward any clicks on the main container to the targetInfoDisplay for seamless interaction
+        this.targetHUD.addEventListener('click', (event) => {
+            // Always forward clicks to targetInfoDisplay for consistent behavior
+            // This handles clicks on child elements within the info display
+            const newEvent = new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                clientX: event.clientX,
+                clientY: event.clientY
+            });
+            this.targetInfoDisplay.dispatchEvent(newEvent);
+        });
+        
+        this.targetInfoDisplay.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const rect = this.targetInfoDisplay.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const halfWidth = rect.width / 2;
+            
+            if (clickX < halfWidth) {
+                // Left half - same as SHIFT-TAB (previous target)
+                this.cycleToPreviousTarget();
+            } else {
+                // Right half - same as TAB (next target)
+                this.cycleToNextTarget();
+            }
+        });
+        
 
         // Create status icons container
         this.statusIconsContainer = document.createElement('div');
@@ -6148,6 +6225,46 @@ debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
         this.wireframeScene.add(this.targetWireframe);
         
         debug('WAYPOINTS', `💎 Created magenta diamond wireframe for: ${this.currentTarget.name}`);
+    }
+
+    /**
+     * Cycle to previous target (same as SHIFT-TAB)
+     */
+    cycleToPreviousTarget() {
+        if (this.viewManager?.starfieldManager) {
+            this.viewManager.starfieldManager.cycleTarget(false); // false = backward/previous
+            // Play the same sound as TAB key
+            this.viewManager.starfieldManager.playCommandSound();
+        }
+    }
+
+    /**
+     * Cycle to next target (same as TAB)
+     */
+    cycleToNextTarget() {
+        if (this.viewManager?.starfieldManager) {
+            this.viewManager.starfieldManager.cycleTarget(true); // true = forward/next
+            // Play the same sound as TAB key
+            this.viewManager.starfieldManager.playCommandSound();
+        }
+    }
+
+    /**
+     * Cycle to previous sub-target (same as Z key)
+     */
+    cycleToPreviousSubTarget() {
+        if (this.viewManager?.starfieldManager) {
+            this.viewManager.starfieldManager.handleSubTargetingKey('previous');
+        }
+    }
+
+    /**
+     * Cycle to next sub-target (same as X key)
+     */
+    cycleToNextSubTarget() {
+        if (this.viewManager?.starfieldManager) {
+            this.viewManager.starfieldManager.handleSubTargetingKey('next');
+        }
     }
 
 } 

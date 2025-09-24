@@ -44,7 +44,7 @@
             "description": "User interface events and updates"
         },
         "INTERACTION": {
-            "enabled": false,
+            "enabled": true,
             "description": "Touch and mouse interactions"
         },
         "MISSIONS": {

@@ -585,6 +585,7 @@ waypoint: '#ff00ff'  // Magenta for waypoints
 - ✅ **Simplified Target System** with persistent targeting and fail-fast error handling
 
 **Recent Major Updates**:
+- **🖱️ Target HUD Click Controls**: Added mouse click support to Target Computer and Sub-Target HUDs - left/right halves cycle targets/sub-targets with same sounds as keyboard shortcuts
 - **Weapon HUD Launch Fix**: Fixed critical issue where weapon selector HUD wasn't appearing after station launch
 - **Sub-Target HUD Improvements**: Resized sub-targeting panel, fixed health percentage display, removed redundant labels
 - **Energy System Enhancement**: Increased base energy recharge rates by 50% across all ships for improved gameplay flow
@@ -1901,6 +1902,35 @@ debugSyncFile()     // Sync browser with file
 - **Wireframe Geometry**: Unique geometric shapes for different sub-systems (Octahedron, Icosphere, etc.)
 
 **Impact**: More usable and visually appealing sub-system targeting with accurate health display and better screen space utilization
+
+### **✅ Target HUD Mouse Click Controls**
+
+**Status**: ✅ **COMPLETED** - Full mouse click support for Target Computer and Sub-Target HUDs
+
+**Feature Overview**:
+- **Main Target HUD**: Click left/right halves to cycle targets (same as TAB/SHIFT-TAB)
+- **Sub-Target HUD**: Click left/right halves to cycle sub-targets (same as Z/X keys)
+- **Audio Feedback**: Same command sounds as keyboard shortcuts
+- **Universal Clickability**: Works on wireframes, text content, and all HUD areas
+
+**Technical Implementation**:
+- **Click Detection**: Event listeners on both main `targetHUD` container and `subSystemPanel`
+- **Child Element Handling**: CSS `pointer-events: none` on all child elements to prevent click blocking
+- **Click Forwarding**: Automatic forwarding from container to target elements for seamless interaction
+- **Coordinate Calculation**: Uses parent element bounding rectangles for consistent left/right half detection
+- **Sound Integration**: Calls `playCommandSound()` for successful target cycling, matching keyboard behavior
+
+**User Experience**:
+- **Intuitive Controls**: Left side = Previous, Right side = Next (consistent with keyboard shortcuts)
+- **Responsive Feedback**: Immediate visual and audio feedback on all clicks
+- **Accessibility**: Large clickable areas covering entire HUD sections
+- **Consistency**: 100% equivalent functionality to keyboard controls
+
+**Files Modified**:
+- `TargetComputerManager.js`: Added click event listeners, delegation methods, and CSS styling
+- Enhanced click forwarding mechanism for robust interaction across all HUD elements
+
+**Impact**: Players can now use mouse or keyboard interchangeably for target management, improving accessibility and user preference accommodation
 
 ### **✅ W Key Target Computer Requirement Fixed**
 
