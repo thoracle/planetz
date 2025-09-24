@@ -4283,6 +4283,13 @@ debug('COMBAT', '🚪 Damage Control HUD dismissed during docking completion');
                 this.weaponHUD.targetLockIndicator.style.display = 'none';
                 this.weaponHUD.unifiedDisplay.style.display = 'none';
             }
+            
+            // Dismiss mission rewards overlay if visible
+            const missionRewardsOverlay = document.getElementById('mission-rewards-overlay');
+            if (missionRewardsOverlay) {
+                missionRewardsOverlay.remove();
+debug('UTILITY', '🚪 Mission rewards overlay dismissed during docking completion');
+            }
         }
 
         // Play feedback

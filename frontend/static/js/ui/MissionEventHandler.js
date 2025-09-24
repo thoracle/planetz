@@ -765,6 +765,12 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                             cardsGranted++;
                             debug('MISSIONS', `✅ Granted card: ${cardName}`);
                             console.log('✅ MISSION COMPLETION: Card granted:', cardName);
+                            
+                            // Mark card as newly awarded for NEW badge system
+                            if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
+                                cardInventoryUI.constructor.markCardAsNewlyAwarded(cardType);
+                                debug('MISSIONS', `🆕 Marked card as NEW: ${cardType}`);
+                            }
                         } else {
                             console.error(`❌ Failed to grant card ${cardName}:`, result.error);
                         }
@@ -782,6 +788,12 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                         cardsGranted++;
                         debug('MISSIONS', `✅ Granted card: ${randomType}`);
                         console.log('✅ MISSION COMPLETION: Card granted:', randomType);
+                        
+                        // Mark card as newly awarded for NEW badge system
+                        if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
+                            cardInventoryUI.constructor.markCardAsNewlyAwarded(randomType);
+                            debug('MISSIONS', `🆕 Marked card as NEW: ${randomType}`);
+                        }
                     } else {
                         console.error(`❌ Failed to grant card ${randomType}:`, result.error);
                     }
@@ -795,6 +807,12 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                         cardsGranted++;
                         debug('MISSIONS', `✅ Granted random card: ${card.cardType}`);
                         console.log('✅ MISSION COMPLETION: Random card granted:', card.cardType);
+                        
+                        // Mark card as newly awarded for NEW badge system
+                        if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
+                            cardInventoryUI.constructor.markCardAsNewlyAwarded(card.cardType);
+                            debug('MISSIONS', `🆕 Marked card as NEW: ${card.cardType}`);
+                        }
                     } else {
                         console.error(`❌ Failed to grant random card:`, result.error);
                     }
