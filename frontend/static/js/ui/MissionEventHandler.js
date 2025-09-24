@@ -885,9 +885,19 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                 // Refresh the CardInventoryUI to show updated counts
                 if (cardInventoryUI && typeof cardInventoryUI.render === 'function') {
                     try {
+                        // Debug: Check current card counts before and after refresh
+                        const galacticStack = cardInventoryUI.inventory.cardStacks.get('galactic_chart');
+                        const radioStack = cardInventoryUI.inventory.cardStacks.get('subspace_radio');
+                        console.log('🔍 MISSION COMPLETION: Pre-refresh counts - Galactic:', galacticStack?.count, 'Radio:', radioStack?.count);
+                        console.log('🔍 MISSION COMPLETION: CardInventoryUI instance ID:', cardInventoryUI.containerId);
+                        console.log('🔍 MISSION COMPLETION: Is this the docking interface instance?', cardInventoryUI === this.starfieldManager?.viewManager?.dockingInterface?.cardInventoryUI);
+                        
                         cardInventoryUI.render();
                         debug('MISSIONS', '🔄 CardInventoryUI refreshed after card grants');
                         console.log('🔄 MISSION COMPLETION: CardInventoryUI refreshed to show updated counts');
+                        
+                        // Debug: Verify counts after refresh
+                        console.log('🔍 MISSION COMPLETION: Post-refresh counts - Galactic:', galacticStack?.count, 'Radio:', radioStack?.count);
                     } catch (renderError) {
                         console.error('❌ MISSION COMPLETION: Failed to refresh CardInventoryUI:', renderError);
                     }
