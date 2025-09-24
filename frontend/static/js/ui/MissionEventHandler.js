@@ -761,6 +761,9 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
             if (cardData.names && cardData.names.length > 0) {
                 for (const cardName of cardData.names) {
                     const cardType = this.mapCardNameToType(cardName);
+                    debug('MISSIONS', `🃏 Mapping card name "${cardName}" to type "${cardType}"`);
+                    debug('MISSIONS', `🃏 CARD_TYPES.BASIC_RADAR = "${CARD_TYPES.BASIC_RADAR}"`);
+                    debug('MISSIONS', `🃏 CARD_TYPES.LONG_RANGE_SCANNER = "${CARD_TYPES.LONG_RANGE_SCANNER}"`);
                     if (cardType) {
                         const card = cardInventory.generateSpecificCard(cardType, 'common');
                         const result = cardInventory.addCard(card);
