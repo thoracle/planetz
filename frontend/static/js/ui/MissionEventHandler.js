@@ -724,6 +724,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
         try {
             // Get the CardInventoryUI instance - try multiple approaches
             let cardInventoryUI = window.cardInventoryUI;
+            debug('MISSIONS', `🃏 window.cardInventoryUI exists: ${!!cardInventoryUI}`);
 
             // If not available globally, try to get it from the starfieldManager
             if (!cardInventoryUI && this.starfieldManager?.viewManager?.dockingInterface) {
@@ -752,6 +753,8 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
             }
 
             const cardInventory = cardInventoryUI.inventory;
+            debug('MISSIONS', `🃏 CardInventory exists: ${!!cardInventory}`);
+            debug('MISSIONS', `🃏 CardInventory has addCard method: ${!!cardInventory.addCard}`);
             let cardsGranted = 0;
 
             // Grant specific cards by name if provided
@@ -767,9 +770,15 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                             console.log('✅ MISSION COMPLETION: Card granted:', cardName);
                             
                             // Mark card as newly awarded for NEW badge system
+                            debug('MISSIONS', `🃏 Attempting to mark card as NEW: ${cardType}`);
+                            debug('MISSIONS', `🃏 cardInventoryUI.constructor exists: ${!!cardInventoryUI.constructor}`);
+                            debug('MISSIONS', `🃏 markCardAsNewlyAwarded method exists: ${!!cardInventoryUI.constructor.markCardAsNewlyAwarded}`);
+                            
                             if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
                                 cardInventoryUI.constructor.markCardAsNewlyAwarded(cardType);
                                 debug('MISSIONS', `🆕 Marked card as NEW: ${cardType}`);
+                            } else {
+                                debug('MISSIONS', `❌ markCardAsNewlyAwarded method not found`);
                             }
                         } else {
                             console.error(`❌ Failed to grant card ${cardName}:`, result.error);
@@ -790,9 +799,12 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                         console.log('✅ MISSION COMPLETION: Card granted:', randomType);
                         
                         // Mark card as newly awarded for NEW badge system
+                        debug('MISSIONS', `🃏 Attempting to mark card as NEW: ${randomType}`);
                         if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
                             cardInventoryUI.constructor.markCardAsNewlyAwarded(randomType);
                             debug('MISSIONS', `🆕 Marked card as NEW: ${randomType}`);
+                        } else {
+                            debug('MISSIONS', `❌ markCardAsNewlyAwarded method not found for ${randomType}`);
                         }
                     } else {
                         console.error(`❌ Failed to grant card ${randomType}:`, result.error);
@@ -809,9 +821,12 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                         console.log('✅ MISSION COMPLETION: Random card granted:', card.cardType);
                         
                         // Mark card as newly awarded for NEW badge system
+                        debug('MISSIONS', `🃏 Attempting to mark card as NEW: ${card.cardType}`);
                         if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
                             cardInventoryUI.constructor.markCardAsNewlyAwarded(card.cardType);
                             debug('MISSIONS', `🆕 Marked card as NEW: ${card.cardType}`);
+                        } else {
+                            debug('MISSIONS', `❌ markCardAsNewlyAwarded method not found for ${card.cardType}`);
                         }
                     } else {
                         console.error(`❌ Failed to grant random card:`, result.error);
