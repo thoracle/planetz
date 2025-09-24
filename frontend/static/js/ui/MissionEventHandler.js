@@ -595,12 +595,12 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                         count: 2, // Mid-range (1-3)
                         minTier: 2,
                         maxTier: 4,
-                        preferredTypes: [CARD_TYPES.TARGET_COMPUTER, CARD_TYPES.LONG_RANGE_SCANNER],
+                        preferredTypes: [CARD_TYPES.GALACTIC_CHART, CARD_TYPES.SUBSPACE_RADIO],
                         names: [
-                            'Target Computer Card',
-                            'Long Range Scanner Card'
+                            'Galactic Chart Card',
+                            'Subspace Radio Card'
                         ],
-                        types: [CARD_TYPES.TARGET_COMPUTER, CARD_TYPES.LONG_RANGE_SCANNER]
+                        types: [CARD_TYPES.GALACTIC_CHART, CARD_TYPES.SUBSPACE_RADIO]
                     }
                 };
 
@@ -726,11 +726,20 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
             // Get the CardInventoryUI instance - try multiple approaches
             let cardInventoryUI = window.cardInventoryUI;
             debug('MISSIONS', `🃏 window.cardInventoryUI exists: ${!!cardInventoryUI}`);
+            console.log(`🃏 MISSION COMPLETION: window.cardInventoryUI exists: ${!!cardInventoryUI}`);
 
             // If not available globally, try to get it from the starfieldManager
             if (!cardInventoryUI && this.starfieldManager?.viewManager?.dockingInterface) {
                 cardInventoryUI = this.starfieldManager.viewManager.dockingInterface.cardInventoryUI;
                 debug('MISSIONS', '🃏 Got CardInventoryUI from dockingInterface');
+                console.log('🃏 MISSION COMPLETION: Got CardInventoryUI from dockingInterface');
+            }
+
+            // CRITICAL: Always prefer the dockingInterface instance if available
+            // This ensures we use the same instance that the ship upgrade screen uses
+            if (this.starfieldManager?.viewManager?.dockingInterface?.cardInventoryUI) {
+                cardInventoryUI = this.starfieldManager.viewManager.dockingInterface.cardInventoryUI;
+                console.log('🃏 MISSION COMPLETION: Using dockingInterface CardInventoryUI (preferred)');
             }
 
             // If still not available, try to import and create it
@@ -862,6 +871,8 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
      */
     mapCardNameToType(cardName) {
         const nameToTypeMap = {
+            'Galactic Chart Card': CARD_TYPES.GALACTIC_CHART,
+            'Subspace Radio Card': CARD_TYPES.SUBSPACE_RADIO,
             'Target Computer Card': CARD_TYPES.TARGET_COMPUTER,
             'Long Range Scanner Card': CARD_TYPES.LONG_RANGE_SCANNER,
             'Scanner Module Card': CARD_TYPES.LONG_RANGE_SCANNER,
@@ -872,6 +883,8 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
             'Navigation Computer Card': CARD_TYPES.TARGET_COMPUTER,
             'Communication Array Card': CARD_TYPES.COMMUNICATIONS_ARRAY,
             // Direct card type mappings for convenience
+            'galactic_chart': CARD_TYPES.GALACTIC_CHART,
+            'subspace_radio': CARD_TYPES.SUBSPACE_RADIO,
             'long_range_scanner': CARD_TYPES.LONG_RANGE_SCANNER,
             'target_computer': CARD_TYPES.TARGET_COMPUTER,
             'laser_cannon': CARD_TYPES.LASER_CANNON,
