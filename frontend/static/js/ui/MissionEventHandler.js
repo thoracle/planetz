@@ -738,7 +738,14 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
             // CRITICAL: Always prefer the dockingInterface instance if available
             // This ensures we use the same instance that the ship upgrade screen uses
             if (this.starfieldManager?.viewManager?.dockingInterface?.cardInventoryUI) {
-                cardInventoryUI = this.starfieldManager.viewManager.dockingInterface.cardInventoryUI;
+                const dockingInventoryUI = this.starfieldManager.viewManager.dockingInterface.cardInventoryUI;
+                console.log('🃏 MISSION COMPLETION: Found dockingInterface CardInventoryUI');
+                console.log('🃏 MISSION COMPLETION: window.cardInventoryUI === dockingInterface?', cardInventoryUI === dockingInventoryUI);
+                console.log('🃏 MISSION COMPLETION: window.cardInventoryUI ID:', cardInventoryUI?.containerId);
+                console.log('🃏 MISSION COMPLETION: dockingInterface ID:', dockingInventoryUI?.containerId);
+                
+                // Always use the docking interface instance
+                cardInventoryUI = dockingInventoryUI;
                 console.log('🃏 MISSION COMPLETION: Using dockingInterface CardInventoryUI (preferred)');
             }
 
@@ -795,6 +802,15 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                                 if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
                                     cardInventoryUI.constructor.markCardAsNewlyAwarded(cardType);
                                     console.log(`🆕 MISSION COMPLETION: Marked new card as NEW: ${cardType}`);
+                                    
+                                    // Verify the NEW badge was actually set
+                                    const isMarkedNew = cardInventoryUI.isCardNew ? cardInventoryUI.isCardNew(cardType) : 'method not available';
+                                    console.log(`🆕 MISSION COMPLETION: Verification - isCardNew(${cardType}): ${isMarkedNew}`);
+                                    
+                                    // Check localStorage directly
+                                    const stored = localStorage.getItem('planetz_new_card_timestamps');
+                                    const timestamps = stored ? JSON.parse(stored) : {};
+                                    console.log(`🆕 MISSION COMPLETION: localStorage timestamps:`, timestamps);
                                 }
                             } else {
                                 // This is a quantity increase for existing card - mark as quantity increased
@@ -805,6 +821,10 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                                 if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
                                     cardInventoryUI.constructor.markCardAsNewlyAwarded(cardType);
                                     console.log(`📈 MISSION COMPLETION: Marked quantity increase as NEW: ${cardType}`);
+                                    
+                                    // Verify the NEW badge was actually set
+                                    const isMarkedNew = cardInventoryUI.isCardNew ? cardInventoryUI.isCardNew(cardType) : 'method not available';
+                                    console.log(`📈 MISSION COMPLETION: Verification - isCardNew(${cardType}): ${isMarkedNew}`);
                                 }
                             }
                         } else {
