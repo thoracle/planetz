@@ -158,7 +158,7 @@ export class TargetComputerManager {
         this.targetHUD = document.createElement('div');
         this.targetHUD.style.cssText = `
             position: fixed;
-            bottom: 80px;
+            bottom: 50px;
             left: 10px;
             width: 200px;
             height: auto;
@@ -173,6 +173,7 @@ export class TargetComputerManager {
             z-index: 1000;
             transition: border-color 0.3s ease;
             overflow: visible;
+            cursor: pointer;
         `;
 
         // Create sub-system targeting panel (slides out to the right, flush with bottom, 10% bigger than previous)
@@ -330,6 +331,12 @@ export class TargetComputerManager {
             .target-info-display * {
                 pointer-events: none;
             }
+            .status-icons-container * {
+                pointer-events: none;
+            }
+            .action-buttons-container * {
+                pointer-events: none;
+            }
         `;
         document.head.appendChild(targetInfoStyle);
         this.targetInfoDisplay.className = 'target-info-display';
@@ -379,7 +386,9 @@ export class TargetComputerManager {
             font-size: 16px;
             position: relative;
             z-index: 1003;
+            cursor: pointer;
         `;
+        this.statusIconsContainer.className = 'status-icons-container';
 
         // Create icons with tooltips - match original
         const createIcon = (symbol, tooltip) => {
@@ -438,7 +447,9 @@ export class TargetComputerManager {
             gap: 8px;
             position: relative;
             z-index: 1004;
+            cursor: pointer;
         `;
+        this.actionButtonsContainer.className = 'action-buttons-container';
 
         // Create direction arrows for off-screen targets
         this.createDirectionArrows();
