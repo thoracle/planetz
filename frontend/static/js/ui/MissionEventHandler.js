@@ -783,6 +783,10 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                     debug('MISSIONS', `🃏 CARD_TYPES.BASIC_RADAR = "${CARD_TYPES.BASIC_RADAR}"`);
                     debug('MISSIONS', `🃏 CARD_TYPES.LONG_RANGE_SCANNER = "${CARD_TYPES.LONG_RANGE_SCANNER}"`);
                     if (cardType) {
+                        // Check if this card type was already discovered BEFORE adding it
+                        const wasAlreadyDiscovered = cardInventory.discoveredCards.has(cardType);
+                        console.log(`🃏 MISSION COMPLETION: Card ${cardType} was already discovered: ${wasAlreadyDiscovered}`);
+                        
                         const card = cardInventory.generateSpecificCard(cardType, 'common');
                         const result = cardInventory.addCard(card);
                         if (result.success) {
@@ -792,7 +796,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                             console.log(`🃏 MISSION COMPLETION: Card result:`, result);
                             
                             // Check if this was a new card discovery or quantity increase
-                            const wasNewDiscovery = result.discovered === false; // Card was just discovered
+                            const wasNewDiscovery = !wasAlreadyDiscovered; // True if card wasn't discovered before
                             
                             if (wasNewDiscovery) {
                                 // This is a completely new card type - mark as NEW
@@ -813,19 +817,13 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                                     console.log(`🆕 MISSION COMPLETION: localStorage timestamps:`, timestamps);
                                 }
                             } else {
-                                // This is a quantity increase for existing card - mark as quantity increased
+                                // This is a quantity increase for existing card - DON'T mark as NEW
                                 debug('MISSIONS', `📈 Card quantity increased: ${cardType} (now ${result.newCount})`);
                                 console.log(`📈 MISSION COMPLETION: Card quantity increased: ${cardType} (now ${result.newCount})`);
+                                console.log(`📈 MISSION COMPLETION: Not marking as NEW - this is a quantity increase for existing card`);
                                 
-                                // Mark as newly awarded to show quantity increase highlight
-                                if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
-                                    cardInventoryUI.constructor.markCardAsNewlyAwarded(cardType);
-                                    console.log(`📈 MISSION COMPLETION: Marked quantity increase as NEW: ${cardType}`);
-                                    
-                                    // Verify the NEW badge was actually set
-                                    const isMarkedNew = cardInventoryUI.isCardNew ? cardInventoryUI.isCardNew(cardType) : 'method not available';
-                                    console.log(`📈 MISSION COMPLETION: Verification - isCardNew(${cardType}): ${isMarkedNew}`);
-                                }
+                                // TODO: Implement quantity increase highlighting system
+                                // For now, quantity increases don't get any special highlighting
                             }
                         } else {
                             console.error(`❌ Failed to grant card ${cardName}:`, result.error);
