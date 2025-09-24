@@ -737,6 +737,12 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
 
             // CRITICAL: Always prefer the dockingInterface instance if available
             // This ensures we use the same instance that the ship upgrade screen uses
+            console.log('🔍 MISSION COMPLETION: Checking for dockingInterface CardInventoryUI...');
+            console.log('🔍 MISSION COMPLETION: starfieldManager exists:', !!this.starfieldManager);
+            console.log('🔍 MISSION COMPLETION: viewManager exists:', !!this.starfieldManager?.viewManager);
+            console.log('🔍 MISSION COMPLETION: dockingInterface exists:', !!this.starfieldManager?.viewManager?.dockingInterface);
+            console.log('🔍 MISSION COMPLETION: dockingInterface.cardInventoryUI exists:', !!this.starfieldManager?.viewManager?.dockingInterface?.cardInventoryUI);
+            
             if (this.starfieldManager?.viewManager?.dockingInterface?.cardInventoryUI) {
                 const dockingInventoryUI = this.starfieldManager.viewManager.dockingInterface.cardInventoryUI;
                 console.log('🃏 MISSION COMPLETION: Found dockingInterface CardInventoryUI');
@@ -747,6 +753,8 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                 // Always use the docking interface instance
                 cardInventoryUI = dockingInventoryUI;
                 console.log('🃏 MISSION COMPLETION: Using dockingInterface CardInventoryUI (preferred)');
+            } else {
+                console.log('⚠️ MISSION COMPLETION: No dockingInterface CardInventoryUI found - using window.cardInventoryUI');
             }
 
             // If still not available, try to import and create it
