@@ -66,13 +66,24 @@ export class SimpleMissionRewards {
 
         // Rewards section
         const rewardsDiv = document.createElement('div');
+        
+        // Build card rewards dynamically from actual rewards data
+        let cardRewardsHTML = '';
+        if (rewards?.cards?.names && rewards.cards.names.length > 0) {
+            for (const cardName of rewards.cards.names) {
+                cardRewardsHTML += `🃏 ${cardName}<br>`;
+            }
+        } else {
+            // Fallback for old format
+            cardRewardsHTML = `🃏 Deep Space Scanner Mk-II<br>🃏 Long Range Sensor Array<br>`;
+        }
+        
         rewardsDiv.innerHTML = `
             <h3 style="font-size: 14px; margin: 0 0 8px 0; font-weight: bold;">REWARDS EARNED:</h3>
             <div style="font-size: 13px; line-height: 1.4; text-align: left; margin-bottom: 15px;">
                 💰 ${rewards?.credits?.toLocaleString() || '250'} Credits<br>
                 🎖️ +3 TRA Faction Rep<br>
-                🃏 Deep Space Scanner Mk-II<br>
-                🃏 Long Range Sensor Array
+                ${cardRewardsHTML}
             </div>
         `;
 

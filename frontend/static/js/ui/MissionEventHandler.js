@@ -782,20 +782,30 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                             cardsGranted++;
                             debug('MISSIONS', `✅ Granted card: ${cardName}`);
                             console.log('✅ MISSION COMPLETION: Card granted:', cardName);
+                            console.log(`🃏 MISSION COMPLETION: Card result:`, result);
                             
-                            // Mark card as newly awarded for NEW badge system
-                            debug('MISSIONS', `🃏 Attempting to mark card as NEW: ${cardType}`);
-                            console.log(`🃏 MISSION COMPLETION: Attempting to mark card as NEW: ${cardType}`);
-                            debug('MISSIONS', `🃏 cardInventoryUI.constructor exists: ${!!cardInventoryUI.constructor}`);
-                            debug('MISSIONS', `🃏 markCardAsNewlyAwarded method exists: ${!!cardInventoryUI.constructor.markCardAsNewlyAwarded}`);
+                            // Check if this was a new card discovery or quantity increase
+                            const wasNewDiscovery = result.discovered === false; // Card was just discovered
                             
-                            if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
-                                cardInventoryUI.constructor.markCardAsNewlyAwarded(cardType);
-                                debug('MISSIONS', `🆕 Marked card as NEW: ${cardType}`);
-                                console.log(`🆕 MISSION COMPLETION: Marked card as NEW: ${cardType}`);
+                            if (wasNewDiscovery) {
+                                // This is a completely new card type - mark as NEW
+                                debug('MISSIONS', `🆕 New card type discovered: ${cardType}`);
+                                console.log(`🆕 MISSION COMPLETION: New card type discovered: ${cardType}`);
+                                
+                                if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
+                                    cardInventoryUI.constructor.markCardAsNewlyAwarded(cardType);
+                                    console.log(`🆕 MISSION COMPLETION: Marked new card as NEW: ${cardType}`);
+                                }
                             } else {
-                                debug('MISSIONS', `❌ markCardAsNewlyAwarded method not found`);
-                                console.log(`❌ MISSION COMPLETION: markCardAsNewlyAwarded method not found for ${cardType}`);
+                                // This is a quantity increase for existing card - mark as quantity increased
+                                debug('MISSIONS', `📈 Card quantity increased: ${cardType} (now ${result.newCount})`);
+                                console.log(`📈 MISSION COMPLETION: Card quantity increased: ${cardType} (now ${result.newCount})`);
+                                
+                                // Mark as newly awarded to show quantity increase highlight
+                                if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
+                                    cardInventoryUI.constructor.markCardAsNewlyAwarded(cardType);
+                                    console.log(`📈 MISSION COMPLETION: Marked quantity increase as NEW: ${cardType}`);
+                                }
                             }
                         } else {
                             console.error(`❌ Failed to grant card ${cardName}:`, result.error);
