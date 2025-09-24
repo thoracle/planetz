@@ -595,12 +595,12 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                         count: 2, // Mid-range (1-3)
                         minTier: 2,
                         maxTier: 4,
-                        preferredTypes: [CARD_TYPES.BASIC_RADAR, CARD_TYPES.LONG_RANGE_SCANNER],
+                        preferredTypes: [CARD_TYPES.TARGET_COMPUTER, CARD_TYPES.LONG_RANGE_SCANNER],
                         names: [
-                            'Basic Radar Card',
+                            'Target Computer Card',
                             'Long Range Scanner Card'
                         ],
-                        types: [CARD_TYPES.BASIC_RADAR, CARD_TYPES.LONG_RANGE_SCANNER]
+                        types: [CARD_TYPES.TARGET_COMPUTER, CARD_TYPES.LONG_RANGE_SCANNER]
                     }
                 };
 
@@ -862,9 +862,9 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
      */
     mapCardNameToType(cardName) {
         const nameToTypeMap = {
-            'Basic Radar Card': CARD_TYPES.BASIC_RADAR,
+            'Target Computer Card': CARD_TYPES.TARGET_COMPUTER,
             'Long Range Scanner Card': CARD_TYPES.LONG_RANGE_SCANNER,
-            'Scanner Module Card': CARD_TYPES.BASIC_RADAR,
+            'Scanner Module Card': CARD_TYPES.LONG_RANGE_SCANNER,
             'Shield Generator Card': CARD_TYPES.SHIELD_GENERATOR,
             'Weapon System Card': CARD_TYPES.LASER_CANNON,
             'Engine Upgrade Card': CARD_TYPES.IMPULSE_ENGINES,
@@ -872,7 +872,6 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
             'Navigation Computer Card': CARD_TYPES.TARGET_COMPUTER,
             'Communication Array Card': CARD_TYPES.COMMUNICATIONS_ARRAY,
             // Direct card type mappings for convenience
-            'basic_radar': CARD_TYPES.BASIC_RADAR,
             'long_range_scanner': CARD_TYPES.LONG_RANGE_SCANNER,
             'target_computer': CARD_TYPES.TARGET_COMPUTER,
             'laser_cannon': CARD_TYPES.LASER_CANNON,
