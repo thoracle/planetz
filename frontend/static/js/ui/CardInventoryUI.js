@@ -233,8 +233,12 @@ export default class CardInventoryUI {
      * @param {string} cardType - The type of card that had a quantity increase
      */
     markCardQuantityIncrease(cardType) {
+        console.log(`🔴 MARKING: Setting quantity increase for ${cardType}`);
+        console.log(`🔴 MARKING: Before - quantityIncreaseTimestamps:`, this.quantityIncreaseTimestamps);
         this.quantityIncreaseTimestamps[cardType] = Date.now();
+        console.log(`🔴 MARKING: After - quantityIncreaseTimestamps:`, this.quantityIncreaseTimestamps);
         this.saveQuantityIncreaseTimestamps();
+        console.log(`🔴 MARKING: Saved to localStorage`);
     }
 
     /**
@@ -3158,10 +3162,15 @@ debug('UI', `🎵 Playing upgrade sound...`);
      * @param {string} cardType - The type of card that had a quantity increase
      */
     static markCardQuantityIncrease(cardType) {
+        console.log(`🔴 STATIC: markCardQuantityIncrease called for ${cardType}`);
+        console.log(`🔴 STATIC: window.cardInventoryUI exists:`, !!window.cardInventoryUI);
+        
         // Update the global instance if it exists
         if (window.cardInventoryUI) {
+            console.log(`🔴 STATIC: Using window.cardInventoryUI instance method`);
             window.cardInventoryUI.markCardQuantityIncrease(cardType);
         } else {
+            console.log(`🔴 STATIC: No window.cardInventoryUI - storing directly to localStorage`);
             // If no instance exists, store in localStorage directly
             const stored = localStorage.getItem('planetz_quantity_increase_timestamps');
             const timestamps = stored ? JSON.parse(stored) : {};
