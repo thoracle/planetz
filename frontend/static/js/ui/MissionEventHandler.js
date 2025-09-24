@@ -720,6 +720,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
      */
     async grantNFTCards(cardData) {
         debug('MISSIONS', '🃏 Granting NFT cards:', cardData);
+        console.log('🃏 MISSION COMPLETION: grantNFTCards called with:', cardData);
 
         try {
             // Get the CardInventoryUI instance - try multiple approaches
@@ -762,6 +763,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                 for (const cardName of cardData.names) {
                     const cardType = this.mapCardNameToType(cardName);
                     debug('MISSIONS', `🃏 Mapping card name "${cardName}" to type "${cardType}"`);
+                    console.log(`🃏 MISSION COMPLETION: Mapping card name "${cardName}" to type "${cardType}"`);
                     debug('MISSIONS', `🃏 CARD_TYPES.BASIC_RADAR = "${CARD_TYPES.BASIC_RADAR}"`);
                     debug('MISSIONS', `🃏 CARD_TYPES.LONG_RANGE_SCANNER = "${CARD_TYPES.LONG_RANGE_SCANNER}"`);
                     if (cardType) {
@@ -774,14 +776,17 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                             
                             // Mark card as newly awarded for NEW badge system
                             debug('MISSIONS', `🃏 Attempting to mark card as NEW: ${cardType}`);
+                            console.log(`🃏 MISSION COMPLETION: Attempting to mark card as NEW: ${cardType}`);
                             debug('MISSIONS', `🃏 cardInventoryUI.constructor exists: ${!!cardInventoryUI.constructor}`);
                             debug('MISSIONS', `🃏 markCardAsNewlyAwarded method exists: ${!!cardInventoryUI.constructor.markCardAsNewlyAwarded}`);
                             
                             if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
                                 cardInventoryUI.constructor.markCardAsNewlyAwarded(cardType);
                                 debug('MISSIONS', `🆕 Marked card as NEW: ${cardType}`);
+                                console.log(`🆕 MISSION COMPLETION: Marked card as NEW: ${cardType}`);
                             } else {
                                 debug('MISSIONS', `❌ markCardAsNewlyAwarded method not found`);
+                                console.log(`❌ MISSION COMPLETION: markCardAsNewlyAwarded method not found for ${cardType}`);
                             }
                         } else {
                             console.error(`❌ Failed to grant card ${cardName}:`, result.error);
