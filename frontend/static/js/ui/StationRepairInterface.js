@@ -262,9 +262,10 @@ debug('AI', 'Station Repair Interface hidden');
             </div>
         `;
         
-        // Check if hull values are actually available
-        if (maxHull <= 1 || (currentHull === 0 && maxHull === 1)) {
-            // Ship has no hull system installed or initialized
+        // Check if hull plating system is actually installed by checking ship systems
+        const hullPlatingSystem = this.ship.getSystem('hull_plating');
+        if (!hullPlatingSystem) {
+            // Ship has no hull plating system installed
             hullOptionsElement.innerHTML = `
                 <div class="no-repair-needed">
                     <div class="status-warning">⚠️ No hull plating system detected</div>
@@ -759,8 +760,9 @@ debug('AI', 'Station Repair Interface hidden');
         const currentHull = this.ship.currentHull || 0;
         const maxHull = this.ship.maxHull || 1; // Prevent division by zero
         
-        // Check if hull values are actually available
-        if (maxHull <= 1 || (currentHull === 0 && maxHull === 1)) {
+        // Check if hull plating system is actually installed by checking ship systems
+        const hullPlatingSystem = this.ship.getSystem('hull_plating');
+        if (!hullPlatingSystem) {
 debug('AI', 'No hull plating system detected - cannot repair hull');
             return;
         }
