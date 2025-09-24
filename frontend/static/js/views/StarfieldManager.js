@@ -3377,6 +3377,7 @@ debug('UTILITY', `🎯 StarfieldManager.setView('${viewType}') called`);
         // Hide HUD elements
         this.targetComputerManager.hideTargetHUD();
         this.targetComputerManager.hideTargetReticle();
+        this.targetComputerManager.hideAllDirectionArrows();
         
         // Clear wireframe
         this.targetComputerManager.clearTargetWireframe();
@@ -4040,6 +4041,7 @@ debug('UTILITY', '🔇 Engine state check:', this.audioManager ? this.audioManag
                 this.targetComputerEnabled = false;
                 this.targetComputerManager.hideTargetHUD();
                 this.targetComputerManager.hideTargetReticle();
+                this.targetComputerManager.hideAllDirectionArrows();
                 
                 // Clear wireframe through target computer manager
                 this.targetComputerManager.clearTargetWireframe();
@@ -4247,6 +4249,7 @@ debug('UTILITY', `🚛 Removed ${cargo.quantity} units of ${cargo.commodityId} f
                 this.targetComputerEnabled = false;
                 this.targetComputerManager.hideTargetHUD();
                 this.targetComputerManager.hideTargetReticle();
+                this.targetComputerManager.hideAllDirectionArrows();
                 this.targetComputerManager.clearTargetWireframe();
             }
             if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
