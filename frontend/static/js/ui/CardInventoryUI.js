@@ -947,6 +947,10 @@ debug('UI', '✅ Web Audio API playback successful');
         // Clear NEW card status when shop is opened
         this.clearNewCardStatus();
         
+        // Reload quantity increase timestamps from localStorage before clearing
+        this.quantityIncreaseTimestamps = this.getQuantityIncreaseTimestamps();
+        console.log('🔍 COLLECTION: Reloaded quantity increase timestamps from localStorage:', this.quantityIncreaseTimestamps);
+        
         // Clear quantity increase status when collection is opened
         console.log('🔍 COLLECTION: Quantity increase timestamps before clear:', this.quantityIncreaseTimestamps);
         this.clearQuantityIncreaseStatus();
@@ -3163,20 +3167,22 @@ debug('UI', `🎵 Playing upgrade sound...`);
      */
     static markCardQuantityIncrease(cardType) {
         console.log(`🔴 STATIC: markCardQuantityIncrease called for ${cardType}`);
-        console.log(`🔴 STATIC: window.cardInventoryUI exists:`, !!window.cardInventoryUI);
         
-        // Update the global instance if it exists
-        if (window.cardInventoryUI) {
-            console.log(`🔴 STATIC: Using window.cardInventoryUI instance method`);
-            window.cardInventoryUI.markCardQuantityIncrease(cardType);
-        } else {
-            console.log(`🔴 STATIC: No window.cardInventoryUI - storing directly to localStorage`);
-            // If no instance exists, store in localStorage directly
-            const stored = localStorage.getItem('planetz_quantity_increase_timestamps');
-            const timestamps = stored ? JSON.parse(stored) : {};
-            timestamps[cardType] = Date.now();
-            localStorage.setItem('planetz_quantity_increase_timestamps', JSON.stringify(timestamps));
+        // ALWAYS store directly to localStorage to ensure persistence
+        // This bypasses any instance issues and guarantees the data is saved
+        const stored = localStorage.getItem('planetz_quantity_increase_timestamps');
+        const timestamps = stored ? JSON.parse(stored) : {};
+        timestamps[cardType] = Date.now();
+        localStorage.setItem('planetz_quantity_increase_timestamps', JSON.stringify(timestamps));
+        
+        console.log(`🔴 STATIC: Stored directly to localStorage:`, timestamps);
+        
+        // Also update the instance if it exists (for immediate UI updates)
+        if (window.cardInventoryUI && window.cardInventoryUI.quantityIncreaseTimestamps) {
+            window.cardInventoryUI.quantityIncreaseTimestamps[cardType] = Date.now();
+            console.log(`🔴 STATIC: Also updated instance:`, window.cardInventoryUI.quantityIncreaseTimestamps);
         }
+        
         debug('UI', `📈 Card marked as quantity increase: ${cardType}`);
     }
 }
