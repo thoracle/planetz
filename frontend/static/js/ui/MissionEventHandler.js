@@ -817,13 +817,16 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                                     console.log(`🆕 MISSION COMPLETION: localStorage timestamps:`, timestamps);
                                 }
                             } else {
-                                // This is a quantity increase for existing card - DON'T mark as NEW
+                                // This is a quantity increase for existing card - mark with red badge
                                 debug('MISSIONS', `📈 Card quantity increased: ${cardType} (now ${result.newCount})`);
                                 console.log(`📈 MISSION COMPLETION: Card quantity increased: ${cardType} (now ${result.newCount})`);
-                                console.log(`📈 MISSION COMPLETION: Not marking as NEW - this is a quantity increase for existing card`);
+                                console.log(`📈 MISSION COMPLETION: Marking as quantity increase - red badge`);
                                 
-                                // TODO: Implement quantity increase highlighting system
-                                // For now, quantity increases don't get any special highlighting
+                                // Mark as quantity increase for red badge highlighting
+                                if (cardInventoryUI.constructor.markCardQuantityIncrease) {
+                                    cardInventoryUI.constructor.markCardQuantityIncrease(cardType);
+                                    console.log(`📈 MISSION COMPLETION: Marked quantity increase: ${cardType}`);
+                                }
                             }
                         } else {
                             console.error(`❌ Failed to grant card ${cardName}:`, result.error);

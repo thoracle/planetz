@@ -141,6 +141,9 @@ export default class CardInventoryUI {
         this.lastShopVisit = this.getLastShopVisit();
         this.newCardTimestamps = this.getNewCardTimestamps();
         
+        // Track quantity increases (red badges)
+        this.quantityIncreaseTimestamps = this.getQuantityIncreaseTimestamps();
+        
         // Audio setup for upgrade sounds
         this.initializeAudio();
         
@@ -185,10 +188,25 @@ export default class CardInventoryUI {
     }
 
     /**
+     * Get the quantity increase timestamps from localStorage
+     */
+    getQuantityIncreaseTimestamps() {
+        const stored = localStorage.getItem('planetz_quantity_increase_timestamps');
+        return stored ? JSON.parse(stored) : {};
+    }
+
+    /**
      * Save the new card timestamps to localStorage
      */
     saveNewCardTimestamps() {
         localStorage.setItem('planetz_new_card_timestamps', JSON.stringify(this.newCardTimestamps));
+    }
+
+    /**
+     * Save the quantity increase timestamps to localStorage
+     */
+    saveQuantityIncreaseTimestamps() {
+        localStorage.setItem('planetz_quantity_increase_timestamps', JSON.stringify(this.quantityIncreaseTimestamps));
     }
 
     /**
@@ -211,12 +229,38 @@ export default class CardInventoryUI {
     }
 
     /**
+     * Mark a card as having a quantity increase
+     * @param {string} cardType - The type of card that had a quantity increase
+     */
+    markCardQuantityIncrease(cardType) {
+        this.quantityIncreaseTimestamps[cardType] = Date.now();
+        this.saveQuantityIncreaseTimestamps();
+    }
+
+    /**
+     * Check if a card has a quantity increase
+     * @param {string} cardType - The type of card to check
+     * @returns {boolean} - True if the card has a quantity increase
+     */
+    hasQuantityIncrease(cardType) {
+        return this.quantityIncreaseTimestamps.hasOwnProperty(cardType);
+    }
+
+    /**
      * Clear NEW status for all cards (called when shop is opened)
      */
     clearNewCardStatus() {
         // Update last shop visit to current time
         this.saveLastShopVisit();
         // No need to clear timestamps - they'll be compared against the new lastShopVisit
+    }
+
+    /**
+     * Clear quantity increase status for all cards (called when collection is opened)
+     */
+    clearQuantityIncreaseStatus() {
+        this.quantityIncreaseTimestamps = {};
+        this.saveQuantityIncreaseTimestamps();
     }
 
     /**
@@ -898,6 +942,9 @@ debug('UI', '✅ Web Audio API playback successful');
         
         // Clear NEW card status when shop is opened
         this.clearNewCardStatus();
+        
+        // Clear quantity increase status when collection is opened
+        this.clearQuantityIncreaseStatus();
         
         // Show the shop
         this.shopContainer.style.display = 'block';
@@ -2274,6 +2321,10 @@ debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
         const isNew = this.isCardNew(card.cardType);
         const newBadge = isNew ? '<div class="new-badge">NEW</div>' : '';
         
+        // Check if this card has a quantity increase (red badge)
+        const hasQuantityIncrease = this.hasQuantityIncrease(card.cardType);
+        const countStyle = hasQuantityIncrease ? 'color: #ff4444; font-weight: bold;' : '';
+        
         return `
             <div class="card-stack ${isNew ? 'has-new-badge' : ''}" 
                  style="border-color: ${rarityColor}" 
@@ -2284,7 +2335,7 @@ debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
                 <div class="card-icon">${card.getIcon()}</div>
                 ${newBadge}
                 <div class="card-name">${stack.name}</div>
-                <div class="card-count">x${stack.count}</div>
+                <div class="card-count" style="${countStyle}">x${stack.count}</div>
                 <div class="card-level">Lv.${stack.level}</div>
                 <div class="card-rarity" style="color: ${rarityColor}">${card.rarity.toUpperCase()}</div>
                 ${upgradeButton}
@@ -3093,6 +3144,24 @@ debug('UI', `🎵 Playing upgrade sound...`);
             localStorage.setItem('planetz_new_card_timestamps', JSON.stringify(timestamps));
         }
         debug('UI', `🆕 Card marked as NEW: ${cardType}`);
+    }
+
+    /**
+     * Static method to mark a card as having a quantity increase (can be called from anywhere)
+     * @param {string} cardType - The type of card that had a quantity increase
+     */
+    static markCardQuantityIncrease(cardType) {
+        // Update the global instance if it exists
+        if (window.cardInventoryUI) {
+            window.cardInventoryUI.markCardQuantityIncrease(cardType);
+        } else {
+            // If no instance exists, store in localStorage directly
+            const stored = localStorage.getItem('planetz_quantity_increase_timestamps');
+            const timestamps = stored ? JSON.parse(stored) : {};
+            timestamps[cardType] = Date.now();
+            localStorage.setItem('planetz_quantity_increase_timestamps', JSON.stringify(timestamps));
+        }
+        debug('UI', `📈 Card marked as quantity increase: ${cardType}`);
     }
 }
 
