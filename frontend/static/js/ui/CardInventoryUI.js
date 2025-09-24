@@ -137,6 +137,10 @@ export default class CardInventoryUI {
         this.dockedLocation = null;
         this.dockingInterface = null;
         
+        // Track NEW card badges
+        this.lastShopVisit = this.getLastShopVisit();
+        this.newCardTimestamps = this.getNewCardTimestamps();
+        
         // Audio setup for upgrade sounds
         this.initializeAudio();
         
@@ -153,6 +157,66 @@ export default class CardInventoryUI {
         if (this.container || containerId === null) {
             this.init();
         }
+    }
+
+    /**
+     * Get the timestamp of the last shop visit from localStorage
+     */
+    getLastShopVisit() {
+        const stored = localStorage.getItem('planetz_last_shop_visit');
+        return stored ? parseInt(stored) : 0;
+    }
+
+    /**
+     * Save the current timestamp as the last shop visit
+     */
+    saveLastShopVisit() {
+        const now = Date.now();
+        localStorage.setItem('planetz_last_shop_visit', now.toString());
+        this.lastShopVisit = now;
+    }
+
+    /**
+     * Get the timestamps when cards were awarded from localStorage
+     */
+    getNewCardTimestamps() {
+        const stored = localStorage.getItem('planetz_new_card_timestamps');
+        return stored ? JSON.parse(stored) : {};
+    }
+
+    /**
+     * Save the new card timestamps to localStorage
+     */
+    saveNewCardTimestamps() {
+        localStorage.setItem('planetz_new_card_timestamps', JSON.stringify(this.newCardTimestamps));
+    }
+
+    /**
+     * Mark a card as newly awarded
+     * @param {string} cardType - The type of card that was awarded
+     */
+    markCardAsNew(cardType) {
+        this.newCardTimestamps[cardType] = Date.now();
+        this.saveNewCardTimestamps();
+    }
+
+    /**
+     * Check if a card should show the NEW badge
+     * @param {string} cardType - The type of card to check
+     * @returns {boolean} True if the card should show NEW badge
+     */
+    isCardNew(cardType) {
+        const cardTimestamp = this.newCardTimestamps[cardType];
+        return cardTimestamp && cardTimestamp > this.lastShopVisit;
+    }
+
+    /**
+     * Clear NEW status for all cards (called when shop is opened)
+     */
+    clearNewCardStatus() {
+        // Update last shop visit to current time
+        this.saveLastShopVisit();
+        // No need to clear timestamps - they'll be compared against the new lastShopVisit
     }
 
     /**
@@ -832,6 +896,9 @@ debug('UI', '✅ Web Audio API playback successful');
             shipSelector.value = this.currentShipType;
         }
         
+        // Clear NEW card status when shop is opened
+        this.clearNewCardStatus();
+        
         // Show the shop
         this.shopContainer.style.display = 'block';
         
@@ -1035,6 +1102,75 @@ debug('UTILITY', 'Test data loaded with high-level upgrade capabilities');
     }
 
     /**
+     * Add CSS styles for NEW badge
+     */
+    addNewBadgeStyles() {
+        // Check if styles already exist
+        if (document.getElementById('new-badge-styles')) {
+            return;
+        }
+        
+        const style = document.createElement('style');
+        style.id = 'new-badge-styles';
+        style.textContent = `
+            .new-badge {
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                background: linear-gradient(45deg, #ff4444, #ff6666);
+                color: white;
+                font-size: 10px;
+                font-weight: bold;
+                padding: 2px 6px;
+                border-radius: 8px;
+                z-index: 10;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                animation: newBadgePulse 2s infinite;
+                font-family: 'VT323', monospace;
+                letter-spacing: 1px;
+            }
+            
+            @keyframes newBadgePulse {
+                0%, 100% { 
+                    transform: scale(1);
+                    opacity: 1;
+                }
+                50% { 
+                    transform: scale(1.1);
+                    opacity: 0.8;
+                }
+            }
+            
+            .card-stack.has-new-badge {
+                position: relative;
+            }
+            
+            .card-stack.has-new-badge::before {
+                content: '';
+                position: absolute;
+                top: -2px;
+                left: -2px;
+                right: -2px;
+                bottom: -2px;
+                background: linear-gradient(45deg, #ff4444, #ff6666, #ff4444);
+                border-radius: 8px;
+                z-index: -1;
+                animation: newCardGlow 3s infinite;
+            }
+            
+            @keyframes newCardGlow {
+                0%, 100% { 
+                    opacity: 0.3;
+                }
+                50% { 
+                    opacity: 0.6;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    /**
      * Create the UI elements
      */
     createUI() {
@@ -1044,6 +1180,9 @@ debug('UTILITY', 'Test data loaded with high-level upgrade capabilities');
         }
 
         this.container.innerHTML = '';
+        
+        // Add NEW badge CSS styles
+        this.addNewBadgeStyles();
         
         // Create header
         const header = document.createElement('div');
@@ -2131,14 +2270,19 @@ debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
             <div class="max-level-indicator" title="${tooltipText}">🏆 MAX LEVEL</div>
         `;
         
+        // Check if this card should show NEW badge
+        const isNew = this.isCardNew(card.cardType);
+        const newBadge = isNew ? '<div class="new-badge">NEW</div>' : '';
+        
         return `
-            <div class="card-stack" 
+            <div class="card-stack ${isNew ? 'has-new-badge' : ''}" 
                  style="border-color: ${rarityColor}" 
                  draggable="true"
                  data-card-type="${card.cardType}"
                  data-card-level="${stack.level}"
                  data-card-rarity="${card.rarity}">
                 <div class="card-icon">${card.getIcon()}</div>
+                ${newBadge}
                 <div class="card-name">${stack.name}</div>
                 <div class="card-count">x${stack.count}</div>
                 <div class="card-level">Lv.${stack.level}</div>
@@ -2931,6 +3075,24 @@ debug('UI', `🎵 Playing upgrade sound...`);
         } catch (error) {
             console.error(`❌ Error during upgrade:`, error);
         }
+    }
+
+    /**
+     * Static method to mark a card as newly awarded (can be called from anywhere)
+     * @param {string} cardType - The type of card that was awarded
+     */
+    static markCardAsNewlyAwarded(cardType) {
+        // Update the global instance if it exists
+        if (window.cardInventoryUI) {
+            window.cardInventoryUI.markCardAsNew(cardType);
+        } else {
+            // If no instance exists, store in localStorage directly
+            const stored = localStorage.getItem('planetz_new_card_timestamps');
+            const timestamps = stored ? JSON.parse(stored) : {};
+            timestamps[cardType] = Date.now();
+            localStorage.setItem('planetz_new_card_timestamps', JSON.stringify(timestamps));
+        }
+        debug('UI', `🆕 Card marked as NEW: ${cardType}`);
     }
 }
 
