@@ -881,6 +881,17 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
 
             if (cardsGranted > 0) {
                 console.log('✅ MISSION COMPLETION: NFT cards granted successfully:', cardsGranted);
+                
+                // Refresh the CardInventoryUI to show updated counts
+                if (cardInventoryUI && typeof cardInventoryUI.render === 'function') {
+                    try {
+                        cardInventoryUI.render();
+                        debug('MISSIONS', '🔄 CardInventoryUI refreshed after card grants');
+                        console.log('🔄 MISSION COMPLETION: CardInventoryUI refreshed to show updated counts');
+                    } catch (renderError) {
+                        console.error('❌ MISSION COMPLETION: Failed to refresh CardInventoryUI:', renderError);
+                    }
+                }
             } else {
                 console.warn('⚠️ MISSION COMPLETION: No cards were granted');
             }
