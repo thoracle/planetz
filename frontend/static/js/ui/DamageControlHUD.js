@@ -771,9 +771,8 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         let isDisabled = false;
 
         // Check if this is a passive system - don't create buttons for them
-        // Note: hull_plating removed from passive systems to allow active/passive mode toggle
         // Note: weapons removed from passive systems to allow power management
-        const passiveSystems = ['energy_reactor', 'impulse_engines', 'warp_drive', 'cargo_hold'];
+        const passiveSystems = ['energy_reactor', 'impulse_engines', 'warp_drive', 'cargo_hold', 'hull_plating'];
         if (passiveSystems.includes(systemName)) {
             return null; // Don't create a button for passive systems
         }
