@@ -2410,6 +2410,21 @@ export class TargetComputerManager {
             pu.parentNode.removeChild(pu);
         }
 
+        // DISCOVERY FIX: Auto-discover objects when they become the current target
+        // This ensures wireframe shows correct shape and color immediately
+        const currentTargetData = this.getCurrentTargetData();
+        if (currentTargetData && !currentTargetData.isShip) {
+            const starChartsManager = this.viewManager?.navigationSystemManager?.starChartsManager;
+            if (starChartsManager) {
+                const objectId = this.constructStarChartsId(currentTargetData);
+                if (objectId && !starChartsManager.isDiscovered(objectId)) {
+                    // Auto-discover the object when it becomes the current target
+                    starChartsManager.addDiscoveredObject(objectId, 'targeting', 'player');
+                    debug('TARGETING', `🔍 Auto-discovered object on targeting: ${objectId} (${currentTargetData.name})`);
+                }
+            }
+        }
+
         // Create new wireframe and refresh HUD
         debug('TARGETING', `🎯 TAB: About to create wireframe for target: ${this.currentTarget?.name}`);
         
