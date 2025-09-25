@@ -247,6 +247,22 @@ export default class CardInventoryUI {
      * @returns {boolean} - True if the card has a quantity increase
      */
     hasQuantityIncrease(cardType) {
+        console.log(`🔍 CHECKING: hasQuantityIncrease for ${cardType}`);
+        console.log(`🔍 CHECKING: this.quantityIncreaseTimestamps:`, this.quantityIncreaseTimestamps);
+        console.log(`🔍 CHECKING: hasOwnProperty result:`, this.quantityIncreaseTimestamps.hasOwnProperty(cardType));
+        
+        // Also check localStorage directly as fallback
+        const stored = localStorage.getItem('planetz_quantity_increase_timestamps');
+        const timestamps = stored ? JSON.parse(stored) : {};
+        console.log(`🔍 CHECKING: localStorage timestamps:`, timestamps);
+        console.log(`🔍 CHECKING: localStorage has ${cardType}:`, timestamps.hasOwnProperty(cardType));
+        
+        // Use localStorage data if instance data is empty
+        if (Object.keys(this.quantityIncreaseTimestamps).length === 0 && Object.keys(timestamps).length > 0) {
+            console.log(`🔍 CHECKING: Using localStorage data as fallback`);
+            return timestamps.hasOwnProperty(cardType);
+        }
+        
         return this.quantityIncreaseTimestamps.hasOwnProperty(cardType);
     }
 
