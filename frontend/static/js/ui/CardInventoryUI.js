@@ -947,14 +947,16 @@ debug('UI', '✅ Web Audio API playback successful');
         // Clear NEW card status when shop is opened
         this.clearNewCardStatus();
         
-        // Reload quantity increase timestamps from localStorage before clearing
+        // Reload quantity increase timestamps from localStorage before displaying
         this.quantityIncreaseTimestamps = this.getQuantityIncreaseTimestamps();
         console.log('🔍 COLLECTION: Reloaded quantity increase timestamps from localStorage:', this.quantityIncreaseTimestamps);
+        console.log('🔍 COLLECTION: Raw localStorage for verification:', localStorage.getItem('planetz_quantity_increase_timestamps'));
         
-        // Clear quantity increase status when collection is opened
-        console.log('🔍 COLLECTION: Quantity increase timestamps before clear:', this.quantityIncreaseTimestamps);
-        this.clearQuantityIncreaseStatus();
-        console.log('🔍 COLLECTION: Quantity increase timestamps after clear:', this.quantityIncreaseTimestamps);
+        // Clear quantity increase status after a delay to let user see red badges first
+        setTimeout(() => {
+            console.log('🔍 COLLECTION: Clearing quantity increase timestamps after delay');
+            this.clearQuantityIncreaseStatus();
+        }, 5000); // 5 second delay to see red badges
         
         // Show the shop
         this.shopContainer.style.display = 'block';
