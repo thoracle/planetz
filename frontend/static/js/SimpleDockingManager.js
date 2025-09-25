@@ -381,6 +381,18 @@ debug('UTILITY', 'Docking completed with', stationName);
             
             // CRITICAL: Shutdown all ship systems (engines, targeting, etc.)
             this.shutdownAllShipSystems();
+            
+            // Dismiss mission rewards overlay if visible
+            const missionRewardsOverlay = document.getElementById('mission-rewards-overlay');
+            console.log('🔍 SIMPLE DOCKING: Checking for mission rewards overlay:', !!missionRewardsOverlay);
+            if (missionRewardsOverlay) {
+                console.log('🚪 SIMPLE DOCKING: Removing mission rewards overlay');
+                missionRewardsOverlay.remove();
+                console.log('🚪 SIMPLE DOCKING: Mission rewards overlay removed successfully');
+                debug('UTILITY', '🚪 Mission rewards overlay dismissed during simple docking completion');
+            } else {
+                console.log('🔍 SIMPLE DOCKING: No mission rewards overlay found to dismiss');
+            }
         }
         
         // Note: Cargo delivery check is handled in the main docking success path
