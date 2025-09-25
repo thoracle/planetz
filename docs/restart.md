@@ -285,6 +285,47 @@ The Planetz game engine uses **kilometers (km)** as the fundamental world unit a
 - **Backward Compatibility**: All existing ships automatically benefit from improved rates
 - **Documentation Updated**: User guides and specifications reflect new rates
 
+### **🔴 Red Badge System** 🎯 **RECENT UPDATE**
+
+**Status**: ✅ **COMPLETED** - Visual feedback system for card quantity increases in mission rewards
+
+#### **Feature Overview**:
+
+The Red Badge System provides immediate visual feedback when players receive card rewards from mission completion, distinguishing between completely new card types and quantity increases for existing cards.
+
+#### **Visual Design**:
+- **NEW Cards**: Green "NEW" badge for completely new card types
+- **Quantity Increases**: **Red background badge** with white text for existing cards that increased in quantity
+- **Styling**: Red background (#ff4444), white text, bold font, rounded corners with padding
+- **Duration**: 5-second display window before auto-clearing
+
+#### **Technical Implementation**:
+
+**Core Components**:
+- `CardInventoryUI.js` - Badge rendering and localStorage persistence
+- `MissionEventHandler.js` - Mission reward processing and badge marking
+- `DockingInterface.js` - Instance management for consistent badge display
+
+**Key Features**:
+- **localStorage Persistence**: Red badge data stored directly to localStorage for reliability
+- **Instance Synchronization**: Automatic fallback to localStorage if instance data sync fails
+- **Smart Detection**: Distinguishes between new discoveries vs quantity increases
+- **Automatic Clearing**: Badges clear after 5 seconds or when collection reopened
+
+#### **User Experience**:
+
+**Mission Completion Flow**:
+1. **Complete Mission** → Cards granted with proper logging
+2. **Dock at Station** → Mission rewards screen shows earned cards
+3. **Open Collection** → Red badges appear on cards with quantity increases
+4. **Visual Feedback** → Clear indication of which cards increased in quantity
+5. **Auto-Clear** → Badges disappear after 5 seconds for clean UI
+
+**Files Modified**:
+- `frontend/static/js/ui/CardInventoryUI.js` - Badge system implementation, localStorage persistence
+- `frontend/static/js/ui/MissionEventHandler.js` - Mission reward processing and badge marking
+- `frontend/static/js/ui/DockingInterface.js` - CardInventoryUI instance management
+
 ### **Object ID Naming Convention** 🏷️ **CRITICAL REFERENCE**
 
 **STANDARD FORMAT: UPPERCASE A0_ PREFIX** 🔤
@@ -585,6 +626,7 @@ waypoint: '#ff00ff'  // Magenta for waypoints
 - ✅ **Simplified Target System** with persistent targeting and fail-fast error handling
 
 **Recent Major Updates**:
+- **🔴 Red Badge System**: Implemented visual feedback for card quantity increases - cards with increased quantities show red background badges with white text for 5 seconds when viewing collection
 - **🖱️ Target HUD Click Controls**: Added mouse click support to Target Computer and Sub-Target HUDs - left/right halves cycle targets/sub-targets with same sounds as keyboard shortcuts
 - **Weapon HUD Launch Fix**: Fixed critical issue where weapon selector HUD wasn't appearing after station launch
 - **Sub-Target HUD Improvements**: Resized sub-targeting panel, fixed health percentage display, removed redundant labels
