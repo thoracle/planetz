@@ -711,6 +711,18 @@ debug('P1', 'Current target:', this.currentDockingTarget?.name || 'null', 'New t
                 
 debug('TARGETING', `🚀 Successfully docked with ${target.name || 'target'}`);
                 
+                // Dismiss mission rewards overlay if visible
+                const missionRewardsOverlay = document.getElementById('mission-rewards-overlay');
+                console.log('🔍 UNIFIED DOCKING: Checking for mission rewards overlay:', !!missionRewardsOverlay);
+                if (missionRewardsOverlay) {
+                    console.log('🚪 UNIFIED DOCKING: Removing mission rewards overlay');
+                    missionRewardsOverlay.remove();
+                    console.log('🚪 UNIFIED DOCKING: Mission rewards overlay removed successfully');
+                    debug('UTILITY', '🚪 Mission rewards overlay dismissed during unified docking');
+                } else {
+                    console.log('🔍 UNIFIED DOCKING: No mission rewards overlay found to dismiss');
+                }
+                
                 // Show docking interface (station menu)
 debug('TARGETING', `🚀 Showing docking interface for ${target.name || 'target'}`);
                 this.starfieldManager.showDockingInterface(target);
