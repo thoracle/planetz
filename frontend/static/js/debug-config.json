@@ -4,23 +4,23 @@
     "description": "Debug channel configuration - edit this file to control debug output between sessions",
     "channels": {
         "TARGETING": {
-            "enabled": true,
+            "enabled": false,
             "description": "Target acquisition and management"
         },
         "STAR_CHARTS": {
-            "enabled": true,
+            "enabled": false,
             "description": "Star Charts navigation and UI"
         },
         "DEBUG": {
-            "enabled": true,
+            "enabled": false,
             "description": "General debug messages including ship position"
         },
         "WIREFRAME": {
-            "enabled": true,
+            "enabled": false,
             "description": "Wireframe rendering and management"
         },
         "HITBOX": {
-            "enabled": true,
+            "enabled": false,
             "description": "Hit box debugging and collision detection"
         },
         "INSPECTION": {
@@ -40,23 +40,23 @@
             "description": "Enemy AI and ship behaviors"
         },
         "UI": {
-            "enabled": true,
+            "enabled": false,
             "description": "User interface events and updates"
         },
         "INTERACTION": {
-            "enabled": true,
+            "enabled": false,
             "description": "Touch and mouse interactions"
         },
         "MISSIONS": {
-            "enabled": true,
+            "enabled": false,
             "description": "Mission system operations"
         },
         "WAYPOINTS": {
-            "enabled": true,
+            "enabled": false,
             "description": "Waypoint system operations"
         },
         "COMBAT": {
-            "enabled": true,
+            "enabled": false,
             "description": "Combat mechanics and AI"
         },
         "NAVIGATION": {
@@ -68,7 +68,7 @@
             "description": "Long range scanner operations"
         },
         "RADAR": {
-            "enabled": false,
+            "enabled": true,
             "description": "Radar and proximity detector systems"
         },
         "ECONOMY": {
@@ -97,7 +97,7 @@
             "description": "System creation and existence checking"
         },
         "SYSTEM_FLOW": {
-            "enabled": true,
+            "enabled": false,
             "description": "Detailed system creation flow and debugging"
         },
         "STATUS": {

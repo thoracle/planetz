@@ -997,9 +997,15 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
         // Fallback: create a meaningful name from available data
         let fallbackName = 'Unknown Object';
         if (object.id) {
-            // Try to extract meaningful name from ID
-            const cleanId = object.id.replace(/^[A-Z]\d+_/, ''); // Remove sector prefix like "A0_"
-            fallbackName = cleanId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            // Check if ID is a string before trying to use string methods
+            if (typeof object.id === 'string') {
+                // Try to extract meaningful name from ID
+                const cleanId = object.id.replace(/^[A-Z]\d+_/, ''); // Remove sector prefix like "A0_"
+                fallbackName = cleanId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            } else {
+                // If ID is numeric (like Three.js mesh ID), create a generic name
+                fallbackName = `Object ${object.id}`;
+            }
         }
         
         return {

@@ -109,18 +109,18 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `data_refactor` | **Status**: In Development (3 uncommitted changes) | **Last Updated**: 2025-09-07
+**Branch**: `waypoints` | **Status**: In Development (17 uncommitted changes) | **Last Updated**: 2025-09-24
 
 **Recent Work** (Last 5 commits):
-- 🎯 COMPLETED: Target Switching Bug Fix - Enhanced Debug System
-- feat: Add RADAR debug channel and migrate ProximityDetector3D messages
-- feat: Update debug channel manager to reflect P1 disabled by default
-- feat: Disable P1 debug channel by default for cleaner console output
-- feat: Switch target switching debug from P1 to TARGETING channel
+- 🧹 Cleanup & Documentation - Mission Rewards Dismissal Complete
+- 🔧 Fix Mission Rewards Dismissal - Add to Unified Docking Path
+- 🔧 Fix Mission Rewards Screen Dismissal - Add to SimpleDockingManager
+- 🔍 Add Debug Logging for Mission Rewards Screen Dismissal
+- 📚 Update docs/restart.md - Red Badge System Complete
 
 **Codebase Stats**:
-- JavaScript Files: 146 | Python Files: 1619 | Documentation: 89 files
-- Total Lines: 339786 | Architecture: Fully modular ES6+ modules
+- JavaScript Files: 167 | Python Files: 1619 | Documentation: 102 files
+- Total Lines: 385656 | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
 ## 🏗️ Architecture Overview
@@ -667,6 +667,7 @@ waypoint: '#ff00ff'  // Magenta for waypoints
 - ✅ **Simplified Target System** with persistent targeting and fail-fast error handling
 
 **Recent Major Updates**:
+- **🔍 Camera Shake Debug System**: Added comprehensive P1 debug logging to track intermittent camera shake issues during stationary flight - includes position tracking, movement detection, and call stack analysis
 - **🎉 Mission Rewards Screen Auto-Dismissal**: Fixed mission completion rewards screen to automatically dismiss when docking at stations - no more persistent overlay after mission completion
 - **🔴 Red Badge System**: Implemented visual feedback for card quantity increases - cards with increased quantities show red background badges with white text for 5 seconds when viewing collection
 - **🖱️ Target HUD Click Controls**: Added mouse click support to Target Computer and Sub-Target HUDs - left/right halves cycle targets/sub-targets with same sounds as keyboard shortcuts
@@ -1602,11 +1603,17 @@ debug('TESTING', 'Test assertion failed:', condition);
 #### **🔴 P1 (HIGH PRIORITY)**
 **When to enable:** Debugging high-priority issues, system state tracking, workflow debugging (default: disabled)
 
+**🚨 CRITICAL: DO NOT DISABLE P1 CHANNEL**
+- **Camera shake debugging**: P1 contains intermittent camera shake debug messages
+- **Always enabled**: P1 is marked `alwaysEnabled` in debug config for critical issues
+- **Intermittent bugs**: P1 captures hard-to-reproduce issues that need constant monitoring
+
 **⚠️ IMPORTANT: Reserve P1 for:**
 - **Critical system failures**
 - **Data corruption**
 - **Security issues**
 - **Game-breaking errors**
+- **Intermittent camera shake debugging** (current active debugging)
 
 **DO NOT use P1 for:**
 - Status messages (use appropriate channel like `STATUS`)

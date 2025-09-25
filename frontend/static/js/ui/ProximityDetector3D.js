@@ -621,47 +621,9 @@ debug('UI', `🔄 Creating player indicator with size: ${triangleSize} for ${thi
     initializePlayerIndicatorRotation() {
         if (!this.playerIndicator) return;
         
-        // Only initialize if we don't already have accumulated rotation
-        if (this.playerIndicatorAccumulatedRotation !== undefined) {
-debug('UTILITY', `🎯 Player indicator already has rotation: ${THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation).toFixed(1)}° - skipping initialization`);
-            return;
-        }
-        
-        // Get current ship rotation (same method as updateGridOrientation)
-        let playerShip = this.starfieldManager.viewManager?.getShip();
-        let playerMesh = playerShip?.mesh;
-        let playerRotation = null;
-        
-        if (!playerMesh && this.starfieldManager.camera) {
-            playerRotation = this.starfieldManager.camera.rotation;
-        } else if (playerMesh) {
-            playerRotation = playerMesh.rotation;
-        }
-        
-        if (playerRotation) {
-            // Initialize accumulated rotation with current ship rotation
-            this.playerIndicatorAccumulatedRotation = playerRotation.y;
-            
-            // Apply the rotation immediately to the indicator
-            if (this.viewMode === 'topDown') {
-                const correctedRotation = this.playerIndicatorAccumulatedRotation + Math.PI / 4; // Add 45° correction
-                const yRotationQuaternion = new THREE.Quaternion();
-                yRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
-                this.playerIndicator.quaternion.copy(yRotationQuaternion);
-            } else {
-                // 3D mode - similar logic but can include pitch later if needed
-                const correctedRotation = this.playerIndicatorAccumulatedRotation + Math.PI / 4; // Add 45° correction
-                const yRotationQuaternion = new THREE.Quaternion();
-                yRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
-                this.playerIndicator.quaternion.copy(yRotationQuaternion);
-            }
-            
-debug('UTILITY', `🎯 Player indicator initialized with rotation: ${THREE.MathUtils.radToDeg(playerRotation.y).toFixed(1)}°`);
-        } else {
-            // No rotation available, use default (pointing north)
-            this.playerIndicatorAccumulatedRotation = 0;
-debug('AI', `🎯 Player indicator initialized with default rotation (no ship rotation available)`);
-        }
+        // Player indicator always points "up" (north) on radar - fixed orientation
+        this.playerIndicator.rotation.y = 0; // Point straight up (12 o'clock)
+        debug('RADAR', `Player indicator initialized with fixed upward orientation`);
     }
     
     /**
@@ -1084,39 +1046,15 @@ debug('UI', `🔄 ProximityDetector: Switched to ${this.viewMode} view mode`);
         }
         this.createGrid();
         
-        // Recreate the player indicator for the new view mode (scale appropriately)
-        // IMPORTANT: Preserve only the accumulated rotation amount, not the full quaternion
-        let preservedAccumulatedRotation = 0;
+        // Recreate the player indicator for the new view mode
         if (this.playerIndicator) {
-            // Save only the accumulated rotation amount (not the full quaternion which may be incompatible)
-            preservedAccumulatedRotation = this.playerIndicatorAccumulatedRotation || 0;
             this.scene.remove(this.playerIndicator);
         }
         
         this.createPlayerIndicator();
         
-        // Always restore the accumulated rotation (including 0° for north-facing)
-        this.playerIndicatorAccumulatedRotation = preservedAccumulatedRotation;
-        
-        // If we have preserved rotation, apply it immediately
-        if (preservedAccumulatedRotation !== null && preservedAccumulatedRotation !== undefined) {
-            // Rebuild the Y rotation quaternion from the accumulated rotation
-            if (this.viewMode === 'topDown') {
-                const correctedRotation = preservedAccumulatedRotation + Math.PI / 4; // Add 45° correction
-                const restoredRotationQuaternion = new THREE.Quaternion();
-                restoredRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
-                this.playerIndicator.quaternion.copy(restoredRotationQuaternion);
-            } else {
-                const correctedRotation = preservedAccumulatedRotation + Math.PI / 4; // Add 45° correction
-                const restoredRotationQuaternion = new THREE.Quaternion();
-                restoredRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
-                this.playerIndicator.quaternion.copy(restoredRotationQuaternion);
-            }
-debug('UI', `🔺 RESTORED: Player indicator rotation to ${(preservedAccumulatedRotation * 180 / Math.PI).toFixed(1)}°`);
-        } else {
-            // No preserved rotation - initialize from current ship rotation
-debug('UTILITY', `🔺 No preserved rotation - initializing from current ship orientation`);
-        }
+        // Initialize rotation for the new indicator
+        this.initializePlayerIndicatorRotation();
     }
     
     /**
@@ -1433,13 +1371,30 @@ debug('UI', `🚫 NO DUMMY SHIPS: dummyShipMeshes is ${this.starfieldManager.dum
             });
         }
         
+        // Filter out waypoints - they should not appear on radar
+        const filteredObjects = objects.filter(obj => {
+            // Exclude waypoints by type or name patterns
+            if (obj.type === 'waypoint' || obj.type === 'navigation_waypoint') {
+                return false;
+            }
+            // Exclude objects with waypoint-like names
+            if (obj.name && (obj.name.toLowerCase().includes('waypoint') || obj.name.toLowerCase().includes('nav point'))) {
+                return false;
+            }
+            // Exclude objects marked as waypoints in userData
+            if (obj.mesh?.userData?.isWaypoint || obj.mesh?.userData?.type === 'waypoint') {
+                return false;
+            }
+            return true;
+        });
+        
         // Only log object counts when significant changes occur
-        if (objects.length !== this.sessionStats.lastTotalObjects) {
-            this.logControlled('log', `Found ${objects.length} total objects`, null, true);
-            this.sessionStats.lastTotalObjects = objects.length;
+        if (filteredObjects.length !== this.sessionStats.lastTotalObjects) {
+            this.logControlled('log', `Found ${filteredObjects.length} total objects (${objects.length - filteredObjects.length} waypoints filtered out)`, null, true);
+            this.sessionStats.lastTotalObjects = filteredObjects.length;
         }
         
-        return objects;
+        return filteredObjects;
     }
     
     /**
@@ -1471,6 +1426,56 @@ debug('UI', `🚫 NO DUMMY SHIPS: dummyShipMeshes is ${this.starfieldManager.dum
         // Common calculations for both view modes
         relativePos = obj.mesh.position.clone().sub(playerPosition);
         distance = relativePos.length(); // distance in km (game units: 1 unit = 1km)
+        
+        // Transform relative position to player's local coordinate system (radar coordinates)
+        // This makes objects appear to rotate around the player as the ship turns
+        // Use ship heading (not camera rotation) - radar always shows fore view orientation
+        let shipHeading = 0;
+        if (this.starfieldManager?.shipHeading !== undefined) {
+            shipHeading = this.starfieldManager.shipHeading;
+        } else if (this.starfieldManager?.camera) {
+            // Initialize ship heading if not set
+            if (this.starfieldManager.shipHeading === undefined) {
+                this.starfieldManager.shipHeading = this.starfieldManager.camera.rotation.y;
+            }
+            shipHeading = this.starfieldManager.shipHeading;
+        }
+        
+        // DEBUG: Log coordinate transformation for target dummies to understand the issue
+        const isDebugObject = obj.isTargetDummy || obj.type === 'enemy_ship';
+        if (isDebugObject && Math.random() < 0.1) { // 10% chance to log
+            debug('RADAR', `🎯 BEFORE ROTATION: ${obj.name || obj.type}`);
+            debug('RADAR', `   World pos: (${obj.mesh.position.x.toFixed(1)}, ${obj.mesh.position.z.toFixed(1)})`);
+            debug('RADAR', `   Player pos: (${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
+            debug('RADAR', `   Relative: (${relativePos.x.toFixed(1)}, ${relativePos.z.toFixed(1)})`);
+            debug('RADAR', `   Ship heading: ${(shipHeading * 180 / Math.PI).toFixed(1)}°`);
+        }
+        
+        // In Three.js: +X is right, +Z is toward camera (backward), +Y is up
+        // In radar: +X should be right, +Z should be forward (up on screen)
+        // So we need to flip the Z coordinate in the world space first
+        const worldX = relativePos.x;
+        const worldZ = -relativePos.z; // Flip Z: Three.js +Z is backward, radar +Z should be forward
+        
+        // Apply rotation matrix to transform to ship's local coordinate system
+        // Rotation around Y-axis (yaw): standard 2D rotation matrix
+        const cosRot = Math.cos(shipHeading);
+        const sinRot = Math.sin(shipHeading);
+        
+        // Rotate the relative position to player's local coordinate system
+        const rotatedX = worldX * cosRot - worldZ * sinRot;
+        const rotatedZ = worldX * sinRot + worldZ * cosRot;
+        
+        // Update relativePos with rotated coordinates
+        relativePos.x = rotatedX;
+        relativePos.z = rotatedZ;
+        
+        // DEBUG: Log after rotation
+        if (isDebugObject && Math.random() < 0.1) {
+            debug('RADAR', `🎯 AFTER ROTATION: ${obj.name || obj.type}`);
+            debug('RADAR', `   Rotated: (${relativePos.x.toFixed(1)}, ${relativePos.z.toFixed(1)})`);
+            debug('RADAR', `   Expected: Forward objects should have +Z, Right objects should have +X`);
+        }
         const detectionRangeM = currentZoom.range; // range in meters (for camera setup)
         const worldHalfRangeM = detectionRangeM / 2; // half range in meters
         
@@ -1703,27 +1708,14 @@ debug('UI', `🚫 NO DUMMY SHIPS: dummyShipMeshes is ${this.starfieldManager.dum
         
         // Handle orientation based on view mode
         if (obj.type === 'enemy_ship' || obj.isTargetDummy) {
-            // Get player rotation for consistent orientation
-            let playerRotation = null;
-            if (this.starfieldManager.viewManager?.getShip()?.mesh) {
-                playerRotation = this.starfieldManager.viewManager.getShip().mesh.rotation;
-            } else if (this.starfieldManager.camera) {
-                playerRotation = this.starfieldManager.camera.rotation;
-            }
-            
-            // Use accumulated rotation for full 360° capability (same as player blip and grid)
-            const accumulatedRotation = this.playerIndicatorAccumulatedRotation || (playerRotation ? playerRotation.y : 0);
-            
             if (this.viewMode === 'topDown') {
                 // In top-down mode, objects should be flat and visible from above
-                // No rotation needed for spheres, but if this is a triangle, make it flat
                 blip.rotation.x = 0; // Keep flat (lying in XZ plane)
                 blip.rotation.z = 0; // No roll
-                blip.rotation.y = accumulatedRotation + Math.PI / 2; // Match ship heading for directional objects
+                blip.rotation.y = 0; // Point straight up like player - no extra rotation
             } else {
                 // In 3D mode, use full orientation logic
-                // Set Y rotation to match player heading (fore view) 
-                blip.rotation.y = accumulatedRotation + Math.PI / 2; // Add 90° to align with ship facing direction
+                blip.rotation.y = 0; // Point straight up like player - no extra rotation
                 
                 // Determine if object is above or below grid plane for X rotation
                 const gridPlaneWorldY = 0; // Grid is centered at world Y=0
@@ -1787,60 +1779,113 @@ debug('UI', `🚫 NO DUMMY SHIPS: dummyShipMeshes is ${this.starfieldManager.dum
     }
     
     /**
-     * Get blip color based on object type and faction
+     * Get blip color based on object type and faction using universal faction color system
      */
     getBlipColor(obj) {
-        // Handle celestial bodies with distinctive colors
-        if (obj.isCelestial) {
-            switch (obj.type) {
-                case 'star': return 0xffffff;     // Bright white for stars
-                case 'planet': return 0x44ff44;   // Bright green for planets
-                case 'moon': return 0x888888;     // Gray for moons
-                case 'station': return 0x00ffff; // Cyan for space stations
-                default: return 0x666666;         // Dim gray for unknown celestial
-            }
+        // Universal faction colors (Three.js hex format)
+        const FACTION_COLORS = {
+            enemy: 0xff3333,      // Red for hostile
+            neutral: 0xffff44,    // Yellow for neutral  
+            friendly: 0x44ff44,   // Green for friendly
+            unknown: 0x44ffff,    // Cyan for unknown
+            waypoint: 0xff00ff    // Magenta for waypoints (not used on radar)
+        };
+        
+        // Check for explicit diplomacy/faction first - check multiple sources
+        let diplomacy = null;
+        
+        // Check ship diplomacy/faction
+        if (obj.ship?.diplomacy) {
+            diplomacy = obj.ship.diplomacy.toLowerCase();
+        } else if (obj.ship?.faction) {
+            diplomacy = obj.ship.faction.toLowerCase();
         }
         
-        // Handle space stations with faction-specific colors
-        if (obj.isSpaceStation || obj.type === 'station') {
-            // Check if we have faction information from the station userData
-            if (obj.mesh && obj.mesh.userData && obj.mesh.userData.faction) {
-                switch (obj.mesh.userData.faction) {
-                    case 'Terran Republic Alliance': return 0x00ff44; // Alliance green
-                    case 'Free Trader Consortium': return 0xffff00;   // Trade yellow
-                    case 'Nexus Corporate Syndicate': return 0x44ffff; // Corporate cyan
-                    case 'Scientists Consortium': return 0x44ff44;    // Science green
-                    case 'Ethereal Wanderers': return 0xff44ff;       // Ethereal purple
-                    default: return 0x00ffff; // Default cyan for unknown faction stations
+        // Check mesh userData
+        if (!diplomacy && obj.mesh?.userData?.diplomacy) {
+            diplomacy = obj.mesh.userData.diplomacy.toLowerCase();
+        } else if (!diplomacy && obj.mesh?.userData?.faction) {
+            diplomacy = obj.mesh.userData.faction.toLowerCase();
+        }
+        
+        // Check object properties directly (for celestial bodies and stations)
+        if (!diplomacy && obj.diplomacy) {
+            diplomacy = obj.diplomacy.toLowerCase();
+        } else if (!diplomacy && obj.faction) {
+            diplomacy = obj.faction.toLowerCase();
+        }
+        
+        // For celestial bodies, try to get info from solar system manager
+        if (!diplomacy && obj.isCelestial && this.starfieldManager?.solarSystemManager) {
+            const celestialInfo = this.starfieldManager.solarSystemManager.getCelestialBodyInfo(obj.mesh);
+            if (celestialInfo) {
+                if (celestialInfo.diplomacy) {
+                    diplomacy = celestialInfo.diplomacy.toLowerCase();
+                } else if (celestialInfo.faction) {
+                    diplomacy = celestialInfo.faction.toLowerCase();
                 }
             }
-            return 0x00ffff; // Default cyan for stations
         }
         
-        // Handle target dummies (orange to distinguish from enemy ships)
-        if (obj.isTargetDummy) {
-            return 0xff8800; // Orange for target dummies (not red)
-        }
-        
-        // Handle enemy ships - ONLY these should be red
-        if (obj.isEnemyShip && obj.ship) {
-            // Check ship diplomacy if available
-            switch (obj.ship.diplomacy) {
-                case 'enemy': return 0xff0000;     // Red for confirmed enemies
-                case 'hostile': return 0xff4444;   // Bright red for hostiles
-                case 'friendly': return 0x00ff00;  // Green for friendlies
-                case 'neutral': return 0xffff00;   // Yellow for neutrals
-                default: return 0xff6600;          // Orange for unknown hostiles
+        // Apply faction coloring based on diplomacy
+        if (diplomacy) {
+            // Debug logging for faction color assignment (only for stations to reduce spam)
+            if (obj.type === 'station' || obj.type === 'space_station' || obj.isSpaceStation) {
+                debug('RADAR', `🎯 Station "${obj.name || 'Unknown'}" faction: "${diplomacy}" -> color will be applied`);
+            }
+            
+            switch (diplomacy) {
+                case 'enemy':
+                case 'hostile':
+                    return FACTION_COLORS.enemy;
+                case 'friendly':
+                case 'allied':
+                case 'ally':
+                    return FACTION_COLORS.friendly;
+                case 'neutral':
+                    return FACTION_COLORS.neutral;
+                case 'unknown':
+                    return FACTION_COLORS.unknown;
             }
         }
         
-        // Handle ships by type
-        if (obj.type === 'enemy_ship') {
-            return 0xff0000; // Red for confirmed enemy ships
+        // Handle specific object types with default faction assignments
+        if (obj.isCelestial) {
+            switch (obj.type) {
+                case 'star': 
+                    return FACTION_COLORS.neutral;    // Stars are neutral (yellow)
+                case 'planet': 
+                    return FACTION_COLORS.friendly;   // Planets default to friendly (green)
+                case 'moon': 
+                    return FACTION_COLORS.unknown;    // Moons default to unknown (cyan)
+                case 'station': 
+                case 'space_station':
+                    return FACTION_COLORS.unknown;    // Stations default to unknown (cyan)
+                default: 
+                    return FACTION_COLORS.unknown;    // Unknown celestial objects (cyan)
+            }
         }
         
-        // Default to dim gray for unknown objects
-        return 0x666666;
+        // Handle space stations - use faction data if available, otherwise default to unknown
+        if (obj.isSpaceStation || obj.type === 'station' || obj.type === 'space_station') {
+            // If we found diplomacy data above, it would have been handled in the faction switch
+            // If we get here, no faction data was found, so default to unknown
+            debug('RADAR', `⚠️ Station "${obj.name || 'Unknown'}" has no faction data - defaulting to unknown (cyan)`);
+            return FACTION_COLORS.unknown; // Stations default to unknown (cyan) unless faction specified
+        }
+        
+        // Handle target dummies - treat as neutral (not hostile)
+        if (obj.isTargetDummy) {
+            return FACTION_COLORS.neutral; // Target dummies are neutral (yellow)
+        }
+        
+        // Handle enemy ships - default to hostile
+        if (obj.isEnemyShip || obj.type === 'enemy_ship') {
+            return FACTION_COLORS.enemy; // Enemy ships are hostile (red)
+        }
+        
+        // Default to unknown for unidentified objects
+        return FACTION_COLORS.unknown;
     }
     
     /**
@@ -1853,143 +1898,59 @@ debug('UI', `🚫 NO DUMMY SHIPS: dummyShipMeshes is ${this.starfieldManager.dum
     
     /**
      * Update grid orientation and position based on ship movement and rotation
-     * Per radar_spec.md:
-     * - Triangle stays pointing north (fixed orientation)
-     * - Grid rotates with ship orientation
-     * - Grid scrolls to keep player centered
+     * SIMPLIFIED: Direct camera rotation mapping with smooth interpolation
      */
     updateGridOrientation(deltaTime = 1/60) {
-        // Try multiple ways to get the player ship and mesh (same as updateTrackedObjects)
-        let playerShip = this.starfieldManager.viewManager?.getShip();
-        let playerMesh = playerShip?.mesh;
-        let playerRotation = null;
+        // Get ship heading (independent of camera view) - radar always shows fore view orientation
+        let shipHeading = 0;
         let playerPosition = null;
         
-        // If no player ship mesh, try alternative approaches
-        if (!playerMesh) {
-            // Try getting ship from ViewManager directly
-            const viewManager = this.starfieldManager.viewManager;
-            if (viewManager && viewManager.ship) {
-                playerShip = viewManager.ship;
-                playerMesh = playerShip.mesh;
-            }
-            
-            // Try getting camera rotation and position as fallback (player follows camera)
-            if (!playerMesh && this.starfieldManager.camera) {
-
-                // Use camera rotation and position directly
-                playerRotation = this.starfieldManager.camera.rotation;
-                playerPosition = this.starfieldManager.camera.position;
-            }
+        // Use StarfieldManager's ship heading if available (tracks actual ship direction)
+        if (this.starfieldManager?.shipHeading !== undefined) {
+            shipHeading = this.starfieldManager.shipHeading;
         } else {
-            // Use mesh rotation and position
-            playerRotation = playerMesh.rotation;
-            playerPosition = playerMesh.position;
+            // Initialize ship heading from current camera rotation if not set
+            if (this.starfieldManager?.camera) {
+                if (this.starfieldManager.shipHeading === undefined) {
+                    this.starfieldManager.shipHeading = this.starfieldManager.camera.rotation.y;
+                }
+                shipHeading = this.starfieldManager.shipHeading;
+            } else {
+                debug('RADAR', 'No camera available for radar rotation');
+                return;
+            }
         }
         
-        if (!playerRotation || !playerPosition) {
-debug('AI', 'GRID ROTATION: No ship mesh or camera available for grid rotation');
+        // Get player position from camera (camera follows ship)
+        if (this.starfieldManager?.camera) {
+            playerPosition = this.starfieldManager.camera.position;
+        } else {
+            debug('RADAR', 'No camera available for radar position');
             return;
         }
-
-        // SPEC: Grid rotates with ship orientation (Y-axis only for fore view)
-        // Hold grid plane stable - only rotate around Y-axis to match player heading
-        // Preserve the original tilt (X-axis) and keep Z-axis stable (no roll)
-        // Use accumulated rotation for full 360° capability (same as player blip)
-        const accumulatedRotation = this.playerIndicatorAccumulatedRotation || playerRotation.y;
-        const targetY = -accumulatedRotation; // Remove 90° offset to align grid with ship heading
         
-        // Handle angle wrapping for smooth 360° rotation (fix the mirroring issue)
-        let currentY = this.gridMesh.rotation.y;
-        let adjustedTargetY = targetY;
-        
-        // Find the shortest angular distance, accounting for 2π wrapping
-        let angleDiff = adjustedTargetY - currentY;
-        while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
-        adjustedTargetY = currentY + angleDiff;
-        
-        // Add controlled debug logging for rotation verification (disabled to reduce spam)
-        const rotationDiff = Math.abs(angleDiff);
-        // if (rotationDiff > 0.1 || !this.lastLoggedRotation || Math.abs(this.lastLoggedRotation - targetY) > 0.1) {
-        //     const playerDegrees = THREE.MathUtils.radToDeg(playerRotation.y);
-        //     const gridDegrees = THREE.MathUtils.radToDeg(targetY);
-        //     const currentGridDegrees = THREE.MathUtils.radToDeg(currentY);
-        //     const adjustedGridDegrees = THREE.MathUtils.radToDeg(adjustedTargetY);
-        //     console.log(`🧭 RADAR ROTATION: Player heading ${playerDegrees.toFixed(1)}°, Grid target ${gridDegrees.toFixed(1)}° (adjusted: ${adjustedGridDegrees.toFixed(1)}°), Current ${currentGridDegrees.toFixed(1)}°`);
-        //     this.lastLoggedRotation = targetY;
-        // }
-        
-        // Handle grid orientation based on view mode
-        if (this.viewMode === 'topDown') {
-            // Top-down mode: NO rotation at all - fixed grid orientation
-            this.gridMesh.rotation.x = 0; // No tilt
-            this.gridMesh.rotation.y = 0; // No rotation - grid stays fixed
-            this.gridMesh.rotation.z = 0; // No roll
-            
-            // Debug top-down grid rotation (disabled to reduce console spam)
-            // if (rotationDiff > 0.1 || !this.lastLoggedRotation) {
-            //     const playerDegrees = THREE.MathUtils.radToDeg(playerRotation.y);
-            //     const gridDegrees = THREE.MathUtils.radToDeg(targetY);
-            //     const currentGridDegrees = THREE.MathUtils.radToDeg(currentY);
-            //     const adjustedGridDegrees = THREE.MathUtils.radToDeg(adjustedTargetY);
-            //     console.log(`🔄 TOP-DOWN GRID: Player=${playerDegrees.toFixed(1)}° Target=${gridDegrees.toFixed(1)}° Current=${currentGridDegrees.toFixed(1)}° Adjusted=${adjustedGridDegrees.toFixed(1)}° AngleDiff=${THREE.MathUtils.radToDeg(angleDiff).toFixed(1)}°`);
-            //     
-            //     // Log actual final grid rotation to verify it's flat
-            //     const finalX = THREE.MathUtils.radToDeg(this.gridMesh.rotation.x);
-            //     const finalY = THREE.MathUtils.radToDeg(this.gridMesh.rotation.y);
-            //     const finalZ = THREE.MathUtils.radToDeg(this.gridMesh.rotation.z);
-            //     console.log(`🔄 TOP-DOWN FINAL: X=${finalX.toFixed(3)}° Y=${finalY.toFixed(1)}° Z=${finalZ.toFixed(3)}° (X&Z should be 0.000°)`);
-            // }
-        } else {
-            // 3D mode: apply all rotations
-            this.gridMesh.rotation.y = THREE.MathUtils.lerp(currentY, adjustedTargetY, 0.1);
-            this.gridMesh.rotation.x = THREE.MathUtils.degToRad(this.config.gridTilt); // Maintain original tilt
-            this.gridMesh.rotation.z = 0; // No roll - keep grid plane level
+        // Update grid rotation (grid rotates opposite to ship heading for proper radar behavior)
+        if (this.gridMesh) {
+            if (this.viewMode === 'topDown') {
+                // Top-down mode: Grid rotates opposite to ship heading (always fore view)
+                const targetGridRotation = -shipHeading;
+                this.gridMesh.rotation.x = 0;
+                this.gridMesh.rotation.y = THREE.MathUtils.lerp(this.gridMesh.rotation.y, targetGridRotation, 0.1);
+                this.gridMesh.rotation.z = 0;
+            } else {
+                // 3D mode: Smooth grid rotation (always fore view)
+                const targetGridRotation = -shipHeading;
+                this.gridMesh.rotation.y = THREE.MathUtils.lerp(this.gridMesh.rotation.y, targetGridRotation, 0.1);
+                this.gridMesh.rotation.x = THREE.MathUtils.degToRad(this.config.gridTilt);
+                this.gridMesh.rotation.z = 0;
+            }
         }
         
-        // SPEC: Triangle orientation matches player ship heading (fore camera direction)
-        // Hybrid approach: velocity accumulation with periodic drift correction
+        // Update player indicator rotation (player icon always points "up" - forward direction)
         if (this.playerIndicator) {
-            // Initialize accumulated rotation if not set
-            if (this.playerIndicatorAccumulatedRotation === undefined && playerRotation) {
-                this.playerIndicatorAccumulatedRotation = playerRotation.y;
-            }
-            
-            // Use rotation velocity for smooth 360° tracking
-            const rotationVelocity = this.starfieldManager?.rotationVelocity;
-            
-            if (rotationVelocity && Math.abs(rotationVelocity.y) > 0.0001) {
-                // Apply rotation using accumulated tracking (preserves 360° capability)
-                // Fix the scaling: remove the * 60 that was causing double-scaling
-                const rotationAmount = rotationVelocity.y * deltaTime;
-                
-                // Initialize if needed
-                if (this.playerIndicatorAccumulatedRotation === undefined) {
-                    this.playerIndicatorAccumulatedRotation = 0;
-                }
-                
-                // Track accumulated rotation
-                this.playerIndicatorAccumulatedRotation += rotationAmount;
-            }
-            
-            // Balanced drift correction: smooth but responsive
-            if (playerRotation) {
-                // Calculate drift between accumulated and camera rotation
-                const drift = this.playerIndicatorAccumulatedRotation - playerRotation.y;
-                
-                if (Math.abs(drift) > 0.05) { // > ~3 degrees before correction kicks in
-                    if (!rotationVelocity || Math.abs(rotationVelocity.y) < 0.0001) {
-                        // When not rotating: moderate correction for responsive sync
-                        const correctionFactor = 0.25; // 25% correction per frame when stationary
-                        this.playerIndicatorAccumulatedRotation -= drift * correctionFactor;
-                    } else {
-                        // When actively rotating: minimal correction to avoid interference
-                        const correctionFactor = 0.02; // 2% correction per frame when rotating
-                        this.playerIndicatorAccumulatedRotation -= drift * correctionFactor;
-                    }
-                }
-            }
+            // Player icon always points north (up) on radar - no rotation needed
+            // The grid and objects rotate around the player instead
+            this.playerIndicator.rotation.y = 0; // Point straight up (12 o'clock) - no rotation needed
         }
         
         // SPEC: Grid scrolls to keep player centered (top-down mode only)
@@ -2039,66 +2000,8 @@ debug('UI', `🎯 PLAYER INDICATOR: Position (${this.playerIndicator.position.x}
                 this.playerIndicator.position.y = 0; // Keep player indicator on grid level
             }
             
-            // Update triangle orientation based on player altitude relative to grid plane
-            // Grid plane is at a fixed world Y position (determined by the game)
-            const gridPlaneWorldY = 0; // Grid is centered at world Y=0
-            const playerAltitude = playerPosition.y; // Player's world Y position
-            
-            // Handle player triangle orientation using PURE QUATERNIONS (no Euler angle interference)
-            // IMPORTANT: Never set .rotation directly - it will override quaternion rotations
-            if (this.viewMode === 'topDown') {
-                // In top-down mode, triangle should be flat and visible from above
-                // Use accumulated rotation directly (no artificial correction needed)
-                const correctedRotation = (this.playerIndicatorAccumulatedRotation || 0); // No correction - let drift correction handle sync
-                const yRotationQuaternion = new THREE.Quaternion();
-                yRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
-                this.playerIndicator.quaternion.copy(yRotationQuaternion);
-                
-                // DEBUG: Compare camera vs blip rotation for synchronization debugging
-                // Show debug every 1 second to diagnose rotation offset
-                if (!this.lastRotationDebugTime || Date.now() - this.lastRotationDebugTime > 1000) {
-                    const cameraRotationDeg = THREE.MathUtils.radToDeg(playerRotation ? playerRotation.y : 0);
-                    const accumulatedRotationDeg = THREE.MathUtils.radToDeg(this.playerIndicatorAccumulatedRotation || 0);
-                    const correctedRotationDeg = THREE.MathUtils.radToDeg(correctedRotation);
-                    const offsetDeg = correctedRotationDeg - cameraRotationDeg;
-                    const rotVel = this.starfieldManager?.rotationVelocity?.y || 0;
-                    const driftDeg = THREE.MathUtils.radToDeg(accumulatedRotationDeg - cameraRotationDeg);
-debug('INSPECTION', `🎯 ROTATION SYNC DEBUG:`);
-debug('UI', `  Camera rotation: ${cameraRotationDeg.toFixed(1)}°`);
-debug('UI', `  Accumulated rotation: ${accumulatedRotationDeg.toFixed(1)}°`);
-debug('UI', `  Drift: ${driftDeg.toFixed(1)}° (accumulated - camera)`);
-debug('UI', `  Corrected rotation (blip): ${correctedRotationDeg.toFixed(1)}°`);
-debug('UI', `  Final offset: ${offsetDeg.toFixed(1)}°`);
-debug('UI', `  Rotation velocity: ${rotVel.toFixed(4)}`);
-                    this.lastRotationDebugTime = Date.now();
-                }
-                
-            } else {
-                // In 3D mode, we need to combine Y rotation (heading) with X rotation (pitch for altitude)
-                // Decompose current quaternion to preserve Y rotation while setting X rotation
-                
-                // Extract current Y rotation from the accumulated rotation
-                // Use accumulated rotation directly (no artificial correction needed)
-                const yRotationQuaternion = new THREE.Quaternion();
-                const correctedRotation = (this.playerIndicatorAccumulatedRotation || 0); // No correction - let drift correction handle sync
-                yRotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctedRotation);
-                
-                // Create pitch quaternion based on altitude
-                const pitchQuaternion = new THREE.Quaternion();
-                if (playerAltitude >= gridPlaneWorldY) {
-                    // Player is at or above grid plane - point triangle UP (-90° pitch)
-                    pitchQuaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
-                } else {
-                    // Player is below grid plane - point triangle DOWN (+90° pitch)
-                    pitchQuaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
-                }
-                
-                // Combine: Y rotation first, then pitch rotation
-                this.playerIndicator.quaternion.multiplyQuaternions(pitchQuaternion, yRotationQuaternion);
-            }
-            
             // Create/update player's altitude line
-            this.updatePlayerAltitudeLine(playerAltitude);
+            this.updatePlayerAltitudeLine(playerPosition.y);
         }
     }
     

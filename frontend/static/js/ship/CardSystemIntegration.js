@@ -575,6 +575,13 @@ debug('UI', `❌ NO CARDS LOADED for ${this.ship.shipType}`);
             const cardType = cardData.cardType;
             const systemName = this.getSystemNameForCard(cardType);
             
+            // Special debug logging for subspace_radio to track the issue
+            if (cardType === 'subspace_radio') {
+                debug('P1', `📻 SUBSPACE RADIO CARD FOUND: Processing ${cardType} → ${systemName} (Level ${cardData.level})`);
+                debug('P1', `📻 Card data: ${JSON.stringify(cardData)}`);
+                debug('P1', `📻 System exists: ${this.ship.systems.has(systemName)}`);
+            }
+            
             // console.log(`🔧 Processing card: ${cardType} → ${systemName}`); // Reduce spam
             
             // Skip weapon cards - they're handled by WeaponSyncManager
@@ -636,6 +643,12 @@ debug('P1', `❌ SYSTEM CREATION FAILED: ${cardType} → Unknown system type`);
                 // Import and create the system
                 const modulePath = systemPathMap[cardToSystemMap[cardType]];
                 
+                // Special debug logging for subspace_radio system creation
+                if (cardType === 'subspace_radio') {
+                    debug('P1', `📻 CREATING SUBSPACE RADIO SYSTEM: Module path: ${modulePath}`);
+                    debug('P1', `📻 System class: ${cardToSystemMap[cardType]}`);
+                }
+                
                 // Handle both default and named exports
                 let SystemClass;
                 if (cardToSystemMap[cardType] === 'ReinforcedCargoHold' || cardToSystemMap[cardType] === 'ShieldedCargoHold') {
@@ -661,9 +674,18 @@ debug('P1', `❌ SYSTEM CREATION FAILED: ${cardType} → Unknown system type`);
                 // Add the system to the ship
                 if (this.ship.addSystem(systemName, system, 'CardSystemIntegration.createSystemsFromCards')) {
                     systemsCreated++;
+                    // Special debug logging for subspace_radio system addition
+                    if (cardType === 'subspace_radio') {
+                        debug('P1', `📻 SUBSPACE RADIO SYSTEM SUCCESSFULLY ADDED: ${systemName} (Level ${cardData.level})`);
+                        debug('P1', `📻 System now available: ${this.ship.systems.has(systemName)}`);
+                        debug('P1', `📻 System operational: ${system.isOperational()}`);
+                    }
                     // System created from card (reduced logging for cleaner console)
                 } else {
-debug('P1', `❌ FAILED TO ADD: ${systemName} - insufficient slots or other error`);
+                    if (cardType === 'subspace_radio') {
+                        debug('P1', `📻 SUBSPACE RADIO SYSTEM FAILED TO ADD: ${systemName} - insufficient slots or other error`);
+                    }
+                    debug('P1', `❌ FAILED TO ADD: ${systemName} - insufficient slots or other error`);
                 }
                 
             } catch (error) {

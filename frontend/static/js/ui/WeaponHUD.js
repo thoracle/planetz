@@ -110,6 +110,29 @@ debug('COMBAT', '🔫 createHUDElements: weaponSlotsDisplay added to DOM');
     }
     
     /**
+     * Get weapon-specific colors that match projectile/effect colors
+     * @param {string} weaponName Name of the weapon
+     * @returns {Object} Color configuration with hex and title
+     */
+    getWeaponColors(weaponName) {
+        // Convert weapon name to lowercase for matching
+        const weaponKey = weaponName.toLowerCase().replace(/\s+/g, '_');
+        
+        const colorMap = {
+            'laser_cannon': { hex: '#00FFFF', title: 'Laser Cannon' },      // Cyan
+            'pulse_cannon': { hex: '#00FFFF', title: 'Pulse Cannon' },      // Cyan
+            'plasma_cannon': { hex: '#00FF00', title: 'Plasma Cannon' },    // Green
+            'phaser_array': { hex: '#FF0080', title: 'Phaser Array' },      // Pink
+            'standard_missile': { hex: '#FFFF00', title: 'Standard Missile' }, // Yellow
+            'homing_missile': { hex: '#FF8000', title: 'Homing Missile' },  // Orange
+            'photon_torpedo': { hex: '#FF0000', title: 'Photon Torpedo' },  // Red
+            'proximity_mine': { hex: '#8000FF', title: 'Proximity Mine' }   // Purple
+        };
+        
+        return colorMap[weaponKey] || { hex: '#FFFFFF', title: 'Unknown Weapon' }; // Default white
+    }
+    
+    /**
      * Update weapon slots display
      * @param {Array} weaponSlots Array of weapon slots
      * @param {number} activeSlotIndex Currently active slot index
@@ -253,24 +276,11 @@ debug('COMBAT', '🔫 createHUDElements: weaponSlotsDisplay added to DOM');
             typeIndicator.className = 'weapon-type-indicator';
             
             let indicatorColor, indicatorTitle;
-            if (slot.equippedWeapon.weaponType === 'scan-hit') {
-                indicatorColor = '#00ff00'; // Green for energy weapons
-                indicatorTitle = 'Energy Beam';
-            } else if (slot.equippedWeapon.weaponType === 'splash-damage') {
-                if (slot.equippedWeapon.blastRadius > 0) {
-                    indicatorColor = '#ff6600'; // Orange for splash damage
-                    indicatorTitle = 'Splash Damage';
-                } else {
-                    indicatorColor = '#00ffff'; // Cyan for direct hit projectiles
-                    indicatorTitle = 'Direct Hit';
-                }
-            } else if (slot.equippedWeapon.weaponType === 'projectile') {
-                indicatorColor = '#00ffff'; // Cyan for direct hit projectiles  
-                indicatorTitle = 'Direct Hit';
-            } else {
-                indicatorColor = '#666666'; // Gray for unknown
-                indicatorTitle = 'Unknown Type';
-            }
+            
+            // Get weapon-specific color that matches projectile/effect colors
+            const weaponColors = this.getWeaponColors(slot.equippedWeapon.name);
+            indicatorColor = weaponColors.hex;
+            indicatorTitle = weaponColors.title;
             
             typeIndicator.style.cssText = `
                 position: absolute;

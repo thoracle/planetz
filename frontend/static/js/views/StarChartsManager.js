@@ -342,10 +342,14 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
                 // Enhanced fallback: Try multiple key formats
                 const alternativeKeys = [
                     obj.id,  // a0_hermes_refinery
-                    obj.id.replace('a0_', ''),  // hermes_refinery
-                    obj.id.replace('a0_', 'A0_'),  // A0_hermes_refinery
+                    ...(typeof obj.id === 'string' ? [
+                        obj.id.replace('a0_', ''),  // hermes_refinery
+                        obj.id.replace('a0_', 'A0_'),  // A0_hermes_refinery
+                    ] : []),
                     obj.name,  // Hermes Refinery
-                    obj.name.toLowerCase().replace(/\s+/g, '_'),  // hermes_refinery
+                    ...(typeof obj.name === 'string' ? [
+                        obj.name.toLowerCase().replace(/\s+/g, '_'),  // hermes_refinery
+                    ] : []),
                 ];
                 
                 debug('STAR_CHARTS', `🔍 Trying alternative keys: ${alternativeKeys.join(', ')}`);
@@ -377,7 +381,7 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
             }
 
             // 4c. Beacon ID mapping (a0_navigation_beacon_1 -> beacon key)
-            if (obj.id && obj.id.startsWith('a0_navigation_beacon_')) {
+            if (obj.id && typeof obj.id === 'string' && obj.id.startsWith('a0_navigation_beacon_')) {
                 // Try multiple beacon lookup strategies
                 const beaconNum = obj.id.replace('a0_navigation_beacon_', '');
                 const beaconKey = `beacon_${beaconNum}`;

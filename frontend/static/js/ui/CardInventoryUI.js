@@ -247,19 +247,12 @@ export default class CardInventoryUI {
      * @returns {boolean} - True if the card has a quantity increase
      */
     hasQuantityIncrease(cardType) {
-        console.log(`🔍 CHECKING: hasQuantityIncrease for ${cardType}`);
-        console.log(`🔍 CHECKING: this.quantityIncreaseTimestamps:`, this.quantityIncreaseTimestamps);
-        console.log(`🔍 CHECKING: hasOwnProperty result:`, this.quantityIncreaseTimestamps.hasOwnProperty(cardType));
-        
         // Also check localStorage directly as fallback
         const stored = localStorage.getItem('planetz_quantity_increase_timestamps');
         const timestamps = stored ? JSON.parse(stored) : {};
-        console.log(`🔍 CHECKING: localStorage timestamps:`, timestamps);
-        console.log(`🔍 CHECKING: localStorage has ${cardType}:`, timestamps.hasOwnProperty(cardType));
         
         // Use localStorage data if instance data is empty
         if (Object.keys(this.quantityIncreaseTimestamps).length === 0 && Object.keys(timestamps).length > 0) {
-            console.log(`🔍 CHECKING: Using localStorage data as fallback`);
             return timestamps.hasOwnProperty(cardType);
         }
         
@@ -2353,10 +2346,7 @@ debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
         const hasQuantityIncrease = this.hasQuantityIncrease(card.cardType);
         const countStyle = hasQuantityIncrease ? 'background-color: #ff4444; color: white; font-weight: bold; padding: 2px 4px; border-radius: 3px;' : '';
         
-        // Debug logging for red badge detection (can be removed later)
-        if (hasQuantityIncrease) {
-            console.log(`🔴 RED BADGE: ${card.cardType} should show red badge (quantity increase detected)`);
-        }
+        // Red badge detection for quantity increases
         
         return `
             <div class="card-stack ${isNew ? 'has-new-badge' : ''}" 
@@ -3184,30 +3174,18 @@ debug('UI', `🎵 Playing upgrade sound...`);
      * @param {string} cardType - The type of card that had a quantity increase
      */
     static markCardQuantityIncrease(cardType) {
-        console.log(`🔴 STATIC: markCardQuantityIncrease called for ${cardType}`);
-        
         // ALWAYS store directly to localStorage to ensure persistence
         // This bypasses any instance issues and guarantees the data is saved
         const stored = localStorage.getItem('planetz_quantity_increase_timestamps');
-        console.log(`🔴 STATIC: Raw localStorage value:`, stored);
         const timestamps = stored ? JSON.parse(stored) : {};
-        console.log(`🔴 STATIC: Parsed timestamps before update:`, timestamps);
         const timestamp = Date.now();
         timestamps[cardType] = timestamp;
-        console.log(`🔴 STATIC: Timestamps after adding ${cardType}:`, timestamps);
         const jsonString = JSON.stringify(timestamps);
-        console.log(`🔴 STATIC: JSON string to store:`, jsonString);
         localStorage.setItem('planetz_quantity_increase_timestamps', jsonString);
-        
-        // Verify it was stored
-        const verification = localStorage.getItem('planetz_quantity_increase_timestamps');
-        console.log(`🔴 STATIC: Verification - stored value:`, verification);
-        console.log(`🔴 STATIC: Stored directly to localStorage:`, timestamps);
         
         // Also update the instance if it exists (for immediate UI updates)
         if (window.cardInventoryUI && window.cardInventoryUI.quantityIncreaseTimestamps) {
             window.cardInventoryUI.quantityIncreaseTimestamps[cardType] = Date.now();
-            console.log(`🔴 STATIC: Also updated instance:`, window.cardInventoryUI.quantityIncreaseTimestamps);
         }
         
         debug('UI', `📈 Card marked as quantity increase: ${cardType}`);

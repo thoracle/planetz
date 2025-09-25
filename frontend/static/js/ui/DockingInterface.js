@@ -30,7 +30,7 @@ export class DockingInterface {
             console.log('🔄 DOCKING: Reusing existing CardInventoryUI instance (preserves red badges)');
         } else {
             this.cardInventoryUI = new CardInventoryUI(null);
-            console.log('🆕 DOCKING: Created new CardInventoryUI instance');
+            debug('UTILITY', '🆕 DOCKING: Created new CardInventoryUI instance');
         }
         
         this.missionBoard = new MissionBoard(starfieldManager);

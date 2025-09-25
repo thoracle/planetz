@@ -238,9 +238,9 @@ stateDiagram-v2
     Undocking --> [*] : Launch complete
     
     note right of Validating
-        Check faction compatibility<br/>
-        Verify docking bay card<br/>
-        Check capacity<br/>
+        Check faction compatibility
+        Verify docking bay card
+        Check capacity
         Validate distance
     end note
 ```

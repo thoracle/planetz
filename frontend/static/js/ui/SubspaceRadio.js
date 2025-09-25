@@ -188,6 +188,9 @@ debug('UTILITY', 'SubspaceRadio initialized');
         
         const subspaceRadio = this.ship.getSystem('subspace_radio');
         if (!subspaceRadio) {
+            debug('P1', `📻 SUBSPACE RADIO TOGGLE FAILED: No system found on ship`);
+            debug('P1', `📻 Available systems: ${Array.from(this.ship.systems.keys()).join(', ')}`);
+            debug('P1', `📻 Total systems count: ${this.ship.systems.size}`);
             console.warn('No subspace radio system found on ship');
             // Add HUD error message for missing system
 debug('AI', 'SubspaceRadio toggle: starfieldManager available?', !!this.starfieldManager);

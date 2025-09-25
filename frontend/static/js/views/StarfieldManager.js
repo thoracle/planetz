@@ -89,6 +89,9 @@ export class StarfieldManager {
         this.mouseRotation = new this.THREE.Vector2();
         this.isMouseLookEnabled = false; // Disable mouse look to match thoralexander.com
         this.view = 'FORE'; // Initialize with FORE view
+        
+        // Ship heading tracking (independent of camera view for radar consistency)
+        this.shipHeading = undefined; // Will be initialized from camera rotation when first needed
         this.previousView = 'FORE'; // Add previous view tracking
         this.solarSystemManager = null; // Will be set by setSolarSystemManager
         
@@ -1486,7 +1489,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
             
             // Handle Tab key for cycling targets (Tab = forward, Shift+Tab = backward)
             if (event.key === 'Tab') {
-                console.log('🎯 TAB DETECTED in StarfieldManager');
+                debug('TARGETING', '🎯 TAB DETECTED in StarfieldManager');
                 event.preventDefault(); // Prevent Tab from changing focus
                 const forward = !event.shiftKey; // Shift+Tab cycles backward
                 debug('TARGETING', `🎯 TAB key pressed (forward=${forward})`);
@@ -1494,7 +1497,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
                 
                 // Block target cycling when docked
                 if (this.isDocked) {
-                    console.log('🎯 TAB blocked - ship is docked');
+                    debug('TARGETING', '🎯 TAB blocked - ship is docked');
                     this.playCommandFailedSound();
                     this.showHUDEphemeral(
                         'TARGET CYCLING UNAVAILABLE',
@@ -1506,7 +1509,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
                 // Check for undock cooldown with proper user feedback
                 if (this.undockCooldown && Date.now() < this.undockCooldown) {
                     const remainingSeconds = Math.ceil((this.undockCooldown - Date.now()) / 1000);
-                    console.log('🎯 TAB blocked - undock cooldown active');
+                    debug('TARGETING', '🎯 TAB blocked - undock cooldown active');
                     this.playCommandFailedSound();
                     this.showHUDEphemeral(
                         'TARGETING SYSTEMS WARMING UP',
@@ -1517,7 +1520,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
                 
                 // Check if target computer system is operational
                 const ship = this.viewManager?.getShip();
-                console.log('🎯 TAB: Checking ship and target computer', {
+                debug('TARGETING', '🎯 TAB: Checking ship and target computer', {
                     hasShip: !!ship,
                     targetComputerEnabled: this.targetComputerEnabled
                 });
@@ -1526,7 +1529,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
                     const targetComputer = ship.getSystem('target_computer');
                     const energyReactor = ship.getSystem('energy_reactor');
                     
-                    console.log('🎯 TAB: System check', {
+                    debug('TARGETING', '🎯 TAB: System check', {
                         hasTargetComputer: !!targetComputer,
                         canActivate: targetComputer?.canActivate(ship),
                         targetComputerEnabled: this.targetComputerEnabled,
@@ -1535,7 +1538,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
                     
                     if (targetComputer && targetComputer.canActivate(ship) && this.targetComputerEnabled) {
                         // Target computer is operational and activated - allow cycling
-                        console.log('🎯 TAB: All checks passed, calling cycleTarget');
+                        debug('TARGETING', '🎯 TAB: All checks passed, calling cycleTarget');
                         debug('TARGETING', `🎯 TAB: Calling cycleTarget(${forward}) - target computer operational`);
                         // console.log(`🎯 Cycling target ${forward ? 'forward' : 'backward'} from ${event.shiftKey ? 'Shift+' : ''}TAB key press`);
                         this.cycleTarget(forward); // Manual cycle via TAB key
@@ -2444,7 +2447,7 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
         this.targetObjects = this.targetComputerManager.targetObjects;
 
         // Log the state change
-        console.log(`StarfieldManager target computer toggle: ${wasEnabled} → ${this.targetComputerEnabled}`);
+        debug('TARGETING', `StarfieldManager target computer toggle: ${wasEnabled} → ${this.targetComputerEnabled}`);
 
         // Handle intel visibility
         if (!this.targetComputerEnabled) {
@@ -2678,6 +2681,12 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
         // Apply rotation to camera
         if (Math.abs(this.rotationVelocity.y) > 0.0001) {
             this.camera.rotateY(this.rotationVelocity.y * deltaTime * 60);
+            // Update ship heading when actually rotating (for radar consistency)
+            if (this.shipHeading === undefined) {
+                this.shipHeading = this.camera.rotation.y;
+            } else {
+                this.shipHeading += this.rotationVelocity.y * deltaTime * 60;
+            }
         }
         if (Math.abs(this.rotationVelocity.x) > 0.0001) {
             this.camera.rotateX(this.rotationVelocity.x * deltaTime * 60);
@@ -2696,11 +2705,39 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
     update(deltaTime) {
         if (!deltaTime) deltaTime = 1/60;
 
+        // P1 DEBUG: Track camera position before any updates for intermittent camera shake debugging
+        const cameraPosBefore = this.camera.position.clone();
+
         // If docked, update orbit instead of normal movement
         if (this.isDocked) {
             this.updateOrbit(deltaTime);
             this.updateSpeedIndicator();
             return;
+        }
+        
+        // P1 DEBUG: Check for unexpected camera position changes during stationary flight
+        const checkCameraMovement = () => {
+            if (!this.isDocked && this.currentSpeed === 0) {
+                const cameraMovement = this.camera.position.distanceTo(cameraPosBefore);
+                if (cameraMovement > 0.001) { // Threshold for detecting movement
+                    debug('P1', `🔍 CAMERA SHAKE DETECTED: Unexpected camera movement during stationary flight`);
+                    debug('P1', `   Movement distance: ${cameraMovement.toFixed(6)} units`);
+                    debug('P1', `   Before: (${cameraPosBefore.x.toFixed(3)}, ${cameraPosBefore.y.toFixed(3)}, ${cameraPosBefore.z.toFixed(3)})`);
+                    debug('P1', `   After: (${this.camera.position.x.toFixed(3)}, ${this.camera.position.y.toFixed(3)}, ${this.camera.position.z.toFixed(3)})`);
+                    debug('P1', `   isDocked: ${this.isDocked}, currentSpeed: ${this.currentSpeed}, dockedTo: ${this.dockedTo?.name || 'null'}`);
+                    debug('P1', `   Call stack: ${new Error().stack.split('\n').slice(1, 4).join(' | ')}`);
+                }
+            }
+        };
+
+        // DEBUG: Log when isDocked is false but we're still getting camera shake
+        // This will help identify if the issue is elsewhere
+        // Using P1 channel to ensure visibility for intermittent camera shake bug
+        if (!this.isDocked && this.currentSpeed === 0) {
+            // Only log occasionally to avoid spam
+            if (Date.now() % 10000 < 100) { // Log every 10 seconds
+                debug('P1', `🔍 Camera shake debug - isDocked: ${this.isDocked}, currentSpeed: ${this.currentSpeed}, dockedTo: ${this.dockedTo?.name || 'null'}`);
+            }
         }
 
         // Handle smooth rotation from arrow keys
@@ -2961,6 +2998,9 @@ debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
             if (this.weaponHUD && this.weaponHUDConnected) {
                 // Update the weapon slots display with current weapon system state
                 this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
+                
+                // CRITICAL: Update cooldown displays (was missing!)
+                this.weaponHUD.updateCooldownDisplay(ship.weaponSystem.weaponSlots);
                 
                 // Ensure the highlighting is correct
                 this.weaponHUD.updateActiveWeaponHighlight(ship.weaponSystem.activeSlotIndex);
@@ -3276,7 +3316,7 @@ debug('UTILITY', '⚡ StarfieldManager disposal started...');
     // Update the setView method to handle view changes
     setView(viewType) {
 debug('UTILITY', `🎯 StarfieldManager.setView('${viewType}') called`);
-        console.trace('🎯 setView call stack');
+        debug('TARGETING', '🎯 setView call stack');
         
         // Operations HUD is now an overlay and doesn't interfere with view changes
 
@@ -4516,10 +4556,10 @@ debug('UI', 'Mission Status HUD: No active missions to display after launch');
     updateOrbit(deltaTime) {
         if (!this.isDocked || !this.dockedTo) return;
         
-        // Debug: Log when orbit update is moving the camera
+        // Debug: Log when orbit update is moving the camera (P1 for camera shake debugging)
         if (Date.now() % 5000 < 100) { // Log every 5 seconds
-debug('UTILITY', `🔄 updateOrbit() moving camera - isDocked: ${this.isDocked}, dockedTo: ${this.dockedTo?.name}`);
-debug('UTILITY', `🔄 Camera position being set to orbit around: (${this.dockedTo.position.x.toFixed(2)}, ${this.dockedTo.position.y.toFixed(2)}, ${this.dockedTo.position.z.toFixed(2)})`);
+debug('P1', `🔄 updateOrbit() moving camera - isDocked: ${this.isDocked}, dockedTo: ${this.dockedTo?.name}`);
+debug('P1', `🔄 Camera position being set to orbit around: (${this.dockedTo.position.x.toFixed(2)}, ${this.dockedTo.position.y.toFixed(2)}, ${this.dockedTo.position.z.toFixed(2)})`);
         }
 
         // Handle docking transition
@@ -5177,8 +5217,12 @@ debug('TARGETING', `✅ Target dummy ships created successfully - target preserv
         this.dummyShipMeshes.forEach(mesh => {
             this.scene.remove(mesh);
             
-            // Remove physics body if it exists
-            if (mesh.userData?.physicsBody && window.physicsManager) {
+            // Remove from spatial tracking systems
+            if (window.spatialManager && typeof window.spatialManager.removeObject === 'function') {
+                window.spatialManager.removeObject(mesh);
+debug('TARGETING', '🧹 Object removed from spatial tracking');
+            } else if (mesh.userData?.physicsBody && window.physicsManager) {
+                // Fallback to physics manager if available (legacy support)
                 window.physicsManager.removeRigidBody(mesh);
 debug('TARGETING', '🧹 Physics body removed for target dummy ship');
             }
@@ -6092,12 +6136,16 @@ debug('TARGETING', `💥 removeDestroyedTarget called for: ${destroyedShip.shipN
 debug('UTILITY', `🗑️ Removing ${destroyedShip.shipName} mesh from scene`);
                 this.scene.remove(mesh);
                 
-                // CRITICAL: Remove physics rigid body for destroyed ship
-                if (window.physicsManager && typeof window.physicsManager.removeRigidBody === 'function') {
+                // CRITICAL: Remove from spatial tracking systems
+                if (window.spatialManager && typeof window.spatialManager.removeObject === 'function') {
+debug('PHYSICS', `🗑️ Removing ${destroyedShip.shipName} from spatial tracking`);
+                    window.spatialManager.removeObject(mesh);
+                } else if (window.physicsManager && typeof window.physicsManager.removeRigidBody === 'function') {
+                    // Fallback to physics manager if available (legacy support)
 debug('PHYSICS', `🗑️ Removing ${destroyedShip.shipName} rigid body from physics world`);
                     window.physicsManager.removeRigidBody(mesh);
                 } else {
-                    console.warn(`⚠️ Physics manager not available - rigid body for ${destroyedShip.shipName} not removed`);
+debug('PHYSICS', `ℹ️ No physics cleanup needed for ${destroyedShip.shipName} - using Three.js spatial systems`);
                 }
                 
                 // Clean up mesh resources
@@ -6126,7 +6174,10 @@ debug('UTILITY', `🗑️ Removed ${destroyedShip.shipName} from dummyShipMeshes
                 if (mesh === destroyedShip || mesh.userData === destroyedShip || mesh.userData?.isBeacon === true && mesh === destroyedShip) {
 
                     this.scene.remove(mesh);
-                    if (window.physicsManager && typeof window.physicsManager.removeRigidBody === 'function') {
+                    // Remove from spatial tracking systems
+                    if (window.spatialManager && typeof window.spatialManager.removeObject === 'function') {
+                        window.spatialManager.removeObject(mesh);
+                    } else if (window.physicsManager && typeof window.physicsManager.removeRigidBody === 'function') {
                         window.physicsManager.removeRigidBody(mesh);
                     }
                     if (mesh.geometry) mesh.geometry.dispose();
