@@ -1,6 +1,6 @@
 // THREE is handled dynamically in constructor
 import { DockingInterface } from '../ui/DockingInterface.js';
-import { HelpInterface } from '../ui/HelpInterface.js';
+import { HelpScreenController } from '../ui/HelpScreenController.js';
 import DockingSystemManager from '../ship/DockingSystemManager.js';
 import SimpleDockingManager from '../SimpleDockingManager.js';
 import { getSystemDisplayName } from '../ship/System.js';
@@ -151,6 +151,8 @@ export class StarfieldManager {
         );
         this.targetComputerManager.initialize();
         
+        // Help screen controller will be initialized later in constructor
+        
         // Expose target computer manager globally for waypoints integration
         window.targetComputerManager = this.targetComputerManager;
         
@@ -192,8 +194,18 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         // Create docking modal for popup-based docking
         this.dockingModal = new DockingModal(this);
         
-        // Create help interface
-        this.helpInterface = new HelpInterface(this);
+        // Create help screen controller
+        try {
+            this.helpScreenController = new HelpScreenController(this);
+            
+            // Initialize immediately after creation
+            this.helpScreenController.initialize();
+            
+        } catch (error) {
+            console.error('❌ Failed to create/initialize HelpScreenController:', error);
+            console.error('❌ Failed to create/initialize HelpScreenController (debug):', error);
+            this.helpScreenController = null;
+        }
         
         // Create communication HUD for NPC interactions
         this.communicationHUD = new CommunicationHUD(this, document.body);
@@ -1601,6 +1613,15 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
                 return; // Exit early to prevent further processing
             }
 
+            // ESC key - toggle help screen (handle before commandKey conversion)
+            if (event.key === 'Escape') {
+                console.log('🎯 ESC key detected in StarfieldManager!');
+                event.preventDefault();
+                this.playCommandSound();
+                this.toggleHelp();
+                return; // Exit early to prevent further processing
+            }
+
             const commandKey = event.key.toLowerCase();
 
             // Handle view changes - prevent fore/aft changes while docked
@@ -2294,12 +2315,6 @@ debug('COMBAT', 'SHIELD DEBUG: Insufficient energy');
                 this.diplomacyHUD.toggle();
             }
 
-            // Help key (H) - toggle help interface
-            if (commandKey === 'h') {
-                this.playCommandSound();
-                this.toggleHelp();
-            }
-
             // Spawn target dummy ships (Q key) for weapons testing
             if (commandKey === 'q') {
                 if (!this.isDocked) {
@@ -2494,10 +2509,17 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
     }
 
     toggleHelp() {
-        if (this.helpInterface.isVisible) {
-            this.helpInterface.hide();
+        console.log('🔄 toggleHelp() called');
+        if (this.helpScreenController) {
+            try {
+                this.helpScreenController.toggle();
+            } catch (error) {
+                console.error('❌ Failed to toggle help screen:', error);
+                console.error('❌ Failed to toggle help screen (debug):', error);
+            }
         } else {
-            this.helpInterface.show();
+            console.error('❌ HelpScreenController not available - cannot toggle help');
+            console.error('❌ HelpScreenController not available - cannot toggle help (debug)');
         }
     }
 

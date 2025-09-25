@@ -158,9 +158,18 @@ open http://127.0.0.1:5001
 - **Projectiles**: Physics-based flight with random subsystem damage
 
 ### **Navigation & UI**
-- **R**: Subspace Radio | **N**: Communication HUD | **M**: Mission Status | **H**: Help screen
+- **R**: Subspace Radio | **N**: Communication HUD | **M**: Mission Status | **ESC**: Help Screen 2.0
 - **L**: Long Range Scanner | **G**: Galactic Chart | **F**: Fore View | **A**: Aft View | **D**: Damage Control
 - **Docking**: Automatic when approaching stations
+
+### **Help System**
+- **ESC**: Toggle Help Screen 2.0 - Modern tabbed interface with 4 sections:
+  - **Help Tab**: Complete flight manual with real-time system detection (shows only installed NFT cards)
+  - **Pilot's Log Tab**: Mission history and achievements tracking
+  - **Achievements Tab**: Progress tracking and trophy system
+  - **About Tab**: Game credits and inspiration
+- **Tab Navigation**: Use mouse clicks or number keys (1-4) to switch between tabs
+- **Audio Continues**: Unlike pause menus, audio keeps playing for immersive experience
 
 ### **Speed Controls**
 - **0-9**: Set impulse speed | **+ / =**: Increase speed | **- / _**: Decrease speed | **\**: Emergency stop
