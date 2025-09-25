@@ -285,6 +285,47 @@ The Planetz game engine uses **kilometers (km)** as the fundamental world unit a
 - **Backward Compatibility**: All existing ships automatically benefit from improved rates
 - **Documentation Updated**: User guides and specifications reflect new rates
 
+### **🎉 Mission Rewards Screen Auto-Dismissal** 🎯 **RECENT UPDATE**
+
+**Status**: ✅ **COMPLETED** - Fixed persistent mission rewards overlay after docking
+
+#### **Issue Resolved**:
+
+The mission completion rewards screen was not being automatically dismissed when players docked at stations, causing the overlay to persist indefinitely and obstruct gameplay.
+
+#### **Root Cause Analysis**:
+
+**Complex Docking Architecture**: The game has multiple docking paths:
+- `StarfieldManager.completeDockingStation()` - Legacy physics-based docking
+- `SimpleDockingManager.completeDocking()` - Distance-based docking  
+- `SimpleDockingManager.initiateUnifiedDocking()` - Modal-based unified docking (actual path used)
+
+**The Fix**: Mission rewards dismissal logic was initially added to the wrong docking methods. The actual docking flow goes through `DockingModal` → `SimpleDockingManager.initiateUnifiedDocking()`, which required its own dismissal logic.
+
+#### **Technical Implementation**:
+
+**Files Modified**:
+- `SimpleDockingManager.js` - Added mission rewards overlay dismissal to unified docking path
+- `StarfieldManager.js` - Added dismissal to legacy docking path (defensive programming)
+
+**Key Features**:
+- **Automatic Detection**: Checks for `mission-rewards-overlay` element during docking completion
+- **Clean Removal**: Removes overlay before showing docking interface
+- **Debug Logging**: Uses `debug('UTILITY', ...)` for troubleshooting without console spam
+- **Multiple Path Coverage**: Handles all possible docking scenarios
+
+#### **User Experience**:
+
+**Mission Completion Flow**:
+1. **Complete Mission** → Rewards screen appears with earned credits and cards
+2. **Navigate to Station** → Rewards screen remains visible during travel
+3. **Dock at Station** → Rewards screen automatically dismissed
+4. **Station Interface** → Clean docking interface without overlay obstruction
+
+**Files Modified**:
+- `frontend/static/js/SimpleDockingManager.js` - Unified docking path dismissal
+- `frontend/static/js/views/StarfieldManager.js` - Legacy docking path dismissal
+
 ### **🔴 Red Badge System** 🎯 **RECENT UPDATE**
 
 **Status**: ✅ **COMPLETED** - Visual feedback system for card quantity increases in mission rewards
@@ -626,6 +667,7 @@ waypoint: '#ff00ff'  // Magenta for waypoints
 - ✅ **Simplified Target System** with persistent targeting and fail-fast error handling
 
 **Recent Major Updates**:
+- **🎉 Mission Rewards Screen Auto-Dismissal**: Fixed mission completion rewards screen to automatically dismiss when docking at stations - no more persistent overlay after mission completion
 - **🔴 Red Badge System**: Implemented visual feedback for card quantity increases - cards with increased quantities show red background badges with white text for 5 seconds when viewing collection
 - **🖱️ Target HUD Click Controls**: Added mouse click support to Target Computer and Sub-Target HUDs - left/right halves cycle targets/sub-targets with same sounds as keyboard shortcuts
 - **Weapon HUD Launch Fix**: Fixed critical issue where weapon selector HUD wasn't appearing after station launch

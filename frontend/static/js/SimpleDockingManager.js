@@ -384,14 +384,9 @@ debug('UTILITY', 'Docking completed with', stationName);
             
             // Dismiss mission rewards overlay if visible
             const missionRewardsOverlay = document.getElementById('mission-rewards-overlay');
-            console.log('🔍 SIMPLE DOCKING: Checking for mission rewards overlay:', !!missionRewardsOverlay);
             if (missionRewardsOverlay) {
-                console.log('🚪 SIMPLE DOCKING: Removing mission rewards overlay');
                 missionRewardsOverlay.remove();
-                console.log('🚪 SIMPLE DOCKING: Mission rewards overlay removed successfully');
                 debug('UTILITY', '🚪 Mission rewards overlay dismissed during simple docking completion');
-            } else {
-                console.log('🔍 SIMPLE DOCKING: No mission rewards overlay found to dismiss');
             }
         }
         
@@ -713,14 +708,9 @@ debug('TARGETING', `🚀 Successfully docked with ${target.name || 'target'}`);
                 
                 // Dismiss mission rewards overlay if visible
                 const missionRewardsOverlay = document.getElementById('mission-rewards-overlay');
-                console.log('🔍 UNIFIED DOCKING: Checking for mission rewards overlay:', !!missionRewardsOverlay);
                 if (missionRewardsOverlay) {
-                    console.log('🚪 UNIFIED DOCKING: Removing mission rewards overlay');
                     missionRewardsOverlay.remove();
-                    console.log('🚪 UNIFIED DOCKING: Mission rewards overlay removed successfully');
                     debug('UTILITY', '🚪 Mission rewards overlay dismissed during unified docking');
-                } else {
-                    console.log('🔍 UNIFIED DOCKING: No mission rewards overlay found to dismiss');
                 }
                 
                 // Show docking interface (station menu)
