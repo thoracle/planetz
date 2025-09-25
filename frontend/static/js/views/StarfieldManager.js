@@ -1228,6 +1228,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         };
 
         document.addEventListener('keydown', (event) => {
+            
             // Basic TAB detection test
             if (event.key === 'Tab') {
                 debug('TARGETING', `🎯 RAW TAB detected in StarfieldManager keydown handler`);
@@ -2315,6 +2316,27 @@ debug('COMBAT', 'SHIELD DEBUG: Insufficient energy');
                 this.diplomacyHUD.toggle();
             }
 
+            // Help key (ESC) - toggle help interface
+            if (event.key === 'Escape') {
+                // Only handle ESC for help if no other UI elements are open that would consume it
+                if (!this.helpInterface.isVisible) {
+                    this.playCommandSound();
+                    this.toggleHelp();
+                    event.preventDefault();
+                } else {
+                    // Let HelpInterface handle ESC to close
+                    // The HelpInterface already has its own ESC handler
+                }
+            }
+
+            // Deprecated H key - show tip to use ESC
+            if (commandKey === 'h') {
+                this.playCommandSound();
+                // Show a brief message suggesting ESC key
+                if (this.communicationHUD) {
+                    this.communicationHUD.showMessage('Help Screen', 'Press ESC to open Help Screen', 2000);
+                }
+            }
             // Spawn target dummy ships (Q key) for weapons testing
             if (commandKey === 'q') {
                 if (!this.isDocked) {

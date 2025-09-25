@@ -109,18 +109,18 @@ You're joining the development of **Planetz**, a fully functional 3D web-based s
 ## 📊 Current Project Status
 
 <!-- DYNAMIC_STATUS_START -->
-**Branch**: `waypoints` | **Status**: In Development (17 uncommitted changes) | **Last Updated**: 2025-09-24
+**Branch**: `achievements` | **Status**: In Development (9 uncommitted changes) | **Last Updated**: 2025-09-24
 
 **Recent Work** (Last 5 commits):
+- 📝 Add help screen 2.0 design specification
+- 📚 Documentation Update & Camera Shake Debug System
 - 🧹 Cleanup & Documentation - Mission Rewards Dismissal Complete
 - 🔧 Fix Mission Rewards Dismissal - Add to Unified Docking Path
 - 🔧 Fix Mission Rewards Screen Dismissal - Add to SimpleDockingManager
-- 🔍 Add Debug Logging for Mission Rewards Screen Dismissal
-- 📚 Update docs/restart.md - Red Badge System Complete
 
 **Codebase Stats**:
 - JavaScript Files: 167 | Python Files: 1619 | Documentation: 102 files
-- Total Lines: 385656 | Architecture: Fully modular ES6+ modules
+- Total Lines: 386212 | Architecture: Fully modular ES6+ modules
 <!-- DYNAMIC_STATUS_END -->
 
 ## 🏗️ Architecture Overview
@@ -375,6 +375,65 @@ The Red Badge System provides immediate visual feedback when players receive car
 - `frontend/static/js/ui/CardInventoryUI.js` - Badge system implementation, localStorage persistence
 - `frontend/static/js/ui/MissionEventHandler.js` - Mission reward processing and badge marking
 - `frontend/static/js/ui/DockingInterface.js` - CardInventoryUI instance management
+
+### **📋 Help Screen 2.0 - Tabbed Interface** 🎯 **RECENT UPDATE**
+
+**Status**: ✅ **COMPLETED** - Enhanced help screen with tabbed interface and ESC key binding
+
+#### **Feature Overview**:
+
+The Help Screen 2.0 introduces a modern tabbed interface that transforms the original single-screen help system into a comprehensive information hub with multiple organized sections.
+
+#### **Key Features**:
+- **ESC Key Binding**: Changed from H key to ESC for intuitive modal behavior
+- **Tabbed Interface**: Five organized tabs for different information categories
+- **Retro Styling**: Maintains the neon green terminal aesthetic with enhanced tab styling
+- **Backward Compatibility**: H key now shows helpful message directing users to ESC
+
+#### **Tab Structure**:
+1. **HELP** - Original ship controls and systems information (context-sensitive)
+2. **SHIP'S LOG** - Recent flight operations and system status entries
+3. **ACHIEVEMENTS** - Pilot achievements and progress tracking (placeholder)
+4. **COLLECTION** - Card inventory and collection statistics (placeholder)
+5. **ABOUT** - Development team credits, inspiration, and special thanks
+
+#### **Technical Implementation**:
+
+**Core Components**:
+- `HelpInterface.js` - Enhanced with tab switching functionality and new content generation
+- `StarfieldManager.js` - Updated ESC key handling with proper event management
+- Custom CSS - Tab styling integrated into existing `addTechManualStyles()` method
+
+**Key Features**:
+- **Tab Switching**: JavaScript event listeners for seamless tab navigation
+- **CSS Integration**: Tab styles integrated into original working CSS system
+- **Event Management**: Proper ESC key handling with cleanup to prevent conflicts
+- **Content Generation**: Separate methods for each tab's content with consistent styling
+
+#### **User Experience**:
+
+**Navigation Flow**:
+1. **Press ESC** → Help screen opens with tabbed interface
+2. **Click Tabs** → Switch between different information sections
+3. **Press ESC Again** → Help screen closes with proper cleanup
+4. **H Key Fallback** → Shows message directing to ESC key
+
+**Visual Design**:
+- **Tab Buttons**: Neon green styling with hover effects and active state indicators
+- **Content Areas**: Each tab maintains the retro terminal aesthetic
+- **Smooth Transitions**: Fade animations between tab content
+- **Consistent Layout**: All tabs use the same visual framework
+
+#### **Files Modified**:
+- `frontend/static/js/ui/HelpInterface.js` - Tabbed interface implementation, content generation
+- `frontend/static/js/views/StarfieldManager.js` - ESC key binding, H key deprecation message
+- `docs/restart.md` - Updated key binding documentation (H → ESC)
+
+#### **Impact**:
+- **Enhanced UX**: Organized information architecture with intuitive navigation
+- **Future-Ready**: Expandable framework for achievements and collection systems
+- **Improved Accessibility**: Standard ESC key behavior for modal interfaces
+- **Professional Polish**: Modern tabbed interface maintains retro game aesthetic
 
 ### **Object ID Naming Convention** 🏷️ **CRITICAL REFERENCE**
 

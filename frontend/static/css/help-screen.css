@@ -1,0 +1,776 @@
+/* Help Screen 2.0 - Modern Modal Styling */
+
+/* Help Screen Interface - Match original HelpInterface */
+.help-screen-interface {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    font-family: "Courier New", monospace;
+    color: #00ff41;
+    animation: powerOn 0.3s ease-in;
+}
+
+@keyframes powerOn {
+    0% { opacity: 0; filter: brightness(2) blur(2px); }
+    100% { opacity: 1; filter: brightness(1) blur(0); }
+}
+
+.help-screen-display {
+    background: rgba(0, 20, 0, 0.98);
+    border: 3px solid #00ff41;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 1200px;
+    height: 85vh;
+    min-height: 600px;
+    max-height: 90vh;
+    overflow: hidden;
+    box-shadow: 0 0 30px rgba(0, 255, 65, 0.5), inset 0 0 20px rgba(0, 255, 65, 0.1);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.help-screen-display::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 2px,
+            rgba(0, 255, 65, 0.03) 2px,
+            rgba(0, 255, 65, 0.03) 4px
+        );
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Backdrop - Force visibility with high specificity */
+.help-screen-backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 999999 !important;
+    opacity: 0 !important;
+    transition: opacity 0.3s ease !important;
+    pointer-events: auto !important;
+}
+
+.help-screen-backdrop.show {
+    opacity: 1 !important;
+}
+
+/* Modal Container - Force visibility with high specificity */
+.help-screen-modal {
+    background: linear-gradient(135deg, #001122 0%, #002244 100%) !important;
+    border: 3px solid #00ff41 !important;
+    border-radius: 8px !important;
+    width: 90% !important;
+    max-width: 1200px !important;
+    min-width: 700px !important;
+    max-height: 90vh !important;
+    min-height: 600px !important;
+    height: 85vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-shadow: 0 20px 40px rgba(0, 255, 65, 0.5) !important;
+    transform: scale(1) !important;
+    transition: opacity 0.3s ease !important;
+    font-family: 'Courier New', monospace !important;
+    color: #00ff41 !important;
+    position: relative !important;
+    z-index: 1000000 !important;
+    opacity: 1 !important;
+    padding: 0 !important;
+}
+
+.help-screen-modal.show {
+    transform: scale(1) !important;
+    opacity: 1 !important;
+}
+
+/* Manual Header - Match original HelpInterface */
+.manual-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 2px solid #00ff41;
+    background: rgba(0, 255, 65, 0.15);
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+    height: 80px;
+}
+
+.manual-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ship-designation {
+    font-size: 28px;
+    font-weight: bold;
+    color: #00ff41;
+    text-shadow: 0 0 15px rgba(0, 255, 65, 0.8);
+    letter-spacing: 2px;
+}
+
+.manual-type {
+    font-size: 14px;
+    color: #66ff66;
+    letter-spacing: 1px;
+    opacity: 0.8;
+}
+
+.manual-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.timestamp {
+    font-size: 12px;
+    color: #66ff66;
+    opacity: 0.7;
+    font-family: monospace;
+}
+
+.manual-close-btn {
+    background: rgba(0, 255, 65, 0.1);
+    border: 2px solid #00ff41;
+    color: #00ff41;
+    font-size: 14px;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 6px;
+    font-family: "Courier New", monospace;
+    font-weight: bold;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+}
+
+.manual-close-btn:hover {
+    background: rgba(0, 255, 65, 0.2);
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.8);
+}
+
+/* Header */
+.help-screen-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #00ff41;
+    background: rgba(0, 255, 65, 0.1);
+}
+
+.help-screen-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 0 0 10px #00ff41;
+}
+
+.help-screen-close {
+    background: none;
+    border: 2px solid #00ff41;
+    color: #00ff41;
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.help-screen-close:hover {
+    background: #00ff41;
+    color: #001122;
+    box-shadow: 0 0 15px #00ff41;
+}
+
+/* Tabs - Match original styling */
+.help-tabs {
+    display: flex;
+    border-bottom: 2px solid rgba(0, 255, 65, 0.3);
+    margin-bottom: 0;
+    background: rgba(0, 255, 65, 0.05);
+    flex-shrink: 0;
+    height: 50px;
+}
+
+/* Tabs */
+.help-screen-tabs {
+    display: flex;
+    background: rgba(0, 20, 0, 0.5);
+    border-bottom: 1px solid #00ff41;
+}
+
+.help-tab-button {
+    background: rgba(0, 20, 0, 0.3);
+    border: 1px solid rgba(0, 255, 65, 0.4);
+    border-bottom: none;
+    color: #00ff41;
+    padding: 12px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: relative;
+    margin-right: 2px;
+    text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+}
+
+.help-tab-button:last-child {
+    margin-right: 0;
+}
+
+.help-tab-button:hover {
+    background: rgba(0, 255, 65, 0.15);
+    border-color: #00ff41;
+    text-shadow: 0 0 10px #00ff41;
+    box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+}
+
+.help-tab-button.active {
+    background: rgba(0, 255, 65, 0.25);
+    border-color: #00ff41;
+    color: #ffffff;
+    text-shadow: 0 0 15px #00ff41;
+    box-shadow: 
+        inset 0 -3px 0 #00ff41,
+        0 0 15px rgba(0, 255, 65, 0.4),
+        inset 0 0 20px rgba(0, 255, 65, 0.1);
+    z-index: 1;
+}
+
+/* Manual Content - Match original HelpInterface */
+.manual-content {
+    padding: 25px;
+    position: relative;
+    z-index: 2;
+    line-height: 1.4;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    height: 100%;
+}
+
+/* Content Area */
+.help-screen-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 25px;
+    position: relative;
+    line-height: 1.4;
+    min-height: 0;
+}
+
+.help-tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.help-tab-content.active {
+    display: block;
+    height: 100%;
+    overflow-y: auto;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Controls Section */
+.controls-section {
+    margin-bottom: 32px;
+}
+
+.controls-section h3 {
+    color: #00ff41;
+    font-size: 18px;
+    margin: 0 0 16px 0;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.3);
+    padding-bottom: 8px;
+    text-shadow: 0 0 8px #00ff41;
+}
+
+.control-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 12px;
+}
+
+.control-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(0, 20, 0, 0.3);
+    border: 1px solid rgba(0, 255, 65, 0.2);
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.control-item:hover {
+    background: rgba(0, 255, 65, 0.1);
+    border-color: #00ff41;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+}
+
+
+.control-item .desc {
+    color: #cccccc;
+    font-size: 14px;
+    text-align: right;
+    flex: 1;
+    margin-left: 16px;
+}
+
+/* Credits Section */
+.credits-section {
+    margin-bottom: 32px;
+}
+
+.credits-section h3 {
+    color: #00ff41;
+    font-size: 18px;
+    margin: 0 0 16px 0;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.3);
+    padding-bottom: 8px;
+    text-shadow: 0 0 8px #00ff41;
+}
+
+.credits-content {
+    line-height: 1.6;
+}
+
+.credits-content p {
+    margin: 0 0 16px 0;
+    color: #cccccc;
+}
+
+.credits-content strong {
+    color: #00ff41;
+    text-shadow: 0 0 5px #00ff41;
+}
+
+/* Footer */
+.help-screen-footer {
+    padding: 16px 24px;
+    border-top: 1px solid rgba(0, 255, 65, 0.3);
+    background: rgba(0, 20, 0, 0.3);
+    text-align: center;
+}
+
+.help-screen-hint {
+    color: #888888;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Scrollbar Styling */
+.help-screen-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.help-screen-content::-webkit-scrollbar-track {
+    background: rgba(0, 20, 0, 0.3);
+    border-radius: 4px;
+}
+
+.help-screen-content::-webkit-scrollbar-thumb {
+    background: #00ff41;
+    border-radius: 4px;
+    opacity: 0.7;
+}
+
+.help-screen-content::-webkit-scrollbar-thumb:hover {
+    opacity: 1;
+    box-shadow: 0 0 10px #00ff41;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .help-screen-modal {
+        width: 95%;
+        max-height: 95vh;
+        margin: 10px;
+    }
+    
+    .help-screen-header {
+        padding: 16px 20px;
+    }
+    
+    .help-screen-header h2 {
+        font-size: 20px;
+    }
+    
+    .help-screen-content {
+        padding: 20px;
+    }
+    
+    .control-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .help-tab-button {
+        padding: 12px 16px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .help-screen-modal {
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+    
+    .control-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+    }
+    
+    .control-item .desc {
+        text-align: center;
+        margin-left: 0;
+    }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .help-screen-modal {
+        border-width: 3px;
+        background: #000000;
+    }
+    
+    .help-tab-button.active {
+        background: #00ff41;
+        color: #000000;
+    }
+    
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .help-screen-backdrop,
+    .help-screen-modal,
+    .help-tab-content,
+    .control-item {
+        transition: none;
+        animation: none;
+    }
+    
+    .help-screen-modal.show {
+        transform: none;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 1; }
+        to { opacity: 1; }
+    }
+}
+
+/* Focus Indicators for Accessibility */
+.help-screen-close:focus,
+.help-tab-button:focus {
+    outline: 2px solid #00ff41;
+    outline-offset: 2px;
+}
+
+/* Original Tech Manual Styling for Help Tab */
+.help-tab-content .scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00ff41, transparent);
+    animation: scanLine 2s linear infinite;
+    opacity: 0.6;
+}
+
+@keyframes scanLine {
+    0% { transform: translateY(0); opacity: 0; }
+    50% { opacity: 0.6; }
+    100% { transform: translateY(400px); opacity: 0; }
+}
+
+.help-tab-content .manual-section {
+    background: rgba(0, 255, 65, 0.08);
+    border: 1px solid rgba(0, 255, 65, 0.4);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.help-tab-content .manual-section.disabled-section {
+    background: rgba(255, 65, 65, 0.08);
+    border-color: rgba(255, 65, 65, 0.4);
+}
+
+.help-tab-content .section-header {
+    margin: 0 0 15px 0;
+    color: #00ff41;
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
+    border-bottom: 1px solid rgba(0, 255, 65, 0.5);
+    padding-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.help-tab-content .disabled-section .section-header {
+    color: #ff4141;
+    text-shadow: 0 0 8px rgba(255, 65, 65, 0.6);
+    border-bottom-color: rgba(255, 65, 65, 0.5);
+}
+
+.help-tab-content .subsystem-header {
+    font-size: 14px;
+    color: #00ff41;
+    font-weight: bold;
+    margin: 15px 0 10px 0;
+    padding-left: 12px;
+    border-left: 2px solid #00ff41;
+}
+
+.help-tab-content .system-status {
+    font-size: 12px;
+    color: #66ff66;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: rgba(0, 255, 65, 0.1);
+    border-left: 3px solid #00ff41;
+    border-radius: 0 4px 4px 0;
+}
+
+.help-tab-content .control-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.help-tab-content .control-entry {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 8px 12px;
+    background: rgba(0, 255, 65, 0.05);
+    border-radius: 4px;
+    border-left: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.help-tab-content .control-entry:hover {
+    background: rgba(0, 255, 65, 0.1);
+    border-left-color: #00ff41;
+}
+
+.help-tab-content .control-entry.disabled {
+    opacity: 0.5;
+    background: rgba(128, 128, 128, 0.05);
+}
+
+.help-tab-content .key-binding {
+    background: rgba(0, 255, 65, 0.2);
+    border: 1px solid #00ff41;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-weight: bold;
+    min-width: 70px;
+    text-align: center;
+    font-size: 12px;
+    box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+    text-shadow: 0 0 4px rgba(0, 255, 65, 0.8);
+    font-family: "Courier New", monospace;
+}
+
+.help-tab-content .control-desc {
+    flex: 1;
+    font-size: 14px;
+    color: #ccffcc;
+}
+
+.help-tab-content .weapon-loadout {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(0, 255, 65, 0.06);
+    border: 1px dashed rgba(0, 255, 65, 0.3);
+    border-radius: 6px;
+}
+
+.help-tab-content .loadout-header {
+    font-size: 13px;
+    color: #00ff41;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.help-tab-content .weapon-entry {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.1);
+}
+
+.help-tab-content .weapon-entry:last-child {
+    border-bottom: none;
+}
+
+.help-tab-content .weapon-slot {
+    color: #00ff41;
+    font-weight: bold;
+    min-width: 30px;
+}
+
+.help-tab-content .weapon-name {
+    flex: 1;
+    color: #ccffcc;
+}
+
+.help-tab-content .weapon-level {
+    color: #66ff66;
+    font-size: 11px;
+}
+
+.help-tab-content .tech-notes {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(0, 255, 65, 0.04);
+    border: 1px solid rgba(0, 255, 65, 0.2);
+    border-radius: 6px;
+}
+
+.help-tab-content .notes-header {
+    font-size: 13px;
+    color: #00ff41;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.help-tab-content .note-entry {
+    font-size: 12px;
+    color: #99ff99;
+    margin-bottom: 6px;
+    padding-left: 8px;
+    border-left: 1px solid rgba(0, 255, 65, 0.3);
+}
+
+.help-tab-content .system-status-footer {
+    margin-top: 25px;
+    padding: 15px;
+    background: rgba(0, 255, 65, 0.08);
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    border-radius: 6px;
+    text-align: center;
+}
+
+.help-tab-content .status-line {
+    font-size: 12px;
+    color: #66ff66;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+}
+
+.help-tab-content .warning-text {
+    color: #ff4141;
+    font-weight: bold;
+    text-shadow: 0 0 8px rgba(255, 65, 65, 0.6);
+    text-align: center;
+    padding: 15px;
+    background: rgba(255, 65, 65, 0.1);
+    border: 1px solid rgba(255, 65, 65, 0.3);
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+.help-tab-content .caution-text {
+    color: #ffa500;
+    font-weight: bold;
+    font-size: 12px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 165, 0, 0.1);
+    border: 1px solid rgba(255, 165, 0, 0.3);
+    border-radius: 4px;
+}
+
+.help-tab-content .basic-help {
+    text-align: center;
+    color: #66ff66;
+    font-size: 14px;
+    margin: 20px 0;
+}
+
+/* Print Styles */
+@media print {
+    .help-screen-backdrop {
+        position: static;
+        background: white;
+        color: black;
+    }
+    
+    .help-screen-modal {
+        background: white;
+        border: 2px solid black;
+        box-shadow: none;
+        color: black;
+    }
+    
+    .help-screen-header,
+    .help-screen-tabs,
+    .help-screen-footer {
+        display: none;
+    }
+    
+    .help-tab-content {
+        display: block !important;
+    }
+}

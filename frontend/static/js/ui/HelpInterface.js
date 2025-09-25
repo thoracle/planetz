@@ -38,6 +38,12 @@ debug('UI', 'Ship Tech Manual displayed');
             this.container = null;
         }
         
+        // Remove key handler when hiding
+        if (this.keyHandler) {
+            document.removeEventListener('keydown', this.keyHandler);
+            this.keyHandler = null;
+        }
+        
 debug('UI', 'Ship Tech Manual closed');
     }
 
@@ -157,18 +163,44 @@ debug('UI', 'Ship Tech Manual closed');
                     </div>
                 </div>
                 
+                <div class="help-tabs">
+                    <button class="help-tab-button active" data-tab="help">HELP</button>
+                    <button class="help-tab-button" data-tab="ships-log">SHIP'S LOG</button>
+                    <button class="help-tab-button" data-tab="achievements">ACHIEVEMENTS</button>
+                    <button class="help-tab-button" data-tab="collection">COLLECTION</button>
+                    <button class="help-tab-button" data-tab="about">ABOUT</button>
+                </div>
+                
                 <div class="manual-content">
-                    <div class="scan-line"></div>
+                    <div class="help-tab-content active" id="help-tab">
+                        <div class="scan-line"></div>
+                        
+                        ${this.generateBasicControlsSection()}
+                        ${this.generateMovementSection(context)}
+                        ${this.generateSystemsSection(context)}
+                        ${this.generateCombatSection(context)}
+                        ${this.generateAdvancedSection(context)}
+                        
+                        <div class="system-status-footer">
+                            <div class="status-line">SYSTEMS ONLINE: ${Object.keys(context.availableSystems).length} / ${context.equippedWeapons.length > 0 ? Object.keys(context.availableSystems).length + 1 : Object.keys(context.availableSystems).length}</div>
+                            <div class="status-line">MANUAL ACCESS: AUTHORIZED</div>
+                        </div>
+                    </div>
                     
-                    ${this.generateBasicControlsSection()}
-                    ${this.generateMovementSection(context)}
-                    ${this.generateSystemsSection(context)}
-                    ${this.generateCombatSection(context)}
-                    ${this.generateAdvancedSection(context)}
+                    <div class="help-tab-content" id="ships-log-tab">
+                        ${this.generateShipsLogContent()}
+                    </div>
                     
-                    <div class="system-status-footer">
-                        <div class="status-line">SYSTEMS ONLINE: ${Object.keys(context.availableSystems).length} / ${context.equippedWeapons.length > 0 ? Object.keys(context.availableSystems).length + 1 : Object.keys(context.availableSystems).length}</div>
-                        <div class="status-line">MANUAL ACCESS: AUTHORIZED</div>
+                    <div class="help-tab-content" id="achievements-tab">
+                        ${this.generateAchievementsContent()}
+                    </div>
+                    
+                    <div class="help-tab-content" id="collection-tab">
+                        ${this.generateCollectionContent()}
+                    </div>
+                    
+                    <div class="help-tab-content" id="about-tab">
+                        ${this.generateAboutContent()}
                     </div>
                 </div>
             </div>
@@ -176,6 +208,9 @@ debug('UI', 'Ship Tech Manual closed');
 
         // Add to document
         document.body.appendChild(this.container);
+        
+        // Add tab switching functionality
+        this.initializeTabSwitching();
         
         // Add styles
         this.addTechManualStyles();
@@ -199,10 +234,6 @@ debug('UI', 'Ship Tech Manual closed');
                     <div class="control-entry">
                         <span class="key-binding">A</span>
                         <span class="control-desc">Aft View</span>
-                    </div>
-                    <div class="control-entry">
-                        <span class="key-binding">H</span>
-                        <span class="control-desc">Toggle Technical Manual</span>
                     </div>
                     <div class="control-entry">
                         <span class="key-binding">D</span>
@@ -602,7 +633,7 @@ debug('UI', 'Ship Tech Manual closed');
                 </div>
                 <div class="manual-content">
                     <div class="warning-text">WARNING: Ship systems not accessible</div>
-                    <div class="basic-help">Press H to access ship technical manual when systems are online</div>
+                    <div class="basic-help">Press ESC to access ship technical manual when systems are online</div>
                 </div>
             </div>
         `;
@@ -1047,9 +1078,242 @@ debug('UI', 'Ship Tech Manual closed');
                     grid-template-columns: 1fr;
                 }
             }
+
+            /* Tab System */
+            .help-tabs {
+                display: flex;
+                border-bottom: 2px solid rgba(0, 255, 65, 0.3);
+                margin-bottom: 0;
+                background: rgba(0, 255, 65, 0.05);
+                flex-shrink: 0;
+                height: 50px;
+            }
+
+            .help-tab-button {
+                background: rgba(0, 20, 0, 0.3);
+                border: 1px solid rgba(0, 255, 65, 0.4);
+                border-bottom: none;
+                color: #00ff41;
+                padding: 12px 20px;
+                font-family: 'Courier New', monospace;
+                font-size: 13px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                flex: 1;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                position: relative;
+                margin-right: 2px;
+                text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+            }
+
+            .help-tab-button:last-child {
+                margin-right: 0;
+            }
+
+            .help-tab-button:hover {
+                background: rgba(0, 255, 65, 0.15);
+                border-color: #00ff41;
+                text-shadow: 0 0 10px #00ff41;
+                box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+            }
+
+            .help-tab-button.active {
+                background: rgba(0, 255, 65, 0.25);
+                border-color: #00ff41;
+                color: #ffffff;
+                text-shadow: 0 0 15px #00ff41;
+                box-shadow: 
+                    inset 0 -3px 0 #00ff41,
+                    0 0 15px rgba(0, 255, 65, 0.4),
+                    inset 0 0 20px rgba(0, 255, 65, 0.1);
+                z-index: 1;
+            }
+
+            .help-tab-content {
+                display: none;
+                animation: fadeIn 0.3s ease;
+                height: 100%;
+                overflow-y: auto;
+            }
+
+            .help-tab-content.active {
+                display: block;
+                height: 100%;
+                overflow-y: auto;
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
         `;
 
         document.head.appendChild(style);
+    }
+
+    /**
+     * Initialize tab switching functionality
+     */
+    initializeTabSwitching() {
+        const tabButtons = this.container.querySelectorAll('.help-tab-button');
+        const tabContents = this.container.querySelectorAll('.help-tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.getAttribute('data-tab');
+                
+                // Remove active class from all buttons and contents
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                
+                // Add active class to clicked button and corresponding content
+                button.classList.add('active');
+                const targetContent = this.container.querySelector(`#${targetTab}-tab`);
+                if (targetContent) {
+                    targetContent.classList.add('active');
+                }
+                
+                debug('UI', `Switched to tab: ${targetTab}`);
+            });
+        });
+    }
+
+    /**
+     * Generate Ship's Log content
+     */
+    generateShipsLogContent() {
+        return `
+            <div class="manual-section">
+                <div class="section-header">SHIP'S LOG</div>
+                <div class="system-status">Log entries are automatically recorded during flight operations</div>
+                
+                <div class="tech-notes">
+                    <div class="notes-header">RECENT ENTRIES</div>
+                    <div class="note-entry">• System startup completed - All systems nominal</div>
+                    <div class="note-entry">• Navigation computer online - Coordinates locked</div>
+                    <div class="note-entry">• Weapon systems armed and ready</div>
+                    <div class="note-entry">• Communications array operational</div>
+                </div>
+                
+                <div class="system-status-footer">
+                    <div class="status-line">LOG STATUS: ACTIVE</div>
+                    <div class="status-line">ENTRIES: 4 RECENT</div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Generate Achievements content
+     */
+    generateAchievementsContent() {
+        return `
+            <div class="manual-section">
+                <div class="section-header">PILOT ACHIEVEMENTS</div>
+                <div class="system-status">Track your progress and unlock new capabilities</div>
+                
+                <div class="control-grid">
+                    <div class="control-entry">
+                        <span class="key-binding">🏆</span>
+                        <span class="control-desc">Combat Veteran - Destroy 10 enemy ships</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">🚀</span>
+                        <span class="control-desc">Explorer - Visit 5 different systems</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">⚡</span>
+                        <span class="control-desc">Ace Pilot - Complete 10 missions</span>
+                    </div>
+                    <div class="control-entry">
+                        <span class="key-binding">💎</span>
+                        <span class="control-desc">Collector - Acquire 25 upgrade cards</span>
+                    </div>
+                </div>
+                
+                <div class="system-status-footer">
+                    <div class="status-line">ACHIEVEMENTS UNLOCKED: 0 / 12</div>
+                    <div class="status-line">PILOT RANK: ENSIGN</div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Generate Collection content
+     */
+    generateCollectionContent() {
+        return `
+            <div class="manual-section">
+                <div class="section-header">CARD COLLECTION</div>
+                <div class="system-status">Manage your ship upgrade cards and equipment</div>
+                
+                <div class="weapon-loadout">
+                    <div class="loadout-header">INSTALLED CARDS</div>
+                    <div class="weapon-entry">
+                        <span class="weapon-slot">SYS</span>
+                        <span class="weapon-name">Impulse Engines</span>
+                        <span class="weapon-level">LVL 1</span>
+                    </div>
+                    <div class="weapon-entry">
+                        <span class="weapon-slot">WPN</span>
+                        <span class="weapon-name">Laser Cannon</span>
+                        <span class="weapon-level">LVL 1</span>
+                    </div>
+                </div>
+                
+                <div class="tech-notes">
+                    <div class="notes-header">COLLECTION STATS</div>
+                    <div class="note-entry">• Total Cards: 2</div>
+                    <div class="note-entry">• Unique Cards: 2</div>
+                    <div class="note-entry">• Rarity Distribution: 2 Common</div>
+                    <div class="note-entry">• Collection Completion: 8%</div>
+                </div>
+                
+                <div class="system-status-footer">
+                    <div class="status-line">INVENTORY: 2 CARDS</div>
+                    <div class="status-line">STORAGE: UNLIMITED</div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Generate About content
+     */
+    generateAboutContent() {
+        return `
+            <div class="manual-section">
+                <div class="section-header">DEVELOPMENT TEAM</div>
+                <div class="tech-notes">
+                    <div class="note-entry">Game Design & Direction: Thor Alexander</div>
+                    <div class="note-entry">Programming: Claude / Cursor</div>
+                    <div class="note-entry">Art: Midjourney</div>
+                    <div class="note-entry">Voice Acting: Chatterbox</div>
+                </div>
+            </div>
+            
+            <div class="manual-section">
+                <div class="section-header">INSPIRATION</div>
+                <div class="tech-notes">
+                    <div class="note-entry">Star Raiders</div>
+                    <div class="note-entry">Elite ('84)</div>
+                    <div class="note-entry">Wing Commander: Privateer</div>
+                    <div class="note-entry">Freelancer</div>
+                </div>
+            </div>
+            
+            <div class="manual-section">
+                <div class="section-header">SPECIAL THANKS</div>
+                <div class="tech-notes">
+                    <div class="note-entry">To all space trading game pioneers</div>
+                    <div class="note-entry">Open source community</div>
+                    <div class="note-entry">Beta testers and players</div>
+                </div>
+            </div>
+        `;
     }
 
     /**
