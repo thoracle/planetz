@@ -98,23 +98,68 @@
 - Contextual Surfaces
   - Small trophy pop-in at top-right for newly earned trophies, with sound.
 
-## 5. Pilot Rank Specification
+## 5. Pilot Rank Specification (Updated: Faction-Based)
 ### 5.1 Rank Model
-- Starting Rank: Ensign.
-- Rank List (example; subject to tuning)
-  - Ensign → Lieutenant → Lieutenant Commander → Commander → Captain → Commodore → Rear Admiral → Vice Admiral → Admiral
-- Rank Progression Rules
-  - Primary: total trophies earned across all categories.
-    - Example: 2 trophies → Lieutenant, 5 → Lt Commander, 10 → Commander, 16 → Captain, 24 → Commodore, 34 → Rear Admiral, 46 → Vice Admiral, 60 → Admiral.
-  - Secondary (tie-breaker/alternative): weighted achievement points (Bronze=1, Silver=3, Gold=6, Platinum=10).
-- On rank-up
-  - Play a distinct rank-up fanfare, show badge animation, add log entry.
+- Rank is tracked per faction ladder. A player can hold different ranks with different factions.
+- The displayed title is tied to the player’s active allegiance, which must be earned and maintained, not freely toggled in UI.
+- Example faction ladders (illustrative; tune per lore):
+  - TRA Navy (military): Ensign → Lieutenant → Lieutenant Commander → Commander → Captain → Commodore → Rear Admiral → Vice Admiral → Admiral
+  - Free Traders Guild (smuggler/trader): Runner → Courier → Broker → Fixer → Quartermaster → Factor → Coordinator → Syndic → Magnate
+  - Void Corsairs (pirate): Swabbie → Deckhand → Raider → Bosun → First Mate → Captain → Warlord → Dread Captain → Lord of the Void
+  - Order of the Star (jedi-like): Initiate → Acolyte → Adept → Guardian → Master → High Master → Luminary → Ascendant → Paragon
 
-### 5.2 Surfaces
-- HUD: small badge adjacent to player name (non-intrusive).
-- Help Screen header and Pilot’s Log tab: full badge and title.
+### 5.2 Progression Rules
+- Each faction maintains a ladder with thresholds computed from achievements and alignment with that faction’s ethos.
+  - Example weighting (data-driven):
+    - TRA (military): kills, missionsCompleted (military), dockings (official), systemsVisited (patrol)
+    - Free Traders: dockings, cardsEarned, missionsCompleted (trade/smuggle), discoveries (intel)
+    - Corsairs: kills, missionsCompleted (raids), cardsEarned (loot), systemsVisited (raids scope)
+    - Order of the Star: discoveries, missionsCompleted (orders), systemsVisited, low collateral (ethical)
+- Rank evaluation computes a per-faction score from trophies/points, then maps to tier thresholds.
+- Rank-ups occur independently per ladder when thresholds are crossed.
 
-## 6. Data Model and Persistence
+### 5.3 Allegiance System (Action-Gated)
+- The game is about actions mattering; allegiance is earned, not flipped.
+- Becoming or switching active allegiance requires meeting standing requirements and performing an allegiance action.
+  - Requirements (data-driven per faction):
+    - Minimum standing score for the destination faction (e.g., Friendly+)
+    - Maximum standing with rival factions (e.g., not Hostile beyond a threshold)
+    - Optional proof actions (e.g., complete a petition mission or pay a bond)
+  - Trade-offs on switch (data-driven options):
+    - Temporary neutrality cooldown with rivals (reduced rewards or access)
+    - Loss or locking of faction-specific perks until reputation rebuilt
+    - Faction tax/fee on first rank-up post-switch
+- Allegiance actions are initiated via a Petition flow (Help → Achievements/Rank area → Petition button appears only if requirements are met).
+- Auto-selection is removed; the last successful Petition sets `activeAllegiance`.
+
+### 5.4 Events and Payloads
+- rank:updated(previousRank, newRank, context)
+  - context: { factionId, ladder, method: "trophies" | "points", score }
+- allegiance:petitionRequested(factionId)
+- allegiance:petitionApproved(factionId)
+- allegiance:petitionDenied(factionId, reason)
+- allegiance:switched(previousFactionId, newFactionId)
+
+### 5.5 Data and Configuration
+- `data/progression/ranks.json` (per-faction):
+  - ladders: { factionId, name, titles[], thresholds[], weights{ category: weight } }
+  - allegianceRequirements: { minStanding, maxRivalStanding, requiredMissions[], fees }
+  - switchTradeoffs: { cooldownMs, perkLocks[], rewardModifiers{}, taxes{} }
+- Storage:
+  - PilotRankStateMap: { [factionId]: { currentRank, totalTrophies, weightedPoints, lastRankUpAt } }
+  - activeAllegiance: factionId set only through approved Petition
+
+### 5.6 UI Surfaces (Help Screen and HUD)
+- Help Header: shows allegiance badge/title; no free selector. A small “Petition” CTA appears only when requirements are met for a non-active ladder.
+- Pilot Rank’s Log: includes Petition requests, approvals/denials, switches, and their trade-offs.
+- HUD: compact allegiance chip; tooltip summarizes current benefits/trade-offs.
+
+### 5.7 Open Questions (Allegiance)
+- Should denial provide hints (which requirement is missing) or remain opaque for mystery?
+- Do we allow one-time amnesty to leave pirate ranks without rival penalties?
+- What is the minimum cooldown between petition attempts?
+
+## 6. Data Model and Persistence (Updated: Test Mode)
 ### 6.1 Data Objects (conceptual)
 - AchievementCounters
   - keys: kills, dockings, discoveries, cardsEarned, systemsVisited, missionsCompleted
@@ -133,6 +178,17 @@
 ### 6.2 Storage
 - Persist in existing local save mechanism (same scope as cards and missions).
 - Data versioning field for forward compatibility.
+- Test Mode
+  - Honor existing `TESTING_CONFIG.NO_PERSISTENCE` flag (see `StarfieldManager`):
+    - When true: all save operations for Achievements, Rank, and Pilot Log become no-ops; loads return ephemeral in-memory state.
+    - When false: normal persistence behavior.
+  - Services must check the flag once at initialization and on each save call to avoid accidental writes during tests.
+
+### 6.3 StorageAdapter Contract (Test-Aware)
+- StorageAdapter.save(key, value)
+  - If `TESTING_CONFIG.NO_PERSISTENCE === true`, return early without writing.
+- StorageAdapter.load(key)
+  - If `TESTING_CONFIG.NO_PERSISTENCE === true` and no prior in-memory state, return defaults.
 
 ## 7. Events and API Contracts (Frontend-internal)
 ### 7.1 Events (publish/subscribe intent)
@@ -373,4 +429,141 @@ flowchart LR
   Content -. reads .-> AchService
   Content -. reads .-> RankService
   Content -. reads .-> LogService
+```
+
+## 15.7 Diagrams (Faction-Based Rank Additions)
+
+### 15.7.1 Faction Ladder Data (Class Diagram)
+```mermaid
+classDiagram
+  class FactionLadderConfig {
+    +string factionId
+    +string name
+    +string[] titles
+    +int[] thresholds
+    +Map~string, float~ weights  // category -> weight
+  }
+
+  class PilotRankStateMap {
+    +Map~string, PilotRankState~ byFaction  // factionId -> state
+    +string activeAllegiance
+  }
+
+  FactionLadderConfig <.. RankService : reads
+  PilotRankStateMap <.. RankService : updates
+```
+
+### 15.7.2 Rank Evaluation with Factions (Sequence)
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Ach as AchievementService
+  participant Rank as RankService
+  participant Conf as RankConfig
+  participant UI as Help/HUD
+
+  Ach-->>Rank: trophiesChanged(counters, trophies, context?)
+  Rank->>Conf: load ladders (per-faction)
+  loop for each faction ladder
+    Rank->>Rank: compute score = sum(weights[cat] * points[cat])
+    Rank->>Rank: map score to thresholds -> newTitle
+    alt title changed
+      Rank-->>UI: rank:updated(prev, new, { factionId, method, score })
+    end
+  end
+```
+
+## 15.8 Test Mode Persistence Bypass (Sequence)
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Svc as AchievementService
+  participant Store as StorageAdapter
+  participant Cfg as TESTING_CONFIG
+
+  Svc->>Svc: update counters/trophies
+  Svc->>Cfg: check NO_PERSISTENCE
+  alt NO_PERSISTENCE === true
+    Svc->>Store: save(key, value)
+    Store-->>Svc: no-op (early return)
+  else persistence enabled
+    Svc->>Store: save(key, value)
+    Store-->>Svc: ok (written)
+  end
+```
+
+## 15.9 Allegiance Petition Flow (Sequence)
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Player
+  participant Help as HelpScreen.RankTab
+  participant Rank as RankService
+  participant Rep as ReputationService
+  participant Conf as RankConfig
+  participant UI as NotificationCenter
+
+  Player->>Help: View Rank tab
+  Help->>Rep: getStanding(factionId)
+  Help->>Conf: getAllegianceRequirements(factionId)
+  alt requirements met
+    Help-->>Player: Show Petition CTA
+    Player->>Help: Click Petition
+    Help-->>Rank: allegiance:petitionRequested(factionId)
+    Rank->>Rep: verifyStanding(factionId)
+    Rank->>Conf: getSwitchTradeoffs(factionId)
+    alt verified
+      Rank-->>UI: allegiance:petitionApproved(factionId)
+      Rank-->>Rank: set activeAllegiance = factionId
+      UI-->>Player: Show trade-offs summary + confirmation
+    else not verified
+      Rank-->>UI: allegiance:petitionDenied(factionId, reason)
+    end
+  else not met
+    Help-->>Player: Show requirements not met (optional detail)
+  end
+```
+
+## 5.8 Academy Onboarding (Starting Ladder and First Switch)
+- Starting State
+  - All new players begin as TRA Navy Ensign through the Military Academy program (tutorial-friendly baseline).
+  - Initial `activeAllegiance = TRA` with ladder title “Ensign”.
+- First-Run Choice: Stay or Drop Out
+  - Early game narrative offers a one-time decision: remain in TRA or drop out to pursue another path.
+  - If the player stays: normal TRA progression applies; future switches require standard Petition + requirements.
+  - If the player drops out: a one-time “relaxed induction” to a chosen non-TRA faction is allowed with reduced requirements.
+    - Relaxed Induction (data-driven): lower minStanding, waived rival caps, reduced or zero fees, and no cooldown.
+    - After this first switch, all subsequent allegiance changes follow the normal Petition requirements and trade-offs.
+- UX Surfaces
+  - Help Rank tab shows an “Academy Decision” banner until chosen.
+  - If dropping out, present a short list of candidate factions with summaries; confirm selection.
+- Events
+  - academy:decisionMade(choice: "stay" | "dropout", targetFactionId?)
+  - allegiance:switched(previousFactionId, newFactionId, context: { firstSwitch: true })
+- Persistence and Test Mode
+  - Decision is persisted; in test mode, kept in-memory only.
+
+### 15.10 Academy Decision Flow (Sequence)
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Player
+  participant Help as HelpScreen.RankTab
+  participant Conf as RankConfig
+  participant Rank as RankService
+  participant UI as NotificationCenter
+
+  Player->>Help: View Rank tab (new save)
+  Help-->>Player: Show Academy Decision banner
+  Player->>Help: Choose Stay or Drop Out
+  alt Stay TRA
+    Help-->>Rank: academy:decisionMade("stay")
+    Rank-->>UI: allegiance remains TRA (Ensign)
+  else Drop Out
+    Help->>Conf: getRelaxedInductionOptions()
+    Help-->>Player: Show candidate factions
+    Player->>Help: Select faction (e.g., Traders)
+    Help-->>Rank: academy:decisionMade("dropout", factionId)
+    Rank-->>UI: allegiance:switched(TRA, factionId, { firstSwitch: true })
+  end
 ```
