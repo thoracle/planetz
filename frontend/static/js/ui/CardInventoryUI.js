@@ -3171,10 +3171,19 @@ debug('UI', `🎵 Playing upgrade sound...`);
         // ALWAYS store directly to localStorage to ensure persistence
         // This bypasses any instance issues and guarantees the data is saved
         const stored = localStorage.getItem('planetz_quantity_increase_timestamps');
+        console.log(`🔴 STATIC: Raw localStorage value:`, stored);
         const timestamps = stored ? JSON.parse(stored) : {};
-        timestamps[cardType] = Date.now();
-        localStorage.setItem('planetz_quantity_increase_timestamps', JSON.stringify(timestamps));
+        console.log(`🔴 STATIC: Parsed timestamps before update:`, timestamps);
+        const timestamp = Date.now();
+        timestamps[cardType] = timestamp;
+        console.log(`🔴 STATIC: Timestamps after adding ${cardType}:`, timestamps);
+        const jsonString = JSON.stringify(timestamps);
+        console.log(`🔴 STATIC: JSON string to store:`, jsonString);
+        localStorage.setItem('planetz_quantity_increase_timestamps', jsonString);
         
+        // Verify it was stored
+        const verification = localStorage.getItem('planetz_quantity_increase_timestamps');
+        console.log(`🔴 STATIC: Verification - stored value:`, verification);
         console.log(`🔴 STATIC: Stored directly to localStorage:`, timestamps);
         
         // Also update the instance if it exists (for immediate UI updates)
