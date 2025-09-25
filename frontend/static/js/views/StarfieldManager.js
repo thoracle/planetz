@@ -4289,9 +4289,14 @@ debug('COMBAT', '🚪 Damage Control HUD dismissed during docking completion');
             
             // Dismiss mission rewards overlay if visible
             const missionRewardsOverlay = document.getElementById('mission-rewards-overlay');
+            console.log('🔍 DOCKING: Checking for mission rewards overlay:', !!missionRewardsOverlay);
             if (missionRewardsOverlay) {
+                console.log('🚪 DOCKING: Removing mission rewards overlay');
                 missionRewardsOverlay.remove();
+                console.log('🚪 DOCKING: Mission rewards overlay removed successfully');
 debug('UTILITY', '🚪 Mission rewards overlay dismissed during docking completion');
+            } else {
+                console.log('🔍 DOCKING: No mission rewards overlay found to dismiss');
             }
         }
 
