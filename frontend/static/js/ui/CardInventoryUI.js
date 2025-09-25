@@ -2351,9 +2351,9 @@ debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
         
         // Check if this card has a quantity increase (red badge)
         const hasQuantityIncrease = this.hasQuantityIncrease(card.cardType);
-        const countStyle = hasQuantityIncrease ? 'color: #ff4444; font-weight: bold;' : '';
+        const countStyle = hasQuantityIncrease ? 'background-color: #ff4444; color: white; font-weight: bold; padding: 2px 4px; border-radius: 3px;' : '';
         
-        // Debug logging for red badge detection
+        // Debug logging for red badge detection (can be removed later)
         if (hasQuantityIncrease) {
             console.log(`🔴 RED BADGE: ${card.cardType} should show red badge (quantity increase detected)`);
         }
