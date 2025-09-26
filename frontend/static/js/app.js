@@ -18,6 +18,30 @@ import './utils/ErrorReporter.js'; // Error reporting system for debugging
 import { SmartDebugManager } from './utils/DebugManager.js'; // Smart debug logging system
 import { debug } from './debug.js';
 
+// VERSION TRACKING
+debug('P1', '🚀 APP.JS v2.0 - COMMIT 8bd0b7a - HELP SCREEN 2.0 TABBED INTERFACE LOADED');
+
+// Global configuration for verbose logging
+window.gameConfig = window.gameConfig || {};
+window.gameConfig.verbose = window.gameConfig.verbose !== undefined ? window.gameConfig.verbose : true; // Default: true
+debug('P1', `📋 Verbose logging enabled: ${window.gameConfig.verbose}`);
+
+// Global function to toggle verbose mode
+window.toggleVerbose = function() {
+    window.gameConfig.verbose = !window.gameConfig.verbose;
+    console.log(`🔧 Verbose mode ${window.gameConfig.verbose ? 'ENABLED' : 'DISABLED'}`);
+    
+    // Refresh ship's log display if it's currently visible
+    if (window.shipLog) {
+        window.shipLog.refreshLogDisplay();
+    }
+    
+    return window.gameConfig.verbose;
+};
+
+// Initialize Ship's Log system
+import './utils/ShipLog.js';
+
 // Waypoints System Imports
 import { WaypointManager } from './waypoints/WaypointManager.js';
 import { WaypointKeyboardHandler } from './waypoints/WaypointKeyboardHandler.js';

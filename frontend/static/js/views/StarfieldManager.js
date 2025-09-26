@@ -1,6 +1,6 @@
 // THREE is handled dynamically in constructor
 import { DockingInterface } from '../ui/DockingInterface.js';
-import { HelpScreenController } from '../ui/HelpScreenController.js';
+import { HelpInterface } from '../ui/HelpInterface.js';
 import DockingSystemManager from '../ship/DockingSystemManager.js';
 import SimpleDockingManager from '../SimpleDockingManager.js';
 import { getSystemDisplayName } from '../ship/System.js';
@@ -194,17 +194,13 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         // Create docking modal for popup-based docking
         this.dockingModal = new DockingModal(this);
         
-        // Create help screen controller
+        // Create help interface
         try {
-            this.helpScreenController = new HelpScreenController(this);
-            
-            // Initialize immediately after creation
-            this.helpScreenController.initialize();
-            
+            this.helpInterface = new HelpInterface(this);
+            debug('UI', 'HelpInterface created successfully');
         } catch (error) {
-            console.error('❌ Failed to create/initialize HelpScreenController:', error);
-            console.error('❌ Failed to create/initialize HelpScreenController (debug):', error);
-            this.helpScreenController = null;
+            console.error('❌ Failed to create HelpInterface:', error);
+            this.helpInterface = null;
         }
         
         // Create communication HUD for NPC interactions
@@ -2531,17 +2527,23 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
     }
 
     toggleHelp() {
-        console.log('🔄 toggleHelp() called');
-        if (this.helpScreenController) {
+        debug('P1', '🔄 toggleHelp() called - using HelpInterface');
+        if (this.helpInterface) {
             try {
-                this.helpScreenController.toggle();
+                if (this.helpInterface.isVisible) {
+                    this.helpInterface.hide();
+                    debug('P1', '✅ Help screen closed');
+                } else {
+                    this.helpInterface.show();
+                    debug('P1', '✅ Help screen opened');
+                }
             } catch (error) {
                 console.error('❌ Failed to toggle help screen:', error);
-                console.error('❌ Failed to toggle help screen (debug):', error);
+                debug('P1', '❌ Help screen toggle error: ' + error.message);
             }
         } else {
-            console.error('❌ HelpScreenController not available - cannot toggle help');
-            console.error('❌ HelpScreenController not available - cannot toggle help (debug)');
+            console.error('❌ HelpInterface not available - cannot toggle help');
+            debug('P1', '❌ HelpInterface not available');
         }
     }
 
@@ -3958,6 +3960,8 @@ debug('UTILITY', 'Simple docking system initialized');
      */
     showDockingInterface(target) {
         if (this.dockingInterface) {
+            // SINGLE SOURCE OF TRUTH: No synchronization needed since both use the same singleton instance
+            
 debug('TARGETING', 'Showing docking interface for', target.name);
             this.dockingInterface.show(target);
         } else {
@@ -5307,6 +5311,11 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
      * @param {number} duration - Duration in milliseconds (default 5000)
      */
     showHUDEphemeral(title, message, duration = 5000) {
+        // Log to ship's log if verbose mode is enabled
+        if (window.shipLog && window.gameConfig?.verbose) {
+            window.shipLog.addEphemeralEntry(title, message);
+        }
+        
         // Create ephemeral message element if it doesn't exist
         if (!this.hudEphemeralElement) {
             this.hudEphemeralElement = document.createElement('div');

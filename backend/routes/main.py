@@ -26,7 +26,14 @@ def index():
     """Serve the main page."""
     try:
         logger.info("Serving index.html")
-        return send_from_directory(current_app.static_folder, 'index.html', mimetype='text/html')
+        response = send_from_directory(current_app.static_folder, 'index.html', mimetype='text/html')
+        
+        # Add cache control headers for development
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        return response
     except Exception as e:
         logger.error(f"Error serving index.html: {str(e)}")
         return "Error serving frontend application", 500

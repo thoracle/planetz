@@ -126,6 +126,15 @@ const playerData = new PlayerData();
 
 export default class CardInventoryUI {
     constructor(containerId) {
+        // SINGLETON PATTERN: Return existing instance if it exists
+        if (CardInventoryUI.instance) {
+            // Update container if a new one is provided
+            if (containerId && containerId !== CardInventoryUI.instance.containerId) {
+                CardInventoryUI.instance.setContainer(containerId);
+            }
+            return CardInventoryUI.instance;
+        }
+        
         this.containerId = containerId;
         this.container = containerId ? document.getElementById(containerId) : null;
         this.inventory = new CardInventory();
@@ -136,6 +145,7 @@ export default class CardInventoryUI {
         this.isShopMode = false;
         this.dockedLocation = null;
         this.dockingInterface = null;
+        this.isInitialized = false;
         
         // Track NEW card badges
         this.lastShopVisit = this.getLastShopVisit();
@@ -147,7 +157,8 @@ export default class CardInventoryUI {
         // Audio setup for upgrade sounds
         this.initializeAudio();
         
-        // Set global reference for button onclick handlers
+        // Set singleton instance and global reference
+        CardInventoryUI.instance = this;
         window.cardInventoryUI = this;
         
         // Only check for container if containerId was provided
@@ -160,6 +171,35 @@ export default class CardInventoryUI {
         if (this.container || containerId === null) {
             this.init();
         }
+    }
+    
+    /**
+     * Set or update the container for this instance
+     */
+    setContainer(containerId) {
+        this.containerId = containerId;
+        this.container = containerId ? document.getElementById(containerId) : null;
+        
+        if (containerId && !this.container) {
+            console.error(`Container with id '${containerId}' not found`);
+            return;
+        }
+        
+        // Re-initialize UI if we now have a container
+        if (this.container && !this.isInitialized) {
+            this.init();
+        }
+        
+    }
+    
+    /**
+     * Get the singleton instance (create if doesn't exist)
+     */
+    static getInstance(containerId = null) {
+        if (!CardInventoryUI.instance) {
+            new CardInventoryUI(containerId);
+        }
+        return CardInventoryUI.instance;
     }
 
     /**
@@ -892,6 +932,9 @@ debug('UI', '✅ Web Audio API playback successful');
             // For temporary instances, just load test data without UI
             this.loadTestData();
         }
+        
+        // Mark as initialized
+        this.isInitialized = true;
     }
 
     /**
@@ -1103,9 +1146,9 @@ debug('UI', 'Loading test data for card inventory...');
             'proximity_mine',
             
             // Essential navigation and communication systems
-            'galactic_chart',           // Required for G key functionality
+            // 'galactic_chart',        // Removed - player must acquire from missions/shop (NEW badge test)
             'long_range_scanner',       // Required for L key functionality  
-            'subspace_radio',           // Required for R key functionality
+            'subspace_radio',           // Keep for quantity increase badge testing
             'target_computer',          // Required for T key functionality
             
             // Proximity detection systems
@@ -1139,6 +1182,14 @@ debug('UI', 'Adding 25 impulse engine cards for high-level upgrades...');
         for (let i = 0; i < 15; i++) {
             const reactor = this.inventory.generateSpecificCard('energy_reactor', 'common');
             this.inventory.addCard(reactor);
+        }
+        
+        // Add extra subspace radio cards for quantity increase badge testing
+        // This ensures we have existing cards to test red quantity badges when more are awarded
+        debug('UI', 'Adding 3 extra subspace radio cards for quantity increase badge testing...');
+        for (let i = 0; i < 3; i++) {
+            const radio = this.inventory.generateSpecificCard('subspace_radio', 'common');
+            this.inventory.addCard(radio);
         }
         
         // Add multiple weapon cards for upgrading  

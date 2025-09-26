@@ -285,11 +285,30 @@ export const CARD_ICONS = {
     [CARD_TYPES.PHOTON_TORPEDO]: '⚔️',      // Weapon slot icon
     [CARD_TYPES.PROXIMITY_MINE]: '⚔️',      // Weapon slot icon
     
+    // Specialized combat weapons - all use weapon slot icon
+    [CARD_TYPES.ENERGY_PULSE_CANNON]: '⚔️', // Weapon slot icon
+    [CARD_TYPES.ENERGY_CANNON]: '⚔️',       // Weapon slot icon
+    [CARD_TYPES.LONG_RANGE_BEAM]: '⚔️',     // Weapon slot icon
+    [CARD_TYPES.DEFENSIVE_TURRET]: '⚔️',    // Weapon slot icon
+    [CARD_TYPES.DUAL_TURRET]: '⚔️',         // Weapon slot icon
+    
+    // Advanced weapon systems - all use weapon slot icon
+    [CARD_TYPES.MISSILE_LAUNCHER]: '⚔️',    // Weapon slot icon
+    [CARD_TYPES.POINT_DEFENSE]: '⚔️',       // Weapon slot icon
+    [CARD_TYPES.MISSILE_POD]: '⚔️',         // Weapon slot icon
+    [CARD_TYPES.TORPEDO_LAUNCHER]: '⚔️',    // Weapon slot icon
+    
     // Sensor and communication systems - now use utility slot icon since they go in utility slots
     [CARD_TYPES.LONG_RANGE_SCANNER]: '🔧',  // Utility slot icon (sensors go in utility)
     [CARD_TYPES.SUBSPACE_RADIO]: '🔧',      // Utility slot icon (comms go in utility)
     [CARD_TYPES.GALACTIC_CHART]: '🔧',      // Utility slot icon (navigation goes in utility)
-    [CARD_TYPES.TARGET_COMPUTER]: '🔧',     // Utility slot icon (targeting goes in utility)
+    [CARD_TYPES.STAR_CHARTS]: '🔧',         // Utility slot icon (star charts go in utility)
+    [CARD_TYPES.TARGET_COMPUTER]: '🔧',
+    
+    // Proximity detection systems - use utility slot icon (they go in utility slots)
+    [CARD_TYPES.BASIC_RADAR]: '🔧',         // Utility slot icon (radar goes in utility)
+    [CARD_TYPES.ADVANCED_RADAR]: '🔧',      // Utility slot icon (radar goes in utility)
+    [CARD_TYPES.TACTICAL_RADAR]: '🔧',      // Utility slot icon (radar goes in utility)
     
     // Exotic Core Systems - use Power Systems slot icon
     [CARD_TYPES.QUANTUM_REACTOR]: '⚡',          // Power Systems slot icon
@@ -339,7 +358,32 @@ export const CARD_ICONS = {
     // Advanced Intel Systems - use Utility slot icon (they go in utility slots)
     [CARD_TYPES.TACTICAL_COMPUTER]: '🔧',   // Utility slot icon (advanced targeting goes in utility)
     [CARD_TYPES.COMBAT_COMPUTER]: '🔧',     // Utility slot icon (advanced targeting goes in utility)
-    [CARD_TYPES.STRATEGIC_COMPUTER]: '🔧'  // Utility slot icon (advanced targeting goes in utility)
+    [CARD_TYPES.STRATEGIC_COMPUTER]: '🔧', // Utility slot icon (advanced targeting goes in utility)
+    
+    // Capital Ship Systems - special advanced slot type (non-player ships and stations only)
+    [CARD_TYPES.LANDING_BAY]: '🏛️',              // Capital ship slot icon
+    [CARD_TYPES.FIGHTER_LAUNCH_BAY]: '🏛️',       // Capital ship slot icon
+    [CARD_TYPES.SHUTTLE_BAY]: '🏛️',              // Capital ship slot icon
+    [CARD_TYPES.SHIP_CONSTRUCTION_BAY]: '🏛️',    // Capital ship slot icon
+    [CARD_TYPES.REPAIR_FACILITY]: '🏛️',          // Capital ship slot icon
+    [CARD_TYPES.MANUFACTURING_PLANT]: '🏛️',      // Capital ship slot icon
+    [CARD_TYPES.FLEET_COMMAND_CENTER]: '🏛️',     // Capital ship slot icon
+    [CARD_TYPES.COMMUNICATIONS_ARRAY]: '🏛️',     // Capital ship slot icon
+    [CARD_TYPES.BATTLE_BRIDGE]: '🏛️',            // Capital ship slot icon
+    [CARD_TYPES.POINT_DEFENSE_GRID]: '🏛️',       // Capital ship slot icon
+    [CARD_TYPES.SHIELD_ARRAY]: '🏛️',             // Capital ship slot icon
+    [CARD_TYPES.REACTOR_CORE]: '🏛️',             // Capital ship slot icon
+    [CARD_TYPES.CARGO_PROCESSING_CENTER]: '🏛️',  // Capital ship slot icon
+    [CARD_TYPES.MEDICAL_BAY]: '🏛️',              // Capital ship slot icon
+    [CARD_TYPES.SCIENCE_LAB]: '🏛️',              // Capital ship slot icon
+    
+    // Station-Specific Systems - also use capital ship slot icon
+    [CARD_TYPES.MINING_ARRAY]: '🏛️',             // Capital ship slot icon
+    [CARD_TYPES.INDUSTRIAL_FABRICATOR]: '🏛️',    // Capital ship slot icon
+    [CARD_TYPES.SECURITY_COMPLEX]: '🏛️',         // Capital ship slot icon
+    [CARD_TYPES.OBSERVATORY_ARRAY]: '🏛️',        // Capital ship slot icon
+    [CARD_TYPES.LOGISTICS_CENTER]: '🏛️',         // Capital ship slot icon
+    [CARD_TYPES.FRONTIER_COMMAND]: '🏛️'          // Capital ship slot icon
 };
 
 // Card availability by rarity - more exotic cards only appear in higher rarities
@@ -358,7 +402,7 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.PULSE_CANNON,
         CARD_TYPES.LONG_RANGE_SCANNER,
         CARD_TYPES.SUBSPACE_RADIO,
-        CARD_TYPES.GALACTIC_CHART,
+        // CARD_TYPES.GALACTIC_CHART, // Removed - player must acquire from missions/shop
         CARD_TYPES.TARGET_COMPUTER
     ],
     [CARD_RARITY.RARE]: [
@@ -375,7 +419,7 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.PULSE_CANNON,
         CARD_TYPES.LONG_RANGE_SCANNER,
         CARD_TYPES.SUBSPACE_RADIO,
-        CARD_TYPES.GALACTIC_CHART,
+        // CARD_TYPES.GALACTIC_CHART, // Removed - player must acquire from missions/shop
         CARD_TYPES.TARGET_COMPUTER,
         CARD_TYPES.PHASER_ARRAY,
         CARD_TYPES.DISRUPTOR_CANNON,
@@ -413,7 +457,7 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.PULSE_CANNON,
         CARD_TYPES.LONG_RANGE_SCANNER,
         CARD_TYPES.SUBSPACE_RADIO,
-        CARD_TYPES.GALACTIC_CHART,
+        // CARD_TYPES.GALACTIC_CHART, // Removed - player must acquire from missions/shop
         CARD_TYPES.TARGET_COMPUTER,
         CARD_TYPES.PHASER_ARRAY,
         CARD_TYPES.DISRUPTOR_CANNON,
@@ -477,7 +521,7 @@ export const RARITY_CARD_POOLS = {
         CARD_TYPES.PULSE_CANNON,
         CARD_TYPES.LONG_RANGE_SCANNER,
         CARD_TYPES.SUBSPACE_RADIO,
-        CARD_TYPES.GALACTIC_CHART,
+        // CARD_TYPES.GALACTIC_CHART, // Removed - player must acquire from missions/shop
         CARD_TYPES.TARGET_COMPUTER,
         CARD_TYPES.PHASER_ARRAY,
         CARD_TYPES.DISRUPTOR_CANNON,
@@ -767,7 +811,7 @@ export default class NFTCard {
         const sensorSystemTypes = [
             CARD_TYPES.LONG_RANGE_SCANNER,
             CARD_TYPES.SUBSPACE_RADIO,
-            CARD_TYPES.GALACTIC_CHART,
+            // CARD_TYPES.GALACTIC_CHART, // Removed - player must acquire from missions/shop
             CARD_TYPES.TARGET_COMPUTER,
             CARD_TYPES.BASIC_RADAR,
             CARD_TYPES.ADVANCED_RADAR,

@@ -770,9 +770,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                 try {
                     const module = await import('../ui/CardInventoryUI.js');
                     const CardInventoryUI = module.default;
-                    cardInventoryUI = new CardInventoryUI(null);
-                    cardInventoryUI.init();
-                    debug('MISSIONS', '🃏 Created new CardInventoryUI instance');
+                    cardInventoryUI = CardInventoryUI.getInstance(null);
                 } catch (importError) {
                     console.error('❌ MISSION COMPLETION: Failed to import CardInventoryUI:', importError);
                     return;

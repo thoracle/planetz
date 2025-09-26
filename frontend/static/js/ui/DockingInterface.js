@@ -24,14 +24,9 @@ export class DockingInterface {
         // Initialize station services
         this.stationRepairInterface = new StationRepairInterface(starfieldManager);
         
-        // Reuse existing CardInventoryUI if available, otherwise create new one
-        if (window.cardInventoryUI) {
-            this.cardInventoryUI = window.cardInventoryUI;
-            console.log('🔄 DOCKING: Reusing existing CardInventoryUI instance (preserves red badges)');
-        } else {
-            this.cardInventoryUI = new CardInventoryUI(null);
-            debug('UTILITY', '🆕 DOCKING: Created new CardInventoryUI instance');
-        }
+        // CRITICAL FIX: Use singleton CardInventoryUI instance to ensure single source of truth
+        // This prevents creating multiple instances that lose synchronization
+        this.cardInventoryUI = CardInventoryUI.getInstance(null);
         
         this.missionBoard = new MissionBoard(starfieldManager);
         this.commodityExchange = new CommodityExchange(starfieldManager);

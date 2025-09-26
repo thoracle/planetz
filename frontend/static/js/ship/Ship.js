@@ -731,8 +731,8 @@ debug('UI', 'Installing starter cards for new player...');
             // Import CardInventoryUI to create cards
             const { default: CardInventoryUI } = await import('../ui/CardInventoryUI.js');
             
-            // Create a temporary card inventory to generate cards
-            const tempInventory = new CardInventoryUI(null);
+            // Use singleton card inventory to generate cards
+            const tempInventory = CardInventoryUI.getInstance(null);
             
             // Install each starter card
             for (const [slotId, cardData] of Object.entries(this.shipConfig.starterCards)) {

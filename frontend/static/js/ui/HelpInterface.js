@@ -10,7 +10,8 @@ export class HelpInterface {
         this.isVisible = false;
         this.container = null;
         
-debug('UI', 'HelpInterface initialized');
+        debug('P1', '🔧 HelpInterface v2.0 - COMMIT 8bd0b7a - STARTER SHIP VERSION LOADED');
+        debug('UI', 'HelpInterface initialized');
     }
 
     /**
@@ -152,6 +153,7 @@ debug('UI', 'Ship Tech Manual closed');
         
         this.container.innerHTML = `
             <div class="tech-manual-display">
+                <div class="scan-line"></div>
                 <div class="manual-header">
                     <div class="manual-title">
                         <span class="ship-designation">${shipTypeDisplay}</span>
@@ -173,8 +175,6 @@ debug('UI', 'Ship Tech Manual closed');
                 
                 <div class="manual-content">
                     <div class="help-tab-content active" id="help-tab">
-                        <div class="scan-line"></div>
-                        
                         ${this.generateBasicControlsSection()}
                         ${this.generateMovementSection(context)}
                         ${this.generateSystemsSection(context)}
@@ -217,6 +217,9 @@ debug('UI', 'Ship Tech Manual closed');
         
         // Make interface globally accessible
         window.helpInterface = this;
+        
+        // Track current tab for dynamic updates
+        this.currentTab = 'help';
         
         // Add escape key handler
         this.addKeyHandler();
@@ -622,6 +625,7 @@ debug('UI', 'Ship Tech Manual closed');
         this.container.className = 'tech-manual-interface';
         this.container.innerHTML = `
             <div class="tech-manual-display">
+                <div class="scan-line"></div>
                 <div class="manual-header">
                     <div class="manual-title">
                         <span class="ship-designation">SHIP</span>
@@ -694,8 +698,11 @@ debug('UI', 'Ship Tech Manual closed');
                 border-radius: 12px;
                 width: 90%;
                 max-width: 1200px;
-                max-height: 90%;
-                overflow-y: auto;
+                height: 80vh;
+                max-height: 700px;
+                min-height: 600px;
+                display: flex;
+                flex-direction: column;
                 box-shadow: 0 0 30px rgba(0, 255, 65, 0.5), inset 0 0 20px rgba(0, 255, 65, 0.1);
                 position: relative;
             }
@@ -790,6 +797,9 @@ debug('UI', 'Ship Tech Manual closed');
                 position: relative;
                 z-index: 2;
                 line-height: 1.4;
+                flex: 1;
+                overflow-y: auto;
+                min-height: 0;
             }
 
             .scan-line {
@@ -799,14 +809,27 @@ debug('UI', 'Ship Tech Manual closed');
                 right: 0;
                 height: 2px;
                 background: linear-gradient(90deg, transparent, #00ff41, transparent);
-                animation: scanLine 2s linear infinite;
+                animation: scanLine 3s linear infinite;
                 opacity: 0.6;
+                z-index: 5;
+                pointer-events: none;
             }
 
             @keyframes scanLine {
-                0% { transform: translateY(0); opacity: 0; }
-                50% { opacity: 0.6; }
-                100% { transform: translateY(400px); opacity: 0; }
+                0% { 
+                    transform: translateY(0); 
+                    opacity: 0; 
+                }
+                10% { 
+                    opacity: 0.6; 
+                }
+                90% { 
+                    opacity: 0.6; 
+                }
+                100% { 
+                    transform: translateY(700px); 
+                    opacity: 0; 
+                }
             }
 
             .manual-section {
@@ -1144,14 +1167,303 @@ debug('UI', 'Ship Tech Manual closed');
                 overflow-y: auto;
             }
 
-            @keyframes fadeIn {
-                from { opacity: 0; transform: translateY(10px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-        `;
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
 
-        document.head.appendChild(style);
-    }
+                /* Collection Card Styling - Scoped to help interface */
+                .tech-manual-interface .collection-card-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                    gap: 15px;
+                    padding: 15px 0;
+                    max-height: 400px;
+                    overflow-y: auto;
+                }
+
+                .tech-manual-interface .collection-card-item {
+                    background: rgba(0, 20, 0, 0.6);
+                    border: 2px solid rgba(0, 255, 65, 0.4);
+                    border-radius: 8px;
+                    padding: 12px;
+                    display: flex;
+                    flex-direction: column;
+                    min-height: 160px;
+                    transition: all 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .tech-manual-interface .collection-card-item::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: repeating-linear-gradient(
+                        0deg,
+                        transparent,
+                        transparent 2px,
+                        rgba(0, 255, 65, 0.02) 2px,
+                        rgba(0, 255, 65, 0.02) 4px
+                    );
+                    pointer-events: none;
+                }
+
+                .tech-manual-interface .collection-card-item:hover {
+                    border-color: #00ff41;
+                    background: rgba(0, 255, 65, 0.1);
+                    box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+                    transform: translateY(-2px);
+                }
+
+                /* Rarity-based border colors */
+                .tech-manual-interface .collection-card-item[data-rarity="common"] {
+                    border-color: rgba(128, 128, 128, 0.6);
+                }
+                .tech-manual-interface .collection-card-item[data-rarity="rare"] {
+                    border-color: rgba(0, 150, 255, 0.6);
+                }
+                .tech-manual-interface .collection-card-item[data-rarity="epic"] {
+                    border-color: rgba(163, 53, 238, 0.6);
+                }
+                .tech-manual-interface .collection-card-item[data-rarity="legendary"] {
+                    border-color: rgba(255, 165, 0, 0.6);
+                }
+
+                .tech-manual-interface .card-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                    position: relative;
+                    z-index: 1;
+                }
+
+                .tech-manual-interface .card-icon {
+                    font-size: 24px;
+                    filter: drop-shadow(0 0 5px rgba(0, 255, 65, 0.5));
+                    margin-right: auto;
+                    flex-shrink: 0;
+                }
+
+                .tech-manual-interface .card-count-badge {
+                    background: rgba(0, 255, 65, 0.3);
+                    color: #00ff41;
+                    padding: 2px 8px;
+                    border-radius: 12px;
+                    font-size: 11px;
+                    font-weight: bold;
+                    font-family: 'Courier New', monospace;
+                    border: 1px solid rgba(0, 255, 65, 0.5);
+                    text-shadow: 0 0 3px rgba(0, 255, 65, 0.8);
+                    margin-left: auto;
+                    flex-shrink: 0;
+                }
+
+                .tech-manual-interface .card-body {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                    position: relative;
+                    z-index: 1;
+                }
+
+                .tech-manual-interface .card-name {
+                    font-family: 'Courier New', monospace;
+                    font-size: 12px;
+                    font-weight: bold;
+                    color: #ffffff;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    text-shadow: 0 0 3px rgba(0, 255, 65, 0.5);
+                    line-height: 1.2;
+                }
+
+                .tech-manual-interface .card-level {
+                    font-family: 'Courier New', monospace;
+                    font-size: 11px;
+                    color: #00ff41;
+                    font-weight: bold;
+                }
+
+                .tech-manual-interface .card-rarity {
+                    font-family: 'Courier New', monospace;
+                    font-size: 10px;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    opacity: 0.8;
+                }
+
+                .tech-manual-interface .card-rarity {
+                    color: #888;
+                }
+                .tech-manual-interface .collection-card-item[data-rarity="rare"] .card-rarity {
+                    color: #0096ff;
+                }
+                .tech-manual-interface .collection-card-item[data-rarity="epic"] .card-rarity {
+                    color: #a335ee;
+                }
+                .tech-manual-interface .collection-card-item[data-rarity="legendary"] .card-rarity {
+                    color: #ffa500;
+                }
+
+                .tech-manual-interface .card-footer {
+                    margin-top: 8px;
+                    position: relative;
+                    z-index: 1;
+                }
+
+                .tech-manual-interface .upgrade-button {
+                    background: rgba(0, 255, 65, 0.2);
+                    border: 1px solid #00ff41;
+                    color: #00ff41;
+                    padding: 4px 8px;
+                    font-size: 9px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    font-family: 'Courier New', monospace;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    width: 100%;
+                    transition: all 0.2s ease;
+                    animation: pulse-upgrade 2s infinite;
+                }
+
+                .tech-manual-interface .upgrade-button:hover {
+                    background: rgba(0, 255, 65, 0.3);
+                    box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+                    text-shadow: 0 0 5px #00ff41;
+                }
+
+                .tech-manual-interface .card-status {
+                    text-align: center;
+                    font-family: 'Courier New', monospace;
+                    font-size: 10px;
+                    color: #66ff66;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+
+                @keyframes pulse-upgrade {
+                    0%, 100% { 
+                        box-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+                    }
+                    50% { 
+                        box-shadow: 0 0 12px rgba(0, 255, 65, 0.6);
+                    }
+                }
+
+                /* NEW Badge Styling - matches card-count-badge shape and position exactly */
+                .tech-manual-interface .new-badge {
+                    background: linear-gradient(45deg, #ff4444, #ff6666);
+                    color: white;
+                    padding: 2px 8px;
+                    border-radius: 12px;
+                    font-size: 11px;
+                    font-weight: bold;
+                    font-family: 'Courier New', monospace;
+                    border: 1px solid #ff4444;
+                    text-shadow: 0 0 3px rgba(255, 68, 68, 0.8);
+                    animation: pulse-new 2s infinite;
+                    box-shadow: 0 0 10px rgba(255, 68, 68, 0.6);
+                    margin-left: auto;
+                    flex-shrink: 0;
+                }
+
+                .tech-manual-interface .has-new-badge {
+                    position: relative;
+                }
+
+                .tech-manual-interface .has-new-badge::before {
+                    content: '';
+                    position: absolute;
+                    top: -2px;
+                    left: -2px;
+                    right: -2px;
+                    bottom: -2px;
+                    background: linear-gradient(45deg, #ff4444, #ff6666, #ff4444);
+                    border-radius: 10px;
+                    z-index: -1;
+                    animation: pulse-new-border 2s infinite;
+                }
+
+                @keyframes pulse-new {
+                    0%, 100% { 
+                        transform: scale(1);
+                        opacity: 1;
+                    }
+                    50% { 
+                        transform: scale(1.1);
+                        opacity: 0.8;
+                    }
+                }
+
+                @keyframes pulse-new-border {
+                    0%, 100% { 
+                        opacity: 0.3;
+                    }
+                    50% { 
+                        opacity: 0.6;
+                    }
+                }
+
+                @keyframes pulse-red {
+                    0%, 100% { 
+                        background-color: #ff4444;
+                        transform: scale(1);
+                    }
+                    50% { 
+                        background-color: #ff6666;
+                        transform: scale(1.05);
+                    }
+                }
+
+                /* Ship's Log Entry Styling */
+                .tech-manual-interface .log-entry-system {
+                    color: #00ff41;
+                }
+
+                .tech-manual-interface .log-entry-ephemeral {
+                    color: #ffaa00;
+                    font-style: italic;
+                    background: rgba(255, 170, 0, 0.1);
+                    padding: 2px 4px;
+                    border-left: 2px solid #ffaa00;
+                    margin: 2px 0;
+                }
+
+                .tech-manual-interface .log-entry-ephemeral::before {
+                    content: '';
+                    display: inline-block;
+                    width: 6px;
+                    height: 6px;
+                    background: #ffaa00;
+                    border-radius: 50%;
+                    margin-right: 6px;
+                    animation: pulse-ephemeral 2s infinite;
+                }
+
+                @keyframes pulse-ephemeral {
+                    0%, 100% { 
+                        opacity: 0.6;
+                        transform: scale(1);
+                    }
+                    50% { 
+                        opacity: 1;
+                        transform: scale(1.2);
+                    }
+                }
+            `;
+            
+            document.head.appendChild(style);
+        }
 
     /**
      * Initialize tab switching functionality
@@ -1175,6 +1487,16 @@ debug('UI', 'Ship Tech Manual closed');
                     targetContent.classList.add('active');
                 }
                 
+                // Update current tab tracking
+                this.currentTab = targetTab;
+                
+                // Refresh dynamic content for specific tabs
+                if (targetTab === 'ships-log') {
+                    this.refreshShipsLogDisplay();
+                } else if (targetTab === 'collection') {
+                    this.refreshCollectionDisplay();
+                }
+                
                 debug('UI', `Switched to tab: ${targetTab}`);
             });
         });
@@ -1184,22 +1506,36 @@ debug('UI', 'Ship Tech Manual closed');
      * Generate Ship's Log content
      */
     generateShipsLogContent() {
+        // Get recent log entries from the global ship log
+        const recentEntries = window.shipLog ? window.shipLog.getRecentEntries(15) : [];
+        const totalEntries = window.shipLog ? window.shipLog.entries.length : 0;
+        
+        // Generate log entries HTML
+        const logEntriesHTML = recentEntries.length > 0 
+            ? recentEntries.map(entry => {
+                const typeClass = entry.type === 'ephemeral' ? 'log-entry-ephemeral' : 'log-entry-system';
+                const typeIcon = entry.type === 'ephemeral' ? '📡' : '•';
+                return `<div class="note-entry ${typeClass}">${typeIcon} [${entry.stardate}] ${entry.message}</div>`;
+            }).join('')
+            : '<div class="note-entry">• No log entries available</div>';
+        
         return `
             <div class="manual-section">
                 <div class="section-header">SHIP'S LOG</div>
-                <div class="system-status">Log entries are automatically recorded during flight operations</div>
+                <div class="system-status">
+                    Log entries are automatically recorded during flight operations
+                    ${window.gameConfig?.verbose ? ' • Ephemeral messages included' : ' • Ephemeral messages disabled'}
+                </div>
                 
                 <div class="tech-notes">
                     <div class="notes-header">RECENT ENTRIES</div>
-                    <div class="note-entry">• System startup completed - All systems nominal</div>
-                    <div class="note-entry">• Navigation computer online - Coordinates locked</div>
-                    <div class="note-entry">• Weapon systems armed and ready</div>
-                    <div class="note-entry">• Communications array operational</div>
+                    ${logEntriesHTML}
                 </div>
                 
                 <div class="system-status-footer">
                     <div class="status-line">LOG STATUS: ACTIVE</div>
-                    <div class="status-line">ENTRIES: 4 RECENT</div>
+                    <div class="status-line">ENTRIES: ${totalEntries} TOTAL</div>
+                    <div class="status-line">VERBOSE MODE: ${window.gameConfig?.verbose ? 'ENABLED' : 'DISABLED'}</div>
                 </div>
             </div>
         `;
@@ -1245,39 +1581,233 @@ debug('UI', 'Ship Tech Manual closed');
      * Generate Collection content
      */
     generateCollectionContent() {
+        // Get credits from global playerCredits if available
+        let credits = 0;
+        try {
+            if (window.playerCredits && window.playerCredits.getCredits) {
+                credits = window.playerCredits.getCredits();
+            }
+        } catch (error) {
+            debug('UI', 'Could not get player credits:', error);
+        }
+
         return `
             <div class="manual-section">
-                <div class="section-header">CARD COLLECTION</div>
-                <div class="system-status">Manage your ship upgrade cards and equipment</div>
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>CARD COLLECTION</span>
+                    <span style="font-size: 14px; color: #00ff41;">CREDITS: ${credits.toLocaleString()}</span>
+                </div>
                 
-                <div class="weapon-loadout">
-                    <div class="loadout-header">INSTALLED CARDS</div>
-                    <div class="weapon-entry">
-                        <span class="weapon-slot">SYS</span>
-                        <span class="weapon-name">Impulse Engines</span>
-                        <span class="weapon-level">LVL 1</span>
-                    </div>
-                    <div class="weapon-entry">
-                        <span class="weapon-slot">WPN</span>
-                        <span class="weapon-name">Laser Cannon</span>
-                        <span class="weapon-level">LVL 1</span>
-                    </div>
+                <div class="system-status">Card inventory and upgrade management</div>
+                
+                <div class="collection-grid-simple">
+                    ${this.generateSimpleCardList()}
                 </div>
                 
                 <div class="tech-notes">
-                    <div class="notes-header">COLLECTION STATS</div>
-                    <div class="note-entry">• Total Cards: 2</div>
-                    <div class="note-entry">• Unique Cards: 2</div>
-                    <div class="note-entry">• Rarity Distribution: 2 Common</div>
-                    <div class="note-entry">• Collection Completion: 8%</div>
-                </div>
-                
-                <div class="system-status-footer">
-                    <div class="status-line">INVENTORY: 2 CARDS</div>
-                    <div class="status-line">STORAGE: UNLIMITED</div>
+                    <div class="notes-header">COLLECTION STATUS</div>
+                    <div class="note-entry">• Access full collection interface at docking stations</div>
+                    <div class="note-entry">• Upgrade cards when you have sufficient duplicates</div>
+                    <div class="note-entry">• Higher level cards provide better performance</div>
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Generate a simple card list from the single source of truth
+     */
+    generateSimpleCardList() {
+        // SINGLE SOURCE OF TRUTH: Use the singleton CardInventoryUI instance
+        let cardData = [];
+        
+        try {
+            // Get the singleton instance - this is the single source of truth for all card data
+            const cardInventoryUI = window.cardInventoryUI;
+            
+            if (cardInventoryUI && cardInventoryUI.inventory) {
+                const discoveredCards = cardInventoryUI.inventory.getDiscoveredCards();
+                
+                cardData = discoveredCards.map(stack => ({
+                    name: stack.name,
+                    count: stack.count,
+                    level: stack.level,
+                    cardType: stack.sampleCard.cardType,
+                    rarity: stack.sampleCard.rarity,
+                    icon: stack.sampleCard.getIcon(),
+                    canUpgrade: this.checkCanUpgrade(stack),
+                    isNew: this.isCardNew(stack.sampleCard.cardType),
+                    hasQuantityIncrease: this.hasQuantityIncrease(stack.sampleCard.cardType)
+                }));
+                
+            } else {
+                debug('UI', '❌ ESC Collection: CardInventoryUI singleton not available');
+            }
+        } catch (error) {
+            debug('UI', 'Could not access card inventory:', error);
+        }
+
+        if (cardData.length === 0) {
+            return `
+                <div class="weapon-entry" style="text-align: center; padding: 20px;">
+                    <span style="color: #66ff66; font-style: italic;">
+                        Card collection data not available.<br>
+                        Visit a docking station to view your full collection.
+                    </span>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="collection-card-grid">
+                ${cardData.map(card => `
+                    <div class="collection-card-item ${card.isNew ? 'has-new-badge' : ''}" data-rarity="${card.rarity}">
+                        <div class="card-header">
+                            <div class="card-icon">${card.icon}</div>
+                            ${card.isNew ? 
+                                '<div class="new-badge">NEW</div>' : 
+                                `<div class="card-count-badge" ${card.hasQuantityIncrease ? 'style="background-color: #ff4444; color: white; font-weight: bold; animation: pulse-red 2s infinite;"' : ''}>x${card.count}</div>`
+                            }
+                        </div>
+                        <div class="card-body">
+                            <div class="card-name">${card.name}</div>
+                            <div class="card-level">Level ${card.level}</div>
+                            <div class="card-rarity">${card.rarity.toUpperCase()}</div>
+                        </div>
+                        <div class="card-footer">
+                            ${card.canUpgrade ? 
+                                `<button class="upgrade-button" onclick="window.helpInterface.upgradeCard('${card.cardType}')">⬆️ UPGRADE TO LEVEL ${card.level + 1}</button>` : 
+                                `<div class="card-status">${card.level >= 5 ? '🏆 MAX LEVEL' : 'Ready'}</div>`
+                            }
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    /**
+     * Simple check if a card can be upgraded (without complex dependencies)
+     */
+    checkCanUpgrade(stack) {
+        const upgradeCosts = {
+            2: { cards: 3, credits: 1000 },
+            3: { cards: 6, credits: 5000 },
+            4: { cards: 12, credits: 15000 },
+            5: { cards: 24, credits: 50000 }
+        };
+        
+        const nextLevel = stack.level + 1;
+        const maxLevel = 5;
+        
+        if (nextLevel > maxLevel) return false;
+        
+        const cost = upgradeCosts[nextLevel];
+        if (!cost) return false;
+        
+        const hasEnoughCards = stack.count >= cost.cards;
+        
+        // Try to check credits
+        let hasEnoughCredits = false;
+        try {
+            if (window.playerCredits && window.playerCredits.canAfford) {
+                hasEnoughCredits = window.playerCredits.canAfford(cost.credits);
+            }
+        } catch (error) {
+            // Assume false if we can't check
+        }
+        
+        return hasEnoughCards && hasEnoughCredits;
+    }
+
+    /**
+     * Check if a card should show the NEW badge (from CardInventoryUI system)
+     */
+    isCardNew(cardType) {
+        try {
+            if (window.cardInventoryUI && window.cardInventoryUI.isCardNew) {
+                return window.cardInventoryUI.isCardNew(cardType);
+            }
+            
+            // Fallback: check localStorage directly
+            const lastShopVisit = parseInt(localStorage.getItem('planetz_last_shop_visit') || '0');
+            const newCardTimestamps = JSON.parse(localStorage.getItem('planetz_new_card_timestamps') || '{}');
+            const cardTimestamp = newCardTimestamps[cardType];
+            return cardTimestamp && cardTimestamp > lastShopVisit;
+        } catch (error) {
+            debug('UI', 'Error checking if card is new:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Check if a card has a quantity increase (red badge from CardInventoryUI system)
+     */
+    hasQuantityIncrease(cardType) {
+        try {
+            if (window.cardInventoryUI && window.cardInventoryUI.hasQuantityIncrease) {
+                return window.cardInventoryUI.hasQuantityIncrease(cardType);
+            }
+            
+            // Fallback: check localStorage directly
+            const quantityIncreaseTimestamps = JSON.parse(localStorage.getItem('planetz_quantity_increase_timestamps') || '{}');
+            return !!quantityIncreaseTimestamps[cardType];
+        } catch (error) {
+            debug('UI', 'Error checking quantity increase:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Upgrade a card from the help screen collection
+     */
+    upgradeCard(cardType) {
+        debug('P1', `🔧 Attempting to upgrade card: ${cardType}`);
+        
+        try {
+            // Try to use the CardInventoryUI upgrade system
+            if (window.cardInventoryUI && window.cardInventoryUI.upgradeCard) {
+                const success = window.cardInventoryUI.upgradeCard(cardType);
+                if (success) {
+                    debug('P1', `✅ Successfully upgraded ${cardType}`);
+                    
+                    // Play upgrade sound if available
+                    if (window.cardInventoryUI.playUpgradeSound) {
+                        window.cardInventoryUI.playUpgradeSound();
+                    }
+                    
+                    // Refresh the collection display after a short delay
+                    setTimeout(() => {
+                        this.refreshCollectionDisplay();
+                    }, 100);
+                    
+                    return true;
+                } else {
+                    debug('P1', `❌ Failed to upgrade ${cardType} - insufficient resources`);
+                    return false;
+                }
+            } else {
+                debug('P1', '❌ CardInventoryUI not available for upgrade');
+                return false;
+            }
+        } catch (error) {
+            debug('P1', `❌ Error upgrading card ${cardType}:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Refresh the collection display with latest inventory data
+     */
+    refreshCollectionDisplay() {
+        try {
+            const collectionTab = document.getElementById('collection-tab');
+            if (collectionTab) {
+                collectionTab.innerHTML = this.generateCollectionContent();
+            }
+        } catch (error) {
+            debug('UI', 'Error refreshing collection display:', error);
+        }
     }
 
     /**
@@ -1285,6 +1815,11 @@ debug('UI', 'Ship Tech Manual closed');
      */
     generateAboutContent() {
         return `
+            <div class="manual-section">
+                <div class="section-header">STAR FUCKERS</div>
+                <div class="system-status">The Retro Space Shooter you never knew you needed.</div>
+            </div>
+
             <div class="manual-section">
                 <div class="section-header">DEVELOPMENT TEAM</div>
                 <div class="tech-notes">
@@ -1294,7 +1829,7 @@ debug('UI', 'Ship Tech Manual closed');
                     <div class="note-entry">Voice Acting: Chatterbox</div>
                 </div>
             </div>
-            
+
             <div class="manual-section">
                 <div class="section-header">INSPIRATION</div>
                 <div class="tech-notes">
@@ -1304,7 +1839,7 @@ debug('UI', 'Ship Tech Manual closed');
                     <div class="note-entry">Freelancer</div>
                 </div>
             </div>
-            
+
             <div class="manual-section">
                 <div class="section-header">SPECIAL THANKS</div>
                 <div class="tech-notes">

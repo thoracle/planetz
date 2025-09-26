@@ -860,6 +860,8 @@ debug('UTILITY', `🚀 Undock cooldown set: 10 seconds (until ${new Date(this.st
             const positionBeforeInit = this.starfieldManager.camera.position.clone();
 debug('UTILITY', `🚀 Camera position BEFORE system init: (${positionBeforeInit.x.toFixed(2)}, ${positionBeforeInit.y.toFixed(2)}, ${positionBeforeInit.z.toFixed(2)})`);
             
+        // SINGLE SOURCE OF TRUTH: No synchronization needed since both use the same singleton instance
+            
             // Reinitialize ship systems for space flight
             if (typeof this.starfieldManager.initializeShipSystems === 'function') {
                 this.starfieldManager.initializeShipSystems();
