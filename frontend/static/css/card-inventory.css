@@ -519,7 +519,7 @@
 
 .inventory-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 120px));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 15px;
     flex: 1;
     overflow-y: auto;
@@ -597,6 +597,144 @@
     border-color: #ffaa00; /* Rich gold */
     background: rgba(255, 170, 0, 0.15);
     box-shadow: 0 0 8px rgba(255, 170, 0, 0.5);
+}
+
+/* Enhanced Collection Card Styles - Matching ESC Collection Tab */
+.collection-card-item {
+    position: relative;
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(0, 255, 65, 0.4);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    min-height: 160px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    cursor: pointer;
+    backdrop-filter: blur(5px);
+}
+
+.collection-card-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 255, 65, 0.02) 2px,
+        rgba(0, 255, 65, 0.02) 4px
+    );
+    pointer-events: none;
+}
+
+.collection-card-item:hover {
+    border-color: #00ff41;
+    background: rgba(0, 255, 65, 0.1);
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Enhanced Rarity-based border colors and background tinting */
+.collection-card-item[data-rarity="common"] {
+    border-color: rgba(128, 128, 128, 0.8);
+    background: rgba(128, 128, 128, 0.25);
+}
+.collection-card-item[data-rarity="rare"] {
+    border-color: rgba(0, 150, 255, 0.8);
+    background: rgba(0, 150, 255, 0.25);
+}
+.collection-card-item[data-rarity="epic"] {
+    border-color: rgba(163, 53, 238, 0.8);
+    background: rgba(163, 53, 238, 0.25);
+}
+.collection-card-item[data-rarity="legendary"] {
+    border-color: rgba(255, 165, 0, 0.8);
+    background: rgba(255, 165, 0, 0.25);
+}
+
+.collection-card-item .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.collection-card-item .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+}
+
+.collection-card-item .card-footer {
+    margin-top: 8px;
+    position: relative;
+    z-index: 1;
+}
+
+.collection-card-item .card-icon {
+    position: static;
+    font-size: 24px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #00ff41;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.collection-card-item .card-name {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0 0 8px 0;
+    color: #00ff41;
+    text-transform: uppercase;
+}
+
+.collection-card-item .card-level {
+    font-size: 14px;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.collection-card-item .card-rarity {
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.collection-card-item .card-count-badge {
+    background: rgba(0, 255, 65, 0.9);
+    color: #000;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    min-width: 24px;
+    text-align: center;
+}
+
+/* Enhanced rarity text colors */
+.collection-card-item[data-rarity="common"] .card-rarity {
+    color: #888888;
+}
+.collection-card-item[data-rarity="rare"] .card-rarity {
+    color: #0096ff;
+}
+.collection-card-item[data-rarity="epic"] .card-rarity {
+    color: #a335ee;
+}
+.collection-card-item[data-rarity="legendary"] .card-rarity {
+    color: #ffa500;
 }
 
 .card-icon {

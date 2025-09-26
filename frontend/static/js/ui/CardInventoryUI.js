@@ -2506,18 +2506,24 @@ debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
         // Red badge detection for quantity increases
         
         return `
-            <div class="card-stack ${card.rarity} ${isNew ? 'has-new-badge' : ''}" 
+            <div class="collection-card-item ${isNew ? 'has-new-badge' : ''}" 
                  draggable="true"
                  data-card-type="${card.cardType}"
                  data-card-level="${stack.level}"
-                 data-card-rarity="${card.rarity}">
-                <div class="card-icon">${card.getIcon()}</div>
-                ${newBadge}
-                <div class="card-name">${stack.name}</div>
-                <div class="card-count" style="${countStyle}">x${stack.count}</div>
-                <div class="card-level">Lv.${stack.level}</div>
-                <div class="card-rarity" style="color: ${rarityColor}">${card.rarity.toUpperCase()}</div>
-                ${upgradeButton}
+                 data-rarity="${card.rarity}">
+                <div class="card-header">
+                    <div class="card-icon">${card.getIcon()}</div>
+                    ${newBadge}
+                    ${!isNew ? `<div class="card-count-badge" style="${countStyle}">x${stack.count}</div>` : ''}
+                </div>
+                <div class="card-body">
+                    <div class="card-name">${stack.name}</div>
+                    <div class="card-level">Level ${stack.level}</div>
+                    <div class="card-rarity" style="color: ${rarityColor}">${card.rarity.toUpperCase()}</div>
+                </div>
+                <div class="card-footer">
+                    ${upgradeButton}
+                </div>
             </div>
         `;
     }
