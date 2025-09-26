@@ -99,6 +99,9 @@ class WarpDriveManager {
                     throw new Error('SolarSystemManager not available');
                 }
                 
+                // CRITICAL FIX: Update sector in SolarSystemManager first
+                this.viewManager.solarSystemManager.setCurrentSector(currentSector);
+                
                 // Generate new star system and wait for completion
                 const generationSuccess = await this.viewManager.solarSystemManager.generateStarSystem(currentSector);
                 
@@ -107,9 +110,15 @@ class WarpDriveManager {
                     return;
                 }
 
+                // CRITICAL FIX: Trigger StarfieldManager sector update to reset all navigation systems
+                if (this.viewManager.starfieldManager) {
+                    debug('UTILITY', `🚀 Warp completion: Triggering StarfieldManager sector update for ${currentSector}`);
+                    // Force update all navigation systems (target computer, proximity radar, star charts)
+                    this.viewManager.starfieldManager.updateCurrentSector();
+                }
+
                 // Update galactic chart with new position
                 if (this.viewManager.galacticChart) {
-    
                     this.viewManager.galacticChart.setShipLocation(currentSector);
                 }
                 

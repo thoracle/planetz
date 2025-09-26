@@ -155,6 +155,18 @@ debug('NAVIGATION', 'Energy check passed, proceeding with navigation');
         if (this.viewManager.starfieldManager) {
 debug('TARGETING', 'Clearing target computer');
             this.viewManager.starfieldManager.clearTargetComputer();
+            
+            // CRITICAL FIX: Also deactivate proximity radar and reset star charts during warp
+            if (this.viewManager.starfieldManager.proximityDetector3D && this.viewManager.starfieldManager.proximityDetector3D.isVisible) {
+                debug('UTILITY', '🚀 Warp start: Deactivating proximity radar');
+                this.viewManager.starfieldManager.proximityDetector3D.toggle();
+            }
+            
+            // Update star charts to target sector (will be finalized on warp completion)
+            if (this.viewManager.starfieldManager.starChartsManager) {
+                debug('UTILITY', `🚀 Warp start: Preparing Star Charts for sector transition to ${targetSector}`);
+                // Don't update currentSector yet - that happens on completion
+            }
         }
         
         // Clear the old system now that we know we have enough energy
