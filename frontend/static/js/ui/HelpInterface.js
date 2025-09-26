@@ -23,6 +23,40 @@ export class HelpInterface {
                 console.log('❌ Help interface not available');
             }
         };
+        
+        // Debug helper to check current weapon system state
+        window.checkWeaponSystem = () => {
+            const ship = window.starfieldManager?.viewManager?.getShip();
+            if (!ship) {
+                console.log('❌ No ship found');
+                return;
+            }
+            
+            console.log('🚀 Ship Info:');
+            console.log(`  Type: ${ship.shipType}`);
+            console.log(`  Docked: ${window.starfieldManager?.isDocked}`);
+            console.log(`  Has weaponSystem: ${!!ship.weaponSystem}`);
+            
+            if (ship.weaponSystem) {
+                console.log('🔫 Weapon System:');
+                console.log(`  Slots: ${ship.weaponSystem.weaponSlots?.length || 0}`);
+                console.log(`  Active slot: ${ship.weaponSystem.activeSlotIndex}`);
+                
+                if (ship.weaponSystem.weaponSlots) {
+                    ship.weaponSystem.weaponSlots.forEach((slot, i) => {
+                        console.log(`  Slot ${i}: ${slot.isEmpty ? 'Empty' : slot.equippedWeapon?.name || 'Unknown'}`);
+                    });
+                }
+            }
+            
+            if (ship.weapons) {
+                console.log(`🗡️ Ship.weapons array: ${ship.weapons.length} items`);
+            }
+            
+            if (ship.weaponSyncManager) {
+                console.log('🔄 WeaponSyncManager available');
+            }
+        };
     }
 
     /**
@@ -86,7 +120,17 @@ debug('UI', 'Ship Tech Manual closed');
      */
     getShipContext() {
         const ship = this.starfieldManager?.viewManager?.getShip();
-        if (!ship) return null;
+        if (!ship) {
+            debug('UI', 'Help Screen: No ship found via starfieldManager.viewManager.getShip()');
+            return null;
+        }
+        
+        debug('UI', `Help Screen: Found ship type: ${ship.shipType}, docked: ${this.starfieldManager?.isDocked || 'unknown'}`);
+        
+        // Check if we're docked and if that affects weapon system access
+        if (this.starfieldManager?.isDocked) {
+            debug('UI', 'Help Screen: Ship is docked - checking weapon system availability');
+        }
 
         // Get the most current ship type - check multiple sources
         let shipType = ship.shipType;
@@ -138,25 +182,39 @@ debug('UI', 'Ship Tech Manual closed');
         
         // Get equipped weapons - ensure we get fresh data
         if (ship.weaponSystem) {
-            debug('UI', `Help Screen: Reading ${ship.weaponSystem.weaponSlots.length} weapon slots`);
+            debug('UI', `Help Screen: Found weapon system with ${ship.weaponSystem.weaponSlots.length} slots`);
+            debug('UI', `Help Screen: Weapon system active slot: ${ship.weaponSystem.activeSlotIndex}`);
             
-            for (let i = 0; i < ship.weaponSystem.weaponSlots.length; i++) {
-                const slot = ship.weaponSystem.weaponSlots[i];
-                debug('UI', `Slot ${i}: isEmpty=${slot.isEmpty}, weapon=${slot.equippedWeapon?.name || 'none'}`);
-                
-                if (!slot.isEmpty && slot.equippedWeapon) {
-                    equippedWeapons.push({
-                        name: slot.equippedWeapon.name,
-                        type: slot.equippedWeapon.cardType,
-                        level: slot.equippedWeapon.level,
-                        slotIndex: i
-                    });
+            // Check if weapon system is properly initialized
+            if (ship.weaponSystem.weaponSlots && ship.weaponSystem.weaponSlots.length > 0) {
+                for (let i = 0; i < ship.weaponSystem.weaponSlots.length; i++) {
+                    const slot = ship.weaponSystem.weaponSlots[i];
+                    debug('UI', `Slot ${i}: isEmpty=${slot.isEmpty}, weapon=${slot.equippedWeapon?.name || 'none'}, cardType=${slot.equippedWeapon?.cardType || 'none'}`);
+                    
+                    if (!slot.isEmpty && slot.equippedWeapon) {
+                        equippedWeapons.push({
+                            name: slot.equippedWeapon.name,
+                            type: slot.equippedWeapon.cardType,
+                            level: slot.equippedWeapon.level,
+                            slotIndex: i
+                        });
+                    }
                 }
+            } else {
+                debug('UI', 'Help Screen: Weapon system has no slots or empty slots array');
             }
             
-            debug('UI', `Help Screen: Found ${equippedWeapons.length} equipped weapons`);
+            debug('UI', `Help Screen: Final equipped weapons list: ${JSON.stringify(equippedWeapons.map(w => w.name))}`);
         } else {
-            debug('UI', 'Help Screen: No weapon system found');
+            debug('UI', 'Help Screen: No weapon system found on ship');
+            
+            // Try alternative ways to get weapon data
+            if (ship.weapons) {
+                debug('UI', `Help Screen: Found ship.weapons array with ${ship.weapons.length} items`);
+            }
+            if (ship.weaponSyncManager) {
+                debug('UI', 'Help Screen: Found weaponSyncManager on ship');
+            }
         }
         
         return {
