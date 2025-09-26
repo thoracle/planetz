@@ -2573,12 +2573,14 @@ debug('UTILITY', `Loading stored configuration for ${shipType}`);
         const config = playerData.getShipConfiguration(shipType);
         this.shipSlots.clear();
         
-        // If no stored configuration exists and this is a starter ship, load default starter cards
-        if (config.size === 0 && shipType === 'starter_ship') {
+        // If no stored configuration exists, load default starter cards for this ship type
+        if (config.size === 0) {
 debug('UI', `No stored configuration found for ${shipType}, loading default starter cards`);
             
-            const shipConfig = SHIP_CONFIGS[shipType];
-            if (shipConfig && shipConfig.starterCards) {
+            // Use centralized getStarterCards function instead of shipConfig.starterCards
+            const starterCards = getStarterCards(shipType);
+            if (Object.keys(starterCards).length > 0) {
+                const shipConfig = SHIP_CONFIGS[shipType];
                 // Map starter card slots to proper slot indices based on slotConfig
                 const slotTypeMapping = this.generateSlotTypeMapping(shipConfig);
                 const slotTypeToIndex = {};
@@ -2592,7 +2594,7 @@ debug('UI', `No stored configuration found for ${shipType}, loading default star
                 });
                 
                 // Load starter cards into appropriate slots
-                Object.entries(shipConfig.starterCards).forEach(([starterSlotId, cardData]) => {
+                Object.entries(starterCards).forEach(([starterSlotId, cardData]) => {
                     const cardType = cardData.cardType;
                     const level = cardData.level || 1;
                     
