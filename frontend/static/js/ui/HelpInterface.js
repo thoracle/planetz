@@ -57,6 +57,40 @@ export class HelpInterface {
                 console.log('🔄 WeaponSyncManager available');
             }
         };
+        
+        // Debug helper to manually clear and reinitialize weapon system
+        window.clearWeaponSystem = async () => {
+            const ship = window.starfieldManager?.viewManager?.getShip();
+            if (!ship) {
+                console.log('❌ No ship found');
+                return;
+            }
+            
+            console.log('🔫 Clearing weapon system...');
+            
+            // Clear weapon system
+            if (ship.weaponSystem) {
+                ship.weaponSystem = null;
+                console.log('✅ Cleared weaponSystem');
+            }
+            
+            // Clear weapon sync manager
+            if (ship.weaponSyncManager) {
+                ship.weaponSyncManager.weaponSystem = null;
+                ship.weaponSyncManager.weapons.clear();
+                console.log('✅ Cleared weaponSyncManager');
+            }
+            
+            // Reinitialize weapon system
+            if (ship.weaponSyncManager) {
+                console.log('🔄 Reinitializing weapon system...');
+                ship.weaponSystem = await ship.weaponSyncManager.initializeWeapons();
+                console.log('✅ Weapon system reinitialized');
+                
+                // Check result
+                window.checkWeaponSystem();
+            }
+        };
     }
 
     /**

@@ -1680,6 +1680,17 @@ debug('UI', `📦 Loading saved configuration for ${shipType}:`, savedConfig.siz
                     // Clear existing cards and load from saved configuration
                     this.ship.cardSystemIntegration.installedCards.clear();
                     
+                    // CRITICAL FIX: Also clear any existing weapon system to prevent stale data
+                    if (this.ship.weaponSystem) {
+                        debug('COMBAT', '🔫 Clearing existing weapon system during ship switch');
+                        this.ship.weaponSystem = null;
+                    }
+                    if (this.ship.weaponSyncManager) {
+                        debug('COMBAT', '🔫 Clearing weapon sync manager during ship switch');
+                        this.ship.weaponSyncManager.weaponSystem = null;
+                        this.ship.weaponSyncManager.weapons.clear();
+                    }
+                    
                     savedConfig.forEach((cardData, slotId) => {
                         if (cardData && cardData.cardType) {
                             this.ship.cardSystemIntegration.installedCards.set(slotId, {
