@@ -1782,6 +1782,16 @@ debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
             'singularity_launcher': ['weapons'],
             'void_ripper': ['weapons'],
             'nanite_swarm': ['weapons'],
+            // Specialized combat weapons (AI-compatible)
+            'energy_pulse_cannon': ['weapons'],
+            'energy_cannon': ['weapons'],
+            'long_range_beam': ['weapons'],
+            'defensive_turret': ['weapons'],
+            'dual_turret': ['weapons'],
+            // Advanced weapon systems
+            'missile_launcher': ['weapons'],
+            'point_defense': ['weapons'],
+            'missile_pod': ['weapons'],
             // Projectile weapons
             'standard_missile': ['weapons'],
             'homing_missile': ['weapons'],
@@ -3070,13 +3080,17 @@ debug('UI', `Loaded ${this.shipSlots.size} cards from current ship`);
      */
     isWeaponCard(cardType) {
         const weaponCards = [
-            // Scan-hit weapons (lasers)
+            // Energy weapons (lasers, beams, cannons)
             'laser_cannon', 'pulse_cannon', 'plasma_cannon', 'phaser_array', 'disruptor_cannon', 
             'particle_beam', 'ion_storm_cannon', 'graviton_beam', 
+            // Specialized combat weapons (AI-compatible)
+            'energy_pulse_cannon', 'energy_cannon', 'long_range_beam', 'defensive_turret', 'dual_turret',
+            // Advanced weapon systems
+            'missile_launcher', 'point_defense', 'missile_pod',
             // Projectile weapons (missiles, torpedoes, mines)
             'standard_missile', 'homing_missile', 'photon_torpedo', 'proximity_mine',
-            // Legacy/other weapons
-            'quantum_torpedo', 'singularity_launcher', 'void_ripper'
+            // Exotic weapons
+            'quantum_torpedo', 'singularity_launcher', 'void_ripper', 'nanite_swarm'
         ];
         return weaponCards.includes(cardType);
     }
