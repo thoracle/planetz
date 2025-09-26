@@ -12,6 +12,17 @@ export class HelpInterface {
         
         debug('P1', '🔧 HelpInterface v2.0 - COMMIT 8bd0b7a - STARTER SHIP VERSION LOADED');
         debug('UI', 'HelpInterface initialized');
+        
+        // Debug helper for testing help screen refresh
+        window.refreshHelpScreen = () => {
+            if (window.starfieldManager?.helpInterface) {
+                console.log('🔄 Manually refreshing help screen...');
+                window.starfieldManager.helpInterface.forceRefresh();
+                console.log('✅ Help screen refreshed');
+            } else {
+                console.log('❌ Help interface not available');
+            }
+        };
     }
 
     /**
@@ -21,9 +32,31 @@ export class HelpInterface {
         if (this.isVisible) return;
         
         this.isVisible = true;
+        // Always create fresh interface to ensure current weapon loadout is displayed
         this.createInterface();
         
-debug('UI', 'Ship Tech Manual displayed');
+        debug('UI', 'Ship Tech Manual displayed with current loadout');
+    }
+
+    /**
+     * Force refresh the help interface (called when weapons change)
+     */
+    forceRefresh() {
+        if (this.isVisible) {
+            debug('UI', 'Force refreshing help screen with current weapon data');
+            this.createInterface();
+        }
+    }
+
+    /**
+     * Refresh the help interface content (useful after weapon changes)
+     */
+    refresh() {
+        if (this.isVisible) {
+            // Recreate interface with current data
+            this.createInterface();
+            debug('UI', 'Help interface refreshed with current loadout');
+        }
     }
 
     /**
@@ -103,10 +136,14 @@ debug('UI', 'Ship Tech Manual closed');
             }
         }
         
-        // Get equipped weapons
+        // Get equipped weapons - ensure we get fresh data
         if (ship.weaponSystem) {
+            debug('UI', `Help Screen: Reading ${ship.weaponSystem.weaponSlots.length} weapon slots`);
+            
             for (let i = 0; i < ship.weaponSystem.weaponSlots.length; i++) {
                 const slot = ship.weaponSystem.weaponSlots[i];
+                debug('UI', `Slot ${i}: isEmpty=${slot.isEmpty}, weapon=${slot.equippedWeapon?.name || 'none'}`);
+                
                 if (!slot.isEmpty && slot.equippedWeapon) {
                     equippedWeapons.push({
                         name: slot.equippedWeapon.name,
@@ -116,6 +153,10 @@ debug('UI', 'Ship Tech Manual closed');
                     });
                 }
             }
+            
+            debug('UI', `Help Screen: Found ${equippedWeapons.length} equipped weapons`);
+        } else {
+            debug('UI', 'Help Screen: No weapon system found');
         }
         
         return {

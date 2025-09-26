@@ -1735,6 +1735,12 @@ debug('UI', '🔄 Ship systems refreshed after card installation');
             // Update the slot display
             this.renderShipSlots();
             
+            // Refresh help screen if it's open and this was a weapon card
+            if (this.isWeaponCard(card.cardType) && window.starfieldManager?.helpInterface?.isVisible) {
+                window.starfieldManager.helpInterface.forceRefresh();
+                debug('UI', '🔄 Help screen refreshed after weapon installation');
+            }
+            
 debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
             
         } catch (error) {
@@ -2295,6 +2301,12 @@ debug('UI', '🔄 Ship systems refreshed after card removal');
             
             // Update the slot display
             this.renderShipSlots();
+            
+            // Refresh help screen if it's open and this was a weapon card
+            if (this.isWeaponCard(card.cardType) && window.starfieldManager?.helpInterface?.isVisible) {
+                window.starfieldManager.helpInterface.forceRefresh();
+                debug('UI', '🔄 Help screen refreshed after weapon removal');
+            }
             
 debug('UI', `🗑️ Removed ${card.cardType} from slot ${slotId}`);
 debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
