@@ -985,16 +985,20 @@ debug('UTILITY', 'Set dockingInitiated=true to prevent modal reappearing');
             }
         } else {
             console.warn('❌ Docking validation failed');
+            
+            // CRITICAL FIX: Get target info to avoid undefined variable error
+            const targetInfo = this.starfieldManager.solarSystemManager?.getCelestialBodyInfo(targetToUse);
+            
             const distance = this.starfieldManager.calculateDistance(
                 this.starfieldManager.camera.position,
                 targetToUse.position
             );
-            const dockingRange = targetToUse?.userData?.dockingRange || (info?.type === 'planet' ? 4.0 : 1.5);
+            const dockingRange = targetToUse?.userData?.dockingRange || (targetInfo?.type === 'planet' ? 4.0 : 1.5);
             console.log('📊 Docking failure details:', {
                 distance: distance.toFixed(2),
                 maxRange: dockingRange,
                 currentSpeed: this.starfieldManager.currentSpeed,
-                targetType: info?.type
+                targetType: targetInfo?.type
             });
             if (distance > dockingRange) {
                 this.updateStatusWithError(`Docking failed: Distance ${distance.toFixed(1)}km > ${dockingRange}km range`);
@@ -1003,7 +1007,7 @@ debug('UTILITY', 'Set dockingInitiated=true to prevent modal reappearing');
                 this.updateStatusWithError(`Docking failed: Speed too high (current: ${this.starfieldManager.currentSpeed})`);
                 console.warn(`Docking failed - Distance: ${distance.toFixed(2)}km (max: ${dockingRange}km), Speed: ${this.starfieldManager.currentSpeed}`);
             }
-            const failedTargetName = info?.name || targetToUse?.userData?.name || 'unknown_target';
+            const failedTargetName = targetInfo?.name || targetToUse?.userData?.name || 'unknown_target';
             this.failureCooldowns.set(failedTargetName, Date.now());
             this.hide();
         }

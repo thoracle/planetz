@@ -3096,6 +3096,18 @@ debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
                 }
             }
             
+            // CRITICAL FIX: Reset proximity radar state before sector change (like target computer)
+            if (this.proximityDetector3D && this.proximityDetector3D.isVisible) {
+                debug('UTILITY', '🎯 Sector change: Deactivating proximity radar');
+                this.proximityDetector3D.toggle(); // Deactivate proximity radar
+            }
+            
+            // CRITICAL FIX: Update Star Charts current sector before generating new system
+            if (this.starChartsManager) {
+                debug('UTILITY', `🗺️ Sector change: Updating Star Charts from ${this.starChartsManager.currentSector} to ${currentSector}`);
+                this.starChartsManager.currentSector = currentSector;
+            }
+            
             this.solarSystemManager.setCurrentSector(currentSector);
             // Generate new star system for the sector
             this.solarSystemManager.generateStarSystem(currentSector);

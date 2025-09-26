@@ -1547,14 +1547,14 @@ debug('RENDER', `🔧 Rendered ${config.systemSlots} ship slots for ${config.nam
     setupEventListeners() {
         // Add drag start event listeners to all cards
         document.addEventListener('dragstart', (e) => {
-            if (e.target.classList.contains('card-stack')) {
+            if (e.target.classList.contains('card-stack') || e.target.classList.contains('collection-card-item')) {
                 this.handleDragStart(e);
             }
         });
         
         // Add drag end event listeners
         document.addEventListener('dragend', (e) => {
-            if (e.target.classList.contains('card-stack')) {
+            if (e.target.classList.contains('card-stack') || e.target.classList.contains('collection-card-item')) {
                 this.handleDragEnd(e);
             }
         });
