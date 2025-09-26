@@ -78,6 +78,14 @@ export class AchievementSystem {
             }
         };
         
+        // Debug helper to fix corrupted achievements
+        window.fixAchievements = () => {
+            console.log('🔧 Manually validating and fixing achievement data...');
+            this.validateAchievementData();
+            console.log('✅ Achievement validation complete');
+            return this.getStatistics();
+        };
+        
         debug('ACHIEVEMENTS', '🏆 Achievement system initialized');
     }
     
@@ -299,14 +307,17 @@ export class AchievementSystem {
             return null;
         }
         
+        // Double-check unlock status to prevent display bugs
+        const actuallyUnlocked = progress.unlocked && progress.current >= achievement.requirements.target;
+        
         return {
             ...achievement,
             progress: {
                 current: progress.current,
                 target: achievement.requirements.target,
                 percentage: Math.min(100, (progress.current / achievement.requirements.target) * 100),
-                unlocked: progress.unlocked,
-                unlockedAt: progress.unlockedAt
+                unlocked: actuallyUnlocked,
+                unlockedAt: actuallyUnlocked ? progress.unlockedAt : null
             }
         };
     }
@@ -370,10 +381,39 @@ export class AchievementSystem {
                 this.playerProgress = new Map(progressData.playerProgress || []);
                 this.unlockedAchievements = new Set(progressData.unlockedAchievements || []);
                 
+                // Validate loaded data - fix any corrupted achievements
+                this.validateAchievementData();
+                
                 debug('ACHIEVEMENTS', `📂 Loaded progress: ${this.unlockedAchievements.size} achievements unlocked`);
             }
         } catch (error) {
             debug('ACHIEVEMENTS', '❌ Failed to load achievement progress:', error);
+        }
+    }
+
+    /**
+     * Validate achievement data and fix any corruption
+     */
+    validateAchievementData() {
+        let fixedCount = 0;
+        
+        this.achievements.forEach((achievement, id) => {
+            const progress = this.playerProgress.get(id);
+            if (progress) {
+                // Check if achievement is marked as unlocked but doesn't meet requirements
+                if (progress.unlocked && progress.current < achievement.requirements.target) {
+                    debug('ACHIEVEMENTS', `🔧 Fixing corrupted achievement: ${achievement.name} (${progress.current}/${achievement.requirements.target})`);
+                    progress.unlocked = false;
+                    progress.unlockedAt = null;
+                    this.unlockedAchievements.delete(id);
+                    fixedCount++;
+                }
+            }
+        });
+        
+        if (fixedCount > 0) {
+            debug('ACHIEVEMENTS', `🔧 Fixed ${fixedCount} corrupted achievements`);
+            this.saveProgress();
         }
     }
     

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Achievement Fix Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #0f0;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+        }
+        .achievement {
+            margin: 10px 0;
+            padding: 10px;
+            background: #001100;
+            border-left: 3px solid #0f0;
+        }
+        .unlocked {
+            background: #002200;
+            border-left-color: #ff0;
+        }
+        .locked {
+            background: #110000;
+            border-left-color: #f00;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        button:hover {
+            background: #ff0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏆 Achievement System Fix Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Controls</h2>
+        <button onclick="testCorruptedData()">🔧 Test Corrupted Data Fix</button>
+        <button onclick="testNormalProgress()">📊 Test Normal Progress</button>
+        <button onclick="clearAchievements()">🗑️ Clear All Data</button>
+        <button onclick="showCurrentState()">👁️ Show Current State</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Achievement Status</h2>
+        <div id="achievement-display"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Log</h2>
+        <div id="test-log"></div>
+    </div>
+
+    <script type="module">
+        import { AchievementSystem } from './frontend/static/js/systems/AchievementSystem.js';
+        
+        // Initialize achievement system
+        const achievementSystem = new AchievementSystem();
+        
+        function log(message) {
+            const logDiv = document.getElementById('test-log');
+            logDiv.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function displayAchievements() {
+            const display = document.getElementById('achievement-display');
+            const explorationAchievements = achievementSystem.getAchievementsByCategory('exploration');
+            
+            display.innerHTML = explorationAchievements.map(achievement => {
+                const progress = achievement.progress;
+                const statusClass = progress.unlocked ? 'unlocked' : 'locked';
+                const statusIcon = progress.unlocked ? '✅' : '⏳';
+                
+                return `
+                    <div class="achievement ${statusClass}">
+                        <strong>${achievement.name}</strong> ${statusIcon}<br>
+                        ${achievement.description}<br>
+                        Progress: ${progress.current}/${progress.target} (${Math.round(progress.percentage)}%)<br>
+                        Status: ${progress.unlocked ? 'UNLOCKED' : 'LOCKED'}
+                        ${progress.unlockedAt ? `<br>Unlocked: ${new Date(progress.unlockedAt).toLocaleString()}` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Test functions
+        window.testCorruptedData = function() {
+            log('🔧 Testing corrupted data scenario...');
+            
+            // Simulate corrupted data by manually setting achievements as unlocked with insufficient progress
+            const corruptedData = {
+                playerProgress: [
+                    ['explorer_novice', { current: 4, unlocked: true, unlockedAt: '2025-09-25T12:00:00.000Z' }],
+                    ['explorer_apprentice', { current: 4, unlocked: true, unlockedAt: '2025-09-25T12:00:00.000Z' }]
+                ],
+                unlockedAchievements: ['explorer_novice', 'explorer_apprentice']
+            };
+            
+            localStorage.setItem('planetz_achievements', JSON.stringify(corruptedData));
+            log('💾 Saved corrupted achievement data to localStorage');
+            
+            // Reload the achievement system
+            location.reload();
+        };
+        
+        window.testNormalProgress = function() {
+            log('📊 Testing normal progress...');
+            achievementSystem.updateDiscoveryProgress(4);
+            displayAchievements();
+            log('✅ Updated discovery progress to 4');
+        };
+        
+        window.clearAchievements = function() {
+            log('🗑️ Clearing all achievement data...');
+            localStorage.removeItem('planetz_achievements');
+            location.reload();
+        };
+        
+        window.showCurrentState = function() {
+            log('👁️ Current achievement state:');
+            const stats = achievementSystem.getStatistics();
+            log(`Total: ${stats.total}, Unlocked: ${stats.unlocked}, Percentage: ${stats.percentage}%`);
+            displayAchievements();
+        };
+        
+        // Initial display
+        displayAchievements();
+        log('🚀 Achievement test page loaded');
+    </script>
+</body>
+</html>
