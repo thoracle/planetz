@@ -1836,11 +1836,94 @@ debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
             'probability_drive': ['utility'],
             'chaos_field_gen': ['utility'],
             'reality_anchor': ['utility'],
-            'entropy_reverser': ['utility']
+            'entropy_reverser': ['utility'],
+            
+            // Capital Ship Systems (RESTRICTED - Capital ships and stations only)
+            'landing_bay': ['capital'],
+            'fighter_launch_bay': ['capital'],
+            'shuttle_bay': ['capital'],
+            'ship_construction_bay': ['capital'],
+            'repair_facility': ['capital'],
+            'manufacturing_plant': ['capital'],
+            'fleet_command_center': ['capital'],
+            'communications_array': ['capital'],
+            'battle_bridge': ['capital'],
+            'point_defense_grid': ['capital'],
+            'shield_array': ['capital'],
+            'reactor_core': ['capital'],
+            'cargo_processing_center': ['capital'],
+            'medical_bay': ['capital'],
+            'science_lab': ['capital'],
+            
+            // Station-Specific Systems (RESTRICTED - Stations only)
+            'mining_array': ['station'],
+            'industrial_fabricator': ['station'],
+            'security_complex': ['station'],
+            'observatory_array': ['station'],
+            'logistics_center': ['station'],
+            'frontier_command': ['station']
         };
         
         const allowedSlots = cardToSlotMapping[cardType] || ['utility']; // Default to utility
+        
+        // CRITICAL: Block capital ship and station cards from regular ships
+        if (allowedSlots.includes('capital') || allowedSlots.includes('station')) {
+            // Check if this is a capital ship or station
+            const isCapitalShip = this.isCapitalShipType(this.currentShipType);
+            const isStation = this.isStationType(this.currentShipType);
+            
+            if (allowedSlots.includes('capital') && !isCapitalShip && !isStation) {
+                debug('UI', `❌ CAPITAL SHIP RESTRICTION: ${cardType} cannot be installed on regular ship ${this.currentShipType}`);
+                return false; // Block capital ship cards from regular ships
+            }
+            
+            if (allowedSlots.includes('station') && !isStation) {
+                debug('UI', `❌ STATION RESTRICTION: ${cardType} cannot be installed on non-station ${this.currentShipType}`);
+                return false; // Block station cards from ships
+            }
+            
+            // If we get here, it's a valid capital ship/station, allow utility slot placement
+            return slotType === 'utility';
+        }
+        
         return allowedSlots.includes(slotType);
+    }
+
+    /**
+     * Check if a ship type is a capital ship (can use capital ship systems)
+     */
+    isCapitalShipType(shipType) {
+        const capitalShipTypes = [
+            'carrier',           // Primary capital ship
+            'heavy_freighter',   // Largest cargo vessel (can use some capital systems)
+            'destroyer',         // Future capital ship
+            'battleship',        // Future capital ship
+            'cruiser'            // Future capital ship
+        ];
+        return capitalShipTypes.includes(shipType);
+    }
+
+    /**
+     * Check if a ship type is a station (can use station-specific systems)
+     */
+    isStationType(shipType) {
+        const stationTypes = [
+            'space_station',     // Generic space station
+            'asteroid_mine',     // Resource extraction
+            'refinery',          // Material processing
+            'storage_depot',     // Cargo warehouse
+            'research_lab',      // Scientific research
+            'repair_station',    // Ship maintenance
+            'frontier_outpost',  // Multi-purpose base
+            'prison',            // Detention facility
+            'shipyard',          // Ship construction
+            'defense_platform',  // Military fortress
+            'factory',           // Manufacturing
+            'communications_array', // Comms hub
+            'listening_post',    // Intelligence gathering
+            'orbital_telescope'  // Deep space observation
+        ];
+        return stationTypes.includes(shipType);
     }
 
     /**
