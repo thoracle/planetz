@@ -1503,6 +1503,20 @@ debug('UI', 'Ship Tech Manual closed');
     }
 
     /**
+     * Refresh the ship's log display with latest entries
+     */
+    refreshShipsLogDisplay() {
+        try {
+            const shipsLogTab = document.getElementById('ships-log-tab');
+            if (shipsLogTab) {
+                shipsLogTab.innerHTML = this.generateShipsLogContent();
+            }
+        } catch (error) {
+            debug('UI', 'Error refreshing ships log display:', error);
+        }
+    }
+
+    /**
      * Generate Ship's Log content
      */
     generateShipsLogContent() {
