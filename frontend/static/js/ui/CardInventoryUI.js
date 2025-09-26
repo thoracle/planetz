@@ -2400,8 +2400,7 @@ debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
         // Red badge detection for quantity increases
         
         return `
-            <div class="card-stack ${isNew ? 'has-new-badge' : ''}" 
-                 style="border-color: ${rarityColor}" 
+            <div class="card-stack ${card.rarity} ${isNew ? 'has-new-badge' : ''}" 
                  draggable="true"
                  data-card-type="${card.cardType}"
                  data-card-level="${stack.level}"

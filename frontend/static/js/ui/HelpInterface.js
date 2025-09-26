@@ -1183,7 +1183,7 @@ debug('UI', 'Ship Tech Manual closed');
                 }
 
                 .tech-manual-interface .collection-card-item {
-                    background: rgba(0, 20, 0, 0.6);
+                    background: rgba(0, 0, 0, 0.4);
                     border: 2px solid rgba(0, 255, 65, 0.4);
                     border-radius: 8px;
                     padding: 12px;
@@ -1219,18 +1219,22 @@ debug('UI', 'Ship Tech Manual closed');
                     transform: translateY(-2px);
                 }
 
-                /* Rarity-based border colors */
+                /* Rarity-based border colors and background tinting */
                 .tech-manual-interface .collection-card-item[data-rarity="common"] {
                     border-color: rgba(128, 128, 128, 0.6);
+                    background: rgba(128, 128, 128, 0.15);
                 }
                 .tech-manual-interface .collection-card-item[data-rarity="rare"] {
                     border-color: rgba(0, 150, 255, 0.6);
+                    background: rgba(0, 150, 255, 0.15);
                 }
                 .tech-manual-interface .collection-card-item[data-rarity="epic"] {
                     border-color: rgba(163, 53, 238, 0.6);
+                    background: rgba(163, 53, 238, 0.15);
                 }
                 .tech-manual-interface .collection-card-item[data-rarity="legendary"] {
                     border-color: rgba(255, 165, 0, 0.6);
+                    background: rgba(255, 165, 0, 0.15);
                 }
 
                 .tech-manual-interface .card-header {
@@ -1460,6 +1464,130 @@ debug('UI', 'Ship Tech Manual closed');
                         transform: scale(1.2);
                     }
                 }
+
+                /* Achievement Styles */
+                .achievements-container {
+                    padding: 20px;
+                }
+
+                .achievements-header {
+                    margin-bottom: 20px;
+                    border-bottom: 1px solid rgba(0, 255, 65, 0.3);
+                    padding-bottom: 10px;
+                }
+
+                .achievements-header h3 {
+                    color: #00ff41;
+                    margin: 0 0 10px 0;
+                    font-size: 18px;
+                }
+
+                .achievement-stats {
+                    color: #00dd88;
+                    font-size: 14px;
+                }
+
+                .achievement-category {
+                    margin-bottom: 25px;
+                }
+
+                .achievement-category h4 {
+                    color: #00ff41;
+                    margin: 0 0 15px 0;
+                    font-size: 16px;
+                    border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+                    padding-bottom: 5px;
+                }
+
+                .achievement-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                .achievement-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                    background: rgba(0, 20, 0, 0.4);
+                    border: 1px solid rgba(0, 255, 65, 0.3);
+                    border-radius: 8px;
+                    padding: 15px;
+                    transition: all 0.3s ease;
+                }
+
+                .achievement-item.unlocked {
+                    border-color: rgba(0, 255, 65, 0.6);
+                    background: rgba(0, 255, 65, 0.05);
+                    box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+                }
+
+                .achievement-item.locked {
+                    opacity: 0.7;
+                }
+
+                .achievement-icon {
+                    font-size: 24px;
+                    min-width: 32px;
+                    text-align: center;
+                }
+
+                .achievement-info {
+                    flex: 1;
+                }
+
+                .achievement-name {
+                    font-weight: bold;
+                    font-size: 16px;
+                    margin-bottom: 5px;
+                }
+
+                .achievement-description {
+                    color: #cccccc;
+                    font-size: 14px;
+                    margin-bottom: 10px;
+                }
+
+                .achievement-progress {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    margin-bottom: 5px;
+                }
+
+                .progress-bar {
+                    flex: 1;
+                    height: 8px;
+                    background: rgba(0, 0, 0, 0.5);
+                    border: 1px solid rgba(0, 255, 65, 0.3);
+                    border-radius: 4px;
+                    overflow: hidden;
+                }
+
+                .progress-fill {
+                    height: 100%;
+                    transition: width 0.3s ease;
+                    border-radius: 3px;
+                }
+
+                .progress-text {
+                    color: #00dd88;
+                    font-size: 12px;
+                    min-width: 80px;
+                    text-align: right;
+                }
+
+                .achievement-unlocked {
+                    color: #888;
+                    font-size: 12px;
+                    font-style: italic;
+                }
+
+                .achievements-loading, .achievements-error {
+                    text-align: center;
+                    padding: 40px;
+                    color: #00dd88;
+                }
             `;
             
             document.head.appendChild(style);
@@ -1495,6 +1623,8 @@ debug('UI', 'Ship Tech Manual closed');
                     this.refreshShipsLogDisplay();
                 } else if (targetTab === 'collection') {
                     this.refreshCollectionDisplay();
+                } else if (targetTab === 'achievements') {
+                    this.refreshAchievementsDisplay();
                 }
                 
                 debug('UI', `Switched to tab: ${targetTab}`);
@@ -1514,6 +1644,134 @@ debug('UI', 'Ship Tech Manual closed');
         } catch (error) {
             debug('UI', 'Error refreshing ships log display:', error);
         }
+    }
+
+    /**
+     * Refresh the achievements display with latest data
+     */
+    refreshAchievementsDisplay() {
+        try {
+            debug('P1', '🔄 Refreshing achievements display');
+            const achievementsTab = document.getElementById('achievements-tab');
+            if (achievementsTab) {
+                achievementsTab.innerHTML = this.generateAchievementsContent();
+                debug('P1', '✅ Achievements display refreshed');
+            } else {
+                debug('P1', '❌ Achievements tab element not found');
+            }
+        } catch (error) {
+            debug('P1', '❌ Error refreshing achievements display:', error);
+        }
+    }
+
+    /**
+     * Generate Achievements content
+     */
+    generateAchievementsContent() {
+        try {
+            // Check if achievement system is available
+            if (!window.achievementSystem) {
+                debug('P1', '❌ Achievement system not available in generateAchievementsContent');
+                return `
+                    <div class="achievements-loading">
+                        <div class="achievements-header">
+                            <h3>🏆 PILOT ACHIEVEMENTS</h3>
+                            <div class="system-status">Achievement system initializing...</div>
+                        </div>
+                        <div class="tech-notes">
+                            <div class="note-entry">• Achievement system loading</div>
+                            <div class="note-entry">• Please wait for initialization</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            debug('P1', '✅ Achievement system found, generating content');
+            const stats = window.achievementSystem.getStatistics();
+            const explorationAchievements = window.achievementSystem.getAchievementsByCategory('exploration');
+            
+            debug('P1', `📊 Achievement stats: ${stats.unlocked}/${stats.total} (${stats.percentage}%)`);
+            debug('P1', `🔍 Exploration achievements: ${explorationAchievements.length}`);
+
+            return `
+                <div class="achievements-container">
+                    <div class="achievements-header">
+                        <h3>🏆 PILOT ACHIEVEMENTS</h3>
+                        <div class="system-status">Track your progress and unlock new capabilities</div>
+                        <div class="achievement-stats">
+                            <span class="stat-item">Progress: ${stats.unlocked}/${stats.total} (${stats.percentage}%)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="achievement-categories">
+                        <div class="achievement-category">
+                            <h4>🔍 EXPLORATION ACHIEVEMENTS</h4>
+                            <div class="achievement-list">
+                                ${explorationAchievements.map(achievement => this.renderAchievement(achievement)).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tech-notes">
+                        <div class="notes-header">ACHIEVEMENT SYSTEM STATUS</div>
+                        <div class="note-entry">• Discover objects in space to unlock exploration achievements</div>
+                        <div class="note-entry">• Achievement notifications appear in HUD and ship's log</div>
+                        <div class="note-entry">• Unlocked achievements provide credit rewards</div>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            debug('P1', '❌ Error generating achievements content:', error);
+            return `
+                <div class="achievements-error">
+                    <div class="achievements-header">
+                        <h3>🏆 PILOT ACHIEVEMENTS</h3>
+                        <div class="system-status">Error loading achievement data</div>
+                    </div>
+                    <div class="tech-notes">
+                        <div class="note-entry">• Achievement system error</div>
+                        <div class="note-entry">• Please refresh and try again</div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Render a single achievement
+     */
+    renderAchievement(achievement) {
+        const progress = achievement.progress;
+        const isUnlocked = progress.unlocked;
+        const percentage = Math.round(progress.percentage);
+        const tier = achievement.tier;
+
+        return `
+            <div class="achievement-item ${isUnlocked ? 'unlocked' : 'locked'}">
+                <div class="achievement-icon">${tier.icon}</div>
+                <div class="achievement-info">
+                    <div class="achievement-name" style="color: ${tier.color}">
+                        ${achievement.name}
+                    </div>
+                    <div class="achievement-description">
+                        ${achievement.description}
+                    </div>
+                    <div class="achievement-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${percentage}%; background-color: ${tier.color}"></div>
+                        </div>
+                        <div class="progress-text">
+                            ${progress.current}/${progress.target} ${isUnlocked ? '✅' : ''}
+                        </div>
+                    </div>
+                    ${isUnlocked && progress.unlockedAt ? `
+                        <div class="achievement-unlocked">
+                            Unlocked: ${new Date(progress.unlockedAt).toLocaleDateString()}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
     }
 
     /**
@@ -1555,41 +1813,6 @@ debug('UI', 'Ship Tech Manual closed');
         `;
     }
 
-    /**
-     * Generate Achievements content
-     */
-    generateAchievementsContent() {
-        return `
-            <div class="manual-section">
-                <div class="section-header">PILOT ACHIEVEMENTS</div>
-                <div class="system-status">Track your progress and unlock new capabilities</div>
-                
-                <div class="control-grid">
-                    <div class="control-entry">
-                        <span class="key-binding">🏆</span>
-                        <span class="control-desc">Combat Veteran - Destroy 10 enemy ships</span>
-                    </div>
-                    <div class="control-entry">
-                        <span class="key-binding">🚀</span>
-                        <span class="control-desc">Explorer - Visit 5 different systems</span>
-                    </div>
-                    <div class="control-entry">
-                        <span class="key-binding">⚡</span>
-                        <span class="control-desc">Ace Pilot - Complete 10 missions</span>
-                    </div>
-                    <div class="control-entry">
-                        <span class="key-binding">💎</span>
-                        <span class="control-desc">Collector - Acquire 25 upgrade cards</span>
-                    </div>
-                </div>
-                
-                <div class="system-status-footer">
-                    <div class="status-line">ACHIEVEMENTS UNLOCKED: 0 / 12</div>
-                    <div class="status-line">PILOT RANK: ENSIGN</div>
-                </div>
-            </div>
-        `;
-    }
 
     /**
      * Generate Collection content
@@ -1642,17 +1865,21 @@ debug('UI', 'Ship Tech Manual closed');
             if (cardInventoryUI && cardInventoryUI.inventory) {
                 const discoveredCards = cardInventoryUI.inventory.getDiscoveredCards();
                 
-                cardData = discoveredCards.map(stack => ({
-                    name: stack.name,
-                    count: stack.count,
-                    level: stack.level,
-                    cardType: stack.sampleCard.cardType,
-                    rarity: stack.sampleCard.rarity,
-                    icon: stack.sampleCard.getIcon(),
-                    canUpgrade: this.checkCanUpgrade(stack),
-                    isNew: this.isCardNew(stack.sampleCard.cardType),
-                    hasQuantityIncrease: this.hasQuantityIncrease(stack.sampleCard.cardType)
-                }));
+                cardData = discoveredCards.map(stack => {
+                    const rarity = stack.sampleCard.rarity;
+                    debug('UI', `Card: ${stack.name}, Rarity: ${rarity}, Type: ${stack.sampleCard.cardType}`);
+                    return {
+                        name: stack.name,
+                        count: stack.count,
+                        level: stack.level,
+                        cardType: stack.sampleCard.cardType,
+                        rarity: rarity,
+                        icon: stack.sampleCard.getIcon(),
+                        canUpgrade: this.checkCanUpgrade(stack),
+                        isNew: this.isCardNew(stack.sampleCard.cardType),
+                        hasQuantityIncrease: this.hasQuantityIncrease(stack.sampleCard.cardType)
+                    };
+                });
                 
             } else {
                 debug('UI', '❌ ESC Collection: CardInventoryUI singleton not available');

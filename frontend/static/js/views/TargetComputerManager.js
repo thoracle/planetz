@@ -4502,6 +4502,54 @@ debug('TARGETING', `🎯 Checking target ${i}: ${target.name} (id: ${target.id |
                     targetIndex: this.targetIndex
                 });
                 
+                // Update ship's target computer system (same as cycleTarget does)
+                // This ensures subsystems are properly cleared when switching to unknown objects
+                const ship = this.viewManager?.getShip();
+                const targetComputer = ship?.getSystem('target_computer');
+                
+                if (targetComputer && targetComputer.setTarget) {
+                    // Prepare target data for subsystem targeting (same logic as cycleTarget)
+                    let targetForSubTargeting = this.currentTarget;
+                    
+                    if (targetForSubTargeting && typeof targetForSubTargeting === 'object') {
+                        // Ensure target has required properties for subsystem targeting
+                        if (!targetForSubTargeting.name && target.name) {
+                            targetForSubTargeting.name = target.name;
+                        }
+                        if (!targetForSubTargeting.faction && target.faction) {
+                            targetForSubTargeting.faction = target.faction;
+                        }
+                        // For navigation beacons and other objects, also check userData as fallback
+                        if (!targetForSubTargeting.name && targetForSubTargeting.userData?.name) {
+                            targetForSubTargeting.name = targetForSubTargeting.userData.name;
+                        }
+                        if (!targetForSubTargeting.faction && targetForSubTargeting.userData?.faction) {
+                            targetForSubTargeting.faction = targetForSubTargeting.userData.faction;
+                        }
+                    }
+
+                    // Update ship's target computer system - this clears subsystems for unknown objects
+                    targetComputer.setTarget(targetForSubTargeting);
+                    
+                    // Force UI refresh to ensure subsystem clearing is reflected in display
+                    if (this.updateTargetDisplay) {
+                        this.updateTargetDisplay();
+                    }
+                    if (this.updateReticleTargetInfo) {
+                        this.updateReticleTargetInfo();
+                    }
+                    
+                    // Delayed refresh to override any conflicting updates
+                    setTimeout(() => {
+                        if (this.updateTargetDisplay) {
+                            this.updateTargetDisplay();
+                        }
+                        if (this.updateReticleTargetInfo) {
+                            this.updateReticleTargetInfo();
+                        }
+                    }, 100);
+                }
+                
                 debug('TARGETING', `🎯 setTargetById: Target found and set, about to call updateTargetDisplay`);
 
                 // Force immediate HUD refresh
@@ -4668,6 +4716,54 @@ debug('TARGETING', `🎯 Star Charts: Target set to ${target.name} (ID: ${normal
                     }
                 }
                 this.targetWireframe = null;
+
+                // Update ship's target computer system (same as cycleTarget does)
+                // This ensures subsystems are properly cleared when switching to unknown objects
+                const ship = this.viewManager?.getShip();
+                const targetComputer = ship?.getSystem('target_computer');
+                
+                if (targetComputer && targetComputer.setTarget) {
+                    // Prepare target data for subsystem targeting (same logic as cycleTarget)
+                    let targetForSubTargeting = this.currentTarget;
+                    
+                    if (targetForSubTargeting && typeof targetForSubTargeting === 'object') {
+                        // Ensure target has required properties for subsystem targeting
+                        if (!targetForSubTargeting.name && target.name) {
+                            targetForSubTargeting.name = target.name;
+                        }
+                        if (!targetForSubTargeting.faction && target.faction) {
+                            targetForSubTargeting.faction = target.faction;
+                        }
+                        // For navigation beacons and other objects, also check userData as fallback
+                        if (!targetForSubTargeting.name && targetForSubTargeting.userData?.name) {
+                            targetForSubTargeting.name = targetForSubTargeting.userData.name;
+                        }
+                        if (!targetForSubTargeting.faction && targetForSubTargeting.userData?.faction) {
+                            targetForSubTargeting.faction = targetForSubTargeting.userData.faction;
+                        }
+                    }
+
+                    // Update ship's target computer system - this clears subsystems for unknown objects
+                    targetComputer.setTarget(targetForSubTargeting);
+                    
+                    // Force UI refresh to ensure subsystem clearing is reflected in display
+                    if (this.updateTargetDisplay) {
+                        this.updateTargetDisplay();
+                    }
+                    if (this.updateReticleTargetInfo) {
+                        this.updateReticleTargetInfo();
+                    }
+                    
+                    // Delayed refresh to override any conflicting updates
+                    setTimeout(() => {
+                        if (this.updateTargetDisplay) {
+                            this.updateTargetDisplay();
+                        }
+                        if (this.updateReticleTargetInfo) {
+                            this.updateReticleTargetInfo();
+                        }
+                    }, 100);
+                }
 
                 // Create new wireframe for the selected target
                 this.createTargetWireframe();

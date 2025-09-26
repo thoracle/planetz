@@ -577,21 +577,25 @@
 
 .card-stack.common {
     border-color: #888888; /* Neutral gray */
+    background: rgba(136, 136, 136, 0.15);
     box-shadow: 0 0 5px rgba(136, 136, 136, 0.3);
 }
 
 .card-stack.rare {
     border-color: #4488ff; /* Bright blue */
+    background: rgba(68, 136, 255, 0.15);
     box-shadow: 0 0 5px rgba(68, 136, 255, 0.4);
 }
 
 .card-stack.epic {
     border-color: #aa44ff; /* Vibrant purple */
+    background: rgba(170, 68, 255, 0.15);
     box-shadow: 0 0 5px rgba(170, 68, 255, 0.4);
 }
 
 .card-stack.legendary {
     border-color: #ffaa00; /* Rich gold */
+    background: rgba(255, 170, 0, 0.15);
     box-shadow: 0 0 8px rgba(255, 170, 0, 0.5);
 }
 

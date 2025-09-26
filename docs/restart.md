@@ -489,6 +489,85 @@ const inventory = CardInventoryUI.getInstance(null); // Always same instance
 - **Easier Debugging**: Single point of truth eliminates sync-related bugs
 - **Future-Proof**: Extensible pattern for other singleton systems
 
+---
+
+## 🎯 **Star Charts Subsystem Targeting Bug Fix** 🎯 **RECENT UPDATE**
+
+**Status**: ✅ **COMPLETED** - Fixed subsystem persistence bug when targeting unknown objects via Star Charts
+
+### **Problem Identified**
+**Issue**: When using Star Charts to target unknown objects, subsystems from the previous target would persist in the HUD instead of being cleared.
+
+**Reproduction Steps**:
+1. Press T and TAB to target a ship with subsystems (subsystems appear in HUD)
+2. Press C to open Star Charts
+3. Click an unknown object (like Sol)
+4. **Bug**: Old subsystems remained visible despite targeting an unknown object
+
+### **Root Cause Analysis**
+**Tab-Targeting vs Star Charts Targeting Inconsistency**:
+- **Tab-targeting**: Properly called `targetComputer.setTarget()` → automatically called `clearSubTarget()` → cleared old subsystems
+- **Star Charts targeting**: Only updated `TargetComputerManager` state → **missed** the ship system update → old subsystems persisted
+
+**The Missing Link**: Star Charts `setTargetById()` method wasn't updating the ship's `TargetComputer` system, which is responsible for subsystem management.
+
+### **Technical Solution**
+**Added Ship System Synchronization** to `TargetComputerManager.setTargetById()`:
+
+```javascript
+// Update ship's target computer system (same as cycleTarget does)
+const ship = this.viewManager?.getShip();
+const targetComputer = ship?.getSystem('target_computer');
+
+if (targetComputer && targetComputer.setTarget) {
+    // Prepare target data for subsystem targeting
+    let targetForSubTargeting = this.currentTarget;
+    // ... property normalization logic ...
+    
+    // This clears subsystems for unknown objects
+    targetComputer.setTarget(targetForSubTargeting);
+    
+    // Force UI refresh to ensure clearing is reflected
+    this.updateTargetDisplay();
+    this.updateReticleTargetInfo();
+    
+    // Delayed refresh to override conflicting updates
+    setTimeout(() => {
+        this.updateTargetDisplay();
+        this.updateReticleTargetInfo();
+    }, 100);
+}
+```
+
+### **Key Changes**
+1. **Ship System Update**: Added missing `targetComputer.setTarget()` call to Star Charts targeting
+2. **Subsystem Clearing**: `setTarget()` → `updateSubTargets()` → `clearSubTarget()` for unknown objects
+3. **UI Synchronization**: Immediate + delayed UI refresh to ensure display updates
+4. **Consistency**: Star Charts targeting now matches tab-targeting behavior exactly
+
+### **Files Modified**
+- `frontend/static/js/views/TargetComputerManager.js` - Added ship system synchronization to `setTargetById()`
+
+### **Result: Consistent Subsystem Behavior**
+**Before Fix**: 
+- Tab-targeting: ✅ Cleared subsystems properly
+- Star Charts: ❌ Subsystems persisted incorrectly
+
+**After Fix**:
+- Tab-targeting: ✅ Cleared subsystems properly  
+- Star Charts: ✅ Cleared subsystems properly
+- **Consistent behavior** across all targeting methods
+- Unknown objects show no subsystems (as expected)
+- Discovered objects show correct subsystems for new target
+
+### **Impact**
+- **Enhanced User Experience**: Consistent targeting behavior across all interfaces
+- **Reduced Confusion**: Unknown objects properly show no subsystems
+- **Professional Polish**: Eliminates jarring UI inconsistencies
+- **Improved Reliability**: Targeting system now works identically regardless of input method
+
+---
+
 ### **Object ID Naming Convention** 🏷️ **CRITICAL REFERENCE**
 
 **STANDARD FORMAT: UPPERCASE A0_ PREFIX** 🔤

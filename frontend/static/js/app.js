@@ -42,6 +42,9 @@ window.toggleVerbose = function() {
 // Initialize Ship's Log system
 import './utils/ShipLog.js';
 
+// Initialize Achievement System
+import { getAchievementSystem } from './systems/AchievementSystem.js';
+
 // Waypoints System Imports
 import { WaypointManager } from './waypoints/WaypointManager.js';
 import { WaypointKeyboardHandler } from './waypoints/WaypointKeyboardHandler.js';
@@ -331,6 +334,110 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Set up global access to debug manager
     smartDebugManager.setupGlobalAccess();
+
+    // Initialize Achievement System
+    try {
+        const achievementSystem = getAchievementSystem();
+        debug('P1', '🏆 Achievement system initialized successfully');
+        
+        // Add global test functions
+        window.testNotification = () => {
+            debug('P1', '🧪 Testing achievement notification system');
+            if (window.starfieldManager && window.starfieldManager.showHUDEphemeral) {
+                debug('P1', '✅ StarfieldManager found, showing test notification');
+                window.starfieldManager.showHUDEphemeral(
+                    '🏆 Test Achievement!',
+                    '🥉 This is a test notification',
+                    5000
+                );
+                return 'Test notification sent!';
+            } else {
+                debug('P1', '❌ StarfieldManager or showHUDEphemeral not available');
+                console.log('StarfieldManager available:', !!window.starfieldManager);
+                console.log('showHUDEphemeral available:', !!(window.starfieldManager && window.starfieldManager.showHUDEphemeral));
+                return 'Notification system not available';
+            }
+        };
+        
+        // Add discovery status check
+        window.checkDiscoveries = () => {
+            debug('P1', '🔍 Checking discovery system status');
+            
+            if (window.starfieldManager && window.starfieldManager.navigationSystemManager) {
+                const starCharts = window.starfieldManager.navigationSystemManager.starChartsManager;
+                if (starCharts) {
+                    const discoveryCount = starCharts.discoveredObjects ? starCharts.discoveredObjects.size : 0;
+                    debug('P1', `📊 Current discoveries: ${discoveryCount}`);
+                    console.log(`Current discoveries: ${discoveryCount}`);
+                    
+                    // List some discovered objects
+                    if (starCharts.discoveredObjects && starCharts.discoveredObjects.size > 0) {
+                        console.log('Discovered objects:');
+                        Array.from(starCharts.discoveredObjects).slice(0, 5).forEach((id, i) => {
+                            console.log(`  ${i + 1}: ${id}`);
+                        });
+                    }
+                    
+                    return `Found ${discoveryCount} discoveries`;
+                } else {
+                    debug('P1', '❌ StarChartsManager not found');
+                    return 'StarChartsManager not available';
+                }
+            } else {
+                debug('P1', '❌ StarfieldManager or navigationSystemManager not available');
+                return 'Navigation system not available';
+            }
+        };
+        
+        // Add a simple HUD test function
+        window.testHUD = () => {
+            debug('P1', '🧪 Testing HUD ephemeral system');
+            console.log('Testing HUD notification...');
+            
+            // Wait for StarfieldManager to be ready
+            const checkStarfield = () => {
+                if (window.starfieldManager && window.starfieldManager.showHUDEphemeral) {
+                    debug('P1', '✅ StarfieldManager ready, showing test HUD message');
+                    
+                    // Show a very visible test message
+                    window.starfieldManager.showHUDEphemeral(
+                        '🚨 ACHIEVEMENT TEST 🚨',
+                        'This notification should be visible at the top center of your screen!',
+                        10000  // 10 seconds duration
+                    );
+                    
+                    // Check if the element was created and is visible
+                    setTimeout(() => {
+                        const hudElement = window.starfieldManager.hudEphemeralElement;
+                        if (hudElement) {
+                            debug('P1', `📱 HUD element exists: display=${hudElement.style.display}, visibility=${hudElement.style.visibility}`);
+                            debug('P1', `📱 HUD element position: top=${hudElement.style.top}, left=${hudElement.style.left}`);
+                            debug('P1', `📱 HUD element z-index: ${hudElement.style.zIndex}`);
+                            debug('P1', `📱 HUD element content: ${hudElement.textContent?.substring(0, 100)}`);
+                            
+                            // Make it extra visible for testing
+                            hudElement.style.backgroundColor = 'red';
+                            hudElement.style.fontSize = '20px';
+                            hudElement.style.border = '5px solid yellow';
+                            
+                        } else {
+                            debug('P1', '❌ No HUD element found');
+                        }
+                    }, 500);
+                    
+                    return 'HUD test message sent with enhanced visibility!';
+                } else {
+                    debug('P1', '⏳ StarfieldManager not ready yet');
+                    return 'StarfieldManager not ready yet';
+                }
+            };
+            
+            return checkStarfield();
+        };
+        
+    } catch (error) {
+        console.error('❌ Failed to initialize achievement system:', error);
+    }
 
     // Test the debug system
     debug('TARGETING', 'SmartDebugManager initialized successfully');
