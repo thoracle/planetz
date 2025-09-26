@@ -821,40 +821,52 @@ export function getStarterCards(shipType) {
             weapon_2: { cardType: 'standard_missile', level: 1 }
         },
         scout: {
-            utility_1: { cardType: 'target_computer', level: 1 },
-            utility_2: { cardType: 'hull_plating', level: 1 },
-            utility_3: { cardType: 'long_range_scanner', level: 2 }, // Enhanced sensors for reconnaissance
-            utility_4: { cardType: 'basic_radar', level: 2 },
+            utility_1: { cardType: 'target_computer', level: 2 }, // Enhanced targeting for recon
+            utility_2: { cardType: 'hull_plating', level: 1 }, // Light armor for speed
+            utility_3: { cardType: 'long_range_scanner', level: 3 }, // Advanced sensors for deep reconnaissance
+            utility_4: { cardType: 'advanced_radar', level: 2 }, // Superior detection capabilities
+            utility_5: { cardType: 'star_charts', level: 2 }, // Navigation expertise
+            utility_6: { cardType: 'subspace_radio', level: 1 }, // Communication for intel reporting
             engine_1: { cardType: 'impulse_engines', level: 3 }, // High speed engines
-            power_1: { cardType: 'energy_reactor', level: 1 },
+            power_1: { cardType: 'energy_reactor', level: 2 }, // Enhanced power for sensors
             weapon_1: { cardType: 'laser_cannon', level: 1 } // Light armament
         },
         light_fighter: {
-            utility_1: { cardType: 'target_computer', level: 2 },
-            utility_2: { cardType: 'hull_plating', level: 2 },
-            utility_3: { cardType: 'basic_radar', level: 1 },
-            engine_1: { cardType: 'impulse_engines', level: 2 },
-            power_1: { cardType: 'energy_reactor', level: 2 },
-            weapon_1: { cardType: 'laser_cannon', level: 2 }, // Balanced combat
-            weapon_2: { cardType: 'standard_missile', level: 1 }
+            utility_1: { cardType: 'target_computer', level: 3 }, // Advanced targeting for combat
+            utility_2: { cardType: 'hull_plating', level: 2 }, // Balanced protection
+            utility_3: { cardType: 'shield_generator', level: 2 }, // Combat shields
+            utility_4: { cardType: 'advanced_radar', level: 1 }, // Combat awareness
+            utility_5: { cardType: 'basic_radar', level: 1 }, // Backup detection
+            engine_1: { cardType: 'impulse_engines', level: 2 }, // Balanced speed
+            power_1: { cardType: 'energy_reactor', level: 2 }, // Combat power requirements
+            weapon_1: { cardType: 'laser_cannon', level: 2 }, // Primary weapon
+            weapon_2: { cardType: 'standard_missile', level: 1 } // Secondary weapon
         },
         light_freighter: {
-            utility_1: { cardType: 'target_computer', level: 1 },
-            utility_2: { cardType: 'hull_plating', level: 1 },
-            utility_3: { cardType: 'cargo_hold', level: 2 }, // Enhanced cargo capacity
-            utility_4: { cardType: 'basic_radar', level: 1 },
-            engine_1: { cardType: 'impulse_engines', level: 1 },
-            power_1: { cardType: 'energy_reactor', level: 1 },
+            utility_1: { cardType: 'target_computer', level: 1 }, // Basic targeting
+            utility_2: { cardType: 'hull_plating', level: 2 }, // Moderate protection for cargo
+            utility_3: { cardType: 'cargo_hold', level: 3 }, // Primary cargo capacity
+            utility_4: { cardType: 'cargo_hold', level: 2 }, // Additional cargo space
+            utility_5: { cardType: 'cargo_hold', level: 1 }, // Extra cargo capacity
+            utility_6: { cardType: 'basic_radar', level: 1 }, // Basic detection
+            utility_7: { cardType: 'long_range_scanner', level: 1 }, // Trade route planning
+            engine_1: { cardType: 'impulse_engines', level: 1 }, // Efficient engines
+            power_1: { cardType: 'energy_reactor', level: 2 }, // Power for cargo systems
             weapon_1: { cardType: 'laser_cannon', level: 1 } // Basic defense
         },
         heavy_freighter: {
-            utility_1: { cardType: 'target_computer', level: 1 },
-            utility_2: { cardType: 'hull_plating', level: 3 }, // Heavy armor for protection
-            utility_3: { cardType: 'cargo_hold', level: 3 }, // Maximum cargo capacity
-            utility_4: { cardType: 'cargo_hold', level: 2 }, // Additional cargo space
-            utility_5: { cardType: 'basic_radar', level: 1 },
+            utility_1: { cardType: 'target_computer', level: 1 }, // Basic targeting
+            utility_2: { cardType: 'hull_plating', level: 4 }, // Heavy armor for valuable cargo
+            utility_3: { cardType: 'hull_plating', level: 3 }, // Additional armor layers
+            utility_4: { cardType: 'cargo_hold', level: 4 }, // Maximum cargo capacity
+            utility_5: { cardType: 'cargo_hold', level: 3 }, // Additional cargo space
+            utility_6: { cardType: 'cargo_hold', level: 3 }, // More cargo space
+            utility_7: { cardType: 'cargo_hold', level: 2 }, // Even more cargo
+            utility_8: { cardType: 'shield_generator', level: 2 }, // Defensive shields
+            utility_9: { cardType: 'basic_radar', level: 1 }, // Basic detection
+            utility_10: { cardType: 'long_range_scanner', level: 1 }, // Trade route planning
             engine_1: { cardType: 'impulse_engines', level: 1 }, // Slow but steady
-            power_1: { cardType: 'energy_reactor', level: 2 },
+            power_1: { cardType: 'energy_reactor', level: 3 }, // High power for heavy systems
             weapon_1: { cardType: 'laser_cannon', level: 1 } // Minimal defense
         }
     };
