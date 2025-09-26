@@ -1147,6 +1147,7 @@ debug('UI', 'Loading test data for card inventory...');
             
             // Essential navigation and communication systems
             // 'galactic_chart',        // Removed - player must acquire from missions/shop (NEW badge test)
+            'star_charts',              // Required for C key Star Charts functionality
             'long_range_scanner',       // Required for L key functionality  
             'subspace_radio',           // Keep for quantity increase badge testing
             'target_computer',          // Required for T key functionality
