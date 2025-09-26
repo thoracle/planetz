@@ -820,7 +820,43 @@ export function getStarterCards(shipType) {
             weapon_1: { cardType: 'pulse_cannon', level: 1 },
             weapon_2: { cardType: 'standard_missile', level: 1 }
         },
-        // Add more ship types here as needed
+        scout: {
+            utility_1: { cardType: 'target_computer', level: 1 },
+            utility_2: { cardType: 'hull_plating', level: 1 },
+            utility_3: { cardType: 'long_range_scanner', level: 2 }, // Enhanced sensors for reconnaissance
+            utility_4: { cardType: 'basic_radar', level: 2 },
+            engine_1: { cardType: 'impulse_engines', level: 3 }, // High speed engines
+            power_1: { cardType: 'energy_reactor', level: 1 },
+            weapon_1: { cardType: 'laser_cannon', level: 1 } // Light armament
+        },
+        light_fighter: {
+            utility_1: { cardType: 'target_computer', level: 2 },
+            utility_2: { cardType: 'hull_plating', level: 2 },
+            utility_3: { cardType: 'basic_radar', level: 1 },
+            engine_1: { cardType: 'impulse_engines', level: 2 },
+            power_1: { cardType: 'energy_reactor', level: 2 },
+            weapon_1: { cardType: 'laser_cannon', level: 2 }, // Balanced combat
+            weapon_2: { cardType: 'standard_missile', level: 1 }
+        },
+        light_freighter: {
+            utility_1: { cardType: 'target_computer', level: 1 },
+            utility_2: { cardType: 'hull_plating', level: 1 },
+            utility_3: { cardType: 'cargo_hold', level: 2 }, // Enhanced cargo capacity
+            utility_4: { cardType: 'basic_radar', level: 1 },
+            engine_1: { cardType: 'impulse_engines', level: 1 },
+            power_1: { cardType: 'energy_reactor', level: 1 },
+            weapon_1: { cardType: 'laser_cannon', level: 1 } // Basic defense
+        },
+        heavy_freighter: {
+            utility_1: { cardType: 'target_computer', level: 1 },
+            utility_2: { cardType: 'hull_plating', level: 3 }, // Heavy armor for protection
+            utility_3: { cardType: 'cargo_hold', level: 3 }, // Maximum cargo capacity
+            utility_4: { cardType: 'cargo_hold', level: 2 }, // Additional cargo space
+            utility_5: { cardType: 'basic_radar', level: 1 },
+            engine_1: { cardType: 'impulse_engines', level: 1 }, // Slow but steady
+            power_1: { cardType: 'energy_reactor', level: 2 },
+            weapon_1: { cardType: 'laser_cannon', level: 1 } // Minimal defense
+        }
     };
     
     return starterConfigs[shipType] || {};
