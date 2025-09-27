@@ -94,13 +94,16 @@ class WarpDriveManager {
             try {
                 // Get current sector from navigation
                 const currentSector = this.sectorNavigation.currentSector;
+                debug('UTILITY', `🚀 Warp completion: Current sector from SectorNavigation: ${currentSector}`);
                 
                 if (!this.viewManager || !this.viewManager.solarSystemManager) {
                     throw new Error('SolarSystemManager not available');
                 }
                 
                 // CRITICAL FIX: Update sector in SolarSystemManager first
+                debug('UTILITY', `🚀 Warp completion: Setting SolarSystemManager sector to ${currentSector}`);
                 this.viewManager.solarSystemManager.setCurrentSector(currentSector);
+                debug('UTILITY', `🚀 Warp completion: SolarSystemManager sector is now ${this.viewManager.solarSystemManager.currentSector}`);
                 
                 // Generate new star system and wait for completion
                 const generationSuccess = await this.viewManager.solarSystemManager.generateStarSystem(currentSector);
@@ -110,11 +113,38 @@ class WarpDriveManager {
                     return;
                 }
 
-                // CRITICAL FIX: Trigger StarfieldManager sector update to reset all navigation systems
+                // CRITICAL FIX: Force reset all navigation systems after warp completion
                 if (this.viewManager.starfieldManager) {
-                    debug('UTILITY', `🚀 Warp completion: Triggering StarfieldManager sector update for ${currentSector}`);
-                    // Force update all navigation systems (target computer, proximity radar, star charts)
-                    this.viewManager.starfieldManager.updateCurrentSector();
+                    debug('UTILITY', `🚀 Warp completion: Force resetting all navigation systems for sector ${currentSector}`);
+                    
+                    // Force reset target computer
+                    if (this.viewManager.starfieldManager.targetComputerEnabled) {
+                        debug('UTILITY', '🎯 Warp completion: Resetting target computer');
+                        this.viewManager.starfieldManager.currentTarget = null;
+                        this.viewManager.starfieldManager.targetIndex = -1;
+                        this.viewManager.starfieldManager.targetComputerManager.hideTargetHUD();
+                        this.viewManager.starfieldManager.targetComputerManager.hideTargetReticle();
+                        
+                        // Clear any existing wireframe
+                        if (this.viewManager.starfieldManager.targetWireframe) {
+                            this.viewManager.starfieldManager.wireframeScene.remove(this.viewManager.starfieldManager.targetWireframe);
+                            this.viewManager.starfieldManager.targetWireframe.geometry.dispose();
+                            this.viewManager.starfieldManager.targetWireframe.material.dispose();
+                            this.viewManager.starfieldManager.targetWireframe = null;
+                        }
+                        
+                        // Update target list for new sector
+                        setTimeout(() => {
+                            this.viewManager.starfieldManager.updateTargetList();
+                            this.viewManager.starfieldManager.cycleTarget();
+                        }, 100);
+                    }
+                    
+                    // Force reset star charts
+                    if (this.viewManager.starfieldManager.starChartsManager) {
+                        debug('UTILITY', `🗺️ Warp completion: Updating Star Charts sector from ${this.viewManager.starfieldManager.starChartsManager.currentSector} to ${currentSector}`);
+                        this.viewManager.starfieldManager.starChartsManager.currentSector = currentSector;
+                    }
                 }
 
                 // Update galactic chart with new position
