@@ -325,6 +325,18 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
                 console.log(`🗺️ SectorNavigation: Updating Star Charts from ${starfieldManager.starChartsManager.currentSector} to ${this.currentSector}`);
                 starfieldManager.starChartsManager.currentSector = this.currentSector;
             }
+            
+            // Shut down impulse engines after sector transition
+            if (starfieldManager.ship) {
+                const impulseEngines = starfieldManager.ship.getSystem('impulse_engines');
+                if (impulseEngines) {
+                    console.log(`🚀 SectorNavigation: Shutting down impulse engines after sector transition`);
+                    impulseEngines.setImpulseSpeed(0);
+                    impulseEngines.setMovingForward(false);
+                    // Also reset the target speed in StarfieldManager
+                    starfieldManager.targetSpeed = 0;
+                }
+            }
         } else {
             console.log(`❌ SectorNavigation: Cannot access starfieldManager - viewManager: ${!!this.viewManager}, starfieldManager: ${!!this.viewManager?.starfieldManager}`);
             
