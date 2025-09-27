@@ -324,6 +324,12 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
                 starfieldManager.targetComputerManager.hideTargetHUD();
                 starfieldManager.targetComputerManager.hideTargetReticle();
                 
+                // CRITICAL: Clear the target cache to prevent A0 targets from being re-added
+                if (starfieldManager.targetComputerManager.knownTargets) {
+                    console.log(`🗑️ SectorNavigation: Clearing target cache (had ${starfieldManager.targetComputerManager.knownTargets.size} cached targets)`);
+                    starfieldManager.targetComputerManager.knownTargets.clear();
+                }
+                
                 console.log(`🔍 AFTER CLEARING: TargetComputerManager has ${starfieldManager.targetComputerManager.targetObjects?.length || 0} targets`);
             }
             
