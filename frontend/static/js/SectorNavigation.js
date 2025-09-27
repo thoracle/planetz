@@ -330,6 +330,20 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
                     starfieldManager.targetComputerManager.knownTargets.clear();
                 }
                 
+                // CRITICAL: Stop StarChartsTargetComputerIntegration sync to prevent A0 re-population
+                if (starfieldManager.navigationSystemManager?.starChartsIntegration) {
+                    console.log(`🛑 SectorNavigation: Pausing StarCharts integration sync during sector transition`);
+                    starfieldManager.navigationSystemManager.starChartsIntegration.pauseSync = true;
+                    
+                    // Resume sync after a delay to allow sector update to complete
+                    setTimeout(() => {
+                        if (starfieldManager.navigationSystemManager?.starChartsIntegration) {
+                            console.log(`▶️ SectorNavigation: Resuming StarCharts integration sync for sector ${this.currentSector}`);
+                            starfieldManager.navigationSystemManager.starChartsIntegration.pauseSync = false;
+                        }
+                    }, 2000); // 2 second delay to ensure sector updates are complete
+                }
+                
                 console.log(`🔍 AFTER CLEARING: TargetComputerManager has ${starfieldManager.targetComputerManager.targetObjects?.length || 0} targets`);
             }
             
