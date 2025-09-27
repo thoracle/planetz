@@ -326,9 +326,13 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
             }, 100);
             
             // Force reset star charts (same logic as StarfieldManager.updateCurrentSector)
+            console.log(`🗺️ SectorNavigation: Checking Star Charts Manager - exists: ${!!starfieldManager.starChartsManager}`);
             if (starfieldManager.starChartsManager) {
                 console.log(`🗺️ SectorNavigation: Updating Star Charts from ${starfieldManager.starChartsManager.currentSector} to ${this.currentSector}`);
                 starfieldManager.starChartsManager.currentSector = this.currentSector;
+                console.log(`🗺️ SectorNavigation: Star Charts sector updated to ${starfieldManager.starChartsManager.currentSector}`);
+            } else {
+                console.log(`❌ SectorNavigation: Star Charts Manager not found - cannot update sector`);
             }
             
             // Shut down impulse engines after sector transition
