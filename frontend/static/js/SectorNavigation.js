@@ -351,38 +351,30 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
                 console.log(`❌ SectorNavigation: Star Charts Manager not found - cannot update sector`);
             }
             
-            // Shut down impulse engines after sector transition
-            if (starfieldManager.ship) {
-                const impulseEngines = starfieldManager.ship.getSystem('impulse_engines');
-                if (impulseEngines) {
-                    console.log(`🚀 SectorNavigation: Shutting down impulse engines after sector transition (current speed: ${impulseEngines.getImpulseSpeed()}, moving: ${impulseEngines.isMovingForward})`);
-                    
-                    // Complete engine shutdown
-                    impulseEngines.setImpulseSpeed(0);
-                    impulseEngines.setMovingForward(false);
-                    impulseEngines.isActive = false; // Force inactive state
-                    
-                    console.log(`🚀 SectorNavigation: Impulse engines stopped (new speed: ${impulseEngines.getImpulseSpeed()}, moving: ${impulseEngines.isMovingForward}, active: ${impulseEngines.isActive})`);
-                }
-                
-                // Reset ALL movement-related properties in StarfieldManager
-                starfieldManager.targetSpeed = 0;
-                starfieldManager.currentSpeed = 0;
-                starfieldManager.isMoving = false;
-                starfieldManager.isAccelerating = false;
-                
-                // Force stop any ongoing movement and reset velocity
+            // Reuse comprehensive ship shutdown system from docking (includes engine audio shutdown)
+            console.log(`🛑 SectorNavigation: Shutting down all ship systems for sector transition`);
+            if (starfieldManager.shutdownAllSystems) {
+                starfieldManager.shutdownAllSystems();
+            } else {
+                console.warn(`❌ SectorNavigation: shutdownAllSystems not available, using fallback`);
+                // Fallback: basic engine shutdown
                 if (starfieldManager.ship) {
-                    if (starfieldManager.ship.velocity) {
-                        starfieldManager.ship.velocity.set(0, 0, 0);
-                    }
-                    if (starfieldManager.ship.userData && starfieldManager.ship.userData.velocity) {
-                        starfieldManager.ship.userData.velocity.set(0, 0, 0);
+                    const impulseEngines = starfieldManager.ship.getSystem('impulse_engines');
+                    if (impulseEngines) {
+                        impulseEngines.setImpulseSpeed(0);
+                        impulseEngines.setMovingForward(false);
+                        impulseEngines.isActive = false;
                     }
                 }
-                
-                console.log(`🚀 SectorNavigation: All movement systems reset for sector transition`);
             }
+            
+            // Reset movement-related properties in StarfieldManager
+            starfieldManager.targetSpeed = 0;
+            starfieldManager.currentSpeed = 0;
+            starfieldManager.isMoving = false;
+            starfieldManager.isAccelerating = false;
+            
+            console.log(`🛑 SectorNavigation: Ship systems shutdown complete for sector transition`);
         } else {
             console.log(`❌ SectorNavigation: Cannot access starfieldManager - viewManager: ${!!this.viewManager}, starfieldManager: ${!!this.viewManager?.starfieldManager}`);
             
