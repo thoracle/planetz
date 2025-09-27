@@ -286,6 +286,10 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
         });
 
         // CRITICAL FIX: Force reset all navigation systems after warp completion
+        debug('UTILITY', `🚀 SectorNavigation: completeNavigation() called for sector ${this.currentSector}`);
+        debug('UTILITY', `🔍 SectorNavigation: viewManager available: ${!!this.viewManager}`);
+        debug('UTILITY', `🔍 SectorNavigation: viewManager.starfieldManager available: ${!!this.viewManager?.starfieldManager}`);
+        
         if (this.viewManager?.starfieldManager) {
             debug('UTILITY', `🚀 SectorNavigation: Force resetting all navigation systems for sector ${this.currentSector}`);
             
@@ -316,6 +320,13 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
             if (this.viewManager.starfieldManager.starChartsManager) {
                 debug('UTILITY', `🗺️ SectorNavigation: Updating Star Charts sector to ${this.currentSector}`);
                 this.viewManager.starfieldManager.starChartsManager.currentSector = this.currentSector;
+            }
+        } else {
+            debug('UTILITY', `❌ SectorNavigation: Cannot access starfieldManager - viewManager: ${!!this.viewManager}, starfieldManager: ${!!this.viewManager?.starfieldManager}`);
+            
+            // Try alternative access paths
+            if (this.viewManager) {
+                debug('UTILITY', `🔍 SectorNavigation: ViewManager properties: ${Object.keys(this.viewManager).join(', ')}`);
             }
         }
 
