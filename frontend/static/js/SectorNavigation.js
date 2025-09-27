@@ -464,16 +464,24 @@ debug('UTILITY', 'Deactivating warp drive');
         if (systemStar && systemStar.position) {
             // Position ship 100km from the star (within 150km targeting range)
             const starPosition = systemStar.position;
-            const offsetDistance = 100; // km
+            console.log(`🚀 SectorNavigation: System star found at (${starPosition.x.toFixed(1)}, ${starPosition.y.toFixed(1)}, ${starPosition.z.toFixed(1)})`);
             
-            // Calculate offset position (slightly offset from star)
-            const newPosition = {
-                x: starPosition.x + offsetDistance,
-                y: starPosition.y,
-                z: starPosition.z
+            // Calculate direction vector from star to ship (normalized)
+            const direction = {
+                x: 1, // Simple offset in X direction
+                y: 0,
+                z: 0
             };
             
-            console.log(`🚀 SectorNavigation: Positioning ship 100km from system star at (${newPosition.x.toFixed(1)}, ${newPosition.y.toFixed(1)}, ${newPosition.z.toFixed(1)})`);
+            // Position ship 50km from star (well within 150km targeting range)
+            const offsetDistance = 50; // km - reduced for better targeting
+            const newPosition = {
+                x: starPosition.x + (direction.x * offsetDistance),
+                y: starPosition.y + (direction.y * offsetDistance),
+                z: starPosition.z + (direction.z * offsetDistance)
+            };
+            
+            console.log(`🚀 SectorNavigation: Positioning ship ${offsetDistance}km from system star at (${newPosition.x.toFixed(1)}, ${newPosition.y.toFixed(1)}, ${newPosition.z.toFixed(1)})`);
             
             // Update camera position
             this.camera.position.set(newPosition.x, newPosition.y, newPosition.z);
@@ -481,7 +489,16 @@ debug('UTILITY', 'Deactivating warp drive');
             // Update ship position if available
             if (this.viewManager.starfieldManager.ship) {
                 this.viewManager.starfieldManager.ship.position.set(newPosition.x, newPosition.y, newPosition.z);
+                console.log(`🚀 SectorNavigation: Ship position updated to (${newPosition.x.toFixed(1)}, ${newPosition.y.toFixed(1)}, ${newPosition.z.toFixed(1)})`);
             }
+            
+            // Verify distance calculation
+            const actualDistance = Math.sqrt(
+                Math.pow(newPosition.x - starPosition.x, 2) +
+                Math.pow(newPosition.y - starPosition.y, 2) +
+                Math.pow(newPosition.z - starPosition.z, 2)
+            );
+            console.log(`🚀 SectorNavigation: Calculated distance to star: ${actualDistance.toFixed(1)}km`);
         } else {
             console.warn(`🚀 SectorNavigation: Could not find system star for positioning`);
         }

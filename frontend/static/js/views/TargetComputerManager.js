@@ -1968,8 +1968,26 @@ export class TargetComputerManager {
                     const info = this.solarSystemManager.getCelestialBodyInfo(body);
                     if (info && !existingTargetIds.has(info.name)) {
                         // console.log(`🎯 addNonPhysicsTargets: Adding celestial body: ${info.name} (${info.type})`);
+                        // Generate proper sector-prefixed ID
+                        const currentSector = this.solarSystemManager?.currentSector || 'A0';
+                        let sectorId;
+                        if (key === 'star') {
+                            sectorId = `${currentSector}_star`;
+                        } else if (key.startsWith('planet_')) {
+                            const planetIndex = key.split('_')[1];
+                            const planetName = info.name?.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || `planet_${planetIndex}`;
+                            sectorId = `${currentSector}_${planetName}`;
+                        } else if (key.startsWith('moon_')) {
+                            const moonName = info.name?.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || key;
+                            sectorId = `${currentSector}_${moonName}`;
+                        } else {
+                            // Fallback for other objects
+                            const objectName = info.name?.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || key;
+                            sectorId = `${currentSector}_${objectName}`;
+                        }
+
                         const targetData = {
-                            id: info.id || body.userData?.id || key, // CRITICAL: Include the ID field
+                            id: sectorId, // Use sector-prefixed ID
                             name: info.name,
                             type: info.type,
                             position: body.position.toArray(),
