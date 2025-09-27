@@ -2786,10 +2786,8 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
         // This will help identify if the issue is elsewhere
         // Using P1 channel to ensure visibility for intermittent camera shake bug
         if (!this.isDocked && this.currentSpeed === 0) {
-            // Only log occasionally to avoid spam
-            if (Date.now() % 10000 < 100) { // Log every 10 seconds
-                debug('P1', `🔍 Camera shake debug - isDocked: ${this.isDocked}, currentSpeed: ${this.currentSpeed}, dockedTo: ${this.dockedTo?.name || 'null'}`);
-            }
+            // Camera shake issue occurs when flying in space, not while docked
+            // Debug logging removed to reduce console spam
         }
 
         // Handle smooth rotation from arrow keys
