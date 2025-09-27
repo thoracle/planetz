@@ -317,13 +317,29 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
             // ALWAYS update target list for new sector (regardless of target computer state)
             setTimeout(() => {
                 console.log(`🎯 SectorNavigation: Updating target list for sector ${this.currentSector}`);
+                
+                // Check SolarSystemManager state before updating target list
+                if (starfieldManager.solarSystemManager) {
+                    const currentSystemSector = starfieldManager.solarSystemManager.currentSector;
+                    const celestialBodies = starfieldManager.solarSystemManager.getCelestialBodies();
+                    console.log(`🌍 SectorNavigation: SolarSystemManager sector: ${currentSystemSector}, bodies: ${celestialBodies.size}`);
+                    
+                    // If SolarSystemManager is still on wrong sector, force regenerate
+                    if (currentSystemSector !== this.currentSector) {
+                        console.log(`🚨 SectorNavigation: SolarSystemManager sector mismatch! Expected: ${this.currentSector}, Got: ${currentSystemSector}`);
+                        console.log(`🔄 SectorNavigation: Force regenerating star system for ${this.currentSector}`);
+                        starfieldManager.solarSystemManager.setCurrentSector(this.currentSector);
+                        starfieldManager.solarSystemManager.generateStarSystem(this.currentSector);
+                    }
+                }
+                
                 if (starfieldManager.updateTargetList) {
                     starfieldManager.updateTargetList();
                 }
                 if (starfieldManager.cycleTarget) {
                     starfieldManager.cycleTarget();
                 }
-            }, 100);
+            }, 200); // Increased delay to allow system generation
             
             // Force reset star charts (same logic as StarfieldManager.updateCurrentSector)
             console.log(`🗺️ SectorNavigation: Checking Star Charts Manager - exists: ${!!starfieldManager.starChartsManager}`);
@@ -339,19 +355,30 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
             if (starfieldManager.ship) {
                 const impulseEngines = starfieldManager.ship.getSystem('impulse_engines');
                 if (impulseEngines) {
-                    console.log(`🚀 SectorNavigation: Shutting down impulse engines after sector transition (current speed: ${impulseEngines.getImpulseSpeed()})`);
+                    console.log(`🚀 SectorNavigation: Shutting down impulse engines after sector transition (current speed: ${impulseEngines.getImpulseSpeed()}, moving: ${impulseEngines.isMovingForward})`);
+                    
+                    // Complete engine shutdown
                     impulseEngines.setImpulseSpeed(0);
                     impulseEngines.setMovingForward(false);
-                    console.log(`🚀 SectorNavigation: Impulse engines stopped (new speed: ${impulseEngines.getImpulseSpeed()})`);
+                    impulseEngines.isActive = false; // Force inactive state
+                    
+                    console.log(`🚀 SectorNavigation: Impulse engines stopped (new speed: ${impulseEngines.getImpulseSpeed()}, moving: ${impulseEngines.isMovingForward}, active: ${impulseEngines.isActive})`);
                 }
                 
-                // Reset movement-related properties in StarfieldManager
+                // Reset ALL movement-related properties in StarfieldManager
                 starfieldManager.targetSpeed = 0;
                 starfieldManager.currentSpeed = 0;
+                starfieldManager.isMoving = false;
+                starfieldManager.isAccelerating = false;
                 
-                // Force stop any ongoing movement
-                if (starfieldManager.ship.position) {
-                    starfieldManager.ship.velocity = new (starfieldManager.THREE || window.THREE).Vector3(0, 0, 0);
+                // Force stop any ongoing movement and reset velocity
+                if (starfieldManager.ship) {
+                    if (starfieldManager.ship.velocity) {
+                        starfieldManager.ship.velocity.set(0, 0, 0);
+                    }
+                    if (starfieldManager.ship.userData && starfieldManager.ship.userData.velocity) {
+                        starfieldManager.ship.userData.velocity.set(0, 0, 0);
+                    }
                 }
                 
                 console.log(`🚀 SectorNavigation: All movement systems reset for sector transition`);
