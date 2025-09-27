@@ -361,13 +361,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Add discovery status check
         window.checkDiscoveries = () => {
-            debug('P1', '🔍 Checking discovery system status');
-            
             if (window.starfieldManager && window.starfieldManager.navigationSystemManager) {
                 const starCharts = window.starfieldManager.navigationSystemManager.starChartsManager;
                 if (starCharts) {
                     const discoveryCount = starCharts.discoveredObjects ? starCharts.discoveredObjects.size : 0;
-                    debug('P1', `📊 Current discoveries: ${discoveryCount}`);
                     console.log(`Current discoveries: ${discoveryCount}`);
                     
                     // List some discovered objects
@@ -380,11 +377,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     
                     return `Found ${discoveryCount} discoveries`;
                 } else {
-                    debug('P1', '❌ StarChartsManager not found');
                     return 'StarChartsManager not available';
                 }
             } else {
-                debug('P1', '❌ StarfieldManager or navigationSystemManager not available');
                 return 'Navigation system not available';
             }
         };

@@ -1115,7 +1115,6 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
 
             this.saveDiscoveryState();
             debug('STAR_CHARTS', `✅ DISCOVERED: ${normalizedId} (${discoveryMethod}) - Total discovered: ${this.discoveredObjects.size}`);
-            debug('P1', `🏆 DISCOVERY COUNT: ${this.discoveredObjects.size} - Calling updateAchievementProgress()`);
 
             // Update achievement progress
             this.updateAchievementProgress();
@@ -1651,26 +1650,22 @@ debug('UTILITY', `   - Spatial grid cells: ${metrics.spatialGridCells}`);
     updateAchievementProgress() {
         try {
             const discoveryCount = this.discoveredObjects.size;
-            debug('P1', `🏆 updateAchievementProgress() called with ${discoveryCount} discoveries`);
             
             // Import achievement system dynamically to avoid circular dependencies
             if (window.achievementSystem) {
-                debug('P1', '✅ Achievement system found, updating progress');
                 window.achievementSystem.updateDiscoveryProgress(discoveryCount);
             } else {
-                debug('P1', '⚠️ Achievement system not found, attempting to load...');
                 // Try to initialize achievement system if not available
                 import('../systems/AchievementSystem.js').then(module => {
-                    debug('P1', '✅ Achievement system loaded dynamically');
                     const achievementSystem = module.getAchievementSystem();
                     const discoveryCount = this.discoveredObjects.size;
                     achievementSystem.updateDiscoveryProgress(discoveryCount);
                 }).catch(error => {
-                    debug('P1', '❌ Failed to load achievement system:', error);
+                    console.warn('Failed to load achievement system:', error);
                 });
             }
         } catch (error) {
-            debug('P1', '❌ Failed to update achievement progress:', error);
+            console.warn('Failed to update achievement progress:', error);
         }
     }
 }

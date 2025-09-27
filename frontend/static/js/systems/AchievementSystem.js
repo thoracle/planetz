@@ -58,7 +58,6 @@ export class AchievementSystem {
         
         window.testAchievement = (discoveryCount) => {
             console.log(`🧪 Testing achievement system with ${discoveryCount} discoveries`);
-            debug('P1', `🧪 testAchievement called with ${discoveryCount}`);
             this.updateDiscoveryProgress(discoveryCount);
         };
         
@@ -198,26 +197,19 @@ export class AchievementSystem {
      * Update progress for discovery-based achievements
      */
     updateDiscoveryProgress(discoveryCount) {
-        debug('P1', `🔍 AchievementSystem.updateDiscoveryProgress() called with ${discoveryCount} discoveries`);
-        
         // Check all discovery achievements
         const discoveryAchievements = Array.from(this.achievements.values())
             .filter(achievement => achievement.requirements.type === 'discovery_count');
         
-        debug('P1', `📋 Found ${discoveryAchievements.length} discovery achievements to check`);
-        
         discoveryAchievements.forEach(achievement => {
             const progress = this.playerProgress.get(achievement.id);
-            debug('P1', `🎯 Checking ${achievement.name}: ${discoveryCount}/${achievement.requirements.target} (unlocked: ${progress.unlocked})`);
             
             if (!progress.unlocked && discoveryCount >= achievement.requirements.target) {
-                debug('P1', `🏆 UNLOCKING ACHIEVEMENT: ${achievement.name}`);
                 this.unlockAchievement(achievement.id);
             } else {
                 // Update progress
                 progress.current = discoveryCount;
                 this.saveProgress();
-                debug('P1', `📊 Updated progress for ${achievement.name}: ${progress.current}/${achievement.requirements.target}`);
             }
         });
     }
