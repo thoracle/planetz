@@ -324,6 +324,28 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
                     const celestialBodies = starfieldManager.solarSystemManager.getCelestialBodies();
                     console.log(`🌍 SectorNavigation: SolarSystemManager sector: ${currentSystemSector}, bodies: ${celestialBodies.size}`);
                     
+                    // Debug: Check target computer range
+                    const ship = starfieldManager.ship;
+                    const targetComputer = ship?.getSystem('target_computer');
+                    const maxTargetingRange = targetComputer?.range || 150;
+                    console.log(`🎯 SectorNavigation: Target computer range: ${maxTargetingRange}km`);
+                    
+                    // Debug: Check first few celestial bodies and their distances
+                    if (celestialBodies.size > 0) {
+                        let bodyCount = 0;
+                        for (const [key, body] of celestialBodies.entries()) {
+                            if (bodyCount >= 3) break;
+                            const info = starfieldManager.solarSystemManager.getCelestialBodyInfo(body);
+                            const distance = body.position ? Math.sqrt(
+                                Math.pow(body.position.x - starfieldManager.camera.position.x, 2) +
+                                Math.pow(body.position.y - starfieldManager.camera.position.y, 2) +
+                                Math.pow(body.position.z - starfieldManager.camera.position.z, 2)
+                            ) : 'unknown';
+                            console.log(`🌍 SectorNavigation: Body ${key}: ${info?.name || 'unknown'} at ${distance}km (range: ${maxTargetingRange}km)`);
+                            bodyCount++;
+                        }
+                    }
+                    
                     // If SolarSystemManager is still on wrong sector, force regenerate
                     if (currentSystemSector !== this.currentSector) {
                         console.log(`🚨 SectorNavigation: SolarSystemManager sector mismatch! Expected: ${this.currentSector}, Got: ${currentSystemSector}`);
