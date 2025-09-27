@@ -334,9 +334,24 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
                 }
                 
                 if (starfieldManager.updateTargetList) {
+                    console.log(`🎯 SectorNavigation: Calling updateTargetList() for sector ${this.currentSector}`);
                     starfieldManager.updateTargetList();
+                    
+                    // Log first few targets to verify they're from the correct sector
+                    if (starfieldManager.targetObjects && starfieldManager.targetObjects.length > 0) {
+                        console.log(`🎯 SectorNavigation: Target list updated - ${starfieldManager.targetObjects.length} targets found`);
+                        const firstFewTargets = starfieldManager.targetObjects.slice(0, 3).map(t => ({
+                            name: t.name,
+                            id: t.id,
+                            type: t.type
+                        }));
+                        console.log(`🎯 SectorNavigation: First targets:`, firstFewTargets);
+                    } else {
+                        console.log(`🎯 SectorNavigation: No targets found after updateTargetList()`);
+                    }
                 }
                 if (starfieldManager.cycleTarget) {
+                    console.log(`🎯 SectorNavigation: Calling cycleTarget() for sector ${this.currentSector}`);
                     starfieldManager.cycleTarget();
                 }
             }, 200); // Increased delay to allow system generation
@@ -353,14 +368,31 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
             
             // Reuse comprehensive ship shutdown system from docking (includes engine audio shutdown)
             console.log(`🛑 SectorNavigation: Shutting down all ship systems for sector transition`);
-            if (starfieldManager.shutdownAllSystems) {
+            console.log(`🔍 SectorNavigation: shutdownAllSystems available: ${typeof starfieldManager.shutdownAllSystems}`);
+            
+            if (starfieldManager.shutdownAllSystems && typeof starfieldManager.shutdownAllSystems === 'function') {
+                console.log(`🛑 SectorNavigation: Calling starfieldManager.shutdownAllSystems()`);
                 starfieldManager.shutdownAllSystems();
+                
+                // Also manually stop engine audio if it's still running
+                if (starfieldManager.audioManager && starfieldManager.audioManager.getEngineState() === 'running') {
+                    console.log(`🔇 SectorNavigation: Manually stopping engine audio`);
+                    starfieldManager.playEngineShutdown();
+                }
             } else {
-                console.warn(`❌ SectorNavigation: shutdownAllSystems not available, using fallback`);
+                console.warn(`❌ SectorNavigation: shutdownAllSystems not available (${typeof starfieldManager.shutdownAllSystems}), using comprehensive fallback`);
+                
+                // Comprehensive fallback: manual engine audio shutdown
+                if (starfieldManager.audioManager && starfieldManager.audioManager.getEngineState() === 'running') {
+                    console.log(`🔇 SectorNavigation: Fallback engine audio shutdown`);
+                    starfieldManager.playEngineShutdown();
+                }
+                
                 // Fallback: basic engine shutdown
                 if (starfieldManager.ship) {
                     const impulseEngines = starfieldManager.ship.getSystem('impulse_engines');
                     if (impulseEngines) {
+                        console.log(`🚀 SectorNavigation: Fallback impulse engine shutdown`);
                         impulseEngines.setImpulseSpeed(0);
                         impulseEngines.setMovingForward(false);
                         impulseEngines.isActive = false;
