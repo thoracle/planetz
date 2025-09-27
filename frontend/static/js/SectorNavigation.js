@@ -302,13 +302,29 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
             starfieldManager.targetIndex = -1;
             
             // CRITICAL: Clear the old target list to remove A0 objects
+            debug('P1', `🔍 BEFORE CLEARING: StarfieldManager has ${starfieldManager.targetObjects?.length || 0} targets`);
+            if (starfieldManager.targetObjects?.length > 0) {
+                starfieldManager.targetObjects.forEach((target, i) => {
+                    debug('P1', `  [${i}] ${target.name} - ID: "${target.id}"`);
+                });
+            }
+            
             starfieldManager.targetObjects = [];
             if (starfieldManager.targetComputerManager) {
+                debug('P1', `🔍 BEFORE CLEARING: TargetComputerManager has ${starfieldManager.targetComputerManager.targetObjects?.length || 0} targets`);
+                if (starfieldManager.targetComputerManager.targetObjects?.length > 0) {
+                    starfieldManager.targetComputerManager.targetObjects.forEach((target, i) => {
+                        debug('P1', `  [${i}] ${target.name} - ID: "${target.id}"`);
+                    });
+                }
+                
                 starfieldManager.targetComputerManager.targetObjects = [];
                 starfieldManager.targetComputerManager.currentTarget = null;
                 starfieldManager.targetComputerManager.targetIndex = -1;
                 starfieldManager.targetComputerManager.hideTargetHUD();
                 starfieldManager.targetComputerManager.hideTargetReticle();
+                
+                debug('P1', `🔍 AFTER CLEARING: TargetComputerManager has ${starfieldManager.targetComputerManager.targetObjects?.length || 0} targets`);
             }
             
             // Clear any existing wireframe
@@ -363,6 +379,14 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
                 if (starfieldManager.updateTargetList) {
                     console.log(`🎯 SectorNavigation: Calling updateTargetList() for sector ${this.currentSector}`);
                     starfieldManager.updateTargetList();
+                    
+                    // CRITICAL DEBUG: Show what targets were found after update
+                    debug('P1', `🔍 AFTER updateTargetList(): Found ${starfieldManager.targetObjects?.length || 0} targets`);
+                    if (starfieldManager.targetObjects?.length > 0) {
+                        starfieldManager.targetObjects.forEach((target, i) => {
+                            debug('P1', `  [${i}] ${target.name} - ID: "${target.id}" - Distance: ${target.distance?.toFixed(1)}km`);
+                        });
+                    }
                 }
                 if (starfieldManager.cycleTarget) {
                     console.log(`🎯 SectorNavigation: Calling cycleTarget() for sector ${this.currentSector}`);

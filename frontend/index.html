@@ -60,5 +60,14 @@
 
     <!-- Game Application -->
     <script type="module" src="static/js/app.js"></script>
+    
+    <!-- Load integration tests (only in test mode) -->
+    <script>
+        if (window.location.search.includes('runTests=true') || window.location.search.includes('debug=true')) {
+            const testScript = document.createElement('script');
+            testScript.src = '../tests/integration_test_target_computer.js';
+            document.head.appendChild(testScript);
+        }
+    </script>
 </body>
 </html> 

@@ -1892,7 +1892,17 @@ export class TargetComputerManager {
         }
         
         // CRITICAL: Normalize ALL target IDs before setting the target list
+        debug('P1', `🔍 BEFORE NORMALIZATION: ${deduplicatedTargets.length} targets`);
+        deduplicatedTargets.forEach((target, i) => {
+            debug('P1', `  [${i}] ${target.name} - ID: "${target.id}" (type: ${typeof target.id})`);
+        });
+        
         const normalizedTargets = deduplicatedTargets.map(target => this.normalizeTarget(target));
+        
+        debug('P1', `🔍 AFTER NORMALIZATION: ${normalizedTargets.length} targets`);
+        normalizedTargets.forEach((target, i) => {
+            debug('P1', `  [${i}] ${target.name} - ID: "${target.id}" (type: ${typeof target.id})`);
+        });
         
         // Update target list with normalized targets
         this.targetObjects = normalizedTargets;
@@ -2287,7 +2297,13 @@ export class TargetComputerManager {
      */
     cycleTarget(forward = true) {
         try {
-            debug('TARGETING', `🎯 TargetComputerManager.cycleTarget called (forward=${forward})`);
+            debug('P1', `🎯 TAB PRESSED: TargetComputerManager.cycleTarget called (forward=${forward})`);
+            
+            // CRITICAL DEBUG: Show current target list when TAB is pressed
+            debug('P1', `🔍 CURRENT TARGET LIST (${this.targetObjects.length} targets):`);
+            this.targetObjects.forEach((target, i) => {
+                debug('P1', `  [${i}] ${target.name} - ID: "${target.id}" - Distance: ${target.distance?.toFixed(1)}km`);
+            });
         
         // Add waypoints to targeting system before cycling (only if not already added)
         if (!this._waypointsAdded) {
