@@ -296,29 +296,34 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
             
             const starfieldManager = this.viewManager.starfieldManager;
             
-            // Force reset target computer (same logic as StarfieldManager.updateCurrentSector)
-            if (starfieldManager.targetComputerEnabled) {
-                console.log(`🎯 SectorNavigation: Resetting target computer for sector ${this.currentSector}`);
-                starfieldManager.currentTarget = null;
-                starfieldManager.targetIndex = -1;
+            // Force reset target computer (ALWAYS reset, regardless of enabled state)
+            console.log(`🎯 SectorNavigation: Resetting target computer for sector ${this.currentSector} (enabled: ${starfieldManager.targetComputerEnabled})`);
+            starfieldManager.currentTarget = null;
+            starfieldManager.targetIndex = -1;
+            
+            if (starfieldManager.targetComputerManager) {
                 starfieldManager.targetComputerManager.hideTargetHUD();
                 starfieldManager.targetComputerManager.hideTargetReticle();
-                
-                // Clear any existing wireframe
-                if (starfieldManager.targetWireframe) {
-                    starfieldManager.wireframeScene.remove(starfieldManager.targetWireframe);
-                    starfieldManager.targetWireframe.geometry.dispose();
-                    starfieldManager.targetWireframe.material.dispose();
-                    starfieldManager.targetWireframe = null;
-                }
-                
-                // Update target list for new sector
-                setTimeout(() => {
-                    console.log(`🎯 SectorNavigation: Updating target list for sector ${this.currentSector}`);
-                    starfieldManager.updateTargetList();
-                    starfieldManager.cycleTarget();
-                }, 100);
             }
+            
+            // Clear any existing wireframe
+            if (starfieldManager.targetWireframe) {
+                starfieldManager.wireframeScene.remove(starfieldManager.targetWireframe);
+                starfieldManager.targetWireframe.geometry.dispose();
+                starfieldManager.targetWireframe.material.dispose();
+                starfieldManager.targetWireframe = null;
+            }
+            
+            // ALWAYS update target list for new sector (regardless of target computer state)
+            setTimeout(() => {
+                console.log(`🎯 SectorNavigation: Updating target list for sector ${this.currentSector}`);
+                if (starfieldManager.updateTargetList) {
+                    starfieldManager.updateTargetList();
+                }
+                if (starfieldManager.cycleTarget) {
+                    starfieldManager.cycleTarget();
+                }
+            }, 100);
             
             // Force reset star charts (same logic as StarfieldManager.updateCurrentSector)
             if (starfieldManager.starChartsManager) {
@@ -330,12 +335,22 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
             if (starfieldManager.ship) {
                 const impulseEngines = starfieldManager.ship.getSystem('impulse_engines');
                 if (impulseEngines) {
-                    console.log(`🚀 SectorNavigation: Shutting down impulse engines after sector transition`);
+                    console.log(`🚀 SectorNavigation: Shutting down impulse engines after sector transition (current speed: ${impulseEngines.getImpulseSpeed()})`);
                     impulseEngines.setImpulseSpeed(0);
                     impulseEngines.setMovingForward(false);
-                    // Also reset the target speed in StarfieldManager
-                    starfieldManager.targetSpeed = 0;
+                    console.log(`🚀 SectorNavigation: Impulse engines stopped (new speed: ${impulseEngines.getImpulseSpeed()})`);
                 }
+                
+                // Reset movement-related properties in StarfieldManager
+                starfieldManager.targetSpeed = 0;
+                starfieldManager.currentSpeed = 0;
+                
+                // Force stop any ongoing movement
+                if (starfieldManager.ship.position) {
+                    starfieldManager.ship.velocity = new (starfieldManager.THREE || window.THREE).Vector3(0, 0, 0);
+                }
+                
+                console.log(`🚀 SectorNavigation: All movement systems reset for sector transition`);
             }
         } else {
             console.log(`❌ SectorNavigation: Cannot access starfieldManager - viewManager: ${!!this.viewManager}, starfieldManager: ${!!this.viewManager?.starfieldManager}`);
