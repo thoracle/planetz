@@ -15,6 +15,7 @@ import { MissionEventHandler } from '../ui/MissionEventHandler.js';
 import { MissionAPIService } from '../services/MissionAPIService.js';
 import { MissionEventService } from '../services/MissionEventService.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
+import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 
@@ -150,6 +151,11 @@ export class StarfieldManager {
             this.scene, this.camera, this.viewManager, this.THREE, this.solarSystemManager
         );
         this.targetComputerManager.initialize();
+        
+        // Create star charts manager
+        this.starChartsManager = new StarChartsManager(
+            this.scene, this.camera, this.viewManager, this.solarSystemManager, this.targetComputerManager
+        );
         
         // Help screen controller will be initialized later in constructor
         
