@@ -356,8 +356,26 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
                 }
                 
                 if (starfieldManager.updateTargetList) {
+                    // CRITICAL FIX: Temporarily boost targeting range for warp completion
+                    const ship = starfieldManager.ship;
+                    const targetComputer = ship?.getSystem('target_computer');
+                    const originalRange = targetComputer?.range || 150;
+                    
+                    if (targetComputer) {
+                        console.log(`🎯 SectorNavigation: Temporarily boosting targeting range from ${originalRange}km to 5000km for sector discovery`);
+                        targetComputer.range = 5000; // Temporary boost for system-wide discovery
+                    }
+                    
                     console.log(`🎯 SectorNavigation: Calling updateTargetList() for sector ${this.currentSector}`);
                     starfieldManager.updateTargetList();
+                    
+                    // Restore original range after update
+                    if (targetComputer) {
+                        setTimeout(() => {
+                            console.log(`🎯 SectorNavigation: Restoring targeting range to ${originalRange}km`);
+                            targetComputer.range = originalRange;
+                        }, 1000); // Restore after 1 second
+                    }
                     
                     // Log first few targets to verify they're from the correct sector
                     if (starfieldManager.targetObjects && starfieldManager.targetObjects.length > 0) {
@@ -384,6 +402,18 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
                 console.log(`🗺️ SectorNavigation: Updating Star Charts from ${starfieldManager.starChartsManager.currentSector} to ${this.currentSector}`);
                 starfieldManager.starChartsManager.currentSector = this.currentSector;
                 console.log(`🗺️ SectorNavigation: Star Charts sector updated to ${starfieldManager.starChartsManager.currentSector}`);
+                
+                // Force refresh Star Charts discovery after target list update
+                setTimeout(() => {
+                    console.log(`🗺️ SectorNavigation: Triggering Star Charts discovery refresh for sector ${this.currentSector}`);
+                    if (starfieldManager.starChartsManager.refreshDiscovery) {
+                        starfieldManager.starChartsManager.refreshDiscovery();
+                    }
+                    // Also trigger proximity check to discover nearby objects
+                    if (starfieldManager.starChartsManager.checkProximityDiscovery) {
+                        starfieldManager.starChartsManager.checkProximityDiscovery();
+                    }
+                }, 1500); // After target list update and range restore
             } else {
                 console.log(`❌ SectorNavigation: Star Charts Manager not found - cannot update sector`);
             }
