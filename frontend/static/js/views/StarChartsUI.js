@@ -1950,9 +1950,23 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         // Get all objects for current sector - discovered objects show normally, undiscovered show as "?"
         // In test mode, all objects show normally
 
-        // Get sector data
-        const sectorData = this.starChartsManager.objectDatabase?.sectors[this.starChartsManager.getCurrentSector()];
-        if (!sectorData) return [];
+        // CLEAN FIX: Get fresh sector data from solarSystemManager like Long Range Scanner does
+        const solarSystemManager = this.viewManager.getSolarSystemManager();
+        if (!solarSystemManager) return [];
+        
+        const currentSector = solarSystemManager.currentSector;
+        const rawStarSystem = solarSystemManager.starSystem;
+        if (!rawStarSystem) return [];
+        
+        // Update StarChartsManager current sector to match reality
+        if (this.starChartsManager.currentSector !== currentSector) {
+            console.log(`🗺️ StarChartsUI: Updating sector from ${this.starChartsManager.currentSector} to ${currentSector}`);
+            this.starChartsManager.currentSector = currentSector;
+        }
+        
+        // Fallback to static database if needed, but prefer fresh data
+        const sectorData = this.starChartsManager.objectDatabase?.sectors[currentSector];
+        if (!sectorData && !rawStarSystem) return [];
 
         // Check if test mode is enabled (show all objects normally)
         const isTestMode = this.isTestModeEnabled();
