@@ -3440,14 +3440,18 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
     }
 
     /**
-     * Construct a proper A0_ ID from target data
+     * Construct a proper sector-prefixed ID from target data
      */
     constructStarChartsId(targetData) {
         if (!targetData) return null;
         
-        // If already has proper A0_ ID, return it
+        // Get current sector from solarSystemManager
+        const currentSector = this.solarSystemManager?.currentSector || 'A0';
+        const sectorPrefix = `${currentSector}_`;
+        
+        // If already has proper sector prefix, return it
         let objectId = targetData.id;
-        if (objectId && objectId.toString().startsWith('A0_')) {
+        if (objectId && objectId.toString().startsWith(sectorPrefix)) {
             return objectId;
         }
         
@@ -3480,11 +3484,12 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
                 break;
         }
         
-        // Prevent double A0_ prefixes
-        if (normalizedName.startsWith('a0_')) {
-            return typeof normalizedName === 'string' ? normalizedName.replace(/^a0_/i, 'A0_') : normalizedName;
+        // Prevent double sector prefixes
+        const lowerPrefix = sectorPrefix.toLowerCase();
+        if (normalizedName.startsWith(lowerPrefix)) {
+            return typeof normalizedName === 'string' ? normalizedName.replace(new RegExp(`^${lowerPrefix}`, 'i'), sectorPrefix) : normalizedName;
         } else {
-            return `A0_${normalizedName}`;
+            return `${sectorPrefix}${normalizedName}`;
         }
         
         // Notify Star Charts to update blinking target if it's open

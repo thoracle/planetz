@@ -229,11 +229,14 @@ debug('TARGETING', `🔄 Syncing targets: ${discoveredObjects.length} discovered
 
     /**
      * Normalize object ID to consistent format
-     * Converts lowercase 'a0_' prefixes to uppercase 'A0_' to match Star Charts database
+     * Converts lowercase sector prefixes to uppercase to match Star Charts database
      */
     normalizeObjectId(objectId) {
         if (!objectId) return objectId;
-        return typeof objectId === 'string' ? objectId.replace(/^a0_/i, 'A0_') : objectId;
+        if (typeof objectId !== 'string') return objectId;
+        
+        // Match any sector prefix pattern (A0_, B1_, etc.) and normalize to uppercase
+        return objectId.replace(/^([a-z]\d+)_/i, (match, sectorPart) => `${sectorPart.toUpperCase()}_`);
     }
 
     /**
@@ -347,7 +350,7 @@ debug('TARGETING', `🎯 Refreshed Target Computer display`);
         if (!this.targetComputer || !targetData) return;
 
         // Normalize ID to uppercase to match Star Charts database format
-        const normalizedId = targetData.id ? (typeof targetData.id === 'string' ? targetData.id.replace(/^a0_/i, 'A0_') : targetData.id) : null;
+        const normalizedId = targetData.id ? this.normalizeObjectId(targetData.id) : null;
         
         if (!normalizedId) {
             debug('TARGETING', `🚨 WARNING: Target ${targetData.name} has no ID, skipping sync`);
@@ -500,7 +503,7 @@ debug('TARGETING', `🎯 Refreshed Target Computer display`);
             let hydrated = 0;
             this.targetComputer.targetObjects.forEach((t, idx) => {
                 if (t && !t.object) {
-                    const id = typeof (t.id || '') === 'string' ? (t.id || '').replace(/^a0_/i, 'A0_') : (t.id || '');
+                    const id = this.normalizeObjectId(t.id || '');
                     let obj = null;
                     if (t.type === 'navigation_beacon' && sfm?.navigationBeacons) {
                         obj = sfm.navigationBeacons.find(b => b?.userData?.id === id) ||
