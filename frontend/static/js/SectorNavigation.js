@@ -301,7 +301,12 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
             starfieldManager.currentTarget = null;
             starfieldManager.targetIndex = -1;
             
+            // CRITICAL: Clear the old target list to remove A0 objects
+            starfieldManager.targetObjects = [];
             if (starfieldManager.targetComputerManager) {
+                starfieldManager.targetComputerManager.targetObjects = [];
+                starfieldManager.targetComputerManager.currentTarget = null;
+                starfieldManager.targetComputerManager.targetIndex = -1;
                 starfieldManager.targetComputerManager.hideTargetHUD();
                 starfieldManager.targetComputerManager.hideTargetReticle();
             }
@@ -431,8 +436,55 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
 debug('UTILITY', 'Deactivating warp drive');
         this.warpDrive.deactivate();
         
+        // Position ship near the system star for proper targeting range
+        this.positionShipNearStar();
+        
         // Only set isNavigating to false after warp drive is deactivated
         this.isNavigating = false;
+    }
+
+    /**
+     * Position ship near the system star after warp for proper targeting range
+     */
+    positionShipNearStar() {
+        if (!this.viewManager?.starfieldManager?.solarSystemManager) return;
+        
+        const solarSystemManager = this.viewManager.starfieldManager.solarSystemManager;
+        const celestialBodies = solarSystemManager.getCelestialBodies();
+        
+        // Find the system star
+        let systemStar = null;
+        for (const [key, body] of celestialBodies.entries()) {
+            if (key === 'star' || key.includes('star')) {
+                systemStar = body;
+                break;
+            }
+        }
+        
+        if (systemStar && systemStar.position) {
+            // Position ship 100km from the star (within 150km targeting range)
+            const starPosition = systemStar.position;
+            const offsetDistance = 100; // km
+            
+            // Calculate offset position (slightly offset from star)
+            const newPosition = {
+                x: starPosition.x + offsetDistance,
+                y: starPosition.y,
+                z: starPosition.z
+            };
+            
+            console.log(`🚀 SectorNavigation: Positioning ship 100km from system star at (${newPosition.x.toFixed(1)}, ${newPosition.y.toFixed(1)}, ${newPosition.z.toFixed(1)})`);
+            
+            // Update camera position
+            this.camera.position.set(newPosition.x, newPosition.y, newPosition.z);
+            
+            // Update ship position if available
+            if (this.viewManager.starfieldManager.ship) {
+                this.viewManager.starfieldManager.ship.position.set(newPosition.x, newPosition.y, newPosition.z);
+            }
+        } else {
+            console.warn(`🚀 SectorNavigation: Could not find system star for positioning`);
+        }
     }
 
     /**
