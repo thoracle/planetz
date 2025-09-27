@@ -290,12 +290,41 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
         console.log(`🔍 SectorNavigation: viewManager available: ${!!this.viewManager}`);
         console.log(`🔍 SectorNavigation: viewManager.starfieldManager available: ${!!this.viewManager?.starfieldManager}`);
         
-        // BETTER APPROACH: Use StarfieldManager.updateCurrentSector() which already has the correct logic
+        // CRITICAL FIX: Force reset navigation systems directly (bypass updateCurrentSector condition)
         if (this.viewManager?.starfieldManager) {
-            console.log(`🚀 SectorNavigation: Calling StarfieldManager.updateCurrentSector() for proper sector reset`);
+            console.log(`🚀 SectorNavigation: Force resetting navigation systems for sector ${this.currentSector}`);
             
-            // Force call updateCurrentSector() which has all the correct reset logic
-            this.viewManager.starfieldManager.updateCurrentSector();
+            const starfieldManager = this.viewManager.starfieldManager;
+            
+            // Force reset target computer (same logic as StarfieldManager.updateCurrentSector)
+            if (starfieldManager.targetComputerEnabled) {
+                console.log(`🎯 SectorNavigation: Resetting target computer for sector ${this.currentSector}`);
+                starfieldManager.currentTarget = null;
+                starfieldManager.targetIndex = -1;
+                starfieldManager.targetComputerManager.hideTargetHUD();
+                starfieldManager.targetComputerManager.hideTargetReticle();
+                
+                // Clear any existing wireframe
+                if (starfieldManager.targetWireframe) {
+                    starfieldManager.wireframeScene.remove(starfieldManager.targetWireframe);
+                    starfieldManager.targetWireframe.geometry.dispose();
+                    starfieldManager.targetWireframe.material.dispose();
+                    starfieldManager.targetWireframe = null;
+                }
+                
+                // Update target list for new sector
+                setTimeout(() => {
+                    console.log(`🎯 SectorNavigation: Updating target list for sector ${this.currentSector}`);
+                    starfieldManager.updateTargetList();
+                    starfieldManager.cycleTarget();
+                }, 100);
+            }
+            
+            // Force reset star charts (same logic as StarfieldManager.updateCurrentSector)
+            if (starfieldManager.starChartsManager) {
+                console.log(`🗺️ SectorNavigation: Updating Star Charts from ${starfieldManager.starChartsManager.currentSector} to ${this.currentSector}`);
+                starfieldManager.starChartsManager.currentSector = this.currentSector;
+            }
         } else {
             console.log(`❌ SectorNavigation: Cannot access starfieldManager - viewManager: ${!!this.viewManager}, starfieldManager: ${!!this.viewManager?.starfieldManager}`);
             
