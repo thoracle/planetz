@@ -302,19 +302,19 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
             starfieldManager.targetIndex = -1;
             
             // CRITICAL: Clear the old target list to remove A0 objects
-            debug('P1', `🔍 BEFORE CLEARING: StarfieldManager has ${starfieldManager.targetObjects?.length || 0} targets`);
+            console.log(`🔍 BEFORE CLEARING: StarfieldManager has ${starfieldManager.targetObjects?.length || 0} targets`);
             if (starfieldManager.targetObjects?.length > 0) {
                 starfieldManager.targetObjects.forEach((target, i) => {
-                    debug('P1', `  [${i}] ${target.name} - ID: "${target.id}"`);
+                    console.log(`  [${i}] ${target.name} - ID: "${target.id}"`);
                 });
             }
             
             starfieldManager.targetObjects = [];
             if (starfieldManager.targetComputerManager) {
-                debug('P1', `🔍 BEFORE CLEARING: TargetComputerManager has ${starfieldManager.targetComputerManager.targetObjects?.length || 0} targets`);
+                console.log(`🔍 BEFORE CLEARING: TargetComputerManager has ${starfieldManager.targetComputerManager.targetObjects?.length || 0} targets`);
                 if (starfieldManager.targetComputerManager.targetObjects?.length > 0) {
                     starfieldManager.targetComputerManager.targetObjects.forEach((target, i) => {
-                        debug('P1', `  [${i}] ${target.name} - ID: "${target.id}"`);
+                        console.log(`  [${i}] ${target.name} - ID: "${target.id}"`);
                     });
                 }
                 
@@ -324,7 +324,7 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
                 starfieldManager.targetComputerManager.hideTargetHUD();
                 starfieldManager.targetComputerManager.hideTargetReticle();
                 
-                debug('P1', `🔍 AFTER CLEARING: TargetComputerManager has ${starfieldManager.targetComputerManager.targetObjects?.length || 0} targets`);
+                console.log(`🔍 AFTER CLEARING: TargetComputerManager has ${starfieldManager.targetComputerManager.targetObjects?.length || 0} targets`);
             }
             
             // Clear any existing wireframe
@@ -381,10 +381,10 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
                     starfieldManager.updateTargetList();
                     
                     // CRITICAL DEBUG: Show what targets were found after update
-                    debug('P1', `🔍 AFTER updateTargetList(): Found ${starfieldManager.targetObjects?.length || 0} targets`);
+                    console.log(`🔍 AFTER updateTargetList(): Found ${starfieldManager.targetObjects?.length || 0} targets`);
                     if (starfieldManager.targetObjects?.length > 0) {
                         starfieldManager.targetObjects.forEach((target, i) => {
-                            debug('P1', `  [${i}] ${target.name} - ID: "${target.id}" - Distance: ${target.distance?.toFixed(1)}km`);
+                            console.log(`  [${i}] ${target.name} - ID: "${target.id}" - Distance: ${target.distance?.toFixed(1)}km`);
                         });
                     }
                 }
@@ -489,6 +489,12 @@ debug('UTILITY', 'Deactivating warp drive');
             // Position ship 100km from the star (within 150km targeting range)
             const starPosition = systemStar.position;
             console.log(`🚀 SectorNavigation: System star found at (${starPosition.x.toFixed(1)}, ${starPosition.y.toFixed(1)}, ${starPosition.z.toFixed(1)})`);
+            console.log(`🚀 SectorNavigation: Star object details:`, {
+                name: systemStar.name,
+                type: systemStar.type,
+                id: systemStar.id,
+                userData: systemStar.userData
+            });
             
             // Calculate direction vector from star to ship (normalized)
             const direction = {
@@ -523,6 +529,20 @@ debug('UTILITY', 'Deactivating warp drive');
                 Math.pow(newPosition.z - starPosition.z, 2)
             );
             console.log(`🚀 SectorNavigation: Calculated distance to star: ${actualDistance.toFixed(1)}km`);
+            
+            // CRITICAL: Also check what the target computer will see
+            setTimeout(() => {
+                console.log(`🔍 POST-POSITIONING: Camera at (${this.camera.position.x.toFixed(1)}, ${this.camera.position.y.toFixed(1)}, ${this.camera.position.z.toFixed(1)})`);
+                console.log(`🔍 POST-POSITIONING: Star at (${starPosition.x.toFixed(1)}, ${starPosition.y.toFixed(1)}, ${starPosition.z.toFixed(1)})`);
+                
+                // Calculate distance using the same method as target computer
+                const tcDistance = Math.sqrt(
+                    Math.pow(this.camera.position.x - starPosition.x, 2) +
+                    Math.pow(this.camera.position.y - starPosition.y, 2) +
+                    Math.pow(this.camera.position.z - starPosition.z, 2)
+                );
+                console.log(`🔍 POST-POSITIONING: Target computer distance calculation: ${tcDistance.toFixed(1)}km`);
+            }, 50);
             
             // Force target list update AFTER positioning to get correct distances
             setTimeout(() => {
