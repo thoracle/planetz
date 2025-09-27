@@ -1809,12 +1809,13 @@ export class TargetComputerManager {
                         return null;
                     }
                     
-                    // Ensure consistent ID format with Star Charts (A0_ prefix)
+                    // Ensure consistent ID format with Star Charts (sector prefix)
                     let targetId = this.constructStarChartsId(info);
                     if (!targetId) {
                         // Fallback to key-based ID if name-based construction fails
+                        const currentSector = this.solarSystemManager?.currentSector || 'A0';
                         const normalizedKey = key.replace(/^(station_|planet_|moon_|star_)/, '');
-                        targetId = `A0_${normalizedKey}`;
+                        targetId = `${currentSector}_${normalizedKey}`;
                     }
                     
                     // Check if this object is discovered before including faction info

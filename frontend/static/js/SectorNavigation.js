@@ -499,6 +499,15 @@ debug('UTILITY', 'Deactivating warp drive');
                 Math.pow(newPosition.z - starPosition.z, 2)
             );
             console.log(`🚀 SectorNavigation: Calculated distance to star: ${actualDistance.toFixed(1)}km`);
+            
+            // Force target list update AFTER positioning to get correct distances
+            setTimeout(() => {
+                console.log(`🎯 SectorNavigation: Force updating target list after positioning`);
+                if (this.viewManager.starfieldManager.targetComputerManager) {
+                    this.viewManager.starfieldManager.targetComputerManager.updateTargetList();
+                    console.log(`🎯 SectorNavigation: Target list updated after positioning`);
+                }
+            }, 100);
         } else {
             console.warn(`🚀 SectorNavigation: Could not find system star for positioning`);
         }
