@@ -331,6 +331,10 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
                 }
                 
                 // CRITICAL: Stop StarChartsTargetComputerIntegration sync to prevent A0 re-population
+                console.log(`🔍 SectorNavigation: Checking for StarCharts integration...`);
+                console.log(`  - navigationSystemManager: ${!!starfieldManager.navigationSystemManager}`);
+                console.log(`  - starChartsIntegration: ${!!starfieldManager.navigationSystemManager?.starChartsIntegration}`);
+                
                 if (starfieldManager.navigationSystemManager?.starChartsIntegration) {
                     console.log(`🛑 SectorNavigation: Pausing StarCharts integration sync during sector transition`);
                     starfieldManager.navigationSystemManager.starChartsIntegration.pauseSync = true;
@@ -342,6 +346,9 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
                             starfieldManager.navigationSystemManager.starChartsIntegration.pauseSync = false;
                         }
                     }, 2000); // 2 second delay to ensure sector updates are complete
+                } else {
+                    console.log(`❌ SectorNavigation: StarCharts integration not found - cannot pause sync`);
+                    console.log(`🔍 SectorNavigation: This means A0 targets might still be re-added by the integration system`);
                 }
                 
                 console.log(`🔍 AFTER CLEARING: TargetComputerManager has ${starfieldManager.targetComputerManager.targetObjects?.length || 0} targets`);
