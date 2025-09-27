@@ -1891,8 +1891,11 @@ export class TargetComputerManager {
             debug('TARGETING', `🎯 DEDUP: Removed ${duplicatesFound.length} duplicates:`, duplicatesFound.slice(0, 3));
         }
         
-        // Update target list
-        this.targetObjects = deduplicatedTargets;
+        // CRITICAL: Normalize ALL target IDs before setting the target list
+        const normalizedTargets = deduplicatedTargets.map(target => this.normalizeTarget(target));
+        
+        // Update target list with normalized targets
+        this.targetObjects = normalizedTargets;
 
         // Debug logging to see what targets were found
         debug('TARGETING', `TargetComputerManager: Found ${this.targetObjects.length} targets:`, this.targetObjects.map(t => `${t.name} (${t.distance.toFixed(1)}km)`));
@@ -2070,9 +2073,36 @@ export class TargetComputerManager {
     /**
      * Add a single target with proper deduplication
      */
+    /**
+     * UNIVERSAL TARGET NORMALIZATION: Normalize target ID before any processing
+     * This ensures ALL targets get proper sector-prefixed IDs regardless of source
+     */
+    normalizeTarget(targetData, fallbackKey = null) {
+        if (!targetData) return targetData;
+        
+        // Clone to avoid modifying original
+        const normalizedTarget = { ...targetData };
+        
+        // Apply unified ID normalization
+        const normalizedId = this.normalizeTargetId(targetData, fallbackKey);
+        if (normalizedId) {
+            normalizedTarget.id = normalizedId;
+        }
+        
+        return normalizedTarget;
+    }
+
     addTargetWithDeduplication(targetData) {
-        if (!targetData || !targetData.id) {
-            debug('TARGETING', `🚨 Cannot add target without ID: ${targetData?.name || 'unknown'}`);
+        if (!targetData) {
+            debug('TARGETING', `🚨 Cannot add null target`);
+            return false;
+        }
+        
+        // CRITICAL: Normalize target ID before processing
+        targetData = this.normalizeTarget(targetData);
+        
+        if (!targetData.id) {
+            debug('TARGETING', `🚨 Cannot add target without ID after normalization: ${targetData?.name || 'unknown'}`);
             return false;
         }
 
@@ -3459,7 +3489,59 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
     }
 
     /**
-     * Construct a proper sector-prefixed ID from target data
+     * UNIFIED ID NORMALIZATION: Convert any target ID to proper sector-prefixed format
+     * This is the SINGLE SOURCE OF TRUTH for target ID generation
+     */
+    normalizeTargetId(targetData, fallbackKey = null) {
+        if (!targetData) return null;
+        
+        const currentSector = this.solarSystemManager?.currentSector || 'A0';
+        
+        // If target already has a proper sector-prefixed ID, return it
+        if (targetData.id && typeof targetData.id === 'string' && targetData.id.match(/^[A-Z]\d+_/)) {
+            return targetData.id;
+        }
+        
+        // Generate sector-prefixed ID based on name and type
+        if (targetData.name) {
+            const cleanName = targetData.name.replace(/\s*\([^)]*\)\s*$/, '').trim();
+            let normalizedName;
+            
+            // Special handling for common celestial bodies
+            switch (cleanName.toLowerCase()) {
+                case 'terra prime':
+                    normalizedName = 'terra_prime';
+                    break;
+                case 'luna':
+                    normalizedName = 'luna';
+                    break;
+                case 'europa':
+                    normalizedName = 'europa';
+                    break;
+                case 'sol':
+                    normalizedName = 'star';
+                    break;
+                default:
+                    normalizedName = cleanName.toLowerCase()
+                        .replace(/\s+/g, '_')
+                        .replace(/[^a-z0-9_]/g, '');
+                    break;
+            }
+            
+            return `${currentSector}_${normalizedName}`;
+        }
+        
+        // Fallback using key if provided
+        if (fallbackKey) {
+            const normalizedKey = fallbackKey.replace(/^(station_|planet_|moon_|star_)/, '');
+            return `${currentSector}_${normalizedKey}`;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Construct a proper sector-prefixed ID from target data (DEPRECATED - use normalizeTargetId)
      */
     constructStarChartsId(targetData) {
         if (!targetData) return null;
