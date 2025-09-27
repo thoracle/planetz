@@ -1,5 +1,7 @@
 class WarpFeedback {
-    constructor() {
+    constructor(starfieldManager = null) {
+        this.starfieldManager = starfieldManager;
+        
         // Create warning modal container
         this.warningModal = document.createElement('div');
         this.warningModal.className = 'warning-popup';
@@ -12,7 +14,7 @@ class WarpFeedback {
         this.energyIndicator.style.display = 'none';
         document.body.appendChild(this.energyIndicator);
 
-        // Create progress bar
+        // DEPRECATED: Keep progress bar for backward compatibility but prefer OPS HUD
         this.progressBar = document.createElement('div');
         this.progressBar.className = 'warp-progress';
         this.progressBar.style.display = 'none';
@@ -20,6 +22,7 @@ class WarpFeedback {
 
         // Track cooldown display state
         this.isCooldownDisplayed = false;
+        this.useOpsHud = true; // Prefer OPS HUD over standalone progress bar
     }
 
     /**
@@ -79,33 +82,47 @@ class WarpFeedback {
      * @param {string} phase - Current warp phase
      */
     updateProgress(progress, phase) {
-        // Debug log when cooldown first appears
-        if (phase.includes('Cooldown') && !this.isCooldownDisplayed) {
-            console.log('[Debug] Cooldown display activated:', { 
-                phase, 
-                progress,
-                isVisible: this.progressBar.style.display,
-                currentHTML: this.progressBar.innerHTML
-            });
-            this.isCooldownDisplayed = true;
+        // PRIORITY: Update OPS HUD if available
+        if (this.useOpsHud && this.starfieldManager?.damageControlHUD) {
+            this.starfieldManager.damageControlHUD.updateWarpStatus(progress, phase, true);
             
-            // Ensure progress bar is visible for cooldown
-            this.progressBar.style.display = 'block';
-            this.energyIndicator.style.display = 'none'; // Hide energy indicator during cooldown
+            // Auto-show OPS HUD during warp if not already visible
+            if (!this.starfieldManager.damageControlVisible) {
+                debug('COMBAT', '🚀 Auto-showing OPS HUD for warp progress');
+                this.starfieldManager.toggleDamageControl();
+            }
         }
+        
+        // FALLBACK: Use standalone progress bar if OPS HUD not available
+        if (!this.useOpsHud || !this.starfieldManager?.damageControlHUD) {
+            // Debug log when cooldown first appears
+            if (phase.includes('Cooldown') && !this.isCooldownDisplayed) {
+                console.log('[Debug] Cooldown display activated:', { 
+                    phase, 
+                    progress,
+                    isVisible: this.progressBar.style.display,
+                    currentHTML: this.progressBar.innerHTML
+                });
+                this.isCooldownDisplayed = true;
+                
+                // Ensure progress bar is visible for cooldown
+                this.progressBar.style.display = 'block';
+                this.energyIndicator.style.display = 'none'; // Hide energy indicator during cooldown
+            }
 
-        // Update progress bar content
-        this.progressBar.innerHTML = `
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: ${progress}%"></div>
-            </div>
-            <div class="progress-text">
-                ${phase}: ${Math.round(progress)}%
-            </div>
-        `;
+            // Update progress bar content
+            this.progressBar.innerHTML = `
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${progress}%"></div>
+                </div>
+                <div class="progress-text">
+                    ${phase}: ${Math.round(progress)}%
+                </div>
+            `;
 
-        // Ensure progress bar is visible
-        this.progressBar.style.display = 'block';
+            // Ensure progress bar is visible
+            this.progressBar.style.display = 'block';
+        }
     }
 
     /**
@@ -121,7 +138,12 @@ class WarpFeedback {
             this.isCooldownDisplayed = false;
         }
 
-        // Hide all elements and their containers
+        // PRIORITY: Hide warp status in OPS HUD
+        if (this.useOpsHud && this.starfieldManager?.damageControlHUD) {
+            this.starfieldManager.damageControlHUD.hideWarpStatus();
+        }
+
+        // FALLBACK: Hide standalone elements
         this.warningModal.style.display = 'none';
         this.energyIndicator.style.display = 'none';
         this.progressBar.style.display = 'none';
@@ -140,9 +162,20 @@ class WarpFeedback {
             isCooldownDisplayed: this.isCooldownDisplayed
         });
 
-        // Only show progress bar during warp
-        this.progressBar.style.display = 'block';
-        this.energyIndicator.style.display = 'none';
+        // PRIORITY: Show warp status in OPS HUD
+        if (this.useOpsHud && this.starfieldManager?.damageControlHUD) {
+            this.starfieldManager.damageControlHUD.showWarpStatus();
+            
+            // Auto-show OPS HUD during warp if not already visible
+            if (!this.starfieldManager.damageControlVisible) {
+                debug('COMBAT', '🚀 Auto-showing OPS HUD for warp start');
+                this.starfieldManager.toggleDamageControl();
+            }
+        } else {
+            // FALLBACK: Show standalone progress bar
+            this.progressBar.style.display = 'block';
+            this.energyIndicator.style.display = 'none';
+        }
     }
 }
 

@@ -70,7 +70,7 @@ export class ViewManager {
             this.controls.autoRotate = false;
         }
         
-        // Initialize feedback systems
+        // Initialize feedback systems (will be updated with starfieldManager reference later)
         this.warpFeedback = new WarpFeedback();
         
         // Initialize warp drive manager
@@ -113,6 +113,12 @@ debug('UTILITY', 'ViewManager initialized with Ship:', this.ship.getStatus());
         // Pass starfieldManager to SubspaceRadio for command sound
         if (this.subspaceRadio) {
             this.subspaceRadio.setStarfieldManager(manager);
+        }
+        
+        // CRITICAL: Update WarpFeedback with starfieldManager reference for OPS HUD integration
+        if (this.warpFeedback) {
+            this.warpFeedback.starfieldManager = manager;
+            debug('COMBAT', '🚀 WarpFeedback updated with StarfieldManager reference for OPS HUD integration');
         }
         
         // Initialize ship systems when StarfieldManager is available - but only once

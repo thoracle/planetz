@@ -50,6 +50,7 @@ export default class DamageControlHUD {
         `;
         
         this.createHeader();
+        this.createWarpStatusSection();
         this.createManualRepairSection();
         this.createSystemsList();
         this.bindEvents();
@@ -123,6 +124,50 @@ export default class DamageControlHUD {
         this.elements.header.appendChild(headerContent);
         this.elements.header.appendChild(closeButton);
         this.container.appendChild(this.elements.header);
+    }
+    
+    createWarpStatusSection() {
+        this.elements.warpStatus = document.createElement('div');
+        this.elements.warpStatus.style.cssText = `
+            margin-bottom: 15px;
+            padding: 8px;
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            background: rgba(0, 255, 65, 0.05);
+            border-radius: 4px;
+            display: none;
+        `;
+        
+        this.elements.warpStatus.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 6px; text-align: center;">
+                🚀 WARP STATUS
+            </div>
+            <div class="warp-progress-container" style="margin-bottom: 6px;">
+                <div class="warp-progress-bar" style="
+                    width: 100%;
+                    height: 8px;
+                    background: rgba(0, 255, 65, 0.2);
+                    border: 1px solid rgba(0, 255, 65, 0.4);
+                    border-radius: 2px;
+                    overflow: hidden;
+                ">
+                    <div class="warp-progress-fill" style="
+                        height: 100%;
+                        background: linear-gradient(90deg, #00ff41, #44ff88);
+                        width: 0%;
+                        transition: width 0.3s ease;
+                    "></div>
+                </div>
+            </div>
+            <div class="warp-status-text" style="
+                font-size: 12px;
+                text-align: center;
+                color: rgba(0, 255, 65, 0.9);
+            ">
+                Standby
+            </div>
+        `;
+        
+        this.container.appendChild(this.elements.warpStatus);
     }
     
     createManualRepairSection() {
@@ -1614,6 +1659,59 @@ debug('COMBAT', '❌ No ship or cardSystemIntegration available for refresh');
         // Refresh the display
 debug('COMBAT', '🔄 Refreshing Operations HUD display...');
         this.refresh();
-debug('COMBAT', '✅ Operations HUD display refresh completed');
+        debug('COMBAT', '✅ Operations HUD display refresh completed');
     }
-} 
+    
+    /**
+     * Update warp status in the OPS HUD
+     * @param {number} progress - Progress percentage (0-100)
+     * @param {string} phase - Current warp phase
+     * @param {boolean} isActive - Whether warp is currently active
+     */
+    updateWarpStatus(progress, phase, isActive = false) {
+        if (!this.elements.warpStatus) return;
+        
+        if (isActive) {
+            // Show warp status section
+            this.elements.warpStatus.style.display = 'block';
+            
+            // Update progress bar
+            const progressFill = this.elements.warpStatus.querySelector('.warp-progress-fill');
+            if (progressFill) {
+                progressFill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+            }
+            
+            // Update status text
+            const statusText = this.elements.warpStatus.querySelector('.warp-status-text');
+            if (statusText) {
+                statusText.textContent = `${phase}: ${Math.round(progress)}%`;
+            }
+            
+            debug('COMBAT', `🚀 OPS HUD: Warp status updated - ${phase}: ${Math.round(progress)}%`);
+        } else {
+            // Hide warp status section when not active
+            this.elements.warpStatus.style.display = 'none';
+            debug('COMBAT', '🚀 OPS HUD: Warp status hidden');
+        }
+    }
+    
+    /**
+     * Show warp status section (called when warp starts)
+     */
+    showWarpStatus() {
+        if (this.elements.warpStatus) {
+            this.elements.warpStatus.style.display = 'block';
+            debug('COMBAT', '🚀 OPS HUD: Warp status section shown');
+        }
+    }
+    
+    /**
+     * Hide warp status section (called when warp ends)
+     */
+    hideWarpStatus() {
+        if (this.elements.warpStatus) {
+            this.elements.warpStatus.style.display = 'none';
+            debug('COMBAT', '🚀 OPS HUD: Warp status section hidden');
+        }
+    }
+}
