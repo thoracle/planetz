@@ -285,6 +285,40 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
             timestamp: new Date().toISOString()
         });
 
+        // CRITICAL FIX: Force reset all navigation systems after warp completion
+        if (this.viewManager?.starfieldManager) {
+            debug('UTILITY', `🚀 SectorNavigation: Force resetting all navigation systems for sector ${this.currentSector}`);
+            
+            // Force reset target computer
+            if (this.viewManager.starfieldManager.targetComputerEnabled) {
+                debug('UTILITY', '🎯 SectorNavigation: Resetting target computer');
+                this.viewManager.starfieldManager.currentTarget = null;
+                this.viewManager.starfieldManager.targetIndex = -1;
+                this.viewManager.starfieldManager.targetComputerManager.hideTargetHUD();
+                this.viewManager.starfieldManager.targetComputerManager.hideTargetReticle();
+                
+                // Clear any existing wireframe
+                if (this.viewManager.starfieldManager.targetWireframe) {
+                    this.viewManager.starfieldManager.wireframeScene.remove(this.viewManager.starfieldManager.targetWireframe);
+                    this.viewManager.starfieldManager.targetWireframe.geometry.dispose();
+                    this.viewManager.starfieldManager.targetWireframe.material.dispose();
+                    this.viewManager.starfieldManager.targetWireframe = null;
+                }
+                
+                // Update target list for new sector
+                setTimeout(() => {
+                    this.viewManager.starfieldManager.updateTargetList();
+                    this.viewManager.starfieldManager.cycleTarget();
+                }, 100);
+            }
+            
+            // Force reset star charts
+            if (this.viewManager.starfieldManager.starChartsManager) {
+                debug('UTILITY', `🗺️ SectorNavigation: Updating Star Charts sector to ${this.currentSector}`);
+                this.viewManager.starfieldManager.starChartsManager.currentSector = this.currentSector;
+            }
+        }
+
         this.targetSector = null;
         this._hasArrived = false;
         
