@@ -286,47 +286,22 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
         });
 
         // CRITICAL FIX: Force reset all navigation systems after warp completion
-        debug('UTILITY', `🚀 SectorNavigation: completeNavigation() called for sector ${this.currentSector}`);
-        debug('UTILITY', `🔍 SectorNavigation: viewManager available: ${!!this.viewManager}`);
-        debug('UTILITY', `🔍 SectorNavigation: viewManager.starfieldManager available: ${!!this.viewManager?.starfieldManager}`);
+        console.log(`🚀 SectorNavigation: completeNavigation() called for sector ${this.currentSector}`);
+        console.log(`🔍 SectorNavigation: viewManager available: ${!!this.viewManager}`);
+        console.log(`🔍 SectorNavigation: viewManager.starfieldManager available: ${!!this.viewManager?.starfieldManager}`);
         
+        // BETTER APPROACH: Use StarfieldManager.updateCurrentSector() which already has the correct logic
         if (this.viewManager?.starfieldManager) {
-            debug('UTILITY', `🚀 SectorNavigation: Force resetting all navigation systems for sector ${this.currentSector}`);
+            console.log(`🚀 SectorNavigation: Calling StarfieldManager.updateCurrentSector() for proper sector reset`);
             
-            // Force reset target computer
-            if (this.viewManager.starfieldManager.targetComputerEnabled) {
-                debug('UTILITY', '🎯 SectorNavigation: Resetting target computer');
-                this.viewManager.starfieldManager.currentTarget = null;
-                this.viewManager.starfieldManager.targetIndex = -1;
-                this.viewManager.starfieldManager.targetComputerManager.hideTargetHUD();
-                this.viewManager.starfieldManager.targetComputerManager.hideTargetReticle();
-                
-                // Clear any existing wireframe
-                if (this.viewManager.starfieldManager.targetWireframe) {
-                    this.viewManager.starfieldManager.wireframeScene.remove(this.viewManager.starfieldManager.targetWireframe);
-                    this.viewManager.starfieldManager.targetWireframe.geometry.dispose();
-                    this.viewManager.starfieldManager.targetWireframe.material.dispose();
-                    this.viewManager.starfieldManager.targetWireframe = null;
-                }
-                
-                // Update target list for new sector
-                setTimeout(() => {
-                    this.viewManager.starfieldManager.updateTargetList();
-                    this.viewManager.starfieldManager.cycleTarget();
-                }, 100);
-            }
-            
-            // Force reset star charts
-            if (this.viewManager.starfieldManager.starChartsManager) {
-                debug('UTILITY', `🗺️ SectorNavigation: Updating Star Charts sector to ${this.currentSector}`);
-                this.viewManager.starfieldManager.starChartsManager.currentSector = this.currentSector;
-            }
+            // Force call updateCurrentSector() which has all the correct reset logic
+            this.viewManager.starfieldManager.updateCurrentSector();
         } else {
-            debug('UTILITY', `❌ SectorNavigation: Cannot access starfieldManager - viewManager: ${!!this.viewManager}, starfieldManager: ${!!this.viewManager?.starfieldManager}`);
+            console.log(`❌ SectorNavigation: Cannot access starfieldManager - viewManager: ${!!this.viewManager}, starfieldManager: ${!!this.viewManager?.starfieldManager}`);
             
             // Try alternative access paths
             if (this.viewManager) {
-                debug('UTILITY', `🔍 SectorNavigation: ViewManager properties: ${Object.keys(this.viewManager).join(', ')}`);
+                console.log(`🔍 SectorNavigation: ViewManager properties: ${Object.keys(this.viewManager).join(', ')}`);
             }
         }
 
