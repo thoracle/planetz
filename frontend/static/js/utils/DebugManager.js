@@ -78,9 +78,14 @@ export class SmartDebugManager {
             }
 
             this.updateChannelStates();
+            
+            // Run self-tests for initially enabled channels
+            this.runInitialChannelTests();
         } catch (error) {
             console.error('🔧 DebugManager: Failed to load config:', error);
             this.config = this.getDefaultConfig();
+            this.updateChannelStates();
+            this.runInitialChannelTests();
         }
     }
 
@@ -253,6 +258,26 @@ export class SmartDebugManager {
     }
 
     /**
+     * Run self-tests for initially enabled channels
+     */
+    runInitialChannelTests() {
+        // Small delay to ensure the debug system is fully initialized
+        setTimeout(() => {
+            const enabledChannels = Object.entries(this.channels)
+                .filter(([channel, state]) => state.enabled || state.alwaysEnabled)
+                .map(([channel]) => channel);
+            
+            if (enabledChannels.length > 0) {
+                console.log(`🔧 DebugManager: Running self-tests for ${enabledChannels.length} enabled channels...`);
+                
+                enabledChannels.forEach(channel => {
+                    this.channelSelfTest(channel);
+                });
+            }
+        }, 100);
+    }
+
+    /**
      * Main debug logging method
      * @param {string} channel - Debug channel (e.g., 'TARGETING')
      * @param {string} message - Debug message
@@ -268,7 +293,7 @@ export class SmartDebugManager {
 
         // Format and output
         const formattedMessage = this.formatMessage(channel, message);
-
+        console.log(formattedMessage);
     }
 
     /**
@@ -286,6 +311,21 @@ export class SmartDebugManager {
     }
 
     /**
+     * Channel self-test: Announce when a channel is enabled
+     * @param {string} channel - Channel that was just enabled
+     */
+    channelSelfTest(channel) {
+        const icon = this.channelIcons[channel] || '🔧';
+        const description = this.config.channels[channel]?.description || 'No description';
+        const testMessage = `Channel '${channel}' is now ACTIVE ✅ - ${description}`;
+        
+        // Use the channel's own debug method to announce itself
+        setTimeout(() => {
+            this.debug(channel, testMessage);
+        }, 10); // Small delay to ensure the channel state is fully updated
+    }
+
+    /**
      * Toggle a specific channel on/off
      * @param {string} channel - Channel to toggle
      * @param {boolean} enabled - Optional: set specific state
@@ -297,11 +337,16 @@ export class SmartDebugManager {
         }
 
         // Allow toggling P1 channel (previously was always enabled)
-
+        const oldState = this.channels[channel].enabled;
         const newState = enabled !== null ? enabled : !this.channels[channel].enabled;
         this.channels[channel].enabled = newState;
         this.config.channels[channel].enabled = newState;
         this.saveConfig();
+
+        // Channel self-test: Announce when a channel is enabled
+        if (!oldState && newState) {
+            this.channelSelfTest(channel);
+        }
 
         return true;
     }
@@ -425,6 +470,15 @@ export class SmartDebugManager {
 
                 }
             });
+        };
+
+        // Convenience command for enabling P1 (critical debugging)
+        window.debugP1 = (enabled = true) => {
+            const result = this.toggleChannel('P1', enabled);
+            if (result) {
+                console.log(`🔴 P1 channel ${enabled ? 'ENABLED' : 'DISABLED'} - Critical debugging ${enabled ? 'active' : 'inactive'}`);
+            }
+            return result;
         };
 
     }
