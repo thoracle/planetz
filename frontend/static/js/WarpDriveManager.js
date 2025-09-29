@@ -35,9 +35,11 @@ class WarpDriveManager {
         this.currentSystem = null;
         
         // Initialize event handlers
+        debug('P1', '🚀 WARP MANAGER: Binding warp drive events');
         this.warpDrive.onWarpStart = this.handleWarpStart.bind(this);
         this.warpDrive.onWarpEnd = this.handleWarpEnd.bind(this);
         this.warpDrive.onEnergyUpdate = this.handleEnergyUpdate.bind(this);
+        debug('P1', '🚀 WARP MANAGER: Event binding complete - onWarpStart:', !!this.warpDrive.onWarpStart, 'onWarpEnd:', !!this.warpDrive.onWarpEnd);
     }
 
     /**
@@ -70,18 +72,91 @@ class WarpDriveManager {
      * @param {number} warpFactor - Current warp factor
      */
     handleWarpStart(warpFactor) {
+        // CRITICAL: IMMEDIATE EXECUTION TRACE
+        debug('P1', '🚀 WARP START: handleWarpStart() CALLED - warpFactor:', warpFactor);
+        
+        // CRITICAL: IMMEDIATE NUCLEAR CACHE CLEARING - ZERO TOLERANCE FOR STALE DATA
+        debug('TARGETING', '🧹 WARP START: Immediate nuclear cache clearing to prevent ANY stale data');
+        this.nuclearCacheClear();
+        
         // Show warp effects
         if (this.warpEffects && this.warpEffects.initialized) {
             this.warpEffects.showAll();
         } else {
-            console.warn('Warp effects not initialized');
+            debug('P1', 'CRITICAL: Warp effects not initialized during warp start');
         }
+    }
+    
+    /**
+     * Nuclear cache clearing - obliterates ALL target-related caches immediately
+     * Called at warp start to ensure ZERO stale data can survive
+     */
+    nuclearCacheClear() {
+        // CRITICAL: IMMEDIATE EXECUTION TRACE
+        debug('P1', '🧹 NUCLEAR: nuclearCacheClear() CALLED');
+        
+        const starfieldManager = this.viewManager?.starfieldManager;
+        const targetComputerManager = starfieldManager?.targetComputerManager;
+        const starChartsIntegration = this.viewManager?.navigationSystemManager?.starChartsIntegration;
+        
+        if (!starfieldManager || !targetComputerManager) {
+            debug('TARGETING', '🧹 NUCLEAR: Cannot clear - managers not available');
+            debug('P1', '🧹 NUCLEAR: FAILED - starfieldManager:', !!starfieldManager, 'targetComputerManager:', !!targetComputerManager);
+            return;
+        }
+        
+        debug('TARGETING', '🧹 NUCLEAR: Starting immediate cache obliteration at warp start');
+        
+        // 1. Clear ALL target arrays
+        const oldTargets = targetComputerManager.targetObjects?.length || 0;
+        const oldStarfieldTargets = starfieldManager.targetObjects?.length || 0;
+        targetComputerManager.targetObjects = [];
+        starfieldManager.targetObjects = [];
+        debug('TARGETING', `🧹 NUCLEAR: Cleared ${oldTargets} TCM + ${oldStarfieldTargets} StarfieldManager targets`);
+        
+        // 2. Clear ALL caches
+        if (targetComputerManager.knownTargets) {
+            const oldKnown = targetComputerManager.knownTargets.size;
+            targetComputerManager.knownTargets.clear();
+            debug('TARGETING', `🧹 NUCLEAR: Cleared ${oldKnown} knownTargets`);
+        }
+        
+        if (starChartsIntegration?.enhancedTargets) {
+            const oldEnhanced = starChartsIntegration.enhancedTargets.size;
+            starChartsIntegration.enhancedTargets.clear();
+            debug('TARGETING', `🧹 NUCLEAR: Cleared ${oldEnhanced} enhancedTargets`);
+        }
+        
+        // 3. Clear ALL target references
+        targetComputerManager.currentTarget = null;
+        targetComputerManager.targetIndex = -1;
+        targetComputerManager.previousTarget = null;
+        targetComputerManager.targetedObject = null;
+        targetComputerManager.lastTargetedObjectId = null;
+        
+        starfieldManager.currentTarget = null;
+        starfieldManager.targetIndex = -1;
+        starfieldManager.previousTarget = null;
+        starfieldManager.targetedObject = null;
+        
+        // 4. Clear valid targets arrays
+        if (targetComputerManager.validTargets) {
+            targetComputerManager.validTargets = [];
+        }
+        if (starfieldManager.validTargets) {
+            starfieldManager.validTargets = [];
+        }
+        
+        debug('TARGETING', '🧹 NUCLEAR: Immediate cache obliteration COMPLETE - NO stale data can survive warp');
     }
 
     /**
      * Handle warp drive deactivation
      */
     async handleWarpEnd() {
+        // CRITICAL: IMMEDIATE EXECUTION TRACE
+        debug('P1', '🚀 WARP END: handleWarpEnd() CALLED');
+        
         this.isActive = false;
         
         // Hide warp effects
@@ -109,41 +184,70 @@ class WarpDriveManager {
                 const generationSuccess = await this.viewManager.solarSystemManager.generateStarSystem(currentSector);
                 
                 if (!generationSuccess) {
-                    console.error('Failed to generate new star system');
-                    return;
+                    debug('P1', 'CRITICAL: Failed to generate new star system for sector', currentSector);
+                    throw new Error(`Star system generation failed for sector ${currentSector}`);
                 }
 
-                // CRITICAL FIX: Force reset all navigation systems after warp completion
+                // CRITICAL FIX: Now that system generation is complete, update target lists
                 if (this.viewManager.starfieldManager) {
-                    debug('UTILITY', `🚀 Warp completion: Force resetting all navigation systems for sector ${currentSector}`);
+                    // CRITICAL: EMERGENCY NUCLEAR CLEARING before target list update
+                    debug('TARGETING', '🧹 EMERGENCY: Final nuclear cache clearing before target list update');
+                    this.nuclearCacheClear();
                     
-                    // Force reset target computer
-                    if (this.viewManager.starfieldManager.targetComputerEnabled) {
-                        debug('UTILITY', '🎯 Warp completion: Resetting target computer');
-                        this.viewManager.starfieldManager.currentTarget = null;
-                        this.viewManager.starfieldManager.targetIndex = -1;
-                        this.viewManager.starfieldManager.targetComputerManager.hideTargetHUD();
-                        this.viewManager.starfieldManager.targetComputerManager.hideTargetReticle();
-                        
-                        // Clear any existing wireframe
-                        if (this.viewManager.starfieldManager.targetWireframe) {
-                            this.viewManager.starfieldManager.wireframeScene.remove(this.viewManager.starfieldManager.targetWireframe);
-                            this.viewManager.starfieldManager.targetWireframe.geometry.dispose();
-                            this.viewManager.starfieldManager.targetWireframe.material.dispose();
-                            this.viewManager.starfieldManager.targetWireframe = null;
-                        }
-                        
-                        // Update target list for new sector
-                        setTimeout(() => {
-                            this.viewManager.starfieldManager.updateTargetList();
-                            this.viewManager.starfieldManager.cycleTarget();
-                        }, 100);
+                    debug('UTILITY', `🚀 Warp completion: Updating navigation systems for sector ${currentSector}`);
+                    
+                    const starfieldManager = this.viewManager.starfieldManager;
+                    
+                    // Verify SolarSystemManager has the correct sector
+                    if (this.viewManager.solarSystemManager.currentSector !== currentSector) {
+                        throw new Error(`SolarSystemManager sector mismatch: expected ${currentSector}, got ${this.viewManager.solarSystemManager.currentSector}`);
                     }
                     
-                    // Force reset star charts
-                    if (this.viewManager.starfieldManager.starChartsManager) {
-                        debug('UTILITY', `🗺️ Warp completion: Updating Star Charts sector from ${this.viewManager.starfieldManager.starChartsManager.currentSector} to ${currentSector}`);
-                        this.viewManager.starfieldManager.starChartsManager.currentSector = currentSector;
+                    // Update target list now that new system is generated
+                    debug('TARGETING', `🎯 Warp completion: Updating target list for new sector ${currentSector}`);
+                    starfieldManager.updateTargetList();
+                    
+                    // CRITICAL: POST-UPDATE CONTAMINATION SCAN - Zero tolerance enforcement
+                    debug('TARGETING', '🧹 POST-UPDATE: Scanning for contamination after target list update');
+                    const targetComputerManager = starfieldManager.targetComputerManager;
+                    if (targetComputerManager?.targetObjects) {
+                        const contaminatedTargets = targetComputerManager.targetObjects.filter(target => 
+                            target.id && typeof target.id === 'string' && !target.id.startsWith(currentSector + '_')
+                        );
+                        
+                        if (contaminatedTargets.length > 0) {
+                            debug('TARGETING', `🚨 CONTAMINATION DETECTED: ${contaminatedTargets.length} cross-sector targets found after update!`);
+                            contaminatedTargets.forEach(target => {
+                                debug('TARGETING', `🚨 CONTAMINATED: ${target.name} (ID: ${target.id})`);
+                            });
+                            
+                            // NUCLEAR PURGE: Remove all contaminated targets immediately
+                            targetComputerManager.targetObjects = targetComputerManager.targetObjects.filter(target => 
+                                !target.id || typeof target.id !== 'string' || target.id.startsWith(currentSector + '_')
+                            );
+                            
+                            // Also clear from StarfieldManager
+                            starfieldManager.targetObjects = starfieldManager.targetObjects.filter(target => 
+                                !target.id || typeof target.id !== 'string' || target.id.startsWith(currentSector + '_')
+                            );
+                            
+                            debug('TARGETING', `🧹 PURGED: Removed ${contaminatedTargets.length} contaminated targets`);
+                            debug('TARGETING', `🧹 CLEAN: Target list now has ${targetComputerManager.targetObjects.length} clean targets`);
+                        } else {
+                            debug('TARGETING', `✅ CLEAN: No contamination detected - ${targetComputerManager.targetObjects.length} targets all from sector ${currentSector}`);
+                        }
+                    }
+                    
+                    // Resume StarCharts integration sync now that sector is properly updated
+                    if (this.viewManager.navigationSystemManager?.starChartsIntegration) {
+                        debug('UTILITY', 'Resuming StarCharts integration sync after system generation');
+                        this.viewManager.navigationSystemManager.starChartsIntegration.pauseSync = false;
+                    }
+                    
+                    // Cycle to first target if target computer is enabled
+                    if (starfieldManager.targetComputerEnabled) {
+                        debug('TARGETING', '🎯 Warp completion: Cycling to first target');
+                        starfieldManager.cycleTarget();
                     }
                 }
 
@@ -168,7 +272,8 @@ class WarpDriveManager {
                 }
 
             } catch (error) {
-                console.error('Error in post-warp sequence:', error);
+                debug('P1', 'CRITICAL: Error in post-warp sequence:', error.message);
+                throw error; // Fail fast - don't hide critical errors
             }
         }
     }

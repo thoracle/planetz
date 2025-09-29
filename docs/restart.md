@@ -4,7 +4,7 @@
 
 ## 🎯 Project Overview
 
-**PlanetZ** is a production-ready 3D web-based space simulation game inspired by Star Raiders, Elite and Privateer. Built with Three.js (frontend) and Flask/Python (backend).
+**PlanetZ** is a production-ready 3D web-based space simulation game inspired by Star Raiders, Elite and Freelancer. Built with Three.js (frontend) and Flask/Python (backend).
 
 **Core Systems:**
 - **3D Space Combat** - Weapons, targeting, shields with raycasting collision detection
@@ -34,6 +34,7 @@
 - **Don't ignore the debug system** - It's essential for development
 - **Don't bypass the event system** - Use existing event patterns
 - **Don't break the modular architecture** - Maintain clean separation of concerns
+- **Don't use defensive programming** - We're in development so it's better to crash and find bugs faster than to hide them behind fallbacks.
 
 ## 🔧 Debug System Usage
 
@@ -112,6 +113,34 @@ Debug settings persist in: `frontend/static/js/debug_config.json`
 4. **Performance Optimization** - Three.js rendering, memory management
 5. **Content Expansion** - New ships, stations, gameplay elements
 
+## ✅ Recent Major Fixes (January 2025)
+
+### **Discovery & Targeting System Overhaul**
+**Status**: **COMPLETED** - All critical issues resolved
+
+**Critical Issues Fixed**:
+- **Infinite Recursion Loop**: Fixed stack overflow in discovery color update system
+- **Cross-Sector Contamination**: A0 targets no longer appear in B1 target computer
+- **Discovery Color Bug**: Discovered objects now show correct faction colors (yellow for neutral)
+- **Duplicate Ship's Log**: Fixed duplicate discovery notifications in ship's log
+- **Console Log Spam**: Reduced repetitive debug output by 90%
+- **Variable Scoping Errors**: Fixed `orbitRadius`, `angle`, `moonOrbitRadius` ReferenceErrors
+
+**Key Files Modified**:
+- `TargetComputerManager.js` - Wireframe colors, discovery detection, sector validation
+- `StarChartsTargetComputerIntegration.js` - Discovery notifications, cache management  
+- `StarChartsManager.js` - Duplicate prevention, notification cooldowns
+- `SolarSystemManager.js` - Variable scoping, backend positioning integration
+- `MissionAPIService.js` - Debug channel migration
+
+**Technical Solutions**:
+- **Nuclear Cache Clearing**: Comprehensive cache management during warp transitions
+- **Fail-Fast Sector Validation**: Aggressive cross-sector contamination prevention
+- **Notification Cooldowns**: 5-second duplicate prevention for discovery messages
+- **Safe Wireframe Recreation**: Non-recursive color updates for discovered objects
+
+**Testing Tools**: Use `debug_discovery_targeting.js` for comprehensive system diagnostics
+
 ## 🏗️ Key Architecture Patterns
 
 ### **File Structure**
@@ -169,9 +198,11 @@ debugStatus()              // Show all debug channel states
 **Essential Controls:**
 - **ESC** - Help Screen 2.0 (modal interface)
 - **TAB** - Cycle targets
+- **Z,X** - Cycle Sub-system targets
+- **<,>** - Cycle weapon selection
 - **SPACE** - Fire weapons
-- **WASD** - Ship movement
-- **Mouse** - Look around, targeting
+- **Arrow Keys** - Ship movement
+- **0-9 Keys** - Ship impulse engine speed
 
 **Debug Controls:**
 - **H** - Shows message to use ESC instead

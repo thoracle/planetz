@@ -45,9 +45,11 @@ class PositioningEnhancement:
         self.use_realistic_orbits = use_realistic_orbits
 
         # Orbital constants (scaled for game)
+        # DESIGN PILLAR: "Fun trumps realism — more Futurama than Star Trek"
+        # Keep objects closer together for better gameplay experience
         self.AU_SCALE = 100.0  # 1 AU = 100 game units
         self.EARTH_ORBITAL_PERIOD = 365.25  # Earth days
-        self.BASE_PLANET_DISTANCE = 50.0  # Base distance between planets
+        self.BASE_PLANET_DISTANCE = 30.0  # Base distance between planets - reduced for fun gameplay
 
     def enhance_star_system(self, star_system: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -257,15 +259,16 @@ class PositioningEnhancement:
         Returns:
             float: Orbital radius in game units
         """
-        # Inner planets are closer, outer planets farther
-        # Use a geometric progression for realistic spacing
+        # DESIGN PILLAR: "Fun trumps realism — more Futurama than Star Trek"
+        # Use linear progression instead of exponential for better gameplay
+        # Keep all objects within reasonable discovery range (< 300km)
         base_distance = self.BASE_PLANET_DISTANCE
-        ratio = 1.6  # Roughly the ratio between planet distances
-
-        if planet_index == 0:
-            return base_distance
-        else:
-            return base_distance * (ratio ** planet_index)
+        linear_spacing = 25.0  # Linear increment between planets for fun gameplay
+        
+        # Linear progression: much more fun and accessible than exponential
+        # Planet 0: 30km, Planet 1: 55km, Planet 2: 80km, Planet 3: 105km, etc.
+        # Max distance for 8 planets: ~230km (well within discovery range)
+        return base_distance + (planet_index * linear_spacing)
 
     def _calculate_orbital_angle(self, planet_index: int, total_planets: int) -> float:
         """

@@ -29,7 +29,7 @@ export class StarChartsManager {
         this.objectDatabase = null;           // Static database from verse.py
         this.discoveredObjects = new Set();  // Set of discovered object IDs
         this.discoveryMetadata = new Map();  // Metadata for each discovered object
-        this.currentSector = 'A0';           // Current sector (Phase 0: A0 only)
+        this._currentSector = 'A0';          // Current sector (Phase 0: A0 only)
         this.virtualWaypoints = new Map();   // Mission waypoints
         
         // Spatial optimization
@@ -94,6 +94,23 @@ export class StarChartsManager {
         
         // Add console commands for hit box debugging
         this.setupHitBoxDebugCommands();
+    }
+    
+    // Getter and setter for currentSector that refreshes spatial grid on change
+    get currentSector() {
+        return this._currentSector;
+    }
+    
+    set currentSector(newSector) {
+        if (this._currentSector !== newSector) {
+            debug('STAR_CHARTS', `🗺️ Sector changed from ${this._currentSector} to ${newSector} - refreshing spatial grid`);
+            this._currentSector = newSector;
+            
+            // CRITICAL: Refresh spatial grid when sector changes to prevent contamination
+            if (this.isInitialized) {
+                this.refreshSpatialGrid();
+            }
+        }
     }
     
     async initialize() {
@@ -427,31 +444,55 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
     initializeSpatialGrid() {
         // Initialize spatial partitioning for optimized proximity checking
         
-        if (!this.objectDatabase || !this.objectDatabase.sectors[this.currentSector]) {
-            debug('STAR_CHARTS', '⚠️ Cannot initialize spatial grid: no object database or sector data');
+        // CRITICAL FIX: Use dynamic solar system data instead of static database
+        // This prevents contamination from other sectors
+        if (!this.solarSystemManager) {
+            debug('STAR_CHARTS', '⚠️ Cannot initialize spatial grid: no solarSystemManager');
             return;
         }
         
-        const sectorData = this.objectDatabase.sectors[this.currentSector];
+        const celestialBodies = this.solarSystemManager.getCelestialBodies();
+        if (!celestialBodies || celestialBodies.size === 0) {
+            debug('STAR_CHARTS', '⚠️ Cannot initialize spatial grid: no celestial bodies in current sector');
+            return;
+        }
+        
         this.spatialGrid.clear();
         
-        // Add celestial objects to grid
-        const allObjects = [
-            sectorData.star,
-            ...sectorData.objects,
-            ...(sectorData.infrastructure?.stations || []),
-            ...(sectorData.infrastructure?.beacons || [])
-        ];
+        // CRITICAL FIX: Build objects list from dynamic solar system, not static database
+        const allObjects = [];
+        
+        // Add all celestial bodies from the current dynamically generated solar system
+        for (const [key, body] of celestialBodies.entries()) {
+            const info = this.solarSystemManager.getCelestialBodyInfo(body);
+            if (info && body.position) {
+                // Create object entry compatible with discovery system
+                const objectEntry = {
+                    id: `${this._currentSector}_${key}`,
+                    name: info.name,
+                    type: info.type,
+                    position: body.position,
+                    cartesianPosition: [body.position.x, body.position.y, body.position.z]
+                };
+                allObjects.push(objectEntry);
+                debug('STAR_CHARTS', `📍 Added to spatial grid: ${objectEntry.name} (${objectEntry.id}) at [${objectEntry.cartesianPosition.join(', ')}]`);
+            }
+        }
+        
+        debug('STAR_CHARTS', `🗺️ Spatial grid using ${allObjects.length} objects from dynamic solar system (sector: ${this._currentSector})`);
+        
+        // Filter out invalid objects - now from dynamic system
+        const validObjects = allObjects;
 
         // Store as class property for access by other methods
-        this.allObjects = allObjects;
+        this.allObjects = validObjects;
 
         let processedCount = 0;
         let skippedCount = 0;
 
         // Debug: Log ALL objects being processed
 
-        allObjects.forEach((obj, index) => {
+        validObjects.forEach((obj, index) => {
             if (obj && obj.position) {
                 // Get actual 3D scene coordinates - NO FALLBACK to data coordinates
                 const scenePosition3D = this.getScenePosition(obj);
@@ -496,7 +537,7 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
 
         // Only log spatial grid initialization on first setup, not on refresh
         if (!this.spatialGridInitialized) {
-            debug('UTILITY', `🗺️ Spatial grid initialized: ${this.spatialGrid.size} cells, ${allObjects.length} objects`);
+            debug('UTILITY', `🗺️ Spatial grid initialized: ${this.spatialGrid.size} cells, ${validObjects.length} objects`);
             this.spatialGridInitialized = true;
         }
 
@@ -818,6 +859,27 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     showDiscoveryNotification(object, category) {
         //Show discovery notification with appropriate prominence
         
+        // DUPLICATE PREVENTION: Check if we've already shown notification for this object recently
+        if (!this._recentNotifications) this._recentNotifications = new Map();
+        const notificationKey = `${object.id}_${object.name}`;
+        const now = Date.now();
+        const lastNotification = this._recentNotifications.get(notificationKey);
+        
+        if (lastNotification && (now - lastNotification) < 5000) { // 5 second cooldown
+            debug('STAR_CHARTS', `⏭️ NOTIFICATION COOLDOWN: Skipping duplicate notification for ${object.name} (${now - lastNotification}ms ago)`);
+            return;
+        }
+        
+        this._recentNotifications.set(notificationKey, now);
+        debug('STAR_CHARTS', `🔔 SHOWING DISCOVERY NOTIFICATION: ${object.name} discovered!`);
+        
+        // Cleanup old entries (keep only last 50 notifications)
+        if (this._recentNotifications.size > 50) {
+            const entries = Array.from(this._recentNotifications.entries());
+            const toDelete = entries.slice(0, entries.length - 50);
+            toDelete.forEach(([key]) => this._recentNotifications.delete(key));
+        }
+        
         const config = this.discoveryTypes[category];
         
         // Play audio if specified
@@ -862,22 +924,23 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
 
         debug('STAR_CHARTS', `🔔 DISCOVERY NOTIFICATION: ${message}`);
 
-        // Try multiple notification methods for debugging
+        // Use ONLY ONE notification method to prevent duplicates
         let notificationShown = false;
 
-        // Method 1: Use StarfieldManager's ephemeral HUD (top center)
+        // Method 1: Use StarfieldManager's ephemeral HUD (top center) - PREFERRED
         if (this.viewManager?.starfieldManager?.showHUDEphemeral) {
             try {
                 this.viewManager.starfieldManager.showHUDEphemeral('🔍 DISCOVERY', message, 4000);
                 debug('STAR_CHARTS', `✅ Discovery notification sent to Ephemeral HUD (top center)`);
                 notificationShown = true;
+                return; // EXIT EARLY to prevent multiple notifications
             } catch (e) {
                 debug('STAR_CHARTS', `❌ Ephemeral HUD notification failed: ${e.message}`);
             }
         }
 
-        // Method 2: Try WeaponHUD unified message system
-        if (this.viewManager?.starfieldManager?.weaponHUD?.showUnifiedMessage) {
+        // Method 2: Try WeaponHUD unified message system (FALLBACK ONLY)
+        if (!notificationShown && this.viewManager?.starfieldManager?.weaponHUD?.showUnifiedMessage) {
             try {
                 this.viewManager.starfieldManager.weaponHUD.showUnifiedMessage(
                     message, 
@@ -887,8 +950,9 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
                     '#00ff41', // green border
                     'rgba(0, 0, 0, 0.9)' // dark background
                 );
-                debug('STAR_CHARTS', `✅ Discovery notification sent to WeaponHUD`);
+                debug('STAR_CHARTS', `✅ Discovery notification sent to WeaponHUD (fallback)`);
                 notificationShown = true;
+                return; // EXIT EARLY to prevent multiple notifications
             } catch (e) {
                 debug('STAR_CHARTS', `❌ WeaponHUD notification failed: ${e.message}`);
             }
@@ -1026,12 +1090,13 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
 
         // System uses kilometers as primary unit (1 game unit = 1km)
         // No conversion needed - return radius directly in kilometers
-        // Using 50km for normal gameplay - allows comfortable exploration
-        // - SOL: ~20km (close approach needed)
-        // - Stations/Infrastructure: 40-60km range (exploration required)
-        // - Planets/Moons: Variable based on 3D scene coordinates
-        // - Production radius for normal gameplay
-        const discoveryRangeKm = 50; // 50 kilometers - normal gameplay radius
+        
+        // CRITICAL FIX: Increase discovery radius for better gameplay
+        // Different sectors have different scales - B1 objects are much farther apart than A0
+        // - A0 (Sol): ~50km works well (close approach needed)
+        // - B1 and other sectors: Objects can be 1000+ km apart, need larger radius
+        // - Using 150km for better exploration experience across all sectors
+        const discoveryRangeKm = 150; // 150 kilometers - improved gameplay radius for all sectors
 
         // debug('STAR_CHARTS', `🔍 Using discovery radius: ${discoveryRangeKm}km`); // Commented out to reduce spam
         return discoveryRangeKm;
@@ -1100,6 +1165,13 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         debug('STAR_CHARTS', `🔍 DISCOVERY ATTEMPT: ${normalizedId} (method: ${discoveryMethod}, already discovered: ${wasAlreadyDiscovered})`);
 
         if (!wasAlreadyDiscovered) {
+            // DUPLICATE PREVENTION: Check if this discovery is already in progress
+            if (!this._discoveryInProgress) this._discoveryInProgress = new Set();
+            if (this._discoveryInProgress.has(normalizedId)) {
+                debug('STAR_CHARTS', `⏭️ DUPLICATE PREVENTION: Discovery already in progress for ${normalizedId}`);
+                return;
+            }
+            this._discoveryInProgress.add(normalizedId);
             this.discoveredObjects.add(normalizedId);
 
             // Add discovery metadata
@@ -1145,6 +1217,13 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
                 this.viewManager.navigationSystemManager.starChartsTargetComputerIntegration.syncTargetData();
                 debug('STAR_CHARTS', `🔄 Triggered immediate target computer sync for discovery: ${normalizedId}`);
             }
+            
+            // CLEANUP: Remove from discovery in progress after processing
+            setTimeout(() => {
+                if (this._discoveryInProgress) {
+                    this._discoveryInProgress.delete(normalizedId);
+                }
+            }, 100);
         } else {
             debug('STAR_CHARTS', `⏭️ Object ${objectId} already discovered, updating metadata`);
             // Update metadata for re-discovery
@@ -1416,6 +1495,13 @@ debug('UTILITY', `❓ Unknown waypoint action: ${action.type}`);
         const normalizedId = this.normalizeObjectId(objectId);
         debug('STAR_CHARTS', `🗺️ Normalized ID: ${normalizedId}`);
 
+        // CRITICAL FIX: Check current sector to prevent cross-sector contamination
+        const currentSector = this.solarSystemManager?.currentSector || 'A0';
+        if (normalizedId && !normalizedId.startsWith(currentSector + '_')) {
+            debug('STAR_CHARTS', `🚫 StarCharts: Skipping target from different sector: ${objectId} (normalized: ${normalizedId}, current sector: ${currentSector})`);
+            return false;
+        }
+
         // Lazy-acquire TargetComputerManager if not provided at construction
         if (!this.targetComputerManager && this.viewManager?.starfieldManager?.targetComputerManager) {
             this.targetComputerManager = this.viewManager.starfieldManager.targetComputerManager;
@@ -1524,49 +1610,93 @@ debug('UTILITY', `   - Spatial grid cells: ${metrics.spatialGridCells}`);
     }
     
     getObjectData(objectId) {
-        //Get object data by ID
+        // Get object data by ID - CRITICAL FIX: Use dynamic solar system data instead of static database
         
-        if (!this.objectDatabase || !this.objectDatabase.sectors[this.currentSector]) {
+        // CRITICAL FIX: Only reject cross-sector objects, not legitimate current sector objects
+        const normalizedSearchId = this.normalizeObjectId(objectId);
+        if (normalizedSearchId && typeof normalizedSearchId === 'string' && !normalizedSearchId.startsWith(this.currentSector + '_')) {
+            debug('STAR_CHARTS', `🚫 getObjectData: Rejecting cross-sector object: ${objectId} (normalized: ${normalizedSearchId}, current sector: ${this.currentSector})`);
             return null;
         }
         
-        const sectorData = this.objectDatabase.sectors[this.currentSector];
-        
-        // Helper function to match IDs (handles both normalized and original formats)
-        const matchesId = (dbId, searchId) => {
-            if (dbId === searchId) return true;
-            // Try normalized versions
-            const normalizedDbId = this.normalizeObjectId(dbId);
-            const normalizedSearchId = this.normalizeObjectId(searchId);
-            return normalizedDbId === normalizedSearchId;
-        };
-        
-        // Check star
-        if (sectorData.star && matchesId(sectorData.star.id, objectId)) {
-            return sectorData.star;
+        // CRITICAL FIX: Use dynamic solar system data instead of static database
+        if (!this.solarSystemManager) {
+            debug('STAR_CHARTS', `🚫 getObjectData: SolarSystemManager not available`);
+            return null;
         }
         
-        // Check celestial objects
-        const celestialObject = sectorData.objects.find(obj => matchesId(obj.id, objectId));
-        if (celestialObject) {
-            return celestialObject;
+        const celestialBodies = this.solarSystemManager.getCelestialBodies();
+        if (!celestialBodies || celestialBodies.size === 0) {
+            debug('STAR_CHARTS', `🚫 getObjectData: No celestial bodies in current solar system`);
+            return null;
         }
         
-        // Check infrastructure
-        if (sectorData.infrastructure) {
-            const station = sectorData.infrastructure.stations?.find(obj => matchesId(obj.id, objectId));
-            if (station) {
-                return station;
-            }
+        // Search through dynamic solar system objects
+        for (const [key, body] of celestialBodies.entries()) {
+            const bodyId = `${this.currentSector}_${key}`;
+            const normalizedBodyId = this.normalizeObjectId(bodyId);
             
-            const beacon = sectorData.infrastructure.beacons?.find(obj => matchesId(obj.id, objectId));
-            if (beacon) {
-                return beacon;
+            // Check if this matches the requested object
+            if (normalizedBodyId === normalizedSearchId || bodyId === objectId) {
+                const info = this.solarSystemManager.getCelestialBodyInfo(body);
+                if (info) {
+                    // Create object data compatible with StarCharts format
+                    const objectData = {
+                        id: bodyId,
+                        name: info.name,
+                        type: info.type,
+                        position: body.position ? [body.position.x, body.position.y, body.position.z] : [0, 0, 0],
+                        cartesianPosition: body.position,
+                        visualRadius: info.radius || 1,
+                        class: this.getObjectClass(info.type),
+                        description: this.getObjectDescription(info.name, info.type),
+                        faction: info.faction || 'neutral',
+                        diplomacy: info.diplomacy || 'neutral'
+                    };
+                    
+                    debug('STAR_CHARTS', `✅ getObjectData: Found dynamic object: ${info.name} (${bodyId})`);
+                    return objectData;
+                }
             }
         }
         
-        // Check virtual waypoints
-        return this.virtualWaypoints.get(objectId) || null;
+        // Check virtual waypoints as fallback
+        const waypoint = this.virtualWaypoints.get(objectId);
+        if (waypoint) {
+            debug('STAR_CHARTS', `✅ getObjectData: Found virtual waypoint: ${waypoint.name} (${objectId})`);
+            return waypoint;
+        }
+        
+        debug('STAR_CHARTS', `🚫 getObjectData: Object not found in dynamic solar system: ${objectId} (normalized: ${normalizedSearchId})`);
+        return null;
+    }
+    
+    /**
+     * Get object class based on type
+     */
+    getObjectClass(type) {
+        const classMap = {
+            'star': 'yellow dwarf',
+            'planet': 'Class-M',
+            'moon': 'Class-D',
+            'station': 'Space Station',
+            'beacon': 'Navigation Beacon'
+        };
+        return classMap[type] || 'Unknown';
+    }
+    
+    /**
+     * Get object description based on name and type
+     */
+    getObjectDescription(name, type) {
+        const descriptions = {
+            'star': `${name} is a stable main-sequence star providing energy to the system.`,
+            'planet': `${name} is a planetary body with potential for exploration and resource extraction.`,
+            'moon': `${name} is a natural satellite offering strategic positioning opportunities.`,
+            'station': `${name} is a space station providing services and facilities.`,
+            'beacon': `${name} is a navigation beacon assisting with stellar positioning.`
+        };
+        return descriptions[type] || `${name} is a celestial object of interest.`;
     }
     
     /**

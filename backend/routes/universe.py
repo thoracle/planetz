@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from backend.verse import generate_star_system, generate_universe
+from backend.positioning_enhancement import PositioningEnhancement
 import logging
 import os
 from dotenv import load_dotenv
@@ -21,8 +22,14 @@ def generate_star_system_route():
                 # If conversion fails, use the string as is
                 pass
         
+        # Generate base star system
         star_system = generate_star_system(seed)
-        return jsonify(star_system)
+        
+        # Enhance with positioning data for better gameplay
+        enhancer = PositioningEnhancement()
+        enhanced_system = enhancer.enhance_star_system(star_system)
+        
+        return jsonify(enhanced_system)
     except Exception as e:
         logging.error(f"Error generating star system: {str(e)}")
         return jsonify({'error': str(e)}), 500

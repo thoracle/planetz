@@ -1016,6 +1016,17 @@ debug('TARGETING', `🔍 LRS: Forcing fresh target list update for robust synchr
         // Step 4: If not found, create an out-of-range target
         if (targetIndex === -1) {
 debug('TARGETING', `🔍 LRS: Target ${bodyName} not in range - creating out-of-range entry`);
+            
+            // CRITICAL: AGGRESSIVE SECTOR VALIDATION - PREVENT CROSS-SECTOR CONTAMINATION
+            const currentSector = this.viewManager?.solarSystemManager?.currentSector;
+            const targetId = bodyInfo.id;
+            if (currentSector && targetId && typeof targetId === 'string') {
+                if (!targetId.startsWith(currentSector + '_')) {
+                    debug('TARGETING', `🚨 SECTOR VIOLATION: LRS rejecting cross-sector target: ${bodyName} (${targetId}) - Current sector: ${currentSector}`);
+                    return; // FAIL-FAST: Reject cross-sector targets
+                }
+            }
+            
             const distance = starfieldManager.camera.position.distanceTo(targetBody.position);
             const outOfRangeTarget = {
                 name: bodyName,

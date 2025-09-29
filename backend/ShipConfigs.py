@@ -16,12 +16,12 @@ SHIP_CONFIGS = {
         'maxEnergy': 1000,
         'energyRechargeRate': 20,
         'maxHull': 300,
-        'systemSlots': 11,  # Updated to match frontend
+        'systemSlots': 12,  # Updated to match frontend
         'slotConfig': {
             'engines': 1,
             'reactor': 1,
             'weapons': 4,  # Fixed: exactly 4 weapon slots for testing
-            'utility': 5   # Updated to match frontend (was 3)
+            'utility': 6   # Updated to match frontend (was 5)
         },
         'defaultSystems': {
             'hull_plating': {'level': 1, 'slots': 1},
@@ -29,13 +29,17 @@ SHIP_CONFIGS = {
             'impulse_engines': {'level': 1, 'slots': 1, 'energyConsumption': 8},
             'target_computer': {'level': 1, 'slots': 1, 'energyConsumption': 5},
             'long_range_scanner': {'level': 1, 'slots': 1, 'energyConsumption': 4},
-            'star_charts': {'level': 1, 'slots': 1, 'energyConsumption': 6}
+            'star_charts': {'level': 1, 'slots': 1, 'energyConsumption': 6},
+            'galactic_chart': {'level': 1, 'slots': 1, 'energyConsumption': 8},
+            'warp_drive': {'level': 1, 'slots': 1, 'energyConsumption': 0}
         },
         'starterCards': {
             'utility_1': {'cardType': 'target_computer', 'level': 3},
             'utility_2': {'cardType': 'hull_plating', 'level': 1},
             'utility_3': {'cardType': 'long_range_scanner', 'level': 1},
             'utility_4': {'cardType': 'star_charts', 'level': 1},
+            'utility_5': {'cardType': 'galactic_chart', 'level': 1},
+            'utility_6': {'cardType': 'warp_drive', 'level': 1},
             'engine_1': {'cardType': 'impulse_engines', 'level': 1},
             'power_1': {'cardType': 'energy_reactor', 'level': 1},
             'weapon_1': {'cardType': 'laser_cannon', 'level': 1},

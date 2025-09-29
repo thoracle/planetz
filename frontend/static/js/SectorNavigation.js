@@ -279,203 +279,212 @@ debug('NAVIGATION', 'Warp drive activated, starting navigation');
      * Complete the navigation sequence
      */
     completeNavigation() {
-        console.log('Completing navigation sequence:', {
+        debug('UTILITY', 'Completing navigation sequence:', {
             oldSector: this.currentSector,
             newSector: this.targetSector,
             timestamp: new Date().toISOString()
         });
 
-        // CRITICAL FIX: Force reset all navigation systems after warp completion
-        console.log(`🚀 SectorNavigation: completeNavigation() called for sector ${this.currentSector}`);
-        console.log(`🔍 SectorNavigation: viewManager available: ${!!this.viewManager}`);
-        console.log(`🔍 SectorNavigation: viewManager.starfieldManager available: ${!!this.viewManager?.starfieldManager}`);
+        // Assert critical dependencies exist - fail fast if not
+        if (!this.viewManager) {
+            throw new Error('ViewManager is null - cannot complete navigation');
+        }
+        if (!this.viewManager.starfieldManager) {
+            throw new Error('StarfieldManager is null - cannot complete navigation');
+        }
+        if (!this.viewManager.solarSystemManager) {
+            throw new Error('SolarSystemManager is null - cannot complete navigation');
+        }
         
-        // CRITICAL FIX: Force reset navigation systems directly (bypass updateCurrentSector condition)
-        if (this.viewManager?.starfieldManager) {
-            console.log(`🚀 SectorNavigation: Force resetting navigation systems for sector ${this.currentSector}`);
+        debug('UTILITY', `🚀 SectorNavigation: Force resetting navigation systems for sector ${this.currentSector}`);
+        
+        const starfieldManager = this.viewManager.starfieldManager;
+        const solarSystemManager = this.viewManager.solarSystemManager;
+        
+        // CRITICAL FIX: Update SolarSystemManager sector FIRST to prevent race condition
+        debug('UTILITY', `🚀 SectorNavigation: Updating SolarSystemManager sector from ${solarSystemManager.currentSector} to ${this.currentSector}`);
+        solarSystemManager.setCurrentSector(this.currentSector);
+        
+        // Force reset target computer (ALWAYS reset, regardless of enabled state)
+        debug('TARGETING', `🎯 SectorNavigation: Resetting target computer for sector ${this.currentSector} (enabled: ${starfieldManager.targetComputerEnabled})`);
+        starfieldManager.currentTarget = null;
+        starfieldManager.targetIndex = -1;
+        
+        // CRITICAL: Clear the old target list to remove old sector objects
+        debug('TARGETING', `🔍 BEFORE CLEARING: StarfieldManager has ${starfieldManager.targetObjects?.length || 0} targets`);
+        if (starfieldManager.targetObjects?.length > 0) {
+            debug('TARGETING', `Clearing ${starfieldManager.targetObjects.length} old targets from StarfieldManager`);
+        }
+        
+        // Clear all target arrays immediately
+        starfieldManager.targetObjects = [];
+        
+        if (!starfieldManager.targetComputerManager) {
+            throw new Error('TargetComputerManager is null - cannot clear targets');
+        }
+        
+        const tcm = starfieldManager.targetComputerManager;
+        if (tcm.targetObjects?.length > 0) {
+            debug('TARGETING', `Clearing ${tcm.targetObjects.length} old targets from TargetComputerManager`);
+        }
+        
+        // CRITICAL: NUCLEAR CACHE CLEARING - ZERO TOLERANCE FOR STALE DATA
+        debug('TARGETING', `🧹 NUCLEAR CACHE CLEAR: Obliterating ALL target-related data structures`);
+        
+        // 1. Clear ALL target arrays immediately (already done above, but ensure it's complete)
+        tcm.targetObjects = [];
+        starfieldManager.targetObjects = [];
+        
+        // 2. Clear ALL target selection state
+        tcm.currentTarget = null;
+        tcm.targetIndex = -1;
+        starfieldManager.currentTarget = null;
+        starfieldManager.targetIndex = -1;
+        tcm.hideTargetHUD();
+        tcm.hideTargetReticle();
+        
+        // 3. NUCLEAR CLEAR: All target caches
+        if (tcm.knownTargets) {
+            const oldKnownSize = tcm.knownTargets.size;
+            tcm.knownTargets.clear();
+            debug('TARGETING', `🧹 NUCLEAR: Cleared ${oldKnownSize} knownTargets entries`);
+        }
+        
+        // 4. NUCLEAR CLEAR: All StarfieldManager cached target references
+        if (starfieldManager.validTargets) {
+            starfieldManager.validTargets = [];
+            debug('TARGETING', `🧹 NUCLEAR: Cleared StarfieldManager validTargets`);
+        }
+        
+        if (starfieldManager.previousTarget) {
+            starfieldManager.previousTarget = null;
+            debug('TARGETING', `🧹 NUCLEAR: Cleared StarfieldManager previousTarget`);
+        }
+        
+        if (starfieldManager.targetedObject) {
+            starfieldManager.targetedObject = null;
+            debug('TARGETING', `🧹 NUCLEAR: Cleared StarfieldManager targetedObject`);
+        }
+        
+        // 5. NUCLEAR CLEAR: All TargetComputerManager cached references
+        if (tcm.validTargets) {
+            tcm.validTargets = [];
+            debug('TARGETING', `🧹 NUCLEAR: Cleared TCM validTargets`);
+        }
+        
+        if (tcm.previousTarget) {
+            tcm.previousTarget = null;
+            debug('TARGETING', `🧹 NUCLEAR: Cleared TCM previousTarget`);
+        }
+        
+        if (tcm.targetedObject) {
+            tcm.targetedObject = null;
+            debug('TARGETING', `🧹 NUCLEAR: Cleared TCM targetedObject`);
+        }
+        
+        if (tcm.lastTargetedObjectId) {
+            tcm.lastTargetedObjectId = null;
+            debug('TARGETING', `🧹 NUCLEAR: Cleared TCM lastTargetedObjectId`);
+        }
+        
+        // 6. NUCLEAR CLEAR: StarCharts integration caches (enhanced clearing)
+        if (this.viewManager.navigationSystemManager?.starChartsIntegration) {
+            const integration = this.viewManager.navigationSystemManager.starChartsIntegration;
             
-            const starfieldManager = this.viewManager.starfieldManager;
+            if (integration.enhancedTargets) {
+                const oldEnhancedSize = integration.enhancedTargets.size;
+                integration.enhancedTargets.clear();
+                debug('TARGETING', `🧹 NUCLEAR: Cleared ${oldEnhancedSize} enhancedTargets entries`);
+            }
             
-            // Force reset target computer (ALWAYS reset, regardless of enabled state)
-            console.log(`🎯 SectorNavigation: Resetting target computer for sector ${this.currentSector} (enabled: ${starfieldManager.targetComputerEnabled})`);
-            starfieldManager.currentTarget = null;
-            starfieldManager.targetIndex = -1;
+            // Clear any other potential caches in the integration
+            if (integration.targetCache) {
+                integration.targetCache.clear();
+                debug('TARGETING', `🧹 NUCLEAR: Cleared integration targetCache`);
+            }
             
-            // CRITICAL: Clear the old target list to remove A0 objects
-            console.log(`🔍 BEFORE CLEARING: StarfieldManager has ${starfieldManager.targetObjects?.length || 0} targets`);
-            if (starfieldManager.targetObjects?.length > 0) {
-                starfieldManager.targetObjects.forEach((target, i) => {
-                    console.log(`  [${i}] ${target.name} - ID: "${target.id}"`);
+            if (integration.objectCache) {
+                integration.objectCache.clear();
+                debug('TARGETING', `🧹 NUCLEAR: Cleared integration objectCache`);
+            }
+        }
+        
+        debug('TARGETING', `🧹 NUCLEAR CACHE CLEAR COMPLETE: All target data structures obliterated`);
+        
+        // CRITICAL: Pause StarChartsTargetComputerIntegration sync during transition
+        if (this.viewManager.navigationSystemManager?.starChartsIntegration) {
+            debug('UTILITY', 'Pausing StarCharts integration sync during sector transition');
+            this.viewManager.navigationSystemManager.starChartsIntegration.pauseSync = true;
+            
+            // CRITICAL: Clear the enhanced targets cache to prevent old sector contamination
+            if (this.viewManager.navigationSystemManager.starChartsIntegration.enhancedTargets) {
+                const oldCacheSize = this.viewManager.navigationSystemManager.starChartsIntegration.enhancedTargets.size;
+                this.viewManager.navigationSystemManager.starChartsIntegration.enhancedTargets.clear();
+                debug('TARGETING', `Cleared StarCharts enhanced targets cache (had ${oldCacheSize} cached targets)`);
+            }
+        } else {
+            debug('P1', 'CRITICAL: StarCharts integration not found - old sector targets may persist');
+        }
+        
+        // Clear any existing wireframe
+        if (starfieldManager.targetWireframe) {
+            starfieldManager.wireframeScene.remove(starfieldManager.targetWireframe);
+            starfieldManager.targetWireframe.geometry.dispose();
+            starfieldManager.targetWireframe.material.dispose();
+            starfieldManager.targetWireframe = null;
+        }
+
+        // CRITICAL FIX: Clear StarCharts discovery data from old sector
+        if (starfieldManager.starChartsManager) {
+            debug('UTILITY', `🗺️ Updating Star Charts sector from ${starfieldManager.starChartsManager.currentSector} to ${this.currentSector}`);
+            
+            // Clear discovered objects from other sectors
+            const discoveredObjects = starfieldManager.starChartsManager.getDiscoveredObjects();
+            const oldSectorObjects = discoveredObjects.filter(id => !id.startsWith(this.currentSector + '_'));
+            
+            if (oldSectorObjects.length > 0) {
+                debug('UTILITY', `🧹 Clearing ${oldSectorObjects.length} discovered objects from other sectors`);
+                oldSectorObjects.forEach(objectId => {
+                    starfieldManager.starChartsManager.discoveredObjects.delete(objectId);
+                    starfieldManager.starChartsManager.discoveryMetadata.delete(objectId);
+                    debug('UTILITY', `🗑️ Removed discovered object: ${objectId}`);
                 });
             }
             
-            starfieldManager.targetObjects = [];
-            if (starfieldManager.targetComputerManager) {
-                console.log(`🔍 BEFORE CLEARING: TargetComputerManager has ${starfieldManager.targetComputerManager.targetObjects?.length || 0} targets`);
-                if (starfieldManager.targetComputerManager.targetObjects?.length > 0) {
-                    starfieldManager.targetComputerManager.targetObjects.forEach((target, i) => {
-                        console.log(`  [${i}] ${target.name} - ID: "${target.id}"`);
-                    });
-                }
-                
-                starfieldManager.targetComputerManager.targetObjects = [];
-                starfieldManager.targetComputerManager.currentTarget = null;
-                starfieldManager.targetComputerManager.targetIndex = -1;
-                starfieldManager.targetComputerManager.hideTargetHUD();
-                starfieldManager.targetComputerManager.hideTargetReticle();
-                
-                // CRITICAL: Clear the target cache to prevent A0 targets from being re-added
-                if (starfieldManager.targetComputerManager.knownTargets) {
-                    console.log(`🗑️ SectorNavigation: Clearing target cache (had ${starfieldManager.targetComputerManager.knownTargets.size} cached targets)`);
-                    starfieldManager.targetComputerManager.knownTargets.clear();
-                }
-                
-                // CRITICAL: Stop StarChartsTargetComputerIntegration sync to prevent A0 re-population
-                console.log(`🔍 SectorNavigation: Checking for StarCharts integration...`);
-                console.log(`  - navigationSystemManager: ${!!starfieldManager.navigationSystemManager}`);
-                console.log(`  - starChartsIntegration: ${!!starfieldManager.navigationSystemManager?.starChartsIntegration}`);
-                
-                if (starfieldManager.navigationSystemManager?.starChartsIntegration) {
-                    console.log(`🛑 SectorNavigation: Pausing StarCharts integration sync during sector transition`);
-                    starfieldManager.navigationSystemManager.starChartsIntegration.pauseSync = true;
-                    
-                    // Resume sync after a delay to allow sector update to complete
-                    setTimeout(() => {
-                        if (starfieldManager.navigationSystemManager?.starChartsIntegration) {
-                            console.log(`▶️ SectorNavigation: Resuming StarCharts integration sync for sector ${this.currentSector}`);
-                            starfieldManager.navigationSystemManager.starChartsIntegration.pauseSync = false;
-                        }
-                    }, 2000); // 2 second delay to ensure sector updates are complete
-                } else {
-                    console.log(`❌ SectorNavigation: StarCharts integration not found - cannot pause sync`);
-                    console.log(`🔍 SectorNavigation: This means A0 targets might still be re-added by the integration system`);
-                }
-                
-                console.log(`🔍 AFTER CLEARING: TargetComputerManager has ${starfieldManager.targetComputerManager.targetObjects?.length || 0} targets`);
-            }
+            starfieldManager.starChartsManager.currentSector = this.currentSector;
             
-            // Clear any existing wireframe
-            if (starfieldManager.targetWireframe) {
-                starfieldManager.wireframeScene.remove(starfieldManager.targetWireframe);
-                starfieldManager.targetWireframe.geometry.dispose();
-                starfieldManager.targetWireframe.material.dispose();
-                starfieldManager.targetWireframe = null;
-            }
-            
-            // ALWAYS update target list for new sector (regardless of target computer state)
-            setTimeout(() => {
-                console.log(`🎯 SectorNavigation: Updating target list for sector ${this.currentSector}`);
-                
-                // Check SolarSystemManager state before updating target list
-                if (starfieldManager.solarSystemManager) {
-                    const currentSystemSector = starfieldManager.solarSystemManager.currentSector;
-                    const celestialBodies = starfieldManager.solarSystemManager.getCelestialBodies();
-                    console.log(`🌍 SectorNavigation: SolarSystemManager sector: ${currentSystemSector}, bodies: ${celestialBodies.size}`);
-                    
-                    // Debug: Check target computer range
-                    const ship = starfieldManager.ship;
-                    const targetComputer = ship?.getSystem('target_computer');
-                    const maxTargetingRange = targetComputer?.range || 150;
-                    console.log(`🎯 SectorNavigation: Target computer range: ${maxTargetingRange}km`);
-                    
-                    // Debug: Check first few celestial bodies and their distances
-                    if (celestialBodies.size > 0) {
-                        let bodyCount = 0;
-                        for (const [key, body] of celestialBodies.entries()) {
-                            if (bodyCount >= 3) break;
-                            const info = starfieldManager.solarSystemManager.getCelestialBodyInfo(body);
-                            const distance = body.position ? Math.sqrt(
-                                Math.pow(body.position.x - starfieldManager.camera.position.x, 2) +
-                                Math.pow(body.position.y - starfieldManager.camera.position.y, 2) +
-                                Math.pow(body.position.z - starfieldManager.camera.position.z, 2)
-                            ) : 'unknown';
-                            console.log(`🌍 SectorNavigation: Body ${key}: ${info?.name || 'unknown'} at ${distance}km (range: ${maxTargetingRange}km)`);
-                            bodyCount++;
-                        }
-                    }
-                    
-                    // If SolarSystemManager is still on wrong sector, force regenerate
-                    if (currentSystemSector !== this.currentSector) {
-                        console.log(`🚨 SectorNavigation: SolarSystemManager sector mismatch! Expected: ${this.currentSector}, Got: ${currentSystemSector}`);
-                        console.log(`🔄 SectorNavigation: Force regenerating star system for ${this.currentSector}`);
-                        starfieldManager.solarSystemManager.setCurrentSector(this.currentSector);
-                        starfieldManager.solarSystemManager.generateStarSystem(this.currentSector);
-                    }
-                }
-                
-                if (starfieldManager.updateTargetList) {
-                    console.log(`🎯 SectorNavigation: Calling updateTargetList() for sector ${this.currentSector}`);
-                    starfieldManager.updateTargetList();
-                    
-                    // CRITICAL DEBUG: Show what targets were found after update
-                    console.log(`🔍 AFTER updateTargetList(): Found ${starfieldManager.targetObjects?.length || 0} targets`);
-                    if (starfieldManager.targetObjects?.length > 0) {
-                        starfieldManager.targetObjects.forEach((target, i) => {
-                            console.log(`  [${i}] ${target.name} - ID: "${target.id}" - Distance: ${target.distance?.toFixed(1)}km`);
-                        });
-                    }
-                }
-                if (starfieldManager.cycleTarget) {
-                    console.log(`🎯 SectorNavigation: Calling cycleTarget() for sector ${this.currentSector}`);
-                    starfieldManager.cycleTarget();
-                }
-            }, 200); // Increased delay to allow system generation
-            
-            // Star Charts will now get fresh data automatically from solarSystemManager
-            console.log(`🗺️ SectorNavigation: Star Charts will auto-update using fresh solarSystemManager data`);
-            if (starfieldManager.starChartsManager) {
-                console.log(`🗺️ SectorNavigation: Star Charts Manager exists - sector will update automatically`);
-            }
-            
-            // Reuse comprehensive ship shutdown system from docking (includes engine audio shutdown)
-            console.log(`🛑 SectorNavigation: Shutting down all ship systems for sector transition`);
-            console.log(`🔍 SectorNavigation: shutdownAllSystems available: ${typeof starfieldManager.shutdownAllSystems}`);
-            
-            if (starfieldManager.shutdownAllSystems && typeof starfieldManager.shutdownAllSystems === 'function') {
-                console.log(`🛑 SectorNavigation: Calling starfieldManager.shutdownAllSystems()`);
-                starfieldManager.shutdownAllSystems();
-                
-                // Also manually stop engine audio if it's still running
-                if (starfieldManager.audioManager && starfieldManager.audioManager.getEngineState() === 'running') {
-                    console.log(`🔇 SectorNavigation: Manually stopping engine audio`);
-                    starfieldManager.playEngineShutdown();
-                }
-            } else {
-                console.warn(`❌ SectorNavigation: shutdownAllSystems not available (${typeof starfieldManager.shutdownAllSystems}), using comprehensive fallback`);
-                
-                // Comprehensive fallback: manual engine audio shutdown
-                if (starfieldManager.audioManager && starfieldManager.audioManager.getEngineState() === 'running') {
-                    console.log(`🔇 SectorNavigation: Fallback engine audio shutdown`);
-                    starfieldManager.playEngineShutdown();
-                }
-                
-                // Fallback: basic engine shutdown
-                if (starfieldManager.ship) {
-                    const impulseEngines = starfieldManager.ship.getSystem('impulse_engines');
-                    if (impulseEngines) {
-                        console.log(`🚀 SectorNavigation: Fallback impulse engine shutdown`);
-                        impulseEngines.setImpulseSpeed(0);
-                        impulseEngines.setMovingForward(false);
-                        impulseEngines.isActive = false;
-                    }
-                }
-            }
-            
-            // Reset movement-related properties in StarfieldManager
-            starfieldManager.targetSpeed = 0;
-            starfieldManager.currentSpeed = 0;
-            starfieldManager.isMoving = false;
-            starfieldManager.isAccelerating = false;
-            
-            console.log(`🛑 SectorNavigation: Ship systems shutdown complete for sector transition`);
+            // CRITICAL FIX: Force immediate spatial grid refresh to prevent discovery contamination
+            // The spatial grid must be refreshed IMMEDIATELY after sector change to prevent
+            // the discovery system from finding objects from the old sector
+            debug('UTILITY', '🗺️ CRITICAL: Force refreshing StarCharts spatial grid to prevent discovery contamination');
+            starfieldManager.starChartsManager.refreshSpatialGrid();
+        }
+        
+        // Target list update will be handled by WarpDriveManager.handleWarpEnd() 
+        // after system generation completes to prevent race conditions
+        debug('UTILITY', 'Target list update deferred to WarpDriveManager.handleWarpEnd() to prevent race conditions');
+        
+        // Shutdown ship systems for clean sector transition
+        debug('UTILITY', 'Shutting down ship systems for sector transition');
+        if (starfieldManager.shutdownAllSystems && typeof starfieldManager.shutdownAllSystems === 'function') {
+            starfieldManager.shutdownAllSystems();
         } else {
-            console.log(`❌ SectorNavigation: Cannot access starfieldManager - viewManager: ${!!this.viewManager}, starfieldManager: ${!!this.viewManager?.starfieldManager}`);
-            
-            // Try alternative access paths
-            if (this.viewManager) {
-                console.log(`🔍 SectorNavigation: ViewManager properties: ${Object.keys(this.viewManager).join(', ')}`);
+            // Fallback: manual engine shutdown
+            if (starfieldManager.ship) {
+                const impulseEngines = starfieldManager.ship.getSystem('impulse_engines');
+                if (impulseEngines) {
+                    impulseEngines.setImpulseSpeed(0);
+                    impulseEngines.setMovingForward(false);
+                    impulseEngines.isActive = false;
+                }
             }
         }
+        
+        // Reset movement state
+        starfieldManager.targetSpeed = 0;
+        starfieldManager.currentSpeed = 0;
+        starfieldManager.isMoving = false;
+        starfieldManager.isAccelerating = false;
 
         this.targetSector = null;
         this._hasArrived = false;
@@ -515,13 +524,7 @@ debug('UTILITY', 'Deactivating warp drive');
         if (systemStar && systemStar.position) {
             // Position ship 100km from the star (within 150km targeting range)
             const starPosition = systemStar.position;
-            console.log(`🚀 SectorNavigation: System star found at (${starPosition.x.toFixed(1)}, ${starPosition.y.toFixed(1)}, ${starPosition.z.toFixed(1)})`);
-            console.log(`🚀 SectorNavigation: Star object details:`, {
-                name: systemStar.name,
-                type: systemStar.type,
-                id: systemStar.id,
-                userData: systemStar.userData
-            });
+            debug('UTILITY', `System star found at (${starPosition.x.toFixed(1)}, ${starPosition.y.toFixed(1)}, ${starPosition.z.toFixed(1)})`);
             
             // Calculate direction vector from star to ship (normalized)
             const direction = {
@@ -538,7 +541,7 @@ debug('UTILITY', 'Deactivating warp drive');
                 z: starPosition.z + (direction.z * offsetDistance)
             };
             
-            console.log(`🚀 SectorNavigation: Positioning ship ${offsetDistance}km from system star at (${newPosition.x.toFixed(1)}, ${newPosition.y.toFixed(1)}, ${newPosition.z.toFixed(1)})`);
+            debug('UTILITY', `Positioning ship ${offsetDistance}km from system star at (${newPosition.x.toFixed(1)}, ${newPosition.y.toFixed(1)}, ${newPosition.z.toFixed(1)})`);
             
             // Update camera position
             this.camera.position.set(newPosition.x, newPosition.y, newPosition.z);
@@ -546,7 +549,6 @@ debug('UTILITY', 'Deactivating warp drive');
             // Update ship position if available
             if (this.viewManager.starfieldManager.ship) {
                 this.viewManager.starfieldManager.ship.position.set(newPosition.x, newPosition.y, newPosition.z);
-                console.log(`🚀 SectorNavigation: Ship position updated to (${newPosition.x.toFixed(1)}, ${newPosition.y.toFixed(1)}, ${newPosition.z.toFixed(1)})`);
             }
             
             // Verify distance calculation
@@ -555,32 +557,9 @@ debug('UTILITY', 'Deactivating warp drive');
                 Math.pow(newPosition.y - starPosition.y, 2) +
                 Math.pow(newPosition.z - starPosition.z, 2)
             );
-            console.log(`🚀 SectorNavigation: Calculated distance to star: ${actualDistance.toFixed(1)}km`);
-            
-            // CRITICAL: Also check what the target computer will see
-            setTimeout(() => {
-                console.log(`🔍 POST-POSITIONING: Camera at (${this.camera.position.x.toFixed(1)}, ${this.camera.position.y.toFixed(1)}, ${this.camera.position.z.toFixed(1)})`);
-                console.log(`🔍 POST-POSITIONING: Star at (${starPosition.x.toFixed(1)}, ${starPosition.y.toFixed(1)}, ${starPosition.z.toFixed(1)})`);
-                
-                // Calculate distance using the same method as target computer
-                const tcDistance = Math.sqrt(
-                    Math.pow(this.camera.position.x - starPosition.x, 2) +
-                    Math.pow(this.camera.position.y - starPosition.y, 2) +
-                    Math.pow(this.camera.position.z - starPosition.z, 2)
-                );
-                console.log(`🔍 POST-POSITIONING: Target computer distance calculation: ${tcDistance.toFixed(1)}km`);
-            }, 50);
-            
-            // Force target list update AFTER positioning to get correct distances
-            setTimeout(() => {
-                console.log(`🎯 SectorNavigation: Force updating target list after positioning`);
-                if (this.viewManager.starfieldManager.targetComputerManager) {
-                    this.viewManager.starfieldManager.targetComputerManager.updateTargetList();
-                    console.log(`🎯 SectorNavigation: Target list updated after positioning`);
-                }
-            }, 100);
+            debug('UTILITY', `Calculated distance to star: ${actualDistance.toFixed(1)}km`);
         } else {
-            console.warn(`🚀 SectorNavigation: Could not find system star for positioning`);
+            debug('UTILITY', 'Could not find system star for positioning');
         }
     }
 

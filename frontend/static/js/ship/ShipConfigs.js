@@ -24,15 +24,15 @@ export const SHIP_CONFIGS = {
         maxHull: 300,          // Very low hull hit points
         
         // System slots - Minimal but expandable
-        systemSlots: 11,        // Updated for 5 utility slots (was 9)
+        systemSlots: 12,        // Updated for 6 utility slots (was 11)
         
         // System slot allocations
         slotConfig: {
             engines: 1,        // Basic impulse engines
             reactor: 1,         // Basic energy reactor
             weapons: 4,         // 4 weapon slots for testing (matches starter cards)
-            utility: 5,         // 5 utility slots for target_computer, hull_plating, long_range_scanner, star_charts + 1 spare
-            // Total slots: 11 (1 engine + 1 reactor + 4 weapons + 5 utility = 11)
+            utility: 6,         // 6 utility slots for target_computer, hull_plating, long_range_scanner, star_charts, galactic_chart, warp_drive
+            // Total slots: 12 (1 engine + 1 reactor + 4 weapons + 6 utility = 12)
         },
         
         // Default system configurations - Starter optimized
@@ -65,9 +65,18 @@ export const SHIP_CONFIGS = {
                 level: 1, // Level 1 = basic chart capabilities
                 slots: 1,
                 energyConsumption: 6 // Low consumption for starter ship
+            },
+            galactic_chart: {
+                level: 1, // Level 1 = basic galactic navigation
+                slots: 1,
+                energyConsumption: 8 // Moderate consumption for warp navigation
+            },
+            warp_drive: {
+                level: 1, // Level 1 = basic warp capability
+                slots: 1,
+                energyConsumption: 0 // Warp uses energy differently (lump sum per warp)
             }
             // Removed laser_cannon - weapons now come from starterCards via WeaponSyncManager
-            // No galactic chart or subspace radio - must be acquired from shop
         },
         
         // Pre-installed starter cards (uses centralized getStarterCards function)
@@ -804,7 +813,8 @@ export function getStarterCards(shipType) {
             utility_2: { cardType: 'hull_plating', level: 1 },
             utility_3: { cardType: 'long_range_scanner', level: 1 },
             utility_4: { cardType: 'star_charts', level: 1 },
-            utility_5: { cardType: 'basic_radar', level: 1 },
+            utility_5: { cardType: 'galactic_chart', level: 1 },
+            utility_6: { cardType: 'warp_drive', level: 1 },
             engine_1: { cardType: 'impulse_engines', level: 1 },
             power_1: { cardType: 'energy_reactor', level: 1 },
             weapon_1: { cardType: 'laser_cannon', level: 1 },

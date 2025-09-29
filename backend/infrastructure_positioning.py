@@ -39,8 +39,9 @@ class InfrastructurePositioning:
         self.use_realistic_orbits = use_realistic_orbits
 
         # Positioning constants
+        # DESIGN PILLAR: "Fun trumps realism — more Futurama than Star Trek"
         self.STATION_ORBIT_HEIGHT = 5.0  # Distance above planet surface
-        self.BEACON_SPACING = 200.0  # Distance between navigation beacons
+        self.BEACON_SPACING = 175.0  # Distance between navigation beacons - reduced for better gameplay
         self.MIN_STATION_DISTANCE = 10.0  # Minimum distance between stations
 
     def position_infrastructure(self, star_system: Dict[str, Any],

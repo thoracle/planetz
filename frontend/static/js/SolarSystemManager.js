@@ -358,39 +358,52 @@ debug('UTILITY', '=== Star System Creation Complete ===');
             });
             const planet = new THREE.Mesh(planetGeometry, planetMaterial);
             
-            // Check if this is the starter system for more compact layout
-            const isStarterSystem = this.starSystem?.star_name === 'Sol';
+            // CRITICAL FIX: Use backend positioning data instead of hardcoded distances
+            // This ensures planets are placed at the correct distances for discovery (30-105km for B1)
+            let x, y, z, orbitRadius, angle;
             
-            // Calculate orbit radius - more compact for starter system
-            let minRadius, maxRadius;
-            if (isStarterSystem) {
-                // Much closer orbits for starter system - easier to navigate
-                minRadius = 15;  // Very close to star
-                maxRadius = 35;  // Still close but room for multiple bodies
+            if (planetData.position && Array.isArray(planetData.position) && planetData.position.length >= 3) {
+                // Use positioning data from backend positioning enhancement
+                [x, y, z] = planetData.position;
+                // Calculate orbitRadius from position for orbital elements
+                orbitRadius = Math.sqrt(x * x + y * y + z * z);
+                // Calculate angle from position for orbital elements
+                angle = Math.atan2(z, x);
+                debug('STAR_CHARTS', `Using backend position for planet ${index}:`, { x, y, z, orbitRadius, angle, name: planetData.planet_name });
             } else {
-                // Regular system spacing
-                minRadius = 1000;
-                maxRadius = 5000;
+                // Fallback to legacy positioning for systems without positioning data
+                const isStarterSystem = this.starSystem?.star_name === 'Sol';
+                
+                let minRadius, maxRadius;
+                if (isStarterSystem) {
+                    // Much closer orbits for starter system - easier to navigate
+                    minRadius = 15;  // Very close to star
+                    maxRadius = 35;  // Still close but room for multiple bodies
+                } else {
+                    // Use smaller distances for better discovery gameplay
+                    minRadius = 30;   // Reduced from 1000 for better discovery
+                    maxRadius = 150;  // Reduced from 5000 for better discovery
+                }
+                
+                const totalPlanets = Math.max(1, this.starSystem.planets.length);
+                
+                // Use linear spacing for better gameplay (matches backend enhancement)
+                orbitRadius = minRadius + (index * (maxRadius - minRadius) / Math.max(1, totalPlanets - 1));
+                
+                // Ensure angle is a valid number
+                angle = (Math.random() * Math.PI * 2) || 0;
+                
+                // Set position
+                x = orbitRadius * Math.cos(angle);
+                y = 0;
+                z = orbitRadius * Math.sin(angle);
+                
+                debug('STAR_CHARTS', `Using fallback position for planet ${index}:`, { x, y, z, orbitRadius, angle, name: planetData.planet_name });
             }
-            
-            const totalPlanets = Math.max(1, this.starSystem.planets.length);
-            
-            // Use exponential spacing to create more realistic orbital distances
-            const base = isStarterSystem ? 1.5 : 1.8; // Smaller base for more compact starter system
-            const normalizedIndex = index / (totalPlanets - 1 || 1);
-            const orbitRadius = minRadius + (maxRadius - minRadius) * (Math.pow(base, normalizedIndex) - 1) / (base - 1);
-            
-            // Ensure angle is a valid number
-            const angle = (Math.random() * Math.PI * 2) || 0;
-            
-            // Set initial position
-            const x = orbitRadius * Math.cos(angle);
-            const y = 0;
-            const z = orbitRadius * Math.sin(angle);
             
             // Validate position before setting
             if (isNaN(x) || isNaN(y) || isNaN(z)) {
-                console.warn(`Invalid position calculated for planet ${index}:`, { x, y, z, orbitRadius, angle });
+                console.warn(`Invalid position calculated for planet ${index}:`, { x, y, z, orbitRadius });
                 planet.position.set(0, 0, 0);
             } else {
                 planet.position.set(x, y, z);
@@ -482,29 +495,49 @@ debug('UTILITY', `🪐 Planet added to spatial tracking: ${planetData.planet_nam
                 return;
             }
             
-            // Check if this is the starter system for more compact moon layout
-            const isStarterSystem = this.starSystem?.star_name === 'Sol';
+            // CRITICAL FIX: Use backend positioning data for moons as well
+            let moonOrbitRadius, angle;
             
-            // Calculate initial position relative to planet - increased distances to avoid launch interference
-            const baseMoonOrbitRadius = isStarterSystem ? 8.0 : 12.0; // Much further from planets
-            const moonOrbitRadius = Math.max(6, (moonIndex + 1) * baseMoonOrbitRadius);
-            const angle = (Math.random() * Math.PI * 2) || 0;
-            const verticalVariation = Math.sin(angle * 0.5) * moonOrbitRadius * 0.2;
-            
-            // Calculate moon position components
-            const x = moonOrbitRadius * Math.cos(angle);
-            const y = verticalVariation;
-            const z = moonOrbitRadius * Math.sin(angle);
-            
-            // Create position vector and validate
-            const moonPosition = new THREE.Vector3(x, y, z);
-            if (moonPosition.x === 0 && moonPosition.y === 0 && moonPosition.z === 0) {
-                console.warn(`Zero position calculated for moon ${moonIndex} of planet ${planetIndex}`);
-                return;
+            if (moonData.position && Array.isArray(moonData.position) && moonData.position.length >= 3) {
+                // Use absolute positioning data from backend positioning enhancement
+                const [x, y, z] = moonData.position;
+                moon.position.set(x, y, z);
+                
+                // Calculate moonOrbitRadius and angle from position for orbital elements
+                const relativeX = x - planet.position.x;
+                const relativeZ = z - planet.position.z;
+                moonOrbitRadius = Math.sqrt(relativeX * relativeX + relativeZ * relativeZ);
+                angle = Math.atan2(relativeZ, relativeX);
+                
+                debug('STAR_CHARTS', `Using backend position for moon ${moonIndex}:`, { x, y, z, moonOrbitRadius, angle, name: moonData.moon_name });
+            } else {
+                // Fallback to legacy relative positioning
+                const isStarterSystem = this.starSystem?.star_name === 'Sol';
+                
+                // Calculate initial position relative to planet - increased distances to avoid launch interference
+                const baseMoonOrbitRadius = isStarterSystem ? 8.0 : 12.0; // Much further from planets
+                moonOrbitRadius = Math.max(6, (moonIndex + 1) * baseMoonOrbitRadius);
+                angle = (Math.random() * Math.PI * 2) || 0;
+                const verticalVariation = Math.sin(angle * 0.5) * moonOrbitRadius * 0.2;
+                
+                // Calculate moon position components
+                const x = moonOrbitRadius * Math.cos(angle);
+                const y = verticalVariation;
+                const z = moonOrbitRadius * Math.sin(angle);
+                
+                // Create position vector and validate
+                const moonPosition = new THREE.Vector3(x, y, z);
+                if (moonPosition.x === 0 && moonPosition.y === 0 && moonPosition.z === 0) {
+                    console.warn(`Zero position calculated for moon ${moonIndex} of planet ${planetIndex}`);
+                    return;
+                }
+                
+                // Add moon position to planet position
+                moon.position.copy(planet.position).add(moonPosition);
+                debug('STAR_CHARTS', `Using fallback position for moon ${moonIndex}:`, { 
+                    x: moon.position.x, y: moon.position.y, z: moon.position.z, moonOrbitRadius, angle, name: moonData.moon_name 
+                });
             }
-            
-            // Add moon position to planet position
-            moon.position.copy(planet.position).add(moonPosition);
             
             // Validate final position
             if (isNaN(moon.position.x) || isNaN(moon.position.y) || isNaN(moon.position.z)) {

@@ -1964,9 +1964,9 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             this.starChartsManager.currentSector = currentSector;
         }
         
-        // Fallback to static database if needed, but prefer fresh data
-        const sectorData = this.starChartsManager.objectDatabase?.sectors[currentSector];
-        if (!sectorData && !rawStarSystem) return [];
+        // CRITICAL FIX: Use dynamic solar system data instead of static database
+        const celestialBodies = solarSystemManager.getCelestialBodies();
+        if (!celestialBodies || celestialBodies.size === 0) return [];
 
         // Check if test mode is enabled (show all objects normally)
         const isTestMode = this.isTestModeEnabled();
@@ -1981,107 +1981,42 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
 
         const allObjects = [];
 
-        // Add star (discovered = normal, undiscovered = with ? flag)
-        if (sectorData.star) {
-            const discovered = isDiscovered(sectorData.star.id);
+        // CRITICAL FIX: Process dynamic solar system objects instead of static database
+        for (const [key, body] of celestialBodies.entries()) {
+            const bodyId = `${currentSector}_${key}`;
+            const info = solarSystemManager.getCelestialBodyInfo(body);
             
-            // Ensure complete data by fetching from database
-            const completeStarData = this.starChartsManager.getObjectData(sectorData.star.id) || sectorData.star;
+            if (!info) continue;
             
-            allObjects.push({
-                ...sectorData.star,
-                ...completeStarData, // Merge complete data
-                _isUndiscovered: !discovered && !isTestMode
-            });
-        }
-
-        // Helper function to normalize station types
-        const normalizeStationType = (type) => {
-            const stationTypes = [
-                'Research Lab', 'Refinery', 'Research Outpost', 'Frontier Outpost',
-                'Communications Array', 'Shipyard', 'Storage Depot', 'Factory',
-                'Colony', 'Mining Station', 'Mining Complex', 'Research Station',
-                'Defense Platform', 'space_station'
-            ];
-            return stationTypes.includes(type) ? 'space_station' : type;
-        };
-
-        // Add celestial objects (discovered = normal, undiscovered = with ? flag)
-        sectorData.objects.forEach(obj => {
-            const discovered = isDiscovered(obj.id);
-            const normalizedType = normalizeStationType(obj.type);
+            const discovered = isDiscovered(bodyId);
             
-            // Ensure complete data by fetching from database
-            const completeObjectData = this.starChartsManager.getObjectData(obj.id) || obj;
+            // Create object data compatible with StarCharts UI format
+            const objectData = {
+                id: bodyId,
+                name: info.name,
+                type: info.type,
+                position: body.position ? [body.position.x, body.position.y, body.position.z] : [0, 0, 0],
+                cartesianPosition: body.position,
+                visualRadius: info.radius || 1,
+                class: this.starChartsManager.getObjectClass(info.type),
+                description: this.starChartsManager.getObjectDescription(info.name, info.type),
+                faction: info.faction || 'neutral',
+                diplomacy: info.diplomacy || 'neutral'
+            };
             
             if (discovered || isTestMode) {
-                allObjects.push({ 
-                    ...obj, 
-                    ...completeObjectData, // Merge complete data
-                    type: normalizedType 
-                });
+                allObjects.push(objectData);
             } else {
                 // Add undiscovered object with special flag
                 allObjects.push({
-                    ...obj,
-                    ...completeObjectData, // Merge complete data
-                    type: normalizedType,
+                    ...objectData,
                     _isUndiscovered: true
                 });
             }
-        });
-
-        // Add infrastructure
-        if (sectorData.infrastructure) {
-            sectorData.infrastructure.stations?.forEach(station => {
-                const discovered = isDiscovered(station.id);
-                
-                // Ensure complete data by fetching from database
-                const completeStationData = this.starChartsManager.getObjectData(station.id) || station;
-                
-                if (discovered || isTestMode) {
-                    // Normalize station type to match LRS icon rules
-                    allObjects.push({ 
-                        ...station, 
-                        ...completeStationData, // Merge complete data
-                        type: 'space_station' 
-                    });
-                } else {
-                    // Add undiscovered station with special flag
-                    allObjects.push({
-                        ...station,
-                        ...completeStationData, // Merge complete data
-                        type: 'space_station',
-                        _isUndiscovered: true
-                    });
-                }
-            });
-
-            sectorData.infrastructure.beacons?.forEach(beacon => {
-                const discovered = isDiscovered(beacon.id);
-                
-                // Ensure complete data by fetching from database
-                const completeBeaconData = this.starChartsManager.getObjectData(beacon.id) || beacon;
-                
-                if (discovered || isTestMode) {
-                    // Normalize beacon type to match LRS icon rules
-                    const beaconData = { 
-                        ...beacon, 
-                        ...completeBeaconData, // Merge complete data
-                        type: 'navigation_beacon' 
-                    };
-                    allObjects.push(beaconData);
-                } else {
-                    // Add undiscovered beacon with special flag
-                    allObjects.push({
-                        ...beacon,
-                        ...completeBeaconData, // Merge complete data
-                        type: 'navigation_beacon',
-                        _isUndiscovered: true
-                    });
-                }
-            });
         }
+
+        // Infrastructure objects are now included in the dynamic solar system as celestial bodies
+        // No separate infrastructure processing needed
         
         if (isTestMode) {
             // console.log(`🧪 Star Charts TEST MODE: Showing all ${allObjects.length} objects in sector`);

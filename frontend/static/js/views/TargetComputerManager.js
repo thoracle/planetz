@@ -1691,15 +1691,30 @@ export class TargetComputerManager {
      */
     updateKnownTargetsCache(currentTargets) {
         const now = Date.now();
+        const currentSector = this.solarSystemManager?.currentSector || 'A0';
+        
+        // CRITICAL FIX: Clear cache entries from other sectors first
+        for (const [name, cachedTarget] of this.knownTargets.entries()) {
+            if (cachedTarget.id && !cachedTarget.id.startsWith(currentSector + '_')) {
+                debug('TARGETING', `🧹 Clearing cached target from different sector: ${name} (ID: ${cachedTarget.id})`);
+                this.knownTargets.delete(name);
+            }
+        }
         
         // Add current targets to cache
         for (const target of currentTargets) {
-            if (target && target.name) {
-                this.knownTargets.set(target.name, {
-                    ...target,
-                    lastSeen: now,
-                    distance: this.calculateTargetDistance(target)
-                });
+            if (target && target.name && target.id) {
+                // CRITICAL FIX: Only cache targets from current sector
+                if (target.id.startsWith(currentSector + '_')) {
+                    this.knownTargets.set(target.name, {
+                        ...target,
+                        lastSeen: now,
+                        distance: this.calculateTargetDistance(target)
+                    });
+                    debug('TARGETING', `📝 Cached target: ${target.name} (ID: ${target.id})`);
+                } else {
+                    debug('TARGETING', `🚫 Skipping cache for target from different sector: ${target.name} (ID: ${target.id})`);
+                }
             }
         }
         
@@ -1707,9 +1722,12 @@ export class TargetComputerManager {
         const maxAge = 5 * 60 * 1000; // 5 minutes
         for (const [name, cachedTarget] of this.knownTargets.entries()) {
             if (now - cachedTarget.lastSeen > maxAge) {
+                debug('TARGETING', `🗑️ Removing expired cached target: ${name}`);
                 this.knownTargets.delete(name);
             }
         }
+        
+        debug('TARGETING', `🎯 Known targets cache updated: ${this.knownTargets.size} targets cached for sector ${currentSector}`);
     }
 
     /**
@@ -1720,10 +1738,20 @@ export class TargetComputerManager {
         const currentTargetNames = new Set(currentTargets.map(t => t.name));
         const maxCyclingRange = 500; // 500km for cycling purposes
         
-        // Add cached targets that are within reasonable range
+        // CRITICAL FIX: Get current sector to prevent cross-sector contamination
+        const currentSector = this.solarSystemManager?.currentSector || 'A0';
+        debug('TARGETING', `🎯 Enhancing target list for sector ${currentSector} (${this.knownTargets.size} cached targets available)`);
+        
+        // Add cached targets that are within reasonable range AND in current sector
         for (const [name, cachedTarget] of this.knownTargets.entries()) {
             // Skip if already in current list
             if (currentTargetNames.has(name)) {
+                continue;
+            }
+            
+            // CRITICAL FIX: Only include targets from current sector
+            if (cachedTarget.id && !cachedTarget.id.startsWith(currentSector + '_')) {
+                debug('TARGETING', `🚫 Skipping cached target from different sector: ${name} (ID: ${cachedTarget.id})`);
                 continue;
             }
             
@@ -1732,15 +1760,18 @@ export class TargetComputerManager {
             
             // Include if within cycling range
             if (distance <= maxCyclingRange) {
-                // console.log(`🎯 Adding cached target for cycling: ${name} (${distance.toFixed(1)}km)`);
+                debug('TARGETING', `🎯 Adding cached target for cycling: ${name} (${distance.toFixed(1)}km, ID: ${cachedTarget.id})`);
                 enhancedTargets.push({
                     ...cachedTarget,
                     distance: distance,
                     isCached: true // Mark as cached for debugging
                 });
+            } else {
+                debug('TARGETING', `🚫 Cached target out of range: ${name} (${distance.toFixed(1)}km > ${maxCyclingRange}km)`);
             }
         }
         
+        debug('TARGETING', `🎯 Enhanced target list: ${currentTargets.length} → ${enhancedTargets.length} targets`);
         return enhancedTargets;
     }
 
@@ -1892,20 +1923,34 @@ export class TargetComputerManager {
         }
         
         // CRITICAL: Normalize ALL target IDs before setting the target list
-        console.log(`🔍 BEFORE NORMALIZATION: ${deduplicatedTargets.length} targets`);
-        deduplicatedTargets.forEach((target, i) => {
-            console.log(`  [${i}] ${target.name} - ID: "${target.id}" (type: ${typeof target.id})`);
-        });
+        debug('TARGETING', `🔍 Normalizing ${deduplicatedTargets.length} targets`);
         
         const normalizedTargets = deduplicatedTargets.map(target => this.normalizeTarget(target));
         
-        console.log(`🔍 AFTER NORMALIZATION: ${normalizedTargets.length} targets`);
-        normalizedTargets.forEach((target, i) => {
-            console.log(`  [${i}] ${target.name} - ID: "${target.id}" (type: ${typeof target.id})`);
+        // Rate-limited detailed logging (only 5% of the time to reduce spam)
+        if (Math.random() < 0.05) {
+            debug('TARGETING', `🔍 NORMALIZATION SAMPLE: ${normalizedTargets.length} targets`);
+            normalizedTargets.slice(0, 3).forEach((target, i) => {
+                debug('TARGETING', `  [${i}] ${target.name} - ID: "${target.id}"`);
+            });
+        }
+        
+        // CRITICAL: Filter out any targets from other sectors to prevent contamination
+        const currentSector = this.solarSystemManager?.currentSector || 'A0';
+        const sectorFilteredTargets = normalizedTargets.filter(target => {
+            if (target.id && typeof target.id === 'string' && !target.id.startsWith(currentSector + '_')) {
+                debug('TARGETING', `🚫 SECTOR FILTER: Removing cross-sector target: ${target.name} (ID: ${target.id}, current sector: ${currentSector})`);
+                return false;
+            }
+            return true;
         });
         
-        // Update target list with normalized targets
-        this.targetObjects = normalizedTargets;
+        if (sectorFilteredTargets.length !== normalizedTargets.length) {
+            debug('TARGETING', `🧹 SECTOR FILTER: Removed ${normalizedTargets.length - sectorFilteredTargets.length} cross-sector targets`);
+        }
+        
+        // Update target list with sector-filtered targets
+        this.targetObjects = sectorFilteredTargets;
 
         // Debug logging to see what targets were found
         debug('TARGETING', `TargetComputerManager: Found ${this.targetObjects.length} targets:`, this.targetObjects.map(t => `${t.name} (${t.distance.toFixed(1)}km)`));
@@ -2115,6 +2160,16 @@ export class TargetComputerManager {
             debug('TARGETING', `🚨 Cannot add target without ID after normalization: ${targetData?.name || 'unknown'}`);
             return false;
         }
+        
+        // CRITICAL: AGGRESSIVE SECTOR VALIDATION - ZERO TOLERANCE FOR CROSS-SECTOR CONTAMINATION
+        const currentSector = this.viewManager?.solarSystemManager?.currentSector;
+        if (currentSector && targetData.id && typeof targetData.id === 'string') {
+            if (!targetData.id.startsWith(currentSector + '_')) {
+                debug('TARGETING', `🚨 SECTOR VIOLATION: Rejecting cross-sector target: ${targetData.name} (${targetData.id}) - Current sector: ${currentSector}`);
+                debug('TARGETING', `🚨 FAIL-FAST: Cross-sector contamination prevented at target addition point`);
+                return false; // FAIL-FAST: Reject immediately
+            }
+        }
 
         // Check for existing target by ID and name
         const existingIndex = this.targetObjects.findIndex(target => {
@@ -2297,13 +2352,15 @@ export class TargetComputerManager {
      */
     cycleTarget(forward = true) {
         try {
-            console.log(`🎯 TAB PRESSED: TargetComputerManager.cycleTarget called (forward=${forward})`);
+            debug('TARGETING', `🎯 TAB PRESSED: TargetComputerManager.cycleTarget called (forward=${forward})`);
             
-            // CRITICAL DEBUG: Show current target list when TAB is pressed
-            console.log(`🔍 CURRENT TARGET LIST (${this.targetObjects.length} targets):`);
-            this.targetObjects.forEach((target, i) => {
-                console.log(`  [${i}] ${target.name} - ID: "${target.id}" - Distance: ${target.distance?.toFixed(1)}km`);
-            });
+            // Rate-limited target list debug (only show occasionally to reduce spam)
+            if (Math.random() < 0.1) {
+                debug('TARGETING', `🔍 CURRENT TARGET LIST (${this.targetObjects.length} targets)`);
+                this.targetObjects.slice(0, 5).forEach((target, i) => {
+                    debug('TARGETING', `  [${i}] ${target.name} - ID: "${target.id}" - Distance: ${target.distance?.toFixed(1)}km`);
+                });
+            }
         
         // Add waypoints to targeting system before cycling (only if not already added)
         if (!this._waypointsAdded) {
@@ -2685,9 +2742,12 @@ export class TargetComputerManager {
        // Check discovery status for wireframe color using proper discovery logic
        const isDiscovered = currentTargetData?.isShip || this.isObjectDiscovered(currentTargetData);
        
+       debug('TARGETING', `🎨 WIREFRAME COLOR: ${currentTargetData?.name} - isDiscovered: ${isDiscovered}, diplomacy: ${diplomacy}, faction: ${info?.faction}`);
+       
        if (!isDiscovered) {
            // Undiscovered objects use unknown faction color (cyan)
            wireframeColor = 0x44ffff; // Cyan for unknown/undiscovered
+           debug('TARGETING', `🎨 Using TEAL wireframe for undiscovered: ${currentTargetData?.name}`);
 
        } else {
            // FIX: Set isEnemyShip correctly - only enemy ships should have subsystem indicators
@@ -2703,6 +2763,7 @@ export class TargetComputerManager {
 
            } else if (diplomacy === 'neutral') {
                wireframeColor = 0xffff44; // Yellow for neutral (docs/restart.md)
+               debug('TARGETING', `🎨 Using YELLOW wireframe for neutral discovered: ${currentTargetData?.name}`);
 
            } else if (diplomacy === 'friendly') {
                wireframeColor = 0x44ff44; // Green for friendly (docs/restart.md)
@@ -3633,8 +3694,11 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
             return true;
         }
         
-        // Check discovery status
+        // Check discovery status - ALWAYS get fresh status, don't rely on cache
         const isDiscovered = starChartsManager.isDiscovered(objectId);
+        
+        // REMOVED: Recursive wireframe recreation that caused infinite loop
+        // The wireframe color update will be handled by the existing updateTargetDisplay logic
         
         // Only log discovery status changes (with heavy rate limiting to prevent spam)
         if (!this._lastDiscoveryStatus) this._lastDiscoveryStatus = {};
@@ -4906,6 +4970,13 @@ debug('TARGETING', `🎯 Star Charts: Target set to ${target.name} (ID: ${normal
         if (starChartsManager) {
             const objectData = starChartsManager.getObjectData(normalizedId);
             if (objectData) {
+                // CRITICAL FIX: Check current sector to prevent cross-sector contamination
+                const currentSector = this.viewManager?.solarSystemManager?.currentSector || 'A0';
+                if (normalizedId && !normalizedId.startsWith(currentSector + '_')) {
+                    debug('TARGETING', `🚫 setTargetById: Skipping target from different sector: ${objectData.name} (ID: ${normalizedId}, current sector: ${currentSector})`);
+                    return false;
+                }
+                
                 debug('TARGETING', `🎯 FINAL FALLBACK: Found object data in StarCharts: ${objectData.name}, adding to target list`);
                 
                 // Create a target entry for this object

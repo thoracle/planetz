@@ -452,12 +452,26 @@ debug('TARGETING', `🎯 Refreshed Target Computer display`);
         }
 
         // Add to Target Computer's known targets cache
-        if (this.targetComputer.knownTargets) {
-            this.targetComputer.knownTargets.set(targetData.name, targetDataForTC);
+        if (this.targetComputer && this.targetComputer.knownTargets) {
+            // CRITICAL FIX: Check current sector before adding to cache
+            const currentSector = this.solarSystemManager?.currentSector || 'A0';
+            if (normalizedId && normalizedId.startsWith(currentSector + '_')) {
+                this.targetComputer.knownTargets.set(targetData.name, targetDataForTC);
+                debug('TARGETING', `📝 StarCharts integration: Added to knownTargets cache: ${targetData.name} (ID: ${normalizedId})`);
+            } else {
+                debug('TARGETING', `🚫 StarCharts integration: Skipping knownTargets cache for different sector: ${targetData.name} (ID: ${normalizedId}, current sector: ${currentSector})`);
+            }
         }
 
         // CRITICAL: Add to targetObjects array through proper deduplication
-        if (this.targetComputer.targetObjects) {
+        if (this.targetComputer && this.targetComputer.targetObjects) {
+            // CRITICAL FIX: Check current sector to prevent cross-sector contamination
+            const currentSector = this.solarSystemManager?.currentSector || 'A0';
+            if (normalizedId && !normalizedId.startsWith(currentSector + '_')) {
+                debug('TARGETING', `🚫 StarCharts integration: Skipping target from different sector: ${targetData.name} (ID: ${normalizedId}, current sector: ${currentSector})`);
+                return;
+            }
+            
             // Use the target computer's built-in deduplication method
             if (this.targetComputer.addTargetWithDeduplication) {
                 this.targetComputer.addTargetWithDeduplication(targetDataForTC);
@@ -470,6 +484,13 @@ debug('TARGETING', `🎯 Refreshed Target Computer display`);
                 });
 
                 if (existingIndex === -1) {
+                    // CRITICAL: DOUBLE-CHECK SECTOR VALIDATION BEFORE ADDING
+                    const currentSector = this.solarSystemManager?.currentSector;
+                    if (currentSector && normalizedId && !normalizedId.startsWith(currentSector + '_')) {
+                        debug('TARGETING', `🚨 SECTOR VIOLATION: Rejecting cross-sector target in fallback: ${targetData.name} (${normalizedId}) - Current sector: ${currentSector}`);
+                        return;
+                    }
+                    
                     // Add new target to the array
                     this.targetComputer.targetObjects.push(targetDataForTC);
                     debug('TARGETING', `🎯 Added target to Target Computer targetObjects: ${targetData.name} (${normalizedId})`);
@@ -479,6 +500,8 @@ debug('TARGETING', `🎯 Refreshed Target Computer display`);
                     debug('TARGETING', `🎯 Updated existing target in Target Computer: ${targetData.name} (${normalizedId})`);
                 }
             }
+        } else {
+            debug('TARGETING', `🚫 StarCharts integration: Cannot add target - targetComputer or targetObjects not available: ${targetData.name}`);
         }
 
         debug('TARGETING', `🎯 Added target to Target Computer: ${targetData.name} (${normalizedId})`);
@@ -680,10 +703,48 @@ debug('TARGETING', `🎯 TARGET_SWITCH: Target set successfully, updating displa
             debug('TARGETING', `🔄 Forced immediate target list update for discovery: ${objectData.name}`);
         }
         
-        // Also force display update if this is the current target
-        if (this.targetComputer && this.targetComputer.updateTargetDisplay) {
-            this.targetComputer.updateTargetDisplay();
-            debug('TARGETING', `🔄 Forced immediate display update for discovery: ${objectData.name}`);
+        // CRITICAL FIX: Force display refresh if this is the currently selected target
+        // This ensures colors update immediately when objects are discovered
+        if (this.targetComputer && this.targetComputer.currentTarget) {
+            const currentTargetId = this.targetComputer.currentTarget.id;
+            const currentTargetName = this.targetComputer.currentTarget.name;
+            
+            // Check multiple possible ID matches for robust discovery detection
+            const isCurrentTarget = currentTargetId === objectId || 
+                (typeof currentTargetId === 'string' && typeof objectId === 'string' && 
+                 currentTargetId.toLowerCase() === objectId.toLowerCase()) ||
+                (currentTargetName && objectData.name && currentTargetName === objectData.name);
+            
+            if (isCurrentTarget) {
+                debug('TARGETING', `🎨 DISCOVERY COLOR FIX: Forcing display refresh for discovered current target: ${objectData.name}`);
+                
+                // CRITICAL FIX: Clear cached discovery status to force wireframe recreation
+                const oldStatus = this.targetComputer.currentTarget._lastDiscoveryStatus;
+                this.targetComputer.currentTarget._lastDiscoveryStatus = undefined;
+                debug('TARGETING', `🎨 DISCOVERY COLOR FIX: Cleared cached discovery status for: ${objectData.name} (was: ${oldStatus})`);
+                
+                // Force immediate wireframe recreation by clearing existing wireframe
+                if (this.targetComputer.targetWireframe) {
+                    debug('TARGETING', `🎨 Removing existing wireframe to force color update for: ${objectData.name}`);
+                    this.targetComputer.wireframeScene.remove(this.targetComputer.targetWireframe);
+                    if (this.targetComputer.targetWireframe.geometry) {
+                        this.targetComputer.targetWireframe.geometry.dispose();
+                    }
+                    if (this.targetComputer.targetWireframe.material) {
+                        this.targetComputer.targetWireframe.material.dispose();
+                    }
+                    this.targetComputer.targetWireframe = null;
+                    debug('TARGETING', `🎨 Wireframe cleared, will be recreated with discovery colors`);
+                }
+                
+                // Force display update to recreate wireframe with correct colors
+                setTimeout(() => {
+                    if (this.targetComputer.updateTargetDisplay) {
+                        this.targetComputer.updateTargetDisplay();
+                        debug('TARGETING', `🎨 Forced display update for discovered current target: ${objectData.name}`);
+                    }
+                }, 10);
+            }
         }
 
 debug('TARGETING', `📡 Notified Target Computer of discovery: ${objectData.name}`);

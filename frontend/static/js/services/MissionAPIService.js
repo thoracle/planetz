@@ -110,7 +110,7 @@ debug('MISSIONS', `🎯 MissionAPIService: Loaded ${data.missions.length} backen
         
         // Always return combined local cache (includes test missions + backend missions)
         const allMissions = Array.from(this.activeMissions.values());
-        console.log('🎯 Final missions to return:', allMissions.length);
+        debug('MISSIONS', `🎯 Final missions to return: ${allMissions.length}`);
 debug('MISSIONS', `🎯 MissionAPIService: Returning ${allMissions.length} total active missions (including test missions)`);
         
         return allMissions;
