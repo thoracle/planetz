@@ -4252,6 +4252,20 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         // Get target position using helper function
         const targetPos = this.getTargetPosition(this.currentTarget);
         if (!targetPos) {
+            // DEBUG: Log why position lookup failed
+            const currentTargetData = this.getCurrentTargetData();
+            const isDiscovered = currentTargetData?.isShip || this.isObjectDiscovered(currentTargetData);
+            console.warn(`🎯 ARROW DEBUG: No position for target "${this.currentTarget?.name || 'unknown'}"`, {
+                hasCurrentTarget: !!this.currentTarget,
+                targetName: this.currentTarget?.name,
+                targetId: this.currentTarget?.id,
+                targetType: this.currentTarget?.type,
+                hasPosition: !!this.currentTarget?.position,
+                hasObjectPosition: !!this.currentTarget?.object?.position,
+                positionValue: this.currentTarget?.position,
+                isDiscovered: isDiscovered,
+                targetDataKeys: currentTargetData ? Object.keys(currentTargetData) : []
+            });
             this.hideAllDirectionArrows();
             return;
         }
