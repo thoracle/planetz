@@ -100,7 +100,205 @@ Same object's position can be:
 
 ### **Architecture Proposal**
 
+#### **Singleton GameObject Factory**
+
+All game objects MUST be created through the factory to ensure:
+- ✅ Consistent ID generation
+- ✅ Proper attribute initialization
+- ✅ Registration in global registry
+- ✅ Validation of required fields
+- ✅ No duplicate IDs
+
 ```javascript
+/**
+ * GameObjectFactory - Singleton factory for creating all game objects
+ * CRITICAL: This is the ONLY way to create game objects
+ */
+class GameObjectFactory {
+    static instance = null;
+    
+    static getInstance() {
+        if (!GameObjectFactory.instance) {
+            GameObjectFactory.instance = new GameObjectFactory();
+        }
+        return GameObjectFactory.instance;
+    }
+    
+    constructor() {
+        if (GameObjectFactory.instance) {
+            throw new Error('GameObjectFactory is a singleton. Use getInstance()');
+        }
+        this.registry = new GameObjectRegistry();
+        this.idGenerator = new IDGenerator();
+    }
+    
+    /**
+     * Create a planet
+     * REQUIRED FIELDS: name, sector, position, faction
+     */
+    createPlanet(data) {
+        this._validateRequired(data, ['name', 'sector', 'position', 'faction']);
+        
+        const id = this.idGenerator.generatePlanetId(data.name, data.sector);
+        
+        // ASSERT: ID must be unique
+        if (this.registry.getById(id)) {
+            throw new Error(`Duplicate planet ID: ${id}. Fix data source.`);
+        }
+        
+        const planet = new GameObject({
+            id,
+            type: 'planet',
+            ...data
+        });
+        
+        this.registry.register(planet);
+        return planet;
+    }
+    
+    /**
+     * Create a station
+     * REQUIRED FIELDS: name, sector, position, faction, stationType
+     */
+    createStation(data) {
+        this._validateRequired(data, ['name', 'sector', 'position', 'faction', 'stationType']);
+        
+        const id = this.idGenerator.generateStationId(data.name, data.sector);
+        
+        // ASSERT: ID must be unique
+        if (this.registry.getById(id)) {
+            throw new Error(`Duplicate station ID: ${id}. Fix data source.`);
+        }
+        
+        const station = new GameObject({
+            id,
+            type: data.stationType, // "Defense Platform", "Research Station", etc.
+            ...data
+        });
+        
+        this.registry.register(station);
+        return station;
+    }
+    
+    /**
+     * Create a beacon
+     * REQUIRED FIELDS: name, sector, position
+     */
+    createBeacon(data) {
+        this._validateRequired(data, ['name', 'sector', 'position']);
+        
+        const id = this.idGenerator.generateBeaconId(data.name, data.sector);
+        
+        if (this.registry.getById(id)) {
+            throw new Error(`Duplicate beacon ID: ${id}. Fix data source.`);
+        }
+        
+        const beacon = new GameObject({
+            id,
+            type: 'navigation_beacon',
+            faction: 'Neutral', // Beacons are always neutral
+            ...data
+        });
+        
+        this.registry.register(beacon);
+        return beacon;
+    }
+    
+    /**
+     * Create a ship
+     * REQUIRED FIELDS: name, faction, shipType, position
+     */
+    createShip(data) {
+        this._validateRequired(data, ['name', 'faction', 'shipType', 'position']);
+        
+        const id = this.idGenerator.generateShipId(data.name);
+        
+        if (this.registry.getById(id)) {
+            throw new Error(`Duplicate ship ID: ${id}. Fix ship spawning logic.`);
+        }
+        
+        const ship = new GameObject({
+            id,
+            type: 'enemy_ship',
+            sector: 'dynamic', // Ships can move between sectors
+            ...data
+        });
+        
+        this.registry.register(ship);
+        return ship;
+    }
+    
+    /**
+     * Validate required fields - FAIL FAST
+     */
+    _validateRequired(data, requiredFields) {
+        const missing = requiredFields.filter(field => !data[field]);
+        
+        if (missing.length > 0) {
+            throw new Error(
+                `Missing required fields: ${missing.join(', ')}. ` +
+                `Object: ${JSON.stringify(data, null, 2)}. ` +
+                `FIX DATA SOURCE - do not add fallbacks!`
+            );
+        }
+    }
+    
+    /**
+     * Get the global registry
+     */
+    getRegistry() {
+        return this.registry;
+    }
+}
+
+/**
+ * IDGenerator - Consistent ID generation for all object types
+ */
+class IDGenerator {
+    /**
+     * Generate planet ID: "A0_terra_prime"
+     */
+    generatePlanetId(name, sector) {
+        const normalized = this._normalizeName(name);
+        return `${sector}_${normalized}`;
+    }
+    
+    /**
+     * Generate station ID: "A0_europa_research_station"
+     */
+    generateStationId(name, sector) {
+        const normalized = this._normalizeName(name);
+        return `${sector}_${normalized}`;
+    }
+    
+    /**
+     * Generate beacon ID: "A0_navigation_beacon_1"
+     */
+    generateBeaconId(name, sector) {
+        const normalized = this._normalizeName(name);
+        return `${sector}_${normalized}`;
+    }
+    
+    /**
+     * Generate ship ID: "ship_crimson_raider_001"
+     */
+    generateShipId(name) {
+        const normalized = this._normalizeName(name);
+        return `ship_${normalized}`;
+    }
+    
+    /**
+     * Normalize name to valid ID format
+     */
+    _normalizeName(name) {
+        return name
+            .toLowerCase()
+            .replace(/\s+/g, '_')           // Spaces to underscores
+            .replace(/[^a-z0-9_]/g, '')    // Remove special chars
+            .replace(/^_+|_+$/g, '');      // Trim underscores
+    }
+}
+
 /**
  * Base GameObject - Single source of truth for all game objects
  */
@@ -252,43 +450,212 @@ class GameObjectRegistry {
 
 ---
 
+## 🚫 **Critical Philosophy Change: Fail Fast, Not Defensive**
+
+### **Current Problem: Defensive Programming Masks Bugs**
+
+**Bad Pattern (Current Code):**
+```javascript
+// Defensive: Hides the bug
+const faction = targetData.faction || info?.faction || 'Unknown';
+// → Bug silently masked, returns 'Unknown', UI shows wrong color
+
+// Defensive: Multiple fallbacks
+const position = obj.position || obj.cartesianPosition || [0, 0, 0];
+// → Bug silently masked, object at wrong position
+
+// Defensive: Default to success
+if (!this.currentTarget) {
+    return; // Silently fail
+}
+```
+
+**Good Pattern (After Refactor):**
+```javascript
+// Assertive: Fail fast, surface the bug
+const faction = gameObject.faction;
+if (!faction) {
+    throw new Error(
+        `GameObject ${gameObject.id} missing faction. ` +
+        `FIX DATA SOURCE in starter_system_infrastructure.json`
+    );
+}
+
+// Assertive: No fallbacks
+const position = gameObject.position;
+if (!position) {
+    throw new Error(
+        `GameObject ${gameObject.id} missing position. ` +
+        `FIX: Object creation in GameObjectFactory.createPlanet()`
+    );
+}
+
+// Assertive: Assert preconditions
+if (!this.currentTarget) {
+    throw new Error(
+        'updateTargetDisplay called with no target. ' +
+        'FIX: Check calling code in cycleTarget()'
+    );
+}
+```
+
+### **Benefits of Fail-Fast**
+
+1. **Bugs Surface Immediately** in development
+   - Instead of: "Why is this station showing wrong faction?" (hours of debugging)
+   - You get: "Missing faction in starter_system_infrastructure.json line 182" (fix in 2 minutes)
+
+2. **Clear Error Messages** point to the fix
+   - Not: "Faction is undefined" (where? why?)
+   - But: "GameObject A0_callisto_defense_platform missing faction. FIX DATA SOURCE"
+
+3. **No Silent Failures** that corrupt game state
+   - Instead of object at [0,0,0] breaking collision detection
+   - Crash immediately with clear stack trace
+
+4. **Easier Debugging**
+   - Stack trace shows exact call path
+   - Error message tells you what to fix
+   - No hunting through 5 fallback layers
+
+### **Migration Strategy for Fail-Fast**
+
+**Phase 0: Add Assertions (Before GameObject Refactor)**
+
+Add assertions to current code to surface bugs:
+
+```javascript
+// In TargetComputerManager.js
+getTargetDiplomacy(targetData) {
+    // ASSERT: targetData must exist
+    if (!targetData) {
+        throw new Error('getTargetDiplomacy called with null/undefined targetData');
+    }
+    
+    // Try to get faction from multiple sources
+    const faction = targetData.faction || 
+                   this.solarSystemManager?.getCelestialBodyInfo(...)?.faction;
+    
+    // ASSERT: We must have a faction by now
+    if (!faction || faction === 'Unknown') {
+        console.error('Missing faction data:', {
+            id: targetData.id,
+            name: targetData.name,
+            type: targetData.type,
+            targetData
+        });
+        throw new Error(
+            `No valid faction for ${targetData.name}. ` +
+            `FIX: Add faction to data source or object creation`
+        );
+    }
+    
+    return this.getFactionDiplomacy(faction);
+}
+```
+
+This will immediately surface all the places where faction data is missing!
+
+**Phase 1-6: GameObject Refactor** (as planned below)
+
+During refactor, replace fallbacks with assertions in factory:
+
+```javascript
+// GameObjectFactory.createStation()
+_validateRequired(data, ['name', 'sector', 'position', 'faction']);
+// → Throws if faction missing, forces fix at data source
+```
+
+---
+
 ## 🔄 **Migration Plan**
+
+### **Phase 0: Add Assertions to Current Code** (Week 0 - BEFORE refactor)
+
+**Goal**: Surface hidden bugs before refactoring
+
+1. ✅ Add assertions to `getTargetDiplomacy()` for missing faction
+2. ✅ Add assertions to `getTargetPosition()` for missing position  
+3. ✅ Add assertions to `getCurrentTargetData()` for null checks
+4. ✅ Add assertions to object creation for required fields
+5. ✅ Run game in dev mode, fix all assertion failures
+6. ✅ Document all data source fixes needed
+
+**Expected**: 10-20 assertion failures revealing bugs
+**Benefit**: Clean data before refactor starts
 
 ### **Phase 1: Create GameObject Infrastructure** (Week 1)
 
 1. ✅ Create `GameObject` base class
-2. ✅ Create `GameObjectRegistry` singleton
-3. ✅ Add unit tests for GameObject
-4. ✅ Document GameObject API
+2. ✅ Create `GameObjectFactory` singleton with validation
+3. ✅ Create `GameObjectRegistry` singleton
+4. ✅ Create `IDGenerator` for consistent IDs
+5. ✅ Add unit tests for all classes
+6. ✅ Document GameObject API and factory usage
 
 **No changes to existing code yet - just infrastructure**
 
-### **Phase 2: Integrate with SolarSystemManager** (Week 2)
+### **Phase 2: Integrate Factory with SolarSystemManager** (Week 2)
 
-1. ✅ When `SolarSystemManager` creates celestial bodies, also create GameObjects
-2. ✅ Register GameObjects in global registry
-3. ✅ Add `GameObject` reference to Three.js mesh `userData`
-4. ✅ Keep existing `getCelestialBodyInfo()` working (backward compatibility)
+1. ✅ Replace manual celestial body creation with `GameObjectFactory`
+2. ✅ Load `starter_system_infrastructure.json` through factory
+3. ✅ Factory validates all required fields (fail fast if missing)
+4. ✅ GameObjects auto-registered in global registry
+5. ✅ Add `GameObject` reference to Three.js mesh `userData`
+6. ✅ Keep existing `getCelestialBodyInfo()` working (backward compatibility)
+
+**Before:**
+```javascript
+// SolarSystemManager manually creates station
+const station = createSpaceStation({
+    name: data.name,
+    position: data.position,
+    // faction missing! Bug silently masked ❌
+});
+```
+
+**After:**
+```javascript
+// Factory creates and validates
+const factory = GameObjectFactory.getInstance();
+const station = factory.createStation({
+    name: data.name,
+    sector: 'A0',
+    position: data.position,
+    faction: data.faction, // ← REQUIRED, throws if missing ✅
+    stationType: data.type
+});
+// → Automatically registered, ID generated, validated
+```
 
 **Existing code still works, but new GameObject system available**
 
 ### **Phase 3: Migrate TargetComputerManager** (Week 3)
 
-1. ✅ Change target list to use GameObjects instead of plain data
-2. ✅ Simplify `getTargetDiplomacy()` to just call `gameObject.diplomacy`
-3. ✅ Remove fallback chains
-4. ✅ Update `getCurrentTargetData()` to return GameObject
+1. ✅ Change target list to store GameObject references instead of plain data
+2. ✅ Replace `getTargetDiplomacy()` with `gameObject.diplomacy`
+3. ✅ **Remove ALL fallback chains** - assert instead
+4. ✅ Replace `getCurrentTargetData()` to return GameObject directly
+5. ✅ Remove `processTargetData()` enrichment (no longer needed)
 
 **Before:**
 ```javascript
+// 5-step fallback chain - masks bugs
 const diplomacy = this.getTargetDiplomacy(currentTargetData);
-// → 5-step fallback chain
+// → Checks 5 sources, silently falls back to 'neutral'
 ```
 
 **After:**
 ```javascript
+// Direct access - fails fast if wrong
 const diplomacy = currentTarget.diplomacy;
-// → single getter, no fallbacks
+// → Single source, throws if GameObject malformed
+
+// Or with assertion:
+if (!currentTarget) {
+    throw new Error('updateTargetDisplay: no currentTarget');
+}
+const diplomacy = currentTarget.diplomacy;
 ```
 
 ### **Phase 4: Migrate StarChartsManager** (Week 4)
@@ -305,12 +672,23 @@ const diplomacy = currentTarget.diplomacy;
 3. ✅ Update NavigationBeacons
 4. ✅ Update DockingManager
 
-### **Phase 6: Remove Legacy Code** (Week 7)
+### **Phase 6: Remove Legacy Code & Fallbacks** (Week 7)
 
 1. ✅ Remove `processTargetData()` (no longer needed)
 2. ✅ Remove `getCurrentTargetData()` fallback chains
 3. ✅ Remove `getCelestialBodyInfo()` (replaced by GameObject)
-4. ✅ Clean up duplicate data structures
+4. ✅ Remove ALL defensive fallbacks (|| 'Unknown', || [0,0,0], etc.)
+5. ✅ Replace with assertions where appropriate
+6. ✅ Clean up duplicate data structures
+7. ✅ Verify all objects created through factory
+
+**Checklist for removing each fallback:**
+- [ ] Identify the fallback pattern
+- [ ] Find root cause (why is data missing?)
+- [ ] Fix at source (data file or factory)
+- [ ] Replace fallback with assertion
+- [ ] Test that assertion catches bugs in dev
+- [ ] Remove fallback code
 
 ---
 
@@ -362,30 +740,91 @@ const diplomacy = currentTarget.diplomacy;
 
 These are all **technical debt** that the refactor will eliminate:
 
+### **Defensive Fallbacks to Remove:**
+
 1. **`getTargetDiplomacy()` fallback chain** ← Current issue
    - Location: `TargetComputerManager.js:2097-2150`
    - Workaround: 5-step fallback to find faction
-   - After refactor: `gameObject.diplomacy` (single line)
+   - **Why bad**: Masks missing faction in data source
+   - After refactor: `gameObject.faction` throws if missing
+   - Fix: Add faction to `starter_system_infrastructure.json`
 
 2. **`processTargetData()` enrichment**
    - Location: `TargetComputerManager.js:3775-3970`
    - Workaround: Merges data from multiple sources
-   - After refactor: Not needed (GameObject has all data)
+   - **Why bad**: Hides which source is authoritative
+   - After refactor: GameObject has all data at creation
+   - Fix: Factory validates required fields
 
 3. **`getCurrentTargetData()` search**
    - Location: `TargetComputerManager.js:3484-3607`
    - Workaround: Searches target list for matching object
+   - **Why bad**: O(n) search, falls back to direct object
    - After refactor: Direct GameObject reference
+   - Fix: Store GameObject in currentTarget, not Three.js mesh
 
 4. **Duplicate position storage**
    - Location: Multiple files
    - Workaround: `position`, `cartesianPosition`, `body.position`
-   - After refactor: Single `gameObject.position`
+   - **Why bad**: Can desync, unclear which is canonical
+   - After refactor: Single `gameObject.position` getter
+   - Fix: GameObject.position returns live Three.js position
 
 5. **Discovery state scattered**
    - Location: StarChartsManager + TargetComputerManager
    - Workaround: Sync between multiple data structures
-   - After refactor: Single `gameObject.discovered`
+   - **Why bad**: Can desync, causes duplicate discoveries
+   - After refactor: Single `gameObject.discovered` property
+   - Fix: GameObject owns its discovered state
+
+6. **Faction='Unknown' placeholder**
+   - Location: `TargetComputerManager.js:1894-1896`
+   - Workaround: Set `faction: 'Unknown'` for undiscovered objects
+   - **Why bad**: 'Unknown' is truthy, flows through code, causes today's bug
+   - After refactor: GameObject always has real faction
+   - Fix: Separate `discovered` property gates visibility
+
+7. **Silent null returns**
+   - Location: Throughout codebase
+   - Workaround: `if (!obj) return;` or `if (!obj) return null;`
+   - **Why bad**: Silently fails, caller doesn't know why
+   - After refactor: Throw with descriptive error
+   - Fix: `if (!obj) throw new Error('Expected obj, got null')`
+
+8. **Default position [0,0,0]**
+   - Location: Multiple position handling functions
+   - Workaround: `position || [0, 0, 0]`
+   - **Why bad**: Object at solar center breaks gameplay
+   - After refactor: Factory requires position, throws if missing
+   - Fix: Validate position in data files
+
+### **Pattern to Follow for Each Removal:**
+
+```javascript
+// BEFORE (Defensive):
+function getObjectFaction(obj) {
+    return obj?.faction || obj?.info?.faction || 'Unknown'; // Masks bugs
+}
+
+// AFTER (Assertive):
+function getObjectFaction(obj) {
+    if (!obj) {
+        throw new Error('getObjectFaction: obj is null/undefined');
+    }
+    if (!obj.faction) {
+        throw new Error(
+            `GameObject ${obj.id} missing faction. ` +
+            `FIX: Add faction in GameObjectFactory.create${obj.type}()`
+        );
+    }
+    return obj.faction;
+}
+
+// BEST (After GameObject Refactor):
+function getObjectFaction(gameObject) {
+    return gameObject.faction; // Guaranteed to exist or factory threw
+}
+```
 
 ---
 
@@ -393,12 +832,30 @@ These are all **technical debt** that the refactor will eliminate:
 
 After refactor is complete:
 
-- ✅ **Zero fallback chains** for core properties (faction, diplomacy, type)
+### **Code Quality:**
+- ✅ **Zero fallback chains** for core properties (faction, diplomacy, type, position)
+- ✅ **Zero defensive `||` operators** that mask bugs
+- ✅ **All objects created through factory** (grep for `new GameObject` returns 0 outside factory)
+- ✅ **100% of objects have validated IDs** (factory generates all IDs)
 - ✅ **Single data structure** per object (GameObject)
 - ✅ **50% reduction** in target-related code complexity
-- ✅ **Zero discovery sync bugs** (single source)
+
+### **Reliability:**
+- ✅ **Zero discovery sync bugs** (single source of truth)
+- ✅ **Fail-fast assertions** catch bugs immediately in dev
+- ✅ **Clear error messages** point to exact fix needed
+- ✅ **No silent failures** (removed all defensive returns)
+
+### **Performance:**
 - ✅ **Improved performance** (benchmark TBD)
+- ✅ **O(1) object lookups** (registry by ID)
+- ✅ **No redundant data copies**
+
+### **Testing:**
 - ✅ **100% test coverage** for GameObject class
+- ✅ **100% test coverage** for GameObjectFactory
+- ✅ **Integration tests** for all object types
+- ✅ **Assertion tests** (verify failures happen correctly)
 
 ---
 
@@ -451,17 +908,83 @@ These bugs were caused by the scattered data architecture:
 
 ## 💭 **Notes for Future Developers**
 
+### **Core Principles**
+
 > "There should be one source of truth for data like faction and it should always be available."
 > — Senior Engineer, September 30, 2025
 
-This refactor addresses a core architectural issue that has caused multiple bugs and workarounds. The fallback chains exist because we never had a proper GameObject abstraction - each system (SolarSystemManager, StarChartsManager, TargetComputerManager) maintained its own view of the same data.
+> "Refactor code to use a singleton game object factory to create all objects like beacons, stations, planets, moons, ships, etc. and ensure they have proper ids and other attributes."
+> — Senior Engineer, September 30, 2025
 
-The GameObject pattern is standard in game development for exactly this reason - it provides a clear, consistent way to represent entities in the game world.
+> "Refactor code to remove defensive programming fallbacks that mask bugs in favor of asserting on failure and failing fast so we can fix bugs."
+> — Senior Engineer, September 30, 2025
 
-**When you see a fallback chain, it's a code smell.** It means the data architecture is wrong, not that you need better fallbacks.
+### **Why This Matters**
+
+This refactor addresses **two core architectural issues**:
+
+1. **No Single Source of Truth**: Each system maintained its own view of the same data
+   - SolarSystemManager has celestial body info
+   - StarChartsManager has discovery state
+   - TargetComputerManager has target data
+   - All three can disagree!
+
+2. **Defensive Programming Hides Bugs**: Fallbacks mask root causes
+   - `faction || 'Unknown'` → Why is faction missing? Never know!
+   - `position || [0,0,0]` → Object at sun center, breaks game
+   - `if (!obj) return;` → Silent failure, caller doesn't know
+
+### **The GameObject Pattern**
+
+The GameObject + Factory pattern is **standard in game development** for exactly these reasons:
+
+1. **Factory ensures data quality** at creation
+2. **GameObject provides single source** of truth
+3. **Assertions catch bugs** immediately in development
+4. **Clear error messages** make fixing fast
+
+### **Code Smells to Watch For**
+
+❌ **Fallback chain**: `a || b || c || 'default'`  
+✅ **Assertion**: `if (!a) throw new Error('Missing a')`
+
+❌ **Silent return**: `if (!obj) return;`  
+✅ **Fail fast**: `if (!obj) throw new Error('obj required')`
+
+❌ **Multiple sources**: Check A, then B, then C  
+✅ **Single source**: `gameObject.property`
+
+❌ **Defensive default**: `position || [0, 0, 0]`  
+✅ **Required field**: Factory validates or throws
+
+### **When to Add Assertions**
+
+Add assertions for:
+- ✅ **Preconditions**: "This function requires X"
+- ✅ **Required data**: "This object must have Y"
+- ✅ **Invariants**: "This should never happen"
+
+Don't add assertions for:
+- ❌ **Expected errors**: User input validation (use proper error handling)
+- ❌ **Runtime conditions**: Network failures, file not found (use try/catch)
+- ❌ **Business logic**: "Player can't afford this" (use if/else)
+
+### **Migration Philosophy**
+
+**Don't just refactor code - fix the architecture that caused the bugs.**
+
+When you see defensive code, ask:
+1. Why is the data missing?
+2. Where should it come from?
+3. How can we guarantee it's there?
+4. What should happen if it's not?
+
+Then fix at the source, not with a fallback.
 
 ---
 
 **Status**: PLANNED - Waiting for prioritization  
-**Estimated Effort**: 6-7 weeks (phased migration)  
-**Technical Debt Interest**: HIGH (causes bugs, slows development)
+**Estimated Effort**: 7 weeks (including Phase 0 assertions)  
+**Technical Debt Interest**: HIGH (causes bugs, slows development)  
+**Risk**: MEDIUM (big refactor, but phased approach mitigates)  
+**Reward**: HIGH (eliminates entire class of bugs)
