@@ -18,8 +18,8 @@ import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 import * as THREE from 'three';
 
 // VERSION TRACKING
-const STAR_CHARTS_VERSION = '1.2.0-discovery-fix';
-const VERSION_DATE = '2025-09-30T20:30:00Z';
+const STAR_CHARTS_VERSION = '1.2.1-notification-fix';
+const VERSION_DATE = '2025-09-30T21:00:00Z';
 
 export class StarChartsManager {
     constructor(scene, camera, viewManager, solarSystemManager, targetComputerManager) {
@@ -27,7 +27,7 @@ export class StarChartsManager {
         console.log(`%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'color: #00ff41; font-weight: bold');
         console.log(`%c🚀 STAR CHARTS MANAGER v${STAR_CHARTS_VERSION}`, 'color: #00ff41; font-weight: bold; font-size: 14px');
         console.log(`%c📅 Build: ${VERSION_DATE}`, 'color: #00ff41');
-        console.log(`%c🔧 Discovery System: ATOMIC CHECK-AND-ADD (Race condition fix)`, 'color: #00ff41');
+        console.log(`%c🔧 Discovery System: Double notification fix (processDiscovery)`, 'color: #00ff41');
         console.log(`%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'color: #00ff41; font-weight: bold');
         
         this.scene = scene;
@@ -818,20 +818,17 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
     processDiscovery(object) {
         //Process a new object discovery with pacing
         
-        const category = this.getDiscoveryCategory(object.type);
+        // NOTIFICATION FIX: Don't call showDiscoveryNotification() here!
+        // addDiscoveredObject() already handles notifications internally.
+        // Calling it here causes DOUBLE notifications for the same object.
         
-        if (this.shouldNotifyDiscovery(object.type)) {
-            this.showDiscoveryNotification(object, category);
-            this.lastDiscoveryTime.set(category, Date.now());
-        }
-        
-        // Always add to discovered list
+        // Always add to discovered list (this handles notifications internally)
         this.addDiscoveredObject(object.id);
         
         // Update performance metrics
         this.performanceMetrics.discoveryCount++;
         
-debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
+        debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     }
     
     getDiscoveryCategory(objectType) {
