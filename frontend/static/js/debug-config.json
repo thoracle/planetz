@@ -4,11 +4,11 @@
     "description": "Debug channel configuration - edit this file to control debug output between sessions",
     "channels": {
         "TARGETING": {
-            "enabled": false,
+            "enabled": true,
             "description": "Target acquisition and management"
         },
         "STAR_CHARTS": {
-            "enabled": false,
+            "enabled": true,
             "description": "Star Charts navigation and UI"
         },
         "DEBUG": {
