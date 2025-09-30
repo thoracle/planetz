@@ -8,7 +8,7 @@
             "description": "Target acquisition and management"
         },
         "STAR_CHARTS": {
-            "enabled": true,
+            "enabled": false,
             "description": "Star Charts navigation and UI"
         },
         "DEBUG": {
