@@ -335,10 +335,19 @@ debug('TARGETING', `🔄 Syncing targets: ${discoveredObjects.length} discovered
 
         if (addedCount > 0) {
 debug('TARGETING', `🎯 Added ${addedCount} new targets to Target Computer`);
-            // Only refresh display if no current target is set (avoid interrupting manual selection)
-            if (this.targetComputer && this.targetComputer.updateTargetDisplay && !this.targetComputer.currentTarget) {
-                this.targetComputer.updateTargetDisplay();
+            // DISCOVERY FIX: Refresh target list AND display to update discovered status
+            // This ensures subsystem HUD shows up immediately after discovery
+            if (this.targetComputer) {
+                // First, refresh the target list to get updated discovery status
+                if (this.targetComputer.updateTargetList) {
+                    this.targetComputer.updateTargetList();
+debug('TARGETING', `🎯 Refreshed Target Computer list`);
+                }
+                // Then update the display to show the new data
+                if (this.targetComputer.updateTargetDisplay) {
+                    this.targetComputer.updateTargetDisplay();
 debug('TARGETING', `🎯 Refreshed Target Computer display`);
+                }
             }
         }
     }
