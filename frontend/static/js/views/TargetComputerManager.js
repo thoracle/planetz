@@ -4408,7 +4408,8 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                     }
                 }
                 
-                arrow.style.display = 'block';
+                // CRITICAL: Use 'flex' not 'block' to maintain triangle centering
+                arrow.style.display = 'flex';
                 
                 // DEBUG: Log arrow display details for undiscovered targets
                 if (this.debugArrowNextUpdate) {
