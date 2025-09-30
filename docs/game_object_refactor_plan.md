@@ -86,6 +86,21 @@ Same object's position can be:
 - `targetData.isWaypoint` (Boolean flag)
 - Type inference from name patterns
 
+### **Issue #5: Faction Standings Scattered**
+
+Player's relationship with each faction (reputation/standing) stored in multiple places:
+
+- `playerData.faction_standings` (in game state)
+- Possibly cached in various UI components
+- Maybe duplicated in backend responses
+- No single source of truth for current standings
+
+**Problems:**
+- UI shows stale standings after reputation change
+- Different systems query different sources
+- No real-time updates when standings change
+- Hard to track what affects reputation
+
 ---
 
 ## ✅ **Proposed Solution: Unified GameObject Class**
@@ -367,10 +382,17 @@ class GameObject {
     isStation() { return this.type.toLowerCase().includes('station'); }
     isShip() { return this.type === 'ship' || this.type === 'enemy_ship'; }
     
-    // STATIC UTILITIES
-    static factionToDiplomacy(faction) {
-        // Single source of truth for faction → diplomacy mapping
-        const factionRelations = {
+    // COMPUTED: Diplomacy (derived from faction + player standings)
+    get diplomacy() {
+        // Query the FactionStandingsManager for current player relationship
+        const standingsManager = FactionStandingsManager.getInstance();
+        return standingsManager.getDiplomacyStatus(this.faction);
+    }
+    
+    // STATIC UTILITIES (for base faction relations, not player-specific)
+    static getBaseFactionRelation(faction) {
+        // Base faction relations (before player actions)
+        const baseFactionRelations = {
             'Terran Republic Alliance': 'friendly',
             'Zephyrian Collective': 'friendly',
             'Scientists Consortium': 'friendly',
@@ -384,7 +406,184 @@ class GameObject {
             'Neutral': 'neutral'
         };
         
-        return factionRelations[faction] || 'neutral';
+        return baseFactionRelations[faction] || 'neutral';
+    }
+}
+
+/**
+ * FactionStandingsManager - Singleton for player's faction relationships
+ * SINGLE SOURCE OF TRUTH for current faction standings
+ */
+class FactionStandingsManager {
+    static instance = null;
+    
+    static getInstance() {
+        if (!FactionStandingsManager.instance) {
+            FactionStandingsManager.instance = new FactionStandingsManager();
+        }
+        return FactionStandingsManager.instance;
+    }
+    
+    constructor() {
+        if (FactionStandingsManager.instance) {
+            throw new Error('FactionStandingsManager is a singleton');
+        }
+        
+        // Current player standings with each faction
+        // Range: -100 (hostile) to +100 (allied)
+        this.standings = {
+            'Terran Republic Alliance': 50,      // Start friendly
+            'Zephyrian Collective': 50,
+            'Scientists Consortium': 50,
+            'Free Trader Consortium': 0,         // Start neutral
+            'Nexus Corporate Syndicate': 0,
+            'Ethereal Wanderers': 0,
+            'Draconis Imperium': 0,
+            'Crimson Raider Clans': -50,        // Start hostile
+            'Shadow Consortium': -50,
+            'Void Cult': -50
+        };
+        
+        // Event listeners for standing changes
+        this.listeners = [];
+    }
+    
+    /**
+     * Get current standing with a faction
+     * @returns {number} Standing value (-100 to +100)
+     */
+    getStanding(faction) {
+        if (!this.standings.hasOwnProperty(faction)) {
+            console.warn(`Unknown faction: ${faction}`);
+            return 0; // Neutral for unknown factions
+        }
+        return this.standings[faction];
+    }
+    
+    /**
+     * Get diplomacy status based on current standing
+     * @returns {string} 'enemy' | 'neutral' | 'friendly'
+     */
+    getDiplomacyStatus(faction) {
+        const standing = this.getStanding(faction);
+        
+        if (standing <= -25) {
+            return 'enemy';    // Hostile
+        } else if (standing >= 25) {
+            return 'friendly';  // Friendly
+        } else {
+            return 'neutral';   // Neutral
+        }
+    }
+    
+    /**
+     * Modify standing with a faction
+     * @param {string} faction - Faction name
+     * @param {number} delta - Change amount (can be negative)
+     * @param {string} reason - Why the standing changed (for logging/UI)
+     */
+    modifyStanding(faction, delta, reason = 'Unknown') {
+        if (!this.standings.hasOwnProperty(faction)) {
+            console.warn(`Cannot modify standing for unknown faction: ${faction}`);
+            return;
+        }
+        
+        const oldStanding = this.standings[faction];
+        const oldDiplomacy = this.getDiplomacyStatus(faction);
+        
+        // Clamp to -100 to +100
+        this.standings[faction] = Math.max(-100, Math.min(100, oldStanding + delta));
+        
+        const newStanding = this.standings[faction];
+        const newDiplomacy = this.getDiplomacyStatus(faction);
+        
+        // Log the change
+        debug('FACTION', `📊 Faction standing changed: ${faction} ${oldStanding} → ${newStanding} (${delta > 0 ? '+' : ''}${delta}) - ${reason}`);
+        
+        // Notify listeners
+        this.notifyListeners({
+            faction,
+            oldStanding,
+            newStanding,
+            oldDiplomacy,
+            newDiplomacy,
+            delta,
+            reason
+        });
+        
+        // If diplomacy status changed (enemy ↔ neutral ↔ friendly)
+        if (oldDiplomacy !== newDiplomacy) {
+            debug('FACTION', `🎭 Diplomacy status changed: ${faction} ${oldDiplomacy} → ${newDiplomacy}`);
+            
+            // Trigger major event (achievements, UI updates, etc.)
+            if (typeof eventBus !== 'undefined') {
+                eventBus.emit('faction:diplomacy_changed', {
+                    faction,
+                    oldStatus: oldDiplomacy,
+                    newStatus: newDiplomacy
+                });
+            }
+        }
+    }
+    
+    /**
+     * Set standing directly (for save game loading)
+     */
+    setStanding(faction, value) {
+        if (!this.standings.hasOwnProperty(faction)) {
+            console.warn(`Cannot set standing for unknown faction: ${faction}`);
+            return;
+        }
+        
+        this.standings[faction] = Math.max(-100, Math.min(100, value));
+    }
+    
+    /**
+     * Get all current standings
+     */
+    getAllStandings() {
+        return { ...this.standings };
+    }
+    
+    /**
+     * Load standings from save data
+     */
+    loadStandings(savedStandings) {
+        if (!savedStandings) return;
+        
+        for (const [faction, standing] of Object.entries(savedStandings)) {
+            this.setStanding(faction, standing);
+        }
+        
+        debug('FACTION', '📊 Loaded faction standings from save');
+    }
+    
+    /**
+     * Register listener for standing changes
+     */
+    onStandingChanged(callback) {
+        this.listeners.push(callback);
+        
+        // Return unsubscribe function
+        return () => {
+            const index = this.listeners.indexOf(callback);
+            if (index > -1) {
+                this.listeners.splice(index, 1);
+            }
+        };
+    }
+    
+    /**
+     * Notify all listeners of standing change
+     */
+    notifyListeners(changeData) {
+        this.listeners.forEach(callback => {
+            try {
+                callback(changeData);
+            } catch (error) {
+                console.error('Error in faction standing listener:', error);
+            }
+        });
     }
 }
 
@@ -602,7 +801,9 @@ _validateRequired(data, ['name', 'sector', 'position', 'faction']);
 3. ✅ Factory validates all required fields (fail fast if missing)
 4. ✅ GameObjects auto-registered in global registry
 5. ✅ Add `GameObject` reference to Three.js mesh `userData`
-6. ✅ Keep existing `getCelestialBodyInfo()` working (backward compatibility)
+6. ✅ Create `FactionStandingsManager` singleton
+7. ✅ Initialize with base standings from player data
+8. ✅ Keep existing `getCelestialBodyInfo()` working (backward compatibility)
 
 **Before:**
 ```javascript
@@ -634,22 +835,32 @@ const station = factory.createStation({
 
 1. ✅ Change target list to store GameObject references instead of plain data
 2. ✅ Replace `getTargetDiplomacy()` with `gameObject.diplomacy`
-3. ✅ **Remove ALL fallback chains** - assert instead
-4. ✅ Replace `getCurrentTargetData()` to return GameObject directly
-5. ✅ Remove `processTargetData()` enrichment (no longer needed)
+3. ✅ Update `getFactionDiplomacy()` to query `FactionStandingsManager`
+4. ✅ **Remove ALL fallback chains** - assert instead
+5. ✅ Replace `getCurrentTargetData()` to return GameObject directly
+6. ✅ Remove `processTargetData()` enrichment (no longer needed)
 
 **Before:**
 ```javascript
 // 5-step fallback chain - masks bugs
 const diplomacy = this.getTargetDiplomacy(currentTargetData);
 // → Checks 5 sources, silently falls back to 'neutral'
+
+// Diplomacy calculated from static faction mapping
+getFactionDiplomacy(faction) {
+    const factionRelations = { 'TRA': 'friendly', ... };
+    return factionRelations[faction] || 'neutral';
+    // → Ignores player's actual standing with faction!
+}
 ```
 
 **After:**
 ```javascript
 // Direct access - fails fast if wrong
 const diplomacy = currentTarget.diplomacy;
-// → Single source, throws if GameObject malformed
+// → Queries FactionStandingsManager for CURRENT player standing
+// → gameObject.faction → standingsManager.getDiplomacyStatus(faction)
+// → Returns 'enemy'/'neutral'/'friendly' based on current reputation
 
 // Or with assertion:
 if (!currentTarget) {
@@ -798,6 +1009,13 @@ These are all **technical debt** that the refactor will eliminate:
    - After refactor: Factory requires position, throws if missing
    - Fix: Validate position in data files
 
+9. **Static faction diplomacy mapping**
+   - Location: `TargetComputerManager.js:119-151` (`getFactionDiplomacy()`)
+   - Workaround: Hard-coded faction → diplomacy mapping
+   - **Why bad**: Ignores player's current standing with faction
+   - After refactor: Query `FactionStandingsManager` for current standing
+   - Fix: Dynamic diplomacy based on player reputation
+
 ### **Pattern to Follow for Each Removal:**
 
 ```javascript
@@ -838,13 +1056,16 @@ After refactor is complete:
 - ✅ **All objects created through factory** (grep for `new GameObject` returns 0 outside factory)
 - ✅ **100% of objects have validated IDs** (factory generates all IDs)
 - ✅ **Single data structure** per object (GameObject)
+- ✅ **Single source for faction standings** (FactionStandingsManager)
 - ✅ **50% reduction** in target-related code complexity
 
 ### **Reliability:**
 - ✅ **Zero discovery sync bugs** (single source of truth)
+- ✅ **Zero faction standing sync bugs** (single source of truth)
 - ✅ **Fail-fast assertions** catch bugs immediately in dev
 - ✅ **Clear error messages** point to exact fix needed
 - ✅ **No silent failures** (removed all defensive returns)
+- ✅ **Real-time faction updates** (listeners notify all systems)
 
 ### **Performance:**
 - ✅ **Improved performance** (benchmark TBD)
@@ -919,6 +1140,9 @@ These bugs were caused by the scattered data architecture:
 > "Refactor code to remove defensive programming fallbacks that mask bugs in favor of asserting on failure and failing fast so we can fix bugs."
 > — Senior Engineer, September 30, 2025
 
+> "Also there should be single object that holds all of the current faction standings that we query to that info so that it is always up to date."
+> — Senior Engineer, September 30, 2025
+
 ### **Why This Matters**
 
 This refactor addresses **two core architectural issues**:
@@ -934,14 +1158,21 @@ This refactor addresses **two core architectural issues**:
    - `position || [0,0,0]` → Object at sun center, breaks game
    - `if (!obj) return;` → Silent failure, caller doesn't know
 
+3. **Faction Standings Scattered**: No single source for player's current reputation
+   - Hard-coded faction relations ignore player actions
+   - No way to update diplomacy when reputation changes
+   - UI shows stale faction status
+
 ### **The GameObject Pattern**
 
-The GameObject + Factory pattern is **standard in game development** for exactly these reasons:
+The GameObject + Factory + Manager pattern is **standard in game development** for exactly these reasons:
 
 1. **Factory ensures data quality** at creation
-2. **GameObject provides single source** of truth
-3. **Assertions catch bugs** immediately in development
-4. **Clear error messages** make fixing fast
+2. **GameObject provides single source** of truth for object data
+3. **Managers provide single source** for game state (faction standings, etc.)
+4. **Assertions catch bugs** immediately in development
+5. **Clear error messages** make fixing fast
+6. **Real-time updates** through manager listeners
 
 ### **Code Smells to Watch For**
 
