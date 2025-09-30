@@ -2114,7 +2114,8 @@ export class TargetComputerManager {
         }
 
         // 2. Faction-based diplomacy
-        if (targetData.faction) {
+        // Skip 'Unknown' faction (placeholder for undiscovered objects) - let it fall through to step 4.5
+        if (targetData.faction && targetData.faction !== 'Unknown') {
             const factionDiplomacy = this.getFactionDiplomacy(targetData.faction);
             if (factionDiplomacy && factionDiplomacy !== 'unknown') {
                 return factionDiplomacy;
