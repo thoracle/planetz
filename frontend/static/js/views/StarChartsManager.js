@@ -1171,25 +1171,34 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         
         // Normalize ID to handle case sensitivity (a0_ vs A0_)
         const normalizedId = typeof objectId === 'string' ? objectId.replace(/^a0_/i, 'A0_') : objectId;
-        const wasAlreadyDiscovered = this.discoveredObjects.has(normalizedId);
-
-        debug('STAR_CHARTS', `🔍 DISCOVERY ATTEMPT: ${normalizedId} (method: ${discoveryMethod}, already discovered: ${wasAlreadyDiscovered})`);
-
-        if (!wasAlreadyDiscovered) {
-            // CRITICAL FIX: Add to discoveredObjects IMMEDIATELY to prevent race conditions
-            // This must happen BEFORE any async operations or notifications
-            this.discoveredObjects.add(normalizedId);
-            
-            // DUPLICATE PREVENTION: Check if this discovery is already in progress
-            if (!this._discoveryInProgress) this._discoveryInProgress = new Set();
-            if (this._discoveryInProgress.has(normalizedId)) {
-                debug('STAR_CHARTS', `⏭️ DUPLICATE PREVENTION: Discovery already in progress for ${normalizedId}`);
-                return;
+        
+        // ATOMIC CHECK-AND-ADD: This prevents ALL race conditions
+        // If already discovered, exit immediately BEFORE any other operations
+        if (this.discoveredObjects.has(normalizedId)) {
+            debug('STAR_CHARTS', `⏭️ ALREADY DISCOVERED: ${normalizedId} (method: ${discoveryMethod})`);
+            // Update metadata for re-discovery
+            const existing = this.discoveryMetadata.get(normalizedId);
+            if (existing) {
+                existing.lastSeen = new Date().toISOString();
+                existing.source = source;
             }
-            this._discoveryInProgress.add(normalizedId);
+            return; // EXIT - already discovered
+        }
+        
+        // Add to discovered set IMMEDIATELY (atomic with above check in single-threaded JS)
+        this.discoveredObjects.add(normalizedId);
+        debug('STAR_CHARTS', `✅ FIRST DISCOVERY: ${normalizedId} (method: ${discoveryMethod})`);
+        
+        // Secondary lock for notification phase (belt and suspenders)
+        if (!this._discoveryInProgress) this._discoveryInProgress = new Set();
+        if (this._discoveryInProgress.has(normalizedId)) {
+            debug('STAR_CHARTS', `⏭️ NOTIFICATION IN PROGRESS: ${normalizedId} - skipping duplicate notification`);
+            return;
+        }
+        this._discoveryInProgress.add(normalizedId);
 
-            // Add discovery metadata
-            const discoveryData = {
+        // Add discovery metadata
+        const discoveryData = {
                 discoveredAt: new Date().toISOString(),
                 discoveryMethod: discoveryMethod,
                 source: source,
@@ -1238,15 +1247,6 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
                     this._discoveryInProgress.delete(normalizedId);
                 }
             }, 100);
-        } else {
-            debug('STAR_CHARTS', `⏭️ Object ${objectId} already discovered, updating metadata`);
-            // Update metadata for re-discovery
-            const existing = this.discoveryMetadata.get(objectId);
-            if (existing) {
-                existing.lastSeen = new Date().toISOString();
-                existing.source = source;
-            }
-        }
     }
 
     // Integration callback methods
