@@ -8,6 +8,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Version**: 2.1.0-atomic-discovery
 **Status**: Production-ready (~98% complete)
+**Current Branch**: `achievements` (active development)
+
+### Core Systems (Fully Implemented)
+- **3D Space Combat** - Weapons, targeting, shields with raycasting collision detection
+- **Discovery System** - Object discovery with synchronized wireframe colors and faction standings
+- **Mission Framework** - Cargo delivery, elimination, escort missions with unified economy
+- **Faction System** - 10 unique factions with diplomatic complexity
+- **Collection System** - NFT-style card collection driving gameplay progression
+- **Achievement System** - Multi-tier progression with trophy notifications
+- **Help Screen 2.0** - ESC-triggered modal with tabbed interface (Help, Ship's Log, Achievements, Collection, About)
 
 ## Development Commands
 
