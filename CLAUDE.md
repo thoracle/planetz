@@ -278,27 +278,71 @@ Post-launch targeting has 10-second warmup with:
 
 ## Important Patterns & Conventions
 
+### 🚨 CRITICAL: Debug System (NOT console.log)
+
+**YOU MUST USE `debug()` INSTEAD OF `console.log()`**
+
+This project uses a channel-based debug logging system for organized, filterable output.
+
+```javascript
+import { debug } from './debug.js';
+
+// ✅ CORRECT - Use debug() with appropriate channel
+debug('TARGETING', 'Target acquired:', target.name);
+debug('MISSIONS', 'Mission completed:', mission.title);
+debug('P1', 'CRITICAL: System initialization failed');
+
+// ❌ WRONG - Don't use console.log()
+console.log('Target acquired:', target.name);  // DON'T DO THIS!
+```
+
+**Debug Channels** (see `frontend/static/js/debug_config.json`):
+- **P1** - Critical system messages (always visible)
+- **TARGETING** - Weapon/targeting system
+- **MISSIONS** - Mission system activity
+- **COMBAT** - Weapon firing, damage, AI
+- **STAR_CHARTS** - Navigation, discovery
+- **ACHIEVEMENTS** - Achievement tracking
+- **MONEY** - Credits, transactions
+- **UTILITY** - General system operations
+- **FACTION** - Faction standings, diplomacy
+
+**Enable/Disable Channels** (browser console):
+```javascript
+debugEnable('TARGETING');           // Enable single channel
+debugEnable('MISSIONS', 'COMBAT');  // Enable multiple channels
+debugDisable('TARGETING');          // Disable channel
+debugStatus();                      // Show current channel status
+```
+
+### 🚫 Critical Do's and Don'ts
+
+**✅ DO THIS:**
+- Use `debug()` instead of `console.log()`
+- Follow modular ES6+ patterns (import/export, class-based architecture)
+- Test with debug channels - enable specific logging for your area
+- Check existing patterns before creating new ones
+- Use absolute paths for file operations
+
+**❌ DON'T DO THIS:**
+- **Don't use `console.log()`** - Use `debug(channel, message)` instead
+- **Don't create new files unnecessarily** - Prefer editing existing files
+- **Don't ignore the debug system** - It's essential for development
+- **Don't bypass the event system** - Use existing event patterns
+- **Don't break the modular architecture** - Maintain clean separation of concerns
+- **Don't use defensive programming** - Fail fast to find bugs quickly, don't hide them behind fallbacks
+
 ### Frontend Code Style
 1. **Manager Initialization**: Managers created in `app.js`, stored as module-level variables, and exposed globally via `window.*` when needed
 2. **Async Initialization**: Use `waitForStarfieldManager()` utility for safe async access to game managers
 3. **Event Handling**: Keyboard input handled centrally in ViewManager, delegated to active systems
 4. **System Communication**: Systems communicate via manager references, not direct coupling
+5. **ES6 Modules**: All code uses native ES6 imports/exports, no transpilation
 
 ### Backend Code Style
 1. **Blueprint Registration**: All routes use Flask blueprints with URL prefixes
 2. **API Design**: RESTful endpoints return JSON, errors use standard HTTP codes
 3. **Logging**: Use Flask app logger, configured in `create_app()`
-
-### Debug System Usage
-```javascript
-import { debug } from './debug.js';
-
-// Log to specific channel (see debug-config.json for channels)
-debug('SHIP', 'Ship position:', ship.position);
-debug('TARGETING', 'Target acquired:', target.id);
-
-// Channels: SHIP, WEAPONS, AI, TARGETING, DISCOVERY, etc.
-```
 
 ### File Organization Rules
 - Ship systems: `frontend/static/js/ship/systems/`
@@ -341,15 +385,45 @@ Several files exceed 50KB due to feature complexity:
 
 When modifying these files, make surgical changes to specific sections rather than rewriting large blocks.
 
-## Known Issues & Quirks
+## Recent Major Fixes (2025)
 
-### Equipment Synchronization (RESOLVED)
-Fixed: `initializeShipSystems()` now properly refreshes card system during launch. WeaponSyncManager ensures weapon HUD matches current loadout immediately after equipment changes.
+### Discovery & Targeting System Overhaul ✅ COMPLETED
+**All critical issues resolved** - comprehensive fix for discovery/targeting bugs:
+- **Infinite Recursion Loop**: Fixed stack overflow in discovery color update system
+- **Cross-Sector Contamination**: A0 targets no longer appear in B1 target computer
+- **Discovery Color Bug**: Discovered objects now show correct faction colors (yellow for neutral)
+- **Duplicate Ship's Log**: Fixed duplicate discovery notifications
+- **Console Log Spam**: Reduced repetitive debug output by 90%
+- **Variable Scoping Errors**: Fixed `orbitRadius`, `angle`, `moonOrbitRadius` ReferenceErrors
 
-### Targeting Computer Cooldown (RESOLVED)
-Fixed: Reduced cooldown from 30s to 10s with clear "TARGETING SYSTEMS WARMING UP" feedback and countdown timer.
+**Key Files Modified**: `TargetComputerManager.js`, `StarChartsTargetComputerIntegration.js`, `StarChartsManager.js`, `SolarSystemManager.js`
 
-### Mission Persistence
+### Console Cleanup & Debug Management ✅ COMPLETED
+- Moved verbose logs to debug channels (TARGETING, STAR_CHARTS)
+- Removed spammy version banners and debug test messages
+- Added `debug-config.json` for persistent channel management
+
+### Achievement Display Bug ✅ FIXED
+- Issue: Achievements showing checkmarks for incomplete progress
+- Root Cause: Corrupted localStorage data
+- Solution: Added data validation and display-time safety checks
+
+### Help Screen 2.0 Implementation ✅ COMPLETED
+- ESC-triggered modal help screen with 4 tabs
+- Game pause/resume, tab navigation, context-sensitive content
+
+### Single Source of Truth - Card Inventory ✅ COMPLETED
+- Unified inventory object between ESC view and station view
+- Removed 100+ lines of sync code
+- Perfect data parity
+
+### Directional Arrows for Unknown Targets ✅ FIXED
+- Issue: Arrows not showing for undiscovered/unknown targets when off-screen
+- Solution: Increased arrow z-index to 25000, fixed flexbox centering
+
+## Known Issues & Technical Debt
+
+### Testing Mode Configuration
 Testing mode currently clears missions between sessions (`NO_PERSISTENCE = true`). For production, set to `false` in `StarfieldManager.js`.
 
 ### Browser Compatibility
@@ -357,6 +431,61 @@ Testing mode currently clears missions between sessions (`NO_PERSISTENCE = true`
 - ES6 modules (no transpilation)
 - Hardware acceleration recommended for Three.js rendering
 - Test in Chrome/Firefox primarily
+
+### Planned Architectural Refactoring (See docs/game_object_refactor_plan.md)
+
+**Status**: PLANNING - Technical debt documentation complete
+
+The codebase has identified technical debt in several areas:
+
+1. **God Classes** - Large files doing too much (`StarfieldManager.js` 7,894 LOC, `TargetComputerManager.js` 6,635 LOC)
+2. **Console.log Violations** - 1,578 statements should use `debug()` system (automated migration planned)
+3. **Global State Pollution** - 53 files use `window.*` variables (need dependency injection)
+4. **Memory Leaks** - Event listeners without cleanup (need cleanup methods)
+5. **Magic Numbers** - Hardcoded values need constants files
+6. **Timer Cleanup Issues** - 209 setTimeout/setInterval calls need centralized management
+
+**GameObject Factory Pattern**: Planned refactor to create single source of truth for game objects (planets, stations, ships) with:
+- Unified GameObject class with factory pattern
+- FactionStandingsManager for dynamic player-faction relationships
+- Fail-fast assertions instead of defensive programming
+- Elimination of fallback chains that mask bugs
+
+**Philosophy**: Fail fast instead of defensive programming. When data is missing, throw clear errors pointing to the fix location rather than silently falling back to defaults that mask bugs.
+
+**Note**: Current code is production-ready. Refactoring is for long-term maintainability, not immediate necessity.
+
+## Debug Helpers & Browser Console Commands
+
+The project includes helpful debug commands available in the browser console:
+
+### Achievement System
+```javascript
+checkAchievements()        // Show achievement status
+fixAchievements()          // Fix corrupted data
+testAchievement(count)     // Test with discovery count
+```
+
+### Mission System
+```javascript
+debugEnable('MISSIONS')    // Enable mission logging
+showMissionStatus()        // Show current missions
+```
+
+### General Debugging
+```javascript
+debugStatus()              // Show all debug channel states
+debugEnable('CHANNEL')     // Enable specific channel
+debugDisable('CHANNEL')    // Disable specific channel
+```
+
+### Game State Inspection
+```javascript
+window.starfieldManager    // Primary game state manager
+window.spatialManager      // Object tracking
+window.collisionManager    // Collision detection
+ship.systems               // Ship systems array
+```
 
 ## MCP Playwright Integration
 
@@ -368,6 +497,8 @@ The project uses MCP Playwright server for automated testing. See `.cursorrules`
 ## Documentation
 
 Comprehensive docs in `docs/` directory:
+- `restart.md` - **AI team member onboarding** (MUST READ for new AI assistants)
+- `game_object_refactor_plan.md` - **Architectural refactoring plan** (technical debt documentation)
 - `system_architecture.md` - UML diagrams and architecture
 - `spaceships_spec.md` - Card system specification
 - `implementation_status.md` - Current status
@@ -375,10 +506,37 @@ Comprehensive docs in `docs/` directory:
 - `ai_system_user_guide.md` - AI behavior
 - Various bug analysis and fix documentation (*.md in root)
 
+**Important**: If you're a new AI assistant working on this codebase, read `docs/restart.md` for critical context on recent fixes, debug system usage, and development priorities.
+
 ## Development Philosophy
 
-1. **Testing Mode**: Game currently configured with `NO_PERSISTENCE = true` for clean testing. Disable for production.
-2. **Modular Systems**: Each ship system is independent, communicates via managers
-3. **Card-Based Progression**: All ship capabilities derived from equipped cards
-4. **Real-Time Synchronization**: Systems synchronize state changes immediately (e.g., WeaponSyncManager)
-5. **Production Ready**: Core systems complete and tested, focus on polish and content expansion
+1. **Fail Fast**: Don't use defensive programming - throw clear errors instead of masking bugs with fallbacks
+2. **Debug System**: ALWAYS use `debug(channel, message)` instead of `console.log()`
+3. **Testing Mode**: Game currently configured with `NO_PERSISTENCE = true` for clean testing. Disable for production.
+4. **Modular Systems**: Each ship system is independent, communicates via managers
+5. **Card-Based Progression**: All ship capabilities derived from equipped cards
+6. **Real-Time Synchronization**: Systems synchronize state changes immediately (e.g., WeaponSyncManager)
+7. **Production Ready**: Core systems complete and tested, focus on polish and content expansion
+
+## Quick Reference
+
+### Essential Game Controls
+- **ESC** - Help Screen 2.0 (modal interface with tabs)
+- **TAB** - Cycle targets
+- **Z, X** - Cycle sub-system targets
+- **< , >** - Cycle weapon selection
+- **SPACE** - Fire weapons
+- **0-9 Keys** - Ship impulse engine speed
+- **Arrow Keys** - Ship movement
+- **S** - Toggle shields
+- **D** - Damage control HUD
+- **T** - Toggle target computer
+- **G** - Galactic chart
+- **L** - Long range scanner
+- **M** - Mission status HUD
+
+### Code Statistics
+- JavaScript Files: ~7,700 LOC
+- Python Files: ~3,300 LOC
+- Architecture: Fully modular ES6+ with Three.js native physics
+- Branch: `achievements` (active development)
