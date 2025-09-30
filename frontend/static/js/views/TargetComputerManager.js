@@ -4413,15 +4413,19 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                         childTriangle.style.borderRightColor = 'transparent';
                     }
                     
-                    // DEBUG: Verify ALL border colors for unknown targets
+                    // DEBUG: Verify ALL border colors AND WIDTHS for unknown targets
                     if (diplomacy === 'unknown' && (!this.lastColorVerifyLog || Date.now() - this.lastColorVerifyLog > 2000)) {
                         console.log(`🎯 ARROW BORDERS (${primaryDirection}):`, {
-                            top: childTriangle.style.borderTopColor || 'not set',
-                            bottom: childTriangle.style.borderBottomColor || 'not set',
-                            left: childTriangle.style.borderLeftColor || 'not set',
-                            right: childTriangle.style.borderRightColor || 'not set',
-                            width: childTriangle.style.width,
-                            height: childTriangle.style.height
+                            topColor: childTriangle.style.borderTopColor || 'not set',
+                            topWidth: childTriangle.style.borderTopWidth || 'not set',
+                            bottomColor: childTriangle.style.borderBottomColor || 'not set',
+                            bottomWidth: childTriangle.style.borderBottomWidth || 'not set',
+                            leftColor: childTriangle.style.borderLeftColor || 'not set',
+                            leftWidth: childTriangle.style.borderLeftWidth || 'not set',
+                            rightColor: childTriangle.style.borderRightColor || 'not set',
+                            rightWidth: childTriangle.style.borderRightWidth || 'not set',
+                            elementWidth: childTriangle.style.width,
+                            elementHeight: childTriangle.style.height
                         });
                         this.lastColorVerifyLog = Date.now();
                     }
