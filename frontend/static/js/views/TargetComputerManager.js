@@ -4251,10 +4251,13 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
 
         // Get target position using helper function
         const targetPos = this.getTargetPosition(this.currentTarget);
+        
+        // Get target data and discovery status once
+        const currentTargetData = this.getCurrentTargetData();
+        const isDiscovered = currentTargetData?.isShip || this.isObjectDiscovered(currentTargetData);
+        
         if (!targetPos) {
             // DEBUG: Log why position lookup failed for arrows
-            const currentTargetData = this.getCurrentTargetData();
-            const isDiscovered = currentTargetData?.isShip || this.isObjectDiscovered(currentTargetData);
             console.warn(`🎯 ARROW: No position for "${this.currentTarget?.name || 'unknown'}"`, {
                 isDiscovered,
                 targetType: this.currentTarget?.type,
@@ -4267,8 +4270,6 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         }
         
         // DEBUG: Log successful arrow update for undiscovered targets
-        const currentTargetData = this.getCurrentTargetData();
-        const isDiscovered = currentTargetData?.isShip || this.isObjectDiscovered(currentTargetData);
         if (!isDiscovered && (!this.lastArrowSuccessLog || Date.now() - this.lastArrowSuccessLog > 2000)) {
             console.log(`🎯 ARROW: Updating for undiscovered "${this.currentTarget?.name}"`, {
                 hasPosition: !!targetPos,
@@ -4298,10 +4299,6 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         ));
         
         this.lastArrowState = shouldShowArrow;
-
-        // Get current target data for discovery status
-        const currentTargetData = this.getCurrentTargetData();
-        const isDiscovered = currentTargetData?.isShip || this.isObjectDiscovered(currentTargetData);
 
         if (shouldShowArrow) {
             // Get camera's view direction and relative position
