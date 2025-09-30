@@ -2083,6 +2083,12 @@ export class TargetComputerManager {
             return 'unknown';
         }
 
+        // SPECIAL CASE: Stars always show as neutral regardless of faction or diplomacy properties
+        // This ensures consistent yellow coloring across HUD, wireframe, and direction arrows
+        if (targetData.type === 'star') {
+            return 'neutral';
+        }
+
         // DISCOVERY COLOR FIX: Check if object is discovered first
         const isDiscovered = targetData.isShip || this.isObjectDiscovered(targetData);
         
@@ -3118,13 +3124,11 @@ if (window?.DEBUG_TCM) debug('INSPECTION', `🎯 DEBUG: Final info object:`, inf
             if (diplomacy === 'enemy') {
                 diplomacyColor = '#ff3333'; // Enemy red
             } else if (diplomacy === 'neutral') {
-                diplomacyColor = '#ffff00'; // Neutral yellow
+                diplomacyColor = '#ffff00'; // Neutral yellow (includes stars via getTargetDiplomacy)
             } else if (diplomacy === 'friendly') {
                 diplomacyColor = '#00ff41'; // Friendly green
             } else if (diplomacy === 'unknown') {
                 diplomacyColor = '#44ffff'; // Unknown teal
-            } else if (info?.type === 'star') {
-                diplomacyColor = '#ffff00'; // Stars are neutral yellow
             }
         }
         
