@@ -4396,6 +4396,16 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                     } else if (primaryDirection === 'right') {
                         childTriangle.style.borderLeftColor = arrowColor;
                     }
+                    
+                    // DEBUG: Verify color was applied for unknown targets
+                    if (diplomacy === 'unknown' && (!this.lastColorVerifyLog || Date.now() - this.lastColorVerifyLog > 2000)) {
+                        const appliedColor = primaryDirection === 'top' ? childTriangle.style.borderBottomColor :
+                                           primaryDirection === 'bottom' ? childTriangle.style.borderTopColor :
+                                           primaryDirection === 'left' ? childTriangle.style.borderRightColor :
+                                           childTriangle.style.borderLeftColor;
+                        console.log(`🎯 ARROW COLOR VERIFY: After setting ${primaryDirection} arrow, border is now: ${appliedColor}`);
+                        this.lastColorVerifyLog = Date.now();
+                    }
                 }
                 
                 arrow.style.display = 'block';
