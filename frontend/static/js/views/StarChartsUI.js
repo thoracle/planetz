@@ -1298,6 +1298,13 @@ debug('UI', 'Star Charts: Interface shown');
             // Remove target indicator when hiding
             this.removeTargetIndicator();
             
+            // Clear manual navigation selection flag when user closes Star Charts
+            // This allows the system to auto-select targets again when appropriate
+            if (this.starChartsManager?.targetComputerManager) {
+                this.starChartsManager.targetComputerManager.isManualNavigationSelection = false;
+                debug('TARGETING', '🗺️ Star Charts closed - clearing manual navigation selection flag');
+            }
+            
 debug('UI', 'Star Charts: Interface hidden');
         }
     }

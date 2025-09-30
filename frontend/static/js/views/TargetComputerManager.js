@@ -36,7 +36,7 @@ export class TargetComputerManager {
         this.previousTarget = null;
         this.targetedObject = null;
         this.lastTargetedObjectId = null;
-        this.isFromLongRangeScanner = false; // Telemetry only
+        this.isManualNavigationSelection = false; // True when user selects from Star Charts or LRS - prevents auto-override
         this.isManualSelection = false; // Telemetry only
         
         // Persistent target cache for better cycling experience
@@ -1397,7 +1397,7 @@ export class TargetComputerManager {
         this.targetInfoDisplay.innerHTML = '';
         this.currentTarget = null;
         this.targetIndex = -1;
-        this.isFromLongRangeScanner = false; // Reset scanner flag
+        this.isManualNavigationSelection = false; // Reset navigation selection flag
         this.isManualSelection = false; // Reset manual selection flag
     }
 
@@ -1674,9 +1674,9 @@ export class TargetComputerManager {
         // Update the known targets cache with current targets
         this.updateKnownTargetsCache(this.targetObjects);
         
-        // If we have a scanner target and the new list is very small, enhance it with cached targets
-        if (this.isFromLongRangeScanner && this.targetObjects.length <= 2) {
-            // console.log(`🎯 Scanner target active with small target list (${this.targetObjects.length}) - enhancing with cached targets for better cycling`);
+        // If we have a manual navigation selection and the new list is very small, enhance it with cached targets
+        if (this.isManualNavigationSelection && this.targetObjects.length <= 2) {
+            // console.log(`🎯 Manual navigation selection active with small target list (${this.targetObjects.length}) - enhancing with cached targets for better cycling`);
             
             const enhancedTargets = this.enhanceTargetListWithCache(this.targetObjects);
             if (enhancedTargets.length > this.targetObjects.length) {
@@ -2304,12 +2304,12 @@ export class TargetComputerManager {
         //     hasObject: !!targetData.object,
         //     currentTargetCount: this.targetObjects.length,
         //     previousTarget: this.currentTarget?.name,
-        //     isFromLongRangeScanner: this.isFromLongRangeScanner
+        //     isManualNavigationSelection: this.isManualNavigationSelection
         // });
 
         // Set the target directly without cycling through the normal target list
         this.currentTarget = targetData;
-        this.isFromLongRangeScanner = true; // Mark as scanner target for protection
+        this.isManualNavigationSelection = true; // Mark as navigation selection for protection
 
         // Find and set the target index in the current target list
         let targetIndex = this.targetObjects.findIndex(target => 
@@ -2414,7 +2414,7 @@ export class TargetComputerManager {
             return;
         }
         
-        // console.log(`🎯 Cycling targets - current: ${this.currentTarget?.name}, index: ${this.targetIndex}, total targets: ${this.targetObjects.length}, isFromScanner: ${this.isFromLongRangeScanner}`);
+        // console.log(`🎯 Cycling targets - current: ${this.currentTarget?.name}, index: ${this.targetIndex}, total targets: ${this.targetObjects.length}, isManualNav: ${this.isManualNavigationSelection}`);
         // console.log(`🎯 Available targets for cycling:`, this.targetObjects.map(t => t.name));
 
         // Hide reticle until new target is set
@@ -2452,23 +2452,22 @@ export class TargetComputerManager {
             this.currentTarget = targetData.object || targetData; // Store the original object, not the processed target data
         }
         
-        // Handle scanner flag management more robustly
+        // FIXED: Don't clear navigation selection flag during cycling
+        // The flag should only clear when user explicitly changes targeting mode,
+        // not when cycling through targets (which is part of normal navigation workflow)
+        // Preserves manual selection context and enables target list enhancement
         if (previousTarget && targetData) {
             if (previousTarget.name !== targetData.name) {
-                // Cycling to a different target - clear scanner and manual selection flags
-                this.isFromLongRangeScanner = false;
+                // Cycling to a different target - preserve navigation selection flag
+                // Only clear generic manual selection flag
                 this.isManualSelection = false;
-                // console.log(`🎯 Cycling to different target - clearing scanner and manual flags`);
-            } else if (previousTarget.name === targetData.name && (this.isFromLongRangeScanner || this.isManualSelection)) {
-                // Cycling back to the same scanner/manual target - preserve the flags
-                // console.log(`🎯 Cycling back to same scanner/manual target - preserving flags`);
+                // console.log(`🎯 Cycling to different target - preserving navigation selection flag`);
+            } else if (previousTarget.name === targetData.name && (this.isManualNavigationSelection || this.isManualSelection)) {
+                // Cycling back to the same target - preserve the flags
+                // console.log(`🎯 Cycling back to same target - preserving flags`);
             }
-        } else {
-            // Handle edge cases where previousTarget or targetData might be undefined
-            this.isFromLongRangeScanner = false;
-            this.isManualSelection = false;
-            // console.log(`🎯 Target cycling debug - previousTarget: ${!!previousTarget}, targetData: ${!!targetData}, targetIndex: ${this.targetIndex}, targetObjects.length: ${this.targetObjects.length}`);
         }
+        // Note: Removed aggressive flag clearing from edge cases - preserve user intent
         
         // Debug target name for troubleshooting
         // Debug target name for troubleshooting (commented out to reduce spam)
@@ -3544,8 +3543,8 @@ debug('TARGETING', `⚠️ Current target not found in target list - may have be
             this.lastTargetNotFoundWarning = now;
         }
         
-        // For scanner targets (including Star Charts), don't clear the target - return it directly
-        if (this.isFromLongRangeScanner && this.currentTarget && this.currentTarget.name && this.currentTarget.type) {
+        // For manual navigation selections (Star Charts/LRS), don't clear the target - return it directly
+        if (this.isManualNavigationSelection && this.currentTarget && this.currentTarget.name && this.currentTarget.type) {
             // Rate limit debug output to prevent spam
             if (Math.random() < 0.001) {
                 debug('TARGETING', `🎯 Using scanner target data directly: ${this.currentTarget.name}`);
@@ -4703,9 +4702,9 @@ debug('TARGETING', `🎯 Checking target ${i}: ${target.name} (id: ${target.id |
                 // Prefer the actual Three.js object when available for accurate info lookups
                 this.currentTarget = target.object || target;
 
-                // Mark as manual/scanner selection to prevent automatic override
+                // Mark as manual navigation selection to prevent automatic override
                 this.isManualSelection = true;
-                this.isFromLongRangeScanner = true;
+                this.isManualNavigationSelection = true;
 
                 console.log(`🎯 DEBUG: setTargetById - target set:`, {
                     name: target.name,
@@ -4884,7 +4883,7 @@ debug('TARGETING', `🎯 Star Charts: Target set to ${target.name} (ID: ${normal
                 this.targetIndex = i;
                 this.currentTarget = target.object || target;
                 this.isManualSelection = true;
-                this.isFromLongRangeScanner = true;
+                this.isManualNavigationSelection = true;
 
                 // Force immediate HUD refresh (same as successful ID lookup)
                 if (!this.currentTarget || !this.currentTarget.position) {
@@ -5034,7 +5033,7 @@ debug('TARGETING', `🎯 Star Charts: Target set to ${target.name} (ID: ${normal
                 this.targetIndex = newIndex;
                 this.currentTarget = targetData;
                 this.isManualSelection = true;
-                this.isFromLongRangeScanner = true;
+                this.isManualNavigationSelection = true;
                 
                 // Update display
                 this.createTargetWireframe();
@@ -5071,9 +5070,9 @@ debug('TARGETING', `🎯 Setting target by name: ${objectName}`);
                 this.targetIndex = i;
                 this.currentTarget = target.object || target;
                 
-                // Mark as manual selection to prevent automatic override
+                // Mark as manual navigation selection to prevent automatic override
                 this.isManualSelection = true;
-                this.isFromLongRangeScanner = true; // Also mark as scanner target for extra protection
+                this.isManualNavigationSelection = true; // Preserve navigation context
                 
                 // Force immediate display update
                 this.updateTargetDisplay();
@@ -5392,7 +5391,7 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
         this.targetComputerEnabled = false;
         this.currentTarget = null;
         this.targetIndex = -1;
-        this.isFromLongRangeScanner = false; // Reset scanner flag
+        this.isManualNavigationSelection = false; // Reset navigation selection flag
         this.isManualSelection = false; // Reset manual selection flag
         
         if (this.targetHUD) {
@@ -5495,11 +5494,11 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
                 setTimeout(() => {
                     this.updateTargetList();
                     // Only auto-select if no manual selection exists
-                    if (!this.isManualSelection && !this.isFromLongRangeScanner) {
+                    if (!this.isManualSelection && !this.isManualNavigationSelection) {
 debug('TARGETING', `🎯 Sector change: Auto-selecting nearest target (no manual selection)`);
                         this.cycleTarget(); // Auto-select nearest target
                     } else {
-debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
+debug('UTILITY', `🎯 Sector change: Preserving existing manual navigation selection`);
                     }
                 }, 100); // Small delay to ensure new system is fully generated
             }
@@ -5528,7 +5527,7 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual selection`);
         this.targetObjects = [];
         this.validTargets = [];
         this.lastTargetCycleTime = 0;
-        this.isFromLongRangeScanner = false; // Reset scanner flag
+        this.isManualNavigationSelection = false; // Reset navigation selection flag
         
         // Clear target computer system state if available
         const ship = this.viewManager?.getShip();

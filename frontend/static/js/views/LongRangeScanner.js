@@ -140,6 +140,14 @@ export class LongRangeScanner {
                 clearInterval(this._readyInterval);
                 this._readyInterval = null;
             }
+            
+            // Clear manual navigation selection flag when user closes LRS
+            // This allows the system to auto-select targets again when appropriate
+            if (this.viewManager?.starfieldManager?.targetComputerManager) {
+                this.viewManager.starfieldManager.targetComputerManager.isManualNavigationSelection = false;
+                debug('TARGETING', '🔍 Long Range Scanner closed - clearing manual navigation selection flag');
+            }
+            
             // Note: onReady function is defined locally in show() method and cleaned up there
             if (shouldRestoreView && this.viewManager) {
                 this.viewManager.restorePreviousView();
@@ -996,7 +1004,7 @@ debug('TARGETING', `🔍 LRS: Target setting check - setAsTarget: ${setAsTarget}
         const previousTargetState = {
             name: tcm.currentTarget?.name,
             index: tcm.targetIndex,
-            isFromScanner: tcm.isFromLongRangeScanner
+            isFromScanner: tcm.isManualNavigationSelection
         };
 
 debug('TARGETING', `🔍 LRS: Robust target setting for ${bodyName} - previous state:`, previousTargetState);
@@ -1096,7 +1104,7 @@ debug('TARGETING', `🔍 LRS: Attempting to restore previous target state`);
                 if (restoreIndex !== -1) {
                     tcm.targetIndex = restoreIndex;
                     tcm.currentTarget = tcm.targetObjects[restoreIndex];
-                    tcm.isFromLongRangeScanner = previousTargetState.isFromScanner;
+                    tcm.isManualNavigationSelection = previousTargetState.isFromScanner;
                     tcm.updateTargetDisplay();
                 }
             }
