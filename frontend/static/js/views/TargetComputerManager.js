@@ -4387,30 +4387,15 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                         this.lastColorUpdateLog = Date.now();
                     }
                     
+                    // Update ONLY the color, preserving widths and solid style from original creation
                     if (primaryDirection === 'top') {
                         childTriangle.style.borderBottomColor = arrowColor;
-                        // Ensure transparent borders remain transparent
-                        childTriangle.style.borderLeftColor = 'transparent';
-                        childTriangle.style.borderRightColor = 'transparent';
-                        childTriangle.style.borderTopColor = 'transparent';
                     } else if (primaryDirection === 'bottom') {
                         childTriangle.style.borderTopColor = arrowColor;
-                        // Ensure transparent borders remain transparent
-                        childTriangle.style.borderLeftColor = 'transparent';
-                        childTriangle.style.borderRightColor = 'transparent';
-                        childTriangle.style.borderBottomColor = 'transparent';
                     } else if (primaryDirection === 'left') {
                         childTriangle.style.borderRightColor = arrowColor;
-                        // Ensure transparent borders remain transparent
-                        childTriangle.style.borderTopColor = 'transparent';
-                        childTriangle.style.borderBottomColor = 'transparent';
-                        childTriangle.style.borderLeftColor = 'transparent';
                     } else if (primaryDirection === 'right') {
                         childTriangle.style.borderLeftColor = arrowColor;
-                        // Ensure transparent borders remain transparent
-                        childTriangle.style.borderTopColor = 'transparent';
-                        childTriangle.style.borderBottomColor = 'transparent';
-                        childTriangle.style.borderRightColor = 'transparent';
                     }
                     
                     // DEBUG: Verify ALL border colors AND WIDTHS for unknown targets
