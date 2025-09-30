@@ -4430,6 +4430,24 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                 // CRITICAL: Use 'flex' not 'block' to maintain triangle centering
                 arrow.style.display = 'flex';
                 
+                // DEBUG: Log arrow container position and visibility for unknown targets
+                if (diplomacy === 'unknown' && (!this.lastArrowContainerLog || Date.now() - this.lastArrowContainerLog > 2000)) {
+                    console.log(`🎯 ARROW CONTAINER (${primaryDirection}):`, {
+                        display: arrow.style.display,
+                        zIndex: arrow.style.zIndex,
+                        position: arrow.style.position,
+                        left: arrow.style.left,
+                        top: arrow.style.top,
+                        right: arrow.style.right,
+                        bottom: arrow.style.bottom,
+                        width: arrow.style.width,
+                        height: arrow.style.height,
+                        opacity: arrow.style.opacity || '1',
+                        visibility: arrow.style.visibility || 'visible'
+                    });
+                    this.lastArrowContainerLog = Date.now();
+                }
+                
                 // DEBUG: Log arrow display details for undiscovered targets
                 if (this.debugArrowNextUpdate) {
                     console.log(`🎯 ARROW: Displaying ${primaryDirection} arrow`, {
