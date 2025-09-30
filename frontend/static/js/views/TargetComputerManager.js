@@ -4269,13 +4269,11 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
             return;
         }
         
-        // DEBUG: Log successful arrow update for undiscovered targets
-        if (!isDiscovered && (!this.lastArrowSuccessLog || Date.now() - this.lastArrowSuccessLog > 2000)) {
-            console.log(`🎯 ARROW: Updating for undiscovered "${this.currentTarget?.name}"`, {
-                hasPosition: !!targetPos,
-                diplomacy: this.getTargetDiplomacy(currentTargetData)
-            });
+        // DEBUG: Log arrow state for undiscovered targets (less verbose)
+        if (!isDiscovered && (!this.lastArrowSuccessLog || Date.now() - this.lastArrowSuccessLog > 3000)) {
+            // We'll log the full details after determining arrow visibility
             this.lastArrowSuccessLog = Date.now();
+            this.debugArrowNextUpdate = true;
         }
 
         // Get target's world position relative to camera
@@ -4389,6 +4387,20 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                 
                 arrow.style.display = 'block';
                 
+                // DEBUG: Log arrow display details for undiscovered targets
+                if (this.debugArrowNextUpdate) {
+                    console.log(`🎯 ARROW: Displaying ${primaryDirection} arrow`, {
+                        target: this.currentTarget?.name,
+                        isDiscovered,
+                        diplomacy,
+                        arrowColor,
+                        shouldShowArrow,
+                        isOffScreen,
+                        screenPos: { x: screenPosition.x.toFixed(2), y: screenPosition.y.toFixed(2), z: screenPosition.z.toFixed(2) }
+                    });
+                    this.debugArrowNextUpdate = false;
+                }
+                
                 // Hide other arrows
                 Object.keys(this.directionArrows).forEach(dir => {
                     if (dir !== primaryDirection) {
@@ -4398,6 +4410,15 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
             }
         } else {
             // Target is on screen, hide all arrows
+            if (this.debugArrowNextUpdate) {
+                console.log(`🎯 ARROW: Target on screen, hiding arrows`, {
+                    target: this.currentTarget?.name,
+                    isDiscovered,
+                    shouldShowArrow,
+                    screenPos: { x: screenPosition.x.toFixed(2), y: screenPosition.y.toFixed(2), z: screenPosition.z.toFixed(2) }
+                });
+                this.debugArrowNextUpdate = false;
+            }
             this.hideAllDirectionArrows();
         }
     }
