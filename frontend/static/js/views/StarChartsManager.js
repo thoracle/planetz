@@ -493,23 +493,12 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         // Debug: Log ALL objects being processed
 
         validObjects.forEach((obj, index) => {
-            if (obj && obj.position) {
-                // Get actual 3D scene coordinates - NO FALLBACK to data coordinates
-                const scenePosition3D = this.getScenePosition(obj);
-                
-                // CRITICAL: Only use scene positions - skip objects without valid scene positions
-                if (!scenePosition3D) {
-                    debug('STAR_CHARTS', `❌ SKIPPING ${obj.id || obj.name} - no valid scene position found`);
-                    skippedCount++;
-                    return; // Skip this object entirely
-                }
-                
-                const position3D = scenePosition3D;
+            if (obj && obj.position && obj.cartesianPosition) {
+                // CRITICAL FIX: cartesianPosition is already set from body.position at line 475
+                // No need for redundant getScenePosition() call that can fail on name matching
+                const position3D = obj.cartesianPosition;
 
                 const gridKey = this.getGridKey(position3D);
-
-                // Store the scene position for discovery calculations
-                obj.cartesianPosition = position3D;
 
                 if (!this.spatialGrid.has(gridKey)) {
                     this.spatialGrid.set(gridKey, []);
@@ -527,11 +516,13 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
                 // Log summary for first few objects
                 if (index < 5) {
 
+                } else if (index === 5) {
+                    debug('STAR_CHARTS', `   ... and ${validObjects.length - 5} more objects`);
                 }
             } else {
+                // Only skip if truly invalid (missing position or cartesianPosition)
+                debug('STAR_CHARTS', `❌ SKIPPING ${obj.id || obj.name} - no valid position data`);
                 skippedCount++;
-                // Log ALL skipped objects
-
             }
         });
 
