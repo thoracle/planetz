@@ -2358,6 +2358,9 @@ export class TargetComputerManager {
             // console.log(`🎯 Scanner target added to list at index ${this.targetIndex} (newly added)`);
         }
         
+        // FIXED: Reset arrow state for new target to prevent stale hysteresis
+        this.lastArrowState = false;
+        
         // Force direction arrow update
         this.updateDirectionArrow();
         
