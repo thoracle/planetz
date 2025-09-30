@@ -3,7 +3,533 @@
 **Date**: September 30, 2025  
 **Status**: PLANNING - Technical Debt Documentation  
 **Priority**: MEDIUM - Not blocking, but important for maintainability  
-**Author**: Engineering Team
+**Author**: Engineering Team  
+**Last Code Review**: September 30, 2025 (Comprehensive Audit)
+
+---
+
+## 📋 **COMPREHENSIVE CODE AUDIT FINDINGS**
+
+> **Audit Completed**: September 30, 2025  
+> **Files Reviewed**: 100+ JavaScript files (~109K LOC)  
+> **Methodology**: Automated grep/search + semantic analysis + manual review
+
+### **CRITICAL ISSUES** 🚨 (Fix First)
+
+#### **1. God Classes - Massive Files with Too Many Responsibilities**
+**Priority**: CRITICAL  
+**Impact**: Maintainability nightmare, hard to test, hard to debug
+
+| File | Lines | Issues |
+|------|-------|--------|
+| `StarfieldManager.js` | **7,894** | Central orchestrator doing EVERYTHING - rendering, audio, physics, UI, weapons, docking, missions, AI |
+| `TargetComputerManager.js` | **6,635** | Target management + HUD + wireframes + arrows + sub-targeting + discovery integration |
+| `PhysicsManager.js` | **3,450** | Physics + collision + weapons + projectiles + damage |
+| `CardInventoryUI.js` | **3,362** | Inventory + shop + upgrades + persistence + UI + audio |
+| `StarChartsUI.js` | **3,257** | UI + data management + discovery + filtering + waypoints |
+
+**Refactor Strategy**:
+- Break `StarfieldManager` into:
+  - `GameOrchestrator` (coordination only, ~500 LOC)
+  - `RenderingManager` (visuals)
+  - `AudioManager` (exists, needs integration)
+  - `InputManager` (keyboard/mouse)
+  - `MissionCoordinator` (missions only)
+  - `CombatCoordinator` (weapons/AI)
+  
+- Break `TargetComputerManager` into:
+  - `TargetingCore` (selection/cycling, ~1000 LOC)
+  - `TargetHUD` (UI rendering)
+  - `WireframeRenderer` (3D visuals)
+  - `TargetListManager` (list management)
+
+**Estimated Effort**: 4-6 weeks  
+**Risk**: HIGH (touches everything)  
+**Benefits**: +300% maintainability, easier testing, parallel development
+
+---
+
+#### **2. Console.log Violations - Debug System Not Used**
+**Priority**: CRITICAL  
+**Impact**: Inconsistent logging, can't disable in production, performance hit
+
+**Findings**:
+- **1,578 console.log/warn/error statements** across 116 files
+- Should be using `debug(channel, message)` system
+- Production builds have no way to disable logs
+- No channel-based filtering
+
+**Affected Files** (top 10):
+- All major managers have violations
+- Test files have violations (acceptable for tests)
+
+**Refactor Strategy**:
+1. Create automated migration script:
+   ```bash
+   # Replace all console.log with debug()
+   find frontend/static/js -name "*.js" -not -path "*/tests/*" \
+     -exec sed -i '' 's/console\.log(/debug('\''GENERAL'\'', /g' {} \;
+   ```
+
+2. Map console types to debug channels:
+   - `console.log` → `debug('GENERAL', ...)`
+   - `console.warn` → `debug('WARNING', ...)`
+   - `console.error` → `debug('ERROR', ...)`
+
+3. Add ESLint rule to prevent future violations:
+   ```json
+   {
+     "no-console": ["error", { "allow": [] }]
+   }
+   ```
+
+**Estimated Effort**: 2-3 days (mostly automated)  
+**Risk**: LOW (safe find-replace)  
+**Benefits**: Consistent logging, production performance, better debugging
+
+---
+
+#### **3. Global State Pollution - Window.* Overuse**
+**Priority**: HIGH  
+**Impact**: Hard to test, circular dependencies, memory leaks, namespace collisions
+
+**Findings**:
+- **53 files** set `window.*` variables
+- Managers exposed globally instead of dependency injection
+- Testing nightmare (can't mock globals easily)
+- Circular dependency hell
+
+**Examples**:
+```javascript
+// app.js
+window.spatialManager = spatialManager;
+window.collisionManager = collisionManager;
+window.cardInventoryUI = this;
+window.missionAPI = this.missionAPI;
+window.missionEventHandler = this.missionEventHandler;
+window.starfieldManager = starfieldManager;
+```
+
+**Refactor Strategy**:
+1. Create `ServiceLocator` or use dependency injection:
+   ```javascript
+   class ServiceRegistry {
+       static instance = new ServiceRegistry();
+       services = new Map();
+       
+       register(name, service) {
+           this.services.set(name, service);
+       }
+       
+       get(name) {
+           if (!this.services.has(name)) {
+               throw new Error(`Service ${name} not registered`);
+           }
+           return this.services.get(name);
+       }
+   }
+   ```
+
+2. Pass dependencies through constructors (preferred):
+   ```javascript
+   // Before
+   class MyManager {
+       doSomething() {
+           window.spatialManager.track(obj);
+       }
+   }
+   
+   // After
+   class MyManager {
+       constructor(spatialManager) {
+           this.spatialManager = spatialManager;
+       }
+       
+       doSomething() {
+           this.spatialManager.track(obj);
+       }
+   }
+   ```
+
+**Estimated Effort**: 3-4 weeks  
+**Risk**: MEDIUM (requires refactoring many constructors)  
+**Benefits**: Testable code, no circular deps, clear dependencies
+
+---
+
+### **HIGH PRIORITY ISSUES** ⚠️ (Fix Soon)
+
+#### **4. Memory Leaks - Event Listeners Without Cleanup**
+**Priority**: HIGH  
+**Impact**: Memory grows over time, especially with UI components
+
+**Findings**:
+- Event listeners added in constructors without corresponding cleanup
+- No `removeEventListener` calls when components are destroyed
+- Particularly bad in UI components that are created/destroyed frequently
+
+**Examples**:
+```javascript
+// StarfieldManager.js:237
+setTimeout(() => {
+    this.initializeMissionSystem();
+}, 2000); // Never cleared!
+
+// app.js:289
+document.addEventListener('DOMContentLoaded', async () => {
+    // Listener never removed
+});
+
+// Multiple files: addEventListener without cleanup
+document.addEventListener('keydown', handler);
+// No corresponding removeEventListener
+```
+
+**Refactor Strategy**:
+1. Add `cleanup()` or `destroy()` methods to all classes:
+   ```javascript
+   class MyComponent {
+       constructor() {
+           this.listeners = [];
+           this.timers = [];
+       }
+       
+       addEventListener(target, event, handler) {
+           target.addEventListener(event, handler);
+           this.listeners.push({ target, event, handler });
+       }
+       
+       setTimeout(callback, delay) {
+           const id = setTimeout(callback, delay);
+           this.timers.push(id);
+           return id;
+       }
+       
+       cleanup() {
+           // Remove all listeners
+           this.listeners.forEach(({ target, event, handler }) => {
+               target.removeEventListener(event, handler);
+           });
+           
+           // Clear all timers
+           this.timers.forEach(id => clearTimeout(id));
+           
+           this.listeners = [];
+           this.timers = [];
+       }
+   }
+   ```
+
+2. Call `cleanup()` when components are destroyed
+
+**Estimated Effort**: 2 weeks  
+**Risk**: MEDIUM (easy to miss listeners)  
+**Benefits**: No memory leaks, better performance long-term
+
+---
+
+#### **5. Magic Numbers Everywhere**
+**Priority**: HIGH  
+**Impact**: Hard to tune, inconsistent values, unclear intent
+
+**Findings**:
+- Hardcoded values scattered across:
+  - Physics constants (speeds, forces)
+  - AI behavior parameters
+  - UI dimensions and timings
+  - Weapon stats
+  - Discovery radii
+
+**Examples**:
+```javascript
+// ProximityDetector3D.js:41-51
+fadeDist: 20000,  // What is this in real units?
+updateFrequency: 20,
+zoomLevels: [
+    { range: 100000, gridSpacing: 8000 },
+    { range: 75000, gridSpacing: 6000 },
+    // Why these specific numbers?
+]
+
+// WeaponCard.js:1249-1275
+adaptiveDelayMs = 1; // Why 1ms?
+projectileSpeed = this.isHoming ? 800 : 750; // Why these speeds?
+
+// SolarSystemManager.js:42-45
+this.VISUAL_SCALE = 100.0; // Why 100?
+this.MAX_DISTANCE_KM = 1.6e6; // Why 1.6M km?
+```
+
+**Refactor Strategy**:
+1. Create configuration files:
+   ```javascript
+   // config/PhysicsConstants.js
+   export const PHYSICS = {
+       IMPULSE_MAX_SPEED: 9, // km/s
+       WARP_MULTIPLIER: 10,
+       COLLISION_MARGIN: 0.04,
+       GRAVITY_CONSTANT: 6.67430e-11,
+       // ... all constants documented
+   };
+   
+   // config/GameplayConstants.js
+   export const GAMEPLAY = {
+       DISCOVERY_RADIUS_BASE: 5, // km
+       TARGET_RANGE_MAX: 150, // km
+       WEAPONS_RANGE_TYPICAL: 25, // km
+       // ... with comments explaining WHY
+   };
+   ```
+
+2. Replace magic numbers with named constants:
+   ```javascript
+   // Before
+   if (distance < 20000) { ... }
+   
+   // After
+   import { GAMEPLAY } from '../config/GameplayConstants.js';
+   if (distance < GAMEPLAY.PROXIMITY_FADE_DISTANCE) { ... }
+   ```
+
+**Estimated Effort**: 2 weeks  
+**Risk**: LOW (safe refactoring)  
+**Benefits**: Easy to tune, self-documenting, consistent values
+
+---
+
+#### **6. Timer Cleanup Issues**
+**Priority**: HIGH  
+**Impact**: Memory leaks, orphaned intervals, performance degradation
+
+**Findings**:
+- **209 setTimeout/setInterval calls** across 68 files
+- Many timers never cleared
+- Intervals running even when components inactive
+- No centralized timer management
+
+**Examples**:
+```javascript
+// TargetComputerManager.js - multiple intervals never cleared
+this.noTargetsInterval = null;
+this.rangeMonitoringInterval = null;
+
+// StarChartsManager.js:39
+this.discoveryInterval = 1000; // Interval value, but is it cleaned up?
+```
+
+**Refactor Strategy**:
+1. Use class-level timer tracking (see #4 above)
+2. Create `TimerManager` utility:
+   ```javascript
+   class TimerManager {
+       constructor() {
+           this.timeouts = new Set();
+           this.intervals = new Set();
+       }
+       
+       setTimeout(callback, delay) {
+           const id = setTimeout(() => {
+               this.timeouts.delete(id);
+               callback();
+           }, delay);
+           this.timeouts.add(id);
+           return id;
+       }
+       
+       setInterval(callback, delay) {
+           const id = setInterval(callback, delay);
+           this.intervals.add(id);
+           return id;
+       }
+       
+       cleanup() {
+           this.timeouts.forEach(id => clearTimeout(id));
+           this.intervals.forEach(id => clearInterval(id));
+           this.timeouts.clear();
+           this.intervals.clear();
+       }
+   }
+   ```
+
+**Estimated Effort**: 1-2 weeks  
+**Risk**: LOW  
+**Benefits**: No orphaned timers, predictable cleanup
+
+---
+
+### **MEDIUM PRIORITY ISSUES** 🔧 (Fix When Possible)
+
+#### **7. Inconsistent Error Handling**
+**Priority**: MEDIUM  
+**Impact**: Silent failures, hard to debug
+
+**Findings**:
+- Try-catch blocks with empty catch or generic logging
+- Async functions without error handling
+- No centralized error reporting
+
+**Examples**:
+```javascript
+// chunk.js:322-343
+catch (error) {
+    // Enhanced error handling with progressive backoff
+    this.errorCount = (this.errorCount || 0) + 1;
+    if (this.errorCount >= 3) {
+        // console.error(...) // COMMENTED OUT!
+        this.loadState = 'error';
+    } else {
+        // console.warn(...) // COMMENTED OUT!
+    }
+}
+```
+
+**Refactor Strategy**:
+1. Use consistent error handling:
+   ```javascript
+   try {
+       await operation();
+   } catch (error) {
+       debug('ERROR', `Operation failed: ${error.message}`);
+       throw error; // Re-throw or handle explicitly
+   }
+   ```
+
+2. Add global error boundary for React-like error handling
+
+**Estimated Effort**: 1 week  
+**Risk**: LOW  
+**Benefits**: Better debugging, fewer silent failures
+
+---
+
+#### **8. State Management Scattered**
+**Priority**: MEDIUM  
+**Impact**: Hard to track state changes, race conditions
+
+**Findings**:
+- 74 files use state tracking (`this.state` patterns)
+- No centralized state management
+- State mutations scattered across methods
+- Hard to debug state changes
+
+**Refactor Strategy**:
+1. Consider using a simple state manager:
+   ```javascript
+   class StateManager extends EventTarget {
+       constructor(initialState) {
+           super();
+           this._state = initialState;
+       }
+       
+       setState(updates) {
+           const oldState = { ...this._state };
+           this._state = { ...this._state, ...updates };
+           this.dispatchEvent(new CustomEvent('stateChanged', {
+               detail: { oldState, newState: this._state }
+           }));
+       }
+       
+       getState() {
+           return { ...this._state };
+       }
+   }
+   ```
+
+**Estimated Effort**: 2-3 weeks (optional)  
+**Risk**: MEDIUM  
+**Benefits**: Predictable state updates, easier debugging
+
+---
+
+### **LOW PRIORITY ISSUES** 🔍 (Technical Debt)
+
+#### **9. TODOs and Incomplete Features**
+**Priority**: LOW  
+**Impact**: Incomplete functionality
+
+**Findings**: 23 TODO comments
+
+**Examples**:
+```javascript
+// StarChartsManager.js:1429
+// TODO: Integrate with ship spawning system
+
+// StarChartsManager.js:1440
+// TODO: Integrate with mission system
+
+// StarfieldManager.js:2665
+// TODO: Implement weapons fire
+
+// AchievementSystem.js:258
+// TODO: Implement title system
+```
+
+**Recommendation**: Review each TODO and either:
+- Implement the feature
+- Create a proper ticket for it
+- Remove if no longer needed
+
+**Estimated Effort**: Varies per TODO  
+**Risk**: LOW  
+**Benefits**: Cleaner codebase, clear feature status
+
+---
+
+#### **10. Duplicate Code Patterns**
+**Priority**: LOW  
+**Impact**: Harder to maintain, bug fixes needed in multiple places
+
+**Findings**:
+- Similar patterns repeated across files
+- Copy-paste code with minor variations
+- Utility functions not extracted
+
+**Refactor Strategy**:
+1. Extract common patterns to utilities
+2. Create base classes for shared behavior
+3. Use composition over inheritance
+
+**Estimated Effort**: 2-3 weeks (ongoing)  
+**Risk**: LOW  
+**Benefits**: DRY code, easier maintenance
+
+---
+
+## 🎯 **RECOMMENDED REFACTORING PRIORITY**
+
+### **Phase 0: Quick Wins** (Week 1-2)
+1. ✅ **Automated console.log → debug() migration**
+2. ✅ **Extract magic numbers to config files**
+3. ✅ **Add ESLint rules to prevent future violations**
+
+### **Phase 1: Memory & Performance** (Week 3-5)
+1. ✅ **Add cleanup methods to all classes**
+2. ✅ **Implement TimerManager**
+3. ✅ **Fix event listener leaks**
+
+### **Phase 2: Architecture** (Week 6-10)
+1. ✅ **Replace window.* with dependency injection**
+2. ✅ **Implement ServiceRegistry**
+3. ✅ **Begin GameObject factory (original plan)**
+
+### **Phase 3: God Class Refactoring** (Week 11-16)
+1. ✅ **Break apart StarfieldManager**
+2. ✅ **Break apart TargetComputerManager**
+3. ✅ **Break apart other large classes**
+
+### **Phase 4: Polish** (Week 17-20)
+1. ✅ **Consistent error handling**
+2. ✅ **State management improvements**
+3. ✅ **Address remaining TODOs**
+
+**Total Estimated Effort**: 20 weeks (5 months)  
+**Can be done incrementally**: YES  
+**Breaking changes**: MINIMAL (if done carefully)
+
+---
+
+## 🚀 **ORIGINAL PLAN BELOW**  
+*(GameObject factory, FactionStandingsManager, etc.)*
 
 ---
 
