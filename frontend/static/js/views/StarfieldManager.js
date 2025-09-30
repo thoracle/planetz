@@ -40,8 +40,13 @@ import { ProximityDetector3D } from '../ui/ProximityDetector3D.js';
 import { EnemyAIManager } from '../ai/EnemyAIManager.js';
 // SimplifiedDamageControl removed - damage control integrated into ship systems HUD
 
+// VERSION TRACKING
+const STARFIELD_VERSION = '7.8.0-targeting-fixes';
+const STARFIELD_BUILD_DATE = '2025-09-30T20:30:00Z';
+
 export class StarfieldManager {
     constructor(scene, camera, viewManager, threeModule = null) {
+        console.log(`%c🌌 STARFIELD MANAGER v${STARFIELD_VERSION} (${STARFIELD_BUILD_DATE})`, 'color: #ffff00; font-weight: bold');
         console.log('🔫 StarfieldManager constructor called - this should always appear');
         debug('COMBAT', '🔫 StarfieldManager constructor - COMBAT debug test');
         this.scene = scene;

@@ -19,6 +19,13 @@ import { SmartDebugManager } from './utils/DebugManager.js'; // Smart debug logg
 import { debug } from './debug.js';
 
 // VERSION TRACKING
+const APP_VERSION = '2.1.0-atomic-discovery';
+const APP_BUILD_DATE = '2025-09-30T20:30:00Z';
+console.log(`%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'color: #44ffff; font-weight: bold');
+console.log(`%c🎮 PLANETZ APP v${APP_VERSION}`, 'color: #44ffff; font-weight: bold; font-size: 16px');
+console.log(`%c📅 Build: ${APP_BUILD_DATE}`, 'color: #44ffff');
+console.log(`%c🔧 Latest Fixes: Atomic discovery, Arrow reliability`, 'color: #44ffff');
+console.log(`%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'color: #44ffff; font-weight: bold');
 debug('P1', '🚀 APP.JS v2.0 - COMMIT 8bd0b7a - HELP SCREEN 2.0 TABBED INTERFACE LOADED');
 
 // Global configuration for verbose logging

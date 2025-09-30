@@ -17,8 +17,19 @@ import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 
 import * as THREE from 'three';
 
+// VERSION TRACKING
+const STAR_CHARTS_VERSION = '1.2.0-discovery-fix';
+const VERSION_DATE = '2025-09-30T20:30:00Z';
+
 export class StarChartsManager {
     constructor(scene, camera, viewManager, solarSystemManager, targetComputerManager) {
+        // VERSION LOGGING - Confirms latest code is running
+        console.log(`%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'color: #00ff41; font-weight: bold');
+        console.log(`%c🚀 STAR CHARTS MANAGER v${STAR_CHARTS_VERSION}`, 'color: #00ff41; font-weight: bold; font-size: 14px');
+        console.log(`%c📅 Build: ${VERSION_DATE}`, 'color: #00ff41');
+        console.log(`%c🔧 Discovery System: ATOMIC CHECK-AND-ADD (Race condition fix)`, 'color: #00ff41');
+        console.log(`%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'color: #00ff41; font-weight: bold');
+        
         this.scene = scene;
         this.camera = camera;
         this.viewManager = viewManager;
