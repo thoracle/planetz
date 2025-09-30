@@ -974,7 +974,7 @@ export class TargetComputerManager {
                     width: 20px;
                     height: 15px;
                     pointer-events: none;
-                    z-index: 9999;
+                    z-index: 25000;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -987,7 +987,7 @@ export class TargetComputerManager {
                     width: 20px;
                     height: 15px;
                     pointer-events: none;
-                    z-index: 9999;
+                    z-index: 25000;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -999,7 +999,7 @@ export class TargetComputerManager {
                     width: 15px;
                     height: 20px;
                     pointer-events: none;
-                    z-index: 9999;
+                    z-index: 25000;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -1011,7 +1011,7 @@ export class TargetComputerManager {
                     width: 15px;
                     height: 20px;
                     pointer-events: none;
-                    z-index: 9999;
+                    z-index: 25000;
                     display: flex;
                     align-items: center;
                     justify-content: center;
