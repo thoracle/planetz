@@ -8,11 +8,18 @@ export class ShipLog {
         this.entries = [];
         this.maxEntries = 100;
         
+        // Duplicate prevention for ephemeral entries
+        this._recentEntries = new Map(); // Track recent entries to prevent duplicates
+        this._entryCleanupInterval = 60000; // Clean up old entries every 60 seconds
+        
         // Initialize with default startup entries
         this.addEntry('system', 'System startup completed - All systems nominal');
         this.addEntry('system', 'Navigation computer online - Coordinates locked');
         this.addEntry('system', 'Weapon systems armed and ready');
         this.addEntry('system', 'Communications array operational');
+        
+        // Start cleanup interval for recent entries map
+        this.startCleanupInterval();
         
         debug('UI', 'ShipLog initialized');
     }
@@ -56,6 +63,22 @@ export class ShipLog {
         if (!window.gameConfig?.verbose) {
             return; // Don't log if verbose mode is disabled
         }
+        
+        // DUPLICATE PREVENTION: Check if we've logged this exact entry recently
+        const entryKey = `${title}_${message}`;
+        const now = Date.now();
+        
+        if (!this._recentEntries) this._recentEntries = new Map();
+        const lastEntry = this._recentEntries.get(entryKey);
+        
+        // Skip if same entry was added within last 2 seconds (prevents simultaneous discoveries)
+        if (lastEntry && (now - lastEntry) < 2000) {
+            debug('UI', `📝 Ship's log: Skipping duplicate entry "${title}: ${message}" (${now - lastEntry}ms ago)`);
+            return;
+        }
+        
+        // Record this entry timestamp
+        this._recentEntries.set(entryKey, now);
         
         const logMessage = title ? `${title}: ${message}` : message;
         this.addEntry('ephemeral', logMessage, title);
@@ -127,6 +150,31 @@ export class ShipLog {
         });
         
         return logText;
+    }
+    
+    /**
+     * Start cleanup interval for recent entries map
+     * Prevents memory leak by cleaning up old entries
+     */
+    startCleanupInterval() {
+        setInterval(() => {
+            if (!this._recentEntries) return;
+            
+            const now = Date.now();
+            const maxAge = 10000; // Keep entries for 10 seconds
+            
+            // Clean up entries older than maxAge
+            for (const [key, timestamp] of this._recentEntries.entries()) {
+                if (now - timestamp > maxAge) {
+                    this._recentEntries.delete(key);
+                }
+            }
+            
+            // If map is empty, log cleanup success
+            if (this._recentEntries.size === 0) {
+                debug('UI', '🧹 Ship\'s log: Recent entries map cleaned (empty)');
+            }
+        }, this._entryCleanupInterval);
     }
 }
 
