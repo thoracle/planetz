@@ -4374,6 +4374,19 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                 // Update arrow color for the visible border - need to update the child element
                 const childTriangle = arrow.firstElementChild;
                 if (childTriangle) {
+                    // DEBUG: Log color update for unknown targets
+                    if (diplomacy === 'unknown' && (!this.lastColorUpdateLog || Date.now() - this.lastColorUpdateLog > 2000)) {
+                        console.log(`🎯 ARROW COLOR: Setting ${primaryDirection} arrow color to ${arrowColor} for diplomacy: ${diplomacy}`, {
+                            target: this.currentTarget?.name,
+                            childTriangle: !!childTriangle,
+                            currentBorderColor: primaryDirection === 'top' ? childTriangle.style.borderBottomColor :
+                                              primaryDirection === 'bottom' ? childTriangle.style.borderTopColor :
+                                              primaryDirection === 'left' ? childTriangle.style.borderRightColor :
+                                              childTriangle.style.borderLeftColor
+                        });
+                        this.lastColorUpdateLog = Date.now();
+                    }
+                    
                     if (primaryDirection === 'top') {
                         childTriangle.style.borderBottomColor = arrowColor;
                     } else if (primaryDirection === 'bottom') {
