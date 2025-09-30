@@ -1180,8 +1180,23 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
     addDiscoveredObject(objectId, discoveryMethod = 'proximity', source = 'player') {
         //Add object to discovered list with metadata and save state
         
-        // Normalize ID to handle case sensitivity (a0_ vs A0_)
-        const normalizedId = typeof objectId === 'string' ? objectId.replace(/^a0_/i, 'A0_') : objectId;
+        // CRITICAL: Normalize IDs to prevent same object with different ID formats
+        let normalizedId = typeof objectId === 'string' ? objectId : String(objectId);
+        
+        // Step 1: Fix case sensitivity (a0_ → A0_)
+        normalizedId = normalizedId.replace(/^a0_/i, 'A0_');
+        
+        // Step 2: Remove redundant prefixes (A0_beacon_A0_ → A0_beacon_, A0_A0_ → A0_)
+        normalizedId = normalizedId.replace(/^A0_beacon_A0_/i, 'A0_beacon_');
+        normalizedId = normalizedId.replace(/^A0_A0_/i, 'A0_');
+        
+        // Step 3: Normalize beacon naming (#3 vs _3)
+        normalizedId = normalizedId.replace(/navigation_beacon_#(\d+)/, 'navigation_beacon_$1');
+        
+        console.log(`🔧 ID NORMALIZATION: "${objectId}" → "${normalizedId}"`);
+        
+        // Step 4: Deduplicate station naming (remove station_ prefix duplicates)
+        normalizedId = normalizedId.replace(/^A0_station_/, 'A0_');
         
         // ATOMIC CHECK-AND-ADD: This prevents ALL race conditions
         // If already discovered, exit immediately BEFORE any other operations
