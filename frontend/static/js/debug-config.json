@@ -88,9 +88,9 @@
             "description": "Test functions and debugging helpers"
         },
         "P1": {
-            "enabled": true,
+            "enabled": false,
             "description": "HIGH PRIORITY - Critical debugging",
-            "alwaysEnabled": true
+            "alwaysEnabled": false
         },
         "SYSTEM_CHECK": {
             "enabled": false,

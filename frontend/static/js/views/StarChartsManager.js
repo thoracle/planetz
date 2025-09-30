@@ -1133,11 +1133,31 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         }
     }
     
-    isDiscovered(objectId) {
+    isDiscovered(input) {
         //Check if object has been discovered
-        // Normalize ID to handle case sensitivity (a0_ vs A0_)
-        const normalizedId = typeof objectId === 'string' ? objectId.replace(/^a0_/i, 'A0_') : objectId;
-        return this.discoveredObjects.has(normalizedId);
+        // DISCOVERY FIX: Handle both string IDs and target data objects
+        
+        // Basic validation
+        if (!input || !this.discoveredObjects) {
+            return false;
+        }
+        
+        // If input is a string (ID), use it directly
+        if (typeof input === 'string') {
+            const normalizedId = input.replace(/^a0_/i, 'A0_');
+            return this.discoveredObjects.has(normalizedId);
+        }
+        
+        // If input is an object (target data), construct ID using TargetComputer
+        if (typeof input === 'object' && this.targetComputerManager?.constructObjectId) {
+            const objectId = this.targetComputerManager.constructObjectId(input);
+            if (objectId) {
+                const normalizedId = objectId.replace(/^a0_/i, 'A0_');
+                return this.discoveredObjects.has(normalizedId);
+            }
+        }
+        
+        return false;
     }
 
     getDiscoveryMetadata(objectId) {

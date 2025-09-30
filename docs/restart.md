@@ -8,6 +8,7 @@
 
 **Core Systems:**
 - **3D Space Combat** - Weapons, targeting, shields with raycasting collision detection
+- **Discovery System** - Object discovery with synchronized wireframe colors and faction standings
 - **Mission Framework** - Cargo delivery, elimination, escort missions with unified economy
 - **Faction System** - 10 unique factions with diplomatic complexity
 - **Collection System** - NFT-style card collection driving gameplay progression
@@ -215,6 +216,14 @@ debugStatus()              // Show all debug channel states
 3. **Use the help screen** (ESC) to understand current systems
 4. **Test with browser console** debug helpers
 5. **Follow the modular architecture** - don't create monolithic files
+
+## ✅ Recent Fixes
+
+### **Discovery System Overhaul** *(Completed)*
+- **Issue**: Wireframe colors not matching discovery/faction status
+- **Solution**: Complete synchronization between TargetComputer and StarCharts systems
+- **Files Modified**: `TargetComputerManager.js`, `StarChartsManager.js`
+- **Result**: Perfect wireframe color accuracy with faction-based diplomacy
 
 ## ⚠️ Open Issues
 

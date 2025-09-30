@@ -2080,48 +2080,60 @@ export class TargetComputerManager {
      */
     getTargetDiplomacy(targetData) {
         if (!targetData) {
-            return 'neutral';
+            return 'unknown';
         }
 
-        // Debug logging for beacons to understand the issue (much less frequent)
-        const isBeacon = targetData.type === 'navigation_beacon';
-        if (isBeacon && Math.random() < 0.001) {
-            debug('TARGETING', `getTargetDiplomacy for beacon: ${targetData.name}`, {
-                diplomacy: targetData.diplomacy,
-                faction: targetData.faction,
-                discovered: targetData.discovered,
-                _isUndiscovered: targetData._isUndiscovered
-            });
+        // DISCOVERY COLOR FIX: Check if object is discovered first
+        const isDiscovered = targetData.isShip || this.isObjectDiscovered(targetData);
+        
+        if (!isDiscovered) {
+            // Undiscovered objects should have unknown diplomacy
+            return 'unknown';
         }
 
+        // For DISCOVERED objects, determine proper faction standing
         // 1. Direct diplomacy property (highest priority)
-        if (targetData.diplomacy) {
-            
+        if (targetData.diplomacy && targetData.diplomacy !== 'unknown') {
             return targetData.diplomacy;
         }
 
         // 2. Faction-based diplomacy
         if (targetData.faction) {
             const factionDiplomacy = this.getFactionDiplomacy(targetData.faction);
-            
-            return factionDiplomacy;
+            if (factionDiplomacy && factionDiplomacy !== 'unknown') {
+                return factionDiplomacy;
+            }
         }
 
         // 3. Ship diplomacy (for ship targets)
         if (targetData.ship?.diplomacy) {
-            
             return targetData.ship.diplomacy;
         }
 
         // 4. Celestial body info diplomacy (for planets, stations, etc.)
         const info = this.solarSystemManager?.getCelestialBodyInfo(targetData.object || targetData);
         if (info?.diplomacy) {
-            
             return info.diplomacy;
         }
 
-        // 5. Ultimate fallback
-        
+        // 5. Default logic for discovered objects based on type
+        if (targetData.type === 'station') {
+            return 'neutral'; // Stations are typically neutral
+        }
+
+        if (targetData.type === 'planet' || targetData.type === 'moon') {
+            return 'neutral'; // Planets/moons are neutral
+        }
+
+        if (targetData.type === 'beacon' || targetData.type === 'navigation_beacon') {
+            return 'neutral'; // Beacons are neutral
+        }
+
+        if (targetData.isShip) {
+            return 'unknown'; // Ships need proper faction data
+        }
+
+        // Default for other discovered objects
         return 'neutral';
     }
 
@@ -2739,6 +2751,11 @@ export class TargetComputerManager {
        // CRITICAL FIX: Update wireframe color and isEnemyShip based on diplomacy using consolidated logic
        const diplomacy = this.getTargetDiplomacy(currentTargetData);
 
+       // DISCOVERY COLOR FIX: Clear cached discovery status to ensure fresh data
+       if (this.currentTarget) {
+           this.currentTarget._lastDiscoveryStatus = undefined;
+       }
+
        // Check discovery status for wireframe color using proper discovery logic
        const isDiscovered = currentTargetData?.isShip || this.isObjectDiscovered(currentTargetData);
        
@@ -2747,36 +2764,37 @@ export class TargetComputerManager {
        if (!isDiscovered) {
            // Undiscovered objects use unknown faction color (cyan)
            wireframeColor = 0x44ffff; // Cyan for unknown/undiscovered
-           debug('TARGETING', `🎨 Using TEAL wireframe for undiscovered: ${currentTargetData?.name}`);
-
+           debug('TARGETING', `🎨 Using CYAN wireframe for undiscovered: ${currentTargetData?.name}`);
        } else {
-           // FIX: Set isEnemyShip correctly - only enemy ships should have subsystem indicators
-           isEnemyShip = diplomacy === 'enemy' && currentTargetData?.isShip;
-           debug('TARGETING', `🎯 TARGET_SWITCH: Final isEnemyShip determination: ${isEnemyShip} (diplomacy: ${diplomacy}, isShip: ${currentTargetData?.isShip})`);
-
-           // Handle waypoints first (magenta)
+           // DISCOVERY COLOR FIX: Faction-based coloring for discovered objects
            if (currentTargetData?.type === 'waypoint' || currentTargetData?.isVirtual) {
                wireframeColor = 0xff00ff; // Magenta for waypoints
-               
-           } else if (diplomacy === 'enemy') {
-               wireframeColor = 0xff3333; // Red for hostile (docs/restart.md)
-
-           } else if (diplomacy === 'neutral') {
-               wireframeColor = 0xffff44; // Yellow for neutral (docs/restart.md)
-               debug('TARGETING', `🎨 Using YELLOW wireframe for neutral discovered: ${currentTargetData?.name}`);
-
-           } else if (diplomacy === 'friendly') {
-               wireframeColor = 0x44ff44; // Green for friendly (docs/restart.md)
-
-           } else if (info?.type === 'star') {
-               wireframeColor = 0xffff44; // Stars are neutral yellow
-
-           } else if (diplomacy === 'unknown') {
-               wireframeColor = 0x44ffff; // Cyan for unknown (docs/restart.md)
-
            } else {
-               wireframeColor = 0x44ffff; // Default to cyan for unknown (docs/restart.md)
+               // Pure faction-based coloring
+               switch (diplomacy) {
+                   case 'enemy':
+                   case 'hostile':
+                       wireframeColor = 0xff3333; // Red for hostile
+                       isEnemyShip = currentTargetData?.isShip; // Set enemy ship flag
+                       break;
+                   case 'friendly':
+                   case 'ally':
+                       wireframeColor = 0x44ff44; // Green for friendly
+                       break;
+                   case 'neutral':
+                       wireframeColor = 0xffff44; // Yellow for neutral
+                       break;
+                   case 'unknown':
+                       wireframeColor = 0x44ffff; // Cyan for unknown faction
+                       break;
+                   default:
+                       // No diplomacy data - default to neutral
+                       wireframeColor = 0xffff44; // Yellow (neutral) as default
+                       break;
+               }
            }
+           
+           debug('TARGETING', `🎨 Using faction-based wireframe for discovered: ${currentTargetData?.name} → ${diplomacy || 'default'}`);
        }
 
        // Override color for waypoints
@@ -3615,6 +3633,14 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
         }
         
         return null;
+    }
+
+    /**
+     * Construct object ID for discovery system compatibility
+     * Uses the existing normalizeTargetId method for consistency
+     */
+    constructObjectId(targetData) {
+        return this.normalizeTargetId(targetData);
     }
 
     /**
@@ -6582,4 +6608,4 @@ debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
         }
     }
 
-} 
+}
