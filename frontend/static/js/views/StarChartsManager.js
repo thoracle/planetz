@@ -1175,7 +1175,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         // ATOMIC CHECK-AND-ADD: This prevents ALL race conditions
         // If already discovered, exit immediately BEFORE any other operations
         if (this.discoveredObjects.has(normalizedId)) {
-            debug('STAR_CHARTS', `⏭️ ALREADY DISCOVERED: ${normalizedId} (method: ${discoveryMethod})`);
+            console.log(`⏭️ DUPLICATE DISCOVERY BLOCKED: ${normalizedId} (method: ${discoveryMethod}) - Set size: ${this.discoveredObjects.size}`);
             // Update metadata for re-discovery
             const existing = this.discoveryMetadata.get(normalizedId);
             if (existing) {
@@ -1187,7 +1187,7 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         
         // Add to discovered set IMMEDIATELY (atomic with above check in single-threaded JS)
         this.discoveredObjects.add(normalizedId);
-        debug('STAR_CHARTS', `✅ FIRST DISCOVERY: ${normalizedId} (method: ${discoveryMethod})`);
+        console.log(`✅ FIRST DISCOVERY: ${normalizedId} (method: ${discoveryMethod}) - Set size now: ${this.discoveredObjects.size}, Set contents:`, Array.from(this.discoveredObjects));
         
         // Secondary lock for notification phase (belt and suspenders)
         if (!this._discoveryInProgress) this._discoveryInProgress = new Set();
