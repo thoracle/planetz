@@ -2379,6 +2379,12 @@ export class TargetComputerManager {
         // Start range monitoring for the scanner target
         this.startRangeMonitoring();
         
+        // INSTANT DISCOVERY: Force immediate discovery check to eliminate lag
+        const starChartsManager = this.viewManager?.navigationSystemManager?.starChartsManager;
+        if (starChartsManager && targetData?.id) {
+            starChartsManager.forceDiscoveryCheck(targetData.id);
+        }
+        
         // Sync with StarfieldManager
         if (this.viewManager?.starfieldManager) {
             this.viewManager.starfieldManager.currentTarget = this.currentTarget?.object || this.currentTarget;
@@ -2617,7 +2623,12 @@ export class TargetComputerManager {
         debug('TARGETING', `🎯 TAB: About to call notifyStarChartsOfTargetChange()`);
         this.notifyStarChartsOfTargetChange();
         debug('TARGETING', `🎯 TAB: Called notifyStarChartsOfTargetChange()`);
-        debug('TARGETING', `🎯 TAB: Called notifyStarChartsOfTargetChange()`);
+        
+        // INSTANT DISCOVERY: Force immediate discovery check to eliminate lag
+        const starChartsManager = this.viewManager?.navigationSystemManager?.starChartsManager;
+        if (starChartsManager && this.currentTarget?.id) {
+            starChartsManager.forceDiscoveryCheck(this.currentTarget.id);
+        }
         
         } catch (error) {
             console.error('🎯 ERROR in TargetComputerManager.cycleTarget:', error);
@@ -4854,6 +4865,12 @@ debug('TARGETING', `🎯 Checking target ${i}: ${target.name} (id: ${target.id |
                 this.updateTargetDisplay();
                 debug('TARGETING', `🎯 setTargetById: Called updateTargetDisplay()`);
                 this.updateReticleTargetInfo();
+
+                // INSTANT DISCOVERY: Force immediate discovery check to eliminate lag
+                const starChartsManager = this.viewManager?.navigationSystemManager?.starChartsManager;
+                if (starChartsManager && normalizedId) {
+                    starChartsManager.forceDiscoveryCheck(normalizedId);
+                }
 
 debug('TARGETING', `🎯 Star Charts: Target set to ${target.name} (ID: ${normalizedId}) at index ${i}`);
                 return true;

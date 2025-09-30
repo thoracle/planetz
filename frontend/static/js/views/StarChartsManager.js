@@ -18,8 +18,8 @@ import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 import * as THREE from 'three';
 
 // VERSION TRACKING
-const STAR_CHARTS_VERSION = '1.2.2-subsystem-fix';
-const VERSION_DATE = '2025-09-30T21:15:00Z';
+const STAR_CHARTS_VERSION = '1.3.0-instant-discovery';
+const VERSION_DATE = '2025-09-30T21:30:00Z';
 
 export class StarChartsManager {
     constructor(scene, camera, viewManager, solarSystemManager, targetComputerManager) {
@@ -27,7 +27,7 @@ export class StarChartsManager {
         console.log(`%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'color: #00ff41; font-weight: bold');
         console.log(`%c🚀 STAR CHARTS MANAGER v${STAR_CHARTS_VERSION}`, 'color: #00ff41; font-weight: bold; font-size: 14px');
         console.log(`%c📅 Build: ${VERSION_DATE}`, 'color: #00ff41');
-        console.log(`%c🔧 Discovery System: Subsystem HUD display fix`, 'color: #00ff41');
+        console.log(`%c🔧 Discovery System: Instant discovery on target selection (no lag)`, 'color: #00ff41');
         console.log(`%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'color: #00ff41; font-weight: bold');
         
         this.scene = scene;
@@ -663,6 +663,36 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         };
         
         discoveryLoop();
+    }
+    
+    /**
+     * Force immediate discovery check for a specific object (eliminates lag on target selection)
+     * @param {string} objectId - Object ID to check for discovery
+     */
+    forceDiscoveryCheck(objectId) {
+        if (!objectId) return;
+        
+        // Already discovered? Skip
+        if (this.isDiscovered(objectId)) {
+            return;
+        }
+        
+        // Get object data
+        const object = this.getObjectById(objectId);
+        if (!object) {
+            return;
+        }
+        
+        // Check if in discovery range
+        const playerPosition = this.getPlayerPosition();
+        if (!playerPosition) return;
+        
+        const discoveryRadius = this.getEffectiveDiscoveryRadius();
+        
+        if (this.isWithinRange(object, playerPosition, discoveryRadius)) {
+            debug('STAR_CHARTS', `⚡ INSTANT DISCOVERY: ${object.name} (forced by target selection)`);
+            this.processDiscovery(object);
+        }
     }
     
     checkDiscoveryRadius() {
