@@ -24,11 +24,7 @@ const VERSION_DATE = '2025-09-30T21:45:00Z';
 export class StarChartsManager {
     constructor(scene, camera, viewManager, solarSystemManager, targetComputerManager) {
         // VERSION LOGGING - Confirms latest code is running
-        console.log(`%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'color: #00ff41; font-weight: bold');
-        console.log(`%c🚀 STAR CHARTS MANAGER v${STAR_CHARTS_VERSION}`, 'color: #00ff41; font-weight: bold; font-size: 14px');
-        console.log(`%c📅 Build: ${VERSION_DATE}`, 'color: #00ff41');
-        console.log(`%c🔧 Discovery System: Fixed arrows for undiscovered targets`, 'color: #00ff41');
-        console.log(`%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'color: #00ff41; font-weight: bold');
+        console.log(`🚀 StarChartsManager v${STAR_CHARTS_VERSION}`);
         
         this.scene = scene;
         this.camera = camera;
@@ -1227,12 +1223,12 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         // Step 5: Deduplicate station naming (remove station_ prefix duplicates)
         normalizedId = normalizedId.replace(/^A0_station_/, 'A0_');
         
-        console.log(`🔧 ID NORMALIZATION: "${objectId}" → "${normalizedId}"`);
+        debug('STAR_CHARTS', `ID NORMALIZATION: "${objectId}" → "${normalizedId}"`);
         
         // ATOMIC CHECK-AND-ADD: This prevents ALL race conditions
         // If already discovered, exit immediately BEFORE any other operations
         if (this.discoveredObjects.has(normalizedId)) {
-            console.log(`⏭️ DUPLICATE DISCOVERY BLOCKED: ${normalizedId} (method: ${discoveryMethod}) - Set size: ${this.discoveredObjects.size}`);
+            debug('STAR_CHARTS', `DUPLICATE DISCOVERY BLOCKED: ${normalizedId} (method: ${discoveryMethod})`);
             // Update metadata for re-discovery
             const existing = this.discoveryMetadata.get(normalizedId);
             if (existing) {
@@ -1244,7 +1240,7 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         
         // Add to discovered set IMMEDIATELY (atomic with above check in single-threaded JS)
         this.discoveredObjects.add(normalizedId);
-        console.log(`✅ FIRST DISCOVERY: ${normalizedId} (method: ${discoveryMethod}) - Set size now: ${this.discoveredObjects.size}, Set contents:`, Array.from(this.discoveredObjects));
+        debug('STAR_CHARTS', `FIRST DISCOVERY: ${normalizedId} (method: ${discoveryMethod}) - Total: ${this.discoveredObjects.size}`);
         
         // Secondary lock for notification phase (belt and suspenders)
         if (!this._discoveryInProgress) this._discoveryInProgress = new Set();

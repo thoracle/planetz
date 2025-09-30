@@ -46,9 +46,7 @@ const STARFIELD_BUILD_DATE = '2025-09-30T20:30:00Z';
 
 export class StarfieldManager {
     constructor(scene, camera, viewManager, threeModule = null) {
-        console.log(`%c🌌 STARFIELD MANAGER v${STARFIELD_VERSION} (${STARFIELD_BUILD_DATE})`, 'color: #ffff00; font-weight: bold');
-        console.log('🔫 StarfieldManager constructor called - this should always appear');
-        debug('COMBAT', '🔫 StarfieldManager constructor - COMBAT debug test');
+        console.log(`🌌 StarfieldManager v${STARFIELD_VERSION}`);
         this.scene = scene;
         this.camera = camera;
         this.viewManager = viewManager;

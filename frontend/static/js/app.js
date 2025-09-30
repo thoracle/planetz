@@ -21,12 +21,7 @@ import { debug } from './debug.js';
 // VERSION TRACKING
 const APP_VERSION = '2.1.0-atomic-discovery';
 const APP_BUILD_DATE = '2025-09-30T20:30:00Z';
-console.log(`%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'color: #44ffff; font-weight: bold');
-console.log(`%c🎮 PLANETZ APP v${APP_VERSION}`, 'color: #44ffff; font-weight: bold; font-size: 16px');
-console.log(`%c📅 Build: ${APP_BUILD_DATE}`, 'color: #44ffff');
-console.log(`%c🔧 Latest Fixes: Atomic discovery, Arrow reliability`, 'color: #44ffff');
-console.log(`%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'color: #44ffff; font-weight: bold');
-debug('P1', '🚀 APP.JS v2.0 - COMMIT 8bd0b7a - HELP SCREEN 2.0 TABBED INTERFACE LOADED');
+console.log(`🎮 PLANETZ v${APP_VERSION} (${APP_BUILD_DATE})`);
 
 // Global configuration for verbose logging
 window.gameConfig = window.gameConfig || {};
@@ -440,12 +435,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
         console.error('❌ Failed to initialize achievement system:', error);
     }
-
-    // Test the debug system
-    debug('TARGETING', 'SmartDebugManager initialized successfully');
-    debug('MISSIONS', 'Smart debug logging system ready');
-    debug('P1', 'HIGH PRIORITY: Debug system operational');
-    debug('INSPECTION', 'This should be disabled by default');
 
     // Renderer setup with safe dimensions
     const renderer = new THREE.WebGLRenderer({ antialias: true });
