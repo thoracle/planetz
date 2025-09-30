@@ -889,13 +889,6 @@ debug('UTILITY', 'Already in requested view, returning');
     }
 
     restorePreviousView() {
-        console.log('restorePreviousView called:', {
-            currentView: this.currentView,
-            previousView: this.previousView,
-            lastNonModalView: this.lastNonModalView,
-            isDocked: this.starfieldManager?.isDocked
-        });
-        
         // Don't restore if we're not in galactic or scanner view
         if (this.currentView !== VIEW_TYPES.GALACTIC && this.currentView !== VIEW_TYPES.SCANNER) {
 debug('UTILITY', 'Not in galactic or scanner view, returning');

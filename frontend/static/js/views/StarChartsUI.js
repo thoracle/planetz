@@ -2387,17 +2387,8 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
 
                 // Check SVG properties
 
-                // Check if ship icon is within viewBox
+                // Check if ship icon is within viewBox (for future debugging if needed)
                 const viewBox = this.svg.getAttribute('viewBox');
-                if (viewBox) {
-                    const [minX, minY, width, height] = viewBox.split(' ').map(Number);
-
-                    console.log('📐 Ship position relative to viewBox:', {
-                        x: x - minX,
-                        y: z - minY,
-                        withinBounds: x >= minX && x <= minX + width && z >= minY && z <= minY + height
-                    });
-                }
             } else {
 
             }
@@ -3052,15 +3043,6 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             `;
             return;
         }
-        
-        // DEBUG: Check target object properties
-        console.log('🔍 TARGET DEBUG:');
-        console.log('  Name:', currentTarget.name);
-        console.log('  Type:', currentTarget.type);
-        console.log('  _isUndiscovered:', currentTarget._isUndiscovered);
-        console.log('  ID:', currentTarget.id);
-        console.log('  All keys:', Object.keys(currentTarget));
-        console.log('  Full object:', currentTarget);
         
         // Apply the same discovery logic as Star Charts tooltips
         // Process the target through the same system that determines tooltip text

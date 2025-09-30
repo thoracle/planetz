@@ -4756,13 +4756,6 @@ debug('TARGETING', `🎯 Checking target ${i}: ${target.name} (id: ${target.id |
                 // Mark as manual navigation selection to prevent automatic override
                 this.isManualSelection = true;
                 this.isManualNavigationSelection = true;
-
-                console.log(`🎯 DEBUG: setTargetById - target set:`, {
-                    name: target.name,
-                    type: target.type,
-                    isManualSelection: this.isManualSelection,
-                    targetIndex: this.targetIndex
-                });
                 
                 // Update ship's target computer system (same as cycleTarget does)
                 // This ensures subsystems are properly cleared when switching to unknown objects
