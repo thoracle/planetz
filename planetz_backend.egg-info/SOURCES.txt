@@ -40,3 +40,4 @@ planetz_backend.egg-info/SOURCES.txt
 planetz_backend.egg-info/dependency_links.txt
 planetz_backend.egg-info/requires.txt
 planetz_backend.egg-info/top_level.txt
+tests/test_target_computer_fixes.py
