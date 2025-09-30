@@ -117,7 +117,11 @@ export class TargetComputerManager {
      * @returns {string} Diplomacy status ('friendly', 'neutral', 'enemy')
      */
     getFactionDiplomacy(faction) {
-        if (!faction) return 'neutral';
+        // Log null/undefined faction for debugging (data quality issue)
+        if (!faction) {
+            debug('TARGETING', `⚠️ getFactionDiplomacy: null/undefined faction, defaulting to 'neutral'`);
+            return 'neutral';
+        }
         
         // Faction relationship mappings (matches AmbientShipManager.js)
         const factionRelations = {
@@ -138,7 +142,13 @@ export class TargetComputerManager {
             key.toLowerCase() === faction.toLowerCase()
         );
         
-        return factionKey ? factionRelations[factionKey] : 'neutral';
+        // Log unknown faction for debugging (possible typo or missing faction)
+        if (!factionKey) {
+            debug('TARGETING', `⚠️ getFactionDiplomacy: Unknown faction "${faction}", defaulting to 'neutral'`);
+            return 'neutral';
+        }
+        
+        return factionRelations[factionKey];
     }
 
     /**
@@ -4229,10 +4239,11 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                            screenPosition.z > 1.0; // Behind camera
 
         // Add hysteresis to prevent flickering at screen edges
+        // Tighter threshold (0.92 vs 0.95 = 3% gap) for faster arrow hiding
         if (!this.lastArrowState) this.lastArrowState = false;
         const shouldShowArrow = isOffScreen || (this.lastArrowState && (
-            Math.abs(screenPosition.x) > 0.90 || 
-            Math.abs(screenPosition.y) > 0.90 || 
+            Math.abs(screenPosition.x) > 0.92 || 
+            Math.abs(screenPosition.y) > 0.92 || 
             screenPosition.z > 1.0
         ));
         
