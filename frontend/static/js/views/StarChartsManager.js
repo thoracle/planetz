@@ -1176,6 +1176,10 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
         debug('STAR_CHARTS', `🔍 DISCOVERY ATTEMPT: ${normalizedId} (method: ${discoveryMethod}, already discovered: ${wasAlreadyDiscovered})`);
 
         if (!wasAlreadyDiscovered) {
+            // CRITICAL FIX: Add to discoveredObjects IMMEDIATELY to prevent race conditions
+            // This must happen BEFORE any async operations or notifications
+            this.discoveredObjects.add(normalizedId);
+            
             // DUPLICATE PREVENTION: Check if this discovery is already in progress
             if (!this._discoveryInProgress) this._discoveryInProgress = new Set();
             if (this._discoveryInProgress.has(normalizedId)) {
@@ -1183,7 +1187,6 @@ debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
                 return;
             }
             this._discoveryInProgress.add(normalizedId);
-            this.discoveredObjects.add(normalizedId);
 
             // Add discovery metadata
             const discoveryData = {
