@@ -4326,6 +4326,8 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                     arrowColor = '#00ff41';
                 } else if (diplomacy === 'neutral') {
                     arrowColor = '#ffff00';
+                } else if (diplomacy === 'unknown') {
+                    arrowColor = '#44ffff'; // Teal for unknown/undiscovered
                 }
             }
 
