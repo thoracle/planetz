@@ -2132,9 +2132,19 @@ export class TargetComputerManager {
             return info.diplomacy;
         }
 
+        // 4.5. Celestial body faction (especially important for stations!)
+        // This catches stations with faction data that don't have explicit diplomacy property
+        if (info?.faction) {
+            const factionDiplomacy = this.getFactionDiplomacy(info.faction);
+            if (factionDiplomacy && factionDiplomacy !== 'unknown') {
+                return factionDiplomacy;
+            }
+        }
+
         // 5. Default logic for discovered objects based on type
+        // Only use these defaults if no faction/diplomacy data was found above
         if (targetData.type === 'station') {
-            return 'neutral'; // Stations are typically neutral
+            return 'neutral'; // Stations without faction data default to neutral
         }
 
         if (targetData.type === 'planet' || targetData.type === 'moon') {
