@@ -2599,6 +2599,9 @@ export class TargetComputerManager {
         debug('TARGETING', `🎯 TAB: Wireframe creation completed, wireframe exists: ${!!this.targetWireframe}`);
         this.updateTargetDisplay();
         
+        // FIXED: Reset arrow state for new target to prevent stale hysteresis
+        this.lastArrowState = false;
+        
         // Force direction arrow update after target cycling
         this.updateDirectionArrow();
         
@@ -4251,7 +4254,8 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
 
         // Add hysteresis to prevent flickering at screen edges
         // Tighter threshold (0.92 vs 0.95 = 3% gap) for faster arrow hiding
-        if (!this.lastArrowState) this.lastArrowState = false;
+        // FIXED: Only initialize if null/undefined, not when false
+        if (this.lastArrowState == null) this.lastArrowState = false;
         const shouldShowArrow = isOffScreen || (this.lastArrowState && (
             Math.abs(screenPosition.x) > 0.92 || 
             Math.abs(screenPosition.y) > 0.92 || 
@@ -4384,6 +4388,8 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                 arrow.style.display = 'none';
             });
         }
+        // FIXED: Reset arrow state to prevent stale hysteresis on next target
+        this.lastArrowState = false;
     }
 
     /**
