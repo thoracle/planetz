@@ -90,7 +90,31 @@ Debug settings persist in: `frontend/static/js/debug_config.json`
 
 ## 🎉 Latest Issues Solved
 
-### **Achievement Display Bug** ✅ **JUST FIXED**
+### **Directional Arrows for Unknown Targets** ✅ **JUST FIXED** *(Sept 30, 2025)*
+- **Issue**: Directional arrows not showing for undiscovered/unknown targets when off-screen
+- **Root Causes**: 
+  - Arrow z-index (9999) was below UI elements (10000-20000)
+  - Setting `display: block` broke flexbox centering needed for CSS triangle arrows
+  - Explicitly setting transparent borders was overriding border-style properties
+- **Solution**: 
+  - Increased arrow z-index to 25000 (above all UI)
+  - Changed to `display: flex` to maintain triangle centering
+  - Only update visible border color, preserve original border configuration
+- **Testing**: Comprehensive diagnostic logging to trace arrow visibility issues
+- **Files**: `frontend/static/js/views/TargetComputerManager.js`
+- **Result**: Teal arrows (#44ffff) now visible for unknown targets, all diplomacy states working
+
+### **Console Cleanup & Debug Management** ✅ **COMPLETED** *(Sept 30, 2025)*
+- **Issue**: Excessive debug logging making console difficult to read for debugging
+- **Solution**: 
+  - Moved verbose logs to debug channels (TARGETING, STAR_CHARTS)
+  - Removed spammy version banners and debug test messages
+  - Added `debug-config.json` for persistent channel management
+  - Cleaned up TARGET DEBUG, viewBox, and restorePreviousView logs
+- **Files**: `frontend/static/js/views/StarChartsManager.js`, `TargetComputerManager.js`, `StarChartsUI.js`, `ViewManager.js`
+- **Result**: Clean console output, easy channel enable/disable via config file
+
+### **Achievement Display Bug** ✅ **FIXED**
 - **Issue**: Achievements showing checkmarks (✅) and "Unlocked" status for incomplete progress
 - **Root Cause**: Corrupted localStorage data marking achievements as unlocked incorrectly
 - **Solution**: Added data validation, display-time safety checks, and debug helpers
